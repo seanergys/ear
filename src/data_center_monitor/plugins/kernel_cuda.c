@@ -23,7 +23,7 @@
 
 int kcuda_is_running();
 int kcuda_count_devices();
-int kcuda_execute(char *conf);
+int kcuda_execute(char **conf);
 
 declr_up_get_tag()
 {
@@ -33,10 +33,12 @@ declr_up_get_tag()
 
 declr_up_action_init(_kernel_cuda)
 {
+    char **args = (char **) data;
+    
     if (!kcuda_count_devices()) {
         return "[D] no GPUs detected";
     }
-    if (!kcuda_execute((char *) data)) {
+    if (!kcuda_execute(args)) {
         return "[D] something is not working";
     }
     return rsprintf("%d GPUs detected", kcuda_count_devices());

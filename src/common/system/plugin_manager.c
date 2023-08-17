@@ -108,6 +108,8 @@ static int plugins_dependencies_read(cchar *string, ullong father_time_lapse, ui
         debug("list1[%d]: %s", l, list1[l]);
         // Cleaning
         memset(&p.plugins[p.count], 0, sizeof(plugin_t));
+        list2         = NULL;
+        list2_count   = 0;
         priority_plus = 0;
         time_inherit  = 0;
         mandatory     = 0;
@@ -120,8 +122,9 @@ static int plugins_dependencies_read(cchar *string, ullong father_time_lapse, ui
             }
             // Configuration exists
             if (list2_count > 2) {
-                strncpy(p.plugins[p.count].conf, list2[2], sizeof(p.plugins[p.count].conf));
-                p.plugins[p.count].data_conf = (void *) p.plugins[p.count].conf;
+                //strncpy(p.plugins[p.count].conf, list2[2], sizeof(p.plugins[p.count].conf));
+                //p.plugins[p.count].data_conf = (void *) p.plugins[p.count].conf;
+                p.plugins[p.count].data_conf = (void *) &list2[2];
             }
             c = list2[0];
         } else {

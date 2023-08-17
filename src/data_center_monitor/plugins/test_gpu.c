@@ -53,6 +53,7 @@ declr_up_action_init(_metrics)
 
 declr_up_action_init(_test_gpu)
 {
+    char **args = (char **) data;
     uint devs_count_met;
     uint devs_count_mgt;
     int i, j;
@@ -83,7 +84,7 @@ declr_up_action_init(_test_gpu)
     list_doing = calloc(devs_count, sizeof(uint));
     list_accum = calloc(devs_count, sizeof(uint));
     // Configuration
-    if (!rantoa((char *) data, list_doing, devs_count)) {
+    if (args == NULL || !rantoa(args[0], list_doing, devs_count)) {
         // If the list is empty, we are selecting the GPU0.
         list_doing[0] = 1;
     }
@@ -177,9 +178,9 @@ char *test_select()
 static char *print_table(int init)
 {
     if (init) tprintf_init2(&table, fdout, STR_MODE_DEF, "6 4 7 6 3 10 10 10 10 10 10 6 6");
-    if (init)  printf (        "--------- | ------------ | ------------------------------------------------------------------- | --------------\n");
-    if (init)  printf (        "General   | Capping      | Metrics                                                             | System Metrics\n");
-               printf (        "--------- | ------------ | ------------------------------------------------------------------- | --------------\n");
+    if (init)  printf (        "--------- | ------------ | -------------------------------------------------------------------- | --------------\n");
+    if (init)  printf (        "General   | Capping      | Metrics                                                              | System Metrics\n");
+               printf (        "--------- | ------------ | -------------------------------------------------------------------- | --------------\n");
               tprintf2(&table, "Step||GPU|||Freq.||Power|||R||GPU Freq.||MEM Freq.||GPU Util.||MEM Util.||GPU Temp.||MEM Temp.||Power|||Power");
               tprintf2(&table, "----||---|||-----||-----|||-||---------||---------||---------||---------||---------||---------||-----|||-----");
     return NULL;

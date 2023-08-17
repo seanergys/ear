@@ -25,9 +25,16 @@
 #define declr_up_action_init(suffix)     char * up_action_init##suffix     (cchar *tag, void **data_alloc, void *data)
 #define declr_up_action_periodic(suffix) char * up_action_periodic##suffix (cchar *tag, void *data)
 #define declr_up_post_data()             char * up_post_data               (cchar *msg, void *data)
+#define declr_up_close()                 char * up_close                   ()
 
 #define is_tag(t) (strcmp(t, tag) == 0)
 #define is_msg(t) (strcmp(t, msg) == 0)
+
+#define ARG0(var) (var != NULL)
+#define ARG1(var) ARG0(var) && (var [1] != NULL)
+#define ARG2(var) ARG1(var) && (var [2] != NULL)
+#define ARGE(...) __VA_ARGS__
+#define ARG(v, n) ARGE(ARG ## n)(v)
 
 // Init as main binary function
 int plugin_manager_main(int argc, char *argv[]);

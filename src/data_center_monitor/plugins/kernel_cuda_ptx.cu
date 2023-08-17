@@ -28,14 +28,16 @@ extern "C"
  
 static pthread_t  thread;
 static int        is_running;
-static uint      *list_doing;
+static uint      *devs_running;
 static uint       devs_count;
+static ullong     cycles;
+static ullong     run_time;
+static ullong     lay_time;
 
-__global__ void kcuda_kernel()
+__global__ void kcuda_kernel(ullong cycles)
 {
-    const long long delay_time = 10000000000;
     long long start = clock64();
-    while (clock64() < (start + delay_time));
+    while (clock64() < (start + cycles));
 }
 
 int kcuda_is_running()
@@ -60,21 +62,23 @@ static void *static_kcuda_execute(void *x)
         is_running = 1;
 
         for (d = 0; d < devs_count; ++d) {
-            debug("Running in GPU%d? %u", d, list_doing[d]);
-            if (!list_doing[d]) {
+            debug("Running in GPU%d? %u", d, devs_running[d]);
+            if (!devs_running[d]) {
                 continue;
             }
             if (cudaSetDevice(d)) {
                 printf("GPU%d error: %s\n", d, cudaGetErrorString(cudaGetLastError()));
-                list_doing[d] = 0;
+                devs_running[d] = 0;
                 continue;
             }
             if (cudaGetDeviceProperties(&prop, d) != cudaSuccess) {
                 printf("GPU%d error: %s\n", d, cudaGetErrorString(cudaGetLastError()));
-                list_doing[d] = 0;
+                devs_running[d] = 0;
                 continue;
             }
-            kcuda_kernel<<<prop.multiProcessorCount, 64>>>();
+            cycles = prop.clockRate * 1000LLU * run_time; 
+            printf("Running GPU%d: %llu\n", d, cycles);
+            kcuda_kernel<<<prop.multiProcessorCount, 64>>>(cycles);
         }
         if (cudaDeviceSynchronize() != cudaSuccess) {
             printf("CUDA error: %s\n", cudaGetErrorString(cudaGetLastError()));
@@ -82,21 +86,25 @@ static void *static_kcuda_execute(void *x)
         }
         cudaDeviceReset();
         is_running = 0;
-        sleep(2);
+        sleep(lay_time);
     }
 
     return NULL;
 }
 
-int kcuda_execute(char *conf)
+int kcuda_execute(char **conf)
 {
-    devs_count = kcuda_count_devices();
-    list_doing = (uint *) calloc(devs_count, sizeof(uint));
-    // 
-    if (!rantoa(conf, list_doing, devs_count)) {
+    run_time     = 10LLU;
+    lay_time     =  2LLU; 
+    devs_count   = kcuda_count_devices();
+    devs_running = (uint *) calloc(devs_count, sizeof(uint));
+    // Running devices
+    if (conf == NULL || !rantoa(conf[0], devs_running, devs_count)) {
         // If the list is empty, we are selecting the GPU0.
-        list_doing[0] = 1;
+        devs_running[0] = 1;
     }
+    if (ARG(conf, 1)) running_time  = (ullong) atoi(conf[1]);
+    if (ARG(conf, 2)) sleeping_time = (ullong) atoi(conf[2]);
     pthread_create(&thread, NULL, static_kcuda_execute, NULL);    
     return 1;
 }
