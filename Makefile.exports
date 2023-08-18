@@ -25,6 +25,8 @@ export DB_CFLAGS
 export DB_LDFLAGS
 export CUDA_BASE
 export CUDA_CFLAGS
+export OPENCL_BASE
+export OPENCL_CFLAGS
 export CUPTI_BASE
 export CUPTI_CFLAGS
 export RSMI_BASE

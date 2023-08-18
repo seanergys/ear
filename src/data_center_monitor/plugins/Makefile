@@ -4,6 +4,7 @@ plug_PATH = $(DESTDIR)/lib/plugins/monitoring
 plug_PERM = 0775
 plug_BINS = \
     conf.so \
+    dummy.so \
     eardcon.so \
     keyboard.so \
     management.so \
@@ -14,7 +15,15 @@ plug_BINS = \
     test_cpufreq.so \
     test_gpu.so
 
-all: $(plug_BINS) dummy.so kernel_cuda.so
+ifdef CUDA_BASE
+plug_BINS += kernel_cuda.so
+endif
+
+ifdef OPENCL_BASE
+plug_BINS += kernel_cl.so
+endif
+
+all: $(plug_BINS) dummy.so
 
 %.so: %.c
 	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^
@@ -34,10 +43,11 @@ periodic_metrics.so: periodic_metrics.c
 dummy.so: dummy.c
 	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^
 
-kernel_cuda.so: kernel_cuda.c
-	nvcc -I $(SRCDIR) --compiler-options '-fPIC' -shared -o $@ kernel_cuda.c kernel_cuda_ptx.cu
-	#nvcc -I $(SRCDIR) --compiler-options '-fPIC' -c cuda_ptx.cu
-	#$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^ cuda_ptx.o -lcudart 
+kernel_cuda.so: kernel_cuda.c kernel_cuda_ptx.cu
+	$(CUDA_BASE)/bin/nvcc -I $(SRCDIR) --compiler-options '-fPIC' -shared -o $@ $^
+
+kernel_cl.so: kernel_cl.c
+	$(CC) -I$(SRCDIR) $(OPENCL_CFLAGS) -D CL_TARGET_OPENCL_VERSION=100 -shared -fPIC -o $@ $^ $(OPENCL_LDFLAGS)
 
 ######## OPTIONS
 

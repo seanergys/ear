@@ -25,6 +25,7 @@ extern "C"
 #include <cuda_runtime.h>
 #include <common/output/debug.h>
 #include <common/utils/string.h>
+#include <common/system/plugin_manager.h>
  
 static pthread_t  thread;
 static int        is_running;
@@ -32,7 +33,7 @@ static uint      *devs_running;
 static uint       devs_count;
 static ullong     cycles;
 static ullong     run_time;
-static ullong     lay_time;
+static uint       lay_time;
 
 __global__ void kcuda_kernel(ullong cycles)
 {
@@ -103,8 +104,8 @@ int kcuda_execute(char **conf)
         // If the list is empty, we are selecting the GPU0.
         devs_running[0] = 1;
     }
-    if (ARG(conf, 1)) running_time  = (ullong) atoi(conf[1]);
-    if (ARG(conf, 2)) sleeping_time = (ullong) atoi(conf[2]);
+    if (ARG(conf, 1)) run_time = (ullong) atoi(conf[1]);
+    if (ARG(conf, 2)) lay_time = (uint)   atoi(conf[2]);
     pthread_create(&thread, NULL, static_kcuda_execute, NULL);    
     return 1;
 }
