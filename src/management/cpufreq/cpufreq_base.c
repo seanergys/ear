@@ -55,9 +55,6 @@ static int basefreq_completed()
 
 static int basefreq_found_set(int f, int b)
 {
-    #if TEST
-    return 0;
-    #endif
     if (f) found_freq = 1;
     if (b) found_boost = 1;
     return basefreq_completed();
@@ -227,7 +224,7 @@ static int basefreq_file_cpuinfo(topology_t *tp, cpufreq_base_t *base)
         return 0;
     }
     while(getline(&line, &len, fd) != -1) {
-        if (fr2 == 0LLU && strncmp(line, "model name", 10) == 0){
+        if (fr1 == 0LLU && strncmp(line, "model name", 10) == 0){
             if ((col = strchr(line, '@')) != NULL) {
                 col++;
                 while (*col == ' ') col++;
@@ -235,27 +232,35 @@ static int basefreq_file_cpuinfo(topology_t *tp, cpufreq_base_t *base)
                 while (*col != 'G') col++;
                 *col = '\0';
                 // Converted to KHz
-                fr1 = atof(aux)*1000000;
+                double f = atof(aux);
+                fr1 = ((ullong) f)*1000000LLU;
             }
         }
         // cpu MHz has priority
-        if (fr1 == 0LLU && strncmp(line, "cpu MHz", 7) == 0) {
+        if (fr2 == 0LLU && strncmp(line, "cpu MHz", 7) == 0) {
             if ((col = strchr(line, ':')) != NULL) {
                 col++;
                 col++;
-                fr2 = atof(col)*1000;
+                double m, i, f = atof(col);
+                m = modf(f / 100.0, &i);
+                // If the decimal part is 0.0
+                if (m == 0.0) {
+                    fr2 = ((ullong) f)*1000LLU;
+                }
             }
         }
     }
     fclose(fd);
     free(line);
 
+    // Priorities
     if (fr1 != 0LLU) {
         base->frequency = fr1;
+        basefreq_found_set(1, 0);
     } else if (fr2 != 0LLU) {
         base->frequency = fr2;
+        basefreq_found_set(1, 0);
     }
-
     return basefreq_completed();
 }
 
@@ -400,8 +405,8 @@ void basefreq_init_static(topology_t *tp, cpufreq_base_t *base)
     if (basefreq_file_cpb(tp, base)) return;
     if (basefreq_file_saf(tp, base)) return;
     if (basefreq_file_cpuinfo(tp, base)) return;
-    if (basefreq_file_smf(tp, base)) return;
     if (basefreq_spec_tsc(tp, base)) return;
+    if (basefreq_file_smf(tp, base)) return;
     if (basefreq_spec_asm(tp, base)) return;
     if (basefreq_spec_hardcode(tp, base)) return;
 }
@@ -423,29 +428,35 @@ void cpufreq_base_init(topology_t *tp, cpufreq_base_t *base)
 #if TEST
 int main(int argc, char *argv[])
 {
+    char *c[2] = { "-", "f" };
     int n = 0;
-    printf("test frequency boost !rel   name\n");
-    printf("---- --------- ----- ----   ----\n");
-    #define PRINT(call, string) { \
-        memset(&bf, 0, sizeof(cfb_t)); \
-        call; \
-        printf("%4d   %7llu %5d %4d   %s\n", n++, bf.frequency, bf.boost_enabled, bf.not_reliable, string); \
+    printf("test   frequency  f  boost  f   !rel   name\n");
+    printf("----   ---------  -  -----  -   ----   ----\n");
+    #define PRINT(call, string) {                  \
+        memset(&bf, 0, sizeof(cfb_t));             \
+        call;                                      \
+        printf("%4d   %9llu  %s  %5d  %s   %4d   %s\n", \
+            n++, bf.frequency, c[found_freq],         \
+            bf.boost_enabled, c[found_boost],         \
+            bf.not_reliable, string);              \
+            found_freq = 0;                        \
+            found_boost = 0;                       \
     }
     cfb_t bf;
     topology_t tp;
     topology_init(&tp);
-    PRINT(basefreq_file_ntb(&tp, &bf)     , "no_turbo file  ");
-    PRINT(basefreq_intel_haswell(&tp, &bf), "intel cpuid    ");
-    PRINT(basefreq_amd_zen(&tp, &bf)      , "amd msr        ");
-    PRINT(basefreq_file_baf(&tp, &bf)     , "base_frequency file  ");
-    PRINT(basefreq_environment(&tp, &bf)  , "environment    ");
-    PRINT(basefreq_file_cpb(&tp, &bf)     , "cpb/boost files");
+    PRINT(basefreq_file_ntb(&tp, &bf)     , "no_turbo file                     ");
+    PRINT(basefreq_intel_haswell(&tp, &bf), "intel cpuid                       ");
+    PRINT(basefreq_amd_zen(&tp, &bf)      , "amd msr                           ");
+    PRINT(basefreq_file_baf(&tp, &bf)     , "base_frequency file               ");
+    PRINT(basefreq_environment(&tp, &bf)  , "environment                       ");
+    PRINT(basefreq_file_cpb(&tp, &bf)     , "cpb/boost files                   ");
     PRINT(basefreq_file_saf(&tp, &bf)     , "scaling_available_frequencies file");
-    PRINT(basefreq_file_cpuinfo(&tp, &bf) , "proc/cpuinfo   ");
-    PRINT(basefreq_file_smf(&tp, &bf)     , "cpuinfo_max_freq files");
-    PRINT(basefreq_spec_tsc(&tp, &bf)     , "spec tsc       ");
-    PRINT(basefreq_spec_asm(&tp, &bf)     , "spec asm       ");
-    PRINT(basefreq_spec_hardcode(&tp, &bf), "hardcode       ");
+    PRINT(basefreq_file_cpuinfo(&tp, &bf) , "proc/cpuinfo                      ");
+    PRINT(basefreq_spec_tsc(&tp, &bf)     , "spec tsc                          ");
+    PRINT(basefreq_file_smf(&tp, &bf)     , "cpuinfo_max_freq files            ");
+    PRINT(basefreq_spec_asm(&tp, &bf)     , "spec asm                          ");
+    PRINT(basefreq_spec_hardcode(&tp, &bf), "hardcode                          ");
     return 1;
 }
 #endif
