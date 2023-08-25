@@ -79,6 +79,13 @@
 #define RPC_MET_BWIDTH_COUNT_DEVICES       1122
 #define RPC_MET_BWIDTH_READ                1123
 
+typedef struct eard_state_s {
+    uint   version_major;
+    uint   version_minor;
+    uint   gpus_supported_count;
+    pid_t  pid;
+} eard_state_t;
+
 struct rpcerr_s {
 	char *answer;
 	char *pending;

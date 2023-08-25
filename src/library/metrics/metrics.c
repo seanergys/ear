@@ -2004,7 +2004,6 @@ int metrics_init(topology_t *topo)
     }
 
 	// Allocating data for energy node metrics
-	// node_energy_datasize=eards_node_energy_data_size();
 	energy_datasize(&node_energy_datasize);
 	debug("energy data size %lu", node_energy_datasize);
 	energy_units(&node_energy_units);

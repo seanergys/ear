@@ -71,9 +71,7 @@ typedef struct local_connection{
 } local_connection_t;
 
 uint privileged_services[NUM_PRIVILEGED_SERVICES] =
-		{ 0, 0, 0, 0, 0,
-		  START_RAPL, RESET_RAPL, WRITE_APP_SIGNATURE, WRITE_EVENT, WRITE_LOOP_SIGNATURE,
-		  GPU_SET_FREQ };
+		{ 0, 0, 0, 0, 0, 0, 0, WRITE_APP_SIGNATURE, WRITE_EVENT, WRITE_LOOP_SIGNATURE, 0 };
 
 void eard_exit(uint restart);
 
@@ -1017,30 +1015,6 @@ int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)
 #if USE_GPUS
 	verbose(VEARD_LAPI_DEBUG,"EARD old eard_gpu");
 	switch (head->req_service) {
-		case GPU_MODEL:
-			debug("GPU_MODEL %d",ug.api);
-			write(ack_fd, &ug.api, sizeof(ug.api));
-		break;
-		case GPU_DEV_COUNT:
-			debug("GPU_DEV_COUNT %d", ug.devs_count);
-			write(ack_fd, &ug.devs_count, sizeof(ug.devs_count));
-			break;
-		case GPU_GET_INFO:
-			debug("GPU_GET_INFO %d", ug.devs_count);
-			write(ack_fd, (char *)ug.avail_list, sizeof(gpu_devs_t)*ug.devs_count);
-			break;
-		case GPU_DATA_READ:
-			gpu_read(no_ctx,eard_read_gpu);
-			debug("Sending %lu bytes en gpu_data_read",sizeof(gpu_t)*ug.devs_count);
-			gpu_data_tostr(eard_read_gpu,gpu_str,sizeof(gpu_str));
-			debug("gpu_data_read info: %s",gpu_str);
-			write(ack_fd,eard_read_gpu,sizeof(gpu_t)*ug.devs_count);
-			break;
-		case GPU_SET_FREQ:
-			gpu_mgr_set_freq(req.req_data.gpu_freq.num_dev,req.req_data.gpu_freq.gpu_freqs);
-			ack=EAR_SUCCESS;
-			write(ack_fd,&ack,sizeof(ack));
-			break;
         case GPU_SUPPORTED:
             ack = 1;
             verbose(0,"GPU_SUPPORTED check");
@@ -1051,15 +1025,6 @@ int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)
   }
 #else
     switch (head->req_service) {
-        case GPU_MODEL:
-        case GPU_DEV_COUNT:
-        case GPU_DATA_READ:
-        case GPU_SET_FREQ:
-        case GPU_GET_INFO:
-            ack=EAR_ERROR;
-            write(ack_fd,&ack,sizeof(ack));
-            error("GPUS not supported");
-            break;
         case GPU_SUPPORTED:
             ack = 0;
             verbose(0,"GPU_NOT_SUPPORTED check");
@@ -1081,10 +1046,6 @@ int eard_node_energy(eard_head_t *head,int req_fd,int ack_fd)
     case READ_DC_ENERGY:
       energy_dc_read(&handler_energy, node_energy_data);
       write(ack_fd, node_energy_data, node_energy_datasize);
-      break;
-    case DATA_SIZE_ENERGY_NODE:
-      energy_datasize(&handler_energy, &ack);
-      write(ack_fd, &ack, sizeof(unsigned long));
       break;
     case ENERGY_FREQ:
       ack = (ulong) energy_freq;
@@ -1151,15 +1112,6 @@ int eard_rapl(eard_head_t *head,int req_fd,int ack_fd)
 
   verbose(VEARD_LAPI_DEBUG, "EARD old eard_rapl");
   switch (head->req_service) {
-    case START_RAPL:
-      error("starting rapl msr not supported");
-      RAPL_counting = 1;
-      write(ack_fd, &ack, sizeof(ack));
-      break;
-    case RESET_RAPL:
-      error("Reset RAPL counters not provided");
-      write(ack_fd, &ack, sizeof(ack));
-      break;
     case READ_RAPL:
       //if (read_rapl_msr(fd_rapl,values_rapl)<0) error("Error reading rapl msr counters");
       if (energy_cpu_read(no_ctx, values_rapl) < 0) error("Error reading rapl msr counters");
