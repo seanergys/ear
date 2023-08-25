@@ -24,6 +24,7 @@
 #include <daemon/local_api/eard_api.h>
 #include <daemon/local_api/eard_api_conf.h>
 
+#define RPC_GET_STATE                      2001
 #define RPC_MGT_CPUFREQ_GET_API            1001
 #define RPC_MGT_CPUFREQ_GET_AVAILABLE      1002
 #define RPC_MGT_CPUFREQ_GET_CURRENT        1003

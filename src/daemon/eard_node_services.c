@@ -174,9 +174,18 @@ void services_dispose()
 
 void connect_service(struct daemon_req *new_req);
 
+static int answer(int fd, int call, char *data, size_t size, state_t s, char *state_msg)
+{
+    if (state_fail(eard_rpc_answer(fd, call, s, data, size, state_msg))) {
+        return 0;
+    }
+    return 1;
+}
+
 int services_misc(eard_head_t *head, int req_fd, int ack_fd)
 {
     uint call = head->req_service;
+    eard_state_t s;
 
     verbose(VEARD_LAPI_DEBUG, "EARD misc");
     switch (call) {
@@ -186,10 +195,16 @@ int services_misc(eard_head_t *head, int req_fd, int ack_fd)
     case DISCONNECT_EARD_NODE_SERVICES:
         eard_close_comm(req_fd,ack_fd);
     break;
+    case RPC_GET_STATE:
+        s.version_major        = VERSION_MAJOR;
+        s.version_minor        = VERSION_MINOR;
+        s.gpus_supported_count = MAX_GPUS_SUPPORTED;
+        s.pid                  = getpid();
+        return answer(ack_fd, call, (char *) &s, sizeof(eard_state_t), EAR_SUCCESS, NULL);
+    break;
     default:
         return 0;
     }
-
     return 1;
 }
 
