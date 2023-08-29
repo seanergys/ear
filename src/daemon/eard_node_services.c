@@ -196,10 +196,9 @@ int services_misc(eard_head_t *head, int req_fd, int ack_fd)
         eard_close_comm(req_fd,ack_fd);
     break;
     case RPC_GET_STATE:
-        s.version_major        = VERSION_MAJOR;
-        s.version_minor        = VERSION_MINOR;
+        s.pid = getpid();
         s.gpus_supported_count = MAX_GPUS_SUPPORTED;
-        s.pid                  = getpid();
+        version_set(&s.version, VERSION_MAJOR, VERSION_MINOR);
         return answer(ack_fd, call, (char *) &s, sizeof(eard_state_t), EAR_SUCCESS, NULL);
     break;
     default:

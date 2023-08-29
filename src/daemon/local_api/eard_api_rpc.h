@@ -21,6 +21,7 @@
 #include <common/types.h>
 #include <common/sizes.h>
 #include <common/states.h>
+#include <common/system/version.h>
 #include <daemon/local_api/eard_api.h>
 #include <daemon/local_api/eard_api_conf.h>
 
@@ -81,10 +82,9 @@
 #define RPC_MET_BWIDTH_READ                1123
 
 typedef struct eard_state_s {
-    uint   version_major;
-    uint   version_minor;
-    uint   gpus_supported_count;
-    pid_t  pid;
+    version_t version;
+    uint gpus_supported_count;
+    pid_t pid;
 } eard_state_t;
 
 struct rpcerr_s {

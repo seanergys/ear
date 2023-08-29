@@ -19,6 +19,7 @@ libc_OBJS = \
     $(SRCDIR)/common/system/time.o \
     $(SRCDIR)/common/system/loadavg.o \
     $(SRCDIR)/common/system/fd_sets.o \
+    $(SRCDIR)/common/system/version.o \
     $(SRCDIR)/common/types/loop.o \
     $(SRCDIR)/common/types/log.o \
     $(SRCDIR)/common/types/event_type.o \
