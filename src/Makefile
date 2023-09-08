@@ -65,7 +65,7 @@ pbshook.install: pbs_hook.install;
 		echo "====================================";    \
 		echo "= Compiling $$i";                         \
 		echo "====================================";    \
-#		$(MAKE) -C $${i} $* || exit;                    \
+		$(MAKE) -C $${i} $* || exit;                    \
 		fi                                              \
 	done
 
