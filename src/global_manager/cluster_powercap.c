@@ -337,11 +337,11 @@ void cluster_only_powercap()
         /* For heterogeneous clusters we set the max powercap for each node, which should be set by the admin in ear.conf
          * For homogeneous clusters we can simply divide the current power between the number of active nodes. */
         if (max_num_nodes > 0) {
-	    //new_limit = current_cluster_powercap/max_num_nodes; 
-	    new_limit = UINT_MAX; 
+            //new_limit = current_cluster_powercap/max_num_nodes; 
+            new_limit = UINT_MAX; 
             ear_set_powerlimit(&my_cluster_conf, new_limit, nodes, num_eargm_nodes); 
             verbose(VGM_PC, "cluster_only_powercap: sending new limit %u", new_limit);
-	    eargm_report_event(NODE_POWERCAP, (ulong)new_limit);
+            eargm_report_event(NODE_POWERCAP, (ulong)new_limit);
         } else {
             warning("No nodes detected for this EARGM");
         }
@@ -352,14 +352,14 @@ void cluster_only_powercap()
             verbose(VGM_PC, "cluster_only_powercap: sending POWER_CAP_UNLIMTED to nodes");
             ear_set_powerlimit(&my_cluster_conf, 1, nodes, num_eargm_nodes); //set powercap unlimited
             risk = 0;
-	    eargm_report_event(POWER_UNLIMITED, 1);
+            eargm_report_event(POWER_UNLIMITED, 1);
         }
         freeable_power = (uint64_t) (upper_limit - power.power) / 2; //for now, we will free half of whatever extra power
     }
     write_shared_data(power.power, freeable_power, requested);
 
-		/* These values in my_cluster_power_status are used automatically by the actions */
-		my_cluster_power_status->current_power = power.power;
+    /* These values in my_cluster_power_status are used automatically by the actions */
+    my_cluster_power_status->current_power = power.power;
     my_cluster_power_status->idle_nodes    = 0;
     my_cluster_power_status->total_idle_power = 0;
 
