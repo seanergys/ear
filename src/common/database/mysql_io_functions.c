@@ -2196,42 +2196,7 @@ int mysql_batch_insert_periodic_aggregations(MYSQL *connection, periodic_aggrega
 
 int mysql_insert_ear_event(MYSQL *connection, ear_event_t *ear_ev)
 {
-    MYSQL_STMT *statement = mysql_stmt_init(connection);
-    if (!statement) return EAR_MYSQL_ERROR;
-
-    if (mysql_stmt_prepare(statement, EAR_EVENT_MYSQL_QUERY, strlen(EAR_EVENT_MYSQL_QUERY))) return mysql_statement_error(statement);
-
-    MYSQL_BIND bind[6];
-    memset(bind, 0, sizeof(bind));
-
-    //integer types
-    int i;
-    for (i = 0; i < 5; i++)
-    {
-        bind[i].buffer_type = MYSQL_TYPE_LONGLONG;
-    }
-    bind[1].buffer_type = MYSQL_TYPE_LONG;
-    bind[5].buffer_type = MYSQL_TYPE_STRING;
-    bind[5].buffer_length = strlen(ear_ev->node_id);
-
-    //storage variable assignation
-    bind[0].buffer = (char *)&ear_ev->timestamp;
-    bind[1].buffer = (char *)&ear_ev->event;
-    bind[2].buffer = (char *)&ear_ev->jid;
-    bind[3].buffer = (char *)&ear_ev->step_id;
-    bind[4].buffer = (char *)&ear_ev->value;
-    bind[5].buffer = (char *)&ear_ev->node_id;
-
-    if (mysql_stmt_bind_param(statement, bind)) return mysql_statement_error(statement);
-
-    if (mysql_stmt_execute(statement)) return mysql_statement_error(statement);
-
-    int id = mysql_stmt_insert_id(statement);
-
-    if (mysql_stmt_close(statement)) return EAR_MYSQL_ERROR;
-
-    return id;
-
+    return mysql_batch_insert_ear_events(connection, ear_ev, 1);
 }
 
 int mysql_batch_insert_ear_events(MYSQL *connection, ear_event_t *ear_ev, int num_evs)
