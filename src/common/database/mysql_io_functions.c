@@ -31,8 +31,12 @@
 
 #ifndef MARIADB_VERSION_ID  //my_bool is always defined in MARIADB, so if we are using it we skip this
 #if MYSQL_VERSION_ID >= 80100 //MYSQL deprecated my_bool in favour of bool in version 8.0.1
-//typedef bool my_bool; 
+typedef bool ear_my_bool;
+#else
+typedef my_bool ear_my_bool;
 #endif
+#else 
+typedef my_bool ear_my_bool;
 #endif 
 
 #define APPLICATION_MYSQL_QUERY   "INSERT INTO Applications (job_id, step_id, local_id, node_id, signature_id, power_signature_id) VALUES" \
@@ -408,7 +412,7 @@ int mysql_batch_insert_applications(MYSQL *connection, application_t *app, int n
             bind[4+offset].is_unsigned = bind[5+offset].is_unsigned = 1;
         if (!is_mpi) {
             bind[3+offset].buffer_type = MYSQL_TYPE_NULL;
-            bind[3+offset].is_null = (my_bool*) 1;
+            bind[3+offset].is_null = (ear_my_bool*) 1;
         }
 
         //string types
@@ -608,7 +612,7 @@ int mysql_batch_insert_applications_no_mpi(MYSQL *connection, application_t *app
             bind[4+offset].is_unsigned = bind[5+offset].is_unsigned = 1;
 
         bind[3+offset].buffer_type = MYSQL_TYPE_NULL;
-        bind[3+offset].is_null = (my_bool*) 1;
+        bind[3+offset].is_null = (ear_my_bool*) 1;
 
         //string types
         bind[3+offset].buffer_type = MYSQL_TYPE_STRING;
@@ -1373,7 +1377,7 @@ long long mysql_batch_insert_signatures(MYSQL *connection, signature_container_t
             else // if no gpu_signatures we set the values to null
             {
                 bind[27+offset].buffer_type = bind[28+offset].buffer_type = MYSQL_TYPE_NULL;
-                bind[27+offset].is_null = bind[28+offset].is_null = (my_bool *) 1;
+                bind[27+offset].is_null = bind[28+offset].is_null = (ear_my_bool *) 1;
                 bind[27+offset].buffer  = bind[28+offset].buffer  = NULL;
             }
 #endif
@@ -1397,7 +1401,7 @@ long long mysql_batch_insert_signatures(MYSQL *connection, signature_container_t
             else // if no gpu_signatures we set the values to null
             {
                 bind[14+offset].buffer_type = bind[15+offset].buffer_type = MYSQL_TYPE_NULL;
-                bind[14+offset].is_null = bind[15+offset].is_null = (my_bool *) 1;
+                bind[14+offset].is_null = bind[15+offset].is_null = (ear_my_bool *) 1;
                 bind[14+offset].buffer  = bind[15+offset].buffer  = NULL;
             }
 #endif
@@ -2214,42 +2218,7 @@ int mysql_batch_insert_periodic_aggregations(MYSQL *connection, periodic_aggrega
 
 int mysql_insert_ear_event(MYSQL *connection, ear_event_t *ear_ev)
 {
-    MYSQL_STMT *statement = mysql_stmt_init(connection);
-    if (!statement) return EAR_MYSQL_ERROR;
-
-    if (mysql_stmt_prepare(statement, EAR_EVENT_MYSQL_QUERY, strlen(EAR_EVENT_MYSQL_QUERY))) return mysql_statement_error(statement);
-
-    MYSQL_BIND bind[6];
-    memset(bind, 0, sizeof(bind));
-
-    //integer types
-    int i;
-    for (i = 0; i < 5; i++)
-    {
-        bind[i].buffer_type = MYSQL_TYPE_LONGLONG;
-    }
-    bind[1].buffer_type = MYSQL_TYPE_LONG;
-    bind[5].buffer_type = MYSQL_TYPE_STRING;
-    bind[5].buffer_length = strlen(ear_ev->node_id);
-
-    //storage variable assignation
-    bind[0].buffer = (char *)&ear_ev->timestamp;
-    bind[1].buffer = (char *)&ear_ev->event;
-    bind[2].buffer = (char *)&ear_ev->jid;
-    bind[3].buffer = (char *)&ear_ev->step_id;
-    bind[4].buffer = (char *)&ear_ev->value;
-    bind[5].buffer = (char *)&ear_ev->node_id;
-
-    if (mysql_stmt_bind_param(statement, bind)) return mysql_statement_error(statement);
-
-    if (mysql_stmt_execute(statement)) return mysql_statement_error(statement);
-
-    int id = mysql_stmt_insert_id(statement);
-
-    if (mysql_stmt_close(statement)) return EAR_MYSQL_ERROR;
-
-    return id;
-
+    return mysql_batch_insert_ear_events(connection, ear_ev, 1);
 }
 
 int mysql_batch_insert_ear_events(MYSQL *connection, ear_event_t *ear_ev, int num_evs)
