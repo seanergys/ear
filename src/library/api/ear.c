@@ -1860,7 +1860,7 @@ void ear_init()
 				}
 
 				strcpy(application.job.policy,system_conf->policy_name);
-        verbose(0,"Initializing APP name %s", ear_app_name);
+        verbose(2,"Initializing APP name %s", ear_app_name);
 				strcpy(application.job.app_id, ear_app_name);
 
 				// Passing the frequency in KHz to MHz
