@@ -97,7 +97,7 @@ uint ok_power(node_powercap_opt_t *pc_opt,uint current)
 
 int is_powercap_set(node_powercap_opt_t *pc_opt)
 { 
-  /* 0 means unlimited */
+  /* 0 means disabled*/
   /* we are not checking hw configuration in this function */
   return (pc_opt->current_pc!=0);
 }
