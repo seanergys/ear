@@ -39,6 +39,9 @@ uint ok_power(node_powercap_opt_t *pc_opt,uint current);
 /** Given a powercap settings returns true when a powercap limit is defined */
 int is_powercap_set(node_powercap_opt_t *pc_opt);
 
+/** Checks the default powercap in powermon */
+int is_powercap_unlimited();
+
 /** returns true if the powercap management is enabled and a powercap limit is set */
 int is_powercap_on(node_powercap_opt_t *pc_opt);
 

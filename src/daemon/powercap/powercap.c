@@ -256,6 +256,7 @@ int powercap_idle_to_run()
 {
     uint extra;
     if (!is_powercap_on(&my_pc_opt)) return EAR_SUCCESS;
+    if (is_powercap_unlimited()) return EAR_SUCCESS;
     debug("powercap_idle_to_run");
     while(pthread_mutex_trylock(&my_pc_opt.lock)); /* can we create some deadlock because of status ? */
     pmgt_set_status(pcmgr,PC_STATUS_RUN);
@@ -303,6 +304,7 @@ int powercap_idle_to_run()
 int powercap_run_to_idle()
 {
     if (!is_powercap_on(&my_pc_opt)) return EAR_SUCCESS;
+    if (is_powercap_unlimited()) return EAR_SUCCESS;
     debug("powercap_run_to_idle");
     while(pthread_mutex_trylock(&my_pc_opt.lock)); 
     switch(my_pc_opt.powercap_status){
@@ -342,7 +344,7 @@ int powercap_set_power_per_domain(dom_power_t *cp,uint use_earl,ulong avg_f)
     if (!is_powercap_on(&my_pc_opt)) return EAR_SUCCESS;
     debug("periodic_metric_info");
     while(pthread_mutex_trylock(&my_pc_opt.lock));
-    if (my_pc_opt.powercap_status == PC_STATUS_IDLE) pmgt_set_power_per_domain(pcmgr,cp,PC_STATUS_IDLE);
+    if (my_pc_opt.powercap_status == PC_STATUS_IDLE && !is_powercap_unlimited()) pmgt_set_power_per_domain(pcmgr,cp,PC_STATUS_IDLE);
     else pmgt_set_power_per_domain(pcmgr,cp,PC_STATUS_RUN);
     powercap_set_app_req_freq();
     if (current_power > my_pc_opt.current_pc){
@@ -468,6 +470,7 @@ void powercap_set_opt(powercap_opt_t *opt, int id)
 {
     print_powercap_opt(opt);
     if (!is_powercap_on(&my_pc_opt)) return;    
+    if (is_powercap_unlimited()) return EAR_SUCCESS;
     uint event;
     ulong value;
     debug("powercap_set_opt command received");

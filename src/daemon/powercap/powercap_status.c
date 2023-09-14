@@ -29,6 +29,7 @@
 #include <common/output/verbose.h>
 #include <management/cpufreq/frequency.h>
 #include <common/states.h>
+#include <daemon/power_monitor.h>
 #include <daemon/powercap/powercap.h>
 #include <common/types/pc_app_info.h>
 
@@ -105,6 +106,11 @@ int is_powercap_set(node_powercap_opt_t *pc_opt)
 int is_powercap_on(node_powercap_opt_t *pc_opt)
 {
   return ((pc_opt->powercap_status!=PC_STATUS_ERROR) && is_powercap_set(pc_opt));
+}
+
+int is_powercap_unlimited()
+{
+    return (powermon_get_powercap_def()== 1);
 }
 
 uint get_powercapopt_value(node_powercap_opt_t *pc_opt)
