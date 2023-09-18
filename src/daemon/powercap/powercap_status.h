@@ -42,7 +42,6 @@ int is_powercap_set(node_powercap_opt_t *pc_opt);
 /** Checks the default powercap in powermon */
 #define is_powercap_unlimited() (powermon_get_powercap_def() == POWER_CAP_UNLIMITED)
 
-
 /** returns true if the powercap management is enabled and a powercap limit is set */
 int is_powercap_on(node_powercap_opt_t *pc_opt);
 
