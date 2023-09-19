@@ -464,7 +464,7 @@ static state_t apps_merge(application_t **apps, uint *apps_count)
 	application_t *apps_o; // Original apps array
 	application_t *apps_n; // Apps by name accumulated
 	uint apps_n_count = 0;
-	int o, b;
+	int o, b, n;
 
 	// This function averages an replicated applications per frequency.
 	apps_o = *apps;

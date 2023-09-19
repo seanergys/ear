@@ -132,31 +132,31 @@ int main(int argc,char *argv[])
 	//
   if(!use_gpu){
     if (!opt_c){
-      tprintf_init(fdout, STR_MODE_COL, "17 10 10 17 10 10 8 10 12 12 8 8 8 8 8 8");
-      tprintf("Node name||JID||StepID||App name||Def. F.||Avg. F.||Seconds||DC_power||DRAM_power||PCK_power||GBS||CPI||TPI||Gflops||MPI%||VPI");
-      tprintf("---------||---||------||--------||-------||-------||-------||--------||----------||---------||---||---||---||------||----||---");
+      tprintf_init(fdout, STR_MODE_COL, "15 10 10 17 10 10 8 10 12 12 8 8 8 8 10 8");
+      tprintf("Node name||JID||StepID||App name||Def. F.||Avg. F.||Seconds||DC_power||DRAM_power||PCK_power||GBS||CPI||TPI||Gflops||MPI_perc||VPI");
+      tprintf("---------||---||------||--------||-------||-------||-------||--------||----------||---------||---||---||---||------||--------||---");
     } else 
     {
-      verbose(0, "Node name;JID;StepID;App name;Def. F.;Avg. F.;Seconds;DC_power;DRAM_power;PCK_power;GBS;CPI;TPI;Gflops;MPI%;VPI");
+      verbose(0, "Node name;JID;StepID;App name;Def. F.;Avg. F.;Seconds;DC_power;DRAM_power;PCK_power;GBS;CPI;TPI;Gflops;MPI_perc;VPI");
     }
   }
   else{
 	  if (!opt_c){
-    tprintf_init(fdout, STR_MODE_COL, "17 10 10 17 10 10 8 10 12 12 8 8 8 8 8 8 10 10 10");
-    tprintf("Node name||JID||StepID||App name||Def. F.||Avg. F.||Seconds||DC_power||DRAM_power||PCK_power||GBS||CPI||TPI||Gflops||MPI%||VPI||GPU_power||GPU_util||GPU_mem_util");
-    tprintf("---------||---||------||--------||-------||-------||-------||--------||----------||---------||---||---||---||------||----||---||---------||--------||------------");
+    tprintf_init(fdout, STR_MODE_COL, "15 10 10 17 10 10 8 10 12 12 8 8 8 8 10 8 10 10 10");
+    tprintf("Node name||JID||StepID||App name||Def. F.||Avg. F.||Seconds||DC_power||DRAM_power||PCK_power||GBS||CPI||TPI||Gflops||MPI_perc||VPI||GPU_power||GPU_util||GPU_mem_util");
+    tprintf("---------||---||------||--------||-------||-------||-------||--------||----------||---------||---||---||---||------||--------||---||---------||--------||------------");
 	  } else {
-      verbose(0, "Node name;JID;StepID;App name;Def. F.;Avg. F.;Seconds;DC_power;DRAM_power;PCK_power;GBS;CPI;TPI;Gflops;MPI%;VPI;GPU_power;GPU_power;GPU_util;GPU_mem_util");
+      verbose(0, "Node name;JID;StepID;App name;Def. F.;Avg. F.;Seconds;DC_power;DRAM_power;PCK_power;GBS;CPI;TPI;Gflops;MPI_perc;VPI;GPU_power;GPU_power;GPU_util;GPU_mem_util");
 	  }
   } 
   // header
   if (opt_o){
     fd = fopen(csv_name_full, "w");	
     if(!use_gpu){
-	    fprintf(fd, "node_id\tjob_id\tstep_id\tapp_id\tdef_f\tavg_f\ttime\tDC_power\tDRAM_power\tPCK_power\tGBS\tCPI\tTPI\tGflops\tMPI%\tVPI\n");
+	    fprintf(fd, "node_id\tjob_id\tstep_id\tapp_id\tdef_f\tavg_f\ttime\tDC_power\tDRAM_power\tPCK_power\tGBS\tCPI\tTPI\tGflops\tMPI_perc\tVPI\n");
     }
     else{
-	    fprintf(fd, "node_id\tjob_id\tstep_id\tapp_id\tdef_f\tavg_f\ttime\tDC_power\tDRAM_power\tPCK_power\tGBS\tCPI\tTPI\tGflops\tMPI%\tVPI\tGPU_power\tGPU_power\tGPU_util;GPU_mem_util\n");
+	    fprintf(fd, "node_id\tjob_id\tstep_id\tapp_id\tdef_f\tavg_f\ttime\tDC_power\tDRAM_power\tPCK_power\tGBS\tCPI\tTPI\tGflops\tMPI_perc\tVPI\tGPU_power\tGPU_power\tGPU_util;GPU_mem_util\n");
     }
 	} 
 
