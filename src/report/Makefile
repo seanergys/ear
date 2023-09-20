@@ -60,8 +60,8 @@ repo_BINS += \
 endif	
 
 ifeq ($(DLB), 1)
-CFLAGS += -DDLB=1 -I/home/xvlopez/local/dlb/openmpi/include
-LDFLAGS += -L/home/xvlopez/local/dlb/openmpi/lib -ldlb
+CFLAGS += -DDLB=1 -Idlb_path/include
+LDFLAGS += -Ldlb_path/lib -ldlb
 endif
 
 
@@ -74,7 +74,7 @@ all: $(repo_OBJS) $(repo_BINS)
 	$(CC) $(CFLAGS) -c $<
 
 %.so: %.c
-	$(CC) $(CFLAGS) -shared -o $@ $^
+	$(CC) $(CFLAGS) -shared -o $@ $^ $(SRCDIR)/common/libcommon.a
 
 dcdb.so:dcdb.o
 	$(CC) $(CFLAGS) -shared -o dcdb.so dcdb.o -lrt $(LDFLAGS)
