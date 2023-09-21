@@ -130,7 +130,7 @@ state_t hsmp_scan(topology_t *tp)
         uint args[2] = { 68, -1 };
         uint reps[2] = {  0, -1 };
         
-        if (state_fail(s = hsmp_send(0, 0x01, args, reps))) {
+        if (state_fail(s = hsmp_send(0, HSMP_TEST, args, reps))) {
             return unlock_msg0(s, "HSMP not enabled");
         }
         // Ping checking
