@@ -24,6 +24,8 @@
 #include <metrics/common/hsmp.h>
 
 #ifndef HSMP_BASE
+#define ESMI_SUCCESS 0
+
 typedef int esmi_status_t;
 
 struct smu_fw_version {
@@ -61,7 +63,7 @@ typedef struct esmi_s {
     esmi_status_t (*cclk_limit_get)            (uint socket_idx, uint *cclk); //HSMP_READ_CCLK_FREQUENCY_LIMIT
     esmi_status_t (*socket_c0_residency_get)   (uint socket_idx, uint *pc0_residency); //HSMP_SOCKET_C0_RESIDENCY
     esmi_status_t (*socket_lclk_dpm_level_set) (uint sock_ind, uchar nbio_id, uchar min, uchar max); //HSMP_SET_LCLK_DPM_LEVEL_RANGE
-    esmi_status_t (*esmi_ddr_bw_get)           (struct ddr_bw_metrics *ddr_bw); //HSMP_GET_MAX_DDR_BANDIWDTH
+    esmi_status_t (*ddr_bw_get)                (struct ddr_bw_metrics *ddr_bw); //HSMP_GET_MAX_DDR_BANDIWDTH
 } esmi_t;
 
 // esmi_init
