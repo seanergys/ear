@@ -46,8 +46,8 @@ static char nodename[128];
 static void create_semaphore(uint ID, char *node)
 {
     /* This sem void simultaneous access to files */
-    xsnprintf(sem_file_app_path, sizeof(sem_file_app_path), "%u.%s.sem_app",ID, node);
-    xsnprintf(sem_file_loop_path, sizeof(sem_file_loop_path), "%u.%s.sem_loop",ID,node);
+    xsnprintf(sem_file_app_path, sizeof(sem_file_app_path), "%s.sem_app", node);
+    xsnprintf(sem_file_loop_path, sizeof(sem_file_loop_path), "%s.sem_loop",node);
     debug("Using sem_app %s", sem_file_app_path);
     debug("Using sem_loop %s", sem_file_loop_path);
     
@@ -59,6 +59,13 @@ static void create_semaphore(uint ID, char *node)
     if (report_csv_sem_loop == SEM_FAILED){
       error("Creating sempahore %s (%s)", sem_file_loop_path, strerror(errno));
     }
+    #if 0 
+    if ((report_csv_sem_app == SEM_FAILED) || (report_csv_sem_loop == SEM_FAILED)){
+      printf("CSV app (%s) or loop (%s) failed\n", sem_file_app_path, sem_file_loop_path);
+    }else{
+      printf("CSV app (%s) and loop (%s) success\n", sem_file_app_path, sem_file_loop_path);
+    }
+    #endif
     current_ID = ID;
     sem_created = 1;
 }
@@ -85,6 +92,9 @@ state_t report_init(report_id_t *id, cluster_conf_t *cconf)
     xsnprintf(csv_loop_log_file,sizeof(csv_loop_log_file),"%s.loops.csv",csv_log_file);
     xstrncat(csv_log_file,".csv",sizeof(csv_log_file));
     my_time = timestamp_getconvert(TIME_SECS);
+   
+    /* We set to 0 to be sure the semaphore will be created even when the process is created with a fork */
+    sem_created = 0;
 
     return EAR_SUCCESS;
 }

@@ -1539,10 +1539,12 @@ static void estimate_metrics_not_available_by_node(uint sign_app_loop_idx, signa
 				verbose_master(2,"Estimating AVG CPU freq using mgt CPU freq for %u CPUs", met_cpufreq.devs_count);
 				metrics->avg_f = metrics->def_f;
 				verbose_master(2,"Using def_freq %lu as avg_freq", metrics->def_f);
-				for (uint i=0; i< met_cpufreq.devs_count; i ++) cpufreq_avrg[sign_app_loop_idx] = metrics->def_f;
+        cpufreq_avrg[sign_app_loop_idx] = metrics->def_f;
+				for (uint i=0; i< mgt_cpufreq.devs_count; i ++) cpufreq_diff[i] = metrics->def_f;
         // Copy the average CPU freq. in the shared signature
+
         memcpy(lib_shared_region->avg_cpufreq, cpufreq_diff,
-                met_cpufreq.devs_count * sizeof(cpufreq_diff[0]));
+                mgt_cpufreq.devs_count * sizeof(cpufreq_diff[0]));
 
 			}
 		}
