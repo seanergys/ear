@@ -11,8 +11,7 @@
 * Lenovo contact  mailto:hpchelp@lenovo.com
 *
 * EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
+* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD * and COPYING.EPL files.
 */
 
 #define _GNU_SOURCE
@@ -46,6 +45,7 @@
 #include <metrics/gpu/gpu.h>
 #include <management/gpu/gpu.h>
 #endif
+#include <management/cpupow/cpupow.h>
 
 
 #ifndef SYN_TEST
@@ -60,7 +60,6 @@ extern powermon_app_t *current_ear_app[MAX_NESTED_LEVELS];
 extern int max_context_created;
 extern int num_contexts;
 ulong  pmgt_idle_def_freq;
-
 
 typedef struct powercap_symbols {
     state_t (*enable)        (suscription_t *sus);
@@ -86,8 +85,6 @@ typedef struct powercap_symbols {
 } powercapsym_t;
 
 static uint pmgt_limit;
-static float pdomains[NUM_DOMAINS]={0.6,0.45,0,GPU_PERC_UTIL};
-static float pdomains_idle[NUM_DOMAINS]={0.6,0.45,0,GPU_PERC_UTIL};
 static domain_status_t cdomain_status[NUM_DOMAINS];
 static domain_settings_t cdomain_settings[NUM_DOMAINS];
 static ulong *current_util[NUM_DOMAINS],*prev_util[NUM_DOMAINS];
@@ -97,11 +94,25 @@ static ulong  dom_util_limit[NUM_DOMAINS];
 #endif
 #if USE_GPUS
 static dom_power_t pdist_per_domain;
+/* pdomains is the power distribution currently in use. It changes depending on the current power balance between 
+ * domains. It is reset to pdomains_def every time a job starts/ends. */
+/* pdomains_idle is the power distribution that the powercap uses when there is no job running. It is currently
+ * automatically set to pdomains_def at EARD start*/
+/* pdomains_def is the default power distribution. It is recalculated at runtime once the domains have been
+ * loaded, using the TDP as reference. */
+/* pdomains_def_dummy is used when GPUs are enabled but the domain loads the dummy plugin*/
+/* pdomains_min defines the minimum power balance that a certain domain can reach when rebalancing 
+ * the node due to excessive power consumption. */
+/* pdomains_min_dummy is used when GPUs are enabled but the domain loads the dummy plugin*/
+static float pdomains[NUM_DOMAINS]={0.6,0.45,0,GPU_PERC_UTIL};
+static float pdomains_idle[NUM_DOMAINS]={0.6,0.45,0,GPU_PERC_UTIL};
 static float pdomains_def[NUM_DOMAINS]={0.6,0.5,0,GPU_PERC_UTIL};
 static float pdomains_def_dummy[NUM_DOMAINS]={1.0,0.9,0,0};
 static float pdomains_min[NUM_DOMAINS]={0.6,0.4,0,GPU_PERC_UTIL};
 static float pdomains_min_dummy[NUM_DOMAINS]={1.0,0.75,0,0};
 #else
+static float pdomains[NUM_DOMAINS]={1.0, 0.9, 0, 0};
+static float pdomains_idle[NUM_DOMAINS]={1.0, 0.9, 0, 0};
 static float pdomains_def[NUM_DOMAINS]={1.0,0.9,0,0};
 static float pdomains_min[NUM_DOMAINS]={1.0,0.7575,0,0};
 #endif
@@ -182,18 +193,29 @@ static topology_t pc_topology_info;
 /* These functions identies and monitors load changes */
 
 
-extern double rapl_pck_tdps[MAX_PACKAGES];
-extern double rapl_dram_tdps[MAX_PACKAGES];
+static uint rapl_pck_tdps[MAX_PACKAGES];
+static uint rapl_dram_tdps[MAX_PACKAGES];
 #define TDP_CPU 150
 #define TDP_DRAM 30
 #define TDP_GPU 250
+
+void init_tdps()
+{
+    mgt_cpupow_load(&pc_topology_info, NO_EARD);
+    mgt_cpupow_tdp_get(CPUPOW_SOCKET, rapl_pck_tdps);
+    mgt_cpupow_tdp_get(CPUPOW_DRAM, rapl_dram_tdps);
+}
+
 void compute_power_distribution()
 {
     float node_ratio = cdomain_settings[DOMAIN_CPU].node_ratio;
     uint pd_total=0,pd_cpu=0,pd_dram=0, pd_gpu=0, pd_pckg;
     uint bpd_cpu,bpd_dram,bpd_gpu = 0;
 
-		/* CPU and DRAM are read in eard.c during the initialization */
+    // Initialize TDP values
+    init_tdps();
+
+	/* CPU and DRAM are read in eard.c during the initialization */
     bpd_cpu = rapl_pck_tdps[0];
     bpd_dram = rapl_dram_tdps[0];
 		debug("Using CPU TDP %u DRAM TDP %u", bpd_cpu, bpd_dram);

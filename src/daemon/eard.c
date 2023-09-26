@@ -143,8 +143,6 @@ ulong current_node_freq;
 int eard_must_exit = 0;
 topology_t node_desc;
 int fd_rapl[MAX_PACKAGES];
-uint rapl_pck_tdps[MAX_PACKAGES];
-uint rapl_dram_tdps[MAX_PACKAGES];
 
 #define EARD_RESTORE 1
 
@@ -257,11 +255,6 @@ void init_frequency_list()
 				}
 }
 
-void init_tdps()
-{
-  mgt_cpupow_tdp_get(CPUPOW_SOCKET, rapl_pck_tdps);
-  mgt_cpupow_tdp_get(CPUPOW_DRAM, rapl_dram_tdps);
-}
 
 void set_verbose_variables() {
 	verb_level = my_cluster_conf.eard.verbose;
@@ -892,7 +885,6 @@ int main(int argc, char *argv[])
                     error_rapl=1;
                 }
 								#endif
-				init_tdps();
                 verbose(VEARD_INIT,"Initialzing energy plugin");
                 // We initilize energy_node
                 debug("Initializing energy in main EARD thread");
