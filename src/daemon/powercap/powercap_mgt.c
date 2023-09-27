@@ -754,6 +754,9 @@ void pmgt_get_app_req_freq(uint domain, ulong *f, uint dom_size)
     job_context_t *alloc;
     int pos_job_in_node;
     if (domain == DOMAIN_CPU) for (i = 0; i < MAX_CPUS_SUPPORTED; i++) f[i] = 0;
+#if USE_GPUS
+    if (domain == DOMAIN_GPU) for (i = 0; i < MAX_GPUS_SUPPORTED; i++) f[i] = 0;
+#endif
     for (cc = 1; cc  <= max_context_created; cc ++){
         if (current_ear_app[cc] != NULL){
             pmapp = current_ear_app[cc];
