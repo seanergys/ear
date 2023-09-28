@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 //#define FAKE_GPUS   1
 
 #include <stdlib.h>
@@ -150,13 +150,11 @@ static state_t static_read(uint call, gpu_t *data)
 
 state_t gpu_eard_read(ctx_t *c, gpu_t *data)
 {
-    #if SHOW_DEBUGS
     state_t s = static_read(RPC_MET_GPU_GET_METRICS, data);
+    #if SHOW_DEBUGS
     gpu_data_print(data, debug_channel);
+		#endif
     return s;
-    #else
-    return static_read(RPC_MET_GPU_GET_METRICS, data);
-    #endif
 }
 
 state_t gpu_eard_read_raw(ctx_t *c, gpu_t *data)

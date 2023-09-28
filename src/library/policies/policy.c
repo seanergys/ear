@@ -15,6 +15,7 @@
 * and COPYING.EPL files.
 */
 
+#define SHOW_DEBUGS 1
 #define _GNU_SOURCE
 
 #include <sched.h>
@@ -24,7 +25,6 @@
 #endif
 #include <dlfcn.h>
 #include <semaphore.h>
-// #define SHOW_DEBUGS 1
 #include <common/includes.h>
 #include <common/system/symplug.h>
 #include <common/environment.h>
