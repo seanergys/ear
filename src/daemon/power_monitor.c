@@ -17,7 +17,7 @@
 
 #define _GNU_SOURCE
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #include <time.h>
 #include <stdio.h>
@@ -409,7 +409,8 @@ int mark_contexts_to_finish_by_pid()
 
 int mark_contexts_to_finish_by_jobid(job_id id, job_id step_id) {
 
-    if (step_id != BATCH_STEP) return 0; // only batch steps need to check this
+    // only batch steps and interactive need to check this
+    if (step_id != BATCH_STEP && step_id != INTERACT_STEP) return 0;
 
     int i = 0, found_contexts = 0;
 
