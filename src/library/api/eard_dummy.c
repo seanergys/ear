@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/stat.h>
 //#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/config/config_env.h>
@@ -305,6 +306,8 @@ state_t eard_dummy_coefficients(char *ear_tmp, uint ID)
 				return EAR_SUCCESS;
 }
 
+static int freqs_fd;
+
 state_t eard_dummy_frequency_list(char *ear_tmp, uint ID)
 {
 				ulong * frequencies, freq_base;
@@ -318,11 +321,17 @@ state_t eard_dummy_frequency_list(char *ear_tmp, uint ID)
 				//verbose_master(1,"Using freq_base %lu", freq_base);
 
 				get_frequencies_path(ear_tmp, path);
-				dummy_frequencies = create_frequencies_shared_area(path, frequencies, size);
+				struct stat buffer;
+				if (stat(path, &buffer))
+				{
+					dummy_frequencies = create_frequencies_shared_area(path, frequencies, size);
+				} else
+				{
+					dummy_frequencies = attach_shared_area(path, size, O_RDONLY, freqs_fd, NULL);
+				}
 				check_null(dummy_frequencies, "Error creating frequencies area at path %s", path);	
 
 				return EAR_SUCCESS;
-	
 }
 
 void eard_dummy_replace_base_freq(ulong base)

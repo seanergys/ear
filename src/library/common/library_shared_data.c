@@ -82,22 +82,26 @@ int  get_shared_signatures_path(char *tmp, uint ID, char *path)
 /***** SPECIFIC FUNCTIONS *******************/
 
 
-
 lib_shared_data_t * create_lib_shared_data_area(char * path)  
-{      	
+{
 	lib_shared_data_t sh_data,*my_area;
-	my_area=(lib_shared_data_t *)create_shared_area(path,(char *)&sh_data,sizeof(lib_shared_data_t),&fd_conf,1);
+	mode_t perms = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH;
+	my_area = (lib_shared_data_t *) create_shared_area(path, perms, (char *) &sh_data, sizeof(lib_shared_data_t) ,&fd_conf, 1);
 	return my_area;
 }
+
 
 lib_shared_data_t * attach_lib_shared_data_area(char * path, int *fd)
 {
     return (lib_shared_data_t *)attach_shared_area(path,sizeof(lib_shared_data_t),O_RDWR,fd,NULL);
-}                                
+}
+
+
 void dettach_lib_shared_data_area(int fd)
 {
 	dettach_shared_area(fd);
 }
+
 
 void lib_shared_data_area_dispose(char * path)
 {
@@ -107,8 +111,7 @@ void lib_shared_data_area_dispose(char * path)
 
 void print_lib_shared_data(lib_shared_data_t *sh_data)
 {
-	fprintf(stderr,"sh_data num_processes %d signatures %d cas_counters %llu\n",sh_data->num_processes,sh_data->num_signatures,sh_data->cas_counters);
-
+	fprintf(stderr, "sh_data num_processes %d signatures %d cas_counters %llu\n",sh_data->num_processes,sh_data->num_signatures,sh_data->cas_counters);
 }
 
 /// SIGNATURES
@@ -118,8 +121,9 @@ shsignature_t * create_shared_signatures_area(char * path, int np)
 {      	
 	shsignature_t *my_sig,*p2;
 
-	my_sig=(shsignature_t*)malloc(sizeof(shsignature_t)*np);
-	p2=create_shared_area(path,(char *)my_sig,sizeof(shsignature_t)*np,&fd_signatures,1);
+	my_sig = (shsignature_t*) malloc(sizeof(shsignature_t) * np);
+	mode_t perms = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH;
+	p2=create_shared_area(path, perms, (char *) my_sig, sizeof(shsignature_t) * np, &fd_signatures, 1);
 	free(my_sig);
 	return p2;
 }
