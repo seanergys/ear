@@ -47,6 +47,7 @@
 #define API_RSMI              17
 #define API_AMD19             18
 #define API_INTEL143          19
+#define API_LINUX_POWERCAP    20
 #define GRANULARITY_NONE       0
 #define GRANULARITY_DUMMY      1
 #define GRANULARITY_PROCESS    2

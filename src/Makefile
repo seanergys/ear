@@ -24,6 +24,14 @@ COMPONENT_DISABLE = \
   database_cache
 endif
 
+ifdef FEAT_EARL_LITE
+COMPONENT_DISABLE = \
+  commands \
+  pbs_hook \
+  tools \
+  database_cache
+endif
+
 
 ######## RULES
 

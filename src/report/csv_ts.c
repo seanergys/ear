@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 0
 #include <stdio.h>
 #include <semaphore.h>
 
