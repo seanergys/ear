@@ -2820,12 +2820,6 @@ static state_t policy_set_cpus_governor(uint exclusive)
 #endif
     }
 
-    // Setting the governor
-    #if VERSION_MAJOR >= 4 && VERSION_MINOR >= 3
-		//#warning mgt_cpufreq_governor_set_mask compiled
-    check(mgt_cpufreq_governor_set_mask(no_ctx, governor_int, cpus_to_be_set),
-          "Setting governor.");
-		#endif
     return EAR_SUCCESS;
 }
 
