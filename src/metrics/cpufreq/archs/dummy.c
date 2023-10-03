@@ -16,22 +16,26 @@
 */
 
 //#define SHOW_DEBUGS 1
+
 #include <stdlib.h>
 #include <common/output/debug.h>
 #include <metrics/cpufreq/archs/dummy.h>
+#include <metrics/cpufreq/cpufreq_base.h>
 
 static uint cpu_count;
-static topology_t my_topo;
+static cfb_t bf;
 
 state_t cpufreq_dummy_status(topology_t *tp, cpufreq_ops_t *ops)
 {
-	replace_ops(ops->init,      cpufreq_dummy_init);
-	replace_ops(ops->dispose,   cpufreq_dummy_dispose);
+    cpu_count = tp->cpu_count;
+    // Getting base frequency and boost
+    cpufreq_base_init(tp, &bf);
+
+	replace_ops(ops->init,          cpufreq_dummy_init);
+	replace_ops(ops->dispose,       cpufreq_dummy_dispose);
 	replace_ops(ops->count_devices, cpufreq_dummy_count_devices);
-	replace_ops(ops->read,      cpufreq_dummy_read);
-	replace_ops(ops->data_diff, cpufreq_dummy_data_diff);
-    	cpu_count = tp->cpu_count;
-	topology_copy(&my_topo, tp);
+	replace_ops(ops->read,          cpufreq_dummy_read);
+	replace_ops(ops->data_diff,     cpufreq_dummy_data_diff);
 	return EAR_SUCCESS;
 }
 
@@ -56,8 +60,8 @@ state_t cpufreq_dummy_read(ctx_t *c, cpufreq_t *f)
 	int cpu;
 	debug("cpufreq_dummy_readi cpus=%d", cpu_count);
 	for (cpu = 0; cpu < cpu_count; ++cpu) {
-		f[cpu].freq_aperf = my_topo.base_freq;
-		f[cpu].freq_mperf = my_topo.base_freq;
+		f[cpu].freq_aperf = bf.frequency;
+		f[cpu].freq_mperf = bf.frequency;
 		f[cpu].error = 0;
 	}
 	return EAR_SUCCESS;
@@ -66,19 +70,14 @@ state_t cpufreq_dummy_read(ctx_t *c, cpufreq_t *f)
 state_t cpufreq_dummy_data_diff(cpufreq_t *f2, cpufreq_t *f1, ulong *freqs, ulong *average)
 {
     uint c;
-
-	if ((freqs == NULL) || (average == NULL)){
-		if (freqs == NULL) {debug("freqs are null");}
-		if (average == NULL) {debug("average is null");}
-	}
 	if (freqs != NULL) {
 		memset(freqs, 0, cpu_count * sizeof(ulong));
 		for (c = 0; c < cpu_count; c++){
-			freqs[c] = my_topo.base_freq;
+			freqs[c] = bf.frequency;
 		}
 	}
 	if (average != NULL) {
-		*average = my_topo.base_freq;
+		*average = bf.frequency;
 	}
 	debug("Average cpufreq %lu", *average);
 	return EAR_SUCCESS;

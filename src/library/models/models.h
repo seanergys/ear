@@ -17,6 +17,7 @@
 
 #ifndef EAR_MODELS_H_
 #define EAR_MODELS_H_
+#warning Deprecated header file. You must use the new Energy model API at library/models/energy_model.h
 
 #include <common/environment.h>
 #include <daemon/shared_configuration.h>

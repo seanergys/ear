@@ -76,7 +76,7 @@
 #include <library/dynais/dynais.h>
 #include <library/tracer/tracer.h>
 #include <library/states/states.h>
-#include <library/models/models.h>
+// #include <library/models/models.h>
 #include <library/models/cpu_power_model.h>
 #include <library/policies/policy.h>
 #include <library/metrics/metrics.h>
@@ -1676,18 +1676,18 @@ void ear_init()
                     free_node_signatures(lib_shared_region, sig_shared_region);
                 }
 
-        verbose_master(2,"Init energy models");
-				init_power_models(system_conf->user_type, &system_conf->installation, &arch_desc);
+                // verbose_master(2,"Init energy models");
+                // init_power_models(system_conf->user_type, &system_conf->installation, &arch_desc);
 
-				if (state_ok(init_power_policy(system_conf, resched_conf))) {
+                if (state_ok(init_power_policy(system_conf, resched_conf))) {
 
-				    verbose_master(VEAR_INIT, "Policies and models initialized.");
+                  verbose_master(VEAR_INIT, "Policies and models initialized.");
 
-                } else {
+				} else {
 
-				    verbose_master(VEAR_INIT, "%sWARNING%s An error ocurred initializing the power policy.",
-                                   COL_YLW, COL_CLR);	
-                }
+					verbose_master(VEAR_INIT, "%sWARNING%s An error ocurred initializing the power policy.",
+							COL_YLW, COL_CLR);	
+				}
 
 
         verbose_master(2,"Init CPU power models for node sharing");

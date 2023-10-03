@@ -74,6 +74,8 @@ typedef struct apinfo_s {
     char *granularity_str;
     uint  scope;
     char *scope_str;
+    uint  bits;
+//    void *extra;
     void *list1;
     void *list2;
     void *list3;

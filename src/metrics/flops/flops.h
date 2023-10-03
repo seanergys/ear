@@ -65,14 +65,15 @@
 #endif
 
 typedef struct flops_s {
-	ullong f64;
-	ullong d64;
-	ullong f128;
-	ullong d128;
-	ullong f256;
-	ullong d256;
+    ullong f64;
+    ullong d64;
+    ullong f128;
+    ullong d128;
+    ullong f256;
+    ullong d256;
     ullong f512; // 512 field is also used as MAX VECTOR LENGTH flops,
-	ullong d512; // i.e. the ARM's SVE. But in the future maybe union could be.
+    ullong d512; // i.e. the ARM's SVE. But in the future maybe union could be.
+    double gflops;
     union {
         timestamp_t time;
         double secs;
@@ -80,19 +81,17 @@ typedef struct flops_s {
 } flops_t;
 
 typedef struct flops_ops_s {
-    void    (*get_api)         (uint *api);
-    void    (*get_granularity) (uint *granularity);
-    void    (*get_weights)     (ullong **weights);
-	state_t (*init)            (ctx_t *c);
-	state_t (*dispose)         (ctx_t *c);
-	state_t (*read)            (ctx_t *c, flops_t *fl);
+    void    (*get_info)        (apinfo_t *info);
+    state_t (*init)            ();
+    state_t (*dispose)         ();
+    state_t (*read)            (flops_t *fl);
+    void    (*data_diff)       (flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs);
+    void    (*internals_tostr) (char *buffer, int length);
 } flops_ops_t;
 
 void flops_load(topology_t *tp, int eard);
 
-void flops_get_api(uint *api);
-
-void flops_get_granularity(uint *granularity);
+void flops_get_info(apinfo_t *info);
 
 state_t flops_init(ctx_t *c);
 
@@ -106,14 +105,18 @@ state_t flops_read_copy(ctx_t *c, flops_t *fl2, flops_t *fl1, flops_t *flD, doub
 
 void flops_data_diff(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs);
 
-/* Accumulates flops differences and return its data in GFLOPs (accepts NULL). */
-void flops_data_accum(flops_t *fA, flops_t *fD, double *gfs);
-
 void flops_data_copy(flops_t *dst, flops_t *src);
 
 void flops_data_print(flops_t *flD, double gfs, int fd);
 
 void flops_data_tostr(flops_t *flD, double gfs, char *buffer, size_t length);
+
+/* Accumulates flops differences and return its data in GFLOPs (accepts NULL). */
+void flops_data_accum(flops_t *fA, flops_t *fD, double *gfs);
+
+void flops_internals_print(int fd);
+
+void flops_internals_tostr(char *buffer, int length);
 
 // Helpers
 /* Converts a flops difference into old FLOPs array system. */
