@@ -13,7 +13,7 @@ dlog_FOLD = .
 all: $(dlog_BINS)
 
 defines.log: 
-	$(shell ./Makefile.script defines.log)
+	sh ./Makefile.script defines.log
 
 ######## OPTIONS
 
