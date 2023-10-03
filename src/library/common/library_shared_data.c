@@ -34,7 +34,6 @@
 #include <common/states.h>
 #include <common/hardware/hardware_info.h>
 #include <common/output/verbose.h>
-#include <common/types/projection.h>
 #include <common/types/configuration/cluster_conf.h>
 
 #include <metrics/flops/flops.h>

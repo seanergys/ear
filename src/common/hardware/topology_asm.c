@@ -17,10 +17,12 @@
 
 //#define SHOW_DEBUGS 1
 
+#include <math.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <common/system/time.h>
 #include <common/output/debug.h>
 #include <common/hardware/mrs.h>
 #include <common/hardware/cpuid.h>
@@ -111,13 +113,11 @@ __attribute__((unused)) static void topology_getid_x86(topology_t *topo)
 
 __attribute__((unused)) static void topology_getid_arm64(topology_t *topo)
 {
-    ullong midr = mrs_midr();
-
+    ullong midr     = mrs_midr();
     topo->vendor    = VENDOR_ARM;
     topo->family    = FAMILY_A8; // By now, we have to learn to identify ARM CPUs
     topo->model     = getbits64(midr, 31, 24) << 12;
     topo->model    |= getbits64(midr, 15,  4);
-    //topo->base_freq = TOPO_UNDEFINED;
     // We don't have these values in accessible registers
     topo->cache_line_size = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
 }
@@ -183,51 +183,29 @@ static int msr_microread(char *buffer, size_t size, off_t offset)
     return 1;
 }
 
-static void topology_asm_getboost_x86(topology_t *topo)
+static void topology_asm_getsimd(topology_t *topo)
 {
-    // Architectural Intel
-    if (topo->vendor == VENDOR_INTEL) {
-        cpuid_regs_t regs;
-        // Getting base frequency (CPUID 16H)
-        CPUID(regs, 0x16, 0);
-        // Computing base frequency in KHz
-        topo->base_freq = (regs.eax & 0x0000FFFF) * 1000LU;
-        // Getting boost status (CPUID 6H)
-        CPUID(regs, 0x06, 0);
-        //
-        topo->boost_enabled = (ulong) cpuid_getbits(regs.eax, 1, 1);
-        return;
-    }
-    // AMD ZEN and greater
-    if (topo->vendor == VENDOR_AMD && topo->family >= FAMILY_ZEN) {
-        ullong aux;
-        ullong did;
-        ullong fid;
-        // ZEN_REG_P0
-        if (msr_microread((char *) &aux, sizeof(ullong), 0xc0010064)) {
-            fid = getbits64(aux,  7, 0);
-            did = getbits64(aux, 13, 8);
-            if (did > 0) {
-                topo->base_freq = (ulong) (((fid * 200LLU) / did) * 1000);
+    if (topo->vendor == VENDOR_ARM) {
+        topo->sve      = 0;
+        topo->sve_bits = 0;
+        #if __ARM_FEATURE_SVE
+        topo->sve = 1;
+
+        if (topo->sve) {
+            #if __ARM_FEATURE_SVE_BITS
+            topo->sve_bits = __ARM_FEATURE_SVE_BITS;
+            #endif
+            if (topo->sve_bits == 0 || topo->sve_bits == 1) {
+                topo->sve_bits = svcntw() * 32;
             }
         }
-        // ZEN_REG_HWCONF
-        if (msr_microread((char *) &aux, sizeof(ullong), 0xc0010015)) {
-            topo->boost_enabled = (uint) !getbits64(aux, 25, 25);
-        }
+        #endif
     }
-}
-
-static void topology_asm_getboost(topology_t *topo)
-{
-    #if __ARCH_X86
-    topology_asm_getboost_x86(topo);
-    #endif
 }
 
 void topology_asm(topology_t *topo)
 {
     topology_asm_getid(topo);
     topology_asm_getbrand(topo);
-    topology_asm_getboost(topo);
+    topology_asm_getsimd(topo);
 }

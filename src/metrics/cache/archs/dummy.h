@@ -32,6 +32,6 @@ state_t cache_dummy_read(ctx_t *c, cache_t *ca);
 
 void cache_dummy_data_diff(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs);
 
-void cache_dummy_details_tostr(char *buffer, int length);
+void cache_dummy_internals_tostr(char *buffer, int length);
 
 #endif //METRICS_CACHE_DUMMY_H

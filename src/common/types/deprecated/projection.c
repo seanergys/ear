@@ -126,7 +126,7 @@ state_t projection_available(ulong from,ulong to)
 }
 
 state_t projections_available()
-{ 
+{
   freturn(models_syms_fun.projections_available);
 }
 

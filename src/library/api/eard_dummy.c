@@ -24,24 +24,22 @@
 #include <string.h>
 #include <sys/stat.h>
 //#define SHOW_DEBUGS 1
-#include <common/config.h>
-#include <common/config/config_env.h>
-#include <common/output/verbose.h>
-#include <library/common/verbose_lib.h>
-#include <library/common/global_comm.h>
-#include <common/output/debug.h>
 #include <common/states.h>
+#include <common/config.h>
+#include <common/output/debug.h>
+#include <common/output/verbose.h>
+#include <common/config/config_env.h>
 #include <common/types/configuration/cluster_conf.h>
 #include <common/types/configuration/cluster_conf_generic.h>
+#include <library/common/verbose_lib.h>
+#include <library/common/global_comm.h>
+#include <metrics/cpufreq/cpufreq_base.h>
 #include <daemon/local_api/node_mgr.h>
-
-
 #include <daemon/shared_configuration.h>
 
 #define DEFAULT_EAR_INSTALL_PATH "/usr/lib/ear"
 #define DEFAULT_EAR_ETC_PATH "/etc"
 #define DEFAULT_ENERGY_PLUGIN "energy_rapl.so"
-
 
 static char path[GENERIC_NAME];
 static cluster_conf_t dummy_cc;
@@ -201,10 +199,14 @@ state_t eard_dummy_cluster_conf(char *ear_tmp, uint ID)
 
 state_t eard_dummy_earl_settings(char *ear_tmp, uint ID)
 {
-				resched_t       * dummy_resch;
-  			policy_conf_t   * my_policy;
-			ulong             freq_base;
-			topology_freq_getbase(0, &freq_base);
+    resched_t       *dummy_resch;
+    policy_conf_t   *my_policy;
+    ulong             freq_base;
+    cfb_t             bf;
+
+    cpufreq_base_init(NULL, &bf);
+    freq_base = (ulong) bf.frequency;
+
 			//verbose_master(1,"Using freq_base %lu", freq_base);
 
 				verbose_master(2, "looking for policy %d", dummy_cc.default_policy);	

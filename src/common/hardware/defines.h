@@ -26,7 +26,6 @@
 //  ARCH_ARM64
 //  __ARM_ARCH
 //  __ARM_ARCH_8A
-//  __ARM_FEATURE_SVE
 // You can check it by "gcc -march=native -dM -E - < /dev/null"
 
 #if defined(ARCH_ARM) || defined(ARCH_ARM64) || defined(__ARM_ARCH)
@@ -35,6 +34,9 @@
 #define __ARCH_X86 1
 #endif
 
+// Interesting features:
+// __ARM_FEATURE_SVE
+// __ARM_FEATURE_SVE_BITS
 #if defined(__AVX512F__)
 #define __X86_FEATURE_AVX512
 #endif
