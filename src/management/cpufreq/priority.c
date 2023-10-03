@@ -139,7 +139,7 @@ void mgt_cpufreq_prio_data_alloc(cpuprio_t **prio_list, uint **idx_list)
 
 void mgt_cpufreq_prio_data_print(cpuprio_t *prio_list, uint *idx_list, int fd)
 {
-    char buffer[4096];
+    char buffer[8192]; // AMD can have 256 CPUs
     mgt_cpufreq_prio_data_tostr(prio_list, idx_list, buffer, 1024);
     dprintf(fd, "%s", buffer);
 }

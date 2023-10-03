@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 #include <common/config.h>
 #include <common/config/config_sched.h>
@@ -150,11 +151,11 @@ void print_full_apps(application_t *apps, int num_apps)
 {
 	int i;
 	double avg_f, imc, vpi;
-    char is_sbatch;
+    char is_sbatch, is_interactive;
 
 	printf("%8s-%-4s\t %-10s %-10s %-16s %-5s/%-5s %-10s %-10s %-10s %-10s %-10s %-7s %-5s %-7s",
 			"JOB", "STEP", "NODE ID", "USER ID", "APPLICATION", "AVG-F", "IMC-F", "TIME(s)",
-			"POWER(s)", "GBS", "CPI", "ENERGY(J)", "IO(MBS)", "MPI%", "VPI(%)");
+			"POWER(W)", "GBS", "CPI", "ENERGY(J)", "IO(MBS)", "MPI%", "VPI(%)");
 
 #if USE_GPUS
 	int j;
@@ -170,6 +171,7 @@ void print_full_apps(application_t *apps, int num_apps)
 	{
     if (apps[i].is_mpi){ select_color_by_phase(apps[i].signature.CPI, apps[i].signature.GBS, apps[i].signature.IO_MBS, apps[i].signature.Gflops);}
 		is_sbatch = ((uint)apps[i].job.step_id == BATCH_STEP) ? 1 : 0;
+		is_interactive = ((uint)apps[i].job.step_id == INTERACT_STEP) ? 1 : 0;
 		if (strlen(apps[i].job.app_id) > 30)
 			if (strchr(apps[i].job.app_id, '/') != NULL)
 				strcpy(apps[i].job.app_id, strrchr(apps[i].job.app_id, '/')+1);
@@ -179,7 +181,7 @@ void print_full_apps(application_t *apps, int num_apps)
 			avg_f = (double) apps[i].signature.avg_f/1000000;
 			imc = (double) apps[i].signature.avg_imc_f/1000000;
 			compute_sig_vpi(&vpi, &apps[i].signature);
-			if (!is_sbatch)
+			if (!is_sbatch && !is_interactive)
 			{
 				printf("%8lu-%-4lu\t %-10s %-10s %-16.16s %5.2lf/%-5.2lf %-10.2lf %-10.2lf %-10.2lf %-10.2lf %-10.0lf %-7.1lf %-5.1lf %-7.2lf",
 						apps[i].job.id, apps[i].job.step_id, apps[i].node_id, apps[i].job.user_id, apps[i].job.app_id, 
@@ -189,7 +191,7 @@ void print_full_apps(application_t *apps, int num_apps)
 			else
 			{
 				printf("%8lu-%-4s\t %-10s %-10s %-16.16s %5.2lf/%-5.2lf %-10.2lf %-10.2lf %-10.2lf %-10.2lf %-10.0lf %-7.1lf %5.1lf %-7.2lf",
-						apps[i].job.id, "sb", apps[i].node_id, apps[i].job.user_id, apps[i].job.app_id, 
+						apps[i].job.id, is_sbatch ? "sb" : "inte", apps[i].node_id, apps[i].job.user_id, apps[i].job.app_id, 
 						avg_f, imc, apps[i].signature.time, apps[i].signature.DC_power, apps[i].signature.GBS, apps[i].signature.CPI, 
 						apps[i].signature.time * apps[i].signature.DC_power, apps[i].signature.IO_MBS, apps[i].signature.perc_MPI, vpi*100);
 			}
@@ -229,7 +231,7 @@ void print_full_apps(application_t *apps, int num_apps)
 		else
 		{
 			avg_f = (double) apps[i].power_sig.avg_f/1000000;
-			if (!is_sbatch)
+			if (!is_sbatch && !is_interactive)
 			{
 				printf("%8lu-%-4lu\t %-10s %-10s %-16s %5.2lf/%-5s %-10.2lf %-10.2lf %-10s %-10s %-10.0lf %-7s %-5s %-7s",
 						apps[i].job.id, apps[i].job.step_id, apps[i].node_id, apps[i].job.user_id, apps[i].job.app_id, 
@@ -239,7 +241,7 @@ void print_full_apps(application_t *apps, int num_apps)
 			else
 			{
 				printf("%8lu-%-4s\t %-10s %-10s %-16s %5.2lf/%-5s %-10.2lf %-10.2lf %-10s %-10s %-10.0lf %-7s %-5s %-7s",
-						apps[i].job.id, "sb", apps[i].node_id, apps[i].job.user_id, apps[i].job.app_id, 
+						apps[i].job.id, is_sbatch ? "sb" : "inte", apps[i].node_id, apps[i].job.user_id, apps[i].job.app_id, 
 						avg_f, "---", apps[i].power_sig.time, apps[i].power_sig.DC_power, "---", "---", 
 						apps[i].power_sig.time * apps[i].power_sig.DC_power, "---", "---", "---");
 
@@ -273,6 +275,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 	avg_io = 0;
 	gflops_watt = 0;
 	char is_sbatch = 0;
+    char is_interactive = 0;
 	char curr_policy[3];
 	char missing_apps = -1;
 	char header_format[256];
@@ -475,13 +478,12 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 
 				if (avg_frequency > 0 && avg_time > 0 && total_energy > 0)
 				{
-					if (!is_sbatch)
+					if (!is_sbatch && !is_interactive)
 					{
 						if (avx)
 							dprintf(fd, line_format,
 									current_job_id, current_step_id, apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
 									avg_frequency, (double) apps[idx].job.def_f/1000000.0, avg_imc, avg_time, avg_power, avg_GBS, avg_CPI, total_energy, gflops_watt, avg_io, avg_perc, avg_VPI);
-
 						else
 							dprintf(fd, line_format,
 									current_job_id, current_step_id, apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
@@ -491,12 +493,12 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 					{
 						if (avx)
 							dprintf(fd, sbatch_line_format,
-									current_job_id, "sb", apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
+									current_job_id, is_sbatch ? "sb" : "inte", apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
 									avg_frequency,(double) apps[idx].job.def_f/1000000.0, avg_imc, avg_time, avg_power, avg_GBS, avg_CPI, total_energy, gflops_watt, avg_io, avg_perc, avg_VPI);
 
 						else
 							dprintf(fd, sbatch_line_format,
-									current_job_id, "sb", apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
+									current_job_id, is_sbatch ? "sb" : "inte", apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
 									avg_frequency,(double) apps[idx].job.def_f/1000000.0, avg_imc, avg_time, avg_power, avg_GBS, avg_CPI, total_energy, gflops_watt, avg_io, avg_perc);
 					}
 #if USE_GPUS
@@ -525,7 +527,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 				avg_power /= current_apps;
 				if (avg_frequency > 0 && avg_time > 0 && total_energy > 0)
 				{
-					if (!is_sbatch)
+					if (!is_sbatch && !is_interactive)
 					{
 						if (avx)
 							dprintf(fd, mpi_line_format,
@@ -540,11 +542,11 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 					{
 						if (avx)
 							dprintf(fd, mpi_sbatch_line_format,
-									current_job_id, "sb", apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
+									current_job_id, is_sbatch ? "sb" : "inte", apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
 									avg_frequency, (double) apps[idx].job.def_f/1000000.0, "---", avg_time, avg_power, "---", "---", total_energy, "---", "---", "---", "---");
 						else
 							dprintf(fd, mpi_sbatch_line_format,
-									current_job_id, "sb", apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
+									current_job_id, is_sbatch ? "sb" : "inte", apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
 									avg_frequency, (double) apps[idx].job.def_f/1000000.0, "---", avg_time, avg_power, "---", "---", total_energy, "---", "---", "---");
 					}
 #if USE_GPUS
@@ -583,6 +585,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 #endif
 				i--; //go back to current app
 				is_sbatch = (current_step_id == BATCH_STEP) ? 1 : 0;
+				is_interactive = (current_step_id == INTERACT_STEP) ? 1 : 0;
 			}
 		}
 	}
@@ -622,15 +625,15 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 
 			if (avg_VPI == 0)
 				avg_VPI = -1;
-			else avg_VPI *=100;
+			else avg_VPI *= 100;
 			if (avg_frequency > 0 && avg_time > 0 && total_energy > 0)
 			{
-				if (!is_sbatch)
+				if (!is_sbatch && !is_interactive)
 				{
 					if (avx)
 						dprintf(fd, line_format,
 								current_job_id, current_step_id, apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
-								avg_frequency,(double) apps[i-1].job.def_f/1000000.0, avg_imc, avg_time, avg_power, avg_GBS, avg_CPI, total_energy, gflops_watt, avg_io, avg_perc, avg_VPI);
+								avg_frequency, (double) apps[i-1].job.def_f/1000000.0, avg_imc, avg_time, avg_power, avg_GBS, avg_CPI, total_energy, gflops_watt, avg_io, avg_perc, avg_VPI);
 					else
 						dprintf(fd, line_format,
 								current_job_id, current_step_id, apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
@@ -640,11 +643,11 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 				{
 					if (avx)
 						dprintf(fd, sbatch_line_format,
-								current_job_id, "sb", apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
+								current_job_id, is_sbatch ? "sb" : "inte", apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
 								avg_frequency,(double) apps[i-1].job.def_f/1000000.0, avg_imc, avg_time, avg_power, avg_GBS, avg_CPI, total_energy, gflops_watt, avg_io, avg_perc, avg_VPI);
 					else
 						dprintf(fd, sbatch_line_format,
-								current_job_id, "sb", apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
+								current_job_id, is_sbatch ? "sb" : "inte", apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
 								avg_frequency,(double) apps[i-1].job.def_f/1000000.0, avg_imc, avg_time, avg_power, avg_GBS, avg_CPI, total_energy, gflops_watt, avg_io, avg_perc);
 				}
 #if USE_GPUS
@@ -672,7 +675,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 			avg_power /= current_apps;
 			if (avg_frequency > 0 && avg_time > 0 && total_energy > 0)
 			{
-				if (!is_sbatch)
+				if (!is_sbatch && !is_interactive)
 				{
 					if (avx)
 						dprintf(fd, mpi_line_format,
@@ -687,11 +690,11 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 				{
 					if (avx)
 						dprintf(fd, mpi_sbatch_line_format,
-								current_job_id, "sb", apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
+								current_job_id, is_sbatch ? "sb" : "inte", apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
 								avg_frequency,(double) apps[i-1].job.def_f/1000000.0, "---", avg_time, avg_power, "---", "---", total_energy, "---", "---", "---", "---");
 					else
 						dprintf(fd, mpi_sbatch_line_format,
-								current_job_id, "sb", apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
+								current_job_id, is_sbatch ? "sb" : "inte", apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
 								avg_frequency, (double) apps[i-1].job.def_f/1000000.0, "---", avg_time, avg_power, "---", "---", total_energy, "---", "---", "---");
 				}
 #if USE_GPUS

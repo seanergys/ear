@@ -114,14 +114,14 @@ snprintf(buffer, length,
     ca->l1d_misses, ca->l2_misses, ca->l3_misses, ca->ll_misses, ca->lbw_misses, gbs);
 }
 
-void cache_details_print(int fd)
+void cache_internals_print(int fd)
 {
     char buffer[1024];
-    cache_details_tostr(buffer, 1024);
+    cache_internals_tostr(buffer, 1024);
     dprintf(fd, "%s", buffer);
 }
 
-void cache_details_tostr(char *buffer, int length)
+void cache_internals_tostr(char *buffer, int length)
 {
-    ops.details_tostr(buffer, length);
+    ops.internals_tostr(buffer, length);
 }

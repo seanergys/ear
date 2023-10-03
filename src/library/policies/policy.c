@@ -15,6 +15,7 @@
 * and COPYING.EPL files.
 */
 
+#define SHOW_DEBUGS 1
 #define _GNU_SOURCE
 
 #include <sched.h>
@@ -24,7 +25,6 @@
 #endif
 #include <dlfcn.h>
 #include <semaphore.h>
-// #define SHOW_DEBUGS 1
 #include <common/includes.h>
 #include <common/system/symplug.h>
 #include <common/environment.h>
@@ -1712,7 +1712,7 @@ state_t policy_new_iteration(signature_t *sig)
     uint last_phase_bw     = (last_earl_phase_classification == APP_BUSY_WAITING);
 
 
-    if (last_phase_io_bnd || last_phase_bw) {
+    if ((last_phase_io_bnd || last_phase_bw) && metrics_CPU_phase_ok()){
         verbose_master(POLICY_INFO , "%sPOLICY%s Validating CPU phase: (GFlop/s = %.2lf, IO = %.2lf CPI %.2lf)",
                 COL_BLU, COL_CLR, sig->Gflops, sig->IO_MBS, sig->CPI );
 
@@ -2768,51 +2768,57 @@ static state_t policy_set_cpus_governor(uint exclusive)
 #define check(st, msg) \
     if (state_fail(st)) {free_return_err(msg);}
 
-    // Allocate the governor list
-    if (state_fail(mgt_cpufreq_data_alloc(NULL, &governor_list_before_init)))
+    if (mgt_cpufreq_governor_is_available(no_ctx, Governor.userspace))
     {
-        return_msg(EAR_ERROR, "Allocating governor list.");
-    }
-
-    // Retrieve the current governor list
-    check(mgt_cpufreq_governor_get_list(no_ctx, governor_list_before_init),
-          "Retrieving the governor list.");
-
-    // Verbose governor list
-    if (VERB_ON(POLICY_INFO))
-    {
-        verbosen(POLICY_INFO , "List of governors of %u CPUs: ", lib_shared_region->num_cpus);
-        for (int i = 0; i < metrics_get(MGT_CPUFREQ)->devs_count; i++)
+        // Allocate the governor list
+        if (state_fail(mgt_cpufreq_data_alloc(NULL, &governor_list_before_init)))
         {
-            verbosen(POLICY_INFO , " %u", governor_list_before_init[i]);;
+            return_msg(EAR_ERROR, "Allocating governor list.");
         }
-        verbose(POLICY_INFO , " ");
+
+        // Retrieve the current governor list
+        check(mgt_cpufreq_governor_get_list(no_ctx, governor_list_before_init),
+              "Retrieving the governor list.");
+
+        // Verbose governor list
+        if (VERB_ON(POLICY_INFO))
+        {
+            verbosen(POLICY_INFO , "List of governors of %u CPUs: ", lib_shared_region->num_cpus);
+            for (int i = 0; i < metrics_get(MGT_CPUFREQ)->devs_count; i++)
+            {
+                verbosen(POLICY_INFO , " %u", governor_list_before_init[i]);;
+            }
+            verbose(POLICY_INFO , " ");
+        }
+
+        // Set userspace governor on CPUs not used by the job
+
+        cpu_set_t cpus_to_be_set;
+        if (exclusive){
+          set_mask_all_ones(&cpus_to_be_set);
+        }else{
+          memcpy(&cpus_to_be_set, &lib_shared_region->node_mask, sizeof(cpu_set_t));
+        }
+
+        verbosen(POLICY_INFO , "Node used CPUs: ");
+        verbose_affinity_mask(POLICY_INFO , (const cpu_set_t *) &lib_shared_region->node_mask, MAX_CPUS_SUPPORTED);
+
+        verbosen(POLICY_INFO , "CPUs to be set: ");
+        verbose_affinity_mask(POLICY_INFO , (const cpu_set_t *) &cpus_to_be_set, MAX_CPUS_SUPPORTED);
+
+        // Getting a valid ID for 'userspace' governor
+        char *governor_str = "userspace";
+        uint governor_int;
+        check(governor_toint(governor_str, &governor_int),
+              "Converting governor from str to int.");
+
+        // Setting the governor
+#if VERSION_MAJOR >= 4 && VERSION_MINOR >= 3
+#warning mgt_cpufreq_governor_set_mask compiled
+        check(mgt_cpufreq_governor_set_mask(no_ctx, governor_int, cpus_to_be_set),
+              "Setting governor.");
+#endif
     }
-
-    // Set userspace governor on CPUs not used by the job
-
-    cpu_set_t cpus_to_be_set;
-    if (exclusive){
-      set_mask_all_ones(&cpus_to_be_set);
-    }else{
-      memcpy(&cpus_to_be_set, &lib_shared_region->node_mask, sizeof(cpu_set_t));
-    }
-
-    verbosen(POLICY_INFO , "Node used CPUs: ");
-    verbose_affinity_mask(POLICY_INFO , (const cpu_set_t *) &lib_shared_region->node_mask, MAX_CPUS_SUPPORTED);
-
-    verbosen(POLICY_INFO , "CPUs to be set: ");
-    verbose_affinity_mask(POLICY_INFO , (const cpu_set_t *) &cpus_to_be_set, MAX_CPUS_SUPPORTED);
-
-    // Getting a valid ID for 'userspace' governor
-    char *governor_str = "userspace";
-    uint governor_int;
-    check(governor_toint(governor_str, &governor_int),
-          "Converting governor from str to int.");
-
-    // Setting the governor
-    check(mgt_cpufreq_governor_set_mask(no_ctx, governor_int, cpus_to_be_set),
-          "Setting governor.");
 
     return EAR_SUCCESS;
 }

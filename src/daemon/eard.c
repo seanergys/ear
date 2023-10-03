@@ -143,8 +143,6 @@ ulong current_node_freq;
 int eard_must_exit = 0;
 topology_t node_desc;
 int fd_rapl[MAX_PACKAGES];
-uint rapl_pck_tdps[MAX_PACKAGES];
-uint rapl_dram_tdps[MAX_PACKAGES];
 
 #define EARD_RESTORE 1
 
@@ -257,11 +255,6 @@ void init_frequency_list()
 				}
 }
 
-void init_tdps()
-{
-  mgt_cpupow_tdp_get(CPUPOW_SOCKET, rapl_pck_tdps);
-  mgt_cpupow_tdp_get(CPUPOW_DRAM, rapl_dram_tdps);
-}
 
 void set_verbose_variables() {
 	verb_level = my_cluster_conf.eard.verbose;
@@ -734,10 +727,12 @@ int main(int argc, char *argv[])
                 verbose(VEARD_INIT,"Topology detected: sockets %d, cores %d, threads %d",
                         node_desc.socket_count, node_desc.core_count, node_desc.cpu_count);
 
+								#ifndef __ARCH_ARM
                 if (msr_test(&node_desc, MSR_WR) != EAR_SUCCESS){
                     error("msr files are not available, please check the msr kernel module is loaded (modprobe msr)");
                     _exit(1);
                 }
+								#endif
 
                 //
                 verbose(VEARD_INIT,"Initializing frequency list");
@@ -883,12 +878,13 @@ int main(int argc, char *argv[])
                 // At this point, only one daemon is running
                 // PAST: we had here a frequency set
                 verbose(VEARD_INIT,"Initializing RAPL counters");
+								#ifndef __ARCH_ARM
                 // We initialize rapl counters
                 if (init_rapl_msr(fd_rapl)<0){ 
                     error("Error initializing rapl");
                     error_rapl=1;
                 }
-				init_tdps();
+								#endif
                 verbose(VEARD_INIT,"Initialzing energy plugin");
                 // We initilize energy_node
                 debug("Initializing energy in main EARD thread");

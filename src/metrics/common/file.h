@@ -20,6 +20,8 @@
 
 #define dont_open NULL
 
+int filemagic_exists(char *path);
+
 int filemagic_can_read(char *path, int *fd);
 
 int filemagic_can_write(char *path, int *fd);

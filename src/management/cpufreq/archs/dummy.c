@@ -21,18 +21,16 @@
 #include <common/output/debug.h>
 #include <metrics/cpufreq/cpufreq_base.h>
 #include <management/cpufreq/archs/dummy.h>
+#include <management/cpufreq/cpufreq_base.h>
 
-static ullong base_freq;
 static uint cpu_count;
+static cfb_t bf;
 
 state_t mgt_cpufreq_dummy_load(topology_t *tp_in, mgt_ps_ops_t *ops)
 {
 	cpu_count = tp_in->cpu_count;
-	// Base freq
-	topology_freq_getbase(0, (ulong *) &base_freq);
-	if (base_freq == 0LLU) {
-		base_freq = tp_in->base_freq;
-	}
+    // Getting base frequency and boost
+    cpufreq_base_init(tp_in, &bf);
 	//
 	apis_put(ops->init,               mgt_cpufreq_dummy_init);
 	apis_put(ops->dispose,            mgt_cpufreq_dummy_dispose);
@@ -49,7 +47,6 @@ state_t mgt_cpufreq_dummy_load(topology_t *tp_in, mgt_ps_ops_t *ops)
 	apis_put(ops->set_governor,       mgt_cpufreq_dummy_governor_set);
 	apis_put(ops->set_governor_mask,  mgt_cpufreq_dummy_governor_set_mask);
 	apis_put(ops->set_governor_list,  mgt_cpufreq_dummy_governor_set_list);
-
 	return EAR_SUCCESS;
 }
 
@@ -72,7 +69,7 @@ state_t mgt_cpufreq_dummy_count_available(ctx_t *c, uint *pstate_count)
 state_t mgt_cpufreq_dummy_get_available_list(ctx_t *c, pstate_t *pstate_list)
 {
 	pstate_list[0].idx = 0;
-	pstate_list[0].khz = base_freq;
+	pstate_list[0].khz = bf.frequency;
 	return EAR_SUCCESS;
 }
 
@@ -82,7 +79,7 @@ state_t mgt_cpufreq_dummy_get_current_list(ctx_t *c, pstate_t *pstate_list)
 	int i;
 	for (i = 0; i < cpu_count; ++i) {
 		pstate_list[i].idx = i;
-		pstate_list[i].idx = base_freq;
+		pstate_list[i].idx = bf.frequency;
 	}
 	return EAR_SUCCESS;
 }
