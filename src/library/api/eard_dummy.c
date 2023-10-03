@@ -60,11 +60,13 @@ static ulong           * dummy_frequencies;
 		return EAR_ERROR;\
 	}
 
+
 void create_dummy_path_lock(char *ear_tmp, uint ID, char *dummy_areas_path, uint size)
 {
 	snprintf(dummy_areas_path, size, "%s/.dummy_areas_lock.%u", ear_tmp, ID);
 	debug("dummy lock file %s", dummy_areas_path);
 }
+
 
 static void create_dummy_island(cluster_conf_t *dummycc)
 {
@@ -85,8 +87,8 @@ static void create_dummy_island(cluster_conf_t *dummycc)
 	strcpy(dummycc->tags[0].powercap_plugin, "");
 	strncpy(dummycc->tags[0].id,  "default", sizeof(dummycc->tags[0].id));
 	dummycc->tags[0].is_default = 1;
-		
 }
+
 
 static void create_dummy_node_conf(cluster_conf_t *dummycc, char *nodename)
 {
@@ -103,6 +105,7 @@ static void create_dummy_node_conf(cluster_conf_t *dummycc, char *nodename)
   island->num_ranges++;
 }
 
+
 static void create_dummy_policy(cluster_conf_t *dummycc)
 {
 	dummycc->num_policies = 1;
@@ -113,6 +116,7 @@ static void create_dummy_policy(cluster_conf_t *dummycc)
 	dummycc->power_policies[0].p_state = 0;
 	dummycc->power_policies[0].is_available = 1;
 }
+
 
 static void create_dummy_conf_paths(cluster_conf_t *dummycc, char *ear_tmp)
 {
@@ -327,7 +331,7 @@ state_t eard_dummy_frequency_list(char *ear_tmp, uint ID)
 					dummy_frequencies = create_frequencies_shared_area(path, frequencies, size);
 				} else
 				{
-					dummy_frequencies = attach_shared_area(path, size, O_RDONLY, freqs_fd, NULL);
+					dummy_frequencies = attach_shared_area(path, size, O_RDONLY, &freqs_fd, NULL);
 				}
 				check_null(dummy_frequencies, "Error creating frequencies area at path %s", path);	
 
