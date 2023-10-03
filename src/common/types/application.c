@@ -368,11 +368,12 @@ void verbose_application_data(uint vl, application_t *app)
 
     /* Encapsulate the message in a beautiful way */
 
-    char app_summ_hdr_txt[512];
+    char app_summ_hdr_txt[2048];
     snprintf(app_summ_hdr_txt, sizeof(app_summ_hdr_txt), " Application Summary [%s] ", app->node_id);
 
     size_t max_str_len = 90;
     int app_summ_hdr_dec_len = (int) ((max_str_len - strlen(app_summ_hdr_txt)) / 2); // Compute the length of the decorator, e.g. "---"
+
     char *app_summ_hdr_dec_txt = malloc(app_summ_hdr_dec_len + 1);
 
     memset(app_summ_hdr_dec_txt, '-', app_summ_hdr_dec_len);
@@ -397,26 +398,28 @@ void verbose_application_data(uint vl, application_t *app)
     // verbose_gpu_app(vl, app); // This method outputs GPU summary
 
 #if USE_GPUS
-    char *gpu_sig_buff = (char *) malloc(512 * sizeof(char));
 
     signature_t *app_sig = &app->signature;
 
-    if (gpu_sig_buff && app_sig->gpu_sig.num_gpus) {
+    if (app_sig->gpu_sig.num_gpus) {
+        char *gpu_sig_buff = (char *) calloc(4096 , sizeof(char));
 
-        size_t remain_gpusig_buff_len = 512;
-
+				if (gpu_sig_buff != NULL){
+        size_t remain_gpusig_buff_len = 4096;
         gpu_app_t *mys;
 
         for (int gpui = 0; gpui < app_sig->gpu_sig.num_gpus; gpui++) {
 
+
             mys = &app_sig->gpu_sig.gpu_data[gpui];
 
-            char gpu_i_sig_buff[128];
+            char gpu_i_sig_buff[256];
             snprintf(gpu_i_sig_buff, sizeof(gpu_i_sig_buff),
                     "GPU%u [Power %.2lf freq %lu mem_freq %lu util %lu mem_util %lu]\n",
                     gpui, mys->GPU_power, mys->GPU_freq, mys->GPU_mem_freq, mys->GPU_util, mys->GPU_mem_util);
 
             remain_gpusig_buff_len -= (strlen(gpu_i_sig_buff) - 1);
+
             strncat(gpu_sig_buff, gpu_i_sig_buff, remain_gpusig_buff_len);
             
         }
@@ -424,6 +427,7 @@ void verbose_application_data(uint vl, application_t *app)
                 app_summ_hdr_dec_txt, app_summ_hdr_txt, app_summ_hdr_dec_txt, job_info_txt,
                 gpu_sig_buff, app_summ_ftr_dec); // header + job info + gpu info + footer
         free(gpu_sig_buff);
+				}
     } else {
         verbose(vl, "\n%s%s%s\n%s\n%s",
                 app_summ_hdr_dec_txt, app_summ_hdr_txt, app_summ_hdr_dec_txt, job_info_txt, app_summ_ftr_dec); // header + job info + footer

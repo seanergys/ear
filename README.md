@@ -1,4 +1,4 @@
-# Energy Aware Runtime version 4.2
+# Energy Aware Runtime version 4.3
 
 <img src="etc/images/logo.png" align="right" width="440">
 Energy Aware Runtime (EAR) package provides an energy management framework for super computers. EAR contains different components, all together provide three main services:
@@ -15,9 +15,7 @@ For more information, please consult the [wiki](https://gitlab.bsc.es/ear_team/e
 
 License
 -------
-EAR is a open source software and it is licensed under both the BSD-3 license for individual/non-commercial
-use and EPL-1.0 license for commercial use. Full text of both licenses can be
-found in COPYING.BSD and COPYING.EPL files.
+EAR is a open source software and it is licensed under both the BSD-3 license and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD and COPYING.EPL files.
 
 Contact: [ear-support@bsc.es](mailto:ear-support@bsc.es)
 

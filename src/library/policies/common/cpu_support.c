@@ -44,6 +44,8 @@
 #include <library/policies/common/mpi_stats_support.h>
 #include <library/policies/common/imc_policy_support.h>
 
+#define CPU_SAVINGS_LVL 2
+
 extern uint dyn_unc;
 extern polctx_t my_pol_ctx;
 extern ear_classify_t phases_limits;
@@ -76,6 +78,57 @@ state_t compute_reference(polctx_t *c,signature_t *my_app,ulong *curr_freq,ulong
         freq_ref[0] = curr_freq[0];
     }
     return EAR_SUCCESS;
+}
+
+double get_time_nominal(signature_t *my_app)
+{
+  double t = my_app->time;
+  uint curr, target;
+  if (my_app->def_f != frequency_get_nominal_freq()){
+    target = frequency_get_nominal_pstate();
+    curr   = frequency_closest_pstate(my_app->def_f);
+    project_time(my_app, curr, target, &t);
+  }
+  verbose_master(CPU_SAVINGS_LVL,"Policy savins[%s]: Projecting reference time from %u to %u %lf", node_name, curr, target, t);
+  return t;
+}
+
+double get_power_nominal(signature_t *my_app)
+{
+  double p = my_app->DC_power;
+  uint curr, target;
+  if (my_app->def_f != frequency_get_nominal_freq()){
+    target = frequency_get_nominal_pstate();
+    curr   = frequency_closest_pstate(my_app->def_f);
+    project_power(my_app, curr, target, &p);
+  }
+  verbose_master(CPU_SAVINGS_LVL,"Policy savins[%s]: Projecting reference power from %u to %u %lf", node_name, curr, target, p);
+  return p;
+}
+
+double get_time_projected(signature_t *my_app, ulong f)
+{
+  double t = my_app->time;
+  uint curr, target;
+  if (f != my_app->def_f){
+    curr   = frequency_closest_pstate(my_app->def_f);
+    target = frequency_closest_pstate(f);
+    project_time(my_app, curr, target, &t);
+  }
+  //verbose(0,"Policy savins[%s] Projecting from %lu-%u to %lu-%u time %lf (ref %.3lf)", node_name, my_app->def_f, curr, f,target, t, my_app->time);
+  return (float)t;
+}
+double get_power_projected(signature_t *my_app, ulong f)
+{
+  double p = my_app->DC_power;
+  uint curr, target;
+  if (f != my_app->def_f) {
+    curr   = frequency_closest_pstate(my_app->def_f);
+    target = frequency_closest_pstate(f);
+    project_power(my_app, curr, target, &p);
+  }
+  //verbose(0," Policy savins[%s] Projecting from %lu-%u to %lu-%u power %lf (ref %.2lf)", node_name, my_app->def_f, curr, f, target, p, my_app->DC_power);
+  return p;
 }
 
 state_t compute_cpu_freq_min_energy(polctx_t *c, signature_t *my_app, ulong freq_ref, double time_ref, double power_ref,

@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdio.h>
 #include <fcntl.h>
@@ -47,6 +47,7 @@ static char path_dir_app[1024], path_dir_loops[1024];
 static ullong my_time = 0;
 
 static uint must_report;
+static uint        dcgmi = DCGMI_DEFAULT;
 
 
 
@@ -67,6 +68,12 @@ state_t report_init(report_id_t *id,cluster_conf_t *cconf)
     char *default_dcgmi_log_path = ".";
 #endif
     int ret;
+		char *use_dcgmi = ear_getenv(FLAG_GPU_DCGMI_ENABLED);
+		if (use_dcgmi != NULL){
+			must_report = atoi(use_dcgmi);
+		}else must_report = dcgmi;
+		debug("DCGMI report %s", (!must_report)?"OFF":"ON");
+		if (!must_report) return EAR_SUCCESS;
 		if (id->master_rank >= 0 ) must_report = 1;
 		if (!must_report) return EAR_SUCCESS;
     gethostname(nodename, sizeof(nodename));
@@ -242,6 +249,7 @@ state_t report_loops(report_id_t *id,loop_t *loops, uint count)
       #if DCGMI
       sigex = (sig_ext_t *)loops->signature.sig_ext;
       dcgmis = (dcgmi_sig_t *)&sigex->dcgmis;
+			debug("DCGMI_report: DCGMI GPus %u MAX_GPUS %u", dcgmis->dcgmi_gpus, num_gpus);
       if (dcgmis->dcgmi_sets){
         char dcgmi_ev_name[128];
 				uint *evlist;
@@ -255,7 +263,7 @@ state_t report_loops(report_id_t *id,loop_t *loops, uint count)
             	sprintf(dcgmi_ev_name, "GPU%u_%u", gpu, evlist[ev]);
             	strcat(dcgmi_ev_name, ";");
             	strcat(extra_header,dcgmi_ev_name);
-							debug("header size %u", strlen(extra_header));
+							debug("header size %lu", strlen(extra_header));
 						}
           }
         }

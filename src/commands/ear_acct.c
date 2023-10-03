@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 #include <common/config.h>
 #include <common/config/config_sched.h>
@@ -32,6 +33,8 @@
 #include <common/types/application.h>
 #include <common/types/log.h>
 #include <common/types/event_type.h>
+#include <common/colors.h>
+#include <common/types/classification_limits.h>
 
 #if USE_DB
 #include <common/states.h>
@@ -41,6 +44,8 @@
 #include <common/types/configuration/cluster_conf.h>
 cluster_conf_t my_conf;
 #endif
+
+#define COLORS 1
 
 #define STANDARD_NODENAME_LENGTH	25
 #define APP_TEXT_FILE_FIELDS		22
@@ -64,7 +69,35 @@ typedef struct query_addons
 	char e_tag[64];
 	char app_id[64];
 	char job_ids[64];
+	char step_ids[64];
 } query_adds_t;
+
+#if COLORS
+static void print_colors_legend()
+{
+  printf("%s CPU busy waiting %s memory bound %s cpu bound %s IO bound%s\n", COL_CYA, COL_GRE, COL_RED, COL_MGT, COL_CLR);
+}
+static void select_color_by_phase(double CPI, double GBS, double IO, double GFLOPS)
+{
+  char *col = NULL;
+  printf("%s", COL_CLR);
+  fflush(stdout);
+  /* Memory bound */
+  if ((CPI > CPI_MEM_BOUND_DEF) && (GBS > GBS_MEM_BOUND_DEF))                                       col = COL_GRE;
+  /* CPU bound */
+  if (!col && (CPI < CPI_CPU_BOUND_DEF) && (GBS < GBS_CPU_BOUND_DEF) && (GFLOPS > GFLOPS_BUSY_WAITING_DEF)) col = COL_RED;
+  /* Busy waiting */
+  if (!col && (CPI < CPI_BUSY_WAITING_DEF) && (GBS < GBS_BUSY_WAITING_DEF) && (GFLOPS < GFLOPS_BUSY_WAITING_DEF))   col = COL_CYA;
+  /* IO */
+  if (!col && (IO > IO_TH_DEF))      col = COL_MGT;
+  if (col) printf("%s",col);
+  fflush(stdout);
+  
+}
+#else
+#define print_colors_legend()
+#define select_color_by_phase(A,B,C,D)
+#endif
 
 void usage(char *app)
 {
@@ -118,11 +151,11 @@ void print_full_apps(application_t *apps, int num_apps)
 {
 	int i;
 	double avg_f, imc, vpi;
-    char is_sbatch;
+    char is_sbatch, is_interactive;
 
 	printf("%8s-%-4s\t %-10s %-10s %-16s %-5s/%-5s %-10s %-10s %-10s %-10s %-10s %-7s %-5s %-7s",
 			"JOB", "STEP", "NODE ID", "USER ID", "APPLICATION", "AVG-F", "IMC-F", "TIME(s)",
-			"POWER(s)", "GBS", "CPI", "ENERGY(J)", "IO(MBS)", "MPI%", "VPI(%)");
+			"POWER(W)", "GBS", "CPI", "ENERGY(J)", "IO(MBS)", "MPI%", "VPI(%)");
 
 #if USE_GPUS
 	int j;
@@ -130,13 +163,15 @@ void print_full_apps(application_t *apps, int num_apps)
 	unsigned long gpu_freq, gpu_util, gpu_mem_util;
 	char tmp[64];
 	if (print_gpus) 
-		printf(" %-13s %-6s %-13s ", "G-POW(T/U)", "G-FREQ", "G-UTIL(G/M)");
+		printf(" %-15s %-6s %-13s ", "G-POW(T/U)", "G-FREQ", "G-UTIL(G/M)");
 #endif
 	printf("\n");
 
 	for (i = 0; i < num_apps; i++)
 	{
+    if (apps[i].is_mpi){ select_color_by_phase(apps[i].signature.CPI, apps[i].signature.GBS, apps[i].signature.IO_MBS, apps[i].signature.Gflops);}
 		is_sbatch = ((uint)apps[i].job.step_id == BATCH_STEP) ? 1 : 0;
+		is_interactive = ((uint)apps[i].job.step_id == INTERACT_STEP) ? 1 : 0;
 		if (strlen(apps[i].job.app_id) > 30)
 			if (strchr(apps[i].job.app_id, '/') != NULL)
 				strcpy(apps[i].job.app_id, strrchr(apps[i].job.app_id, '/')+1);
@@ -146,7 +181,7 @@ void print_full_apps(application_t *apps, int num_apps)
 			avg_f = (double) apps[i].signature.avg_f/1000000;
 			imc = (double) apps[i].signature.avg_imc_f/1000000;
 			compute_sig_vpi(&vpi, &apps[i].signature);
-			if (!is_sbatch)
+			if (!is_sbatch && !is_interactive)
 			{
 				printf("%8lu-%-4lu\t %-10s %-10s %-16.16s %5.2lf/%-5.2lf %-10.2lf %-10.2lf %-10.2lf %-10.2lf %-10.0lf %-7.1lf %-5.1lf %-7.2lf",
 						apps[i].job.id, apps[i].job.step_id, apps[i].node_id, apps[i].job.user_id, apps[i].job.app_id, 
@@ -156,7 +191,7 @@ void print_full_apps(application_t *apps, int num_apps)
 			else
 			{
 				printf("%8lu-%-4s\t %-10s %-10s %-16.16s %5.2lf/%-5.2lf %-10.2lf %-10.2lf %-10.2lf %-10.2lf %-10.0lf %-7.1lf %5.1lf %-7.2lf",
-						apps[i].job.id, "sb", apps[i].node_id, apps[i].job.user_id, apps[i].job.app_id, 
+						apps[i].job.id, is_sbatch ? "sb" : "inte", apps[i].node_id, apps[i].job.user_id, apps[i].job.app_id, 
 						avg_f, imc, apps[i].signature.time, apps[i].signature.DC_power, apps[i].signature.GBS, apps[i].signature.CPI, 
 						apps[i].signature.time * apps[i].signature.DC_power, apps[i].signature.IO_MBS, apps[i].signature.perc_MPI, vpi*100);
 			}
@@ -183,7 +218,7 @@ void print_full_apps(application_t *apps, int num_apps)
 					gpu_mem_util /= apps[i].signature.gpu_sig.num_gpus;
 
 					sprintf(tmp, "%lu%%/%lu%%", gpu_util, gpu_mem_util);
-					printf(" %-6.2lf/%-6.2lf %-6.3lf %13s", gpu_total_power, gpu_power, (double)gpu_freq/1000000, tmp);
+					printf(" %-7.2lf/%-7.2lf %-6.3lf %13s", gpu_total_power, gpu_power, (double)gpu_freq/1000000, tmp);
 				}
 				else
 				{
@@ -196,7 +231,7 @@ void print_full_apps(application_t *apps, int num_apps)
 		else
 		{
 			avg_f = (double) apps[i].power_sig.avg_f/1000000;
-			if (!is_sbatch)
+			if (!is_sbatch && !is_interactive)
 			{
 				printf("%8lu-%-4lu\t %-10s %-10s %-16s %5.2lf/%-5s %-10.2lf %-10.2lf %-10s %-10s %-10.0lf %-7s %-5s %-7s",
 						apps[i].job.id, apps[i].job.step_id, apps[i].node_id, apps[i].job.user_id, apps[i].job.app_id, 
@@ -206,7 +241,7 @@ void print_full_apps(application_t *apps, int num_apps)
 			else
 			{
 				printf("%8lu-%-4s\t %-10s %-10s %-16s %5.2lf/%-5s %-10.2lf %-10.2lf %-10s %-10s %-10.0lf %-7s %-5s %-7s",
-						apps[i].job.id, "sb", apps[i].node_id, apps[i].job.user_id, apps[i].job.app_id, 
+						apps[i].job.id, is_sbatch ? "sb" : "inte", apps[i].node_id, apps[i].job.user_id, apps[i].job.app_id, 
 						avg_f, "---", apps[i].power_sig.time, apps[i].power_sig.DC_power, "---", "---", 
 						apps[i].power_sig.time * apps[i].power_sig.DC_power, "---", "---", "---");
 
@@ -216,7 +251,6 @@ void print_full_apps(application_t *apps, int num_apps)
 #endif
 			printf("\n");
 		}
-
 	}
 }
 
@@ -241,6 +275,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 	avg_io = 0;
 	gflops_watt = 0;
 	char is_sbatch = 0;
+    char is_interactive = 0;
 	char curr_policy[3];
 	char missing_apps = -1;
 	char header_format[256];
@@ -284,8 +319,8 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 			strcpy(mpi_sbatch_line_format, "%7u-%-3s  %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6s %-10.2lf %-8.2lf %-7s %-5s %-12.0lf %-8s %-7s %-5s");
 		}
 #if USE_GPUS
-		strcpy(gpu_header, " %-13s %-7s %-13s");
-		strcpy(gpu_format, " %-6.2lf/%-6.2lf %-7.3lf %-13s ");
+		strcpy(gpu_header, " %-15s %-7s %-13s");
+		strcpy(gpu_format, " %-7.2lf/%-7.2lf %-7.3lf %-13s ");
 #endif
 	}
 	else
@@ -328,6 +363,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 
 	for (i = 0; i < num_apps; i ++)
 	{
+    printf("%s", COL_CLR);fflush(stdout);
 		if (apps[i].job.id == current_job_id && apps[i].job.step_id == current_step_id)
 		{
 			if (current_is_mpi && !all_mpi)
@@ -424,6 +460,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 				avg_CPI /= current_apps;
 				avg_VPI /= current_apps;
 				avg_perc /= current_apps;
+        select_color_by_phase(avg_CPI, avg_GBS, avg_io, gflops_watt * avg_power);
 #if USE_GPUS
 				if (print_gpus)
 				{
@@ -441,13 +478,12 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 
 				if (avg_frequency > 0 && avg_time > 0 && total_energy > 0)
 				{
-					if (!is_sbatch)
+					if (!is_sbatch && !is_interactive)
 					{
 						if (avx)
 							dprintf(fd, line_format,
 									current_job_id, current_step_id, apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
 									avg_frequency, (double) apps[idx].job.def_f/1000000.0, avg_imc, avg_time, avg_power, avg_GBS, avg_CPI, total_energy, gflops_watt, avg_io, avg_perc, avg_VPI);
-
 						else
 							dprintf(fd, line_format,
 									current_job_id, current_step_id, apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
@@ -457,12 +493,12 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 					{
 						if (avx)
 							dprintf(fd, sbatch_line_format,
-									current_job_id, "sb", apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
+									current_job_id, is_sbatch ? "sb" : "inte", apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
 									avg_frequency,(double) apps[idx].job.def_f/1000000.0, avg_imc, avg_time, avg_power, avg_GBS, avg_CPI, total_energy, gflops_watt, avg_io, avg_perc, avg_VPI);
 
 						else
 							dprintf(fd, sbatch_line_format,
-									current_job_id, "sb", apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
+									current_job_id, is_sbatch ? "sb" : "inte", apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
 									avg_frequency,(double) apps[idx].job.def_f/1000000.0, avg_imc, avg_time, avg_power, avg_GBS, avg_CPI, total_energy, gflops_watt, avg_io, avg_perc);
 					}
 #if USE_GPUS
@@ -491,7 +527,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 				avg_power /= current_apps;
 				if (avg_frequency > 0 && avg_time > 0 && total_energy > 0)
 				{
-					if (!is_sbatch)
+					if (!is_sbatch && !is_interactive)
 					{
 						if (avx)
 							dprintf(fd, mpi_line_format,
@@ -506,11 +542,11 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 					{
 						if (avx)
 							dprintf(fd, mpi_sbatch_line_format,
-									current_job_id, "sb", apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
+									current_job_id, is_sbatch ? "sb" : "inte", apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
 									avg_frequency, (double) apps[idx].job.def_f/1000000.0, "---", avg_time, avg_power, "---", "---", total_energy, "---", "---", "---", "---");
 						else
 							dprintf(fd, mpi_sbatch_line_format,
-									current_job_id, "sb", apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
+									current_job_id, is_sbatch ? "sb" : "inte", apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
 									avg_frequency, (double) apps[idx].job.def_f/1000000.0, "---", avg_time, avg_power, "---", "---", total_energy, "---", "---", "---");
 					}
 #if USE_GPUS
@@ -549,6 +585,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 #endif
 				i--; //go back to current app
 				is_sbatch = (current_step_id == BATCH_STEP) ? 1 : 0;
+				is_interactive = (current_step_id == INTERACT_STEP) ? 1 : 0;
 			}
 		}
 	}
@@ -561,7 +598,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 		if (strlen(apps[i-1].job.app_id) > 16 && !is_csv) {
 			apps[i-1].job.app_id[16] = '\0';
 		}
-
+    printf("%s", COL_CLR);fflush(stdout);
 		if (apps[i-1].is_mpi && (apps[i-1].signature.avg_f > 0) && !all_mpi)
 		{
 			gflops_watt /= avg_power;
@@ -573,6 +610,8 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 			avg_imc /= current_apps;
 			avg_CPI /= current_apps;
 			avg_VPI /= current_apps;
+
+      select_color_by_phase(avg_CPI, avg_GBS, avg_io, gflops_watt * avg_power);
 #if USE_GPUS
 			if (print_gpus)
 			{
@@ -586,15 +625,15 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 
 			if (avg_VPI == 0)
 				avg_VPI = -1;
-			else avg_VPI *=100;
+			else avg_VPI *= 100;
 			if (avg_frequency > 0 && avg_time > 0 && total_energy > 0)
 			{
-				if (!is_sbatch)
+				if (!is_sbatch && !is_interactive)
 				{
 					if (avx)
 						dprintf(fd, line_format,
 								current_job_id, current_step_id, apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
-								avg_frequency,(double) apps[i-1].job.def_f/1000000.0, avg_imc, avg_time, avg_power, avg_GBS, avg_CPI, total_energy, gflops_watt, avg_io, avg_perc, avg_VPI);
+								avg_frequency, (double) apps[i-1].job.def_f/1000000.0, avg_imc, avg_time, avg_power, avg_GBS, avg_CPI, total_energy, gflops_watt, avg_io, avg_perc, avg_VPI);
 					else
 						dprintf(fd, line_format,
 								current_job_id, current_step_id, apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
@@ -604,11 +643,11 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 				{
 					if (avx)
 						dprintf(fd, sbatch_line_format,
-								current_job_id, "sb", apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
+								current_job_id, is_sbatch ? "sb" : "inte", apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
 								avg_frequency,(double) apps[i-1].job.def_f/1000000.0, avg_imc, avg_time, avg_power, avg_GBS, avg_CPI, total_energy, gflops_watt, avg_io, avg_perc, avg_VPI);
 					else
 						dprintf(fd, sbatch_line_format,
-								current_job_id, "sb", apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
+								current_job_id, is_sbatch ? "sb" : "inte", apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
 								avg_frequency,(double) apps[i-1].job.def_f/1000000.0, avg_imc, avg_time, avg_power, avg_GBS, avg_CPI, total_energy, gflops_watt, avg_io, avg_perc);
 				}
 #if USE_GPUS
@@ -636,7 +675,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 			avg_power /= current_apps;
 			if (avg_frequency > 0 && avg_time > 0 && total_energy > 0)
 			{
-				if (!is_sbatch)
+				if (!is_sbatch && !is_interactive)
 				{
 					if (avx)
 						dprintf(fd, mpi_line_format,
@@ -651,11 +690,11 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 				{
 					if (avx)
 						dprintf(fd, mpi_sbatch_line_format,
-								current_job_id, "sb", apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
+								current_job_id, is_sbatch ? "sb" : "inte", apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
 								avg_frequency,(double) apps[i-1].job.def_f/1000000.0, "---", avg_time, avg_power, "---", "---", total_energy, "---", "---", "---", "---");
 					else
 						dprintf(fd, mpi_sbatch_line_format,
-								current_job_id, "sb", apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
+								current_job_id, is_sbatch ? "sb" : "inte", apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
 								avg_frequency, (double) apps[i-1].job.def_f/1000000.0, "---", avg_time, avg_power, "---", "---", total_energy, "---", "---", "---");
 				}
 #if USE_GPUS
@@ -678,7 +717,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 	printf("\n");
 }
 
-void add_string_filter(char *query, char *addition, char *value)
+void _add_string_filter(char *query, char *addition, char *value, bool quotes)
 {
 	if (query_filters < 1)
 		strcat(query, " WHERE ");
@@ -687,12 +726,18 @@ void add_string_filter(char *query, char *addition, char *value)
 
 	strcat(query, addition);
 	strcat(query, "=");
-	strcat(query, "'");
+	if (quotes) strcat(query, "'");
 	strcat(query, value);
-	strcat(query, "'");
+	if (quotes) strcat(query, "'");
 	//	sprintf(query, query, value);
 	query_filters ++;
 }
+
+#define add_string_filter(query, addition, value) \
+    _add_string_filter(query, addition, value, 1); 
+
+#define add_string_filter_no_quotes(query, addition, value) \
+    _add_string_filter(query, addition, value, 0); 
 
 void add_int_filter(char *query, char *addition, int value)
 {
@@ -921,6 +966,8 @@ void read_events(char *user, query_adds_t *q_a)
 		add_int_list_filter(query, "job_id", q_a->job_ids);
 	if (q_a->step_id >= 0)
 		add_int_filter(query, "step_id", q_a->step_id);
+    if (strlen(q_a->step_ids) > 0)
+        add_string_filter_no_quotes(query, "step_id", q_a->step_ids);
 	if (user != NULL)
 		add_string_filter(query, "node_id", user);
 	if (q_a->start_time != 0)
@@ -979,7 +1026,7 @@ void print_loops(loop_t *loops, int num_loops)
 	char gpu_line[256], tmp[16];
 	double gpup = 0, gpupu = 0;
 	ulong  gpuf = 0, gpuu = 0, gpuused = 0, gpu_mem_util = 0;
-	strcpy(line, "%-12s %-8s %-13s");
+	strcpy(line, "%-13s %-8s %-13s");
 	if (print_gpus)
 		printf(line, "G-POWER(T/U)","G-FREQ","G-UTIL(G/MEM)");
 	//prepare gpu_line format
@@ -991,6 +1038,8 @@ void print_loops(loop_t *loops, int num_loops)
 	for (i = 0; i < num_loops; i++)
 	{
 		signature_copy(&sig, &loops[i].signature);
+    select_color_by_phase(sig.CPI, sig.GBS, sig.IO_MBS, sig.Gflops);
+
 #if USE_GPUS
 		if (print_gpus)
 		{				
@@ -1162,6 +1211,8 @@ void format_loop_query(char *user, char *query, char *base_query, query_adds_t *
 		add_int_list_filter(query, "job_id", q_a->job_ids);
 	if (q_a->step_id >= 0)
 		add_int_filter(query, "Loops.step_id", q_a->step_id);
+    if (strlen(q_a->step_ids) > 0)
+        add_string_filter_no_quotes(query, "step_id", q_a->step_ids);
 
 	if (q_a->limit > 0 && q_a->job_id < 0)
 	{
@@ -1328,6 +1379,8 @@ void read_from_database(char *user, query_adds_t *q_a)
 		add_int_list_filter(query, "id", q_a->job_ids);
 	if (q_a->step_id >= 0)
 		add_int_filter(query, "step_id", q_a->step_id);
+    else if (strlen(q_a->step_ids) > 0)
+        add_string_filter_no_quotes(query, "step_id", q_a->step_ids);
 	if (user != NULL)
 		add_string_filter(query, "user_id", user);
 	if (strlen(q_a->e_tag) > 0)
@@ -1353,6 +1406,8 @@ void read_from_database(char *user, query_adds_t *q_a)
 		add_int_list_filter(query, "id", q_a->job_ids);
 	if (q_a->step_id >= 0)
 		add_int_filter(query, "Jobs.step_id", q_a->step_id);
+    else if (strlen(q_a->step_ids) > 0)
+        add_string_filter_no_quotes(query, "Jobs.step_id", q_a->step_ids);
 	if (user != NULL)
 		add_string_filter(query, "user_id", user);
 
@@ -1507,6 +1562,10 @@ int main(int argc, char *argv[])
 		{"start-time", required_argument, 0, 's'},
 		{"end-time",   required_argument, 0, 'e'},
 	};
+  
+  #if COLORS
+  print_colors_legend();
+  #endif
 
 	while (1)
 	{
@@ -1536,95 +1595,111 @@ int main(int argc, char *argv[])
 				}
 				else
 				{
-					query_adds.job_id = atoi(strtok(optarg, "."));
-					token = strtok(NULL, ".");
-					if (token != NULL) query_adds.step_id = atoi(token);
-				}
-				break;
-			case 'x':
-				is_events = 1;
-				if (optind < argc && strchr(argv[optind], '-') == NULL)
-				{
-					if (strchr(argv[optind], ','))
-					{
-						strcpy(query_adds.job_ids, argv[optind]);
-					}
-					else
-					{
-						query_adds.job_id = atoi(strtok(argv[optind], "."));
-						token = strtok(NULL, ".");
-						if (token != NULL) query_adds.step_id = atoi(token);
-					}
-				}
-				else if (verbose) printf("No argument for -x\n");
-				break;
-			case 'o':
-				loop_extended = 1;
-				break;
-			case 'g':
-				print_gpus = 1;
-				break;
-			case 'f':
-				file_name = optarg;
-				break;
-			case 'l':
-				full_length = 1;
-				break;
-			case 'b':
-				verbose = 1;
-				break;
-			case 'v':
-				free_cluster_conf(&my_conf);
-				print_version();
-				exit(0);
-				break;
-			case 'm':
-				all_mpi = 1;
-				break;
-			case 'c':
-				strcpy(csv_path, optarg);
-				break;
-			case 't':
-				strcpy(query_adds.e_tag, optarg);
-				break;
-			case 'p':
-				avx = 1;
-				break;
-			case 'a':
-				strcpy(query_adds.app_id, optarg);
-				break;
-			case 's':
-				if (strptime(optarg, "%Y-%m-%e", &tinfo) == NULL)
-				{
-					printf("Incorrect time format. Supported format is YYYY-MM-DD\n"); //error
-					free_cluster_conf(&my_conf);
-					exit(1);
-				}
-				query_adds.start_time = mktime(&tinfo);
-				break;
-			case 'e':
-				if (strptime(optarg, "%Y-%m-%e", &tinfo) == NULL)
-				{
-					printf("Incorrect time format. Supported format is YYYY-MM-DD\n"); //error
-					free_cluster_conf(&my_conf);
-					exit(1);
-				}
-				query_adds.end_time = mktime(&tinfo);
-				break;
-			case 'h':
-				free_cluster_conf(&my_conf);
-				usage(argv[0]);
-				break;
-		}
-	}
+                    query_adds.job_id = atoi(strtok(optarg, "."));
+                    token = strtok(NULL, ".");
+                    if (token != NULL) {
+                        if (!strcmp(token, "sbatch") || !strcmp(token, "sb")) {
+                            sprintf(query_adds.step_ids, "%u", BATCH_STEP);
+                        }
+                        else strcpy(query_adds.step_ids, token);
+                    }
+                    //if (token != NULL) query_adds.step_id = atoi(token);
+                }
+                break;
+            case 'x':
+                is_events = 1;
+                if (optind < argc && strchr(argv[optind], '-') == NULL)
+                {
+                    if (strchr(argv[optind], ','))
+                    {
+                        strcpy(query_adds.job_ids, argv[optind]);
+                    }
+                    else
+                    {
+                        query_adds.job_id = atoi(strtok(argv[optind], "."));
+                        token = strtok(NULL, ".");
+                        if (token != NULL) {
+                            if (!strcmp(token, "sbatch") || !strcmp(token, "sb")) {
+                                sprintf(query_adds.step_ids, "%u", BATCH_STEP);
+                            }
+                            else strcpy(query_adds.step_ids, token);
+                        }
+                        //if (token != NULL) query_adds.step_id = atoi(token);
+                    }
+                }
+                else if (verbose) printf("No argument for -x\n");
+                break;
+            case 'o':
+                loop_extended = 1;
+                break;
+            case 'g':
+                print_gpus = 1;
+                break;
+            case 'f':
+                file_name = optarg;
+                break;
+            case 'l':
+                full_length = 1;
+                break;
+            case 'b':
+                verbose = 1;
+                break;
+            case 'v':
+                free_cluster_conf(&my_conf);
+                print_version();
+                exit(0);
+                break;
+            case 'm':
+                all_mpi = 1;
+                break;
+            case 'c':
+                strcpy(csv_path, optarg);
+                break;
+            case 't':
+                strcpy(query_adds.e_tag, optarg);
+                break;
+            case 'p':
+                avx = 1;
+                break;
+            case 'a':
+                strcpy(query_adds.app_id, optarg);
+                break;
+            case 's':
+                if (strptime(optarg, "%Y-%m-%e", &tinfo) == NULL)
+                {
+                    printf("Incorrect time format. Supported format is YYYY-MM-DD\n"); //error
+                    free_cluster_conf(&my_conf);
+                    exit(1);
+                }
+                query_adds.start_time = mktime(&tinfo);
+                break;
+            case 'e':
+                if (strptime(optarg, "%Y-%m-%e", &tinfo) == NULL)
+                {
+                    printf("Incorrect time format. Supported format is YYYY-MM-DD\n"); //error
+                    free_cluster_conf(&my_conf);
+                    exit(1);
+                }
+                query_adds.end_time = mktime(&tinfo);
+                break;
+            case 'h':
+                free_cluster_conf(&my_conf);
+                usage(argv[0]);
+                break;
+        }
+    }
 
-	if (verbose) printf("Limit set to %d\n", query_adds.limit);
+    if (verbose) printf("Limit set to %d\n", query_adds.limit);
 
-	if (file_name != NULL) read_from_files(file_name, user, &query_adds);
-	else if (is_events) read_events(user, &query_adds);
-	else if (is_loops) read_loops(user, &query_adds);
-	else read_from_database(user, &query_adds); 
+    if (file_name != NULL) read_from_files(file_name, user, &query_adds);
+    else if (is_events) read_events(user, &query_adds);
+    else if (is_loops) read_loops(user, &query_adds);
+    else read_from_database(user, &query_adds); 
 
-	free_cluster_conf(&my_conf);
-	exit(0);
+#if COLORS
+    printf("%s",COL_CLR);
+#endif
+
+    free_cluster_conf(&my_conf);
+    exit(0);
 }

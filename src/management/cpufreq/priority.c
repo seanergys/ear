@@ -14,9 +14,10 @@
 * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
 * and COPYING.EPL files.
 */
-
+//#define SHOW_DEBUGS 1
 #include <stdlib.h>
 #include <pthread.h>
+#include <common/output/debug.h>
 #include <common/math_operations.h>
 #include <management/cpufreq/priority.h>
 #include <management/cpufreq/archs/prio_eard.h>
@@ -148,8 +149,10 @@ void mgt_cpufreq_prio_data_tostr(cpuprio_t *prio_list, uint *idx_list, char *buf
     int acc = 0;
     int c;
 
+    debug("total prios_count %d", prios_count);
     for (c = 0; prio_list && c < prios_count; ++c)
     {
+        debug("Processing prio %d", c); 
         if (prio_list[c].max_khz == PRIO_FREQ_MAX) {
             acc += sprintf(&buffer[acc], "PRIO%d: MAX GHZ - %.1lf GHz (%s)\n", c,
                ((double) prio_list[c].min_khz) / 1000000.0, strprio[prio_list[c].low]);
@@ -158,13 +161,11 @@ void mgt_cpufreq_prio_data_tostr(cpuprio_t *prio_list, uint *idx_list, char *buf
                KHZ_TO_GHZ((double) prio_list[c].max_khz), KHZ_TO_GHZ((double) prio_list[c].min_khz), strprio[prio_list[c].low]);
         }
     }
-    #if 0
     for (c = 0; idx_list && c < idxs_count; ++c) {
         if ((c != 0) && (c % 8) == 0) acc += sprintf(&buffer[acc], "\n");
         acc += sprintf(&buffer[acc], "[%03d,%2d] ", c, idx_list[c]);
     }
     acc += sprintf(&buffer[acc], "\n");
-    #endif
 }
 
 #if TEST

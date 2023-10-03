@@ -22,8 +22,6 @@
 
 
 uint util_changed(ulong curr,ulong prev);
-/** Limits the power to be requested to the hardware configuration */
-uint limit_max_power(node_powercap_opt_t *pc_opt,uint extra);
 
 
 /** Given a powercap settings and a given power consumption computes the power to be released */
@@ -40,6 +38,9 @@ uint ok_power(node_powercap_opt_t *pc_opt,uint current);
 
 /** Given a powercap settings returns true when a powercap limit is defined */
 int is_powercap_set(node_powercap_opt_t *pc_opt);
+
+/** Checks the default powercap in powermon */
+#define is_powercap_unlimited() (powermon_get_powercap_def() == POWER_CAP_UNLIMITED)
 
 /** returns true if the powercap management is enabled and a powercap limit is set */
 int is_powercap_on(node_powercap_opt_t *pc_opt);

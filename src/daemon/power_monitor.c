@@ -17,7 +17,7 @@
 
 #define _GNU_SOURCE
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #include <time.h>
 #include <stdio.h>
@@ -244,9 +244,13 @@ uint is_job_in_node(job_id id, job_context_t **jc)
 }
 
 
-void add_job_in_node(job_id id)
+/** Adds the Job ID \p id into the jobs_in_node_list array.
+ * If the Job ID already exists, increments the number of contexts.
+ * Otherwise, it finds a free space in the array and add there the 
+ * passed Job ID. */
+static void add_job_in_node(job_id id)
 {
-    /* Find the job */
+    // Find the job
     uint i = 0;
     while (i < MAX_CPUS_SUPPORTED && jobs_in_node_list[i].id != id) i++;
 
@@ -255,9 +259,11 @@ void add_job_in_node(job_id id)
         return;
     }
 
-    // id is a new job
+    // `id` is a new job.
+
+    // Find a free space, i.e., n-th jobs_in_node_list is 0
     i = 0;
-    while ((i < MAX_CPUS_SUPPORTED) && (jobs_in_node_list[i].id)) i++;
+    while (i < MAX_CPUS_SUPPORTED && jobs_in_node_list[i].id) i++;
     if (i == MAX_CPUS_SUPPORTED) {
         error("Not job position free found! This should not happen.");
         return;
@@ -403,7 +409,8 @@ int mark_contexts_to_finish_by_pid()
 
 int mark_contexts_to_finish_by_jobid(job_id id, job_id step_id) {
 
-    if (step_id != BATCH_STEP) return 0; // only batch steps need to check this
+    // only batch steps and interactive need to check this
+    if (step_id != BATCH_STEP && step_id != INTERACT_STEP) return 0;
 
     int i = 0, found_contexts = 0;
 
@@ -587,7 +594,7 @@ int select_last_context() {
 }
 
 
-/* TODO: Thread-save here?: It's not possible because mutex is inside the context that will be created.*/
+/* TODO: Thread-save here?: It's not possible because mutex is inside the context that will be created. */
 int new_context(job_id id, job_id sid, int *cc)
 {
     char shmem_path[GENERIC_NAME];
@@ -621,16 +628,20 @@ int new_context(job_id id, job_id sid, int *cc)
     }
 
     int err_num;
-    if ((err_num = pthread_mutex_init(&current_ear_app[ccontext]->powermon_app_mutex, NULL))) {
-        error("Initializing mutex for context %d (%lu/%lu): %s", ccontext, id, sid, strerror(err_num));
+    if ((err_num = pthread_mutex_init(&current_ear_app[ccontext]->powermon_app_mutex,
+                                      NULL)))
+    {
+        error("Initializing mutex for context %d (%lu/%lu): %s",
+              ccontext, id, sid, strerror(err_num));
     }
 
-    if (state_fail(ear_trylock(&current_ear_app[ccontext]->powermon_app_mutex))) {
+    if (state_fail(ear_trylock(&current_ear_app[ccontext]->powermon_app_mutex)))
+    {
         error("Locking new context");
         return EAR_ERROR;
     }
 
-    if (ccontext > max_context_created ) max_context_created = ccontext;
+    if (ccontext > max_context_created) max_context_created = ccontext;
 
     alloc_energy_data(&current_ear_app[ccontext]->energy_init);
 
@@ -641,20 +652,21 @@ int new_context(job_id id, job_id sid, int *cc)
 
     add_job_in_node(id);
 
-    /* We must create per jobid,stepid shared memory regions */
-    ID = create_ID(id,sid);
+    /* We must create per jobid, stepid shared memory regions. */
+    ID = create_ID(id, sid);
     get_settings_conf_path(ear_tmp, ID, shmem_path);
-    debug("Settings for new context placed at %s",shmem_path);
+    debug("Settings for new context placed at %s", shmem_path);
 
     current_ear_app[ccontext]->settings = create_settings_conf_shared_area(shmem_path);
     if (current_ear_app[ccontext]->settings == NULL) {
-        error("Error creating shared memory between EARD & EARL for (%lu,%lu)",id,sid);
+        error("Error creating shared memory between EARD & EARL for (%lu,%lu)",
+              id,sid);
         ear_unlock(&current_ear_app[ccontext]->powermon_app_mutex);
         return EAR_ERROR;
     }
 
     /* Context 0 is the default one */
-    memcpy(current_ear_app[ccontext]->settings,current_ear_app[0]->settings,sizeof(settings_conf_t));
+    memcpy(current_ear_app[ccontext]->settings, current_ear_app[0]->settings, sizeof(settings_conf_t));
 
     get_resched_path(ear_tmp, ID, shmem_path);
     debug("Resched path for new context placed at %s",shmem_path);
@@ -689,7 +701,7 @@ int new_context(job_id id, job_id sid, int *cc)
 
     get_pc_app_info_path(ear_tmp,ID, shmem_path);
 
-    debug("PC_app_info for new context placed at %s",shmem_path);
+    debug("PC_app_info for new context placed at %s", shmem_path);
 
     current_ear_app[ccontext]->pc_app_info = create_pc_app_info_shared_area(shmem_path);
     if (current_ear_app[ccontext]->pc_app_info == NULL){
@@ -1187,7 +1199,7 @@ void job_end_powermon_app(powermon_app_t *pmapp, ehandler_t *ceh)
 
     // Metrics are not reported in this function
     free_power_data(&app_power);
-    debug("job_end_powermon_app done for %lu/%lu", pmapp->app.job.id, pmapp->app.job.step_id);
+    verbose(VJOBPMON,"job_end_powermon_app done for %lu/%lu", pmapp->app.job.id, pmapp->app.job.step_id);
 }
 
 
@@ -1231,188 +1243,189 @@ policy_conf_t per_job_conf;
 policy_conf_t *configure_context(powermon_app_t *pmapp, uint user_type,
                                  energy_tag_t *my_tag, application_t *appID)
 {
-    policy_conf_t *my_policy = NULL;
+  policy_conf_t *my_policy = NULL;
 
-    if (appID == NULL) {
-        error("configure_context: NULL application provided, setting default values");
-        my_policy = &default_policy_context;
-        return my_policy;
-    }
+  if (appID == NULL) {
+    error("configure_context: NULL application provided, setting default values");
+    my_policy = &default_policy_context;
+    return my_policy;
+  }
 
-    verbose(VJOBPMON, "Configuring policy for user %u, policy %s, freq %lu, th %lf, is_learning %u, is_mpi %d, force_freq %d",
-            user_type, appID->job.policy, appID->job.def_f, appID->job.th, appID->is_learning, appID->is_mpi,
-            my_cluster_conf.eard.force_frequencies);
+  verbose(VJOBPMON, "Configuring policy for user %u, policy %s, freq %lu, th %lf, is_learning %u, is_mpi %d, force_freq %d",
+      user_type, appID->job.policy, appID->job.def_f, appID->job.th, appID->is_learning, appID->is_mpi,
+      my_cluster_conf.eard.force_frequencies);
 
-    int p_id;
+  int p_id;
 
-    switch (user_type) {
-        case NORMAL:
-            appID->is_learning = 0;
+  switch (user_type) {
+    case NORMAL:
+      appID->is_learning = 0;
 
-            p_id = policy_name_to_nodeid(appID->job.policy, my_node_conf);
+      p_id = policy_name_to_nodeid(appID->job.policy, my_node_conf);
 
-            debug("Policy requested %s, ID %d", appID->job.policy, p_id);
+      debug("Policy requested %s, ID %d", appID->job.policy, p_id);
 
-            /* Use cluster conf function */
-            if (p_id != EAR_ERROR) {
-                my_policy=get_my_policy_conf(my_node_conf,p_id);
-                if (!my_policy->is_available) {
-                    debug("User type %d is not alloweb to use policy %s",user_type,appID->job.policy);
-                    my_policy=get_my_policy_conf(my_node_conf,my_cluster_conf.default_policy);
-                }
-                copy_policy_conf(&per_job_conf, my_policy);
-                my_policy=&per_job_conf;
-            } else {
+      /* Use cluster conf function */
+      if (p_id != EAR_ERROR) {
+        my_policy=get_my_policy_conf(my_node_conf,p_id);
+        if (!my_policy->is_available) {
+          debug("User type %d is not alloweb to use policy %s",user_type,appID->job.policy);
+          my_policy=get_my_policy_conf(my_node_conf,my_cluster_conf.default_policy);
+        }
+        copy_policy_conf(&per_job_conf, my_policy);
+        my_policy=&per_job_conf;
+      } else {
 
-                debug("Invalid policy"); // You will see the invalid policy name from the last debug message.
+        debug("Invalid policy"); // You will see the invalid policy name from the last debug message.
 
-                my_policy = get_my_policy_conf(my_node_conf, my_cluster_conf.default_policy);
+        my_policy = get_my_policy_conf(my_node_conf, my_cluster_conf.default_policy);
 
-                if (my_policy == NULL) {
+        if (my_policy == NULL) {
 
-                    error("Invalid policy (%s) and no default policy configuration (NULL). Check ear.conf. Setting monitoring...",
-                          appID->job.policy);
+          error("Invalid policy (%s) and no default policy configuration (NULL). Check ear.conf. Setting monitoring...",
+              appID->job.policy);
 
-                    authorized_context.p_state = 1;
+          authorized_context.p_state = 1;
 
-                    int mo_pid = policy_name_to_nodeid("monitoring", my_node_conf);
+          int mo_pid = policy_name_to_nodeid("monitoring", my_node_conf);
 
-                    if (mo_pid != EAR_ERROR)
-                        authorized_context.policy = mo_pid;
-                    else
-                        authorized_context.policy = MONITORING_ONLY;
+          if (mo_pid != EAR_ERROR)
+            authorized_context.policy = mo_pid;
+          else
+            authorized_context.policy = MONITORING_ONLY;
 
-                    authorized_context.settings[0] = 0;
-                } else {
-                    copy_policy_conf(&authorized_context,my_policy);
-                }
+          authorized_context.settings[0] = 0;
+        } else {
+          copy_policy_conf(&authorized_context,my_policy);
+        }
 
-                my_policy = &authorized_context;
-            }
+        my_policy = &authorized_context;
+      }
 
-            if (my_policy==NULL) {
-                error("Default policy configuration returns NULL,invalid policy, check ear.conf");
-                my_policy=&default_policy_context;
-            }
-            break;
-        case AUTHORIZED:
-            if (appID->is_learning) {
-                int mo_pid = policy_name_to_nodeid("monitoring", my_node_conf);
-                if (mo_pid != EAR_ERROR)
-                    authorized_context.policy = mo_pid;
-                else
-                    authorized_context.policy=MONITORING_ONLY;
-                if (appID->job.def_f) {
-                    if (frequency_is_valid_frequency(appID->job.def_f)) authorized_context.p_state=frequency_closest_pstate(appID->job.def_f);
-                    else authorized_context.p_state=1;
-                } else authorized_context.p_state=1;
+      if (my_policy==NULL) {
+        error("Default policy configuration returns NULL,invalid policy, check ear.conf");
+        my_policy=&default_policy_context;
+      }
+      break;
+    case AUTHORIZED:
+      if (appID->is_learning) {
+        int mo_pid = policy_name_to_nodeid("monitoring", my_node_conf);
+        if (mo_pid != EAR_ERROR)
+          authorized_context.policy = mo_pid;
+        else
+          authorized_context.policy=MONITORING_ONLY;
+        if (appID->job.def_f) {
+          if (frequency_is_valid_frequency(appID->job.def_f)) authorized_context.p_state=frequency_closest_pstate(appID->job.def_f);
+          else authorized_context.p_state=1;
+        } else authorized_context.p_state=1;
 
-                authorized_context.settings[0]=0;
-                my_policy=&authorized_context;
-            } else {
-                p_id=policy_name_to_nodeid(appID->job.policy, my_node_conf);
-                if (p_id!=EAR_ERROR) {
-                    my_policy=get_my_policy_conf(my_node_conf,p_id);
-                    authorized_context.policy=p_id;
-                    if (appID->job.def_f) {
-                        verbose(VJOBPMON+1,"Setting freq to NOT default policy p_state ");
-                        if (frequency_is_valid_frequency(appID->job.def_f)) authorized_context.p_state=frequency_closest_pstate(appID->job.def_f);
-                        else authorized_context.p_state=my_policy->p_state;
-                    } else {
-                        verbose(VJOBPMON+1,"Setting freq to default policy p_state %u",my_policy->p_state);
-                        authorized_context.p_state=my_policy->p_state;	
-                    }
-                    if (appID->job.th>0) authorized_context.settings[0]=appID->job.th;
-                    else authorized_context.settings[0]=my_policy->settings[0];
+        authorized_context.settings[0]=0;
+        my_policy=&authorized_context;
+      } else {
+        p_id=policy_name_to_nodeid(appID->job.policy, my_node_conf);
+        if (p_id!=EAR_ERROR) {
+          my_policy=get_my_policy_conf(my_node_conf,p_id);
+          authorized_context.policy=p_id;
+          if (appID->job.def_f) {
+            verbose(VJOBPMON+1,"Setting freq to NOT default policy p_state ");
+            if (frequency_is_valid_frequency(appID->job.def_f)) authorized_context.p_state=frequency_closest_pstate(appID->job.def_f);
+            else authorized_context.p_state=my_policy->p_state;
+          } else {
+            verbose(VJOBPMON+1,"Setting freq to default policy p_state %u",my_policy->p_state);
+            authorized_context.p_state=my_policy->p_state;	
+          }
+          if (appID->job.th>0) authorized_context.settings[0]=appID->job.th;
+          else authorized_context.settings[0]=my_policy->settings[0];
 
-                    strcpy(authorized_context.name, my_policy->name);
-                    my_policy=&authorized_context;
+          strcpy(authorized_context.name, my_policy->name);
+          my_policy=&authorized_context;
 
-                } else {
-                    verbose(VJOBPMON,"Authorized user is executing not defined/invalid policy using default %d",my_cluster_conf.default_policy);
-                    my_policy=get_my_policy_conf(my_node_conf,my_cluster_conf.default_policy);
-                    if (my_policy==NULL) {
-                        error("Error Default policy configuration returns NULL,invalid policy, check ear.conf (setting MONITORING)");
-                        authorized_context.p_state=1;
-                        int mo_pid = policy_name_to_nodeid("monitoring", my_node_conf);
-                        if (mo_pid != EAR_ERROR)
-                            authorized_context.policy = mo_pid;
-                        else
-                            authorized_context.policy=MONITORING_ONLY;
-                        authorized_context.settings[0]=0;
-                    } else {
-                        print_policy_conf(my_policy);		
-                        copy_policy_conf(&authorized_context,my_policy);
-                    }
-                    my_policy = &authorized_context;
-                }
-            }
-            break;
-        case ENERGY_TAG:
-            appID->is_learning=0;
+        } else {
+          verbose(VJOBPMON,"Authorized user is executing not defined/invalid policy using default %d",my_cluster_conf.default_policy);
+          my_policy=get_my_policy_conf(my_node_conf,my_cluster_conf.default_policy);
+          if (my_policy==NULL) {
+            error("Error Default policy configuration returns NULL,invalid policy, check ear.conf (setting MONITORING)");
+            authorized_context.p_state=1;
             int mo_pid = policy_name_to_nodeid("monitoring", my_node_conf);
             if (mo_pid != EAR_ERROR)
-                authorized_context.policy = mo_pid;
+              authorized_context.policy = mo_pid;
             else
-                energy_tag_context.policy=MONITORING_ONLY;
-            energy_tag_context.p_state=my_tag->p_state;
-            energy_tag_context.settings[0]=0;
-            my_policy=&energy_tag_context;
-            break;
-    }
+              authorized_context.policy=MONITORING_ONLY;
+            authorized_context.settings[0]=0;
+          } else {
+            print_policy_conf(my_policy);		
+            copy_policy_conf(&authorized_context,my_policy);
+          }
+          my_policy = &authorized_context;
+        }
+      }
+      break;
+    case ENERGY_TAG:
+      appID->is_learning=0;
+      int mo_pid = policy_name_to_nodeid("monitoring", my_node_conf);
+      if (mo_pid != EAR_ERROR)
+        authorized_context.policy = mo_pid;
+      else
+        energy_tag_context.policy=MONITORING_ONLY;
+      energy_tag_context.p_state=my_tag->p_state;
+      energy_tag_context.settings[0]=0;
+      my_policy=&energy_tag_context;
+      break;
+  }
 
-    if ((!appID->is_mpi) && (!my_cluster_conf.eard.force_frequencies)) {
+  if ((!appID->is_mpi) && (!my_cluster_conf.eard.force_frequencies)) {
 
 
-        pmapp->policy_freq = 0;
+    pmapp->policy_freq = 0;
 
-        my_policy->p_state = frequency_closest_pstate(frequency_get_cpu_freq(0));
+    my_policy->p_state = frequency_closest_pstate(frequency_get_cpu_freq(0));
 
-        verbose(VJOBPMON, "Application is not using ear and force_frequencies=off, frequencies are not changed pstate=%u", my_policy->p_state);
+    verbose(VJOBPMON, "Application is not using ear and force_frequencies=off, frequencies are not changed pstate=%u", my_policy->p_state);
 
-    } else {
-        /* We have to force the frequency */
-        ulong f = frequency_pstate_to_freq(my_policy->p_state);
+  } else {
+    /* We have to force the frequency */
+    ulong f = frequency_pstate_to_freq(my_policy->p_state);
 
 #if !POWERMON_RESTORE
-        cpu_set_t not_in_jobs_mask;
-        powermon_update_node_mask(&in_jobs_mask);
+    cpu_set_t not_in_jobs_mask;
+    powermon_update_node_mask(&in_jobs_mask);
 
-        cpus_not_in_mask(&not_in_jobs_mask, &in_jobs_mask);
+    cpus_not_in_mask(&not_in_jobs_mask, &in_jobs_mask);
 
-        uint cpus_used = num_cpus_in_mask(&in_jobs_mask);
-        uint cpus_free = num_cpus_in_mask(&not_in_jobs_mask);
-        verbose(VCONF, "CPUs used %u. CPUs free %u", cpus_used, cpus_free);
+    uint cpus_used = num_cpus_in_mask(&in_jobs_mask);
+    uint cpus_free = num_cpus_in_mask(&not_in_jobs_mask);
+    verbose(VCONF, "CPUs used %u. CPUs free %u", cpus_used, cpus_free);
 #endif
 
-        /* New, to be used in new function */
-        pmapp->policy_freq = f;
+    /* New, to be used in new function */
+    pmapp->policy_freq = f;
 
 #if !POWERMON_RESTORE
-        frequency_set_userspace_governor_all_cpus();
-        /* Setting the default CPU freq for the new job */
-        frequency_set_with_mask(&not_in_jobs_mask, f);
-        verbose(VJOBPMON, "Setting userspace governor pstate=%u to %u cpus (used %u)", my_policy->p_state, cpus_free, cpus_used);
-        /* Moved to powermon_init mgw configuration */
-        /* Setting the default IMC freq by default in all the sockets */
-        if (state_fail(mgt_imcfreq_set_auto(no_ctx))){
-            verbose(VJOBPMON, "Error when setting IMCFREQ by default");
-        }
-        verbose(VJOBPMON,"Restoring IMC frequency" );
+    verbose(VJOBPMON, "Setting userspace governor pstate=%u to %u cpus (used %u)",
+            my_policy->p_state, cpus_free, cpus_used);
+    check_usrspace_gov_set(frequency_set_userspace_governor_all_cpus(), VJOBPMON);
+    /* Setting the default CPU freq for the new job */
+    frequency_set_with_mask(&not_in_jobs_mask, f);
+    /* Moved to powermon_init mgw configuration */
+    /* Setting the default IMC freq by default in all the sockets */
+    if (state_fail(mgt_imcfreq_set_auto(no_ctx))){
+        verbose(VJOBPMON, "Error when setting IMCFREQ by default");
+    }
+    verbose(VJOBPMON,"Restoring IMC frequency" );
 #if USE_GPUS
-        if (my_node_conf->gpu_def_freq > 0){
-            /** Can we know which GPUS are used by this job?? */
-            gpu_mgr_set_freq_all_gpus(my_node_conf->gpu_def_freq);
-            verbose(VJOBPMON,"Restoring GPU frequency to %lu", my_node_conf->gpu_def_freq);
-        }
+    if (my_node_conf->gpu_def_freq > 0){
+      /** Can we know which GPUS are used by this job?? */
+      gpu_mgr_set_freq_all_gpus(my_node_conf->gpu_def_freq);
+      verbose(VJOBPMON,"Restoring GPU frequency to %lu", my_node_conf->gpu_def_freq);
+    }
 #endif
 
 #endif // !POWERMON_RESTORE
-    }
+  }
 
-    appID->is_mpi = 0;
-    debug("context configured");
-    return my_policy;
+  appID->is_mpi = 0;
+  debug("context configured");
+  return my_policy;
 }
 
 
@@ -1558,83 +1571,92 @@ void powermon_mpi_finalize(ehandler_t *eh, ulong jid,ulong sid)
  * TASK MGT
  *
  */
-// TODO: Thread-save here.
 void powermon_new_task(new_task_req_t *newtask)
 {
-    powermon_app_t *pmapp;
+  powermon_app_t *pmapp;
 
-    verbose(VJOBPMON, "New task for %lu-%lu PID %d #CPUs %u",
-            newtask->jid, newtask->sid, newtask->pid, newtask->num_cpus);
+  verbose(VJOBPMON, "New task for %lu-%lu PID %d #CPUs %u",
+          newtask->jid, newtask->sid, newtask->pid, newtask->num_cpus);
 
-    /* Getting the context of the task. */
+  /* Getting the context of the task. */
 
-    int curr_job_ctx_idx = find_context_for_job(newtask->jid, newtask->sid);
+  int curr_job_ctx_idx = find_context_for_job(newtask->jid, newtask->sid);
 
-    if (curr_job_ctx_idx < 0) {
-        error("New task %d and context %lu/%lu not created.", newtask->pid, newtask->jid, newtask->sid);
-        return;
-    }
+  if (curr_job_ctx_idx < 0) {
+    error("New task %d and context %lu/%lu not created.", newtask->pid, newtask->jid, newtask->sid);
+    return;
+  }
 
-    pmapp = current_ear_app[curr_job_ctx_idx];
+  pmapp = current_ear_app[curr_job_ctx_idx];
 
-    /* ******************************** */
-    
-    state_t lock_st;
-    if ((lock_st = ear_trylock(&pmapp->powermon_app_mutex)) != EAR_SUCCESS) {
-        error("Locking context %lu/%lu at receiving new task request: %s",
-              pmapp->app.job.id, pmapp->app.job.step_id, state_msg);
-        return;
-    }
+  /* ******************************** */
+  
+  state_t lock_st;
+  if ((lock_st = ear_trylock(&pmapp->powermon_app_mutex)) != EAR_SUCCESS) {
+      error("Locking context %lu/%lu at receiving new task request: %s",
+            pmapp->app.job.id, pmapp->app.job.step_id, state_msg);
+      return;
+  }
 
-	if (pmapp->master_pid == 0) pmapp->master_pid = newtask->pid;
+  if (pmapp->master_pid == 0) pmapp->master_pid = newtask->pid;
 
-    CPU_OR(&pmapp->plug_mask, &pmapp->plug_mask, &newtask->mask);
+  CPU_OR(&pmapp->plug_mask, &pmapp->plug_mask, &newtask->mask);
 
-    pmapp->plug_num_cpus = CPU_COUNT(&pmapp->plug_mask); // Instead of aggregating the number of CPUs
-                                                         // of the new task, we count the number of CPUs
-                                                         // of the aggregated mask. By this way we avoid
-                                                         // to get a bad CPU count in the case where
-                                                         // multiple masks share CPUs.
+  // Instead of aggregating the number of CPUs
+  // of the new task, we count the number of CPUs
+  // of the aggregated mask. By this way we avoid
+  // to get a bad CPU count in the case where
+  // multiple masks share CPUs.
+  pmapp->plug_num_cpus = CPU_COUNT(&pmapp->plug_mask); 
+  verbose(VJOBPMON, "#CPUs of %lu-%lu updated: %u", newtask->jid, newtask->sid, pmapp->plug_num_cpus);
 
-
-    verbose(VJOBPMON, "#CPUs of %lu-%lu updated: %u", newtask->jid, newtask->sid, pmapp->plug_num_cpus);
-
-    if (/* pmapp->app.job.step_id != (job_id) BATCH_STEP && */ pmapp->policy_freq) { // "As EARD can force the CPU frequency"
-
+  // old condition: pmapp->app.job.step_id != (job_id) BATCH_STEP && pmapp->policy_freq
+  if (pmapp->policy_freq) // "As EARD can force the CPU frequency"
+  {
+    // CPU freq and governor
 #if !NAIVE_SETTINGS_SAVE // If this macro is enabled, we already saved the governor
 
         /* Storing current governor (The previous governor of the powermon
-         * app will be the current governor of the first CPU of the last task arrived) */
-        if (state_fail(store_current_task_governor(pmapp, &newtask->mask))) {
+         * app will be the current governor of the first CPU of the last task arrived)
+         */
+        if (state_fail(store_current_task_governor(pmapp, &newtask->mask)))
+        {
             error("Storing task (PID %d) governor: %s", newtask->pid, state_msg);
         }
 #endif // !NAIVE_SETTINGS_SAVE
 
-        // CPU freq and governor
+    // We set the userspace governor just when the driver supports it. If not, we are assuming
+    // the driver lets us to change the CPU frequency without that governor.
+    if (mgt_cpufreq_governor_is_available(no_ctx, Governor.userspace))
+    {
 
-        char *cgov="userspace";
-        uint gov, app_pstate;
-
-        mgt_cpufreq_get_index(no_ctx, pmapp->policy_freq, &app_pstate, 1);
-
-        verbose(VCONF + 1, "Setting governor `%s` governor, CPU freq %.2f GHz and pstate %u",
-                cgov, (float) pmapp->policy_freq / 1000000, app_pstate);
-
-        verbose_affinity_mask(VCONF + 2, &newtask->mask, man->cpu.devs_count);
+        verbose(VCONF + 1, "Setting userspace governor...");
 
         // Governor 
-        governor_toint(cgov, &gov);
-        mgt_cpufreq_governor_set_mask(no_ctx, gov, newtask->mask);
-        
-
-        /* CPU freq. */
-        fill_cpufreq_list(&newtask->mask, man->cpu.devs_count, app_pstate, ps_nothing, powermon_restore_cpufreq_list);
-        mgt_cpufreq_set_current_list(no_ctx, powermon_restore_cpufreq_list);
-
-        /* *********************/
+        // governor_toint(cgov, &gov);
+        if (state_fail(mgt_cpufreq_governor_set_mask(no_ctx, Governor.userspace, newtask->mask)))
+        {
+          error("Error setting cpufreq userspace governor");
+        }
     }
 
-    ear_unlock(&pmapp->powermon_app_mutex);
+    uint app_pstate;
+
+    mgt_cpufreq_get_index(no_ctx, pmapp->policy_freq, &app_pstate, 1);
+
+    verbose(VCONF + 1, "Setting CPU freq %.2f GHz and pstate %u",
+            (float) pmapp->policy_freq / 1000000, app_pstate);
+
+    verbose_affinity_mask(VCONF + 1, &newtask->mask, man->cpu.devs_count);
+
+    /* CPU freq. */
+    fill_cpufreq_list(&newtask->mask, man->cpu.devs_count, app_pstate, ps_nothing, powermon_restore_cpufreq_list);
+    mgt_cpufreq_set_current_list(no_ctx, powermon_restore_cpufreq_list);
+
+    /* *********************/
+  }
+
+  ear_unlock(&pmapp->powermon_app_mutex);
 }
 
 /*
@@ -1706,7 +1728,8 @@ void powermon_new_job(powermon_app_t *pmapp, ehandler_t *eh, application_t *appI
         }
     }
 
-    if (VERB_ON(VPMON_DEBUG)) {
+    if (VERB_ON(VPMON_DEBUG))
+    {
         verbose(VPMON_DEBUG, "Priority system enabled: %d | Stored current priority list:",
                 mgt_cpuprio_is_enabled());
         mgt_cpuprio_data_print((cpuprio_t *) man->pri.list1, pmapp->prio_idx_list, verb_channel);    
@@ -1798,7 +1821,7 @@ void powermon_new_job(powermon_app_t *pmapp, ehandler_t *eh, application_t *appI
 
     job_init_powermon_app(pmapp, eh, appID, from_mpi);
 
-    /* We must report the energy beforesetting the job_id: PENDING */
+    /* TODO: We must report the energy beforesetting the job_id: PENDING */
     new_job_for_period(&current_sample, appID->job.id, appID->job.step_id);
 
     // pthread_mutex_unlock(&app_lock);
@@ -1857,8 +1880,6 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job) {
     // we must report the current period for that job before the reset: PENDING
     end_job_for_period(&current_sample);
 
-    // pthread_mutex_unlock(&app_lock); // TODO: Remove
-
     report_powermon_app(&summary);
 
     set_null_loop(&pmapp->last_loop);
@@ -1887,7 +1908,7 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job) {
     if (summary.state != APP_FINISHED)
     {
         if (powermon_is_idle())
-        { 
+        {
             powercap_run_to_idle();
 
 #if !NAIVE_SETTINGS_SAVE
@@ -2798,7 +2819,7 @@ static void set_default_powermon_init(powermon_app_t *app)
 
 #if POWERMON_RESTORE
     /* IMC freq */
-    verbose(VCONF, "Restoring IMC freq");
+    verbose(VCONF, "Resetting IMC frequency...");
     if (node_desc.vendor == VENDOR_INTEL) {
         mgt_imcfreq_set_auto(no_ctx);
     } else if (node_desc.vendor == VENDOR_AMD) {
@@ -2824,146 +2845,145 @@ static void set_default_powermon_end(powermon_app_t *app, uint idle)
 {
 #if POWERMON_RESTORE
 
-    /* Two scenarios are possible for CPU freq:
-     * 1) End job: Set idle gov and freq
-     * 2) No end job : if prev set --> restore
-     */
+  /* Two scenarios are possible for CPU freq:
+   * 1) End job: Set idle gov and freq
+   * 2) No end job : if prev set --> restore
+   */
 
-    uint change_gov = 0;
-    uint rest_pstate;
+  uint change_gov = 0;
+  uint rest_pstate;
 
-    /* Going to idle: Reset CPU freq. */
-    if (idle) mgt_cpufreq_reset(no_ctx);
+  /* Going to idle: Reset CPU freq. */
+  if (idle) mgt_cpufreq_reset(no_ctx);
 
-    char *cgov = app->governor.name; // Governor before job had started.
-    uint gov;
+  char *cgov = app->governor.name; // Governor before job had started.
+  uint gov;
 
-    // if (app->app.job.step_id != (job_id) BATCH_STEP) {
-        if (app->is_job) { // End of a job
+  // Old condition: app->app.job.step_id != (job_id) BATCH_STEP
+  if (app->is_job) { // End of a job
 
-            if (strcmp(my_node_conf->idle_governor, "default") != 0) {
+    if (strcmp(my_node_conf->idle_governor, "default") != 0) {
 
                 /* We'll set what it is configured in the ear.conf (idle governor and P-State). */
                 cgov        = my_node_conf->idle_governor;
-                rest_pstate = ear_max(my_node_conf->idle_pstate, man->cpu.list1_count - 1);
+                rest_pstate = ear_min(my_node_conf->idle_pstate, man->cpu.list1_count - 1);
 
-            } else {
-                /* We'll restore the P-State we found before job had started. */
-                mgt_cpufreq_get_index(no_ctx, app->current_freq, &rest_pstate, 1);
-            }
-
-            /* --- Setting governor --- */
-
-            governor_toint(cgov, &gov);
-
-            if (idle) {
-
-                verbose(VCONF, "(Idle) Restoring all the node CPUs to governor `%s`...", cgov);
-
-                mgt_cpufreq_governor_set(no_ctx, gov);
-
-            } else {
-
-                verbose(VCONF, "[End job %lu/%lu] Restoring to governor `%s` the CPU set in the job's mask...",
-                        app->app.job.id, app->app.job.step_id, cgov);
-                verbose_affinity_mask(VCONF + 1, &app->plug_mask, man->cpu.devs_count);
-
-                mgt_cpufreq_governor_set_mask(no_ctx, gov, app->plug_mask);
-            }
-
-            if (strcmp(cgov, "userspace") == 0) {
-                change_gov = 1;
-            }
-
-            /* ------------------------ */
-
-        } else if (app->policy_freq) { // Not the end of a job but EARD set a frequency
-
-            /* --- Setting governor --- */
-
-            governor_toint(cgov, &gov);
-
-            verbose(VCONF, "[%lu/%lu] Restoring to governor `%s` the CPU set in the mask...",
-                    app->app.job.id, app->app.job.step_id, cgov);
-            verbose_affinity_mask(VCONF + 1, &app->plug_mask, man->cpu.devs_count);
-
-            mgt_cpufreq_governor_set_mask(no_ctx, gov, app->plug_mask);
-
-            if (strcmp(cgov, "userspace") == 0) change_gov = 1;
-
-            /* ------------------------ */
-
-            /* We'll restore the P-State we found before job had started. */
-            mgt_cpufreq_get_index(no_ctx, app->current_freq, &rest_pstate, 1);
-
-        }
-
-        /* If the governor restored is `userspace`, we must manually set a CPU freq. */
-        if (change_gov) {
-
-            if (idle) {
-
-                verbose(VCONF, "(Idle) Restoring to all CPUs pstate %u all_cpus", rest_pstate);
-
-                mgt_cpufreq_set_current(no_ctx, rest_pstate, all_cpus);
-
-            } else {
-
-                verbose(VCONF, "[%lu/%lu] Restoring to CPU pstate %u with mask",
-                        app->app.job.id, app->app.job.step_id, rest_pstate);
-                verbose_affinity_mask(VCONF + 1, &app->plug_mask, man->cpu.devs_count);
-
-                fill_cpufreq_list(&app->plug_mask, man->cpu.devs_count, rest_pstate,
-                        ps_nothing, powermon_restore_cpufreq_list);
-
-                mgt_cpufreq_set_current_list(no_ctx, powermon_restore_cpufreq_list);
-            }
-        }
-
-        /* If the priority module is enabled, we restore the priority of the CPUs of the job. */
-        if (mgt_cpuprio_is_enabled()) {
-            for (int i = 0; i < man->pri.devs_count; i++) {
-                // If the CPU is not in the job mask, we won't touch the priority (PRIO_SAME).
-                app->prio_idx_list[i] = (CPU_ISSET(i, &app->plug_mask)) ? app->prio_idx_list[i] : PRIO_SAME; // TODO: Thread-save?
-            }
-
-            if (VERB_ON(VPMON_DEBUG)) {
-                verbose(VPMON_DEBUG, "Restoring priority list...");
-                mgt_cpuprio_data_print((cpuprio_t *) man->pri.list1, app->prio_idx_list, verb_channel);    
-            }
-            if (state_fail(mgt_cpuprio_set_current_list(app->prio_idx_list))) {
-                error("Restoring the priority list for job %lu/%lu.", app->app.job.id, app->app.job.step_id);
-            }
-
-            if (idle) {
-                verbose(VPMON_DEBUG, "Disabling priority system...");
-                if (state_fail(mgt_cpuprio_disable())) {
-                    error("Disabling priority system.");
-                }
-            }
-        }
-    // }
-
-#if USE_GPUS
-    /* GPUs */
-    if (idle && my_node_conf->gpu_def_freq) { /* EARD is not aware of the GPUs used */
-        ulong idle_gpu_freq;
-        /* We assume all the gpus are the same */
-        gpu_mgr_get_min(0, &idle_gpu_freq);
-        verbose(VCONF, "Restoring to GPU freq %.2f GHz", (float)idle_gpu_freq/1000000.0);
-        gpu_mgr_set_freq_all_gpus(idle_gpu_freq);
+    } else {
+      /* We'll restore the P-State we found before job had started. */
+      mgt_cpufreq_get_index(no_ctx, app->current_freq, &rest_pstate, 1);
     }
-#endif
+
+    /* --- Setting governor --- */
+
+    governor_toint(cgov, &gov);
 
     if (idle) {
-        /* IMC freq : It's already done at init, but it's included here for simplicity*/
-        verbose(VCONF, "Restoring IMC freq");
-        if (node_desc.vendor == VENDOR_INTEL) {
-            mgt_imcfreq_set_auto(no_ctx);
-        } else if (node_desc.vendor == VENDOR_AMD) {
-            mgt_imcfreq_set_current(no_ctx, 0, all_sockets);
-        }
+
+      verbose(VCONF, "(Idle) Restoring all the node CPUs to governor `%s`...", cgov);
+
+      mgt_cpufreq_governor_set(no_ctx, gov);
+
+    } else {
+
+      verbose(VCONF, "[End job %lu/%lu] Restoring to governor `%s` the CPU set in the job's mask...",
+          app->app.job.id, app->app.job.step_id, cgov);
+      verbose_affinity_mask(VCONF + 1, &app->plug_mask, man->cpu.devs_count);
+
+      mgt_cpufreq_governor_set_mask(no_ctx, gov, app->plug_mask);
     }
+
+    if (strcmp(cgov, "userspace") == 0) {
+      change_gov = 1;
+    }
+
+    /* ------------------------ */
+
+  } else if (app->policy_freq) { // Not the end of a job but EARD set a frequency
+
+    /* --- Setting governor --- */
+
+    governor_toint(cgov, &gov);
+
+    verbose(VCONF, "[%lu/%lu] Restoring to governor `%s` the CPU set in the mask...",
+        app->app.job.id, app->app.job.step_id, cgov);
+    verbose_affinity_mask(VCONF + 1, &app->plug_mask, man->cpu.devs_count);
+
+    mgt_cpufreq_governor_set_mask(no_ctx, gov, app->plug_mask);
+
+    if (strcmp(cgov, "userspace") == 0) change_gov = 1;
+
+    /* ------------------------ */
+
+    /* We'll restore the P-State we found before job had started. */
+    mgt_cpufreq_get_index(no_ctx, app->current_freq, &rest_pstate, 1);
+
+  }
+
+  /* If the governor restored is `userspace`, we must manually set a CPU freq. */
+  if (change_gov) {
+
+    if (idle) {
+
+      verbose(VCONF, "(Idle) Restoring to all CPUs pstate %u all_cpus", rest_pstate);
+
+      mgt_cpufreq_set_current(no_ctx, rest_pstate, all_cpus);
+
+    } else {
+
+      verbose(VCONF, "[%lu/%lu] Restoring to CPU pstate %u with mask",
+              app->app.job.id, app->app.job.step_id, rest_pstate);
+      verbose_affinity_mask(VCONF + 1, &app->plug_mask, man->cpu.devs_count);
+
+      fill_cpufreq_list(&app->plug_mask, man->cpu.devs_count, rest_pstate,
+                        ps_nothing, powermon_restore_cpufreq_list);
+
+      mgt_cpufreq_set_current_list(no_ctx, powermon_restore_cpufreq_list);
+    }
+  }
+
+  /* If the priority module is enabled, we restore the priority of the CPUs of the job. */
+  if (mgt_cpuprio_is_enabled()) {
+    for (int i = 0; i < man->pri.devs_count; i++) {
+      // If the CPU is not in the job mask, we won't touch the priority (PRIO_SAME).
+      app->prio_idx_list[i] = (CPU_ISSET(i, &app->plug_mask)) ? app->prio_idx_list[i] : PRIO_SAME; // TODO: Thread-save?
+    }
+
+    if (VERB_ON(VPMON_DEBUG)) {
+      verbose(VPMON_DEBUG, "Restoring priority list...");
+      mgt_cpuprio_data_print((cpuprio_t *) man->pri.list1, app->prio_idx_list, verb_channel);    
+    }
+    if (state_fail(mgt_cpuprio_set_current_list(app->prio_idx_list))) {
+      error("Restoring the priority list for job %lu/%lu.", app->app.job.id, app->app.job.step_id);
+    }
+
+    if (idle) {
+      verbose(VPMON_DEBUG, "Disabling priority system...");
+      if (state_fail(mgt_cpuprio_disable())) {
+        error("Disabling priority system.");
+      }
+    }
+  }
+
+#if USE_GPUS
+  /* GPUs */
+  if (idle && my_node_conf->gpu_def_freq) { /* EARD is not aware of the GPUs used */
+    ulong idle_gpu_freq;
+    /* We assume all the gpus are the same */
+    gpu_mgr_get_min(0, &idle_gpu_freq);
+    verbose(VCONF, "Restoring to GPU freq %.2f GHz", (float)idle_gpu_freq/1000000.0);
+    gpu_mgr_set_freq_all_gpus(idle_gpu_freq);
+  }
+#endif
+
+  if (idle) {
+    /* IMC freq : It's already done at init, but it's included here for simplicity*/
+    verbose(VCONF, "Restoring IMC freq");
+    if (node_desc.vendor == VENDOR_INTEL) {
+      mgt_imcfreq_set_auto(no_ctx);
+    } else if (node_desc.vendor == VENDOR_AMD) {
+      mgt_imcfreq_set_current(no_ctx, 0, all_sockets);
+    }
+  }
 #endif // POWERMON_RESTORE
 }
 #endif // !NAIVE_SETTINGS_SAVE
@@ -3091,7 +3111,7 @@ static state_t restore_global_cpu_settings(powermon_app_t *powermon_app)
 
                 /* We'll set what it is configured in the ear.conf (idle governor and P-State). */
                 cgov        = my_node_conf->idle_governor;
-                rest_pstate = ear_max(my_node_conf->idle_pstate, man->cpu.list1_count - 1);
+                rest_pstate = ear_min(my_node_conf->idle_pstate, man->cpu.list1_count - 1);
 
             } else {
                 /* We'll restore the P-State we found before job had started. */
@@ -3159,7 +3179,7 @@ static state_t restore_global_cpu_settings(powermon_app_t *powermon_app)
 #endif
 
         if (powermon_is_idle()) {
-            /* IMC freq : It's already done at init, but it's included here for simplicity*/
+            /* IMC freq : It's already done at init, but it's included here for simplicity */
             verbose(VCONF, "Restoring IMC freq");
             if (node_desc.vendor == VENDOR_INTEL) {
                 mgt_imcfreq_set_auto(no_ctx);
@@ -3174,4 +3194,4 @@ static state_t restore_global_cpu_settings(powermon_app_t *powermon_app)
 
     return EAR_SUCCESS;
 }
-#endif
+#endif // NAIVE_SETTINGS_SAVE

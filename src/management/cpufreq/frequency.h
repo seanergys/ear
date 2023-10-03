@@ -29,6 +29,23 @@
 // adapt and test the old code. The old frequency API without cpufreq is in
 // recovery folder. Take a look into cpufreq.h to learn about compiling options.
 
+
+#define check_usrspace_gov_set(st, vrb_lvl) \
+    if (state_fail(st))\
+    {\
+       if (state_is(st, EAR_WARNING))\
+       {\
+            verbose(vrb_lvl, state_msg);\
+       } else if (state_is(st, EAR_NOT_INITIALIZED))\
+       {\
+           verbose(vrb_lvl, "%sERROR%s %s", COL_RED, COL_CLR, state_msg);\
+       } else\
+       {\
+            verbose(vrb_lvl, "%sERROR%s Setting userspace governor.", COL_RED, COL_CLR);\
+       }\
+    }
+
+
 typedef struct governor {
 	char name[128];
 	ulong max_f;
@@ -71,7 +88,7 @@ uint frequency_freq_to_pstate_list(ulong freq_khz, ulong *freq_list, uint pstate
 // Sets the governor performance (privileged).
 void frequency_set_performance_governor_all_cpus();
 // Sets the governor userspace (privileged).
-void frequency_set_userspace_governor_all_cpus();
+state_t frequency_set_userspace_governor_all_cpus();
 // Given a frequency returns if is valid.
 int frequency_is_valid_frequency(ulong freq_khz);
 // Given a P_STATE returns if is valid.

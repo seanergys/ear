@@ -29,6 +29,7 @@
 #include <common/output/verbose.h>
 #include <management/cpufreq/frequency.h>
 #include <common/states.h>
+#include <daemon/power_monitor.h>
 #include <daemon/powercap/powercap.h>
 #include <common/types/pc_app_info.h>
 
@@ -60,14 +61,6 @@ uint compute_power_to_release(node_powercap_opt_t *pc_opt,uint current)
 	return pc_opt->th_release;
 }
 
-uint limit_max_power(node_powercap_opt_t *pc_opt,uint extra)
-{
-	uint current=pc_opt->last_t1_allocated;
-	if ((current+extra) > pc_opt->max_node_power){
-		extra=pc_opt->max_node_power-pc_opt->last_t1_allocated;
-	}
-	return extra;
-}
 
 uint compute_extra_gpu_power(uint current,uint diff,uint target)
 {
@@ -105,7 +98,7 @@ uint ok_power(node_powercap_opt_t *pc_opt,uint current)
 
 int is_powercap_set(node_powercap_opt_t *pc_opt)
 { 
-  /* 0 means unlimited */
+  /* 0 means disabled*/
   /* we are not checking hw configuration in this function */
   return (pc_opt->current_pc!=0);
 }

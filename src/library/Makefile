@@ -1,25 +1,30 @@
 # If USER_TEST is set to 1, any user can execute the hacks with the library.
-CFLAGS  = -fPIC -O0 -I$(SRCDIR) -DUSER_TEST=0 $(CONSTANTS) 
+CFLAGS  = -fPIC  -I$(SRCDIR) -DUSER_TEST=0 $(CONSTANTS) -g
 LDFLAGS = -shared -ldl -lm -lpthread -rdynamic -pthread
 
 
 ifeq ($(FEAT_MPI_API), 0)
 LIBCC       = $(CC)
 LIBCC_FLAGS = $(CC_FLAGS)
-LIB_CFLAGS  = -DMPI=0 -DNODE_LB=1 -DSINGLE_CONNECTION=0 -DMPI_OPTIMIZED=1
+LIB_CFLAGS  = -DMPI=0 -DNODE_LB=1 -DSINGLE_CONNECTION=0 -DMPI_OPTIMIZED=0
 MPI_VERSION = gen
 else
 LIBCC       = $(MPICC)
 LIBCC_FLAGS = $(MPICC_FLAGS)
-LIB_CFLAGS  = $(MPI_CFLAGS) -DMPI=1 -DNODE_LB=1 -DSINGLE_CONNECTION=0 -DMPI_OPTIMIZED=1
+LIB_CFLAGS  = $(MPI_CFLAGS) -DMPI=1 -DNODE_LB=1 -DSINGLE_CONNECTION=0 -DMPI_OPTIMIZED=0
+CFLAGS     += -DEAR_DEF_TIME_GUIDED=0 -DMPI_SAMPLING=1 -DMPI_STATS=1
+
+## MPI_SAMPLING can be used to do an MPI statistic sampling
+## MIX_RPM implements a blocking operation to read in rpcs
 endif
 
 ifeq ($(FEAT_RESEARCH), 1)
 	CFLAGS +=  \
 			  -DEAR_DEF_TIME_GUIDED=0
-else
-	CFLAGS +=  \
-			  -DEAR_DEF_TIME_GUIDED=0
+endif
+
+ifeq ($(FEAT_EAR_OFF), 1)
+	CFLAGS +=  -DEAR_OFF=1
 endif
 
 

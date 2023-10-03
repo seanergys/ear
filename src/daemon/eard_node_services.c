@@ -274,13 +274,13 @@ int services_mgt_cpufreq(eard_head_t *head, int req_fd, int ack_fd)
         }
     break;
     case RPC_MGT_CPUFREQ_SET_GOVERNOR_MASK:
-        size = sizeof(uint) + sizeof(cpu_set_t);
+        size = sizeof(cpu_set_t) + sizeof(uint);
         if (state_fail(s = eard_rpc_read_pending(req_fd, big_chunk1, head->size, size))) {
             serror(Rpcerr.pending);
         }
         if (state_ok(s)) {
-            uint governor = *((uint *) &big_chunk1[0]);
-            cpu_set_t mask = *((cpu_set_t *) &big_chunk1[sizeof(uint)]);
+            cpu_set_t mask = *((cpu_set_t *) &big_chunk1[0]);
+            uint governor  = *((uint *) &big_chunk1[sizeof(cpu_set_t)]);
             if (state_fail(s = mgt_cpufreq_governor_set_mask(no_ctx, governor, mask))) {
                 serror("When setting CPU governors");
             }
@@ -354,7 +354,6 @@ int services_mgt_cpuprio(eard_head_t *head, int fd_req, int fd_ack)
         ret_s    = mgt_cpuprio_get_current_list((uint *) man->pri.list2);
         ret_data = (char *) man->pri.list2;
         ret_size = sizeof(uint) * man->pri.list2_count;
-        ret_size = sizeof(uint) * man->pri.devs_count;
     break;
     case RPC_MGT_PRIO_SET_CURRENT_LIST:
         if (state_fail(ret_s = eard_rpc_read_pending(fd_req, man->pri.list2, rpc_size, 0))) {
