@@ -30,7 +30,6 @@
 #include <common/hardware/topology.h>
 #include <common/output/verbose.h>
 #include <common/environment.h>
-#include <common/types/projection.h>
 
 #include <management/cpufreq/frequency.h>
 
@@ -265,7 +264,7 @@ state_t policy_end(polctx_t *c)
 state_t policy_loop_init(polctx_t *c, loop_id_t *l)
 {
     if (c != NULL) {
-        projection_reset(optimize_num_pstates);
+        // projection_reset(optimize_num_pstates);
         int_reset_data();
 
         return EAR_SUCCESS;

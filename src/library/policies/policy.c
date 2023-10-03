@@ -60,7 +60,6 @@
 #define POLICY_INFO   2
 #define POLICY_PHASES 2
 #define POLICY_GPU    2
-#define POLICY_SAVINGS_LVL 2
 
 #define DEF_USE_CPUPRIO 0
 
@@ -76,11 +75,6 @@ extern report_id_t rep_id;
 
 extern sem_t *lib_shared_lock_sem;
 
-static float time_policy_penalty = 0.0; 
-static float power_policy_saving = 0.0;
-static float energy_policy_saving = 0.0;
-static timestamp policy_saving_time_start;
-static uint policy_saving_updated = 0;
 
 #define REPORT_PHASE(phase) \
   if (report_earl_events){ \
@@ -95,11 +89,6 @@ static uint policy_saving_updated = 0;
     report_events(&rep_id, &curr_policy_event, 1); \
   }
 
-#define REPORT_SAVING(type, value) \
-  if (report_earl_events){ \
-    fill_event(&curr_policy_event, type, value); \
-    report_events(&rep_id, &curr_policy_event, 1); \
-  }
 
 // TODO: Can below macro be defined in a more coherent file?
 #define GHZ_TO_KHZ 1000000.0
@@ -392,129 +381,6 @@ state_t policy_load(char *obj_path, polsym_t *psyms)
 }
 #endif
 
-static ulong *policy_savings_comp_freqs = NULL;
-static uint must_compute_policy_savings(signature_t *ns, node_freqs_t *freqs, node_freq_domain_t *dom, uint *savings)
-{
-  ulong *cpu_f = freqs->cpu_freq;
-  ulong fref = frequency_get_nominal_freq();
-  ulong at_fref = 1;
-  uint limit = ((dom->cpu == POL_GRAIN_CORE)?lib_shared_region->num_processes:1);
-
-  *savings = 1;
-
-
-  /* if we run at nominal, there is no savings */
-
-  for (uint i = 0; (i < limit) && at_fref; i++){
-    at_fref = at_fref && (cpu_f[i] == fref);
-  }
-
-  verbose_master(POLICY_SAVINGS_LVL,"Policy savins[%s]: running at nominal? at_ref %lu f[0] != %lu", node_name, at_fref, fref);
-
-  if (at_fref){
-    *savings = 0;
-    return 0;
-  }
-
-  /* If the list of CPU freqs is different than last, we must compute savings */
-  for (uint i = 0; i < limit; i++){
-    if (cpu_f[i] != policy_savings_comp_freqs[i]){
-      verbose_master(POLICY_SAVINGS_LVL,"Policy savins[%s]: f[%u] %lu != f[%u] %lu", node_name, i, cpu_f[i], i, policy_savings_comp_freqs[i]);
-      return 1;
-    }
-  }
-  
-  return 0;
-}
-
-static void compute_policy_savings(signature_t *ns, node_freqs_t *freqs, node_freq_domain_t *dom)
-{
-  ulong *cpu_f = freqs->cpu_freq;
-  double tref, pref;
-  double tnext = 0, pnext = 0;
-  double renergy, nenergy;
-  ulong cpu_f_avg = 0;
-  uint sav;
-  ulong nominal = frequency_get_nominal_freq();
-  
-  if (policy_savings_comp_freqs == NULL){
-    policy_savings_comp_freqs = (ulong *)calloc(MAX_CPUS_SUPPORTED, sizeof(ulong));
-  }
-
-  if (!must_compute_policy_savings(ns, freqs, dom, &sav)){
-    if (!sav) {
-      /* We are running at nominal */
-      energy_policy_saving = 0;
-      power_policy_saving  = 0;
-      time_policy_penalty  = 0;
-      timestamp_getfast(&policy_saving_time_start);
-      policy_saving_updated = 1;
-      verbose_master(POLICY_SAVINGS_LVL, "Policy savins[%s]: Reset of policy savings", node_name);
-    }
-    verbose_master(POLICY_SAVINGS_LVL, "Policy savins[%s]: Not applied", node_name);
-    return;
-  }
-
-
-  memcpy(policy_savings_comp_freqs, cpu_f, sizeof(ulong)* MAX_CPUS_SUPPORTED);
-  signature_print_simple_fd(verb_channel, ns);
-
-
-
-  uint limit = ((dom->cpu == POL_GRAIN_CORE)?lib_shared_region->num_processes:1);
-  uint procs = 0;
-
-
-  /* Time reference and power reference is always computed based on the nominal CPU freq 
-   * IF the default CPU freq is not the nominal (min_time for example), we project data
-   * for the nominal CPU frequency
-   */
-  tref = get_time_nominal(ns);
-  pref = get_power_nominal(ns);
- 
-  /* IF we are selecting CPU freqs per process, we aggregate and compute the average */
-  for (uint p = 0; p < limit; p++){
-    if (cpu_f[p] <= nominal){
-        tnext += get_time_projected(ns, cpu_f[p]);
-        pnext += get_power_projected(ns, cpu_f[p]);
-        cpu_f_avg += cpu_f[p];
-        procs++;
-      }
-  }
-
-  if (!procs) return;
-
-  tnext = tnext / procs;
-  pnext = pnext / procs;
-  cpu_f_avg = cpu_f_avg / procs;
-
-
-  /* renergy = energy at the nominal , nenergy = energy with policy selected CPu freq */
-  renergy = tref  * pref;
-  nenergy = tnext * pnext;
-
-
-  if ((renergy == 0) || (nenergy == renergy)) {
-    return;
-  }
-
-  /* These estimated savings are used in policy_ok, they are constant until we apply 
-   * again the node_policy 
-   */
-
-  if ((pref == 0) || (tref == 0)) return;
-
-  energy_policy_saving = (float)((renergy - nenergy)/renergy);
-  if (pref != pnext) power_policy_saving = (float)((pref - pnext)/pref);
-  if (tref != tnext) time_policy_penalty = (float)((tref - tnext)/tref);
-
-  timestamp_getfast(&policy_saving_time_start);
-  policy_saving_updated = 1;
-
-  verbose_master(POLICY_SAVINGS_LVL, "Policy savins[%s]: energy/power/time %f/%f/%f CPU freq ref %lu, CPU freq next %lu, Ref data (time %.3lf power %.1lf), New data (time %.3lf power %.1lf)", 
-      node_name, energy_policy_saving, power_policy_saving, time_policy_penalty, ns->def_f, cpu_f_avg, tref, pref, tnext, pnext);
-   
-}
 
 
 void fill_cpus_out_of_cgroup(uint exc)
@@ -726,7 +592,6 @@ state_t policy_init()
     if (cuse_energy_models != NULL) {
         use_energy_models = atoi(cuse_energy_models);
     }
-    verbose_master(POLICY_INFO, "%sPOLICY%s Using energy models: %u", COL_BLU, COL_CLR, use_energy_models);
 
     if (cfake_io_phase != NULL) fake_io_phase = atoi(cfake_io_phase);
     if (cfake_bw_phase != NULL) fake_bw_phase = atoi(cfake_bw_phase);
@@ -1352,7 +1217,7 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
         /* CPU specific function is applied here */
         st = polsyms_fun.node_policy_apply(c, &node_sig, freqs, &cpu_ready);
 
-        if (cpu_ready) compute_policy_savings(&node_sig, freqs, &freqs_domain);
+        // if (cpu_ready) compute_policy_savings(&node_sig, freqs, &freqs_domain);
 
         /* Depending on the policy status and granularity we adapt the CPU freq selection */
         if (is_all_ready() || is_try_again())
@@ -1454,80 +1319,6 @@ state_t policy_set_default_freq(signature_t *sig)
     }
 }
 
-static void compute_energy_savings(signature_t *curr,signature_t *prev)
-{
-	// float performance_prev, performance_curr;
-	float psaving = 0;
-	float tpenalty = 0;
-	float esaving = 0;
-  ullong saving_elapsed;
-#if 0
-	double tflops;
-#endif
-//
-	
-	sig_ext_t *sig_ext = curr->sig_ext;
-
-  if (energy_policy_saving == 0) return;
-
-  #if 0
-
-	if ((prev->Gflops == 0) || (curr->Gflops == 0)) {
-		esaving = 0;
-		return;
-	}
-
-	/* The Energy saving is the ration bettween GFlops/W */
-	performance_prev = prev->Gflops/prev->DC_power;
-	performance_curr = curr->Gflops/curr->DC_power;
-
-
-// #if 0
-    if (state_fail(compute_job_node_gflops(sig_shared_region,
-                    lib_shared_region->num_processes, &tflops))) {
-        verbose(3, "%sWARNING%s Error on computing job's node GFLOP/s rate: %s",
-                COL_RED, COL_CLR, state_msg);
-    }
-
-    verbose_master(2, "MR[%d] Curr performance %.4f (%.2f/%.2f) Last performance %.4f (%.2f/%.2f)", masters_info.my_master_rank, \
-            performance_curr, curr->Gflops, curr->DC_power, \
-            performance_prev, prev->Gflops, prev->DC_power); 
-// #endif
-
-	esaving  = ((performance_curr - performance_prev) / performance_prev) * 100;
-	psaving  = ((prev->DC_power - curr->DC_power) / prev->DC_power ) * 100;
-	tpenalty = ((prev->Gflops - curr->Gflops) / prev->Gflops) * 100;
-  #endif
-
-  /* These policy savings are estimations based on the energy models */
-
-  tpenalty = time_policy_penalty  * 100;
-  esaving  = energy_policy_saving * 100;
-  psaving  = power_policy_saving  * 100;
-
-
-
-
-	verbose_master(POLICY_SAVINGS_LVL,"MR[%d]: Esaving %.2f, Psaving %.2f, Tpenalty %.2f, Elapsed %.2f",
-            masters_info.my_master_rank, esaving, psaving, tpenalty, sig_ext->elapsed);
-  if (policy_saving_updated){
-    saving_elapsed = timestamp_diffnow(&policy_saving_time_start, TIME_SECS);
-    policy_saving_updated = 0;
-  }else{
-    saving_elapsed = (ullong) sig_ext->elapsed;
-  }
-  verbose_master(POLICY_SAVINGS_LVL, "Policy savins[%s]: Using elapsed time %llu", node_name, saving_elapsed);
-
-
-	sig_ext->saving   = esaving * saving_elapsed;
-	sig_ext->psaving  = psaving * saving_elapsed;
-	sig_ext->tpenalty = tpenalty * saving_elapsed;
-
-    REPORT_SAVING(ENERGY_SAVING, (llong) esaving);
-    REPORT_SAVING(POWER_SAVING,  (llong) psaving);
-  //REPORT_SAVING(PERF_PENALTY , (ulong)tpenalty);
-
-}
 
 /* Uncomment this option to use energy savings estimations to decide if policy is ok */
 //#define USE_ENERGY_SAVING
@@ -1622,7 +1413,8 @@ state_t policy_ok(signature_t *curr, signature_t *prev, int *ok)
         verbose(2, "%sPOLICY OK%s The policy plug-in does not implement this method.", COL_GRE, COL_CLR);
     }
 
-    /* If signatures are ok, not different phase, we compute the energy savings estimations */
+    /* If signatures are ok, not different phase, we compute the energy savings estimations
+     * Update: Moved to each policy plug-in
     if (!is_monitoring && *ok) {
 
         compute_energy_savings(curr, prev);
@@ -1636,6 +1428,7 @@ state_t policy_ok(signature_t *curr, signature_t *prev, int *ok)
         }
         #endif
     }
+    */
 
     // We finally report the OPT_ACCURACY
     uint opt_acc_val = (*ok) ? OPT_OK : OPT_NOT_OK;
