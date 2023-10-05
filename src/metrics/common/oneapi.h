@@ -114,11 +114,13 @@ typedef struct ze_handlers_s {
     ze_driver_handle_t       driver;
     ze_device_handle_t       device; //core handle
     ze_device_properties_t   device_props;
+    ullong                   uuid; //auxiliar
     zes_device_handle_t      sdevice; //sysman handle
     zes_device_properties_t  sdevice_props;
     zes_pwr_handle_t        *spowers;
     zes_power_properties_t  *spowers_props;
     uint                     spowers_count;
+    zes_pwr_handle_t         scard;
     zes_freq_handle_t       *sfreqs;
     zes_freq_properties_t   *sfreqs_props;
     uint                     sfreqs_count;
@@ -130,7 +132,7 @@ typedef struct ze_handlers_s {
     uint                     stemps_count;
     zes_psu_handle_t        *spsus;
     uint                     spsus_count;
-    ullong                   serial;
+    ullong                   serial; //auxiliar
 } ze_handlers_t;
 
 typedef struct ze_s {

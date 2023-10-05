@@ -38,8 +38,8 @@ static ze_t               ze;
 #define ret_fail(function) \
     if ((z = function) != ZE_RESULT_SUCCESS) { \
         debug("Failed " #function ": %s (0x%x)", oneapi_strerror(z), z); \
-        return EAR_ERROR; \
     }
+        //return EAR_ERROR; \
 
 static state_t get_available_watts()
 {
@@ -50,24 +50,16 @@ static state_t get_available_watts()
     uint                        d;
     ze_result_t                 z;
 
-    power_max_default = calloc(devs_count, sizeof(uint));
+    power_max_default = calloc(devs_count, sizeof(ulong));
     // Retrieving the domains
     for (dv = 0; dv < devs_count; ++dv){
         for (d = 0; d < devs[dv].spowers_count; ++d) {
-            ret_fail(ze.sPowerGetLimits(devs[dv].spowers[d], &ps, &pb, &pp));
+            if (ze.sPowerGetLimits(devs[dv].spowers[d], &ps, &pb, &pp) != ZE_RESULT_SUCCESS) {
+                continue;
+            }
             power_max_default[dv] = ((ulong) ps.power) / 1000LU; // mW
-            debug("-- DEVICE%d POWER DOMAIN%d ---------------", dv, d);
-            debug("defaultLimit: %u", props.defaultLimit);
-            debug("maxLimit: %u", props.maxLimit);
-            debug("minLimit: %u", props.minLimit);
-            debug("sustained.enabled: %u", ps.enabled);
-            debug("sustained.power: %u", ps.power);
-            debug("sustained.interval: %u", ps.interval);
-            debug("burst.enabled: %u", pb.enabled);
-            debug("burst.power: %u", pb.power);
-            debug("peak powerAC: %u", pp.powerAC);
-            debug("peak powerDC: %u", pp.powerDC);
-            debug("----------------------------------------");
+            // Take into the account ps.interval, pb.enabled, pb.power, pp.powerAC and pp.powerDC in future
+            debug("DEV%d POWER DOM%d: max limit %d mW, enabled %d", dv, d, ps.power, ps.enabled);
         }
     }
     return EAR_SUCCESS;
@@ -86,15 +78,17 @@ static state_t get_available_frequencies()
     freqs_avail_count = calloc(devs_count, sizeof(uint));
     freqs_avail_list  = calloc(devs_count, sizeof(ulong *));
     freqs_default     = calloc(devs_count, sizeof(ulong));
-    // Retrieving the domains
+    // Iterating over devices
     for (dv = 0; dv < devs_count; ++dv) {
         // Iterating over domains
         for (d = 0; d < devs[dv].sfreqs_count; ++d) {
-            // If is not GPU, is not interesting
+            // If is not GPU, is not interesting. Other types are MEMORY and MEDIA.
+            // Multiple GPU domains are possible... And this is weird.
             if (devs[dv].sfreqs_props[d].type != ZES_FREQ_DOMAIN_GPU) {
                 continue;
             }
-            // Saving the default frequencies
+            // Saving the default frequencies. At least from the last GPU domain read.
+            // This can be a problem? We have no experience.
             freqs_avail_count[dv] = 0;
             ret_fail(ze.sFrequencyGetAvailableClocks(devs[dv].sfreqs[d], &freqs_avail_count[dv], NULL));
             freqs_avail_list[dv] = calloc(freqs_avail_count[dv], sizeof(ulong));
@@ -105,11 +99,9 @@ static state_t get_available_frequencies()
             }
             ret_fail(ze.sFrequencyGetRange(devs[dv].sfreqs[d], &range));
             freqs_default[dv] = (ulong) range.max * 1000LU; //MHz
-            debug("-- DEVICE%d FREQS DOMAIN%d ---------------", dv, d);
-            debug("ps0: %lu KHz", freqs_avail_list[dv][0]);
-            debug("ps%d: %lu KHz", freqs_avail_count[dv]-1, freqs_avail_list[dv][freqs_avail_count[dv]-1]);
-            debug("ps_default: %lu KHz", freqs_default[dv]);
-            debug("----------------------------------------");
+
+            debug("DEV%d FREQ DOM%d: %lu to %lu KHz (%u P_STATEs)", dv, d,
+                   freqs_avail_list[dv][0], freqs_avail_list[dv][freqs_avail_count[dv]-1], freqs_avail_count[dv]-1);
         }
     }
     return EAR_SUCCESS;
@@ -128,6 +120,7 @@ void mgt_gpu_oneapi_load(mgt_gpu_ops_t *ops)
     // Get static values
     get_available_frequencies();
     get_available_watts();
+    debug("----------------------------------------");
     // Set always
     apis_set(ops->init                  , mgt_gpu_oneapi_init);
     apis_set(ops->dispose               , mgt_gpu_oneapi_dispose);
