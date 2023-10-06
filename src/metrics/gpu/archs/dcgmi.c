@@ -26,39 +26,17 @@ static uint events_count  = 0;
 static uint gpus_count    = 0;
 //static uint *ev_list;
 
-typedef struct dcgmi_ev_conf{
+typedef struct dcgmi_ev_conf {
   char group;
   uint field;
-  }dcgmi_ev_conf_t;
+  } dcgmi_ev_conf_t;
  
-/* These data could be gather running dcgmi profile -l */ 
-/* ordered based on ev number */
-/* From DCGMI doc: A metric from each letter group can be collected without multiplexing. 
+/* These data could be gather running dcgmi profile -l ordered based on ev number
+ * From DCGMI doc: A metric from each letter group can be collected without multiplexing. 
  * A metric from A.1 can be collected with another metric from A.1 without multiplexing. 
  * A metric from A.1 will be multiplexed with another metric from A.2 or A.3. 
- * Metrics from different letter groups can be combined for concurrent collection (without multiplexing) */
-
-/*
- * dcgmi profile -l
- * +----------------+----------+------------------------------------------------------+
-| Group.Subgroup | Field ID | Field Tag                                            |
-+----------------+----------+------------------------------------------------------+
-| A.1            | 1002     | sm_active                                            |
-| A.1            | 1003     | sm_occupancy                                         |
-| A.1            | 1004     | tensor_active                                        |
-| A.1            | 1006     | fp64_active                                          |
-| A.2            | 1008     | fp16_active                                          |
-| A.2            | 1013     | tensor_imma_active                                   |
-| A.2            | 1014     | tensor_hmma_active                                   |
-| A.3            | 1007     | fp32_active                                          |
-| B.0            | 1005     | dram_active                                          |
-| C.0            | 1009     | pcie_tx_bytes                                        |
-| C.0            | 1010     | pcie_rx_bytes                                        |
-| D.0            | 1001     | gr_engine_active                                     |
-| E.0            | 1011     | nvlink_tx_bytes                                      |
-| E.0            | 1012     | nvlink_rx_bytes                                      |
-+----------------+----------+------------------------------------------------------+
-*/
+ * Metrics from different letter groups can be combined for concurrent collection (without multiplexing)
+ */
 
 #if 0
 static dcgmi_ev_conf_t dcgmi_ev_confs[dcgmi_num_events]={
@@ -79,7 +57,9 @@ static dcgmi_ev_conf_t dcgmi_ev_confs[dcgmi_num_events]={
 };
 #endif
 
+
 static uint dcgmi_ev_type[dcgmi_num_events]={RATIO,RATIO,RATIO,RATIO,RATIO,RATIO,RATIO,RATIO,ACCUM, ACCUM,ACCUM,ACCUM,RATIO,RATIO};
+
 
 static char *dcgmi_ev_names[dcgmi_num_events]={
   "gr_engine_active", /* 1001 */
@@ -97,6 +77,7 @@ static char *dcgmi_ev_names[dcgmi_num_events]={
   "tensor_imma_active",
   "tensor_hmma_active" /* 1014 */
 };
+
 
 state_t gpu_dcgmi_init(char *events, uint events_count_in)
 {
@@ -126,6 +107,7 @@ state_t gpu_dcgmi_init(char *events, uint events_count_in)
     events_count = events_count_in;
     return EAR_SUCCESS;
 }
+
 
 state_t gpu_dcgmi_read(dcgmi_t *d)
 {

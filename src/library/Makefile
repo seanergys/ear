@@ -38,6 +38,8 @@ endif
 
 ifeq ($(DCGMI), 1)
 CFLAGS += -DDCGMI=1
+else
+CFLAGS += -DDCGMI=0
 endif
 
 ifeq ($(DLB), 1)
@@ -86,7 +88,8 @@ core_OBJS = \
     common/library_shared_data.o \
     common/utils.o \
     metrics/metrics.o \
-	metrics/energy_node_lib.o \
+    metrics/energy_node_lib.o \
+    metrics/dcgmi_lib.o \
     models/models.o \
     models/cpu_power_model.o \
     models/energy_model.o \
