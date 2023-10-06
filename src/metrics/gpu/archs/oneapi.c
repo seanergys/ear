@@ -101,31 +101,38 @@ state_t gpu_oneapi_count_devices(ctx_t *c, uint *dev_count)
 
 static state_t oneapi_read_power(int dv, gpu_t *data)
 {
-    zes_pwr_handle_t           card;
 	zes_power_energy_counter_t info;
 	uint                       d;
 	ze_result_t                z;
+    double                     joules;
 
     // Retrieving the domains
     data->energy_j = 0.0;
     // It seems CARD matches DOMAIN0 (all the PCI CARD)
-    #if SHOW_DEBUGS
-    if_fail(ze.sDeviceGetCardPowerDomain(devs[dv].sdevice, &devs[dv].scard), return EAR_SUCCESS);
-    if_fail(ze.sPowerGetEnergyCounter(card, &info), return EAR_SUCCESS);
-    debug("DEV%d CARDP DOMAIN%d: %020lu uJ at %lu uS", dv, 0, info.energy, info.timestamp);
-    #endif
-    if (ze.sDeviceGetCardPowerDomain(devs[dv].sdevice, &devs[dv].scard) == ZE_RESULT_SUCCESS) {
-        if (ze.sPowerGetEnergyCounter(card, &info) == ZE_RESULT_SUCCESS) {
+    if (devs[dv].scard != NULL) {
+        if (ze.sPowerGetEnergyCounter(devs[dv].scard, &info) == ZE_RESULT_SUCCESS) {
+            debug("DEV%d CARDP DOMAIN%d: %020lu uJ at %lu uS", dv, 0, info.energy, info.timestamp);
             data->energy_j = ((double) info.energy) / 1000000.0;
+            #if !SHOW_DEBUGS
+            return EAR_SUCCESS;
+            #endif
         }
     }
     // If card doesn't exists
 	for (d = 0; d < devs[dv].spowers_count; ++d) {
 		if_fail(ze.sPowerGetEnergyCounter(devs[dv].spowers[d], &info), continue);
         debug("DEV%d POWER DOMAIN%d: %020lu uJ at %lu uS (sub %d)", dv, d, info.energy, info.timestamp, devs[dv].spowers_props[d].subdeviceId);
-        // DOMAIN0 seems to be the whole GPU
-		data->energy_j = ((double) info.energy) / 1000000.0;
-        return EAR_SUCCESS;
+        // SUBDEVICE -1 seems to be the whole GPU, but if not, we are
+        // taking the greatest joules value
+		joules = ((double) info.energy) / 1000000.0;
+        if (joules > data->energy_j) {
+    		data->energy_j = joules;
+        }
+        #if !SHOW_DEBUGS
+        if (devs[dv].spowers_props[d].subdeviceId == -1) {
+            return EAR_SUCCESS;
+        }
+        #endif
 	}
 	return EAR_SUCCESS;
 }
