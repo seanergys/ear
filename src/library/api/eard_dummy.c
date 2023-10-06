@@ -322,9 +322,14 @@ state_t eard_dummy_frequency_list(char *ear_tmp, uint ID)
 				int size = ps * sizeof(ulong);
 				frequencies = (ulong *) malloc(size);
 				check_null(frequencies, "Error allocating memory for frequencies %s", " ");	
-				topology_freq_getbase(0, &freq_base);
+
+				cfb_t             bf;
+    		cpufreq_base_init(NULL, &bf);
+
+    		freq_base = (ulong) bf.frequency;
+
 				frequencies[0] = freq_base;
-				//verbose_master(1,"Using freq_base %lu", freq_base);
+				// verbose_master(1,"Using freq_base %lu", freq_base);
 
 				get_frequencies_path(ear_tmp, path);
 				struct stat buffer;
