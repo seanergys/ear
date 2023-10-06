@@ -137,6 +137,32 @@ static void print_device_info(int h)
     debug("#domains PFET: %u/%u/%u/%u", hs[hs_count].spowers_count, hs[hs_count].sfreqs_count, hs[hs_count].sengines_count, hs[hs_count].stemps_count);
 }
 
+// Fowler-Noll-Vo hash function
+static uint fnv1a(char c)
+{
+    uint hash0 = 0;
+    uint hash1 = 0;
+    hash0 = 16777619 ^ (uint) c;
+    hash1 += (hash0 <<  1);
+    hash1 += (hash0 <<  4);
+    hash1 += (hash0 <<  7);
+    hash1 += (hash0 <<  8);
+    hash1 += (hash0 << 24);
+    return hash1 % 2147483647;
+}
+
+static ullong hash(char *string)
+{
+    uint length = ZE_MAX_DEVICE_UUID_SIZE;
+    uint hash = 0;
+    uint i = 0;
+
+    while (i++ < ZE_MAX_DEVICE_UUID_SIZE) {
+        hash += fnv1a(string[i]);
+    }
+    return (ullong) hash;
+}
+
 static state_t static_init()
 {
     ze_driver_handle_t    *drivers;
@@ -227,8 +253,7 @@ static state_t static_init()
             // Card power domain
             ze.sDeviceGetCardPowerDomain(devices[dv], &hs[hs_count].scard);
             // Getting the serial
-            hs[hs_count].uuid = 0LLU;
-            hs[hs_count].uuid = *((ullong *) &hs[dv].device_props.uuid.id[0]);
+            hs[hs_count].uuid = hash(hs[dv].device_props.uuid.id);
             // Last printings
             print_device_info(dv);
 

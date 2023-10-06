@@ -33,8 +33,6 @@ static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static gpu_t          *pool; // change to sysmans_pool
 static timestamp_t     pool_time1;
 static timestamp_t     pool_time2;
-static ullong         *eng_util;
-static ullong         *eng_time;
 static suscription_t  *sus;
 static uint            devs_count;
 static ze_handlers_t  *devs;
@@ -75,8 +73,6 @@ state_t gpu_oneapi_init(ctx_t *c)
     #if 1
 	// Monitor suscription
 	pool     = calloc(devs_count, sizeof(gpu_t));
-    eng_util = calloc(devs_count, sizeof(gpu_t)); //pool helper
-    eng_time = calloc(devs_count, sizeof(gpu_t)); //pool helper
 	// Initializing monitoring thread suscription.
 	sus = suscription();
 	sus->call_main  = gpu_oneapi_pool;
@@ -112,7 +108,18 @@ static state_t oneapi_read_power(int dv, gpu_t *data)
 
     // Retrieving the domains
     data->energy_j = 0.0;
-
+    // It seems CARD matches DOMAIN0 (all the PCI CARD)
+    #if SHOW_DEBUGS
+    if_fail(ze.sDeviceGetCardPowerDomain(devs[dv].sdevice, &devs[dv].scard), return EAR_SUCCESS);
+    if_fail(ze.sPowerGetEnergyCounter(card, &info), return EAR_SUCCESS);
+    debug("DEV%d CARDP DOMAIN%d: %020lu uJ at %lu uS", dv, 0, info.energy, info.timestamp);
+    #endif
+    if (ze.sDeviceGetCardPowerDomain(devs[dv].sdevice, &devs[dv].scard) == ZE_RESULT_SUCCESS) {
+        if (ze.sPowerGetEnergyCounter(card, &info) == ZE_RESULT_SUCCESS) {
+            data->energy_j = ((double) info.energy) / 1000000.0;
+        }
+    }
+    // If card doesn't exists
 	for (d = 0; d < devs[dv].spowers_count; ++d) {
 		if_fail(ze.sPowerGetEnergyCounter(devs[dv].spowers[d], &info), continue);
         debug("DEV%d POWER DOMAIN%d: %020lu uJ at %lu uS (sub %d)", dv, d, info.energy, info.timestamp, devs[dv].spowers_props[d].subdeviceId);
@@ -120,12 +127,6 @@ static state_t oneapi_read_power(int dv, gpu_t *data)
 		data->energy_j = ((double) info.energy) / 1000000.0;
         return EAR_SUCCESS;
 	}
-    // It seems CARD matches DOMAIN0 (all the PCI CARD)
-    if_fail(ze.sDeviceGetCardPowerDomain(devs[dv].sdevice, &devs[dv].scard), return EAR_SUCCESS);
-    if_fail(ze.sPowerGetEnergyCounter(card, &info), return EAR_SUCCESS);
-    debug("DEV%d CARDP DOMAIN%d: %020lu uJ at %lu uS", dv, 0, info.energy, info.timestamp);
-	data->energy_j = ((double) info.energy) / 1000000.0;
-
 	return EAR_SUCCESS;
 }
 
@@ -134,11 +135,10 @@ static state_t oneapi_read_frequency(int dv, gpu_t *data)
     zes_freq_state_t      info;
     int                   d;
     ze_result_t           z;
+    uint                  gpu_count = 0;
+    uint                  mem_count = 0;
 
     // Retrieving the domains
-    data->freq_gpu = 0LU;
-    data->freq_mem = 0LU;
-
     for (d = devs[dv].sfreqs_count-1; d >= 0; --d) {
         if_fail(ze.sFrequencyGetState(devs[dv].sfreqs[d], &info), continue);
         debug("DEV%d FREQ DOMAIN%d: act/eff/tdp %.0lf/%.0lf/%.0lf (%.0lf to %.0lf MHz) (sub %d)", dv, d,
@@ -146,53 +146,89 @@ static state_t oneapi_read_frequency(int dv, gpu_t *data)
             devs[dv].sfreqs_props[d].min, devs[dv].sfreqs_props[d].subdeviceId);
         // Taking DOMAIN0
         if (devs[dv].sfreqs_props[d].type == ZES_FREQ_DOMAIN_GPU) {
-            data->freq_gpu = (ulong) info.actual; // MHz
+            data->freq_gpu += (ulong) info.actual; // MHz
+            gpu_count += 1;
         }
         if (devs[dv].sfreqs_props[d].type == ZES_FREQ_DOMAIN_MEMORY) {
-            data->freq_mem = (ulong) info.actual; // MHz
+            data->freq_mem += (ulong) info.actual; // MHz
+            mem_count += 1;
         }
     }
+    if (gpu_count > 1) data->freq_gpu /= gpu_count;
+    if (mem_count > 1) data->freq_mem /= mem_count;
     return EAR_SUCCESS;
 }
 
-static const char *engtostr(int eng)
+static const char *engtostr(int eng, int *prio)
 {
-    #define engstr(e) if (eng == ZES_ENGINE_GROUP_ ##e) return #e;
-    engstr(ALL);
-    engstr(COMPUTE_ALL);
-    engstr(MEDIA_ALL);
-    engstr(COPY_ALL);
-    engstr(COMPUTE_SINGLE);
-    engstr(RENDER_SINGLE);
-    engstr(MEDIA_DECODE_SINGLE);
-    engstr(MEDIA_ENCODE_SINGLE);
-    engstr(COPY_SINGLE);
-    engstr(MEDIA_ENHANCEMENT_SINGLE);
-    engstr(3D_SINGLE);
-    engstr(3D_RENDER_COMPUTE_ALL);
-    engstr(RENDER_ALL);
-    engstr(3D_ALL);
+    #define engstr(e, p) \
+        if (eng == ZES_ENGINE_GROUP_ ##e) { \
+            if (prio != NULL) { \
+                *prio = p; \
+            } \
+            return #e; \
+        }
+    #define NO_PRIO 10
+
+    if (prio != NULL) {
+        *prio = NO_PRIO;
+    }
+    engstr(ALL, 1);
+    engstr(COMPUTE_ALL, 2);
+    engstr(COMPUTE_SINGLE, 3);
+    engstr(RENDER_ALL, 4);
+    engstr(RENDER_SINGLE, 5);
+    engstr(3D_RENDER_COMPUTE_ALL, 6);
+    engstr(3D_ALL, 7);
+    engstr(3D_SINGLE, 8);
+    engstr(MEDIA_ALL, 9);
+    engstr(MEDIA_DECODE_SINGLE, NO_PRIO);
+    engstr(MEDIA_ENCODE_SINGLE, NO_PRIO);
+    engstr(MEDIA_ENHANCEMENT_SINGLE, NO_PRIO);
+    engstr(COPY_ALL, NO_PRIO);
+    engstr(COPY_SINGLE, NO_PRIO);
     return "UNKNOWN";
 }
 
 static state_t oneapi_read_utilization(int dv, gpu_t *data)
 {
-	zes_engine_stats_t      info;
-	uint                    g;
-	ze_result_t             z;
-    ZES_ENGINE_GROUP_ALL
-    ZES_ENGINE_GROUP_COMPUTE_ALL
-    ZES_ENGINE_GROUP_COMPUTE_SINGLE
+    static zes_engine_stats_t save[32][64]; //32 devices, 64 domains
+    zes_engine_stats_t        info;
+	uint                      d;
+	ze_result_t               z;
+    int                       prio_count = 0;
+    int                       prio_set = NO_PRIO;
+    int                       prio;
 
-	for (g = 0; g < devs[dv].sengines_count; ++g) {
-        if_fail(ze.sEngineGetActivity(devs[dv].sengines[g], &info), continue);
-        debug("DEV%d ENGINE DOMAIN%d: %lu active uS (%lu timestamp) (sub %d) (%s)", dv, g,
-            info.activeTime, info.timestamp, devs[dv].sengines_props[g].subdeviceId,
-            engtostr(devs[dv].sengines_props[g].type));
-		if (devs[dv].sengines_props[g].type == ZES_ENGINE_GROUP_ALL) {
-			data->util_gpu = (ulong) (info.activeTime / info.timestamp); // In microseconds
-		}
+	for (d = 0; d < devs[dv].sengines_count; ++d) {
+        #if SHOW_DEBUGS
+        if_fail(ze.sEngineGetActivity(devs[dv].sengines[d], &info), continue);
+        debug("DEV%d ENGINE DOMAIN%d: %lu active uS (%lu timestamp) (sub %d) (%s)", dv, d,
+            info.activeTime, info.timestamp, devs[dv].sengines_props[d].subdeviceId,
+            engtostr(devs[dv].sengines_props[d].type, NULL));
+        #endif
+        // Getting the priority
+        engtostr(devs[dv].sengines_props[d].type, &prio);
+        // Is new or already found?
+        if (prio != NO_PRIO) {
+            if (prio < prio_set) {
+                debug("DEV%d ENGINE DOMAIN%d: selecting %s", dv, d, engtostr(devs[dv].sengines_props[d].type, NULL));
+                data->util_gpu  = ((info.activeTime - save[dv][d].activeTime) / (info.timestamp - save[dv][d].timestamp));
+                prio_set        = prio;
+                prio_count      = 1;
+            } else if (prio == prio_set) {
+                data->util_gpu += ((info.activeTime - save[dv][d].activeTime) / (info.timestamp - save[dv][d].timestamp));
+                prio_count     += 1;
+            }
+            memcpy(&save[dv][d], &info, sizeof(zes_engine_stats_t));
+        }
 	}
+    if (prio_count > 1) {
+        data->util_gpu /= prio_count;
+    }
+    if (data->util_gpu > 0) {
+        data->working = 1;
+    }
 	return EAR_SUCCESS;
 }
 
@@ -202,18 +238,24 @@ static state_t oneapi_read_temperature(int dv, gpu_t *data)
     double                temp;
     uint                  s;
     ze_result_t           z;
+    uint                  gpu_count = 0;
+    uint                  mem_count = 0;
 
     for (s = 0; s < devs[dv].stemps_count; ++s) {
         if_fail(ze.sTemperatureGetState(devs[dv].stemps[s], &temp), continue);
         debug("DEV%d TEMP DOMAIN%d: %lf celsius (%lf max) (type %d)", dv, s,
                 temp, devs[dv].stemps_props[s].maxTemperature, devs[dv].stemps_props[s].type);
         if (devs[dv].stemps_props[s].type != ZES_TEMP_SENSORS_GPU) {
-            data->temp_gpu = (ulong) temp;
+            data->temp_gpu += (ulong) temp;
+            gpu_count += 1;
         }
         if (devs[dv].stemps_props[s].type != ZES_TEMP_SENSORS_MEMORY) {
-            data->temp_mem = (ulong) temp;
+            data->temp_mem += (ulong) temp;
+            mem_count += 1;
         }
     }
+    if (gpu_count > 1) data->temp_gpu /= gpu_count;
+    if (mem_count > 1) data->temp_mem /= mem_count;
     for (s = 0; s < devs[dv].spsus_count; ++s) {
         if_fail(ze.sPsuGetState(devs[dv].spsus[s], &state), continue);
         debug("DEV%d PSU DOMAIN%d: %d celsius", dv, s, state.temperature);
@@ -257,7 +299,7 @@ state_t gpu_oneapi_pool(void *p)
 		pool[dv].energy_j += current.energy_j;
 		pool[dv].power_w  += 0.0;
 		pool[dv].working   = current.working;
-		pool[dv].correct   = current.correct;
+		pool[dv].correct   = 1;
 		
 		debug("dev | metric   | value    ");
 		debug("--- | -------- | -----    ");
