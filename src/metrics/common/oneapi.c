@@ -130,7 +130,7 @@ static void print_device_info(int h)
     debug("name         : '%s'", hs[h].device_props.name);
     debug("modelName    : '%s' (0x%04x 0x%04x)", hs[h].sdevice_props.modelName, hs[h].device_props.vendorId, hs[h].device_props.deviceId);
     debug("type         : %s (%d)", ((hs[h].device_props.type == ZE_DEVICE_TYPE_GPU) ? "GPU" : "OTHER"), hs[h].device_props.type);
-    debug("uuid         : '%llu'", hs[h].uuid);
+    debug("uuid         : '%llu' (%u length)", hs[h].uuid, ZE_MAX_DEVICE_UUID_SIZE);
     debug("serials      : '%s' '%s'", hs[h].sdevice_props.serialNumber, hs[h].sdevice_props.boardNumber);
     debug("coreClockRate: @%u MHz", hs[h].device_props.coreClockRate);
     debug("numSubdevices: %u", hs[h].sdevice_props.numSubdevices);
@@ -227,7 +227,8 @@ static state_t static_init()
             // Card power domain
             ze.sDeviceGetCardPowerDomain(devices[dv], &hs[hs_count].scard);
             // Getting the serial
-            hs[hs_count].uuid = *((ullong *) &hs[dv].device_props.uuid.id[ZE_MAX_DEVICE_UUID_SIZE-8]);
+            hs[hs_count].uuid = 0LLU;
+            hs[hs_count].uuid = *((ullong *) &hs[dv].device_props.uuid.id[0]);
             // Last printings
             print_device_info(dv);
 
@@ -270,7 +271,6 @@ state_t oneapi_close()
 
 state_t oneapi_get_devices(ze_handlers_t **devs, uint *devs_count)
 {
-    debug("returning %u devices of %lu total size", hs_count, sizeof(ze_handlers_t) * hs_count);
     if (devs != NULL) {
         *devs = calloc(hs_count, sizeof(ze_handlers_t));
         memcpy(*devs, hs, sizeof(ze_handlers_t) * hs_count);

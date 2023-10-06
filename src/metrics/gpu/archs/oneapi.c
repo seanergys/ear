@@ -33,6 +33,8 @@ static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static gpu_t          *pool; // change to sysmans_pool
 static timestamp_t     pool_time1;
 static timestamp_t     pool_time2;
+static ullong         *eng_util;
+static ullong         *eng_time;
 static suscription_t  *sus;
 static uint            devs_count;
 static ze_handlers_t  *devs;
@@ -72,7 +74,9 @@ state_t gpu_oneapi_init(ctx_t *c)
     state_t s;
     #if 1
 	// Monitor suscription
-	pool = calloc(devs_count, sizeof(gpu_t));
+	pool     = calloc(devs_count, sizeof(gpu_t));
+    eng_util = calloc(devs_count, sizeof(gpu_t)); //pool helper
+    eng_time = calloc(devs_count, sizeof(gpu_t)); //pool helper
 	// Initializing monitoring thread suscription.
 	sus = suscription();
 	sus->call_main  = gpu_oneapi_pool;
@@ -151,16 +155,40 @@ static state_t oneapi_read_frequency(int dv, gpu_t *data)
     return EAR_SUCCESS;
 }
 
+static const char *engtostr(int eng)
+{
+    #define engstr(e) if (eng == ZES_ENGINE_GROUP_ ##e) return #e;
+    engstr(ALL);
+    engstr(COMPUTE_ALL);
+    engstr(MEDIA_ALL);
+    engstr(COPY_ALL);
+    engstr(COMPUTE_SINGLE);
+    engstr(RENDER_SINGLE);
+    engstr(MEDIA_DECODE_SINGLE);
+    engstr(MEDIA_ENCODE_SINGLE);
+    engstr(COPY_SINGLE);
+    engstr(MEDIA_ENHANCEMENT_SINGLE);
+    engstr(3D_SINGLE);
+    engstr(3D_RENDER_COMPUTE_ALL);
+    engstr(RENDER_ALL);
+    engstr(3D_ALL);
+    return "UNKNOWN";
+}
+
 static state_t oneapi_read_utilization(int dv, gpu_t *data)
 {
 	zes_engine_stats_t      info;
 	uint                    g;
 	ze_result_t             z;
+    ZES_ENGINE_GROUP_ALL
+    ZES_ENGINE_GROUP_COMPUTE_ALL
+    ZES_ENGINE_GROUP_COMPUTE_SINGLE
 
 	for (g = 0; g < devs[dv].sengines_count; ++g) {
         if_fail(ze.sEngineGetActivity(devs[dv].sengines[g], &info), continue);
-        debug("DEV%d ENGINE DOMAIN%d: %lu active uS (%lu timestamp)", dv, g,
-            info.activeTime, info.timestamp);
+        debug("DEV%d ENGINE DOMAIN%d: %lu active uS (%lu timestamp) (sub %d) (%s)", dv, g,
+            info.activeTime, info.timestamp, devs[dv].sengines_props[g].subdeviceId,
+            engtostr(devs[dv].sengines_props[g].type));
 		if (devs[dv].sengines_props[g].type == ZES_ENGINE_GROUP_ALL) {
 			data->util_gpu = (ulong) (info.activeTime / info.timestamp); // In microseconds
 		}
@@ -233,7 +261,7 @@ state_t gpu_oneapi_pool(void *p)
 		
 		debug("dev | metric   | value    ");
 		debug("--- | -------- | -----    ");
-		debug("%d   | samps    | %u      ", dv, pool[dv].samples );
+		debug("%d   | samps    | %lu     ", dv, pool[dv].samples );
 		debug("%d   | freq_gpu | %lu MHz ", dv, pool[dv].freq_gpu);
 		debug("%d   | freq_mem | %lu MHz ", dv, pool[dv].freq_mem);
 		debug("%d   | util_gpu | %lu %%  ", dv, pool[dv].util_gpu);
