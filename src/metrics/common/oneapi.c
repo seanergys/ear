@@ -138,17 +138,17 @@ static void print_device_info(int h)
 }
 
 // Fowler-Noll-Vo hash function
-static uint fnv1a(char c)
+static ullong fnv1a(char c)
 {
-    uint hash0 = 0;
-    uint hash1 = 0;
-    hash0 = 16777619 ^ (uint) c;
+    ullong hash0 = 0LLU;
+    ullong hash1 = 0LLU;
+    hash0 = 16777619LLU ^ (ullong) c;
     hash1 += (hash0 <<  1);
     hash1 += (hash0 <<  4);
     hash1 += (hash0 <<  7);
     hash1 += (hash0 <<  8);
     hash1 += (hash0 << 24);
-    return hash1 % 2147483647;
+    return hash1 % 2147483647LLU;
 }
 
 static ullong hash(char *string)
@@ -160,7 +160,7 @@ static ullong hash(char *string)
     while (i++ < ZE_MAX_DEVICE_UUID_SIZE) {
         hash += fnv1a(string[i]);
     }
-    return (ullong) hash;
+    return hash;
 }
 
 static state_t static_init()

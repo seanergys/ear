@@ -132,7 +132,6 @@ typedef struct ze_handlers_s {
     uint                     stemps_count;
     zes_psu_handle_t        *spsus;
     uint                     spsus_count;
-    ullong                   serial; //auxiliar
 } ze_handlers_t;
 
 typedef struct ze_s {

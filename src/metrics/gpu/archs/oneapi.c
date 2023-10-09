@@ -57,6 +57,7 @@ void gpu_oneapi_load(gpu_ops_t *ops)
     apis_set(ops->get_api,       gpu_oneapi_get_api);
     apis_set(ops->init,          gpu_oneapi_init);
     apis_set(ops->dispose,       gpu_oneapi_dispose);
+    apis_set(ops->get_devices,   gpu_oneapi_get_devices);
     apis_set(ops->count_devices, gpu_oneapi_count_devices);
     apis_set(ops->read,          gpu_oneapi_read);
     apis_set(ops->read_raw,      gpu_oneapi_read_raw);
@@ -91,6 +92,21 @@ state_t gpu_oneapi_init(ctx_t *c)
 state_t gpu_oneapi_dispose(ctx_t *c)
 {
 	return EAR_SUCCESS;
+}
+
+state_t gpu_oneapi_get_devices(ctx_t *c, gpu_devs_t **devs_in, uint *devs_count_in)
+{
+    int dv;
+    *devs_in = calloc(devs_count, sizeof(gpu_devs_t));
+    //
+    for (dv = 0; dv < devs_count; ++dv) {
+        (*devs_in)[dv].serial = devs[dv].uuid;
+        (*devs_in)[dv].index  = dv;
+    }
+    if (devs_count_in != NULL) {
+        *devs_count_in = devs_count;
+    }
+    return EAR_SUCCESS;
 }
 
 state_t gpu_oneapi_count_devices(ctx_t *c, uint *dev_count)
