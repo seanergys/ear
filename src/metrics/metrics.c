@@ -45,6 +45,7 @@ void metrics_init(metrics_info_t *m, topology_t *tp, int eard)
 
     //
     cache_get_info(&m->cch);
+    flops_get_info(&m->flp);
 
     m->cpu.layer = "CPUFREQ";
     m->imc.layer = "IMCFREQ";
@@ -57,7 +58,6 @@ void metrics_init(metrics_info_t *m, topology_t *tp, int eard)
     cpufreq_get_api(&m->cpu.api);
     imcfreq_get_api(&m->imc.api);
      bwidth_get_api(&m->ram.api);
-      flops_get_api(&m->flp.api);
        temp_get_api(&m->tmp.api);
         cpi_get_api(&m->cpi.api);
         gpu_get_api(&m->gpu.api);

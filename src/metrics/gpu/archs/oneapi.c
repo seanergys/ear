@@ -125,7 +125,7 @@ static state_t oneapi_read_power(int dv, gpu_t *data)
     // Retrieving the domains
     data->energy_j = 0.0;
     // It seems CARD matches DOMAIN0 (all the PCI CARD)
-    if (devs[dv].scard != NULL) {
+    if (devs[dv].scard_count > 0) {
         if (ze.sPowerGetEnergyCounter(devs[dv].scard, &info) == ZE_RESULT_SUCCESS) {
             debug("DEV%d CARDP DOMAIN%d: %020lu uJ at %lu uS", dv, 0, info.energy, info.timestamp);
             data->energy_j = ((double) info.energy) / 1000000.0;
@@ -218,10 +218,12 @@ static state_t oneapi_read_utilization(int dv, gpu_t *data)
     static zes_engine_stats_t save[32][64]; //32 devices, 64 domains
     zes_engine_stats_t        info;
 	uint                      d;
-	ze_result_t               z;
     int                       prio_count = 0;
     int                       prio_set = NO_PRIO;
     int                       prio;
+    #if SHOW_DEBUGS
+	ze_result_t               z;
+    #endif
 
 	for (d = 0; d < devs[dv].sengines_count; ++d) {
         #if SHOW_DEBUGS

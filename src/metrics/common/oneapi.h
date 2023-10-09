@@ -26,14 +26,29 @@
 #include <common/states.h>
 
 #ifndef ONEAPI_BASE
-#define ZE_RESULT_SUCCESS       0
-#define ZE_DEVICE_TYPE_GPU      0
-#define ZES_FREQ_DOMAIN_GPU     0
-#define ZES_FREQ_DOMAIN_MEMORY  0
-#define ZES_ENGINE_GROUP_ALL    0
-#define ZE_MAX_DEVICE_UUID_SIZE 0
-#define ZES_TEMP_SENSORS_MEMORY 0
-#define ZES_TEMP_SENSORS_GPU    0
+#define ZE_RESULT_SUCCESS                         0
+#define ZE_DEVICE_TYPE_GPU                        0
+#define ZES_FREQ_DOMAIN_GPU                       0
+#define ZES_FREQ_DOMAIN_MEMORY                    0
+#define ZES_ENGINE_GROUP_ALL                      0
+#define ZE_MAX_DEVICE_UUID_SIZE                   0
+#define ZES_TEMP_SENSORS_MEMORY                   0
+#define ZES_TEMP_SENSORS_GPU                      0
+#define ZES_ENGINE_GROUP_ALL                      0
+#define ZES_ENGINE_GROUP_COMPUTE_ALL              0
+#define ZES_ENGINE_GROUP_COMPUTE_SINGLE           0
+#define ZES_ENGINE_GROUP_RENDER_ALL               0
+#define ZES_ENGINE_GROUP_RENDER_SINGLE            0
+#define ZES_ENGINE_GROUP_3D_RENDER_COMPUTE_ALL    0
+#define ZES_ENGINE_GROUP_3D_ALL                   0
+#define ZES_ENGINE_GROUP_3D_SINGLE                0
+#define ZES_ENGINE_GROUP_MEDIA_ALL                0
+#define ZES_ENGINE_GROUP_MEDIA_DECODE_SINGLE      0
+#define ZES_ENGINE_GROUP_MEDIA_ENCODE_SINGLE      0
+#define ZES_ENGINE_GROUP_MEDIA_ENHANCEMENT_SINGLE 0
+#define ZES_ENGINE_GROUP_COPY_ALL                 0
+#define ZES_ENGINE_GROUP_COPY_SINGLE              0
+#define ZES_POWER_LEVEL_SUSTAINED                 0
 
 typedef struct ze_info_s {
     char  *name;
@@ -74,6 +89,9 @@ typedef struct ze_info_s {
     uint   defaultLimit;
     uint   temperature;
     double maxTemperature;
+    uint   enabledStateLocked;
+    uint   level;
+    double limit;
 } ze_info_t;
 
 // Core
@@ -121,6 +139,7 @@ typedef struct ze_handlers_s {
     zes_power_properties_t  *spowers_props;
     uint                     spowers_count;
     zes_pwr_handle_t         scard;
+    uint                     scard_count;
     zes_freq_handle_t       *sfreqs;
     zes_freq_properties_t   *sfreqs_props;
     uint                     sfreqs_count;

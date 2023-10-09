@@ -251,7 +251,9 @@ static state_t static_init()
             for (dp = 0; dp < hs[hs_count].sengines_count; ++dp) if_fail(ze.sEngineGetProperties     (hs[hs_count].sengines[dp], &hs[hs_count].sengines_props[dp]), );
             for (dp = 0; dp < hs[hs_count].stemps_count  ; ++dp) if_fail(ze.sTemperatureGetProperties(hs[hs_count].stemps[dp]  , &hs[hs_count].stemps_props[dp]  ), );
             // Card power domain
-            ze.sDeviceGetCardPowerDomain(devices[dv], &hs[hs_count].scard);
+            if (ze.sDeviceGetCardPowerDomain(devices[dv], &hs[hs_count].scard) == ZE_RESULT_SUCCESS) {
+                hs[hs_count].scard_count = 1;
+            }
             // Getting the serial
             hs[hs_count].uuid = hash(hs[dv].device_props.uuid.id);
             // Last printings

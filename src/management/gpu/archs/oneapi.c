@@ -26,14 +26,16 @@
 #include <metrics/common/oneapi.h>
 #include <management/gpu/archs/oneapi.h>
 
-//static pthread_mutex_t      lock = PTHREAD_MUTEX_INITIALIZER;
-static ulong             *freqs_default;
-static ulong            **freqs_avail_list;
-static uint              *freqs_avail_count;
-static ulong             *power_max_default;
-static uint               devs_count;
-static ze_handlers_t     *devs;
-static ze_t               ze;
+//static pthread_mutex_t           lock = PTHREAD_MUTEX_INITIALIZER;
+static ulong                      *freqs_default;
+static ulong                     **freqs_avail_list;
+static uint                       *freqs_avail_count;
+static ulong                      *power_max_default;
+static zes_power_limit_ext_desc_t *power_descs; //sustaineds
+static uint                       *power_domains;
+static uint                        devs_count;
+static ze_handlers_t              *devs;
+static ze_t                        ze;
 
 #define DUMMY_FREQ  1000000LU
 #define NO_FREQ    -1
@@ -46,23 +48,61 @@ static ze_t               ze;
 
 static state_t get_available_watts()
 {
-    zes_power_sustained_limit_t ps;
-    zes_power_burst_limit_t     pb;
-    zes_power_peak_limit_t      pp;
+    uint                        descs_count = 32;
+    zes_power_limit_ext_desc_t  descs[32];
     uint                        dv;
-    uint                        d;
+    uint                        dm;
+    uint                        de;
     ze_result_t                 z;
 
+    #if SHOW_DEBUGS
+    char                       *sources[4];
+    char                       *levels[6];
+    char                       *units[4];
+    // For debugging
+    levels[ZES_POWER_LEVEL_UNKNOWN]        = "UNKNOWN";
+    levels[ZES_POWER_LEVEL_SUSTAINED]      = "SUSTAINED";
+    levels[ZES_POWER_LEVEL_BURST]          = "BURTS";
+    levels[ZES_POWER_LEVEL_PEAK]           = "PEAK";
+    levels[ZES_POWER_LEVEL_INSTANTANEOUS]  = "INSTANTANEOUS";
+    units[ZES_LIMIT_UNIT_UNKNOWN]          = "of unknown units";
+    units[ZES_LIMIT_UNIT_CURRENT]          = "A"; //We are converting from mA to A
+    units[ZES_LIMIT_UNIT_POWER]            = "W"; //We are converting from mW to W
+    sources[ZES_POWER_SOURCE_ANY]          = "any";
+    sources[ZES_POWER_SOURCE_MAINS]        = "main";
+    sources[ZES_POWER_SOURCE_BATTERY]      = "any";
+    #endif
+
     power_max_default = calloc(devs_count, sizeof(ulong));
-    // Retrieving the domains
-    for (dv = 0; dv < devs_count; ++dv){
-        for (d = 0; d < devs[dv].spowers_count; ++d) {
-            if (ze.sPowerGetLimits(devs[dv].spowers[d], &ps, &pb, &pp) != ZE_RESULT_SUCCESS) {
-                continue;
+    power_descs       = calloc(devs_count, sizeof(zes_power_limit_ext_desc_t));
+    power_domains     = calloc(devs_count, sizeof(uint));
+    
+    for (dv = 0; dv < devs_count; ++dv) {
+        // Dummyfying the power
+        power_descs[dv].enabled            = 0;
+        power_descs[dv].enabledStateLocked = 1;
+        // 
+        for (dm = 0; dm < devs[dv].spowers_count; ++dm)
+        {
+            if_fail(ze.sPowerGetLimitsExt(devs[dv].spowers[dm], &descs_count, descs), break);
+            if (descs_count == 0) {
+                debug("POWER DEV%d DOM%d DESC0: not found (sub %d)", dv, dm, devs[dv].spowers_props[dm].subdeviceId);
             }
-            power_max_default[dv] = ((ulong) ps.power) / 1000LU; // mW
-            // Take into the account ps.interval, pb.enabled, pb.power, pp.powerAC and pp.powerDC in future
-            debug("DEV%d POWER DOM%d: max limit %d mW, enabled %d", dv, d, ps.power, ps.enabled);
+            for (de = 0; de < descs_count; ++de) {
+                // Take into the account ps.interval, pb.enabled, pb.power, pp.powerAC and pp.powerDC in future
+                debug("POWER DEV%d DOM%d DESC%d: limit %03d %s at %04d mS interval (%d%d, %s, %s) (sub %d)", dv, dm, de, descs[de].limit / 1000,
+                        units[descs[de].limitUnit], descs[de].interval, descs[de].limitValueLocked, descs[de].intervalValueLocked,
+                        levels[descs[de].level], sources[descs[de].source], devs[dv].spowers_props[dm].subdeviceId);
+                // Subdevice -1 is a root device
+                if (descs[de].level == ZES_POWER_LEVEL_SUSTAINED && devs[dv].spowers_props[dm].subdeviceId == -1) {
+                    power_max_default[dv] = ((ulong) descs[de].limit) / 1000LU;
+                    power_domains[dv] = dm;
+                    memcpy(&power_descs[dv], &descs[de], sizeof(zes_power_limit_ext_desc_t));
+                    #if !SHOW_DEBUGS
+                    break;
+                    #endif
+                }
+            }
         }
     }
     return EAR_SUCCESS;
@@ -110,7 +150,7 @@ static state_t get_available_frequencies()
 
                 if (aux_integer3 == 0LU || aux_integer3 == 50LU) {
                     freqs_avail_list[dv][r] = ((ulong) avail_aux[freqs_avail_count[dv]-f-1]) * 1000LU;
-                    debug("DV%d PS%02d: %lu", dv, r, freqs_avail_list[dv][r]);
+//                    debug("DV%d PS%02d: %lu", dv, r, freqs_avail_list[dv][r]);
                     ++r;
                 }
             }
@@ -207,7 +247,6 @@ state_t mgt_gpu_oneapi_count_devices(ctx_t *c, uint *devs_count_in)
 state_t mgt_gpu_oneapi_freq_limit_get_current(ctx_t *c, ulong *khz)
 {
     zes_freq_range_t range;
-    ze_result_t z;
     int dv, d;
 
     for (dv = 0; dv < devs_count; ++dv) {
@@ -295,6 +334,7 @@ state_t mgt_gpu_oneapi_freq_list(ctx_t *c, const ulong ***list_khz, const uint *
 
 state_t mgt_gpu_oneapi_power_cap_get_current(ctx_t *c, ulong *watts)
 {
+#if 0
     zes_power_sustained_limit_t ps;
     zes_power_burst_limit_t     pb;
     zes_power_peak_limit_t      pp;
@@ -309,6 +349,7 @@ state_t mgt_gpu_oneapi_power_cap_get_current(ctx_t *c, ulong *watts)
             watts[dv] = ((ulong) ps.power) / 1000LU; // mW
         }
     }
+#endif
     return EAR_SUCCESS;
 }
 
@@ -342,6 +383,18 @@ state_t mgt_gpu_oneapi_power_cap_reset(ctx_t *c)
 
 state_t mgt_gpu_oneapi_power_cap_set(ctx_t *c, ulong *watts)
 {
-    // zesPowerSetLimits
+    zes_power_limit_ext_desc_t desc;
+    uint                       one = 1;
+    uint                       dv;
+
+    for (dv = 0; dv < devs_count; ++dv) {
+        // This device do not accepts power limits
+        if (!power_descs[dv].enabled && power_descs[dv].enabledStateLocked) {
+            continue;
+        }
+        memcpy(&desc, &power_descs[dv], sizeof(zes_power_limit_ext_desc_t));
+        desc.limit = ((double) watts[dv]) * 1000.0;
+        ze.sPowerSetLimitsExt(devs[dv].spowers[power_domains[dv]], &one, &power_descs[dv]);
+    }
     return EAR_SUCCESS;
 }
