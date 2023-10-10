@@ -51,10 +51,15 @@ state_t temp_dispose(ctx_t *c);
 state_t temp_count_devices(ctx_t *c, uint *devs_count);
 /** Reads the last temperature value and the average per device. */
 state_t temp_read(ctx_t *c, llong *temp_list, llong *average);
+
+state_t temp_read_copy(ctx_t *c, llong *t2, llong *t1, llong *tD, llong *average);
+
 // Data
 state_t temp_data_alloc(llong **temp_list);
 
-state_t temp_data_copy(llong *temp_list2, llong *temp_list1);
+state_t temp_data_copy(llong *tempD, llong *tempS);
+
+void temp_data_diff(llong *temp2, llong *temp1, llong *tempD, llong *average);
 
 state_t temp_data_free(llong **temp_list);
 

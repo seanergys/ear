@@ -102,12 +102,12 @@ state_t gpu_oneapi_count_devices(ctx_t *c, uint *dev_count)
 static state_t oneapi_read_power(int dv, gpu_t *data)
 {
     zes_pwr_handle_t           cards[32];
-	zes_power_energy_counter_t info;
-	uint                       d;
-	ze_result_t                z;
+    zes_power_energy_counter_t info;
+    uint                       d;
+    ze_result_t                z;
 
-	// Retrieving the domains
-	for (d = 0; d < devs[dv].spowers_count; ++d) {
+    // Retrieving the domains
+    for (d = 0; d < devs[dv].spowers_count; ++d) {
         debug("-- DEVICE%d POWER DOMAIN%d ---------------", dv, d);
         debug("canControl: %d", devs[dv].spowers_props[d].canControl)
         debug("onSubdevice: 0x%x", devs[dv].spowers_props[d].onSubdevice)
@@ -118,9 +118,9 @@ static state_t oneapi_read_power(int dv, gpu_t *data)
         debug("energy: %lu mJ", info.energy);
         debug("timestamp: %lu us", info.timestamp);
         debug("----------------------------------------");
-		// It has to be tested.
-		data->energy_j = ((double) info.energy) / 1000000.0;
-	}
+        // It has to be tested.
+	data->energy_j = ((double) info.energy) / 1000000.0;
+    }
     ret_fail(ze.sDeviceGetCardPowerDomain(devs[dv].sdevice, &cards[0]));
     ret_fail(ze.sPowerGetEnergyCounter(cards[0], &info));
     debug("-- DEVICE%d POWER CARD%d ---------------", dv, 0);
@@ -128,7 +128,7 @@ static state_t oneapi_read_power(int dv, gpu_t *data)
     debug("card0.timestamp: %lu us", info.timestamp);
     debug("----------------------------------------");
 
-	return EAR_SUCCESS;
+    return EAR_SUCCESS;
 }
 
 static state_t oneapi_read_frequency(int dv, gpu_t *data)

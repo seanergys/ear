@@ -20,14 +20,15 @@
 
 #include <common/types/generic.h>
 
-#define no_ctx           NULL
+#define no_ctx                 NULL
 // Load EARD API or not
-#define EARD                   1
-#define NO_EARD                0
+#define EARD                   API_EARD
+#define NO_EARD                API_FREE
 #define all_devs              -1
 #define all_cpus               all_devs
 #define all_cores             -2
 #define API_NONE               0
+#define API_FREE               API_NONE
 #define API_DUMMY              1
 #define API_EARD               2
 #define API_BYPASS             3
@@ -40,7 +41,7 @@
 #define API_LIKWID            10
 #define API_CUPTI             11
 #define API_ONEAPI            12
-#define API_RAPL              13
+#define API_RAPL              API_INTEL63
 #define API_ISST              14
 #define API_FAKE              15
 #define API_CPUMODEL          16
@@ -61,6 +62,9 @@
 #define SCOPE_PROCESS          2
 #define SCOPE_NODE             3
 
+#define API_IS(flag, api) \
+    (flag == api)
+
 typedef struct ctx_s {
     void *context;
 } ctx_t;
@@ -74,6 +78,8 @@ typedef struct apinfo_s {
     char *granularity_str;
     uint  scope;
     char *scope_str;
+    uint  bits;
+//    void *extra;
     void *list1;
     void *list2;
     void *list3;

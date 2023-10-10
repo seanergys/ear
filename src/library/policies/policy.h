@@ -20,7 +20,6 @@
 
 #include <common/states.h>
 #include <common/types/loop.h>
-#include <common/types/projection.h>
 
 #include <library/common/library_shared_data.h>
 #include <library/api/mpi_support.h>

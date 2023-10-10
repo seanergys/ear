@@ -296,9 +296,21 @@ void frequency_set_performance_governor_all_cpus()
 	mgt_cpufreq_set_governor(no_ctx, Governor.performance);
 }
 
-void frequency_set_userspace_governor_all_cpus()
+state_t frequency_set_userspace_governor_all_cpus()
 {
-	mgt_cpufreq_set_governor(no_ctx, Governor.userspace);
+    if (init)
+    {
+        if (mgt_cpufreq_governor_is_available(no_ctx, Governor.userspace))
+        {
+            return mgt_cpufreq_set_governor(no_ctx, Governor.userspace);
+        } else
+        {
+            return_msg(EAR_WARNING, "Current driver does not support userspace governor.");
+        }
+    } else
+    {
+        return_msg(EAR_NOT_INITIALIZED, Generr.api_uninitialized);
+    }
 }
 
 int frequency_is_valid_frequency(ulong freq_khz)

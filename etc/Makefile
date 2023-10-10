@@ -7,13 +7,14 @@ gen_FOLDERS = $(DESTDIR)/bin \
               $(DESTDIR)/lib \
               $(DESTDIR)/lib/pbs \
               $(DESTDIR)/lib/plugins \
-              $(DESTDIR)/lib/plugins/energy \
-              $(DESTDIR)/lib/plugins/powercap \
-              $(DESTDIR)/lib/plugins/models \
-              $(DESTDIR)/lib/plugins/policies \
               $(DESTDIR)/lib/plugins/eard_policies \
-              $(DESTDIR)/lib/plugins/tracer \
+              $(DESTDIR)/lib/plugins/energy \
+              $(DESTDIR)/lib/plugins/models \
+              $(DESTDIR)/lib/plugins/monitoring \
+              $(DESTDIR)/lib/plugins/policies \
+              $(DESTDIR)/lib/plugins/powercap \
               $(DESTDIR)/lib/plugins/reports \
+              $(DESTDIR)/lib/plugins/tracer \
               $(DESTDIR)/sbin
 
 etc_FOLDERS = $(ETCDIR) \

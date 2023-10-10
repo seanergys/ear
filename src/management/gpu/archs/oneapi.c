@@ -57,9 +57,6 @@ static state_t get_available_watts()
             ret_fail(ze.sPowerGetLimits(devs[dv].spowers[d], &ps, &pb, &pp));
             power_max_default[dv] = ((ulong) ps.power) / 1000LU; // mW
             debug("-- DEVICE%d POWER DOMAIN%d ---------------", dv, d);
-            debug("defaultLimit: %u", props.defaultLimit);
-            debug("maxLimit: %u", props.maxLimit);
-            debug("minLimit: %u", props.minLimit);
             debug("sustained.enabled: %u", ps.enabled);
             debug("sustained.power: %u", ps.power);
             debug("sustained.interval: %u", ps.interval);

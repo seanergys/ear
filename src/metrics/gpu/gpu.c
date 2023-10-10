@@ -33,18 +33,22 @@ static gpu_ops_t ops;
 static uint devs_count;
 static uint ok_load;
 
-void gpu_load(int eard)
+void gpu_load(int force_api)
 {
     while (pthread_mutex_trylock(&lock));
     if (ok_load) {
         goto unlock_load;
     }
+    if (API_IS(force_api, API_DUMMY)) {
+        goto dummy;
+    }
     // NVML and ONEAPI are fully loaded.
     // If not, EARD is fully loaded.
-    gpu_nvml_load(&ops, eard);
-    gpu_rsmi_load(&ops, eard);
+    gpu_nvml_load(&ops, force_api);
+    gpu_rsmi_load(&ops, force_api);
     gpu_oneapi_load(&ops);
-    gpu_eard_load(&ops, eard);
+    gpu_eard_load(&ops, API_IS(force_api, API_EARD));
+dummy:
     gpu_dummy_load(&ops);
     ok_load = 1;
 unlock_load:
@@ -239,33 +243,34 @@ void gpu_data_print(gpu_t *data, int fd)
 {
 	int i;
 	for (i = 0; i < devs_count; ++i) {
-		dprintf(fd, "gpu%u: %0.2lfJ, %0.2lfW, %luMHz, %luMHz, %lu%%, %lu%%, %luº, %luº, %u, %lu\n", i,
+		dprintf(fd, "gpu%u: %3.0lf J, %3.0lf W, %4lu MHz, %4lu MHz, %2lu-%2lu usg, %2lu-%lu t, %lu\n", i,
 			data[i].energy_j, data[i].power_w,
 			data[i].freq_gpu / 1000LU, data[i].freq_mem / 1000LU,
 			data[i].util_gpu, data[i].util_mem,
 			data[i].temp_gpu, data[i].temp_mem,
-			data[i].working , data[i].samples);
+			data[i].samples);
 	}
 }
 
-void gpu_data_tostr(gpu_t *data, char *buffer, int length)
+char *gpu_data_tostr(gpu_t *data, char *buffer, int length)
 {
+    char *state[2] = { "er", "ok" };
 	int accuml;
 	size_t s;
 	int i;
 
 	for (i = accuml = 0; i < devs_count && length > 0; ++i) {
 		s = snprintf(&buffer[accuml], length,
-			 "gpu%u: %0.2lfJ, %0.2lfW, %luKHz, %luKHz, %lu, %lu, %lu, %lu, %u, %lu correct=%u\n", i,
+			 "gpu%u: %3.0lf J, %3.0lf W, %7lu KHz, %7lu KHz, %2lu-%2lu usg, %2lu-%lu t, %lu (%s)\n", i,
 			 data[i].energy_j, data[i].power_w,
 			 data[i].freq_gpu, data[i].freq_mem,
 			 data[i].util_gpu, data[i].util_mem,
 			 data[i].temp_gpu, data[i].temp_mem,
-			 data[i].working , data[i].samples,
-			 data[i].correct);
+             data[i].samples, state[data[i].correct]);
 		length = length - s;
 		accuml = accuml + s;
 	}
+    return buffer;
 }
 
 int gpu_is_supported()

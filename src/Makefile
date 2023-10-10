@@ -9,9 +9,10 @@ COMPONENTS = \
     library \
     global_manager \
     commands \
-	tools \
+    tools \
     slurm_plugin \
-	pbs_hook
+    pbs_hook \
+    data_center_monitor
 
 #ifdef DB_BASE
 COMPONENTS += database_cache
@@ -60,7 +61,8 @@ pbshook.install: pbs_hook.install;
 
 %.components:
 	@ for i in $(COMPONENTS); do                        \
-		if printf %s\\n "${COMPONENT_DISABLE}" | grep -qFv "$$i"; then \
+		if ([ -z "${COMPONENT_ENABLE}"  ] && printf %s\\n "${COMPONENT_DISABLE}" | grep -qFv "$$i") || \
+		   ([ -z "${COMPONENT_DISABLE}" ] && printf %s\\n "${COMPONENT_ENABLE}"  | grep -qF  "$$i"); then \
 		echo "====================================";    \
 		echo "= Compiling $$i";                         \
 		echo "====================================";    \

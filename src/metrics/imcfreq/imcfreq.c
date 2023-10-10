@@ -32,16 +32,20 @@
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static imcfreq_ops_t ops;
 
-void imcfreq_load(topology_t *tp, int eard)
+void imcfreq_load(topology_t *tp, int force_api)
 {
 	while (pthread_mutex_trylock(&lock));
 	if (ops.init != NULL) {
 		goto done;
     }
+    if (API_IS(force_api, API_DUMMY)) {
+        goto dummy;
+    }
 	debug("loading imcfreq metrics");
-	imcfreq_eard_load(tp, &ops, eard);
+	imcfreq_eard_load(tp, &ops, API_IS(force_api, API_EARD));
 	imcfreq_intel63_load(tp, &ops);
-	imcfreq_amd17_load(tp, &ops, eard);
+	imcfreq_amd17_load(tp, &ops, API_IS(force_api, API_EARD));
+dummy:
 	imcfreq_dummy_load(tp, &ops);
 done:
 	pthread_mutex_unlock(&lock);

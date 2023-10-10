@@ -1,5 +1,5 @@
 # If USER_TEST is set to 1, any user can execute the hacks with the library.
-CFLAGS  = -fPIC  -I$(SRCDIR) -DUSER_TEST=0 $(CONSTANTS) 
+CFLAGS  = -fPIC  -I$(SRCDIR) -DUSER_TEST=0 $(CONSTANTS) -g
 LDFLAGS = -shared -ldl -lm -lpthread -rdynamic -pthread
 
 
@@ -89,6 +89,7 @@ core_OBJS = \
 	metrics/energy_node_lib.o \
     models/models.o \
     models/cpu_power_model.o \
+    models/energy_model.o \
     policies/policy.o \
     policies/common/pc_support.o \
     policies/common/gpu_support.o \

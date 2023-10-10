@@ -19,6 +19,7 @@
 
 #include <unistd.h>
 #include <common/includes.h>
+#include <common/output/debug.h>
 #include <common/system/symplug.h>
 
 state_t plug_join(void *handle, void *calls[], const char *names[], uint n)
@@ -69,6 +70,7 @@ state_t plug_open(char *path, void *calls[], const char *names[], uint n, int fl
 {
     return static_open(path, calls, names, n, flags);
 }
+
 
 state_t plug_test(void *calls[], uint n)
 {

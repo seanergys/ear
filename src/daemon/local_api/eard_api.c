@@ -41,9 +41,10 @@
 #include <common/types/application.h>
 #include <daemon/local_api/eard_api.h>
 
-#define MAX_PIPE_TRIES       (MAX_SOCKET_COMM_TRIES*10)
-#define MAX_TRIES            1
-#define USE_NON_BLOCKING_IO  1
+#define OUTTER_MAX_PIPE_TRIES 10
+#define MAX_PIPE_TRIES				(MAX_SOCKET_COMM_TRIES*10)
+#define MAX_TRIES							1
+#define USE_NON_BLOCKING_IO  	1
 
 /* These pipes are used for local communication between ear library and eard */
 char ear_commreq_global[SZ_PATH]; 		/* This pipe connects with EARD, the same for all the jobs,
@@ -78,29 +79,48 @@ extern pthread_mutex_t lock_rpc;
 int eards_read(int fd,char *buff,int size, uint wait_mode)
 {
 #if USE_NON_BLOCKING_IO
-  int ret; 
-  int tries=0;
-  uint to_recv,received=0;
-  uint must_abort=0;
-  to_recv=size;
-  do
-  {
-    ret = read(fd, buff+received,to_recv);
-    if (ret > 0){
-      received+=ret;
-      to_recv-=ret;
-    }else if (ret < 0){
-      if ((errno == EWOULDBLOCK) || (errno == EAGAIN)) tries++;
-      else{
-      	debug("Error receiving data from eard %s,%d",strerror(errno),errno);
-        must_abort = 1;
-      }
-    }else if (ret == 0){
-			if (wait_mode == WAIT_DATA) tries++;
-			else 												must_abort = 1;
-    }
-  }while((tries<MAX_PIPE_TRIES) && (to_recv>0) && (must_abort==0));
-	if (tries >= MAX_PIPE_TRIES) {
+	int ret; 
+	uint to_recv, received = 0;
+	uint must_abort = 0;
+	to_recv = size;
+
+	int out_tries = 0;
+	int tries = 0;
+	while (out_tries < OUTTER_MAX_PIPE_TRIES)
+	{
+		tries = 0;
+		do
+		{
+			ret = read(fd, buff+received, to_recv);
+			if (ret > 0){
+				received+=ret;
+				to_recv-=ret;
+			}else if (ret < 0)
+			{
+				if ((errno == EWOULDBLOCK) || (errno == EAGAIN)) tries++;
+				else
+				{
+					debug("Error receiving data from eard %s,%d",strerror(errno),errno);
+					must_abort = 1;
+				}
+			} else if (ret == 0)
+			{
+				if (wait_mode == WAIT_DATA) tries++;
+				else 												must_abort = 1;
+			}
+		} while(tries < MAX_PIPE_TRIES && to_recv > 0 && must_abort == 0);
+		// Below code gives more tries. It is implemented with an outer loop due to the integer limit.
+		if (tries == MAX_PIPE_TRIES && !must_abort)
+		{
+			out_tries++;
+		} else
+		{
+			out_tries = OUTTER_MAX_PIPE_TRIES;
+		}
+	}
+
+	if (tries >= MAX_PIPE_TRIES)
+	{
 		error("Error reading data, max number of tries reached. tries %d received %u (last ret %d errno %d)",tries, received, ret,errno);
 	}
 	if (ret<0) return ret;
@@ -111,6 +131,7 @@ int eards_read(int fd,char *buff,int size, uint wait_mode)
 #endif
 }
 
+
 int eards_write(int fd,char *buff,int size)
 {
 #if USE_NON_BLOCKING_IO
@@ -119,22 +140,37 @@ int eards_write(int fd,char *buff,int size)
   uint to_send,sended=0;
   uint must_abort=0;
   to_send=size;
-  do
-  {
-    ret=write(fd, buff+sended,size);
-    if (ret>0){
-      sended+=ret;
-      to_send-=ret;
-    }else if (ret<0){
-      if ((errno==EWOULDBLOCK) || (errno==EAGAIN)) tries++;
-      else{
-        must_abort=1;
-        debug("Error sending command to eard %s,%d",strerror(errno),errno);
-      }
-    }else if (ret==0){
-      must_abort=1;
-    }
-  }while((tries<MAX_PIPE_TRIES) && (to_send>0) && (must_abort==0));
+
+	int out_tries = 0;
+	while (out_tries < OUTTER_MAX_PIPE_TRIES)
+	{
+		tries = 0;
+		do
+		{
+			ret=write(fd, buff+sended,size);
+			if (ret>0){
+				sended+=ret;
+				to_send-=ret;
+			}else if (ret<0){
+				if ((errno==EWOULDBLOCK) || (errno==EAGAIN)) tries++;
+				else{
+					must_abort=1;
+					debug("Error sending command to eard %s,%d",strerror(errno),errno);
+				}
+			}else if (ret==0){
+				must_abort=1;
+			}
+		} while(tries < MAX_PIPE_TRIES && to_send > 0 && must_abort==0);
+
+		// Below code gives more tries. It is implemented with an outer loop due to the integer limit.
+		if (tries == MAX_PIPE_TRIES && !must_abort)
+		{
+			out_tries++;
+		} else
+		{
+			out_tries = OUTTER_MAX_PIPE_TRIES;
+		}
+	}
   /* If there are bytes left to send, we return a 0 */
 	if (ret<0) return ret;
 	return sended;

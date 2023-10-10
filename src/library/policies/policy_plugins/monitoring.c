@@ -26,7 +26,6 @@
 #include <common/config.h>
 #include <common/states.h>
 #include <common/output/verbose.h>
-#include <common/types/projection.h>
 #include <common/system/file.h>
 #include <common/system/monitor.h>
 
@@ -36,7 +35,7 @@
 
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
-#include <library/policies/policy_api.h>
+#include <library/policies/policy_ctx.h>
 #include <library/policies/policy_state.h>
 #include <library/policies/common/cpu_support.h>
 #include <library/policies/common/gpu_support.h>

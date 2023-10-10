@@ -8,6 +8,7 @@ export FEAT_DB_MYSQL
 export FEAT_DB_PSQL    
 export FEAT_EXAMON
 export FEAT_DB_CASSANDRA
+export FEAT_DB_PROMETHEUS
 export CC
 export CC_FLAGS
 export MPICC
@@ -25,6 +26,8 @@ export DB_CFLAGS
 export DB_LDFLAGS
 export CUDA_BASE
 export CUDA_CFLAGS
+export OPENCL_BASE
+export OPENCL_CFLAGS
 export CUPTI_BASE
 export CUPTI_CFLAGS
 export RSMI_BASE
