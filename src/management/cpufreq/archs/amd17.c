@@ -52,7 +52,7 @@ typedef struct pss_s {
 #define p1_khz(cof) ((cof * 1000LLU))
 
 #define READ_BOOST_LIMIT	0x0A  //gets the frequency limit currently enforced or Fmax
-#define WRITE_BOOST_LIMIT 	0x08  //sets the frequency limit 
+#define WRITE_BOOST_LIMIT 	0x08  //sets the frequency limit
 
 static topology_t           tp;
 static mgt_ps_driver_ops_t *driver;
@@ -473,7 +473,7 @@ state_t get_current_hsmp(ctx_t *c, pstate_t *pstate_list)
         args[0] = tp.cpus[cpu].apicid;
         reps[0] = 0;
         // Calling HSMP
-        hsmp_send(tp.cpus[cpu].socket_id, READ_BOOST_LIMIT, args, reps); //response is freq (MHz)
+        hsmp_send(tp.cpus[cpu].socket_id, HSMP_READ_BOOST_LIMIT, args, reps); //response is freq (MHz)
         debug("HSMP read %u", reps[0]);
 
         pstate_list[cpu].idx = pss_nominal;
@@ -585,7 +585,7 @@ static state_t set_pstate_hsmp(uint cpu, uint pst, uint test)
     debug("setting PS%d: %u MHz in cpu %d (apic %d) [%u]",
         pst, getbits32(args[0], 15, 0), cpu, getbits32(args[0], 31, 16), args[0]);
 
-    return hsmp_send(tp.cpus[cpu].socket_id, WRITE_BOOST_LIMIT, args, reps);
+    return hsmp_send(tp.cpus[cpu].socket_id, HSMP_WRITE_BOOST_LIMIT, args, reps);
 }
 
 // Sets the current P_STATE to MSR P1 adding new frequency.
@@ -647,7 +647,7 @@ static state_t set_pstate0_hsmp(uint cpu)
     debug("setting PS0: %u MHz in cpu %d (apic %d) [%u]",
         getbits32(args[0], 15, 0), cpu, getbits32(args[0], 31, 16), args[0]);
 
-    return hsmp_send(tp.cpus[cpu].socket_id, WRITE_BOOST_LIMIT, args, reps);
+    return hsmp_send(tp.cpus[cpu].socket_id, HSMP_WRITE_BOOST_LIMIT, args, reps);
 }
 
 // Sets the current P_STATE to MSR P0

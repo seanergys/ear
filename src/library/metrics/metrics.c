@@ -372,6 +372,7 @@ uint metrics_CPU_phase_ok()
     if (!met_cpi.ok || !met_bwidth.ok || !met_flops.ok) return 0;
     return 1;
 }
+
 #if DCGMI && USE_GPUS
 void report_dcgmi_metrics()
 {

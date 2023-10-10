@@ -23,6 +23,7 @@
 
 #ifndef _EAR_TYPES_PROJECTION
 #define _EAR_TYPES_PROJECTION
+#warning "Deprecated header file. You must use the new Energy model API at library/models/energy_model.h"
 
 #include <common/config.h>
 #include <common/types/signature.h>

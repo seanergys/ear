@@ -45,7 +45,7 @@ BWIDTH_F_LOAD(bwidth_amd19_load)
         return;
     }
     // ZEN3
-    fun = 0x14;
+    fun = HSMP_GET_MAX_DDR_BANDIWDTH;
     line_size = (double) tpo->cache_line_size;
     //
     pool = calloc(tp.cpu_count+1, sizeof(bwidth_t));

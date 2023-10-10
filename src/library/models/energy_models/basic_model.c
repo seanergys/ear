@@ -15,40 +15,41 @@
 * and COPYING.EPL files.
 */
 
-#include <stdio.h>
+
 #include <stdlib.h>
-//#define SHOW_DEBUGS 1
 #include <common/states.h>
 #include <common/output/debug.h>
-#include <common/output/verbose.h>
 #include <common/types/signature.h>
 #include <common/types/coefficient.h>
 #include <common/hardware/architecture.h>
 #include <management/cpufreq/frequency.h>
 #include <daemon/shared_configuration.h>
-#include <library/models/models_api.h>
+#include <library/models/energy_models/common.h>
 
 
 static coefficient_t **coefficients;
 static coefficient_t *coefficients_sm;
 static int num_coeffs;
 static uint num_pstates;
-static uint basic_model_init=0;
+static uint basic_model_init;
 
-static int valid_range(ulong from,ulong to)
-{
-	if ((from<num_pstates) && (to<num_pstates)) return 1;
-	else return 0;
-}
+
+/** Returns whether there exists a coefficients entry from \ref from_ps to \ref to_ps. */
+static uint projection_available(ulong from_ps, ulong to_ps);
+
+
+/** Returns whether the pair <from_ps, to_ps> is between the configured pstate list. */
+static int valid_range(ulong from_ps, ulong to_ps);
+
 
 /* This function loads any information needed by the energy model */
-state_t model_init(char *etc,char *tmp,architecture_t *myarch)
+state_t energy_model_init(char *ear_etc_path, char *ear_tmp_path, architecture_t *arch_desc)
 {
   char *hack_file = ear_getenv(HACK_EARL_COEFF_FILE);
   int i, ref;
 
 	debug("Using basic_model\n");
-	num_pstates = (uint)myarch->pstates;
+	num_pstates = (uint)arch_desc->pstates;
 	debug("Using %u pstates",num_pstates);
 
   coefficients = (coefficient_t **) malloc(sizeof(coefficient_t *) * num_pstates);
@@ -64,22 +65,20 @@ state_t model_init(char *etc,char *tmp,architecture_t *myarch)
 
     for (ref = 0; ref < num_pstates; ref++)
     {
-
       coefficients[i][ref].pstate_ref = frequency_pstate_to_freq(i);
       coefficients[i][ref].pstate = frequency_pstate_to_freq(ref);
       coefficients[i][ref].available = 0;
     }
   }
 
-
   char coeffs_path[GENERIC_NAME];
-  #if 0
-  get_coeffs_default_path(tmp,coeffs_path);
+#if 0
+  get_coeffs_default_path(ear_tmp_path,coeffs_path);
   num_coeffs=0;
   coefficients_sm=attach_coeffs_default_shared_area(coeffs_path,&num_coeffs);
-  #endif
+#endif
   if (hack_file == NULL){
-    get_coeffs_default_path(tmp,coeffs_path);
+    get_coeffs_default_path(ear_tmp_path,coeffs_path);
     num_coeffs=0;
     debug("Using shared memory coefficients");
     coefficients_sm=attach_coeffs_default_shared_area(coeffs_path,&num_coeffs);
@@ -116,74 +115,90 @@ state_t model_init(char *etc,char *tmp,architecture_t *myarch)
     for (ref = 0; ref < num_pstates; ref++)
     {
         for (i = 0; i < num_pstates; i++)
-                debug("coefficient from ref: %d i: %d available: %d\n", ref, i, coefficients[ref][i].available);
+                debug("coefficient from ref: %d i: %d available: %d\n",
+											ref, i, coefficients[ref][i].available);
     }
 #endif
 	return EAR_SUCCESS;
 }
 
-double default_project_cpi(signature_t *sign, coefficient_t *coeff)
-{
-	return (coeff->D * sign->CPI) +
-		   (coeff->E * sign->TPI) +
-		   (coeff->F);
-}
 
-state_t model_project_time(signature_t *sign,ulong from,ulong to,double *ptime)
+state_t energy_model_project_time(signature_t *signature, ulong from_ps, ulong to_ps, double *proj_time)
 {
 	state_t st=EAR_SUCCESS;
 	coefficient_t *coeff;
-	if ((basic_model_init) && (valid_range(from,to))){
-		coeff=&coefficients[from][to];
+	if ((basic_model_init) && (valid_range(from_ps,to_ps))){
+		coeff=&coefficients[from_ps][to_ps];
 		if (coeff->available){
-			double proj_cpi = default_project_cpi(sign, coeff);
+			double proj_cpi = em_common_project_cpi(signature, coeff);
 			double freq_src = (double) coeff->pstate_ref;
 			double freq_dst = (double) coeff->pstate;
 
-			*ptime= ((sign->time * proj_cpi) / sign->CPI) *
+			*proj_time = ((signature->time * proj_cpi) / signature->CPI) *
 		   (freq_src / freq_dst);
 		}else{
-			*ptime=0;
+			*proj_time = 0;
 			st=EAR_ERROR;
 		}
 	}else st=EAR_ERROR;
 	return st;
 }
 
-state_t model_project_power(signature_t *sign, ulong from,ulong to,double *ppower)
+
+state_t energy_model_project_power(signature_t *signature, ulong from_ps, ulong to_ps, double *proj_power)
 {
 	state_t st=EAR_SUCCESS;
 	coefficient_t *coeff;
-	if ((basic_model_init) && (valid_range(from,to))){
-		coeff=&coefficients[from][to];
+	if ((basic_model_init) && (valid_range(from_ps,to_ps))){
+		coeff=&coefficients[from_ps][to_ps];
 		if (coeff->available){
-			*ppower= (coeff->A * sign->DC_power) +
-		   (coeff->B * sign->TPI) +
+			*proj_power= (coeff->A * signature->DC_power) +
+		   (coeff->B * signature->TPI) +
 		   (coeff->C);
-       debug("Power %lf = %lf x %lf + %lf x %lf + %lf", *ppower, coeff->A, sign->DC_power, coeff->B, sign->TPI, coeff->C);
+       debug("Power %lf = %lf x %lf + %lf x %lf + %lf", *proj_power, coeff->A, signature->DC_power, coeff->B, signature->TPI, coeff->C);
 		}else{
-			*ppower=0;
+			*proj_power=0;
 			st=EAR_ERROR;
 		}
 	}else st=EAR_ERROR;
 	return st;
 }
 
-state_t model_projection_available(ulong from,ulong to)
+
+uint energy_model_projection_available(ulong from_ps, ulong to_ps)
 {
-	if (valid_range(from, to) && coefficients[from][to].available) return EAR_SUCCESS;
-	else return EAR_ERROR;
+	return projection_available(from_ps, to_ps);
 }
 
-state_t model_projections_available()
+
+uint energy_model_projections_available()
 {
   uint ready = 0;
   for (uint ps = 0; ps < num_pstates && !ready; ps++){
     for (uint pt = 0; pt < num_pstates && !ready; pt++){
-      if ((ps != pt) && (model_projection_available(ps, pt) == EAR_SUCCESS)) ready = 1;
+      if ((ps != pt) && (!projection_available(ps, pt))) ready = 1;
     }
   }
-  if (ready) return EAR_SUCCESS;
-  return EAR_ERROR;
+	return 1 - ready;
 }
 
+
+static int valid_range(ulong from_ps, ulong to_ps)
+{
+	if ((from_ps < num_pstates) && (to_ps < num_pstates)) return 1;
+	else return 0;
+}
+
+
+static uint projection_available(ulong from_ps, ulong to_ps)
+{
+	if (valid_range(from_ps, to_ps))
+	{
+		if (coefficients[from_ps][to_ps].available)
+		{
+			return 1;
+		}
+	}
+
+	return 0;
+}

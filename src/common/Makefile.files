@@ -49,7 +49,6 @@ lite_OBJS = \
     $(SRCDIR)/common/types/configuration/cluster_conf_generic.o \
     $(SRCDIR)/common/types/gm_warning.o \
     $(SRCDIR)/common/types/risk.o \
-    $(SRCDIR)/common/types/projection.o \
     $(SRCDIR)/common/types/coefficient.o \
     $(SRCDIR)/common/types/job.o \
     $(SRCDIR)/common/types/power_signature.o \
