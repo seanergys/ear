@@ -15,8 +15,9 @@
 * and COPYING.EPL files.
 */
 
-// #define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 #define VEARD_LAPI_DEBUG 2
+
 #include <string.h>
 #include <signal.h>
 #include <pthread.h>
@@ -825,24 +826,26 @@ void clean_global_connector()
 
 void create_global_connector(char *ear_tmp, char *nodename)
 {
-  // Creates a pipe to receive requests for applications. eard creates 1 pipe (per node) and service to receive requests
-  sprintf(ear_commreq_global, "%s/.ear_comm.globalreq", ear_tmp);
-	verbose(VEARD_LAPI,"Global connector placed at %s",ear_commreq_global);
-  // ear_comreq files will be used to send requests from the library to the eard
-  if (mknod(ear_commreq_global, S_IFIFO | S_IRUSR | S_IRGRP | S_IWUSR | S_IWGRP | S_IROTH | S_IWOTH, 0) < 0) {
-    if (errno != EEXIST) {
-      error("Error creating ear global communicator for requests %s\n", strerror(errno));
+    debug("########################");
+    // Creates a pipe to receive requests for applications. eard creates 1 pipe
+    // (per node) and service to receive requests
+    sprintf(ear_commreq_global, "%s/.ear_comm.globalreq", ear_tmp);
+    verbose(VEARD_LAPI, "Global connector placed at %s", ear_commreq_global);
+    // ear_comreq files will be used to send requests from the library to the eard
+    if (mknod(ear_commreq_global, S_IFIFO | S_IRUSR | S_IRGRP | S_IWUSR | S_IWGRP | S_IROTH | S_IWOTH, 0) < 0) {
+        if (errno != EEXIST) {
+          error("Error creating ear global communicator for requests %s\n", strerror(errno));
+        }
     }
-  }
-  if (chmod(ear_commreq_global, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)<0){
-    error("Error setting privileges for eard-earl connection");
-  }
-  global_req_fd = open(ear_commreq_global,O_RDWR);
-  if (global_req_fd < 0){
-    error("Error creating global communicator for connections");
-    _exit(0);
-  }
-  AFD_SETT(global_req_fd, &rfds_basic, "global-req");
+    if (chmod(ear_commreq_global, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)<0){
+        error("Error setting privileges for eard-earl connection");
+    }
+    global_req_fd = open(ear_commreq_global,O_RDWR);
+    if (global_req_fd < 0){
+        error("Error creating global communicator for connections");
+        _exit(0);
+    }
+    AFD_SETT(global_req_fd, &rfds_basic, "global-req");
 }
 
 void connect_service(struct daemon_req *new_req)
@@ -1355,7 +1358,7 @@ state_t eard_local_api()
 	
     // HW initialized HERE...creating communication channels
 	verbose(VEARD_LAPI, "Creating comm in %s for node %s", ear_tmp, nodename);
-	
+
     AFD_ZERO(&rfds_basic);
     /* This function creates the pipe for new local connections */
     verbose(VEARD_LAPI,"Initializing local connections");
@@ -1363,6 +1366,7 @@ state_t eard_local_api()
         error("Error initializing local connections");
         _exit(0);
     }
+
     verbose(VEARD_LAPI,"Creating global connector");
     create_global_connector(ear_tmp, nodename);
 

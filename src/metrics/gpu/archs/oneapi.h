@@ -20,7 +20,7 @@
 
 #include <metrics/gpu/gpu.h>
 
-void gpu_oneapi_load(gpu_ops_t *ops);
+void gpu_oneapi_load(gpu_ops_t *ops, int force_api);
 
 void gpu_oneapi_get_api(uint *api);
 

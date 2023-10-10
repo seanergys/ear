@@ -33,6 +33,7 @@ static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static gpu_t          *pool; // change to sysmans_pool
 static timestamp_t     pool_time1;
 static timestamp_t     pool_time2;
+static uint            ok_pool;
 static suscription_t  *sus;
 static uint            devs_count;
 static ze_handlers_t  *devs;
@@ -44,8 +45,20 @@ static ze_t            ze;
         action; \
     }
 
-void gpu_oneapi_load(gpu_ops_t *ops)
+void gpu_oneapi_load(gpu_ops_t *ops, int force_api)
 {
+    debug("Received API %d", force_api);
+    if (API_IS(force_api, API_EARD)) {
+        ok_pool = 0;
+    } else if (API_IS(force_api, API_ONEAPI)) {
+        ok_pool = 1;
+    } else {
+        if (oneapi_is_privileged()) {
+            ok_pool = 1;
+        } else {
+            ok_pool = 0;
+        }
+    }
     if (state_fail(oneapi_open(&ze))) {
         debug("oneapi_open failed: %s", state_msg);
         return;
@@ -59,7 +72,7 @@ void gpu_oneapi_load(gpu_ops_t *ops)
     apis_set(ops->dispose,       gpu_oneapi_dispose);
     apis_set(ops->get_devices,   gpu_oneapi_get_devices);
     apis_set(ops->count_devices, gpu_oneapi_count_devices);
-    apis_set(ops->read,          gpu_oneapi_read);
+    apis_pin(ops->read,          gpu_oneapi_read, ok_pool);
     apis_set(ops->read_raw,      gpu_oneapi_read_raw);
 }
 
@@ -70,11 +83,19 @@ void gpu_oneapi_get_api(uint *api)
 
 state_t gpu_oneapi_init(ctx_t *c)
 {
+    timestamp_t time;
     state_t s;
-    #if 1
-	// Monitor suscription
-	pool     = calloc(devs_count, sizeof(gpu_t));
-	// Initializing monitoring thread suscription.
+    int i;
+
+    pool = calloc(devs_count, sizeof(gpu_t));
+    // Initializing pool (pool at 0 is not incorrect)
+    timestamp_getfast(&time);
+    for (i = 0; i < devs_count; ++i) {
+        pool[i].time    = time;
+        pool[i].correct = 1;
+    }
+    if (ok_pool) {
+    // Monitor suscription
 	sus = suscription();
 	sus->call_main  = gpu_oneapi_pool;
 	sus->time_relax = 2000;
@@ -85,7 +106,7 @@ state_t gpu_oneapi_init(ctx_t *c)
 		monitor_unregister(sus);
 		free(pool);
 	}
-    #endif
+    } // ok_pool
 	return EAR_SUCCESS;
 }
 
@@ -236,13 +257,15 @@ static state_t oneapi_read_utilization(int dv, gpu_t *data)
         engtostr(devs[dv].sengines_props[d].type, &prio);
         // Is new or already found?
         if (prio != NO_PRIO) {
+            ulong adiff = info.activeTime - save[dv][d].activeTime;
+            ulong tdiff = info.timestamp - save[dv][d].timestamp;
             if (prio < prio_set) {
                 debug("DEV%d ENGINE DOMAIN%d: selecting %s", dv, d, engtostr(devs[dv].sengines_props[d].type, NULL));
-                data->util_gpu  = ((info.activeTime - save[dv][d].activeTime) / (info.timestamp - save[dv][d].timestamp));
+                data->util_gpu  = (tdiff > 0LU) ? adiff / tdiff : 0LU;
                 prio_set        = prio;
                 prio_count      = 1;
             } else if (prio == prio_set) {
-                data->util_gpu += ((info.activeTime - save[dv][d].activeTime) / (info.timestamp - save[dv][d].timestamp));
+                data->util_gpu += (tdiff > 0LU) ? adiff / tdiff : 0LU;
                 prio_count     += 1;
             }
             memcpy(&save[dv][d], &info, sizeof(zes_engine_stats_t));
@@ -301,8 +324,8 @@ static void read_single(int dv, gpu_t *gpu)
 
 state_t gpu_oneapi_pool(void *p)
 {
-	gpu_t       current;
-	int         dv;
+	gpu_t current;
+	int dv;
 
 	// Locking
 	while (pthread_mutex_trylock(&lock));

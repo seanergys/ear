@@ -46,7 +46,7 @@ void gpu_load(int force_api)
     // If not, EARD is fully loaded.
     gpu_nvml_load(&ops, force_api);
     gpu_rsmi_load(&ops, force_api);
-    gpu_oneapi_load(&ops);
+    gpu_oneapi_load(&ops, force_api);
     gpu_eard_load(&ops, API_IS(force_api, API_EARD));
 dummy:
     gpu_dummy_load(&ops);

@@ -15,6 +15,8 @@
 * and COPYING.EPL files.
 */
 
+//#define SHOW_DEBUGS 1
+
 #include <signal.h>
 #include <pthread.h>
 #include <sys/stat.h>
@@ -26,13 +28,13 @@
 #include <string.h>
 #include <math.h>
 
-//#define SHOW_DEBUGS 1
 #include <common/includes.h>
 #include <common/environment.h>
 #include <common/types/pc_app_info.h>
 #include <common/hardware/hardware_info.h>
 #include <common/system/monitor.h>
 #include <common/system/execute.h>
+#include <common/output/debug.h>
 
 #include <report/report.h>
 
@@ -906,7 +908,6 @@ int main(int argc, char *argv[])
                     report_create_id(&rid, 0, 0, 0);
                 }
                 report_init(&rid, &my_cluster_conf);
-
                 report_eard_init_error();
 
                 uint thread_setup_count = 1 + POWERMON_THREAD + EXTERNAL_COMMANDS_THREAD; // eard + power mon + dyn conf
@@ -915,35 +916,26 @@ int main(int argc, char *argv[])
                 verbose(VEARD_INIT,"Creating EARD threads");
                 verbose(VEARD_INIT,"Creating power  monitor thread");
 #if POWERMON_THREAD
-
                 if ((ret=pthread_create(&power_mon_th, NULL, eard_power_monitoring, NULL))){
                     errno=ret;
                     error("error creating power_monitoring thread %s\n",strerror(errno));
                     log_report_eard_init_error(&rid,PM_CREATION_ERROR,ret);
                 }
 #endif
-
                 verbose(VEARD_INIT,"Creating the remote connections server");
-
 #if EXTERNAL_COMMANDS_THREAD
-
                 if ((ret=pthread_create(&dyn_conf_th, NULL, eard_dynamic_configuration, (void *)ear_tmp))){
                     error("error creating dynamic_configuration thread \n");
                     log_report_eard_init_error(&rid,DYN_CREATION_ERROR,ret);
                 }
 #endif
-
                 verbose(VEARD_INIT,"Creating APP-API thread");
-
 #if APP_API_THREAD
-
                 if ((ret=pthread_create(&app_eard_api_th,NULL,eard_non_earl_api_service,NULL))){
                     error("error creating server thread for non-earl api\n");
                     log_report_eard_init_error(&rid,APP_API_CREATION_ERROR,ret);
                 }
 #endif
-
-
                 verbose(VEARD_INIT,"EARD initialized succesfully");
                 /* This function never ends, EARD exits with SIGTERM o SIGINT */
                 eard_local_api();

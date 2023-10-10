@@ -310,10 +310,6 @@ state_t oneapi_get_devices(ze_handlers_t **devs, uint *devs_count)
 
 int oneapi_is_privileged()
 {
-    if (!ok) {
-        return 0;
-    }
-    // Provisional
     return (getuid() == 0);
 }
 
