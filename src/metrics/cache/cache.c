@@ -27,13 +27,17 @@ static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static cache_ops_t ops;
 static uint load;
 
-void cache_load(topology_t *tp, int eard)
+void cache_load(topology_t *tp, int force_api)
 {
 	while (pthread_mutex_trylock(&lock));
     if (load) {
         goto out;
     }
+    if (API_IS(force_api, API_DUMMY)) {
+        goto dummy;
+    }
     cache_perf_load(tp, &ops);
+dummy:
     cache_dummy_load(tp, &ops);
     // Getting cache line, is used to get the bandwidth
 	load = 1;

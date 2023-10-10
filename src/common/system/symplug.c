@@ -19,6 +19,7 @@
 
 #include <unistd.h>
 #include <common/includes.h>
+#include <common/output/debug.h>
 #include <common/system/symplug.h>
 
 state_t plug_join(void *handle, void *calls[], const char *names[], uint n)

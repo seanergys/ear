@@ -1,24 +1,35 @@
-libc_OBJS = \
+lite_OBJS = \
     $(SRCDIR)/common/environment.o \
     $(SRCDIR)/common/environment_common.o \
     $(SRCDIR)/common/math_operations.o \
+    $(SRCDIR)/common/messaging/msg_internals.o \
     $(SRCDIR)/common/string_enhanced.o \
+    $(SRCDIR)/common/hardware/architecture.o \
+    $(SRCDIR)/common/hardware/bithack.o \
+    $(SRCDIR)/common/hardware/cpuid.o \
+    $(SRCDIR)/common/hardware/hardware_info.o \
+    $(SRCDIR)/common/hardware/mrs.o \
+    $(SRCDIR)/common/hardware/topology.o \
+    $(SRCDIR)/common/hardware/topology_asm.o \
+    $(SRCDIR)/common/hardware/topology_tdp.o \
     $(SRCDIR)/common/output/log.o \
-    $(SRCDIR)/common/system/folder.o \
-    $(SRCDIR)/common/system/symplug.o \
-    $(SRCDIR)/common/system/user.o \
-    $(SRCDIR)/common/system/sockets.o \
     $(SRCDIR)/common/system/execute.o \
+    $(SRCDIR)/common/system/fd_sets.o \
+    $(SRCDIR)/common/system/file.o \
+    $(SRCDIR)/common/system/folder.o \
     $(SRCDIR)/common/system/lock.o \
+    $(SRCDIR)/common/system/loadavg.o \
+    $(SRCDIR)/common/system/poll.o \
     $(SRCDIR)/common/system/monitor.o \
+    $(SRCDIR)/common/system/plugin_manager.o \
+    $(SRCDIR)/common/system/process.o \
     $(SRCDIR)/common/system/random.o \
     $(SRCDIR)/common/system/shared_areas.o \
-    $(SRCDIR)/common/system/poll.o \
-    $(SRCDIR)/common/system/process.o \
-    $(SRCDIR)/common/system/file.o \
+    $(SRCDIR)/common/system/sockets.o \
+    $(SRCDIR)/common/system/symplug.o \
     $(SRCDIR)/common/system/time.o \
-    $(SRCDIR)/common/system/loadavg.o \
-    $(SRCDIR)/common/system/fd_sets.o \
+    $(SRCDIR)/common/system/version.o \
+    $(SRCDIR)/common/system/user.o \
     $(SRCDIR)/common/types/loop.o \
     $(SRCDIR)/common/types/log.o \
     $(SRCDIR)/common/types/event_type.o \
@@ -47,29 +58,22 @@ libc_OBJS = \
     $(SRCDIR)/common/types/periodic_aggregation.o \
     $(SRCDIR)/common/types/services.o \
     $(SRCDIR)/common/types/pc_app_info.o \
-    $(SRCDIR)/common/hardware/bithack.o \
-    $(SRCDIR)/common/hardware/hardware_info.o \
-    $(SRCDIR)/common/hardware/cpuid.o \
-    $(SRCDIR)/common/hardware/mrs.o \
-    $(SRCDIR)/common/hardware/topology.o \
-    $(SRCDIR)/common/hardware/topology_asm.o \
-    $(SRCDIR)/common/hardware/topology_tdp.o \
-    $(SRCDIR)/common/hardware/architecture.o \
-	$(SRCDIR)/common/messaging/msg_internals.o \
-	$(SRCDIR)/common/utils/args.o \
-	$(SRCDIR)/common/utils/data_register.o \
-	$(SRCDIR)/common/utils/keeper.o \
-	$(SRCDIR)/common/utils/overhead.o \
-	$(SRCDIR)/common/utils/serial_buffer.o \
-	$(SRCDIR)/common/utils/string.o \
-	$(SRCDIR)/common/utils/strscreen.o \
-	$(SRCDIR)/common/utils/strtable.o \
-	$(SRCDIR)/common/utils/special.o \
-	$(SRCDIR)/common/utils/stress.o \
-	$(SRCDIR)/common/external/ear_external.o
+    $(SRCDIR)/common/utils/args.o \
+    $(SRCDIR)/common/utils/data_register.o \
+    $(SRCDIR)/common/utils/keeper.o \
+    $(SRCDIR)/common/utils/overhead.o \
+    $(SRCDIR)/common/utils/serial_buffer.o \
+    $(SRCDIR)/common/utils/string.o \
+    $(SRCDIR)/common/utils/strscreen.o \
+    $(SRCDIR)/common/utils/strtable.o \
+    $(SRCDIR)/common/utils/special.o \
+    $(SRCDIR)/common/utils/stress.o \
+    $(SRCDIR)/common/external/ear_external.o
+
+full_OBJS = $(lite_OBJS)
 
 ifdef DB_BASE
-libc_OBJS += \
+full_OBJS += \
     $(SRCDIR)/common/database/db_helper.o \
     $(SRCDIR)/common/database/mysql_io_functions.o \
     $(SRCDIR)/common/database/postgresql_io_functions.o

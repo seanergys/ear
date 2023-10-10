@@ -53,7 +53,7 @@ typedef struct cpi_ops_s {
 	state_t (*data_tostr)      (cpi_t *ci, double cpi, char *buffer, size_t length);
 } cpi_ops_t;
 
-state_t cpi_load(topology_t *tp, int eard);
+state_t cpi_load(topology_t *tp, int force_api);
 
 state_t cpi_get_api(uint *api);
 

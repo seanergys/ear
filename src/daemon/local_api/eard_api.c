@@ -505,31 +505,11 @@ ulong eards_get_data_size_rapl() // size in bytes
     return rapl_size;
 }
 
-int eards_reset_rapl()
-{
-    init_service(RESET_RAPL);
-    return (int) sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ulong), "RAPL reset", 0);
-}
-
-int eards_start_rapl()
-{
-    init_service(START_RAPL);
-    return (int) sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ulong), "RAPL start", 1);
-}
-
 int eards_read_rapl(unsigned long long *values)
 {
     if (!app_connected) { values[0]=0; return EAR_SUCCESS; }
     init_service(READ_RAPL);
     return (int) sendack((char *) &req, sizeof(req), (char *) values, rapl_size, "RAPL read", 1);
-}
-
-ulong eards_node_energy_data_size()
-{
-    if (!app_connected) return sizeof(ulong);
-    init_service(DATA_SIZE_ENERGY_NODE);
-    energy_size = sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ulong), "energy data size", 0);
-    return energy_size;
 }
 
 int eards_node_dc_energy(void *energy,ulong datasize)
@@ -546,55 +526,8 @@ ulong eards_node_energy_frequency()
     return sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ulong), "energy freq", 0);
 }
 
-int eards_gpu_model(uint *gpu_model)
-{
-    *gpu_model = API_DUMMY;
-    init_service(GPU_MODEL);
-    return (int) sendack((char *) &req, sizeof(req), (char *) gpu_model, sizeof(uint), "GPU model", 1);
-}
-
-int eards_gpu_dev_count(uint *gpu_dev_count)
-{
-    *gpu_dev_count = 0;
-    init_service(GPU_DEV_COUNT);
-    return (int) sendack((char *) &req, sizeof(req), (char *) gpu_dev_count, sizeof(uint), "GPU count devices", 1);
-}
-
-int eards_gpu_data_read(gpu_t *gpu_info,uint num_dev)
-{
-    memset(gpu_info,0,sizeof(gpu_t)*num_dev);
-    init_service(GPU_DATA_READ);
-    return (int) sendack((char *) &req, sizeof(req), (char *) gpu_info, sizeof(gpu_t)*num_dev, "GPU data read", 1);
-}
-
-int eards_gpu_get_info(gpu_devs_t *info, uint num_dev)
-{
-    memset(info,0,sizeof(gpu_devs_t)*num_dev);
-    init_service(GPU_GET_INFO);
-    return (int) sendack((char *) &req, sizeof(req), (char *) info, sizeof(gpu_devs_t)*num_dev, "GPU info", 1);
-}
-
-int eards_gpu_set_freq(uint num_dev,ulong *freqs)
-{
-    init_service(GPU_SET_FREQ);
-    int i;
-
-    if (num_dev>MAX_GPUS_SUPPORTED){
-        error("Using more GPUS than supported: Requested %u Max %u", num_dev, MAX_GPUS_SUPPORTED);
-        num_dev=MAX_GPUS_SUPPORTED;
-    }
-    for (i = 0; i < num_dev; i++) {
-        debug("GPU %d: Freq requested %lu", i, freqs[i]);
-    }
-    req.req_data.gpu_freq.num_dev=num_dev;
-    memcpy(req.req_data.gpu_freq.gpu_freqs, freqs, sizeof(ulong)*num_dev);
-
-    return (int) sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ack), "GPU set freq", 1);
-}
-
 int eards_gpu_support()
 {
   init_service(GPU_SUPPORTED);
   return (int) sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ack), "GPU support", 0);
 }
-

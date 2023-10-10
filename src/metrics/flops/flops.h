@@ -89,7 +89,7 @@ typedef struct flops_ops_s {
     void    (*internals_tostr) (char *buffer, int length);
 } flops_ops_t;
 
-void flops_load(topology_t *tp, int eard);
+void flops_load(topology_t *tp, int force_api);
 
 void flops_get_info(apinfo_t *info);
 

@@ -9,9 +9,10 @@ COMPONENTS = \
     library \
     global_manager \
     commands \
-	tools \
+    tools \
     slurm_plugin \
-	pbs_hook
+    pbs_hook \
+    data_center_monitor
 
 #ifdef DB_BASE
 COMPONENTS += database_cache

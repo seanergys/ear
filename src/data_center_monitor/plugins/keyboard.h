@@ -15,9 +15,13 @@
 * and COPYING.EPL files.
 */
 
-#ifndef EARD_API_FRESH_H
-#define EARD_API_FRESH_H
+#ifndef UP_KEYBOARD_H
+#define UP_KEYBOARD_H
 
+#include <common/system/plugin_manager.h>
 
+typedef void (*callback_t) (char **parameters);
 
-#endif //EARD_API_FRESH_H
+void command_register(cchar *command, cchar *format, callback_t call);
+
+#endif //UP_CONFIG_H
