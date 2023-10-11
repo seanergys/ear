@@ -49,6 +49,7 @@ typedef struct cmeta_s {
 static topology_t *tp;
 static cmeta_t     meta[5];
 static uint        meta_count;
+static uint        enabled_count;
 static double      line_size;
 static uint        started;
 
@@ -64,6 +65,7 @@ void set_cache(ullong event, uint type, uint offset, uint used_in_bw, cchar *des
         meta[meta_count].enabled = 0;
     } else {
         debug("perf_open for event %s: OK", desc);
+        enabled_count++;
     }
     meta_count++;
 }
@@ -109,7 +111,7 @@ void cache_perf_load(topology_t *tp, cache_ops_t *ops)
         set_cache(0x17    , PERF_TYPE_RAW     , OFFSET(002), 1, "L2D_CACHE_REFILL");
         set_cache(0x18    , PERF_TYPE_RAW     , OFFSET(LBW), 0, "L2D_CACHE_WB"    );
     }
-    if (!meta_count) {
+    if (!enabled_count) {
         return;
     }
     apis_put(ops->get_info,     cache_perf_get_info);
