@@ -25,7 +25,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 #if !SHOW_DEBUGS
 #define NDEBUG // Activate assert calls only in the debug mode.
 #endif

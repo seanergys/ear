@@ -16,7 +16,7 @@
 */
 
 #include <stdio.h>
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
 #include <common/types/types.h>
