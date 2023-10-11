@@ -14,27 +14,15 @@
  * and COPYING.EPL files.
  */
 
+
 #ifndef _DCGMI_LIB_H_
 #define _DCGMI_LIB_H_
 
 
-#include <common/types.h>
 #include <common/states.h>
-#include <metrics/gpu/archs/dcgmi.h>
+#include <common/types.h>
 
-
-// typedef struct dcgmi_signature_s* dcgmi_signature_t;
-
-
-typedef struct dcgmi_sig
-{
-	uint    dcgmi_sets;
-	uint    dcgmi_gpus;
-	uint    dcgmi_num_ev;
-	uint    **dcgmi_events;
-	uint    *dcgmi_instances;
-	dcgmi_t **dcgmi_metrics;
-} dcgmi_sig_t;
+#include <library/metrics/dcgmi_lib/common.h>
 
 
 /** Loads this module. */

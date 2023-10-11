@@ -89,7 +89,6 @@ core_OBJS = \
     common/utils.o \
     metrics/metrics.o \
     metrics/energy_node_lib.o \
-    metrics/dcgmi_lib.o \
     models/models.o \
     models/cpu_power_model.o \
     models/energy_model.o \
@@ -103,7 +102,9 @@ core_OBJS = \
     states/states_comm.o \
     states/states.o \
     tracer/tracer.o \
-    dynais/dynais.a 
+    dynais/dynais.a \
+    metrics/dcgmi_lib.o \
+    metrics/dcgmi_lib/t4.o
 
 
 ifeq ($(FEAT_MPI_API), 1)

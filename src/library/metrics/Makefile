@@ -2,7 +2,8 @@
 OBJS = \
     metrics.o \
     energy_node_lib.o \
-    dcgmi_lib.o
+    dcgmi_lib.o \
+		dcgmi_lib/t4.o
 
 all: $(OBJS)
 
