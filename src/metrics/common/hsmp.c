@@ -222,16 +222,16 @@ retry:
 	}
 	if (response == HSMP_NOT_READY) {
 		if (--timeout == 0) {
-			return unlock_msg(s, "Timeout, waiting too long for an HSMP response");
+			return unlock_msg(EAR_ERROR, "Timeout, waiting too long for an HSMP response");
 		}
 		++intents;
 		goto retry;
 	}
 	if (response == HSMP_INVALID_ID) {
-		return unlock_msg(s, "Invalid mail function id");
+		return unlock_msg(EAR_ERROR, "Invalid mail function id");
 	}
 	if (response == HSMP_INVALID_ARG) {
-		return unlock_msg(s, "Invalid mail argument");
+		return unlock_msg(EAR_ERROR, "Invalid mail argument");
 	}
 	debug("HSMP answered after %d intents", intents);
 	// Reading the values
@@ -242,8 +242,7 @@ retry:
 			return unlock_msg(s, state_msg);
 		}
 	}
-
-	return unlock_msg(EAR_SUCCESS, "OK");
+	return unlock_msg(EAR_SUCCESS, "");
 }
 
 #if TEST
