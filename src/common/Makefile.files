@@ -35,6 +35,7 @@ lite_OBJS = \
     $(SRCDIR)/common/types/event_type.o \
     $(SRCDIR)/common/types/periodic_metric.o \
     $(SRCDIR)/common/types/application.o \
+    $(SRCDIR)/common/types/projection.o \
     $(SRCDIR)/common/types/configuration/cluster_conf_db.o \
     $(SRCDIR)/common/types/configuration/cluster_conf.o \
     $(SRCDIR)/common/types/configuration/policy_conf.o \
