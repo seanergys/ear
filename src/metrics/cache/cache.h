@@ -56,7 +56,7 @@ typedef struct coche_ops_s {
     void    (*internals_tostr)   (char *buffer, int length);
 } cache_ops_t;
 
-void cache_load(topology_t *tp, int eard);
+void cache_load(topology_t *tp, int force_api);
 
 void cache_get_info(apinfo_t *info);
 

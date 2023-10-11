@@ -437,9 +437,9 @@ static void metrics_static_init(topology_t *tp)
 		}else{
 			/* If master but EARD not connected */
 			if (eard && !eards_connected()){
-					  gpu_load(2);
+					  gpu_load(API_NVML);
 			}	else{
-						gpu_load(0);
+						gpu_load(API_FREE);
 			}
 		}
     mgt_gpu_load(eard);
@@ -1890,7 +1890,6 @@ int metrics_init(topology_t *topo)
     }
 
 	// Allocating data for energy node metrics
-	// node_energy_datasize=eards_node_energy_data_size();
 	energy_datasize(&node_energy_datasize);
 	debug("energy data size %lu", node_energy_datasize);
 	energy_units(&node_energy_units);

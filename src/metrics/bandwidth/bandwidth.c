@@ -42,13 +42,16 @@ static uint            is_loaded;
 static apinfo_t        api;
 static uint            oid;
 
-void bwidth_load(topology_t *tp, int eard)
+void bwidth_load(topology_t *tp, int force_api)
 {
     while (pthread_mutex_trylock(&lock));
     if (is_loaded) {
         goto leave;
     }
-    bwidth_eard_load    (tp, &ops, eard);
+    if (API_IS(force_api, API_DUMMY)) {
+        goto dummy;
+    }
+    bwidth_eard_load    (tp, &ops, API_IS(force_api, API_EARD));
     bwidth_amd19_load   (tp, &ops);
     bwidth_amd17_load   (tp, &ops);
     bwidth_amd17df_load (tp, &ops);
@@ -56,6 +59,7 @@ void bwidth_load(topology_t *tp, int eard)
     bwidth_intel106_load(tp, &ops);
     bwidth_intel143_load(tp, &ops);
     bwidth_likwid_load  (tp, &ops);
+dummy:
     bwidth_dummy_load   (tp, &ops);
     // Bandiwdth wants to know more about the loaded API. This is safe because at 
     // this point all API's have their devices counter.

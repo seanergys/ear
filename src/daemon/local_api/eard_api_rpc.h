@@ -21,9 +21,11 @@
 #include <common/types.h>
 #include <common/sizes.h>
 #include <common/states.h>
+#include <common/system/version.h>
 #include <daemon/local_api/eard_api.h>
 #include <daemon/local_api/eard_api_conf.h>
 
+#define RPC_GET_STATE                      2001
 #define RPC_MGT_CPUFREQ_GET_API            1001
 #define RPC_MGT_CPUFREQ_GET_AVAILABLE      1002
 #define RPC_MGT_CPUFREQ_GET_CURRENT        1003
@@ -78,6 +80,12 @@
 #define RPC_MET_BWIDTH_GET_API             1121
 #define RPC_MET_BWIDTH_COUNT_DEVICES       1122
 #define RPC_MET_BWIDTH_READ                1123
+
+typedef struct eard_state_s {
+    version_t version;
+    uint gpus_supported_count;
+    pid_t pid;
+} eard_state_t;
 
 struct rpcerr_s {
 	char *answer;
