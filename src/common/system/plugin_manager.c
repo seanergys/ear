@@ -552,8 +552,8 @@ static int plugin_manager_configure(int argc, char *argv[])
     if (argc == 1 || args_get(argc, argv, "help", buffer)) {
         verbose(0, "Usage: %s [OPTIONS]\n", argv[0]);
         verbose(0, "Options:");
-        verbose(0, "    --plugins    List of comma separated plugins to load.");
-        verbose(0, "    --paths      List of comma separated priority paths to search plugins.");
+        verbose(0, "    --plugins    List of plus sign separated plugins to load.");
+        verbose(0, "    --paths      List of colon separated priority paths to search plugins.");
         verbose(0, "    --verbose    Show how the things are going internally.");
         verbose(0, "    --silence    Hide messages returned by plugins.");
         verbose(0, "    --help       If you see it you already typed --help.");
