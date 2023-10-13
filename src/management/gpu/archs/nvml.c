@@ -364,18 +364,18 @@ static state_t clocks_set(int i, uint mhz)
 	uint parsed_mhz;
 	ulong aux;
 
+    if (mhz == 0U) {
+        return EAR_SUCCESS;
+    }
 	mgt_gpu_freq_get_valid(NULL, i, ((ulong) mhz) * 1000LU, &aux);
 	parsed_mhz = ((uint) aux) / 1000U;
-
 	debug("D%d setting clock %u KHz (parsed => %u)", i, mhz * 1000U, parsed_mhz * 1000U);
 #if 0
-	if ((r = nvml.SetLockedClocks(devs[i], 0, parsed_mhz)) != NVML_SUCCESS)
-	{
+	if ((r = nvml.SetLockedClocks(devs[i], 0, parsed_mhz)) != NVML_SUCCESS) {
 		debug("nvmlDeviceSetGpuLockedClocks(dev: %d) returned %d (%s)",
 			i, r, nvml.ErrorString(r));
 #endif
-		if ((r = nvml.SetAppsClocks(devs[i], clock_max_mem[i], parsed_mhz)) != NVML_SUCCESS)
-		{
+		if ((r = nvml.SetAppsClocks(devs[i], clock_max_mem[i], parsed_mhz)) != NVML_SUCCESS) {
 			debug("nvmlDeviceSetApplicationsClocks(dev: %d) returned %d (%s)",
 				i, r, nvml.ErrorString(r));
 			// Unlike POWER functions, which have a function ask about the current
@@ -399,11 +399,9 @@ state_t mgt_gpu_nvml_freq_limit_set(ctx_t *c, ulong *khz)
 	int i;
 	debug("nvml_clock_limit_set devices %d",devs_count);
 	for (i = 0, e = EAR_SUCCESS; i < devs_count; ++i) {
-        if (khz[i] > 0){
-            if (state_fail(s = clocks_set(i, (uint) (khz[i] / 1000LU)))) {
-                e = s;
-            }
-		}
+        if (state_fail(s = clocks_set(i, (uint) (khz[i] / 1000LU)))) {
+            e = s;
+        }
 	}
 	return e;
 }
@@ -465,7 +463,10 @@ state_t mgt_gpu_nvml_power_cap_get_rank(ctx_t *c, ulong *watts_min, ulong *watts
 static state_t powers_set(int i, uint mw)
 {
 	nvmlReturn_t r;
-	
+
+    if (mw == 0U) {
+        return EAR_SUCCESS;
+    }
 	debug("D%d setting power to %u mW", i, mw);
 	if ((r = nvml.SetPowerLimit(devs[i], mw)) != NVML_SUCCESS)
 	{
@@ -487,9 +488,6 @@ state_t mgt_gpu_nvml_power_cap_set(ctx_t *c, ulong *watts)
 	int i;
 
 	for (i = 0, e = EAR_SUCCESS; i < devs_count; ++i) {
-        if (watts == 0LU) {
-            continue;
-        }
 		if (state_fail(s = powers_set(i, (uint) (watts[i] * 1000LU)))) {
 			e = s;
 		}

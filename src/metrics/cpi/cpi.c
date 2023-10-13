@@ -25,7 +25,7 @@ static cpi_ops_t ops;
 static uint init;
 static uint api;
 
-state_t cpi_load(topology_t *tp, int eard)
+state_t cpi_load(topology_t *tp, int force_api)
 {
 	while (pthread_mutex_trylock(&lock));
 	// Already initialized
@@ -33,9 +33,13 @@ state_t cpi_load(topology_t *tp, int eard)
 		goto leave;
 	}
 	api = API_DUMMY;
+    if (API_IS(force_api, API_DUMMY)) {
+        goto dummy;
+    }
 	if (state_ok(cpi_perf_load(tp, &ops))) {
 		api = API_PERF;
 	}
+dummy:
 	cpi_dummy_load(tp, &ops);
 	init = 1;
 leave:

@@ -15,9 +15,23 @@
 * and COPYING.EPL files.
 */
 
-#ifndef EARD_API_FRESH_H
-#define EARD_API_FRESH_H
+/**
+*    \file projection.h
+*    \brief Projections are used by time&power models.
+*
+*/
+
+#ifndef _EAR_TYPES_PROJECTION
+#define _EAR_TYPES_PROJECTION
+
+#include <common/types/signature.h>
+#include <common/types/coefficient.h>
 
 
+/* Basic for compatibility and tools */
+double basic_project_time(signature_t *sign,coefficient_t *coeff);
+double basic_project_cpi(signature_t *sign,coefficient_t *coeff);
+double basic_project_power(signature_t *sign,coefficient_t *coeff);
 
-#endif //EARD_API_FRESH_H
+
+#endif

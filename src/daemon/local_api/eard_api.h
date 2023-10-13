@@ -54,12 +54,6 @@ void eards_disconnect();
 /** Sends a request to read the RAPL counters. Returns -1 if there's an error,
  * and on success returns 0 and fills the array \p values with the counters' values. */
 int eards_read_rapl(unsigned long long *values);
-/** Sends the request to start the RAPL counters. Returns 0 on success or if
- * the application is not connected, -1 if there's an error. */
-int eards_start_rapl();
-/** Sends the request to reset the RAPL counters. Returns 0 on success or if
- * the application is not connected, -1 if there's an error. */
-int eards_reset_rapl();
 /** Requests the rapl data size.
  * Returns -1 if there's an error, and the actual value otherwise. */
 unsigned long eards_get_data_size_rapl();
@@ -83,9 +77,6 @@ ulong eards_write_event(ear_event_t *event);
  * \ingroup local_api
  * \todo Add a description.
  * @{ */
-/** Requests the IPMI data size.
- * Returns -1 if there's an error, and the actual value otherwise. */
-unsigned long eards_node_energy_data_size();
 /** Requests the DC energy to the node.
  * Returns 0 on success, -1 if there's an error. */
 int eards_node_dc_energy(void *energy,ulong datasize);
@@ -98,20 +89,6 @@ ulong eards_write_loop_signature(loop_t *loop_signature);
 ulong eards_node_energy_frequency();
 /** @}  */
 
-/** \defgroup gpu_services GPU services
- * \ingroup local_api
- * \todo Add a description.
- * @{ */
-/** \todo  */
-int eards_gpu_model(uint *gpu_model);
-/** \todo  */
-int eards_gpu_dev_count(uint *gpu_dev_count);
-/** \todo  */
-int eards_gpu_data_read(gpu_t *gpu_info,uint num_dev);
-/** \todo  */
-int eards_gpu_set_freq(uint num_dev,ulong *freqs);
-/** \todo  */
-int eards_gpu_get_info(gpu_devs_t *info, uint num_dev);
 /** EARD GPU support */
 int eards_gpu_support();
 

@@ -33,13 +33,17 @@ static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static flops_ops_t ops;
 static uint load;
 
-void flops_load(topology_t *tp, int eard)
+void flops_load(topology_t *tp, int force_api)
 {
 	while (pthread_mutex_trylock(&lock));
     if (load) {
         goto out;
     }
+    if (API_IS(force_api, API_DUMMY)) {
+        goto dummy;
+    }
     flops_perf_load(tp, &ops);
+dummy:
     flops_dummy_load(tp, &ops);
     load = 1;
 out:

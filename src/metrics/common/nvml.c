@@ -15,9 +15,12 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+//#define SHOW_DEBUGS 1
+
 #include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <common/output/debug.h>
 #include <common/system/symplug.h>
 #include <common/config/config_env.h>
 #include <metrics/common/nvml.h>
@@ -74,6 +77,7 @@ static uint            ok;
 static state_t static_open()
 {
     #define open_test(path) \
+        debug("Opening %s", path); \
         if (state_ok(plug_open(path, (void **) &nvml, nvml_names, NVML_N, RTLD_NOW | RTLD_LOCAL))) { \
             return EAR_SUCCESS; \
         } 
