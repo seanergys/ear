@@ -21,7 +21,7 @@
 extern char *program_invocation_name;
 extern char *program_invocation_short_name;
 
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #include <stdio.h>
 #include <common/states.h>

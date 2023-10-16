@@ -32,21 +32,24 @@ typedef struct fmeta_s {
 } fmeta_t;
 
 static fmeta_t meta[8];
-static uint    counter;
+static uint    meta_count;
 static uint    started;
+static uint    enabled_count;
 
 void set_flops(ullong event, uint type, int offset, double weight, cchar *desc)
 {
-    meta[counter].offset      = offset;
-    meta[counter].weight      = weight;
-    meta[counter].desc        = desc;
-    meta[counter].enabled     = 1;
+    meta[meta_count].offset      = offset;
+    meta[meta_count].weight      = weight;
+    meta[meta_count].desc        = desc;
+    meta[meta_count].enabled     = 1;
     // Opening perf event (some events might be accepted but don't work)
-    if (state_fail(perf_open(&meta[counter].perf, NULL, 0, type, (ulong) event))) {
+    if (state_fail(perf_open(&meta[meta_count].perf, NULL, 0, type, (ulong) event))) {
         debug("perf_open returned: %s", state_msg);
-        meta[counter].enabled = 0;
+        meta[meta_count].enabled = 0;
+    } else {
+        enabled_count++;
     }
-    counter++;
+    meta_count++;
 }
 
 void flops_perf_load(topology_t *tp, flops_ops_t *ops)
@@ -56,10 +59,10 @@ void flops_perf_load(topology_t *tp, flops_ops_t *ops)
         set_flops(0x01c7, PERF_TYPE_RAW, 1,  1.0, "FP_ARITH_INST_RETIRED.SCALAR_DOUBLE");
         set_flops(0x08c7, PERF_TYPE_RAW, 2,  4.0, "FP_ARITH_INST_RETIRED.128B_PACKED_SINGLE");
         set_flops(0x04c7, PERF_TYPE_RAW, 3,  2.0, "FP_ARITH_INST_RETIRED.128B_PACKED_DOUBLE");
-	set_flops(0x20c7, PERF_TYPE_RAW, 4,  8.0, "FP_ARITH_INST_RETIRED.256B_PACKED_SINGLE");
+        set_flops(0x20c7, PERF_TYPE_RAW, 4,  8.0, "FP_ARITH_INST_RETIRED.256B_PACKED_SINGLE");
         set_flops(0x10c7, PERF_TYPE_RAW, 5,  4.0, "FP_ARITH_INST_RETIRED.256B_PACKED_DOUBLE");
-	set_flops(0x80c7, PERF_TYPE_RAW, 6, 16.0, "FP_ARITH_INST_RETIRED.512B_PACKED_SINGLE");
-	set_flops(0x40c7, PERF_TYPE_RAW, 7,  8.0, "FP_ARITH_INST_RETIRED.512B_PACKED_DOUBLE");
+        set_flops(0x80c7, PERF_TYPE_RAW, 6, 16.0, "FP_ARITH_INST_RETIRED.512B_PACKED_SINGLE");
+        set_flops(0x40c7, PERF_TYPE_RAW, 7,  8.0, "FP_ARITH_INST_RETIRED.512B_PACKED_DOUBLE");
     }
     else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN) {
         // In theory, this event counts 128 and 256 bits operations from SSE and
@@ -88,10 +91,10 @@ void flops_perf_load(topology_t *tp, flops_ops_t *ops)
         set_flops(0x0075, PERF_TYPE_RAW, 0,  1.0, "VFP_SPEC");
         set_flops(0x0074, PERF_TYPE_RAW, 2,  4.0, "ASE_SPEC");
     } else {
-	debug("%s", Generr.api_incompatible);
+	    debug("%s", Generr.api_incompatible);
         return;
     }
-    if (!counter) {
+    if (!enabled_count) {
         return;
     }
     apis_put(ops->get_info,        flops_perf_get_info);
@@ -116,7 +119,7 @@ state_t flops_perf_init(ctx_t *c)
 {
 	uint i;
 	if (!started) {
-		for (i = 0; i < counter; ++i) {
+		for (i = 0; i < meta_count; ++i) {
             if (meta[i].enabled) {
 			    perf_start(&meta[i].perf);
             }
@@ -143,7 +146,7 @@ state_t flops_perf_read(flops_t *fl)
     // Getting time
     timestamp_get(&fl->time);
     // Reading
-    for (i = 0; i < counter; ++i) {
+    for (i = 0; i < meta_count; ++i) {
         if (meta[i].enabled) {
             p[i] = value = 0LLU;
             if (state_ok(s = perf_read(&meta[i].perf, (long long *) &value))) {
@@ -185,7 +188,7 @@ void flops_perf_data_diff(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs)
     flB.secs = (double) time;
     flB.secs = flB.secs / 1000.0;
     // Instruction differences (PERF registers are 64 bits long)
-    for (i = 0; i < counter; ++i) {
+    for (i = 0; i < meta_count; ++i) {
         if (meta[i].enabled) {
             // Is overflow_zero because sometimes values at time X are under
             // values al time Y, being X greater than Y. This is because perf
@@ -195,7 +198,7 @@ void flops_perf_data_diff(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs)
         }
     }
     // Sorting and computing GFLOPs
-    for (i = 0; i < counter; ++i) {
+    for (i = 0; i < meta_count; ++i) {
         pB[meta[i].offset] += pA[i] * ((ullong) meta[i].weight);
         debug("FLOPS[%d->%d] += %llu * %0.2lf",
             i, meta[i].offset, pA[i], meta[i].weight);
@@ -222,7 +225,7 @@ void flops_perf_internals_tostr(char *buffer, int length)
     cchar *offstr[] = { "F64 ", "D64 ", "F128", "D128", "F256", "D256", "F512", "D512" };
     cchar *state[] = { "failed", "loaded" };
     int i, c;
-    for (i = c = 0; i < counter; ++i) {
+    for (i = c = 0; i < meta_count; ++i) {
         c += sprintf(&buffer[c], "FLOPS %s: %s event %s * %-2.2lf\n", offstr[meta[i].offset],
                      state[meta[i].enabled], meta[i].desc, meta[i].weight);
     }

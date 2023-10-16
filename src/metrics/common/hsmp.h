@@ -42,6 +42,7 @@
 #define HSMP_SET_LCLK_DPM_LEVEL_RANGE    0x12 //esmi_socket_lclk_dpm_level_set
 #define HSMP_GET_MAX_DDR_BANDIWDTH       0x14 //esmi_ddr_bw_get
 
+// Looks for HSMP devices.
 state_t hsmp_scan(topology_t *tp);
 
 state_t hsmp_close();

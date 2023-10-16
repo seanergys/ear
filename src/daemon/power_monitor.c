@@ -1403,7 +1403,8 @@ policy_conf_t *configure_context(powermon_app_t *pmapp, uint user_type,
 #if !POWERMON_RESTORE
     verbose(VJOBPMON, "Setting userspace governor pstate=%u to %u cpus (used %u)",
             my_policy->p_state, cpus_free, cpus_used);
-    check_usrspace_gov_set(frequency_set_userspace_governor_all_cpus(), VJOBPMON);
+		state_t ret_st = frequency_set_userspace_governor_all_cpus();
+    check_usrspace_gov_set(ret_st, VJOBPMON);
     /* Setting the default CPU freq for the new job */
     frequency_set_with_mask(&not_in_jobs_mask, f);
     /* Moved to powermon_init mgw configuration */
@@ -2392,7 +2393,11 @@ void create_powermon_out() {
     fd_powermon = open(output_name, O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
     if (fd_powermon < 0) {
         fd_powermon = open(output_name, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-        if (fd_powermon >= 0) write(fd_powermon, header, strlen(header));
+        if (fd_powermon >= 0) {
+            if (write(fd_powermon, header, strlen(header)) != strlen(header)) {
+                // Do something with the error
+            }
+        }
     }
     if (fd_powermon < 0) {
         error("Error creating output file %s", strerror(errno));
