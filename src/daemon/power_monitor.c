@@ -2392,7 +2392,11 @@ void create_powermon_out() {
     fd_powermon = open(output_name, O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
     if (fd_powermon < 0) {
         fd_powermon = open(output_name, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-        if (fd_powermon >= 0) write(fd_powermon, header, strlen(header));
+        if (fd_powermon >= 0) {
+            if (write(fd_powermon, header, strlen(header)) != strlen(header)) {
+                // Do something with the error
+            }
+        }
     }
     if (fd_powermon < 0) {
         error("Error creating output file %s", strerror(errno));

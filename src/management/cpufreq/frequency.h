@@ -29,13 +29,12 @@
 // adapt and test the old code. The old frequency API without cpufreq is in
 // recovery folder. Take a look into cpufreq.h to learn about compiling options.
 
-
 #define check_usrspace_gov_set(st, vrb_lvl) \
     if (state_fail(st))\
     {\
        if (state_is(st, EAR_WARNING))\
        {\
-            verbose(vrb_lvl, state_msg);\
+            verbose(vrb_lvl, "%s", state_msg);\
        } else if (state_is(st, EAR_NOT_INITIALIZED))\
        {\
            verbose(vrb_lvl, "%sERROR%s %s", COL_RED, COL_CLR, state_msg);\
@@ -44,7 +43,6 @@
             verbose(vrb_lvl, "%sERROR%s Setting userspace governor.", COL_RED, COL_CLR);\
        }\
     }
-
 
 typedef struct governor {
 	char name[128];

@@ -100,7 +100,6 @@ static uint             unc_count;
 static int              global_req_fd;
 static char             ear_commreq_global[MAX_PATH_SIZE * 2];
 static ulong            energy_freq;
-static int              RAPL_counting = 0;
 /* This var is used in all the eard services, no thread-safe */
 static struct daemon_req req;
 /* FDs for local connections */
@@ -1029,120 +1028,129 @@ int service_gpu(eard_head_t *head, int req_fd, int ack_fd)
 int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)
 {
     unsigned long ack = 0;
-#if USE_GPUS
-	verbose(VEARD_LAPI_DEBUG,"EARD old eard_gpu");
+
 	switch (head->req_service) {
-        case GPU_SUPPORTED:
-            ack = 1;
-            verbose(0,"GPU_SUPPORTED check");
-            write(ack_fd,&ack,sizeof(ack));
-            break;
-	  default:
-      return 0;
-  }
-#else
-    switch (head->req_service) {
-        case GPU_SUPPORTED:
-            ack = 0;
-            verbose(0,"GPU_NOT_SUPPORTED check");
-            write(ack_fd,&ack,sizeof(ack));
-            return 1;
-            break;
-        default: break;
+    case GPU_SUPPORTED:
+        #if USE_GPUS
+        verbose(0, "GPU_SUPPORTED check");
+        ack = 1;
+        #else
+        verbose(0, "GPU_NOT_SUPPORTED check");
+        ack = 0;
+        #endif
+        if (write(ack_fd, &ack, sizeof(ack)) != sizeof(ack)) {
+            // Do something with the error
+        }
+        break;
+    default:
+        return 0;
     }
-    return 0;
-#endif
     return 1;
 }
 
 int eard_node_energy(eard_head_t *head,int req_fd,int ack_fd)
 {
-  unsigned long ack;
-	verbose(VEARD_LAPI_DEBUG, "EARD old node_energy");
-  switch (head->req_service) {
+    unsigned long ack;
+    verbose(VEARD_LAPI_DEBUG, "EARD old node_energy");
+    switch (head->req_service) {
     case READ_DC_ENERGY:
-      energy_dc_read(&handler_energy, node_energy_data);
-      write(ack_fd, node_energy_data, node_energy_datasize);
-      break;
+        energy_dc_read(&handler_energy, node_energy_data);
+        if (write(ack_fd, node_energy_data, node_energy_datasize) != node_energy_datasize) {
+            // Do something with the error
+        }
+        break;
     case ENERGY_FREQ:
-      ack = (ulong) energy_freq;
-      write(ack_fd, &ack, sizeof(unsigned long));
-      break;
-/* Add new_services for RAPL here. Use req_fd to read pending data and ack_fd to send data*/
+        ack = (ulong) energy_freq;
+        if (write(ack_fd, &ack, sizeof(unsigned long)) != sizeof(unsigned long)) {
+            // Do something with the error
+        }
+        break;
     default:
-      return 0;
-  }
-  return 1;
+        return 0;
+    }
+    return 1;
 }
 
 int eard_system(eard_head_t *head,int req_fd,int ack_fd)
 {
-  unsigned long ack;
-  int con_id;
-  con_id = get_local_connection_by_fd(eard_local_conn,req_fd,ack_fd);
+    unsigned long ack;
+    int con_id;
 
+    con_id = get_local_connection_by_fd(eard_local_conn,req_fd,ack_fd);
 	verbose(VEARD_LAPI_DEBUG,"EARD old system");
-  switch (head->req_service) {
+
+    switch (head->req_service) {
     case WRITE_APP_SIGNATURE:
-			verbose(VEARD_LAPI,"App signature received: Anonymous %lu", eard_local_conn[con_id].anonymous);
-      if (!eard_local_conn[con_id].anonymous) powermon_mpi_signature(&req.req_data.app);
-      ack = EAR_COM_OK;
-      if (write(ack_fd, &ack, sizeof(ulong)) != sizeof(ulong)) {
-        error("ERROR while writing system service ack, closing connection...");
-        eard_close_comm(req_fd,ack_fd);
-      }
-
-      break;
+        verbose(VEARD_LAPI,"App signature received: Anonymous %lu", eard_local_conn[con_id].anonymous);
+        if (!eard_local_conn[con_id].anonymous) {
+            powermon_mpi_signature(&req.req_data.app);
+        }
+        ack = EAR_COM_OK;
+        if (write(ack_fd, &ack, sizeof(ulong)) != sizeof(ulong)) {
+            error("ERROR while writing system service ack, closing connection...");
+            eard_close_comm(req_fd,ack_fd);
+        }
+        break;
     case WRITE_EVENT:
-      ack = EAR_COM_OK;
-			report_connection_status = report_events(&rid, &req.req_data.event, 1);
-      if (report_connection_status == EAR_SUCCESS) ack = EAR_COM_OK;
-      else ack = EAR_COM_ERROR;
+        ack = EAR_COM_OK;
+        report_connection_status = report_events(&rid, &req.req_data.event, 1);
+        if (report_connection_status == EAR_SUCCESS) {
+            ack = EAR_COM_OK;
+        } else {
+            ack = EAR_COM_ERROR;
+        }
+        if (write(ack_fd, &ack, sizeof(ulong)) != sizeof(ulong)){
+            // Do something with the error
+        }
+        break;
+        case WRITE_LOOP_SIGNATURE:
+        debug("WRITE_LOOP_SIGNATURE");
+        ack = EAR_COM_OK;
+        powermon_loop_signature(eard_local_conn[con_id].jid,eard_local_conn[con_id].sid,&req.req_data.loop);
+        // print_loop_fd(1,&req.req_data.loop);
+        report_connection_status = report_loops(&rid, &req.req_data.loop, 1);
 
-      write(ack_fd, &ack, sizeof(ulong));
-      break;
-    case WRITE_LOOP_SIGNATURE:
-      debug("WRITE_LOOP_SIGNATURE");
-
-      ack = EAR_COM_OK;
-      
-      powermon_loop_signature(eard_local_conn[con_id].jid,eard_local_conn[con_id].sid,&req.req_data.loop);
-      // print_loop_fd(1,&req.req_data.loop);
-	  report_connection_status = report_loops(&rid, &req.req_data.loop, 1);
-
-      if (report_connection_status == EAR_SUCCESS) ack = EAR_COM_OK;
-      else ack = EAR_COM_ERROR;
-
-      write(ack_fd, &ack, sizeof(ulong));
-
-      break;
-/* Add new_services for RAPL here. Use req_fd to read pending data and ack_fd to send data*/
+        if (report_connection_status == EAR_SUCCESS) {
+            ack = EAR_COM_OK;
+        } else {
+            ack = EAR_COM_ERROR;
+        }
+        if (write(ack_fd, &ack, sizeof(ulong)) != sizeof(ulong)) {
+            // Do something with the error
+        }
+        break;
     default:
-      return 0;
+        return 0;
   }
   return 1;
 }
 
 int eard_rapl(eard_head_t *head,int req_fd,int ack_fd)
 {
-  unsigned long ack = 0;
+    unsigned long ack = 0;
+    size_t size;
 
-  verbose(VEARD_LAPI_DEBUG, "EARD old eard_rapl");
-  switch (head->req_service) {
+    verbose(VEARD_LAPI_DEBUG, "EARD old eard_rapl");
+    size = sizeof(ullong) * RAPL_POWER_EVS * num_packs;
+    switch (head->req_service) {
     case READ_RAPL:
-      //if (read_rapl_msr(fd_rapl,values_rapl)<0) error("Error reading rapl msr counters");
-      if (energy_cpu_read(no_ctx, values_rapl) < 0) error("Error reading rapl msr counters");
-      write(ack_fd, values_rapl, sizeof(unsigned long long) * RAPL_POWER_EVS*num_packs);
-      break;
+        if (energy_cpu_read(no_ctx, values_rapl) < 0) {
+            error("Error reading rapl msr counters");
+        }
+        if (write(ack_fd, values_rapl, size) != size) {
+            // Do something with the error
+        }
+        break;
     case DATA_SIZE_RAPL:
-      ack = sizeof(unsigned long long) * RAPL_POWER_EVS*num_packs;
-      write(ack_fd, &ack, sizeof(unsigned long));
-      break;
-    /* Add new_services for RAPL here. Use req_fd to read pending data and ack_fd to send data*/
+        ack = size;
+        if (write(ack_fd, &ack, sizeof(ulong)) != sizeof(ulong)) {
+            // Do something with the error
+        }
+        break;
     default:
-      return 0;
-  }
-  return 1;
+       return 0;
+    }
+    return 1;
 }
 
 state_t service_close(int req_fd, int ack_fd)
