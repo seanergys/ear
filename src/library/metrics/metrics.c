@@ -525,12 +525,12 @@ static void metrics_static_init(topology_t *tp)
         function;
 
     master = (masters_info.my_master_rank >= 0);
-    eard   = (master);
+    eard   = ((master) ? API_EARD : NO_EARD);
     // Load
 #if SINGLE_CONNECTION
     sa(mgt_cpufreq_load(tp, eard));
 #else
-    sa(mgt_cpufreq_load(tp, 1));
+    sa(mgt_cpufreq_load(tp, API_EARD));
 #endif
     sa(mgt_imcfreq_load(tp, eard, NULL));
     sa( energy_cpu_load(tp, eard));
@@ -556,7 +556,7 @@ static void metrics_static_init(topology_t *tp)
     mgt_gpu_load(eard);
 #if USE_CUPTI
     if (read_cupti_metrics) {
-      gpuproc_load(1);
+      gpuproc_load(eard);
     }
 #endif
 
@@ -578,6 +578,7 @@ static void metrics_static_init(topology_t *tp)
     sa(     bwidth_get_api(&met_bwidth.api ));
     sa(        cpi_get_api(&met_cpi.api    ));
     sa(mgt_cpuprio_get_api(&mgt_cpuprio.api));
+		flops_get_info(&met_flops);
 
 		if (met_cpufreq.api == API_DUMMY) estimate_met_cpuf = 1;
 		if (met_bwidth.api  == API_DUMMY) estimate_gbs = 1;
