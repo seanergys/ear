@@ -45,8 +45,7 @@
 #include <metrics/imcfreq/imcfreq.h>
 #include <report/report.h>
 #include <daemon/eard_node_services.h>
-#include <daemon/local_api/eard_api_conf.h>
-#include <daemon/local_api/eard_api_rpc.h>
+#include <daemon/local_api/eard_api.h>
 #include <daemon/local_api/node_mgr.h>
 #include <daemon/power_monitor.h>
 #include <daemon/shared_configuration.h>
