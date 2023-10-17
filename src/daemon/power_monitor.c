@@ -1403,7 +1403,8 @@ policy_conf_t *configure_context(powermon_app_t *pmapp, uint user_type,
 #if !POWERMON_RESTORE
     verbose(VJOBPMON, "Setting userspace governor pstate=%u to %u cpus (used %u)",
             my_policy->p_state, cpus_free, cpus_used);
-    check_usrspace_gov_set(frequency_set_userspace_governor_all_cpus(), VJOBPMON);
+		state_t ret_st = frequency_set_userspace_governor_all_cpus();
+    check_usrspace_gov_set(ret_st, VJOBPMON);
     /* Setting the default CPU freq for the new job */
     frequency_set_with_mask(&not_in_jobs_mask, f);
     /* Moved to powermon_init mgw configuration */

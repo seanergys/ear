@@ -12,6 +12,9 @@ modl_PATH = $(DESTDIR)/lib/plugins/models
 modl_PERM = 0775
 modl_DEPS = $(SRCDIR)/common/libcommon.a
 
+# Additional dependencies for energy models plug-ins
+enermodl_DEPS = energy_models/common.o
+
 ######## RULES
 
 .PRECIOUS: $(modl_OBJS)
@@ -27,7 +30,7 @@ all: $(modl_OBJS) $(modl_BINS)
 	$(CC) $(CC_FLAGS) $(CFLAGS) $(LIB_CFLAGS) -o $@ -c $<
 
 # Implicit rule for energy model plug-ins
-%_model.so: %_model.o energy_models/common.o $(modl_DEPS)
+%_model.so: %_model.o $(enermodl_DEPS) $(modl_DEPS)
 	$(CC) $(CC_FLAGS) -shared -o $@ $^
 
 cpu_power_model_%.so: cpu_power_model_%.o $(modl_DEPS)

@@ -245,7 +245,8 @@ state_t dvfs_pc_thread_init(void *p)
     // set the governor to userspace just when needed
 
     verbose(VEARD_PC, "Setting governor to userspace for DVFS powercap control");
-    check_usrspace_gov_set(frequency_set_userspace_governor_all_cpus(), VEARD_PC);
+		state_t ret_st = frequency_set_userspace_governor_all_cpus();
+    check_usrspace_gov_set(ret_st, VEARD_PC);
 
 	// read initial values
 	energy_cpu_read(NULL, values_rapl_init);
@@ -410,7 +411,8 @@ state_t enable(suscription_t *sus)
 
     debug("DVFS:Initializing frequency in dvfs_pc %u cpus",node_size);
     frequency_init(0);
-	check_usrspace_gov_set(frequency_set_userspace_governor_all_cpus(), VEARD_PC);
+		state_t ret_st = frequency_set_userspace_governor_all_cpus();
+	check_usrspace_gov_set(ret_st, VEARD_PC);
     num_pstates = frequency_get_num_pstates();
 
     /* node_size or MAX_CPUS_SUPPORTED */
