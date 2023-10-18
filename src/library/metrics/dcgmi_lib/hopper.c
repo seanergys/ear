@@ -1,6 +1,7 @@
 #include <library/metrics/dcgmi_lib/hooper.h>
 
 
+/*
 #define HOOPER_MODULE_DISABLED_MSG "Module not enabled."
 
 
@@ -28,7 +29,7 @@ static dcgmi_t *dcgmi_metrics_agg;
 
 // static uint *dcgmi_instances;
 
-/* DCGMI monitor variables. */ 
+* DCGMI monitor variables. *
 static suscription_t *dcgmi_monitor;
 static uint						dcgmi_curr_ev_set;
 static uint						dcgmi_monitor_stop;
@@ -36,13 +37,130 @@ static uint						dcgmi_monitor_stop;
 static pthread_mutex_t dcgmi_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static double elapsed_time;
+*/
 
 
 /** DCGMI monitor subscription init function. */
-static state_t dcgmi_paction_init(void *p);
+// static state_t dcgmi_paction_init(void *p);
 
 /** DCGMI monitor subscription periodic action. */
-static state_t dcgmi_paction(void *p);
+// static state_t dcgmi_paction(void *p);
+
+
+state_t dcgmi_lib_turing_init(dcgmi_lib_t *dcgmi_data)
+{
+	if (dcgmi_data)
+	{
+		// Set count
+		dcgmi_data->dcgmi_set_count = 1;
+
+		dcgmi_data->dcgmi_set_sizes		= NULL;
+		dcgmi_data->dcgmi_events			= NULL;
+		dcgmi_data->dcgmi_events_str	= NULL;
+		dcgmi_data->dcgmi_metrics			= NULL;
+		dcgmi_data->dcgmi_metrics_agg = NULL;
+
+		// Set sizes array
+		dcgmi_data->dcgmi_set_sizes = (int *) malloc(dcgmi_data->dcgmi_set_count * sizeof(int));
+
+		// Event sets array
+		dcgmi_data->dcgmi_events = (int **) calloc(dcgmi_data->dcgmi_set_count, sizeof(int *));
+
+		// Event sets string array
+		dcgmi_data->dcgmi_events_str = (char *) calloc(dcgmi_data->dcgmi_set_count, sizeof(char *));
+
+		// Event sets metrics array
+		dcgmi_data->dcgmi_metrics = (dcgmi_t *) malloc(dcgmi_data->dcgmi_set_count * sizeof(dcgmi_t));
+
+		// Event sets aggregated metrics array
+		dcgmi_data->dcgmi_metrics_agg = (dcgmi_t *) malloc(dcgmi_data->dcgmi_set_count * sizeof(dcgmi_t));
+
+		if (dcgmi_data->dcgmi_set_sizes &&
+				dcgmi_data->dcgmi_events &&
+				dcgmi_data->dcgmi_events_str &&
+				dcgmi_data->dcgmi_metrics &&
+				dcgmi_data->dcgmi_metrics_agg)
+		{
+			dcgmi_data->dcgmi_set_sizes[0] = DCGMI_LIB_SUPPORTED_EVENTS;
+
+			// TODO: Avoid loops as we know there is just one set here.
+
+			// Allocate memory for each event set array and event set string
+			int i = 0;
+			while (i < dcgmi_data->dcgmi_set_count)
+			{
+				// Event set array
+				dcgmi_data->dcgmi_events[i] = (int *) malloc(dcgmi_data->dcgmi_set_sizes[i] * sizeof(int));
+
+				if (!dcgmi_data->dcgmi_events[i])
+				{
+					break;
+				}
+
+				// Event set string
+				dcgmi_data->dcgmi_events_str[i] = (char *) calloc(dcgmi_data->dcgmi_set_sizes[i], ID_SIZE);
+
+				if (!dcgmi_data->dcgmi_events_str[i])
+				{
+					free(dcgmi_data->dcgmi_events[i]);
+					break;
+				}
+
+				i++;
+			}
+
+			// Check whether there was an error during allocation
+			if (i < dcgmi_data->dcgmi_set_count)
+			{
+				for (int j = 0; j < i; j++)
+				{
+					free(dcgmi_data->dcgmi_events[j]);
+					free(dcgmi_data->dcgmi_events_str[j]);
+				}
+
+				free(dcgmi_data->dcgmi_events);
+				free(dcgmi_data->dcgmi_set_sizes);
+
+				return EAR_ERROR;
+			}
+
+			// Set 1
+			dcgmi_data->dcgmi_events[0][0] = sm_active;
+			dcgmi_data->dcgmi_events[0][1] = sm_occupancy;
+			dcgmi_data->dcgmi_events[0][2] = tensor_active;
+			dcgmi_data->dcgmi_events[0][3] = fp32_active;
+			dcgmi_data->dcgmi_events[0][4] = dram_active;
+			dcgmi_data->dcgmi_events[0][5] = pcie_tx_bytes;
+			dcgmi_data->dcgmi_events[0][6] = pcie_rx_bytes;
+			dcgmi_data->dcgmi_events[0][7] = gr_engine_active;
+			dcgmi_data->dcgmi_events[0][8] = nvlink_tx_bytes;
+			dcgmi_data->dcgmi_events[0][9] = nvlink_rx_bytes;
+
+			// Set 2
+			dcgmi_data->dcgmi_events[1][0] = fp64_active;
+
+			// Set 3
+			dcgmi_data->dcgmi_events[1][0] = fp16_active;
+
+			return EAR_SUCCESS;
+
+		} else
+		{
+			free(dcgmi_data->dcgmi_set_sizes);
+
+			free(dcgmi_data->dcgmi_events);
+			free(dcgmi_data->dcgmi_events_str);
+
+			free(dcgmi_data->dcgmi_metrics);
+			free(dcgmi_data->dcgmi_metrics_agg);
+
+			return EAR_ERROR;
+		}
+	} else
+	{
+		return_msg(EAR_ERROR, Generr.input_null);
+	}
+}
 
 
 state_t dcgmi_lib_hooper_load()

@@ -25,6 +25,19 @@
 #include <library/metrics/dcgmi_lib/common.h>
 
 
+typedef struct dcgmi_lib_s
+{
+	int *dcgmi_set_sizes;
+	int	dcgmi_set_count;
+															
+	int **dcgmi_events;
+	char **dcgmi_events_str;
+															
+	dcgmi_t **dcgmi_metrics;
+	dcgmi_t **dcgmi_metrics_agg;
+} dcgmi_lib_t;
+
+
 /** Loads this module. */
 state_t dcgmi_lib_load();
 

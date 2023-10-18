@@ -33,67 +33,69 @@
 #define DCGMI_SET3_SIZE 1
 
 
-static uint module_enabled;
+// static uint module_enabled;
 
-static const int dcgmi_set_sizes[] = {DCGMI_SET1_SIZE, DCGMI_SET2_SIZE, DCGMI_SET3_SIZE};
-static const int dcgmi_set_count = DCGMI_SET_COUNT;
+// static const int dcgmi_set_sizes[] = {DCGMI_SET1_SIZE, DCGMI_SET2_SIZE, DCGMI_SET3_SIZE};
+// static const int dcgmi_set_count = DCGMI_SET_COUNT;
 
 /* Below three arrays are used to define dcgmi_events. */
-static int dcgmi_event_set1[] = {
-	sm_active, sm_occupancy, tensor_active, fp32_active, dram_active,
-	pcie_tx_bytes, pcie_rx_bytes, gr_engine_active, nvlink_tx_bytes, nvlink_rx_bytes
-};
-static int dcgmi_event_set2[] = {fp64_active};
-static int dcgmi_event_set3[] = {fp16_active};
+// static int dcgmi_event_set1[] = {
+// 	sm_active, sm_occupancy, tensor_active, fp32_active, dram_active,
+// 	pcie_tx_bytes, pcie_rx_bytes, gr_engine_active, nvlink_tx_bytes, nvlink_rx_bytes
+// };
+// static int dcgmi_event_set2[] = {fp64_active};
+// static int dcgmi_event_set3[] = {fp16_active};
 
 /* Main (and useful) event sets array. */
-static int *dcgmi_events[] = {
-	dcgmi_event_set1, dcgmi_event_set2, dcgmi_event_set3
-};
+// static int *dcgmi_events[] = {
+// 	dcgmi_event_set1, dcgmi_event_set2, dcgmi_event_set3
+// };
 
 /* Used to define dcgmi_events_str. */
-static char dcgmi_events_str1[DCGMI_SET1_SIZE * ID_SIZE];
-static char dcgmi_events_str2[DCGMI_SET2_SIZE * ID_SIZE];
-static char dcgmi_events_str3[DCGMI_SET3_SIZE * ID_SIZE];
+// static char dcgmi_events_str1[DCGMI_SET1_SIZE * ID_SIZE];
+// static char dcgmi_events_str2[DCGMI_SET2_SIZE * ID_SIZE];
+// static char dcgmi_events_str3[DCGMI_SET3_SIZE * ID_SIZE];
 
 /* Event sets strings array. */
-static char *dcgmi_events_str[] = {
-	dcgmi_events_str1, dcgmi_events_str2, dcgmi_events_str3
-};
+// static char *dcgmi_events_str[] = {
+// 	dcgmi_events_str1, dcgmi_events_str2, dcgmi_events_str3
+// };
 
-static dcgmi_t *dcgmi_metrics[DCGMI_SET_COUNT]; // An array of metrics per GPU
-static dcgmi_t *dcgmi_metrics_agg[DCGMI_SET_COUNT]; // An array of metrics (the accumulated) per GPU
+// static dcgmi_t *dcgmi_metrics[DCGMI_SET_COUNT]; // An array of metrics per GPU
+// static dcgmi_t *dcgmi_metrics_agg[DCGMI_SET_COUNT]; // An array of metrics (the accumulated) per GPU
 
-static uint *dcgmi_instances;
+// static uint *dcgmi_instances;
+// 
+// DCGMI monitor variables
+// static suscription_t *dcgmi_monitor;
+// static uint						dcgmi_curr_ev_set;
+// static uint						dcgmi_monitor_stop;
+// 
+// static pthread_mutex_t dcgmi_lock = PTHREAD_MUTEX_INITIALIZER;
+// 
+// static double elapsed_time;
+// 
+// 
+// DCGMI monitor subscription init function.
+// static state_t dcgmi_paction_init(void *p);
+// 
+// DCGMI monitor subscription periodic action.
+// static state_t dcgmi_paction(void *p);
 
-/* DCGMI monitor variables. */ 
-static suscription_t *dcgmi_monitor;
-static uint						dcgmi_curr_ev_set;
-static uint						dcgmi_monitor_stop;
 
-static pthread_mutex_t dcgmi_lock = PTHREAD_MUTEX_INITIALIZER;
-
-static double elapsed_time;
-
-
-/** DCGMI monitor subscription init function. */
-static state_t dcgmi_paction_init(void *p);
-
-/** DCGMI monitor subscription periodic action. */
-static state_t dcgmi_paction(void *p);
-
-
+/*
 state_t dcgmi_lib_turing_load()
 {
-	/* Init the module */
+	 Init the module 
 
 	dcgmi_instances = calloc(dcgmi_set_count, sizeof(uint));
+
 
 	for (uint set = 0; set < dcgmi_set_count; set++)
 	{
 		gpu_dcgmi_events_to_str(dcgmi_events[set], dcgmi_set_sizes[set], dcgmi_events_str[set]);
 
-		/* The init is done only once because because it is not needed to do it more than once. */
+		The init is done only once because because it is not needed to do it more than once. *
 		if (set == 0)
 		{
 			gpu_dcgmi_init(dcgmi_events_str[set], dcgmi_set_sizes[set]);
@@ -105,6 +107,7 @@ state_t dcgmi_lib_turing_load()
 		// verbose_master(DCGMI_INIT_LVL, "DCGMI[%u] initialized with %u events list=%s",
 		// 							 set, DCGMI_NUM_EVENTS, dcgmi_events_str[set]);
 	}
+
 
 	if (state_ok(monitor_init()))
 	{
@@ -146,6 +149,124 @@ state_t dcgmi_lib_turing_load()
 		snprintf(err_msg, sizeof(err_msg), "Monitor init failed (%s)", state_msg);
 
 		return_msg(EAR_ERROR, err_msg);
+	}
+
+}
+*/
+
+
+state_t dcgmi_lib_turing_init(dcgmi_lib_t *dcgmi_data)
+{
+	if (dcgmi_data)
+	{
+		// Set count
+		dcgmi_data->dcgmi_set_count = DCGMI_SET_COUNT;
+
+		dcgmi_data->dcgmi_set_sizes		= NULL;
+		dcgmi_data->dcgmi_events			= NULL;
+		dcgmi_data->dcgmi_events_str	= NULL;
+		dcgmi_data->dcgmi_metrics			= NULL;
+		dcgmi_data->dcgmi_metrics_agg = NULL;
+
+		// Set sizes array
+		dcgmi_data->dcgmi_set_sizes = (int *) malloc(DCGMI_SET_COUNT * sizeof(int));
+
+		// Event sets array
+		dcgmi_data->dcgmi_events = (int **) calloc(DCGMI_SET_COUNT, sizeof(int *));
+
+		// Event sets string array
+		dcgmi_data->dcgmi_events_str = (char *) calloc(DCGMI_SET_COUNT, sizeof(char *));
+
+		// Event sets metrics array
+		dcgmi_data->dcgmi_metrics = (dcgmi_t *) malloc(DCGMI_SET_COUNT * sizeof(dcgmi_t));
+
+		// Event sets aggregated metrics array
+		dcgmi_data->dcgmi_metrics_agg = (dcgmi_t *) malloc(DCGMI_SET_COUNT * sizeof(dcgmi_t));
+
+		if (dcgmi_data->dcgmi_set_sizes &&
+				dcgmi_data->dcgmi_events &&
+				dcgmi_data->dcgmi_events_str &&
+				dcgmi_data->dcgmi_metrics &&
+				dcgmi_data->dcgmi_metrics_agg)
+		{
+			dcgmi_data->dcgmi_set_sizes[0] = DCGMI_SET1_SIZE;
+			dcgmi_data->dcgmi_set_sizes[1] = DCGMI_SET2_SIZE;
+			dcgmi_data->dcgmi_set_sizes[2] = DCGMI_SET3_SIZE;
+
+			// Allocate memory for each event set array and event set string
+			int i = 0;
+			while (i < dcgmi_data->dcgmi_set_count)
+			{
+				// Event set array
+				dcgmi_data->dcgmi_events[i] = (int *) malloc(dcgmi_data->dcgmi_set_sizes[i] * sizeof(int));
+
+				if (!dcgmi_data->dcgmi_events[i])
+				{
+					break;
+				}
+
+				// Event set string
+				dcgmi_data->dcgmi_events_str[i] = (char *) calloc(dcgmi_data->dcgmi_set_sizes[i], ID_SIZE);
+
+				if (!dcgmi_data->dcgmi_events_str[i])
+				{
+					free(dcgmi_data->dcgmi_events[i]);
+					break;
+				}
+
+				i++;
+			}
+
+			// Check whether there was an error during allocation
+			if (i < dcgmi_data->dcgmi_set_count)
+			{
+				for (int j = 0; j < i; j++)
+				{
+					free(dcgmi_data->dcgmi_events[j]);
+					free(dcgmi_data->dcgmi_events_str[j]);
+				}
+
+				free(dcgmi_data->dcgmi_events);
+				free(dcgmi_data->dcgmi_set_sizes);
+
+				return EAR_ERROR;
+			}
+
+			// Set 1
+			dcgmi_data->dcgmi_events[0][0] = sm_active;
+			dcgmi_data->dcgmi_events[0][1] = sm_occupancy;
+			dcgmi_data->dcgmi_events[0][2] = tensor_active;
+			dcgmi_data->dcgmi_events[0][3] = fp32_active;
+			dcgmi_data->dcgmi_events[0][4] = dram_active;
+			dcgmi_data->dcgmi_events[0][5] = pcie_tx_bytes;
+			dcgmi_data->dcgmi_events[0][6] = pcie_rx_bytes;
+			dcgmi_data->dcgmi_events[0][7] = gr_engine_active;
+			dcgmi_data->dcgmi_events[0][8] = nvlink_tx_bytes;
+			dcgmi_data->dcgmi_events[0][9] = nvlink_rx_bytes;
+
+			// Set 2
+			dcgmi_data->dcgmi_events[1][0] = fp64_active;
+
+			// Set 3
+			dcgmi_data->dcgmi_events[1][0] = fp16_active;
+
+			return EAR_SUCCESS;
+
+		} else
+		{
+			free(dcgmi_data->dcgmi_set_sizes);
+
+			free(dcgmi_data->dcgmi_events);
+			free(dcgmi_data->dcgmi_events_str);
+
+			free(dcgmi_data->dcgmi_metrics);
+			free(dcgmi_data->dcgmi_metrics_agg);
+
+			return EAR_ERROR;
+		}
+	} else
+	{
+		return_msg(EAR_ERROR, Generr.input_null);
 	}
 }
 
