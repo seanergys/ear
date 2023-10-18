@@ -15,7 +15,7 @@
  */
 
 
-#include <library/metrics/dcgmi_lib/t4.h>
+#include <library/metrics/dcgmi_lib/turing.h>
 
 #include <common/config.h>
 #include <common/system/lock.h>
@@ -25,7 +25,7 @@
 #include <library/common/externs.h>
 
 
-#define T4_MODULE_DISABLED_MSG "Module not enabled."
+#define TURING_MODULE_DISABLED_MSG "Module not enabled."
 
 #define DCGMI_SET_COUNT 3
 #define DCGMI_SET1_SIZE 10
@@ -83,10 +83,9 @@ static state_t dcgmi_paction_init(void *p);
 static state_t dcgmi_paction(void *p);
 
 
-state_t dcgmi_lib_t4_load()
+state_t dcgmi_lib_turing_load()
 {
 	/* Init the module */
-	// dcgmi_static_events_init(events_ids, events_count);
 
 	dcgmi_instances = calloc(dcgmi_set_count, sizeof(uint));
 
@@ -112,9 +111,24 @@ state_t dcgmi_lib_t4_load()
 		dcgmi_monitor							= suscription();
 		dcgmi_monitor->call_init 	= dcgmi_paction_init;
 		dcgmi_monitor->call_main 	= dcgmi_paction;
-		// TODO: Below parameters must be configurable
-		dcgmi_monitor->time_relax	= 2000;
-		dcgmi_monitor->time_burst	= 2000;
+
+		float sampling_period = DCGMI_LIB_SAMPLING_PERIOD;
+
+		char *csampling_period = ear_getenv(FLAG_DCGMI_SAMPLING_PERIOD);
+
+		if (csampling_period)
+		{
+			sampling_period = strtof(csampling_period, NULL);
+			if (sampling_period <= 0)
+			{
+				// If invalid value, reset to the default value
+				sampling_period = DCGMI_LIB_SAMPLING_PERIOD;
+			}
+		}
+
+		// Time burst and relax are the same here.
+		dcgmi_monitor->time_relax	= (int) (sampling_period * 1000);  // Miliseconds
+		dcgmi_monitor->time_burst	= dcgmi_monitor->time_relax;
 
 		if (state_fail(monitor_register(dcgmi_monitor)))
 		{
@@ -136,7 +150,7 @@ state_t dcgmi_lib_t4_load()
 }
 
 
-state_t dcgmi_lib_t4_get_current_metrics(dcgmi_sig_t *dcgmi_sig)
+state_t dcgmi_lib_turing_get_current_metrics(dcgmi_sig_t *dcgmi_sig)
 {
 	if (module_enabled)
 	{
@@ -162,12 +176,12 @@ state_t dcgmi_lib_t4_get_current_metrics(dcgmi_sig_t *dcgmi_sig)
 		}
 	} else
 	{
-			return_msg(EAR_ERROR, T4_MODULE_DISABLED_MSG);
+			return_msg(EAR_ERROR, TURING_MODULE_DISABLED_MSG);
 	}
 }
 
 
-state_t dcgmi_lib_t4_get_global_metrics(dcgmi_sig_t *dcgmi_sig)
+state_t dcgmi_lib_turing_get_global_metrics(dcgmi_sig_t *dcgmi_sig)
 {
 	if (module_enabled)
 	{
@@ -214,12 +228,12 @@ state_t dcgmi_lib_t4_get_global_metrics(dcgmi_sig_t *dcgmi_sig)
 		}
 	} else
 	{
-			return_msg(EAR_ERROR, T4_MODULE_DISABLED_MSG);
+			return_msg(EAR_ERROR, TURING_MODULE_DISABLED_MSG);
 	}
 }
 
 
-void dcgmi_lib_t4_report_total_metrics()
+void dcgmi_lib_turing_report_total_metrics()
 {
 	if (module_enabled)
 	{
@@ -273,7 +287,7 @@ void dcgmi_lib_t4_report_total_metrics()
 }
 
 
-void dcgmi_lib_t4_dcgmi_sig_init(dcgmi_sig_t *dcgmi_sig)
+void dcgmi_lib_turing_dcgmi_sig_init(dcgmi_sig_t *dcgmi_sig)
 {
 	if (dcgmi_sig)
 	{
@@ -296,6 +310,30 @@ void dcgmi_lib_t4_dcgmi_sig_init(dcgmi_sig_t *dcgmi_sig)
 
 			/* The list of events is static. */
 			memcpy(dcgmi_sig->dcgmi_events[set], dcgmi_events[set], dcgmi_set_sizes[set] * sizeof(uint));
+		}
+	}
+}
+
+
+void dcgmi_lib_turing_reset_instances(dcgmi_sig_t *dcgmi_sig)
+{
+	if (dcgmi_sig)
+	{
+		if (dcgmi_sig->dcgmi_instances)
+		{
+			for (uint set = 0; set < dcgmi_set_count; set++)
+			{
+				dcgmi_sig->dcgmi_instances[set] = 0;
+			}
+
+			ear_lock(&dcgmi_lock);
+
+			for (uint set = 0; set < dcgmi_set_count; set++)
+			{
+				dcgmi_instances[set] = 0;
+			}
+
+			ear_unlock(&dcgmi_lock);
 		}
 	}
 }
@@ -350,28 +388,4 @@ static state_t dcgmi_paction(void *p)
 		// TODO: Could we unsibscribe here?
 	}
 	return EAR_SUCCESS;
-}
-
-
-void dcgmi_lib_t4_reset_instances(dcgmi_sig_t *dcgmi_sig)
-{
-	if (dcgmi_sig)
-	{
-		if (dcgmi_sig->dcgmi_instances)
-		{
-			for (uint set = 0; set < dcgmi_set_count; set++)
-			{
-				dcgmi_sig->dcgmi_instances[set] = 0;
-			}
-
-			ear_lock(&dcgmi_lock);
-
-			for (uint set = 0; set < dcgmi_set_count; set++)
-			{
-				dcgmi_instances[set] = 0;
-			}
-
-			ear_unlock(&dcgmi_lock);
-		}
-	}
 }

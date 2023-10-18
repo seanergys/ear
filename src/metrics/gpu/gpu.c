@@ -272,3 +272,13 @@ int gpu_is_supported()
 {
     return gpu_eard_is_supported();
 }
+
+state_t gpu_get_info(apinfo_t *info)
+{
+	if (info)
+	{
+	} else
+	{
+		return_msg(EAR_ERROR, Generr.input_null);
+	}
+}

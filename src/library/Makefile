@@ -103,7 +103,7 @@ core_OBJS = \
     tracer/tracer.o \
     dynais/dynais.a \
     metrics/dcgmi_lib.o \
-    metrics/dcgmi_lib/t4.o
+    metrics/dcgmi_lib/turing.o
 
 
 ifeq ($(FEAT_MPI_API), 1)

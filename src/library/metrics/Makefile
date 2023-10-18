@@ -3,7 +3,8 @@ OBJS = \
     metrics.o \
     energy_node_lib.o \
     dcgmi_lib.o \
-		dcgmi_lib/t4.o
+		dcgmi_lib/turing.o \
+		dcgmi_lib/hopper.o
 
 all: $(OBJS)
 

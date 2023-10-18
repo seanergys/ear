@@ -82,6 +82,7 @@ typedef struct apinfo_s {
     char *scope_str;
     uint  bits;
 //    void *extra;
+    uint	dev_model;
     void *list1;
     void *list2;
     void *list3;

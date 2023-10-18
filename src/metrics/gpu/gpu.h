@@ -133,4 +133,7 @@ char *gpu_data_tostr(gpu_t *data, char *buffer, int length);
 
 int gpu_is_supported();
 
+// Returns all available static information (Work in progress)
+state_t gpu_get_info(apinfo_t *info);
+
 #endif

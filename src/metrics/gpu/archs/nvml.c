@@ -283,3 +283,28 @@ state_t gpu_nvml_read_raw(ctx_t *c, gpu_t *data)
 	}
 	return EAR_SUCCESS;
 }
+
+
+state_t gpu_nvml_get_info(apinfo_t *info)
+{
+	if (info)
+	{
+		// Warning: We are assumming all devices have the same architecture
+		nvmlReturn_t ret = nvml.GetArchitecture(devs[0], &info->dev_model);
+
+		switch (ret)
+		{
+			case NVML_SUCCESS:
+				return EAR_SUCCESS;
+			case NVML_ERROR_UNINITIALIZED:
+				return_msg(EAR_ERROR, NVML_ERROR_UNINIT_MSG);
+			case NVML_ERROR_INVALID_ARGUMENT:
+				return_msg(EAR_ERROR, NVML_ERROR_INVALID_ARG_MSG);
+			default:
+				return_msg(EAR_ERROR, "Unknown error.");
+		}
+
+	} else {
+		return_msg(EAR_ERROR, Generr.input_null);
+	}
+}

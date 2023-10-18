@@ -28,6 +28,8 @@
 
 #define DCGMI_LIB_SUPPORTED_EVENTS 12
 
+#define DCGMI_LIB_SAMPLING_PERIOD 2
+
 
 typedef struct dcgmi_sig
 {

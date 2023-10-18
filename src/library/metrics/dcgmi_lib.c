@@ -27,16 +27,25 @@
 #include <library/common/verbose_lib.h>
 #include <library/common/externs.h>
 
-#include <library/metrics/dcgmi_lib/t4.h>
+#include <library/metrics/dcgmi_lib/turing.h>
 
 
 #define DCGMI_LIB_NOT_SUPPORTED_MSG		"EARL not configured to support GPUs and DCGMI."
 #define DCGMI_LIB_MODULE_DISABLED_MSG "DCGMI module not enabled."
 
 
-static pthread_mutex_t dcgmi_lock = PTHREAD_MUTEX_INITIALIZER;
-
 static uint dcgmi_lib_enabled = (USE_GPUS && DCGMI) ? DCGMI_DEFAULT : 0;
+
+
+struct dcgmi_lib_sym_s
+{
+	state_t (*load) ();
+	state_t (*get_current_metrics) (dcgmi_sig_t *dcgmi_sig);
+	state_t (*get_global_metrics) (dcgmi_sig_t *dcgmi_sig);
+	void (*report_total_metrics) ();
+	void (*dcgmi_sig_init) (dcgmi_sig_t *dcgmi_sig);
+	void (*reset_instances) (dcgmi_sig_t *dcgmi_sig);
+};
 
 
 state_t dcgmi_lib_load()
