@@ -77,6 +77,7 @@
 #if USE_GPUS
 #define EAR_USE_CUPTI "EAR_USE_CUPTI"
 #include <metrics/gpu/gpu.h>
+#include <management/gpu/gpu.h>
 #define USE_CUPTI 0
 #if USE_CUPTI
 #include <metrics/gpu/gpuproc.h>

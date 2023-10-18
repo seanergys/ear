@@ -5,9 +5,10 @@ modl_BINS = \
 						energy_models/avx512_model.so \
 						cpu_power_model_default.so \
 						cpu_power_model_gflops.so \
-						cpu_power_model_dummy.so
+						cpu_power_model_dummy.so \
+						energy_models/gpu_dummy_model.so
 
-modl_OBJS = cpu_power_model.o energy_model.o
+modl_OBJS = cpu_power_model.o energy_model.o 
 modl_PATH = $(DESTDIR)/lib/plugins/models
 modl_PERM = 0775
 modl_DEPS = $(SRCDIR)/common/libcommon.a
