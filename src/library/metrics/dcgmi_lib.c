@@ -33,17 +33,22 @@
 #include <library/common/externs.h>
 
 #include <library/metrics/dcgmi_lib/turing.h>
+#include <library/metrics/dcgmi_lib/hopper.h>
+
+#include <metrics/gpu/gpu.h>
+#include <metrics/common/nvml.h>
 
 
-#define DCGMI_INIT_LVL	1
-#define DCGMI_MET_LVL		3
+#define DCGMI_INIT_LVL		1
+#define DCGMI_MET_LVL			1
 
 #define DCGMI_LIB_SAMPLING_PERIOD 2
-
 
 #define DCGMI_LIB_NOT_SUPPORTED_MSG		"EARL not configured to support GPUs and DCGMI."
 #define DCGMI_LIB_MODULE_DISABLED_MSG "DCGMI module not enabled."
 
+
+typedef state_t (*dcgmi_lib_init_fn) (dcgmi_lib_t *dcgmi_data);
 
 static uint dcgmi_lib_enabled = (USE_GPUS && DCGMI) ? DCGMI_DEFAULT : 0;
 
@@ -67,6 +72,9 @@ static state_t dcgmi_paction_init(void *p);
 /** DCGMI monitor subscription periodic action. */
 static state_t dcgmi_paction(void *p);
 
+/** Selects the dcgmi_lib init (allocation) function based on GPU model. */
+static state_t set_init_fn(dcgmi_lib_init_fn *dst_fn_ptr);
+
 
 state_t dcgmi_lib_load()
 {
@@ -80,93 +88,100 @@ state_t dcgmi_lib_load()
 		if (use_dcgmi)
 		{
 			dcgmi_lib_enabled = atoi(use_dcgmi);
-			verbose_master(1, "DCGMI metrics %s by environment variable.",
+			verbose_master(DCGMI_INIT_LVL, "DCGMI metrics %s by environment variable.",
 										 dcgmi_lib_enabled ? "enabled" : "disabled");
 		}
 
 		/* Init the module */
 		if (dcgmi_lib_enabled)
 		{
-			// TODO: Allocate and initialize here all data structures based on GPU microarch.
-			if (state_ok(dcgmi_lib_turing_init(&dcgmi_data)))
+			dcgmi_lib_init_fn init_fn;
+
+			if (state_ok(set_init_fn(&init_fn)))
 			{
-				dcgmi_instances = calloc(dcgmi_data.dcgmi_set_count, sizeof(uint));
-
-				if (dcgmi_instances)
+				// TODO: Allocate and initialize here all data structures based on GPU microarch.
+				if (state_ok(dcgmi_lib_turing_init(&dcgmi_data)))
 				{
-					/* Common set up */
-					for (uint set = 0; set < dcgmi_data.dcgmi_set_count; set++)
+					dcgmi_instances = calloc(dcgmi_data.dcgmi_set_count, sizeof(uint));
+
+					if (dcgmi_instances)
 					{
-						gpu_dcgmi_events_to_str(dcgmi_data.dcgmi_events[set], dcgmi_data.dcgmi_set_sizes[set],
-																		dcgmi_data.dcgmi_events_str[set]);
-
-						/* The init is done only once because because it is not needed to do it more times. */
-						if (set == 0)
+						/* Common set up */
+						for (uint set = 0; set < dcgmi_data.dcgmi_set_count; set++)
 						{
-							gpu_dcgmi_init(dcgmi_data.dcgmi_events_str[set], dcgmi_data.dcgmi_set_sizes[set]);
-						}
+							gpu_dcgmi_events_to_str(dcgmi_data.dcgmi_events[set], dcgmi_data.dcgmi_set_sizes[set],
+																			dcgmi_data.dcgmi_events_str[set]);
 
-						gpu_dcgmi_data_alloc(&dcgmi_data.dcgmi_metrics[set]);
-						gpu_dcgmi_data_alloc(&dcgmi_data.dcgmi_metrics_agg[set]);
-					}
-
-					if (state_ok(monitor_init()))
-					{
-						dcgmi_monitor							= suscription();
-						dcgmi_monitor->call_init 	= dcgmi_paction_init;
-						dcgmi_monitor->call_main 	= dcgmi_paction;
-
-						/* Configure the sampling period time. */
-
-						float sampling_period = DCGMI_LIB_SAMPLING_PERIOD;
-
-						char *csampling_period = ear_getenv(FLAG_DCGMI_SAMPLING_PERIOD);
-
-						if (csampling_period)
-						{
-							sampling_period = strtof(csampling_period, NULL);
-							if (sampling_period <= 0)
+							/* The init is done only once because because it is not needed to do it more times. */
+							if (set == 0)
 							{
-								// If invalid value, reset to the default value
-								sampling_period = DCGMI_LIB_SAMPLING_PERIOD;
+								gpu_dcgmi_init(dcgmi_data.dcgmi_events_str[set], dcgmi_data.dcgmi_set_sizes[set]);
 							}
+
+							gpu_dcgmi_data_alloc(&dcgmi_data.dcgmi_metrics[set]);
+							gpu_dcgmi_data_alloc(&dcgmi_data.dcgmi_metrics_agg[set]);
 						}
 
-						// Time burst and relax are the same here.
-						dcgmi_monitor->time_relax	= (int) (sampling_period * 1000);  // Miliseconds
-						dcgmi_monitor->time_burst	= dcgmi_monitor->time_relax;
+						if (state_ok(monitor_init()))
+						{
+							dcgmi_monitor							= suscription();
+							dcgmi_monitor->call_init 	= dcgmi_paction_init;
+							dcgmi_monitor->call_main 	= dcgmi_paction;
 
-						if (state_fail(monitor_register(dcgmi_monitor)))
+							/* Configure the sampling period time. */
+
+							float sampling_period = DCGMI_LIB_SAMPLING_PERIOD;
+
+							char *csampling_period = ear_getenv(FLAG_DCGMI_SAMPLING_PERIOD);
+
+							if (csampling_period)
+							{
+								sampling_period = strtof(csampling_period, NULL);
+								if (sampling_period <= 0)
+								{
+									// If invalid value, reset to the default value
+									sampling_period = DCGMI_LIB_SAMPLING_PERIOD;
+								}
+							}
+
+							// Time burst and relax are the same here.
+							dcgmi_monitor->time_relax	= (int) (sampling_period * 1000);  // Miliseconds
+							dcgmi_monitor->time_burst	= dcgmi_monitor->time_relax;
+
+							verbose_master(DCGMI_INIT_LVL, "DCGMI library sampling period: %d ms", dcgmi_monitor->time_relax);
+
+							if (state_fail(monitor_register(dcgmi_monitor)))
+							{
+								dcgmi_lib_enabled = 0;
+
+								return_msg(EAR_ERROR, "Subscription failed.");
+							}
+
+							return EAR_SUCCESS;
+						} else
 						{
 							dcgmi_lib_enabled = 0;
 
-							return_msg(EAR_ERROR, "Subscription failed.");
-						}
+							verbose(3, "Monitor init failed (%s)", state_msg)
 
-						return EAR_SUCCESS;
+							return_msg(EAR_ERROR, "Monitor init failed.");
+						}
 					} else
 					{
 						dcgmi_lib_enabled = 0;
 
-						verbose(3, "Monitor init failed (%s)", state_msg)
+						// TODO: Free dcgmi_data memory
 
-						return_msg(EAR_ERROR, "Monitor init failed.");
+						dcgmi_lib_ret_alloc_err();
 					}
 				} else
 				{
 					dcgmi_lib_enabled = 0;
 
-					// TODO: Free dcgmi_data memory
+					verbose(3, "Allocating data (%s)", state_msg);
 
-					dcgmi_lib_ret_alloc_err();
+					return_msg(EAR_ERROR, "Allocating data");
 				}
-			} else
-			{
-				dcgmi_lib_enabled = 0;
-
-				verbose(3, "Allocating data (%s)", state_msg);
-
-				return_msg(EAR_ERROR, "Allocating data");
 			}
 		} else
 		{
@@ -435,4 +450,17 @@ static state_t dcgmi_paction(void *p)
 		// TODO: Could we unsibscribe here?
 	}
 	return EAR_SUCCESS;
+}
+
+
+static state_t set_init_fn(dcgmi_lib_init_fn *dst_fn_ptr)
+{
+	if (dst_fn_ptr)
+	{
+		// TODO
+		return EAR_SUCCESS;
+	} else
+	{
+		return_msg(EAR_ERROR, Generr.input_null);
+	}
 }

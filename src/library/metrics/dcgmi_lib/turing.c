@@ -94,7 +94,7 @@ state_t dcgmi_lib_turing_init(dcgmi_lib_t *dcgmi_data)
 			dcgmi_data->dcgmi_events[1][0] = fp64_active;
 
 			// Set 3
-			dcgmi_data->dcgmi_events[1][0] = fp16_active;
+			dcgmi_data->dcgmi_events[2][0] = fp16_active;
 
 			return EAR_SUCCESS;
 		} else

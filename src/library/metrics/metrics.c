@@ -19,7 +19,7 @@
 #define _GNU_SOURCE
 #define FAKE_POWER_READING  0
 #define FAKE_ENERGY_READING 0
-#define SHOW_DEBUGS            1
+// #define SHOW_DEBUGS            1
 
 
 #define INFO_METRICS           2
