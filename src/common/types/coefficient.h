@@ -36,6 +36,24 @@ typedef struct coefficient
     double F;
 } coefficient_t;
 
+
+typedef struct coefficient_gpu
+{
+  ulong pstate_ref;
+    ulong pstate;
+    uint available;
+    double A;
+    double B;
+    double C;
+    double D;
+    double E;
+    double F;
+		double G;
+		double H;
+		double I;
+} coefficient_gpu_t;
+
+
 // File
 int coeff_file_size(char *path);
 
