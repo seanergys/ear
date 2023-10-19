@@ -14,23 +14,102 @@
  * and COPYING.EPL files.
  */
 
+#define SHOW_DEBUGS 1
 
 #include <library/metrics/dcgmi_lib/turing.h>
 
-#include <common/config.h>
-#include <common/system/lock.h>
-#include <common/system/monitor.h>
+#include <stdlib.h>
 
-#include <library/common/verbose_lib.h>
-#include <library/common/externs.h>
+#include <common/output/debug.h>
 
-
-#define TURING_MODULE_DISABLED_MSG "Module not enabled."
 
 #define DCGMI_SET_COUNT 3
 #define DCGMI_SET1_SIZE 10
 #define DCGMI_SET2_SIZE 1
 #define DCGMI_SET3_SIZE 1
+
+
+state_t dcgmi_lib_turing_init(dcgmi_lib_t *dcgmi_data)
+{
+	if (dcgmi_data)
+	{
+		debug("dcgmi_lib_turing_init");
+		if (state_ok(dcgmi_lib_data_alloc(dcgmi_data, DCGMI_SET_COUNT)))
+		{
+			dcgmi_data->dcgmi_set_sizes[0] = DCGMI_SET1_SIZE;
+			dcgmi_data->dcgmi_set_sizes[1] = DCGMI_SET2_SIZE;
+			dcgmi_data->dcgmi_set_sizes[2] = DCGMI_SET3_SIZE;
+
+			// Allocate memory for each event set array and event set string
+			int i = 0;
+			while (i < dcgmi_data->dcgmi_set_count)
+			{
+				// Event set array
+				dcgmi_data->dcgmi_events[i] = (uint *) malloc(dcgmi_data->dcgmi_set_sizes[i] * sizeof(uint));
+
+				if (!dcgmi_data->dcgmi_events[i])
+				{
+					debug("Error allocating DCGMI event set %d", i);
+					break;
+				}
+
+				// Event set string
+				dcgmi_data->dcgmi_events_str[i] = (char *) calloc(dcgmi_data->dcgmi_set_sizes[i], ID_SIZE);
+
+				if (!dcgmi_data->dcgmi_events_str[i])
+				{
+					debug("Error allocating DCGMI event set string %d", i);
+					free(dcgmi_data->dcgmi_events[i]);
+					break;
+				}
+
+				i++;
+			}
+
+			// Check whether there was an error during allocation
+			if (i < dcgmi_data->dcgmi_set_count)
+			{
+				for (int j = 0; j < i; j++)
+				{
+					free(dcgmi_data->dcgmi_events[j]);
+					free(dcgmi_data->dcgmi_events_str[j]);
+				}
+
+				dcgmi_lib_ret_alloc_err();
+			}
+
+			// Set 1
+			dcgmi_data->dcgmi_events[0][0] = sm_active;
+			dcgmi_data->dcgmi_events[0][1] = sm_occupancy;
+			dcgmi_data->dcgmi_events[0][2] = tensor_active;
+			dcgmi_data->dcgmi_events[0][3] = fp32_active;
+			dcgmi_data->dcgmi_events[0][4] = dram_active;
+			dcgmi_data->dcgmi_events[0][5] = pcie_tx_bytes;
+			dcgmi_data->dcgmi_events[0][6] = pcie_rx_bytes;
+			dcgmi_data->dcgmi_events[0][7] = gr_engine_active;
+			dcgmi_data->dcgmi_events[0][8] = nvlink_tx_bytes;
+			dcgmi_data->dcgmi_events[0][9] = nvlink_rx_bytes;
+
+			// Set 2
+			dcgmi_data->dcgmi_events[1][0] = fp64_active;
+
+			// Set 3
+			dcgmi_data->dcgmi_events[1][0] = fp16_active;
+
+			return EAR_SUCCESS;
+		} else
+		{
+			debug("Error allocating dcgmi lib data");
+			dcgmi_lib_ret_alloc_err();
+		}
+	} else
+	{
+		return_msg(EAR_ERROR, Generr.input_null);
+	}
+}
+
+
+// #define TURING_MODULE_DISABLED_MSG "Module not enabled."
 
 
 // static uint module_enabled;
@@ -152,123 +231,6 @@ state_t dcgmi_lib_turing_load()
 	}
 
 }
-*/
-
-
-state_t dcgmi_lib_turing_init(dcgmi_lib_t *dcgmi_data)
-{
-	if (dcgmi_data)
-	{
-		// Set count
-		dcgmi_data->dcgmi_set_count = DCGMI_SET_COUNT;
-
-		dcgmi_data->dcgmi_set_sizes		= NULL;
-		dcgmi_data->dcgmi_events			= NULL;
-		dcgmi_data->dcgmi_events_str	= NULL;
-		dcgmi_data->dcgmi_metrics			= NULL;
-		dcgmi_data->dcgmi_metrics_agg = NULL;
-
-		// Set sizes array
-		dcgmi_data->dcgmi_set_sizes = (int *) malloc(DCGMI_SET_COUNT * sizeof(int));
-
-		// Event sets array
-		dcgmi_data->dcgmi_events = (int **) calloc(DCGMI_SET_COUNT, sizeof(int *));
-
-		// Event sets string array
-		dcgmi_data->dcgmi_events_str = (char *) calloc(DCGMI_SET_COUNT, sizeof(char *));
-
-		// Event sets metrics array
-		dcgmi_data->dcgmi_metrics = (dcgmi_t *) malloc(DCGMI_SET_COUNT * sizeof(dcgmi_t));
-
-		// Event sets aggregated metrics array
-		dcgmi_data->dcgmi_metrics_agg = (dcgmi_t *) malloc(DCGMI_SET_COUNT * sizeof(dcgmi_t));
-
-		if (dcgmi_data->dcgmi_set_sizes &&
-				dcgmi_data->dcgmi_events &&
-				dcgmi_data->dcgmi_events_str &&
-				dcgmi_data->dcgmi_metrics &&
-				dcgmi_data->dcgmi_metrics_agg)
-		{
-			dcgmi_data->dcgmi_set_sizes[0] = DCGMI_SET1_SIZE;
-			dcgmi_data->dcgmi_set_sizes[1] = DCGMI_SET2_SIZE;
-			dcgmi_data->dcgmi_set_sizes[2] = DCGMI_SET3_SIZE;
-
-			// Allocate memory for each event set array and event set string
-			int i = 0;
-			while (i < dcgmi_data->dcgmi_set_count)
-			{
-				// Event set array
-				dcgmi_data->dcgmi_events[i] = (int *) malloc(dcgmi_data->dcgmi_set_sizes[i] * sizeof(int));
-
-				if (!dcgmi_data->dcgmi_events[i])
-				{
-					break;
-				}
-
-				// Event set string
-				dcgmi_data->dcgmi_events_str[i] = (char *) calloc(dcgmi_data->dcgmi_set_sizes[i], ID_SIZE);
-
-				if (!dcgmi_data->dcgmi_events_str[i])
-				{
-					free(dcgmi_data->dcgmi_events[i]);
-					break;
-				}
-
-				i++;
-			}
-
-			// Check whether there was an error during allocation
-			if (i < dcgmi_data->dcgmi_set_count)
-			{
-				for (int j = 0; j < i; j++)
-				{
-					free(dcgmi_data->dcgmi_events[j]);
-					free(dcgmi_data->dcgmi_events_str[j]);
-				}
-
-				free(dcgmi_data->dcgmi_events);
-				free(dcgmi_data->dcgmi_set_sizes);
-
-				return EAR_ERROR;
-			}
-
-			// Set 1
-			dcgmi_data->dcgmi_events[0][0] = sm_active;
-			dcgmi_data->dcgmi_events[0][1] = sm_occupancy;
-			dcgmi_data->dcgmi_events[0][2] = tensor_active;
-			dcgmi_data->dcgmi_events[0][3] = fp32_active;
-			dcgmi_data->dcgmi_events[0][4] = dram_active;
-			dcgmi_data->dcgmi_events[0][5] = pcie_tx_bytes;
-			dcgmi_data->dcgmi_events[0][6] = pcie_rx_bytes;
-			dcgmi_data->dcgmi_events[0][7] = gr_engine_active;
-			dcgmi_data->dcgmi_events[0][8] = nvlink_tx_bytes;
-			dcgmi_data->dcgmi_events[0][9] = nvlink_rx_bytes;
-
-			// Set 2
-			dcgmi_data->dcgmi_events[1][0] = fp64_active;
-
-			// Set 3
-			dcgmi_data->dcgmi_events[1][0] = fp16_active;
-
-			return EAR_SUCCESS;
-
-		} else
-		{
-			free(dcgmi_data->dcgmi_set_sizes);
-
-			free(dcgmi_data->dcgmi_events);
-			free(dcgmi_data->dcgmi_events_str);
-
-			free(dcgmi_data->dcgmi_metrics);
-			free(dcgmi_data->dcgmi_metrics_agg);
-
-			return EAR_ERROR;
-		}
-	} else
-	{
-		return_msg(EAR_ERROR, Generr.input_null);
-	}
-}
 
 
 state_t dcgmi_lib_turing_get_current_metrics(dcgmi_sig_t *dcgmi_sig)
@@ -362,11 +324,11 @@ void dcgmi_lib_turing_report_total_metrics()
 		uint    active[DCGMI_LIB_SUPPORTED_EVENTS];
 		uint		gpu_count = gpu_dcgmi_gpus_detected();
 
-		/* Cleaning */
+		* Cleaning *
 		memset(&total, 0, sizeof(dcgmi_t));
 		memset(&active, 0, sizeof(uint) * DCGMI_LIB_SUPPORTED_EVENTS);
 
-		/* Moving from accumulated data, per set and gpu to total. */
+		* Moving from accumulated data, per set and gpu to total. *
 		for (uint set_idx = 0; set_idx < dcgmi_set_count; set_idx++)
 		{
 			uint curr_set_size = dcgmi_set_sizes[set_idx];
@@ -384,7 +346,7 @@ void dcgmi_lib_turing_report_total_metrics()
 			}
 		}
 
-		/* Report */
+		* Report *
 		for (uint ev = 0; ev < DCGMI_LIB_SUPPORTED_EVENTS; ev++)
 		{
 			if (total.values[ev] > 0)
@@ -429,7 +391,7 @@ void dcgmi_lib_turing_dcgmi_sig_init(dcgmi_sig_t *dcgmi_sig)
 			verbose_master(DCGMI_INIT_LVL, "Allocating metrics for set %u", set);
 			gpu_dcgmi_data_alloc(&dcgmi_sig->dcgmi_metrics[set]);
 
-			/* The list of events is static. */
+			* The list of events is static. *
 			memcpy(dcgmi_sig->dcgmi_events[set], dcgmi_events[set], dcgmi_set_sizes[set] * sizeof(uint));
 		}
 	}
@@ -476,7 +438,7 @@ static state_t dcgmi_paction(void *p)
 
 		elapsed_time += time_s;
 
-		/* Read and accumulate current set of events. */
+		* Read and accumulate current set of events. *
 		gpu_dcgmi_read(dcgmi_metrics[dcgmi_curr_ev_set]);
 
 		gpu_dcgmi_accum_data(dcgmi_metrics_agg[dcgmi_curr_ev_set], dcgmi_metrics[dcgmi_curr_ev_set],
@@ -499,7 +461,7 @@ static state_t dcgmi_paction(void *p)
 		dcgmi_instances[dcgmi_curr_ev_set]++;
 		dcgmi_curr_ev_set = (dcgmi_curr_ev_set + 1) % dcgmi_set_count;
 
-		/* Change the active set of events */
+		* Change the active set of events *
 		gpu_dcgmi_set_events(dcgmi_events_str[dcgmi_curr_ev_set], dcgmi_set_sizes[dcgmi_curr_ev_set]);
 
 		ear_unlock(&dcgmi_lock);
@@ -510,3 +472,4 @@ static state_t dcgmi_paction(void *p)
 	}
 	return EAR_SUCCESS;
 }
+*/

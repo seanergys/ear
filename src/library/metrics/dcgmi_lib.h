@@ -22,20 +22,20 @@
 #include <common/states.h>
 #include <common/types.h>
 
+#include <metrics/gpu/archs/dcgmi.h>
+
 #include <library/metrics/dcgmi_lib/common.h>
 
 
-typedef struct dcgmi_lib_s
+typedef struct dcgmi_sig
 {
-	int *dcgmi_set_sizes;
-	int	dcgmi_set_count;
-															
-	int **dcgmi_events;
-	char **dcgmi_events_str;
-															
+	uint    dcgmi_sets;
+	uint    dcgmi_gpus;
+	uint    dcgmi_num_ev;
+	uint    **dcgmi_events;
+	uint    *dcgmi_instances;
 	dcgmi_t **dcgmi_metrics;
-	dcgmi_t **dcgmi_metrics_agg;
-} dcgmi_lib_t;
+} dcgmi_sig_t;
 
 
 /** Loads this module. */
@@ -59,4 +59,6 @@ void dcgmi_lib_report_total_metrics();
 
 
 void dcgmi_lib_reset_instances(dcgmi_sig_t *dcgmi_sig);
+
+
 #endif // _DCGMI_LIB_H_

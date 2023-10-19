@@ -133,4 +133,7 @@ uint metrics_dcgmi_enabled();
 /* Returns the number of iterations per second in the last computed signature */
 float metrics_iter_per_second();
 
+
+uint metrics_CPU_phase_ok();
+
 #endif //EAR_EAR_METRICS_H

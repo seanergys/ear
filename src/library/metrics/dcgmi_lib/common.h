@@ -20,26 +20,31 @@
 
 
 #include <common/types.h>
+#include <common/states.h>
+
 #include <metrics/gpu/archs/dcgmi.h>
 
 
-#define DCGMI_INIT_LVL	1
-#define DCGMI_MET_LVL		3
-
 #define DCGMI_LIB_SUPPORTED_EVENTS 12
 
-#define DCGMI_LIB_SAMPLING_PERIOD 2
+#define dcgmi_lib_ret_alloc_err() \
+	return_msg(EAR_ERROR, Generr.alloc_error);
 
 
-typedef struct dcgmi_sig
+typedef struct dcgmi_lib_s
 {
-	uint    dcgmi_sets;
-	uint    dcgmi_gpus;
-	uint    dcgmi_num_ev;
-	uint    **dcgmi_events;
-	uint    *dcgmi_instances;
+	int *dcgmi_set_sizes;
+	int	dcgmi_set_count;
+															
+	uint **dcgmi_events;
+	char **dcgmi_events_str;
+															
 	dcgmi_t **dcgmi_metrics;
-} dcgmi_sig_t;
+	dcgmi_t **dcgmi_metrics_agg;
+} dcgmi_lib_t;
+
+
+state_t dcgmi_lib_data_alloc(dcgmi_lib_t *dcgmi_data, int set_count);
 
 
 #endif // _DCGMI_LIB_COMMON_H_

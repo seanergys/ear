@@ -20,11 +20,11 @@ endif
 
 ifeq ($(FEAT_RESEARCH), 1)
 	CFLAGS +=  \
-			  -DEAR_DEF_TIME_GUIDED=0
+						 -DEAR_DEF_TIME_GUIDED=0
 endif
 
 ifeq ($(FEAT_EAR_OFF), 1)
-	CFLAGS +=  -DEAR_OFF=1
+	CFLAGS += -DEAR_OFF=1
 endif
 
 
@@ -78,32 +78,38 @@ comm_OBJS = \
     $(SRCDIR)/common/libcommon.a 
 
 
-
 core_OBJS = \
-    api/ear.o \
-    api/clasify.o \
-    api/mpi_support.o \
-    api/cupti.o \
-    api/eard_dummy.o \
-    common/library_shared_data.o \
-    common/utils.o \
-    metrics/metrics.o \
-	metrics/energy_node_lib.o \
-    models/cpu_power_model.o \
-    models/energy_model.o \
-    policies/policy.o \
-    policies/common/pc_support.o \
-    policies/common/gpu_support.o \
-    policies/common/cpu_support.o \
-    policies/common/mpi_stats_support.o \
-    policies/common/imc_policy_support.o \
-    policies/common/generic.o \
-    states/states_comm.o \
-    states/states.o \
-    tracer/tracer.o \
-    dynais/dynais.a \
-    metrics/dcgmi_lib.o \
-    metrics/dcgmi_lib/turing.o
+						api/ear.o \
+						api/clasify.o \
+						api/mpi_support.o \
+						api/cupti.o \
+						api/eard_dummy.o \
+						common/library_shared_data.o \
+						common/utils.o \
+						metrics/metrics.o \
+						metrics/energy_node_lib.o \
+						models/cpu_power_model.o \
+						models/energy_model.o \
+						policies/policy.o \
+						policies/common/pc_support.o \
+						policies/common/gpu_support.o \
+						policies/common/cpu_support.o \
+						policies/common/mpi_stats_support.o \
+						policies/common/imc_policy_support.o \
+						policies/common/generic.o \
+						states/states_comm.o \
+						states/states.o \
+						tracer/tracer.o \
+						dynais/dynais.a
+
+
+ifeq ($(DCGMI), 1)
+core_OBJS += \
+						 metrics/common.o \
+						 metrics/dcgmi_lib.o \
+						 metrics/turing.o \
+						 metrics/hopper.o
+endif
 
 
 ifeq ($(FEAT_MPI_API), 1)

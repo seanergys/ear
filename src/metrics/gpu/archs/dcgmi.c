@@ -201,16 +201,25 @@ void gpu_dcgmi_events_to_str(uint *dcgmi_events, uint num_ev, char * dcgmi_event
 void gpu_dcgmi_accum_data(dcgmi_t *accum, dcgmi_t *d, double elapsed, uint *ev_list, uint num_ev)
 {
   debug("gpu_dcgmi_accum_data");
+
   if ((accum == NULL) || (d == NULL) || (events_count == 0) || (gpus_count == 0)) return;
-  for (uint g = 0; g < gpus_count; g++){
-    for (uint e = 0; e < num_ev; e++){
-      if (dcgmi_ev_type[ev_list[e] - dcgmi_first_event] == RATIO){ 
-        if (g == 0){ 
+
+  for (uint g = 0; g < gpus_count; g++)
+	{
+    for (uint e = 0; e < num_ev; e++)
+		{
+			debug("gpu %u ev %u event %u", g, e, ev_list[e]);
+      if (dcgmi_ev_type[ev_list[e] - dcgmi_first_event] == RATIO)
+			{
+        if (g == 0)
+				{
           debug("Event %s type RATIO", dcgmi_ev_names[ev_list[e] - dcgmi_first_event]);
         }
+
         accum[g].values[e] += d[g].values[e] * elapsed;
-      }else{
-        if (g == 0){ 
+      } else {
+        if (g == 0)
+				{
           debug("Event %s type ACUM", dcgmi_ev_names[ev_list[e] - dcgmi_first_event]);
         }
         accum[g].values[e] += d[g].values[e];
@@ -219,10 +228,12 @@ void gpu_dcgmi_accum_data(dcgmi_t *accum, dcgmi_t *d, double elapsed, uint *ev_l
   }
 }
 
+
 char *gpu_dcgmi_event_to_name(uint ev)
 {
   return dcgmi_ev_names[ev -dcgmi_first_event];
 }
+
 
 uint gpu_dcgmi_event_type(uint event)
 {

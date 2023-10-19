@@ -1,160 +1,75 @@
-#include <library/metrics/dcgmi_lib/hooper.h>
-
-
 /*
-#define HOOPER_MODULE_DISABLED_MSG "Module not enabled."
+ * This program is part of the EAR software.
+ *
+ * EAR provides a dynamic, transparent and ligth-weigth solution for
+ * Energy management. It has been developed in the context of the
+ * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
+ *
+ * Copyright © 2017-present BSC-Lenovo
+ * BSC Contact   mailto:ear-support@bsc.es
+ * Lenovo contact  mailto:hpchelp@lenovo.com
+ *
+ * EAR is an open source software, and it is licensed under both the BSD-3 license
+ * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
+ * and COPYING.EPL files.
+ */
 
 
-static uint module_enabled;
+#include <library/metrics/dcgmi_lib/hopper.h>
 
-static int dcgmi_events_ids[] = {
-	gr_engine_active, 
-	sm_active,
-	sm_occupancy,
-	tensor_active,
-	dram_active,
-	fp64_active,
-	fp32_active,
-	fp16_active,
-	pcie_tx_bytes,
-	pcie_rx_bytes,
-	nvlink_tx_bytes,
-	nvlink_rx_bytes
-};
-
-static char dcgmi_events_str[DCGMI_LIB_SUPPORTED_EVENTS * ID_SIZE];
-
-static dcgmi_t *dcgmi_metrics;
-static dcgmi_t *dcgmi_metrics_agg;
-
-// static uint *dcgmi_instances;
-
-* DCGMI monitor variables. *
-static suscription_t *dcgmi_monitor;
-static uint						dcgmi_curr_ev_set;
-static uint						dcgmi_monitor_stop;
-
-static pthread_mutex_t dcgmi_lock = PTHREAD_MUTEX_INITIALIZER;
-
-static double elapsed_time;
-*/
+#include <stdlib.h>
 
 
-/** DCGMI monitor subscription init function. */
-// static state_t dcgmi_paction_init(void *p);
-
-/** DCGMI monitor subscription periodic action. */
-// static state_t dcgmi_paction(void *p);
-
-
-state_t dcgmi_lib_turing_init(dcgmi_lib_t *dcgmi_data)
+state_t dcgmi_lib_hopper_init(dcgmi_lib_t *dcgmi_data)
 {
 	if (dcgmi_data)
 	{
-		// Set count
-		dcgmi_data->dcgmi_set_count = 1;
-
-		dcgmi_data->dcgmi_set_sizes		= NULL;
-		dcgmi_data->dcgmi_events			= NULL;
-		dcgmi_data->dcgmi_events_str	= NULL;
-		dcgmi_data->dcgmi_metrics			= NULL;
-		dcgmi_data->dcgmi_metrics_agg = NULL;
-
-		// Set sizes array
-		dcgmi_data->dcgmi_set_sizes = (int *) malloc(dcgmi_data->dcgmi_set_count * sizeof(int));
-
-		// Event sets array
-		dcgmi_data->dcgmi_events = (int **) calloc(dcgmi_data->dcgmi_set_count, sizeof(int *));
-
-		// Event sets string array
-		dcgmi_data->dcgmi_events_str = (char *) calloc(dcgmi_data->dcgmi_set_count, sizeof(char *));
-
-		// Event sets metrics array
-		dcgmi_data->dcgmi_metrics = (dcgmi_t *) malloc(dcgmi_data->dcgmi_set_count * sizeof(dcgmi_t));
-
-		// Event sets aggregated metrics array
-		dcgmi_data->dcgmi_metrics_agg = (dcgmi_t *) malloc(dcgmi_data->dcgmi_set_count * sizeof(dcgmi_t));
-
-		if (dcgmi_data->dcgmi_set_sizes &&
-				dcgmi_data->dcgmi_events &&
-				dcgmi_data->dcgmi_events_str &&
-				dcgmi_data->dcgmi_metrics &&
-				dcgmi_data->dcgmi_metrics_agg)
+		if (dcgmi_lib_data_alloc(dcgmi_data, 1))
 		{
 			dcgmi_data->dcgmi_set_sizes[0] = DCGMI_LIB_SUPPORTED_EVENTS;
 
-			// TODO: Avoid loops as we know there is just one set here.
+			// clean first all pointers to then safetely call free func. in case of error.
+			dcgmi_data->dcgmi_events[0] = NULL;
+			dcgmi_data->dcgmi_events_str[0] = NULL;
 
-			// Allocate memory for each event set array and event set string
-			int i = 0;
-			while (i < dcgmi_data->dcgmi_set_count)
+			// Allocate memory for event set array and event set string
+			dcgmi_data->dcgmi_events[0] = (uint *) malloc(dcgmi_data->dcgmi_set_sizes[0] * sizeof(uint));
+			dcgmi_data->dcgmi_events_str[0] = (char *) calloc(dcgmi_data->dcgmi_set_sizes[0], ID_SIZE);
+
+			if (!dcgmi_data->dcgmi_events[0] || !dcgmi_data->dcgmi_events_str[0])
 			{
-				// Event set array
-				dcgmi_data->dcgmi_events[i] = (int *) malloc(dcgmi_data->dcgmi_set_sizes[i] * sizeof(int));
+				free(dcgmi_data->dcgmi_events[0]);
+				free(dcgmi_data->dcgmi_events_str[0]);
 
-				if (!dcgmi_data->dcgmi_events[i])
-				{
-					break;
-				}
+				free(dcgmi_data->dcgmi_metrics_agg);
+				free(dcgmi_data->dcgmi_metrics);
 
-				// Event set string
-				dcgmi_data->dcgmi_events_str[i] = (char *) calloc(dcgmi_data->dcgmi_set_sizes[i], ID_SIZE);
-
-				if (!dcgmi_data->dcgmi_events_str[i])
-				{
-					free(dcgmi_data->dcgmi_events[i]);
-					break;
-				}
-
-				i++;
-			}
-
-			// Check whether there was an error during allocation
-			if (i < dcgmi_data->dcgmi_set_count)
-			{
-				for (int j = 0; j < i; j++)
-				{
-					free(dcgmi_data->dcgmi_events[j]);
-					free(dcgmi_data->dcgmi_events_str[j]);
-				}
+				free(dcgmi_data->dcgmi_events_str);
 
 				free(dcgmi_data->dcgmi_events);
 				free(dcgmi_data->dcgmi_set_sizes);
 
-				return EAR_ERROR;
+				dcgmi_lib_ret_alloc_err();
 			}
 
 			// Set 1
-			dcgmi_data->dcgmi_events[0][0] = sm_active;
-			dcgmi_data->dcgmi_events[0][1] = sm_occupancy;
-			dcgmi_data->dcgmi_events[0][2] = tensor_active;
-			dcgmi_data->dcgmi_events[0][3] = fp32_active;
-			dcgmi_data->dcgmi_events[0][4] = dram_active;
-			dcgmi_data->dcgmi_events[0][5] = pcie_tx_bytes;
-			dcgmi_data->dcgmi_events[0][6] = pcie_rx_bytes;
-			dcgmi_data->dcgmi_events[0][7] = gr_engine_active;
-			dcgmi_data->dcgmi_events[0][8] = nvlink_tx_bytes;
-			dcgmi_data->dcgmi_events[0][9] = nvlink_rx_bytes;
-
-			// Set 2
-			dcgmi_data->dcgmi_events[1][0] = fp64_active;
-
-			// Set 3
-			dcgmi_data->dcgmi_events[1][0] = fp16_active;
+			dcgmi_data->dcgmi_events[0][0]	= gr_engine_active;
+			dcgmi_data->dcgmi_events[0][1] 	= sm_active;
+			dcgmi_data->dcgmi_events[0][2] 	= sm_occupancy;
+			dcgmi_data->dcgmi_events[0][3] 	= tensor_active;
+			dcgmi_data->dcgmi_events[0][4] 	= dram_active;
+			dcgmi_data->dcgmi_events[0][5] 	= fp64_active;
+			dcgmi_data->dcgmi_events[0][6] 	= fp32_active;
+			dcgmi_data->dcgmi_events[0][7] 	= fp16_active;
+			dcgmi_data->dcgmi_events[0][8] 	= pcie_tx_bytes;
+			dcgmi_data->dcgmi_events[0][9] 	= pcie_rx_bytes;
+			dcgmi_data->dcgmi_events[0][10] = nvlink_tx_bytes;
+			dcgmi_data->dcgmi_events[0][11] = nvlink_rx_bytes;
 
 			return EAR_SUCCESS;
-
 		} else
 		{
-			free(dcgmi_data->dcgmi_set_sizes);
-
-			free(dcgmi_data->dcgmi_events);
-			free(dcgmi_data->dcgmi_events_str);
-
-			free(dcgmi_data->dcgmi_metrics);
-			free(dcgmi_data->dcgmi_metrics_agg);
-
-			return EAR_ERROR;
+			dcgmi_lib_ret_alloc_err();
 		}
 	} else
 	{
@@ -163,6 +78,7 @@ state_t dcgmi_lib_turing_init(dcgmi_lib_t *dcgmi_data)
 }
 
 
+/*
 state_t dcgmi_lib_hooper_load()
 {
 // 	dcgmi_instances = calloc(dcgmi_set_count, sizeof(uint));
@@ -283,11 +199,11 @@ void dcgmi_lib_hooper_report_total_metrics()
 		uint    active[DCGMI_LIB_SUPPORTED_EVENTS];
 		uint		gpu_count = gpu_dcgmi_gpus_detected();
 
-		/* Cleaning */
+		* Cleaning *
 		memset(&total, 0, sizeof(dcgmi_t));
 		memset(&active, 0, sizeof(uint) * DCGMI_LIB_SUPPORTED_EVENTS);
 
-		/* Moving from accumulated data, per gpu to total. */
+		* Moving from accumulated data, per gpu to total. *
 
 		for (uint gpu_idx = 0; gpu_idx < gpu_count; gpu_idx++)
 		{
@@ -301,7 +217,7 @@ void dcgmi_lib_hooper_report_total_metrics()
 			}
 		}
 
-		/* Report */
+		* Report *
 		for (uint ev = 0; ev < DCGMI_LIB_SUPPORTED_EVENTS; ev++)
 		{
 			if (total.values[ev] > 0)
@@ -344,7 +260,7 @@ void dcgmi_lib_hooper_dcgmi_sig_init(dcgmi_sig_t *dcgmi_sig)
 		verbose_master(DCGMI_INIT_LVL, "Allocating metrics...");
 		gpu_dcgmi_data_alloc(&dcgmi_sig->dcgmi_metrics);
 
-		/* The list of events is static. */
+		* The list of events is static. *
 		memcpy(dcgmi_sig->dcgmi_events, dcgmi_events, DCGMI_LIB_SUPPORTED_EVENTS * sizeof(uint));
 	}
 }
@@ -372,7 +288,7 @@ static state_t dcgmi_paction(void *p)
 
 		elapsed_time += time_s;
 
-		/* Read and accumulate current set of events. */
+		* Read and accumulate current set of events. *
 		gpu_dcgmi_read(dcgmi_metrics);
 
 		gpu_dcgmi_accum_data(dcgmi_metrics_agg, dcgmi_metrics, time_s,
@@ -394,7 +310,7 @@ static state_t dcgmi_paction(void *p)
 		dcgmi_instances[dcgmi_curr_ev_set]++;
 		dcgmi_curr_ev_set = (dcgmi_curr_ev_set + 1) % dcgmi_set_count;
 
-		/* Change the active set of events */
+		* Change the active set of events *
 		gpu_dcgmi_set_events(dcgmi_events_str[dcgmi_curr_ev_set], dcgmi_set_sizes[dcgmi_curr_ev_set]);
 
 		ear_unlock(&dcgmi_lock);
@@ -405,3 +321,4 @@ static state_t dcgmi_paction(void *p)
 	}
 	return EAR_SUCCESS;
 }
+*/

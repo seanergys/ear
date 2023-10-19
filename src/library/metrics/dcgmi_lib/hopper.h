@@ -20,25 +20,11 @@
 
 
 #include <common/states.h>
+
 #include <library/metrics/dcgmi_lib/common.h>
 
 
-state_t dcgmi_lib_hooper_load();
-
-
-state_t dcgmi_lib_hooper_get_current_metrics(dcgmi_sig_t *dcgmi_sig);
-
-
-state_t dcgmi_lib_hooper_get_global_metrics(dcgmi_sig_t *dcgmi_sig);
-
-
-void dcgmi_lib_hooper_report_total_metrics();
-
-
-void dcgmi_lib_hooper_dcgmi_sig_init(dcgmi_sig_t *dcgmi_sig);
-
-
-void dcgmi_lib_hooper_reset_instances(dcgmi_sig_t *dcgmi_sig);
+state_t dcgmi_lib_hopper_init(dcgmi_lib_t *dcgmi_data);
 
 
 #endif // _DCGMI_LIB_HOOPER_H_

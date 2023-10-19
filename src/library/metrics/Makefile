@@ -4,7 +4,8 @@ OBJS = \
     energy_node_lib.o \
     dcgmi_lib.o \
 		dcgmi_lib/turing.o \
-		dcgmi_lib/hopper.o
+		dcgmi_lib/hopper.o \
+		dcgmi_lib/common.o
 
 all: $(OBJS)
 

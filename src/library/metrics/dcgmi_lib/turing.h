@@ -15,30 +15,16 @@
  */
 
 
-#ifndef _DCGMI_LIB_T4_H_
-#define _DCGMI_LIB_T4_H_
+#ifndef _DCGMI_LIB_TURING_H_
+#define _DCGMI_LIB_TURING_H_
 
 
 #include <common/states.h>
+
 #include <library/metrics/dcgmi_lib/common.h>
 
 
-state_t dcgmi_lib_t4_load();
+state_t dcgmi_lib_turing_init(dcgmi_lib_t *dcgmi_data);
 
 
-state_t dcgmi_lib_t4_get_current_metrics(dcgmi_sig_t *dcgmi_sig);
-
-
-state_t dcgmi_lib_t4_get_global_metrics(dcgmi_sig_t *dcgmi_sig);
-
-
-void dcgmi_lib_t4_report_total_metrics();
-
-
-void dcgmi_lib_t4_dcgmi_sig_init(dcgmi_sig_t *dcgmi_sig);
-
-
-void dcgmi_lib_t4_reset_instances(dcgmi_sig_t *dcgmi_sig);
-
-
-#endif // _DCGMI_LIB_T4_H_
+#endif // _DCGMI_LIB_TURING_H_

@@ -16,7 +16,7 @@
 */
 
 #define _GNU_SOURCE
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 /* 1 means invatid shared memory or invalid id (all processes), 
  * 2 means invatid shared memory or invalid id (half processes),
