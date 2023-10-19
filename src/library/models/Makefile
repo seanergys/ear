@@ -6,7 +6,8 @@ modl_BINS = \
 						cpu_power_model_default.so \
 						cpu_power_model_gflops.so \
 						cpu_power_model_dummy.so \
-						energy_models/gpu_dummy_model.so
+						energy_models/gpu_dummy_model.so \
+						energy_models/gpu_model.so 
 
 modl_OBJS = cpu_power_model.o energy_model.o 
 modl_PATH = $(DESTDIR)/lib/plugins/models
