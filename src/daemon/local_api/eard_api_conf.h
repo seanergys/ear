@@ -15,23 +15,29 @@
 * and COPYING.EPL files.
 */
 
-#ifndef _EAR_DAEMON_COMMON_H
-#define _EAR_DAEMON_COMMON_H
+#ifndef EARD_LOCAL_API_INTERNS_H
+#define EARD_LOCAL_API_INTERNS_H
 
-#define _GNU_SOURCE             
+#define _GNU_SOURCE
 #include <sched.h>
-
-#include <common/config/config_install.h>
-#include <common/types/generic.h>
-#include <common/types/application.h>
 #include <common/types/job.h>
 #include <common/types/loop.h>
+#include <common/types/generic.h>
 #include <common/types/event_type.h>
+#include <common/types/application.h>
+#include <common/config/config_install.h>
+
+// This class is intended to bring intern functions to connect to EARD.
+// Including this class is only required for connection managing modules. If you
+// want easy-to-read functions to ask for EARD request, look at eard_api.h class.
+
+#define WAIT_DATA    0
+#define NO_WAIT_DATA 1
 
 typedef struct req_padding_s {
-  uint  padding1;
-  ulong padding2[MAX_CPUS_SUPPORTED];
-}req_padding_t;
+    uint  padding1;
+    ulong padding2[MAX_CPUS_SUPPORTED];
+} req_padding_t;
 
 // Data type to send the requests
 union daemon_req_opt {
@@ -43,49 +49,44 @@ union daemon_req_opt {
 };
 
 typedef struct app_id{
-  ulong jid;
-  ulong sid;
-  ulong lid;
-}app_id_t;
+    ulong jid;
+    ulong sid;
+    ulong lid;
+} app_id_t;
 
 /* new_services : This section is eard request messages headers */
 typedef struct eard_head_s {
-  ulong    req_service;
-  ulong    sec;
-  size_t   size;
-  state_t  state;
-  app_id_t con_id;
+    ulong    req_service;
+    ulong    sec;
+    size_t   size;
+    state_t  state;
+    app_id_t con_id;
 } eard_head_t;
 
 struct daemon_req {
-/* For new_services : This section must include same size than eard_head_t */
-  ulong    req_service;
-  ulong    sec;
-  size_t   size;
-  state_t  state;
-  app_id_t con_id;
-  union daemon_req_opt req_data;
+    /* For new_services : This section must include same size than eard_head_t */
+    ulong    req_service;
+    ulong    sec;
+    size_t   size;
+    state_t  state;
+    app_id_t con_id;
+    union daemon_req_opt req_data;
 };
 
-#define WAIT_DATA    0
-#define NO_WAIT_DATA 1
+int eards_read(int fd,char *buff, int size, uint type);
 
-int eards_read(int fd,char *buff,int size, uint type);
-int eards_write(int fd,char *buff,int size);
+int eards_write(int fd,char *buff, int size);
 
-// Legacy RPC services
-#define CONNECT_EARD_NODE_SERVICES      5
-#define DISCONNECT_EARD_NODE_SERVICES   1000
-#define EAR_COM_OK                      0
-#define EAR_COM_ERROR                  -1
-#define READ_RAPL                       202
-#define DATA_SIZE_RAPL                  203
-#define WRITE_APP_SIGNATURE             300
-#define WRITE_EVENT                     302
-#define WRITE_LOOP_SIGNATURE            303
-#define READ_DC_ENERGY                  400
-#define ENERGY_FREQ                     403
-#define GPU_SUPPORTED                   505
-#define NEW_API_SERVICES                1000
+// This function is to be used for external commands or applications not using the EARL.
+int eards_connection();
 
-#endif
+// Tries to connect with the daemon. Returns 0 on success and -1 otherwise.
+int eards_connect(application_t *my_app, ulong lid);
+
+// True if the binary is connected with EARD.
+int eards_connected();
+
+// Closes the connection with EARD.
+void eards_disconnect();
+
+#endif //EARD_LOCAL_API_INTERNS_H

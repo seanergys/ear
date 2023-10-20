@@ -52,7 +52,7 @@
 
 #include <daemon/eard.h>
 #include <daemon/eard_node_services.h>
-#include <daemon/local_api/eard_api_conf.h>
+#include <daemon/local_api/eard_api.h>
 #include <daemon/remote_api/dynamic_configuration.h>
 #include <daemon/power_monitor.h>
 #include <daemon/powercap/powercap.h>

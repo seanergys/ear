@@ -28,7 +28,6 @@
 #include <daemon/local_api/eard_api.h>
 #include <management/management.h>
 
-static manages_info_t *m;
 // Screen
 static strscreen_t    ss;
 static strtable_t     st;
@@ -157,8 +156,8 @@ char *management_data_tostr()
 }
 
 #if TEST
-static topology_t tp;
 static manages_info_t man;
+static topology_t     tp;
 
 static state_t monitor_apis_init(void *whatever)
 {

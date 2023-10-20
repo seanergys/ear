@@ -18,6 +18,8 @@
 //#define SHOW_DEBUGS 1
 
 #define _GNU_SOURCE             
+#include <time.h>
+#include <sched.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -28,23 +30,25 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sched.h>
-#include <time.h>
 #include <pthread.h>
 #include <common/config.h>
 #include <common/states.h>
-#include <common/system/lock.h>
-#include <common/output/verbose.h>
-#include <common/types/generic.h>
 #include <common/system/poll.h>
-#include <metrics/common/apis.h>
+#include <common/system/lock.h>
+#include <common/types/generic.h>
+#include <common/output/verbose.h>
 #include <common/types/application.h>
 #include <daemon/local_api/eard_api.h>
+#include <metrics/gpu/gpu.h>
+#include <metrics/common/apis.h>
+#include <metrics/cpufreq/cpufreq.h>
+#include <metrics/imcfreq/imcfreq.h>
+#include <management/gpu/gpu.h>
 
-#define OUTTER_MAX_PIPE_TRIES 10
-#define MAX_PIPE_TRIES				(MAX_SOCKET_COMM_TRIES*10)
-#define MAX_TRIES							1
-#define USE_NON_BLOCKING_IO  	1
+#define OUTTER_MAX_PIPE_TRIES  10
+#define MAX_PIPE_TRIES         (MAX_SOCKET_COMM_TRIES*10)
+#define MAX_TRIES              1
+#define USE_NON_BLOCKING_IO    1
 
 /* These pipes are used for local communication between ear library and eard */
 char ear_commreq_global[SZ_PATH]; 		/* This pipe connects with EARD, the same for all the jobs,
@@ -533,4 +537,9 @@ int eards_gpu_support()
 {
   init_service(GPU_SUPPORTED);
   return (int) sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ack), "GPU support", 0);
+}
+
+state_t eards_get_state(eard_state_t *state)
+{
+    return eard_rpc(RPC_GET_STATE, NULL, 0, (char *) state, sizeof(eard_state_t));
 }

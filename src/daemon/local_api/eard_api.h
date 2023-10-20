@@ -15,83 +15,72 @@
 * and COPYING.EPL files.
 */
 
-#ifndef _EAR_DAEMON_CLIENT_H
-#define _EAR_DAEMON_CLIENT_H
+#ifndef EARD_LOCAL_API_FUNCTIONS_H
+#define EARD_LOCAL_API_FUNCTIONS_H
 
-/** \defgroup local_api EARD Local API
- * \todo Add a description.
- */
-
-#include <common/types/generic.h>
 #include <common/types/log.h>
-#include <metrics/gpu/gpu.h>
-#include <metrics/cpufreq/cpufreq.h>
-#include <metrics/imcfreq/imcfreq.h>
-#include <management/gpu/gpu.h>
-
+#include <common/types/generic.h>
+#include <common/system/version.h>
 #include <daemon/local_api/eard_api_rpc.h>
 #include <daemon/local_api/eard_api_conf.h>
 
-/** @addtogroup connection Connection 
- * \ingroup local_api
- * \todo Add a description.
- * @{ */
-/** This function is to be used for external commands or applications not using the EARL. */
-int eards_connection();
-/** EARL connection: Tries to connect with the daemon.
- * Returns 0 on success and -1 otherwise. */
-int eards_connect(application_t *my_app, ulong lid);
-/** \todo Add a description for this function. */
-int eards_connected();
-/** Closes the connection with the daemon. */
-void eards_disconnect();
-/** @} */
+// This class is intended to provide easy-to-read functions instead RPCs to
+// communicate between binaries and EAR Daemon (EARD).
 
-/** \defgroup rapl_services RAPL services
- * \ingroup local_api
- * \todo Add a description.
- * @{ */
-/** Sends a request to read the RAPL counters. Returns -1 if there's an error,
- * and on success returns 0 and fills the array \p values with the counters' values. */
-int eards_read_rapl(unsigned long long *values);
-/** Requests the rapl data size.
- * Returns -1 if there's an error, and the actual value otherwise. */
-unsigned long eards_get_data_size_rapl();
-/** @} */
+typedef struct eard_state_s {
+    version_t version;
+    uint gpus_supported_count;
+    pid_t pid;
+} eard_state_t;
 
-/** \defgroup system_services System services
- * \ingroup local_api
- * \todo Add a description.
- * @{ */
-/** Sends a request to the deamon to write the whole application signature.
- * Returns 0 on success, -1 on error. */
+state_t eards_get_state(eard_state_t *state);
+
+// Legacy functions
+
+// Request to read the RAPL counters. Returns -1 if there's an error, and 0 on
+// success and fills the array with the counter values.
+int eards_read_rapl(ullong *values);
+
+// Requests the rapl data size, but returns -1 if there's an error. */
+ulong eards_get_data_size_rapl();
+
+// Request to write an application signature. Returns 0 on success, -1 on error.
 ulong eards_write_app_signature(application_t *app_signature);
-/** Sends a request to the deamon to write one loop  signature into the DB.
- * Returns 0 on success, -1 on error. */
+
+// Request write a loop signature into the DB. Returns 0 on success, -1 on error.
 ulong eards_write_loop_signature(loop_t *loop_signature);
-/** Reports a new EAR event. */
+
+// Reports event. Returns 0 on success, -1 on error.
 ulong eards_write_event(ear_event_t *event);
-/** @}*/
 
-/** \defgroup node_energy_services Node energy services
- * \ingroup local_api
- * \todo Add a description.
- * @{ */
-/** Requests the DC energy to the node.
- * Returns 0 on success, -1 if there's an error. */
-int eards_node_dc_energy(void *energy,ulong datasize);
-/** Requests the dc energy node frequency.
- * Returns -1 if there's an error, and 10000000 otherwise. */
+// Requests the DC energy of the node. Returns 0 on success, -1 on error.
+int eards_node_dc_energy(void *energy, ulong datasize);
+
+// Requests the DC energy node frequency. Returns -1 or 10000000 if not connected.
 ulong eards_node_energy_frequency();
-/** Sends the loop_signature to eard to be reported in the DB. */
+
+// Reports a loop signature to EARD to be reported in the DB.
 ulong eards_write_loop_signature(loop_t *loop_signature);
-/** Returns the frequency at which the node energy frequency is refreshed. */
-ulong eards_node_energy_frequency();
-/** @}  */
 
-/** EARD GPU support */
+// Returns the frequency at which the node energy frequency is refreshed.
+ulong eards_node_energy_frequency();
+
+// Returns if GPU is supported by the EARD.
 int eards_gpu_support();
 
-/** @}  */
+// Legacy non-RPC services
+#define CONNECT_EARD_NODE_SERVICES      5
+#define DISCONNECT_EARD_NODE_SERVICES   1000
+#define EAR_COM_OK                      0
+#define EAR_COM_ERROR                  -1
+#define READ_RAPL                       202
+#define DATA_SIZE_RAPL                  203
+#define WRITE_APP_SIGNATURE             300
+#define WRITE_EVENT                     302
+#define WRITE_LOOP_SIGNATURE            303
+#define READ_DC_ENERGY                  400
+#define ENERGY_FREQ                     403
+#define GPU_SUPPORTED                   505
+#define NEW_API_SERVICES                1000
 
-#endif
+#endif //EARD_LOCAL_API_FUNCTIONS_H
