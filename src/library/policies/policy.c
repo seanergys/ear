@@ -34,6 +34,7 @@
 #include <management/cpufreq/frequency.h>
 #include <management/imcfreq/imcfreq.h>
 #include <management/cpufreq/cpufreq.h>
+#include <management/gpu/gpu.h>
 #include <report/report.h>
 #include <library/metrics/metrics.h>
 #include <library/api/mpi_support.h>
