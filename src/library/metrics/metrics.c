@@ -71,16 +71,6 @@
 #include <library/policies/common/mpi_stats_support.h> /* Should we move this file out out policies? */
 #include <library/tracer/tracer.h>
 #include <library/tracer/tracer_paraver_comp.h>
-
-#if USE_GPUS
-#define EAR_USE_CUPTI "EAR_USE_CUPTI"
-#include <metrics/gpu/gpu.h>
-#define USE_CUPTI 0
-#if USE_CUPTI
-#include <metrics/gpu/gpuproc.h>
-#endif
-#endif // USE_GPUS
-
 #include <metrics/io/io.h>
 #include <metrics/cpi/cpi.h>
 #include <metrics/cache/cache.h>
@@ -93,7 +83,19 @@
 #include <management/imcfreq/imcfreq.h>
 #include <daemon/local_api/eard_api.h>
 #include <report/report.h>
+#if USE_GPUS
+#include <metrics/gpu/gpu.h>
+#if USE_CUPTI
+#include <metrics/gpu/gpuproc.h>
+#endif
+#if DCGMI
 #include <library/metrics/dcgmi_lib.h>
+#endif
+#endif // USE_GPUS
+#if METRICS_OVH
+#include <common/utils/overhead.h>
+#endif
+
 
 // Registers
 #define LOO         0 // loop
@@ -105,10 +107,11 @@
 #define SIG_BEGIN 	0
 #define SIG_END		1
 
+#if USE_GPUS & USE_CUPTI
+#define EAR_USE_CUPTI "EAR_USE_CUPTI"
+#endif
 
-#define METRICS_OVH 1
 #if METRICS_OVH
-#include <common/utils/overhead.h>
 uint id_ovh_partial_stop;
 uint id_ovh_compute_data;
 uint id_ovh_dc_energy;
@@ -1268,12 +1271,19 @@ static int metrics_partial_stop(uint where)
 #endif
         }
 
-		/* Avg CPU freq */
+#if METRICS_OVH
     overhead_start(id_ovh_cpufreq);
+#endif
+
+		/* Avg CPU freq */
 		if (state_fail(s = cpufreq_read(no_ctx, cpufreq_read2[LOO]))) {
 			verbose_master(ERROR_VERB, "%sCPUFreq data read in partial stop failed%s", COL_RED, COL_CLR);
 		}
+
+#if METRICS_OVH
     overhead_stop(id_ovh_cpufreq);
+#endif
+
 		if (xtate_fail(s, cpufreq_data_diff(cpufreq_read2[LOO], cpufreq_read1[LOO], cpufreq_diff, &cpufreq_avrg[LOO]))){
 			verbose_master(ERROR_VERB, "%sCPUFreq data diff failed%s", COL_RED, COL_CLR);
 		} else {
@@ -1291,11 +1301,15 @@ static int metrics_partial_stop(uint where)
 
 		/* Avg IMC frequency */
 		if (mgt_imcfreq.ok){
+#if METRICS_OVH
       overhead_start(id_ovh_imcfreq);
+#endif
 			if (state_fail(s = imcfreq_read(no_ctx,imcfreq_read2[LOO]))){
 				verbose_master(ERROR_VERB, "%sError%s IMC freq. data read in partial stop", COL_RED, COL_CLR);
 			}
+#if METRICS_OVH
       overhead_stop(id_ovh_imcfreq);
+#endif
 			if (state_fail(s = imcfreq_data_diff(imcfreq_read2[LOO],imcfreq_read1[LOO], imcfreq_diff[LOO], &imcfreq_avrg[LOO]))){
 				verbose_master(ERROR_VERB, "IMC data diff fails");
 			}
@@ -1323,9 +1337,13 @@ static int metrics_partial_stop(uint where)
 
 		/* Only the master read RAPL because is not per-process metric */
 		/* RAPL energy */
+#if METRICS_OVH
     overhead_start(id_ovh_rapl);
+#endif
 		energy_cpu_read(no_ctx, aux_rapl);
+#if METRICS_OVH
     overhead_stop(id_ovh_rapl);
+#endif
 		// We read acuumulated energy
 		energy_cpu_data_diff(no_ctx, last_rapl, aux_rapl, metrics_rapl[LOO]);
 	
@@ -1495,7 +1513,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 	}
 	sig_ext = metrics->sig_ext;
 
-#if DCGMI
+#if USE_GPUS & DCGMI
 	if (dcgmi_lib_is_enabled() && master && (sig_ext->dcgmis.dcgmi_sets == 0))
 	{
 		dcgmi_lib_dcgmi_sig_init(&sig_ext->dcgmis);
@@ -1574,7 +1592,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		sig_ext->min_mpi = 100;
 
 		/* DCGMI: read only for master */
-#if DCGMI && USE_GPUS
+#if DCGMI & USE_GPUS
 		if (dcgmi_lib_is_enabled())
 		{
 			if (sign_app_loop_idx == LOO) // Loop signature

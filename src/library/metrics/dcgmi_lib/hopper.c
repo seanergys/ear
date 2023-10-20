@@ -24,7 +24,8 @@ state_t dcgmi_lib_hopper_init(dcgmi_lib_t *dcgmi_data)
 {
 	if (dcgmi_data)
 	{
-		if (dcgmi_lib_data_alloc(dcgmi_data, 1))
+		debug("dcgmi_lib_hopper_init");
+		if (state_ok(dcgmi_lib_data_alloc(dcgmi_data, 1)))
 		{
 			dcgmi_data->dcgmi_set_sizes[0] = DCGMI_LIB_SUPPORTED_EVENTS;
 
@@ -38,6 +39,7 @@ state_t dcgmi_lib_hopper_init(dcgmi_lib_t *dcgmi_data)
 
 			if (!dcgmi_data->dcgmi_events[0] || !dcgmi_data->dcgmi_events_str[0])
 			{
+				debug("Allocating events and string data");
 				free(dcgmi_data->dcgmi_events[0]);
 				free(dcgmi_data->dcgmi_events_str[0]);
 
@@ -69,7 +71,9 @@ state_t dcgmi_lib_hopper_init(dcgmi_lib_t *dcgmi_data)
 			return EAR_SUCCESS;
 		} else
 		{
-			dcgmi_lib_ret_alloc_err();
+			char err_msg[64];
+			snprintf(err_msg, sizeof(err_msg), "Allocating dcgmi lib data (%s)", state_msg);
+			return_msg(EAR_ERROR, err_msg);
 		}
 	} else
 	{

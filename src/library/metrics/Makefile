@@ -1,11 +1,15 @@
 ########
 OBJS = \
     metrics.o \
-    energy_node_lib.o \
-    dcgmi_lib.o \
-		dcgmi_lib/turing.o \
-		dcgmi_lib/hopper.o \
-		dcgmi_lib/common.o
+    energy_node_lib.o
+
+ifeq ($(DCGMI), 1)
+OBJS += \
+				dcgmi_lib.o \
+				dcgmi_lib/turing.o \
+				dcgmi_lib/hopper.o \
+				dcgmi_lib/common.o
+endif
 
 all: $(OBJS)
 

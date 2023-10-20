@@ -15,7 +15,6 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
 
 #include <dlfcn.h>
 #include <stdlib.h>
@@ -76,6 +75,7 @@ void gpu_nvml_load(gpu_ops_t *ops, int force_api)
     apis_set(ops->count_devices, gpu_nvml_count_devices);
     apis_pin(ops->read,          gpu_nvml_read, ok_pool);
     apis_set(ops->read_raw,      gpu_nvml_read_raw);
+		apis_set(ops->get_info,			 gpu_nvml_get_info);
     debug("Loaded NVML");
 }
 
@@ -289,6 +289,7 @@ state_t gpu_nvml_get_info(apinfo_t *info)
 {
 	if (info)
 	{
+		debug("Calling GetArch %p %d", nvml.GetArchitecture, devs[0]);
 		// Warning: We are assumming all devices have the same architecture
 		nvmlReturn_t ret = nvml.GetArchitecture(devs[0], &info->dev_model);
 

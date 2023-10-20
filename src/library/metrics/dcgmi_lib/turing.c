@@ -14,7 +14,6 @@
  * and COPYING.EPL files.
  */
 
-#define SHOW_DEBUGS 1
 
 #include <library/metrics/dcgmi_lib/turing.h>
 

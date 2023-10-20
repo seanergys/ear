@@ -76,6 +76,7 @@ typedef struct gpu_ops_s
     state_t (*count_devices) (ctx_t *c, uint *devs_count);
     state_t (*read)        (ctx_t *c, gpu_t *data);
     state_t (*read_raw)    (ctx_t *c, gpu_t *data);
+    state_t (*get_info)    (apinfo_t *info);
 } gpu_ops_t;
 
 // Discovers the low level API.

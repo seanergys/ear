@@ -15,9 +15,6 @@
  */
 
 
-#define SHOW_DEBUGS 1
-
-
 #include <library/metrics/dcgmi_lib.h>
 
 #include <stdlib.h>
@@ -100,7 +97,7 @@ state_t dcgmi_lib_load()
 			if (state_ok(set_init_fn(&init_fn)))
 			{
 				// TODO: Allocate and initialize here all data structures based on GPU microarch.
-				if (state_ok(dcgmi_lib_turing_init(&dcgmi_data)))
+				if (state_ok(init_fn(&dcgmi_data)))
 				{
 					dcgmi_instances = calloc(dcgmi_data.dcgmi_set_count, sizeof(uint));
 
@@ -182,6 +179,14 @@ state_t dcgmi_lib_load()
 
 					return_msg(EAR_ERROR, "Allocating data");
 				}
+			} else
+			{
+				dcgmi_lib_enabled = 0;
+
+				char err_msg[64];
+				snprintf(err_msg, sizeof(err_msg), "Getting device model: %s", state_msg);
+
+				return_msg(EAR_ERROR, err_msg);
 			}
 		} else
 		{
@@ -457,7 +462,27 @@ static state_t set_init_fn(dcgmi_lib_init_fn *dst_fn_ptr)
 {
 	if (dst_fn_ptr)
 	{
-		// TODO
+		apinfo_t gpu_info;	
+		if (state_ok(gpu_get_info(&gpu_info)))
+		{
+			switch (gpu_info.dev_model)
+			{
+				case NVML_DEVICE_ARCH_TURING:
+					debug("Turing microarch detected.")
+					*dst_fn_ptr = dcgmi_lib_turing_init;
+					break;
+				case NVML_DEVICE_ARCH_HOPPER:
+					debug("Hopper microarch detected.");
+					*dst_fn_ptr = dcgmi_lib_hopper_init;
+					break;
+				default:
+					*dst_fn_ptr = NULL;
+					return_msg(EAR_ERROR, "Device unknown or not supported.");
+			}
+		} else
+		{
+			return_msg(EAR_ERROR, state_msg);
+		}
 		return EAR_SUCCESS;
 	} else
 	{
