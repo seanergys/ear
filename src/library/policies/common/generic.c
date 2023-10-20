@@ -54,6 +54,8 @@ static double get_power_projected(energy_model_t energy_model, signature_t *sign
 static double get_time_projected(energy_model_t energy_model, signature_t *signature, ulong f);
 static double get_power_nominal(energy_model_t energy_model, signature_t *signature);
 
+static uint must_compute_policy_savings(signature_t *ns, node_freqs_t *freqs, node_freq_domain_t *dom, uint *savings);
+
 
 double metric_ratio(double metric_ref, double metric_curr, uint type)
 {
@@ -330,8 +332,9 @@ static double get_power_nominal(energy_model_t energy_model, signature_t *signat
     target = frequency_get_nominal_pstate();
     curr   = frequency_closest_pstate(signature->def_f);
     energy_model_project_power(energy_model, signature, curr, target, &p);
+
+		verbose_master(CPU_SAVINGS_LVL,"Policy savins[%s]: Projecting reference power from %u to %u %lf", node_name, curr, target, p);
   }
-  verbose_master(CPU_SAVINGS_LVL,"Policy savins[%s]: Projecting reference power from %u to %u %lf", node_name, curr, target, p);
   return p;
 }
 
@@ -344,7 +347,7 @@ static double get_time_nominal(energy_model_t energy_model, signature_t *signatu
     target = frequency_get_nominal_pstate();
     curr   = frequency_closest_pstate(signature->def_f);
     energy_model_project_time(energy_model, signature, curr, target, &t);
+		verbose_master(CPU_SAVINGS_LVL,"Policy savins[%s]: Projecting reference time from %u to %u %lf", node_name, curr, target, t);
   }
-  verbose_master(CPU_SAVINGS_LVL,"Policy savins[%s]: Projecting reference time from %u to %u %lf", node_name, curr, target, t);
   return t;
 }
