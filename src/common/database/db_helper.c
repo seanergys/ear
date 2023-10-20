@@ -582,7 +582,7 @@ int db_batch_insert_loops(loop_t *loops, int num_loops)
 
     return EAR_SUCCESS;
 }
-    :w
+    
 int db_insert_periodic_aggregation(periodic_aggregation_t *per_agg)
 {
 #if DB_MYSQL
