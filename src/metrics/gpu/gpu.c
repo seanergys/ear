@@ -15,7 +15,6 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <pthread.h>
@@ -271,4 +270,16 @@ char *gpu_data_tostr(gpu_t *data, char *buffer, int length)
 int gpu_is_supported()
 {
     return gpu_eard_is_supported();
+}
+
+state_t gpu_get_info(apinfo_t *info)
+{
+	if (info)
+	{
+		debug("Calling API class get info method");
+		preturn(ops.get_info, info);
+	} else
+	{
+		return_msg(EAR_ERROR, Generr.input_null);
+	}
 }

@@ -11,8 +11,6 @@
 #define RATIO_INCR 1
 
 
-static uint must_compute_policy_savings(signature_t *ns, node_freqs_t *freqs, node_freq_domain_t *dom, uint *savings);
-
 /*  Returns the gain of metric_curr with respect to metric_ref.
  *  'type' parameter determines whether the gain must be treated as
  *  an increment (RATIO_INCR) or decrement (RATIO_DECR) of the metric. */

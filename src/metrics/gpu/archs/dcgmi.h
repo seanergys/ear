@@ -20,27 +20,6 @@
 
 #include <metrics/gpu/gpu.h>
 
-/*
- * dcgmi profile -l
- * +----------------+----------+------------------------------------------------------+
-| Group.Subgroup | Field ID | Field Tag                                            |
-+----------------+----------+------------------------------------------------------+
-| A.1            | 1002     | sm_active                                            |
-| A.1            | 1003     | sm_occupancy                                         |
-| A.1            | 1004     | tensor_active                                        |
-| A.1            | 1006     | fp64_active                                          |
-| A.2            | 1008     | fp16_active                                          |
-| A.2            | 1013     | tensor_imma_active                                   |
-| A.2            | 1014     | tensor_hmma_active                                   |
-| A.3            | 1007     | fp32_active                                          |
-| B.0            | 1005     | dram_active                                          |
-| C.0            | 1009     | pcie_tx_bytes                                        |
-| C.0            | 1010     | pcie_rx_bytes                                        |
-| D.0            | 1001     | gr_engine_active                                     |
-| E.0            | 1011     | nvlink_tx_bytes                                      |
-| E.0            | 1012     | nvlink_rx_bytes                                      |
-+----------------+----------+------------------------------------------------------+
-*/
 
 /* for now, we don't need a more complex structure since event numbers
  * are consecutive
