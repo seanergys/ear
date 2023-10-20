@@ -6,6 +6,7 @@ temp_OBJS = \
     msr.o \
     eard.o \
 	cpu_util.o \
+  linux_powercap.o \
 	dummy.o 
 
 ######## RULES

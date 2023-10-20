@@ -15,8 +15,10 @@ plug_BINS = \
     test_cpufreq.so \
     test_gpu.so
 
-ifdef CUDA_BASE
+ifdef CUDA_BASE 
+ifdef KERNELS
 plug_BINS += kernel_cuda.so
+endif
 endif
 
 ifdef OPENCL_BASE

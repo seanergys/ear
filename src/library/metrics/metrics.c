@@ -19,7 +19,7 @@
 #define _GNU_SOURCE
 #define FAKE_POWER_READING  0
 #define FAKE_ENERGY_READING 0
-#define SHOW_DEBUGS            1
+//#define SHOW_DEBUGS            1
 
 
 #define INFO_METRICS           2
@@ -93,6 +93,7 @@
 #include <metrics/energy_cpu/energy_cpu.h>
 #include <management/cpufreq/cpufreq.h>
 #include <management/imcfreq/imcfreq.h>
+#include <management/gpu/gpu.h>
 #include <daemon/local_api/eard_api.h>
 #include <report/report.h>
 
