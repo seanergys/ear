@@ -56,8 +56,6 @@
 #include <common/types/signature.h>
 #include <common/math_operations.h>
 #include <common/hardware/hardware_info.h>
-#include <common/system/monitor.h>
-#include <common/system/lock.h>
 
 #include <library/api/clasify.h>
 #include <library/api/eard_dummy.h>
