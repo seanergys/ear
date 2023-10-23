@@ -74,15 +74,14 @@ state_t energy_cpu_load(topology_t *tp, uint force_api)
 		ops.count_devices = energy_cpu_eard_count_devices;
 		api = API_EARD;
 		debug("selected eard energy_cpu (api %u)", api);
-	} if (state_ok(linux_powercap_load(tp))){
-    ops.init          = linux_powercap_init;
-    ops.dispose       = linux_powercap_dispose;
-    ops.read          = linux_powercap_read;
-    ops.count_devices = linux_powercap_count_devices;
-    api = API_LINUX_POWERCAP;
-    debug("selected linux_powercap (api %u)", api);
-  }
-	else if (state_ok(energy_cpu_util_load(tp))) {
+	} else if (state_ok(linux_powercap_load(tp))){
+        ops.init          = linux_powercap_init;
+        ops.dispose       = linux_powercap_dispose;
+        ops.read          = linux_powercap_read;
+        ops.count_devices = linux_powercap_count_devices;
+        api = API_LINUX_POWERCAP;
+        debug("selected linux_powercap (api %u)", api);
+    } else if (state_ok(energy_cpu_util_load(tp))) {
 		ops.init          = energy_cpu_util_init;
 		ops.dispose       = energy_cpu_util_dispose;
 		ops.read          = energy_cpu_util_read;
