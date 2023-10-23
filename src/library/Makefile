@@ -108,7 +108,8 @@ core_OBJS += \
 						 metrics/common.o \
 						 metrics/dcgmi_lib.o \
 						 metrics/turing.o \
-						 metrics/hopper.o
+						 metrics/hopper.o \
+						 metrics/ampere.o
 endif
 
 
