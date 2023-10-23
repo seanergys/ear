@@ -173,7 +173,9 @@ static state_t static_init(ctx_t *c)
 		if ((r = nvml.GetMemoryClocks(devs[d], &c1, aux_mem)) != NVML_SUCCESS) {
 			debug("nvmlDeviceGetSupportedMemoryClocks(dev: %d) returned %d (%s)",
 				  d, r, nvml.ErrorString(r));
-			return static_dispose(c, EAR_ERROR, myErrorString(r));
+			c1 = 1;
+			aux_mem[0] = 100000;
+			// return static_dispose(c, EAR_ERROR, myErrorString(r));
 		}
 		for (m = 0; m < c1; ++m)
 		{
