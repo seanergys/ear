@@ -134,8 +134,8 @@ char *SIGNATURE_PSQL_QUERY = SIGNATURE_QUERY_FULL;
 
 char *PERIODIC_METRIC_PSQL_QUERY = PERIODIC_METRIC_QUERY_DETAIL;
 
-int per_met_args = PERIODIC_METRIC_ARGS;
-int sig_args = SIGNATURE_ARGS;
+int per_met_args = FULL_PERIODIC_METRIC_ARGS;
+int sig_args = FULL_SIGNATURE_ARGS;
 
 
 void exit_connection(PGconn *conn)
@@ -153,7 +153,7 @@ void exit_connection(PGconn *conn)
 // the procedure to workaround the lack of INSERT IGNORE in postgres <9.5 is: create a temp table, insert into it, filter repetitions and insert into actual table
 //
 
-void set_signature_simple(char full_sig)
+void set_signature_detail(char full_sig)
 {
     full_signature = full_sig;
     if (full_signature)
@@ -181,16 +181,12 @@ void set_node_detail(char node_det)
     if (node_detail)
     {
         PERIODIC_METRIC_PSQL_QUERY = PERIODIC_METRIC_QUERY_DETAIL;
-#if USE_GPUS
-        per_met_args = 11;
-#else
-        per_met_args = 10;
-#endif
+        per_met_args = FULL_PERIODIC_METRIC_ARGS;
     }
     else
     {
         PERIODIC_METRIC_PSQL_QUERY = PERIODIC_METRIC_QUERY_SIMPLE;
-        per_met_args = 6;
+        per_met_args = SIMPLE_PERIODIC_METRIC_ARGS;
     }
 }
 

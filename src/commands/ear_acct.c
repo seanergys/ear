@@ -1365,8 +1365,6 @@ void read_from_database(char *user, query_adds_t *q_a)
 	}
 	init_db_helper(&my_conf.database);
 
-	set_signature_simple(my_conf.database.report_sig_detail);
-
 	if (verbose) {
 		printf("Preparing query statement\n");
 	}

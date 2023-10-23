@@ -28,6 +28,7 @@
 #include <metrics/common/apis.h>
 #include <metrics/io/io.h>
 #include <library/api/clasify.h>
+#include <library/metrics/dcgmi_lib.h>
 
 #define MGT_CPUFREQ 1
 #define MGT_IMCFREQ 2
@@ -40,20 +41,11 @@
 #define MGT_GPU     9
 #define MET_GPU     10
 
+
 /** For each phase */
 typedef struct phase_info {
   ullong elapsed;
 } phase_info_t;
-
-typedef struct dcgmi_sig{
-  uint    dcgmi_sets;
-	uint    dcgmi_gpus;
-  uint    dcgmi_num_ev;
-  uint    **dcgmi_events;
-  uint    *dcgmi_instances;
-  dcgmi_t **dcgmi_metrics;
-} dcgmi_sig_t;
-
 
 typedef struct sig_ext
 {
@@ -140,5 +132,8 @@ uint metrics_dcgmi_enabled();
 
 /* Returns the number of iterations per second in the last computed signature */
 float metrics_iter_per_second();
+
+
+uint metrics_CPU_phase_ok();
 
 #endif //EAR_EAR_METRICS_H

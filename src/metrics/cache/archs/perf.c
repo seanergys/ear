@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #include <common/system/time.h>
 #include <common/output/debug.h>
@@ -96,11 +96,17 @@ void cache_perf_load(topology_t *tp, cache_ops_t *ops)
     // Saving the last cache level
     line_size = (double) tp->cache_line_size;
     //
-    if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_HASWELL_X) {
+    if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_SAPPHIRE_RAPIDS) {
         set_cache(L1D_LD  , PERF_TYPE_HW_CACHE, OFFSET(001), 0, "PERF_L1D_MISS_LD");
-        set_cache(0x3f24  , PERF_TYPE_RAW     , OFFSET(002), 0, "L2_RQSTS.MISS"   ); // Skylake, Broadwell, Haswell
-        set_cache(0x40f0  , PERF_TYPE_RAW     , OFFSET(LBW), 0, "L2_TRANS.L2_WB"  ); // Skylake, Broadwell, Haswell
-        set_cache(0x1ff1  , PERF_TYPE_RAW     , OFFSET(LBW), 0, "L2_LINES_IN.ALL" ); // Skylake, Broadwell, Haswell
+        set_cache(0x3f24  , PERF_TYPE_RAW     , OFFSET(002), 0, "L2_RQSTS.MISS"   );
+        set_cache(0x1f25  , PERF_TYPE_RAW     , OFFSET(LBW), 0, "L2_LINES_IN.ALL" );
+        set_cache(0x0226  , PERF_TYPE_RAW     , OFFSET(LBW), 0, "L2_LINES_OUT.NON_SILENT");
+        set_cache(0x0126  , PERF_TYPE_RAW     , OFFSET(LBW), 0, "L2_LINES_OUT.SILENT");
+    } else if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_HASWELL_X) {
+        set_cache(L1D_LD  , PERF_TYPE_HW_CACHE, OFFSET(001), 0, "PERF_L1D_MISS_LD");
+        set_cache(0x3f24  , PERF_TYPE_RAW     , OFFSET(002), 0, "L2_RQSTS.MISS"   ); // Icelake, Skylake, Broadwell, Haswell
+        set_cache(0x40f0  , PERF_TYPE_RAW     , OFFSET(LBW), 0, "L2_TRANS.L2_WB"  ); // Icelake, Skylake, Broadwell, Haswell
+        set_cache(0x1ff1  , PERF_TYPE_RAW     , OFFSET(LBW), 0, "L2_LINES_IN.ALL" ); // Icelake, Skylake, Broadwell, Haswell
     } else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN) {
         set_cache(L1D_LD  , PERF_TYPE_HW_CACHE, OFFSET(001), 0, "PERF_L1D_MISS_LD");
         set_cache(0x430864, PERF_TYPE_RAW     , OFFSET(002), 1, "L2_MISS_FROM_DC" );

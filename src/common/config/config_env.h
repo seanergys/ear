@@ -114,6 +114,7 @@
 #define FLAG_TRACE_PLUGIN            "EAR_TRACE_PLUGIN"       // Sets the trace plugin in EARL.
 #define FLAG_GPU_DEF_FREQ            "EAR_GPU_DEF_FREQ"       // This var sets a default GPU frequency.
 #define FLAG_GPU_DCGMI_ENABLED       "EAR_GPU_DCGMI_ENABLED"  // if DCGMI is enable at compile time, this flag allows to explicitly disable it: Default 1. (Use 1/0)
+#define FLAG_DCGMI_SAMPLING_PERIOD	 "EAR_DCGMI_SAMPLING_PERIOD" // Set the period of the DCGMI metrics sampling monitor. Be careful, as very low values can introduce considerable overhead. This variable is read as a single precision floating point number.
 
 #define FLAG_LOADER_APPLICATION      "EAR_LOADER_APPLICATION" // This variable forces to load the NON MPI version of the library for a given application (i.e. SLURM_LOADER_LOAD_NO_MPI_LIB=gromacs).
 #define FLAG_LOAD_MPI_VERSION        "EAR_LOAD_MPI_VERSION"   // This variable is used for not detected MPI application (python) to specify which version it is: intel, ompi, etc
