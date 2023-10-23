@@ -134,8 +134,8 @@ char *SIGNATURE_PSQL_QUERY = SIGNATURE_QUERY_FULL;
 
 char *PERIODIC_METRIC_PSQL_QUERY = PERIODIC_METRIC_QUERY_DETAIL;
 
-int per_met_args = PERIODIC_METRIC_ARGS;
-int sig_args = SIGNATURE_ARGS;
+int per_met_args = FULL_PERIODIC_METRIC_ARGS;
+int sig_args = FULL_SIGNATURE_ARGS;
 
 
 void exit_connection(PGconn *conn)
