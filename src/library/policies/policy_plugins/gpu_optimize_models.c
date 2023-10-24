@@ -45,19 +45,6 @@ extern unsigned long ext_def_freq;
 #define DEF_FREQ(f) f
 #endif
 
-#if 0
-#define debug(...) \
-{ \
-	dprintf(2, __VA_ARGS__); \
-	dprintf(2, "\n"); \
-}
-#endif
-
-#define GPU_PSTATE_JUMP 2
-#define FIRST_SELECTION 0
-#define LINEAR_SEARCH   1
-#define PARTIAL_READY   2
-
 #define FP64_SET  0
 #define FP32_SET  1
 #define FP16_SET  1
@@ -67,19 +54,11 @@ extern unsigned long ext_def_freq;
 #define SM_SET    2
 #define SM_EV     1
 
-static const ulong **gpuf_list;
-static const uint *gpuf_list_items;
-static ulong *gfreqs;
+#define FLAG_GPU_METRIC_TO_OPTIMIZE   "EAR_GPU_METRIC_TO_OPTIMIZE"
+#define FLAG_GPU_STRATEGY_TO_OPTIMIZE "EAR_GPU_STRATEGY_TO_OPTIMIZE"
 
-extern gpu_state_t last_gpu_state;
-extern uint gpu_ready;
-extern uint gpu_optimize;
-static uint *GPU_policy_state;
-static uint   *last_GPU_pstate;
-static signature_t prev_gpu_sig;
-static float *curr_value, *last_value;
-static uint dcgmi_instances = 0;
-static uint dcgmi_ref_set;
+#define metric_is(x)    (x == UTIL_W?"UTIL_W":(x == FLOPS_W?"FLOPS_W":(x == GFLOPS_W?"GPU_GFLOPS_W":(x == SM_OCC?"SM_OCC":"UNDEF"))))
+#define strategy_is(x)  (x == max_value?"MAX":"UNDEF")
 
 /* Configuration */
 typedef enum {
@@ -87,86 +66,343 @@ typedef enum {
 	FLOPS_W     = 1,
 	GFLOPS_W    = 2,
 	SM_OCC      = 3,
-}gpu_opt_metric_t;
+} gpu_opt_metric_t;
 
-typedef enum{
+typedef enum {
 	max_value = 0,
-}gpu_opt_type_t;
+} gpu_opt_type_t;
+
+typedef enum
+{
+	first_selection = 1,
+	partial_ready
+} gpu_opt_state_t;
+
+
+extern gpu_state_t last_gpu_state;
+extern uint gpu_ready;
+extern uint gpu_optimize;
+
+static const ulong **gpuf_list;
+static const uint *gpuf_list_items;
+static ulong *gfreqs;
+
+static gpu_opt_state_t *gpu_opt_st;
+// static uint *GPU_policy_state;
+static uint   *last_GPU_pstate;
+static signature_t prev_gpu_sig;
+static float *last_value;
+static uint dcgmi_instances;
+static uint dcgmi_ref_set;
+
+static energy_model_t gpu_energy_model;
+
 static gpu_opt_metric_t metric_to_optimize = UTIL_W;
 static gpu_opt_type_t   metric_strategy    = max_value;
 static char optimize_criteria[1024];
 
-#define FLAG_GPU_METRIC_TO_OPTIMIZE   "EAR_GPU_METRIC_TO_OPTIMIZE"
-#define FLAG_GPU_STRATEGY_TO_OPTIMIZE "EAR_GPU_STRATEGY_TO_OPTIMIZE"
+static void update_optimize_options(char *metric, char *strategy);
 
-#define metric_is(x)    (x == UTIL_W?"UTIL_W":(x == FLOPS_W?"FLOPS_W":(x == GFLOPS_W?"GPU_GFLOPS_W":(x == SM_OCC?"SM_OCC":"UNDEF"))))
-#define strategy_is(x)  (x == max_value?"MAX":"UNDEF")
+static void GPU_get_metric(uint g, signature_t *my_sig, float *curr);
 
-static void update_optimize_options(char *metric,char * strategy)
-{
-	if (metric != NULL){
-		if (strcmp(metric, "UTIL_W") == 0)       	metric_to_optimize = UTIL_W;
-		if (strcmp(metric, "GFLOPS_W") == 0)      metric_to_optimize = FLOPS_W;
-		if (strcmp(metric, "GPU_GFLOPS_W") == 0)  metric_to_optimize = GFLOPS_W;
-		if (strcmp(metric, "SM_OCC") == 0)      	metric_to_optimize = SM_OCC;
-	}
-	if (strategy != NULL){
-		if (strcmp(strategy, "MAX") == 0)       metric_strategy = max_value;
-	}
-	sprintf(optimize_criteria,"GPU Metric=%s GPU Strategy=%s", metric_is(metric_to_optimize), strategy_is(metric_strategy));
-}
+static uint GPU_metric_ready(signature_t *sig, uint g);
 
+static void GPU_metric_ready_update(signature_t *my_sig);
+
+static uint GPU_ok(uint g, signature_t *my_sig, float curr, float last);
 
 
 state_t policy_init(polctx_t *c)
 {
-	int i,j;
-	ulong g_freq = 0;
-	char *gpu_freq=ear_getenv(FLAG_GPU_DEF_FREQ);
-	if ((gpu_freq!=NULL) && (c->app->user_type==AUTHORIZED)){
-		g_freq=atol(gpu_freq);
+	if (c)
+	{
+		int i,j;
+		ulong g_freq = 0;
+
+		char *gpu_freq = ear_getenv(FLAG_GPU_DEF_FREQ);
+		if (gpu_freq && c->app->user_type == AUTHORIZED)
+		{
+			g_freq = atol(gpu_freq);
+		}
+
+		gpuf_list       = (const ulong **) metrics_gpus_get(MGT_GPU)->avail_list;
+		gpuf_list_items = (const uint *)   metrics_gpus_get(MGT_GPU)->avail_count;
+
+		gpu_opt_st = (gpu_opt_state_t *) calloc(c->num_gpus, sizeof(gpu_opt_state_t));
+
+		mgt_gpu_data_alloc(&gfreqs);
+
+		for (i = 0; i < c->num_gpus; i++)
+		{
+			if (VERB_ON(3))
+			{
+				verbose_master(3, "#Freqs. in GPU%d: %u", i, gpuf_list_items[i]);
+				for (j = 0; j < gpuf_list_items[i]; j++)
+				{
+					verbose_master(3, "GPU[%d][%d]=%.2f", i, j, (float) gpuf_list[i][j] / 1000000.0);
+				}
+			}
+
+			if (g_freq) gfreqs[i] = g_freq;
+			else 				gfreqs[i] = gpuf_list[i][0];
+
+			verbose_master(2, "Setting GPUfreq[%d] = %.2f", i, (float) gfreqs[i] / 1000000.0);
+
+			gpu_opt_st[i] = first_selection;
+		}
+
+		mgt_gpu_freq_limit_set(no_ctx, gfreqs);
+
+		verbose_master(2, "GPU optimization during GPU comp: %s", (gpu_optimize ? "Enabled" : "Disabled"));
+
+		if (gpu_optimize)
+		{
+
+			gpu_energy_model = energy_model_load_gpu_model(c->app->user_type, &c->app->installation, &arch_desc);
+			if (gpu_energy_model)
+			{
+				char *cmetric_to_optimize   = ear_getenv(FLAG_GPU_METRIC_TO_OPTIMIZE);
+				char *cstrategy_to_optimize = ear_getenv(FLAG_GPU_STRATEGY_TO_OPTIMIZE);
+
+				/* This function checks the metric and strategy (max, min) */
+				update_optimize_options(cmetric_to_optimize, cstrategy_to_optimize);
+
+				last_GPU_pstate   = (uint *)	calloc(c->num_gpus, sizeof(uint));
+				last_value        = (float *) calloc(c->num_gpus, sizeof(float));
+			} else
+			{
+				error_lib("Loading GPU energy model.");
+				gpu_optimize = 0;
+
+				return EAR_ERROR;
+			}
+		} else
+		{
+			gpu_energy_model = NULL;
+		}
+
+		return EAR_SUCCESS;
+
+	} else
+	{
+		return EAR_ERROR;
 	}
+}
 
-	char *cmetric_to_optimize   = ear_getenv(FLAG_GPU_METRIC_TO_OPTIMIZE);
-	char *cstrategy_to_optimize = ear_getenv(FLAG_GPU_STRATEGY_TO_OPTIMIZE);
 
-	/* This function checks the metric and strategy (max, min) */
-	update_optimize_options(cmetric_to_optimize, cstrategy_to_optimize);
+state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int *ready)
+{
+	ulong *new_freq=freqs->gpu_freq;
+	ulong util, tutil = 0;;
+	*ready = EAR_POLICY_READY;
 
-	//gpu_lib_freq_list(&gpuf_list, &gpuf_list_items);
-	gpuf_list       = (const ulong **) metrics_gpus_get(MGT_GPU)->avail_list;
-	gpuf_list_items = (const uint *)   metrics_gpus_get(MGT_GPU)->avail_count;
+#if USE_GPUS
+	verbose_master(2,"%sGPU Optimize start ....%s %s",COL_BLU, optimize_criteria, COL_CLR);
 
-	for (i=0;i<c->num_gpus;i++){
-		verbose_master(3,"Freqs in GPU[%d]=%u",i,gpuf_list_items[i]);
-		for (j=0;j<gpuf_list_items[i];j++){
-			verbose_master(3,"GPU[%d][%d]=%.2f",i,j,(float)gpuf_list[i][j]/1000000.0);
+#if SHOW_DEBUGS
+	debug("apply: num_gpus %d",my_sig->gpu_sig.num_gpus);
+	for (i = 0; i < my_sig->gpu_sig.num_gpus; i++) {
+		debug("[GPU %d Power %.2lf Freq %.2f Mem_freq %.2f Util %lu Mem_util %lu]", i,
+				my_sig->gpu_sig.gpu_data[i].GPU_power,
+				(float) my_sig->gpu_sig.gpu_data[i].GPU_freq / 1000.0,
+				(float) my_sig->gpu_sig.gpu_data[i].GPU_mem_freq/1000.0,
+				my_sig->gpu_sig.gpu_data[i].GPU_util, my_sig->gpu_sig.gpu_data[i].GPU_mem_util);
+	}
+#endif // SHOW_DEBUGS
+
+	signature_t sig_aux;
+	signature_copy(&sig_aux, my_sig);
+
+	/* when using DCGMI, we must wait until the data is ready */
+	uint metric_ready = 0;
+	for (int i = 0; i < my_sig->gpu_sig.num_gpus; i++)
+	{
+		util = my_sig->gpu_sig.gpu_data[i].GPU_util;
+		if (util == 0) {
+			// We set the minimum GPU frequency if the Utilization is 0
+			new_freq[i] = gpuf_list[i][gpuf_list_items[i]-1];
+		} else
+		{
+			if (!gpu_optimize)
+			{
+				debug("GPU not optimized.");
+				new_freq[i] = gfreqs[i];
+			} else
+			{
+				if (GPU_metric_ready(my_sig, i))
+				{
+					verbose_master(2, "GPU[%d] optimize metric ready instances %d", i, dcgmi_instances);
+					metric_ready = 1;
+
+					/* GPU data ready */
+					if (gpu_opt_st[i] & first_selection)
+					{
+						debug("Selecting optimal P-State for GPU %d", i);
+
+						float current_metric; // TODO: The metric you are going to project
+						GPU_get_metric(i, my_sig, &current_metric); // TODO: Do some error check
+
+						uint best_pstate;
+						uint best_pstate_found = 0;
+
+						// TODO: You can (of course) change the conditional part of the loop.
+						for (int j = 0; j < gpuf_list_items[i] && !best_pstate_found; j++)
+						{
+							// TODO: Project the time and the power
+							if (state_fail(energy_model_project_time()))
+							{
+							}
+							
+							// TODO: Fill the aux signature with the projected metrics
+							// e.g., sig_aux.gpu_sig.gpu_data[i].GPU_power = projected_power;
+
+							float new_metric;
+							GPU_get_metric(i, my_sig, &new_metric); // TODO: Do some error check
+
+							if (GPU_ok(i, &sig_aux, new_metric, current_metric))
+							{
+								best_pstate_found = 1;
+								best_pstate = j;
+							}
+						}
+
+						/* We save here valuable data for later usage. */
+
+						last_GPU_pstate[i] = best_pstate;
+						last_value[i] = current_metric;
+						signature_copy(&prev_gpu_sig, my_sig);
+
+						new_freq[i] = gpuf_list[i][best_pstate];
+
+						gpu_opt_st[i] = partial_ready;
+						// *ready = EAR_POLICY_TRY_AGAIN;
+
+					} else if (gpu_opt_st[i] & partial_ready)
+					{
+						// As for the GPU i the policy is ready, we set again the last selected frequency.
+						new_freq[i] = gpuf_list[i][last_GPU_pstate[i]];
+					} else
+					{
+						// We should never reach this error.
+						return EAR_ERROR;
+					}
+				} else
+				{
+					/* GPU data not ready yet */
+					new_freq[i] = gpuf_list[i][last_GPU_pstate[i]];
+					*ready = EAR_POLICY_TRY_AGAIN;
+				}
+				tutil += util; // Accumulate GPU utilization
+			}
 		}
 	}
 
-	mgt_gpu_data_alloc(&gfreqs);
+	if (metric_ready) GPU_metric_ready_update(my_sig);
 
-	last_GPU_pstate   = (uint *)calloc(c->num_gpus, sizeof(uint));
-	GPU_policy_state  = (uint *)calloc(c->num_gpus, sizeof(uint));
-	last_value        = (float *)calloc(c->num_gpus, sizeof(float));
-	curr_value        = (float *)calloc(c->num_gpus, sizeof(float));
-
-	for (i=0;i<c->num_gpus;i++){
-		if (g_freq) gfreqs[i] = g_freq;
-		else 				gfreqs[i] = gpuf_list[i][0];
-		GPU_policy_state[i] = FIRST_SELECTION;
-		verbose_master(2,"Setting GPUgreq[%d] = %.2f",i,(float)gfreqs[i]/1000000.0);
+	/* We compute if all the gpus are done */
+	uint total_ready = 0;
+	for (int i = 0; i < my_sig->gpu_sig.num_gpus; i++)
+	{
+		total_ready += (gpu_opt_st[i] & PARTIAL_READY);
 	}
 
-	/* This must be updated when adding more metrics */
-	dcgmi_ref_set = ear_max(ear_max(FP64_SET, FP32_SET), FP16_SET);
+	if (total_ready == my_sig->gpu_sig.num_gpus)
+	{
+		for (int i = 0; i < my_sig->gpu_sig.num_gpus; i++) gpu_opt_st[i] = first_selection;
+	}
 
-	mgt_gpu_freq_limit_set(no_ctx, gfreqs);
-	verbose_master(2,"GPU optimization during GPU comp %s", (gpu_optimize? "Enabled":"Disabled"));
+	if (tutil > 0) {
+		last_gpu_state = _GPU_Comp;
+	}
 
-
+	verbose_master(2,"%sGPU Optimize end ....%s %s", COL_BLU, optimize_criteria, COL_CLR);
+#endif // USE_GPUS
 	return EAR_SUCCESS;
 }
+
+
+
+state_t policy_restore_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
+{
+	ulong util, tutil = 0;;
+	int i;
+
+	/* WARNING: my_sig can be NULL */
+	if (c == NULL) return EAR_ERROR;
+
+#if USE_GPUS
+	verbose_master(2, "Restoring GPU freqs: restore settings");
+	if (my_sig == NULL){
+		for (i = 0 ; i < c->num_gpus ; i++) {
+			freqs->gpu_freq[i] = gfreqs[i];
+		}
+		return EAR_SUCCESS;
+	}
+
+	// Below code is not reached.
+#if 0
+	for (i=0;i<my_sig->gpu_sig.num_gpus;i++) {
+		util = my_sig->gpu_sig.gpu_data[i].GPU_util;
+		tutil += util;
+		if (util == 0){
+			verbose_master(2, "GPU[%d] freq %lu", i, gpuf_list[i][gpuf_list_items[i]-1]);
+			freqs->gpu_freq[i] = gpuf_list[i][gpuf_list_items[i]-1];
+		}else{
+			verbose_master(2, "GPU[%d] freq %lu", i, gfreqs[i]);
+			freqs->gpu_freq[i] = gfreqs[i];
+		}
+		GPU_policy_state[i] = FIRST_SELECTION;
+
+		if (last_GPU_pstate)
+		{
+			memset(last_GPU_pstate, 0, sizeof(my_sig->gpu_sig.num_gpus)*sizeof(uint));
+		}
+	}
+	if (tutil > 0) {
+		last_gpu_state = _GPU_Comp;
+	}
+#endif
+#endif // USE_GPUS
+	return EAR_SUCCESS;
+}
+
+state_t policy_cpu_gpu_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
+{
+	verbose_master(2,"GPU policy_cpu_gpu_settings");
+	return policy_apply(c, my_sig, freqs, (int *)&gpu_ready);
+}
+
+state_t policy_io_settings(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs)
+{
+	verbose_master(2,"GPU policy_io_settings");
+	return policy_apply(c, my_sig, freqs, (int *)&gpu_ready);
+}
+
+state_t policy_busy_wait_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
+{
+	verbose_master(2,"GPU policy_busy_wait_settings");
+	return policy_apply(c, my_sig, freqs, (int *)&gpu_ready);
+}
+
+
+static void update_optimize_options(char *metric, char * strategy)
+{
+	if (metric != NULL)
+	{
+		if (strcmp(metric, "UTIL_W") == 0)       metric_to_optimize = UTIL_W;
+		if (strcmp(metric, "GFLOPS_W") == 0)     metric_to_optimize = FLOPS_W;
+		if (strcmp(metric, "GPU_GFLOPS_W") == 0) metric_to_optimize = GFLOPS_W;
+		if (strcmp(metric, "SM_OCC") == 0)			 metric_to_optimize = SM_OCC;
+	}
+
+	if (strategy != NULL)
+	{
+		if (strcmp(strategy, "MAX") == 0)       metric_strategy = max_value;
+	}
+
+	sprintf(optimize_criteria,"GPU Metric=%s GPU Strategy=%s", metric_is(metric_to_optimize), strategy_is(metric_strategy));
+}
+
 
 static void GPU_get_metric(uint g, signature_t *my_sig, float *curr)
 {
@@ -174,8 +410,10 @@ static void GPU_get_metric(uint g, signature_t *my_sig, float *curr)
 	sig_ext_t *sigex;
 	dcgmi_sig_t *dcgmis;
 #endif
+
 	*curr = 0;
-	switch(metric_to_optimize){
+	switch(metric_to_optimize)
+	{
 		case UTIL_W   : *curr = (float)(my_sig->gpu_sig.gpu_data[g].GPU_util*gpuf_list[g][last_GPU_pstate[g]])/(float)my_sig->DC_power;break;
 		case SM_OCC:
 										{
@@ -227,9 +465,11 @@ static void GPU_get_metric(uint g, signature_t *my_sig, float *curr)
 	}
 }
 
+
 static uint GPU_metric_ready(signature_t *sig, uint g)
 {
-	switch(metric_to_optimize){
+	switch(metric_to_optimize)
+	{
 		case UTIL_W   :return 1;
 		case GFLOPS_W :
 		case FLOPS_W  :
@@ -243,13 +483,14 @@ static uint GPU_metric_ready(signature_t *sig, uint g)
 										 if (sigex == NULL)  return 0;
 										 dcgmis = (dcgmi_sig_t *)&sigex->dcgmis;
 										 if (dcgmis == NULL) return 0;
-										 if ( dcgmis->dcgmi_instances[dcgmi_ref_set] > dcgmi_instances)  return 1;
-										 else                    return 0;
+										 if (dcgmis->dcgmi_instances[dcgmi_ref_set] > dcgmi_instances)  return 1;
+										 else return 0;
 #endif
 									 }
 	}
 	return 0;
 }
+
 
 static void GPU_metric_ready_update(signature_t *my_sig)
 {
@@ -275,160 +516,14 @@ static void GPU_metric_ready_update(signature_t *my_sig)
 	return;
 }
 
+
 static uint GPU_ok(uint g, signature_t *my_sig, float curr, float last)
 {
 	verbose_master(2, "GPU ok validation curr %f last %f", curr, last);
-	switch (metric_strategy){
+	switch (metric_strategy)
+	{
 		case max_value : return (curr > last);
 		default        : return 0;
 	}
 	return 0;
 }
-
-state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int *ready)
-{
-	ulong *new_freq=freqs->gpu_freq;
-	uint i;
-	ulong util, tutil = 0;;
-	*ready = EAR_POLICY_READY;
-#if USE_GPUS
-	verbose_master(2,"%sGPU Optimize start ....%s %s",COL_BLU, optimize_criteria, COL_CLR);
-#if SHOW_DEBUGS
-	debug("apply: num_gpus %d",my_sig->gpu_sig.num_gpus);
-	for (i = 0; i < my_sig->gpu_sig.num_gpus; i++) {
-		debug("[GPU %d Power %.2lf Freq %.2f Mem_freq %.2f Util %lu Mem_util %lu]", i,
-				my_sig->gpu_sig.gpu_data[i].GPU_power,
-				(float) my_sig->gpu_sig.gpu_data[i].GPU_freq / 1000.0,
-				(float) my_sig->gpu_sig.gpu_data[i].GPU_mem_freq/1000.0,
-				my_sig->gpu_sig.gpu_data[i].GPU_util, my_sig->gpu_sig.gpu_data[i].GPU_mem_util);
-	}
-#endif // SHOW_DEBUGS
-
-
-	/* when using DCGMI, we must wait until the data is ready */
-	uint metric_ready = 0;
-	for (i=0; i < my_sig->gpu_sig.num_gpus; i++) {
-		util = my_sig->gpu_sig.gpu_data[i].GPU_util;
-		if (util == 0) {
-			new_freq[i] = gpuf_list[i][gpuf_list_items[i]-1];
-		} else {
-			if (!gpu_optimize){
-				debug("GPU not optimized");
-				new_freq[i] = gfreqs[i];
-			}else{
-				if (GPU_metric_ready(my_sig,i)){
-					verbose_master(2, "GPU[%d] optimize metric ready instances %d", i, dcgmi_instances);
-					metric_ready = 1;
-					/* GPU data ready */
-					if (GPU_policy_state[i] == FIRST_SELECTION){
-						debug("Starting linear search for GPU %d", i);
-						new_freq[i] = gpuf_list[i][GPU_PSTATE_JUMP];
-						last_GPU_pstate[i] = 0;
-						GPU_get_metric(i, my_sig, &last_value[i]);
-						/* Save current metrics */
-						GPU_policy_state[i] = LINEAR_SEARCH;
-						signature_copy(&prev_gpu_sig, my_sig);
-						*ready = EAR_POLICY_TRY_AGAIN;
-					}else if (GPU_policy_state[i] == LINEAR_SEARCH){
-						GPU_get_metric(i, my_sig, &curr_value[i]);
-						if (GPU_ok(i,my_sig, curr_value[i], last_value[i])){
-							debug("Reducing the GPU frequency for GPU %d", i);
-							last_GPU_pstate[i] += GPU_PSTATE_JUMP;
-							new_freq[i] = gpuf_list[i][last_GPU_pstate[i] + GPU_PSTATE_JUMP];
-							/* Save any metrics here */
-							last_value[i] = curr_value[i];
-							signature_copy(&prev_gpu_sig, my_sig);
-							*ready = EAR_POLICY_TRY_AGAIN;
-						}else{
-							new_freq[i] = gpuf_list[i][last_GPU_pstate[i]];
-							GPU_policy_state[i] = PARTIAL_READY;
-							debug("GPU freq done for GPU %d", i);
-						}
-
-					}else if (GPU_policy_state[i] == PARTIAL_READY){
-						new_freq[i] = gpuf_list[i][last_GPU_pstate[i]];
-					}
-				}else{
-					/* GPU data not ready yet */
-					new_freq[i] = gpuf_list[i][last_GPU_pstate[i]];
-					*ready = EAR_POLICY_TRY_AGAIN;
-				}
-				tutil += util; // Accumulate GPU utilization
-			}
-		}
-	}
-	if (metric_ready) GPU_metric_ready_update(my_sig);
-	/* We compute if all the gpus are done */
-	uint total_ready = 0;
-	for (i=0; i < my_sig->gpu_sig.num_gpus; i++) {
-		total_ready += (GPU_policy_state[i] == PARTIAL_READY);
-	}
-	if (total_ready == my_sig->gpu_sig.num_gpus){
-		for (i=0; i < my_sig->gpu_sig.num_gpus; i++) GPU_policy_state[i] = FIRST_SELECTION;
-	}
-
-	if (tutil > 0) {
-		last_gpu_state = _GPU_Comp;
-	}
-	verbose_master(2,"%sGPU Optimize end ....%s %s", COL_BLU, optimize_criteria, COL_CLR);
-#endif // USE_GPUS
-	return EAR_SUCCESS;
-}
-
-
-
-state_t policy_restore_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
-{
-	ulong util, tutil = 0;;
-	int i;
-
-	/* WARNING: my_sig can be NULL */
-	if (c == NULL) return EAR_ERROR;
-
-#if USE_GPUS
-	verbose_master(2, "Restoring GPU freqs: restore settings");
-	if (my_sig == NULL){
-		for (i = 0 ; i < c->num_gpus ; i++) {
-			freqs->gpu_freq[i] = gfreqs[i];
-		}
-		return EAR_SUCCESS;
-	}
-	for (i=0;i<my_sig->gpu_sig.num_gpus;i++) {
-		util = my_sig->gpu_sig.gpu_data[i].GPU_util;
-		tutil += util;
-		if (util == 0){
-			verbose_master(2, "GPU[%d] freq %lu", i, gpuf_list[i][gpuf_list_items[i]-1]);
-			freqs->gpu_freq[i] = gpuf_list[i][gpuf_list_items[i]-1];
-		}else{
-			verbose_master(2, "GPU[%d] freq %lu", i, gfreqs[i]);
-			freqs->gpu_freq[i] = gfreqs[i];
-		}
-		GPU_policy_state[i] = FIRST_SELECTION;
-		memset(last_GPU_pstate, 0, sizeof(my_sig->gpu_sig.num_gpus)*sizeof(uint));
-	}
-	if (tutil > 0) {
-		last_gpu_state = _GPU_Comp;
-	}
-
-#endif // USE_GPUS
-	return EAR_SUCCESS;
-}
-
-state_t policy_cpu_gpu_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
-{
-	verbose_master(2,"GPU policy_cpu_gpu_settings");
-	return policy_apply(c, my_sig, freqs, (int *)&gpu_ready);
-}
-
-state_t policy_io_settings(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs)
-{
-	verbose_master(2,"GPU policy_io_settings");
-	return policy_apply(c, my_sig, freqs, (int *)&gpu_ready);
-}
-
-state_t policy_busy_wait_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
-{
-	verbose_master(2,"GPU policy_busy_wait_settings");
-	return policy_apply(c, my_sig, freqs, (int *)&gpu_ready);
-}
-
