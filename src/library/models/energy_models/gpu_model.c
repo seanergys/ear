@@ -50,7 +50,7 @@ static int valid_range(ulong from_ps, ulong to_ps);
 
 /** Computes the projection of the \ref signature loop time by using \ref coeff.
  * \pre All pointers must be initialized. Also freq_dst and signature's CPI must be non-zero. */
-static double project_time(coefficient_gpu_t *coeff, double FP64, double FP16, double FP32, double TENSOR, double CTIME, double DRAM);
+static double project_time(coefficient_gpu_t *coeff, double FP16, double FP32, double FP64, double TENSOR, double CTIME, ulong DF);
 
 
 
@@ -179,21 +179,18 @@ state_t energy_model_project_time(signature_t *signature, ulong from_ps, ulong t
 		dcgmi_t *dcgmis_data_64 = dcgmis->dcgmi_metrics[FP64_SET];
 		dcgmi_t *dcgmis_data_32 = dcgmis->dcgmi_metrics[FP32_SET];
 		dcgmi_t *dcgmis_data_ten = dcgmis->dcgmi_metrics[TNS_SET];
-		dcgmi_t *dcgmis_data_dram = dcgmis->dcgmi_metrics[DRAM_SET];
-		if ((dcgmis_data_64 == NULL) || (dcgmis_data_32 == NULL) || (dcgmis_data_16 == NULL) 
-		 || (dcgmis_data_ten == NULL) || (dcgmis_data_dram == NULL)) 
-						return EAR_ERROR;
+		if ((dcgmis_data_16 == NULL) || (dcgmis_data_32 == NULL) || 
+		    (dcgmis_data_64 == NULL) || (dcgmis_data_ten == NULL) ) 
+        return EAR_ERROR;
 
 			for (uint g = 0; g < num_gpus; g++) {
-
-			double CTIME = signature->time;
-			double FP64 = dcgmis_data_64[g].values[FP64_EV];
-			double FP16  = dcgmis_data_16[g].values[FP16_EV];
-			double FP32 = dcgmis_data_32[g].values[FP32_EV];
-			double TENSOR = dcgmis_data_ten[g].values[TNS_EV];
-			double DRAM   = dcgmis_data_dram[g].values[DRAM_EV];
-
-			proj_time[g]  = project_time(coeff, FP64, FP16, FP32, TENSOR, CTIME, DRAM); // PENDING
+        double CTIME = signature->time;
+        double FP16  = dcgmis_data_16[g].values[FP16_EV];
+        double FP64 = dcgmis_data_64[g].values[FP64_EV];
+        double FP32 = dcgmis_data_32[g].values[FP32_EV];
+        double TENSOR = dcgmis_data_ten[g].values[TNS_EV];
+        ulong DF = from_ps - to_ps;
+        proj_time[g]  = project_time(coeff,  FP16, FP32, FP64, TENSOR, CTIME, DF);
 			}
 		}
 	} else st = EAR_ERROR;
@@ -293,11 +290,17 @@ static int valid_range(ulong from_ps, ulong to_ps)
 
 
 
-static double project_time(coefficient_gpu_t *coeff, double FP64, double FP16, double FP32, double TENSOR, double CTIME, double DRAM)
+static double project_time(coefficient_gpu_t *coeff, double FP16, double FP32, double FP64, double TENSOR, double CTIME, ulong DF)
 {
-	debug("project_time with FP 64 %lf FP16 %lf FP32 %lf TENSOR %lf CTIME %lf DRAM %lf", FP64, FP16, FP32, TENSOR, CTIME, DRAM);
+	debug("project_time with FP 64 %lf FP16 %lf FP32 %lf TENSOR %lf CTIME %lf DF %lu", FP64, FP16, FP32, TENSOR, CTIME, DF);
 	/* Replace this function with the model */
-	return (double)CTIME;
+  double FP_ACT;
+  double proj_time;
+
+  FP_ACT = FP16 + FP32 + FP64 + TENSOR;
+  proj_time= CTIME + coeff->F*FP_ACT+ coeff->G*DF + coeff->H*FP_ACT*FP_ACT + coeff->I*FP_ACT*DF + coeff->J*DF*DF; 
+	
+  return proj_time;
 }
 
 
