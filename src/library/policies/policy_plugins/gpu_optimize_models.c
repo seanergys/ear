@@ -37,6 +37,7 @@
 #include <library/api/clasify.h>
 #include <library/policies/policy_api.h>
 #include <library/policies/policy_state.h>
+#include <library/models/energy_model.h>
 
 #ifdef EARL_RESEARCH
 extern unsigned long ext_def_freq;
@@ -201,7 +202,7 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
 
 #if SHOW_DEBUGS
 	debug("apply: num_gpus %d",my_sig->gpu_sig.num_gpus);
-	for (i = 0; i < my_sig->gpu_sig.num_gpus; i++) {
+	for (int i = 0; i < my_sig->gpu_sig.num_gpus; i++) {
 		debug("[GPU %d Power %.2lf Freq %.2f Mem_freq %.2f Util %lu Mem_util %lu]", i,
 				my_sig->gpu_sig.gpu_data[i].GPU_power,
 				(float) my_sig->gpu_sig.gpu_data[i].GPU_freq / 1000.0,
@@ -249,9 +250,11 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
 						for (int j = 0; j < gpuf_list_items[i] && !best_pstate_found; j++)
 						{
 							// TODO: Project the time and the power
+#if 0
 							if (state_fail(energy_model_project_time()))
 							{
 							}
+#endif
 							
 							// TODO: Fill the aux signature with the projected metrics
 							// e.g., sig_aux.gpu_sig.gpu_data[i].GPU_power = projected_power;
@@ -303,7 +306,7 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
 	uint total_ready = 0;
 	for (int i = 0; i < my_sig->gpu_sig.num_gpus; i++)
 	{
-		total_ready += (gpu_opt_st[i] & PARTIAL_READY);
+		total_ready += (gpu_opt_st[i] & partial_ready);
 	}
 
 	if (total_ready == my_sig->gpu_sig.num_gpus)
