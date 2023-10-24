@@ -15,6 +15,7 @@
 * and COPYING.EPL files.
 */
 
+#define SHOW_DEBUG 1
 #include <math.h>
 #include <errno.h>
 #include <stdio.h>
@@ -76,6 +77,25 @@ void print_cpu_model_coefficients(intel_skl_t *coeff, char *csv_output)
               coeff->ipc, coeff->gbs, coeff->vpi, coeff->f, coeff->inter);
 
   fclose(fd);
+}
+
+
+void print_gpu_coefficients(coefficient_gpu_t *avg, int n_pstates)
+{
+	int i;
+  coefficient_gpu_t *coeff;
+
+  verbose(2, "FROM\t\tTO\tA\tB\tC\tD\tE\tF\tG\tH\tI\tJ");
+	for (i=0; i<n_pstates; i++){
+    coeff = &avg[i];
+    if(coeff->available){
+      verbose(2,"%lu\t\t%lu\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf",
+                 coeff->pstate_ref, coeff->pstate, 
+                 coeff->A, coeff->B, coeff->C, coeff->D, coeff->E, 
+                 coeff->F, coeff->G, coeff->H, coeff->I, coeff->J);
+
+    }
+	}
 }
 
 int main(int argc, char *argv[])
@@ -166,7 +186,32 @@ int main(int argc, char *argv[])
     strcat(csv_name_full, tag);
     strcat(csv_name_full, ext);
     print_basic_coefficients(coeffs, n_pstates, csv_name_full); 
+  } 
+  else if (size % sizeof(coefficient_gpu_t) == 0) {
+    // GPU model coeffs
+    n_pstates = size / sizeof(coefficient_gpu_t);
+    printf("GPU Model coefficients\n");
+    printf("coefficients file size: %d\n", size);
+    printf("number of P_STATES: %d\n", n_pstates);
+    
+    coefficient_gpu_t *coeffs;
+    coeffs = (coefficient_gpu_t*) calloc(size, 1);
+
+    if (coeffs == NULL) {
+    error("not enough memory");
+    exit(1);
+    }
+
+    state = ear_file_read(argv[1], (char *) coeffs, size);
+
+    if (state_fail(state)) {
+      error("state id: %d (%s)", state, state_msg);
+      exit(1);
+    }
+
+    print_gpu_coefficients(coeffs, n_pstates); 
   }
+
   else {
     // More models: change the test by the size comparaison (cf. models-jla branch)
     error("Bad input file");
