@@ -28,7 +28,7 @@
 #define DCGMI_SET3_SIZE 1
 
 
-state_t dcgmi_lib_ampere_init(dcgmi_lib_t *dcgmi_data)
+state_t dcgmi_lib_ampere_init(dcgmi_lib_t *dcgmi_data, int **event_info)
 {
 	if (dcgmi_data)
 	{
@@ -94,6 +94,24 @@ state_t dcgmi_lib_ampere_init(dcgmi_lib_t *dcgmi_data)
 
 			// Set 3
 			dcgmi_data->dcgmi_events[2][0] = fp32_active;
+
+			int ampere_event_info[12][2] =
+			{
+				{0, 7}, // gr_engine_active
+				{0, 0}, // sm_active
+				{0, 1}, // sm_occupancy
+				{0, 2}, // tensor_active
+				{0, 4}, // dram_active
+				{0, 3}, // fp64_active
+				{2, 0}, // fp32_active
+				{1, 0}, // fp16_active
+				{0, 5}, // pcie_tx_bytes
+				{0, 6}, // pcie_rx_bytes
+				{0, 8}, // nvlink_tx_bytes
+				{0, 9} // nvlink_rx_bytes
+			};
+
+			memcpy(event_info, ampere_event_info, sizeof(ampere_event_info));
 
 			return EAR_SUCCESS;
 		} else

@@ -49,13 +49,15 @@
 #define DCGMI_LIB_MODULE_DISABLED_MSG "DCGMI module not enabled."
 
 
-typedef state_t (*dcgmi_lib_init_fn) (dcgmi_lib_t *dcgmi_data);
+typedef state_t (*dcgmi_lib_init_fn) (dcgmi_lib_t *dcgmi_data, int **event_info);
 
 static uint dcgmi_lib_enabled = (USE_GPUS && DCGMI) ? DCGMI_DEFAULT : 0;
 
 static dcgmi_lib_t dcgmi_data;
 
 static uint *dcgmi_instances;
+
+static int event_info[DCGMI_LIB_SUPPORTED_EVENTS][2];
 
 /* DCGMI monitor variables. */ 
 static suscription_t *dcgmi_monitor;
@@ -101,7 +103,7 @@ state_t dcgmi_lib_load()
 			if (state_ok(set_init_fn(&init_fn)))
 			{
 				// TODO: Allocate and initialize here all data structures based on GPU microarch.
-				if (state_ok(init_fn(&dcgmi_data)))
+				if (state_ok(init_fn(&dcgmi_data, event_info)))
 				{
 					dcgmi_instances = calloc(dcgmi_data.dcgmi_set_count, sizeof(uint));
 
@@ -400,6 +402,26 @@ void dcgmi_lib_reset_instances(dcgmi_sig_t *dcgmi_sig)
 				ear_unlock(&dcgmi_lock);
 			}
 		}
+	}
+}
+
+
+state_t dcgmi_lib_get_event_info(uint event_id, int *event_info_dst)
+{
+	if (event_info_dst)
+	{
+		int req_idx = event_id - dcgmi_first_event;
+		if (req_idx >= 0 && req_idx < DCGMI_LIB_SUPPORTED_EVENTS)
+		{
+			memcpy(event_info_dst, event_info[req_idx], 2 * sizeof(int));
+			return EAR_SUCCESS;
+		} else
+		{
+			return_msg(EAR_ERROR, Generr.arg_outbounds);
+		}
+	} else
+	{
+		return_msg(EAR_ERROR, Generr.input_null);
 	}
 }
 

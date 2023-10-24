@@ -3,11 +3,11 @@
  *
  * EAR provides a dynamic, transparent and ligth-weigth solution for
  * Energy management. It has been developed in the context of the
- * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
+ * Barcelona Supercomputing Center (BSC) & Lenovo Collaboration project.
  *
- * Copyright © 2017-present BSC-Lenovo
- * BSC Contact   mailto:ear-support@bsc.es
- * Lenovo contact  mailto:hpchelp@lenovo.com
+ * Copyright ©		2017-present BSC-Lenovo
+ * BSC Contact		mailto:ear-support@bsc.es
+ * Lenovo contact mailto:hpchelp@lenovo.com
  *
  * EAR is an open source software, and it is licensed under both the BSD-3 license
  * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
@@ -28,7 +28,7 @@
 #define DCGMI_SET3_SIZE 1
 
 
-state_t dcgmi_lib_turing_init(dcgmi_lib_t *dcgmi_data)
+state_t dcgmi_lib_turing_init(dcgmi_lib_t *dcgmi_data, int **event_info)
 {
 	if (dcgmi_data)
 	{
@@ -94,6 +94,24 @@ state_t dcgmi_lib_turing_init(dcgmi_lib_t *dcgmi_data)
 
 			// Set 3
 			dcgmi_data->dcgmi_events[2][0] = fp16_active;
+
+			int turing_event_info[12][2] =
+			{
+				{0, 7}, // gr_engine_active
+				{0, 0}, // sm_active
+				{0, 1}, // sm_occupancy
+				{0, 2}, // tensor_active
+				{0, 4}, // dram_active
+				{1, 0}, // fp64_active
+				{0, 3}, // fp32_active
+				{2, 0}, // fp16_active
+				{0, 5}, // pcie_tx_bytes
+				{0, 6}, // pcie_rx_bytes
+				{0, 8}, // nvlink_tx_bytes
+				{0, 9} // nvlink_rx_bytes
+			};
+
+			memcpy(event_info, turing_event_info, sizeof(turing_event_info));
 
 			return EAR_SUCCESS;
 		} else

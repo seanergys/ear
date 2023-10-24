@@ -20,7 +20,7 @@
 #include <stdlib.h>
 
 
-state_t dcgmi_lib_hopper_init(dcgmi_lib_t *dcgmi_data)
+state_t dcgmi_lib_hopper_init(dcgmi_lib_t *dcgmi_data, int **event_info)
 {
 	if (dcgmi_data)
 	{
@@ -68,6 +68,24 @@ state_t dcgmi_lib_hopper_init(dcgmi_lib_t *dcgmi_data)
 			dcgmi_data->dcgmi_events[0][10] = nvlink_tx_bytes;
 			dcgmi_data->dcgmi_events[0][11] = nvlink_rx_bytes;
 
+			int hopper_event_info[12][2] =
+			{
+				{0, 0}, // gr_engine_active
+				{0, 1}, // sm_active
+				{0, 2}, // sm_occupancy
+				{0, 3}, // tensor_active
+				{0, 4}, // dram_active
+				{0, 5}, // fp64_active
+				{0, 6}, // fp32_active
+				{0, 7}, // fp16_active
+				{0, 8}, // pcie_tx_bytes
+				{0, 9}, // pcie_rx_bytes
+				{0, 10}, // nvlink_tx_bytes
+				{0, 11} // nvlink_rx_bytes
+			};
+
+			memcpy(event_info, hopper_event_info, sizeof(hopper_event_info));
+
 			return EAR_SUCCESS;
 		} else
 		{
@@ -80,6 +98,8 @@ state_t dcgmi_lib_hopper_init(dcgmi_lib_t *dcgmi_data)
 		return_msg(EAR_ERROR, Generr.input_null);
 	}
 }
+
+
 
 
 /*
