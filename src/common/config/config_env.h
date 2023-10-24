@@ -95,7 +95,7 @@
 #define HACK_POWER_POLICY            "HACK_POWER_POLICY"       // This var forces to load a specific power policy. Replaces (SCHED_PREFIX)_EAR_POWER_POLICY.
 #define HACK_GPU_POWER_POLICY        "HACK_GPU_POWER_POLICY"   // This var forces to load a specific gpu power policy. Replaces (SCHED_PREFIX)_EAR_GPU_POWER_POLICY.
 #define HACK_POWER_MODEL             "HACK_POWER_MODEL"        // This var forces to load a specific power model plugin. Replaces (SCHED_PREFIX)_EAR_POWER_MODEL.
-#define HACK_GPU_ENERGY_MODEL        "HACK_GPU_ENERGY_MODEL"   // This var forces to load a specific GPU energy model plugin. Replaces (SCHED_PREFIX)_EAR_POWER_MODEL.
+#define HACK_GPU_ENERGY_MODEL        "HACK_GPU_ENERGY_MODEL"   // This var forces to load a specific GPU energy model plugin. Replaces (SCHED_PREFIX)_EAR_GPU_POWER_MODEL.
 #define HACK_CPU_POWER_MODEL         "HACK_CPU_POWER_MODEL"    // This var forces to load a specific cpu power model plugin.
 #define HACK_EARL_COEFF_FILE         "HACK_EARL_COEFF_FILE"    // This var forces to load a specific coefficient file
 #define HACK_EARL_GPU_COEFF_FILE     "HACK_EARL_GPU_COEFF_FILE"    // This var forces to load a specific coefficient file for GPU models
