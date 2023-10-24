@@ -56,7 +56,7 @@ static double project_time(coefficient_gpu_t *coeff, double FP64, double FP16, d
 
 /** Computes the projection of the \ref signature DC node power by using \ref coeffs.
  * \pre Input arguments must be initialized. */
-static double project_power(coefficient_gpu_t *coeff,double FP64, double FP16, double FP32, double TENSOR, double CPOWER, double DRAM);
+static double project_power(coefficient_gpu_t *coeff, double FP64, double FP16, double FP32, double TENSOR, double CPOWER, double DRAM, ulong TOPS);
 
 
 /** Returns whether there exists a coefficients entry from \ref from_ps to \ref to_ps. */
@@ -78,9 +78,8 @@ state_t energy_model_init(char *ear_etc_path, char *ear_tmp_path, architecture_t
 	/* At this point, we assume GPU mgt has been already initialized */
 	num_gpus        = (uint)metrics_gpus_get(MGT_GPU)->devs_count;
 	gpuf_list       = (const ulong **) metrics_gpus_get(MGT_GPU)->avail_list;
-       	gpuf_list_items = (const uint *)   metrics_gpus_get(MGT_GPU)->avail_count;
+  gpuf_list_items = (const uint *)   metrics_gpus_get(MGT_GPU)->avail_count;
 	num_gpu_pstates = gpuf_list_items[0];
-
 
 	debug("GPU model: %u GPUs and %u gpu_pstates", num_gpus, num_gpu_pstates);
 
@@ -106,16 +105,14 @@ state_t energy_model_init(char *ear_etc_path, char *ear_tmp_path, architecture_t
     }
   }
 
-
   char coeffs_path[GENERIC_NAME];
-
 
   if (hack_file == NULL){
 	  verbose(0, "ERROR: GPU coefficients are not yet supported in ear.conf. Define %s", HACK_EARL_GPU_COEFF_FILE);
 	  return EAR_ERROR;
   }else{
     int cfile_size;
-    strcpy(coeffs_path,hack_file);
+    strcpy(coeffs_path, hack_file);
     debug("Using hck coefficients path %s", coeffs_path);
     cfile_size = coeff_file_size(coeffs_path);
     if (cfile_size == 0) num_coeffs = 0;
@@ -178,15 +175,14 @@ state_t energy_model_project_time(signature_t *signature, ulong from_ps, ulong t
 		dcgmis = (dcgmi_sig_t *)&sigex->dcgmis;
 		if (dcgmis == NULL) return EAR_ERROR;
 		/* Sets where each data is placed. Could be the same */
+		dcgmi_t *dcgmis_data_16 = dcgmis->dcgmi_metrics[FP16_SET];
 		dcgmi_t *dcgmis_data_64 = dcgmis->dcgmi_metrics[FP64_SET];
 		dcgmi_t *dcgmis_data_32 = dcgmis->dcgmi_metrics[FP32_SET];
-		dcgmi_t *dcgmis_data_16 = dcgmis->dcgmi_metrics[FP16_SET];
 		dcgmi_t *dcgmis_data_ten = dcgmis->dcgmi_metrics[TNS_SET];
 		dcgmi_t *dcgmis_data_dram = dcgmis->dcgmi_metrics[DRAM_SET];
 		if ((dcgmis_data_64 == NULL) || (dcgmis_data_32 == NULL) || (dcgmis_data_16 == NULL) 
 		 || (dcgmis_data_ten == NULL) || (dcgmis_data_dram == NULL)) 
 						return EAR_ERROR;
-
 
 			for (uint g = 0; g < num_gpus; g++) {
 
@@ -211,7 +207,7 @@ state_t energy_model_project_power(signature_t *signature, ulong from_ps, ulong 
 	state_t st = EAR_SUCCESS;
 	coefficient_gpu_t *coeff;
 
-  debug("projct power init %d valid %d",gpu_model_init,valid_range(from_ps,to_ps));
+  debug("projct power init %d valid %d", gpu_model_init,valid_range(from_ps,to_ps));
 	if (proj_power == NULL) return EAR_ERROR;
 	memset(proj_power, 0, sizeof(double) * num_gpus);
 
@@ -222,45 +218,47 @@ state_t energy_model_project_power(signature_t *signature, ulong from_ps, ulong 
 
 	if (gpu_model_init && valid_range(from_ps, to_ps))
 	{
-		coeff = &coefficients[from_ps][to_ps];
-		if (coeff->available)
-		{
-		sig_ext_t *sigex;
-    dcgmi_sig_t *dcgmis;
-    /* SIgnature Extended */
-    sigex = (sig_ext_t *)signature->sig_ext;
-    if (sigex == NULL)  return EAR_ERROR;
-    /* DCGMI data */
-    dcgmis = (dcgmi_sig_t *)&sigex->dcgmis;
-    if (dcgmis == NULL) return EAR_ERROR;
-    /* Sets where each data is placed. Could be the same */
-    dcgmi_t *dcgmis_data_64 = dcgmis->dcgmi_metrics[FP64_SET];
-    dcgmi_t *dcgmis_data_32 = dcgmis->dcgmi_metrics[FP32_SET];
-    dcgmi_t *dcgmis_data_16 = dcgmis->dcgmi_metrics[FP16_SET];
-    dcgmi_t *dcgmis_data_ten = dcgmis->dcgmi_metrics[TNS_SET];
-    dcgmi_t *dcgmis_data_dram = dcgmis->dcgmi_metrics[DRAM_SET];
-    if ((dcgmis_data_64 == NULL) || (dcgmis_data_32 == NULL) || (dcgmis_data_16 == NULL)
+    coeff = &coefficients[from_ps][to_ps];
+    if (coeff->available)
+    {
+	    sig_ext_t *sigex;
+      dcgmi_sig_t *dcgmis;
+      /* SIgnature Extended */
+      sigex = (sig_ext_t *)signature->sig_ext;
+      if (sigex == NULL)  return EAR_ERROR;
+      
+      /* DCGMI data */
+      dcgmis = (dcgmi_sig_t *)&sigex->dcgmis;
+      if (dcgmis == NULL) return EAR_ERROR;
+      /* Sets where each data is placed. Could be the same */
+      dcgmi_t *dcgmis_data_64 = dcgmis->dcgmi_metrics[FP64_SET];
+      dcgmi_t *dcgmis_data_32 = dcgmis->dcgmi_metrics[FP32_SET];
+      dcgmi_t *dcgmis_data_16 = dcgmis->dcgmi_metrics[FP16_SET];
+      dcgmi_t *dcgmis_data_ten = dcgmis->dcgmi_metrics[TNS_SET];
+      dcgmi_t *dcgmis_data_dram = dcgmis->dcgmi_metrics[DRAM_SET];
+      if ((dcgmis_data_64 == NULL) || (dcgmis_data_32 == NULL) || (dcgmis_data_16 == NULL)
      || (dcgmis_data_ten == NULL) || (dcgmis_data_dram == NULL))
-            return EAR_ERROR;
-
-				for (uint g = 0; g < num_gpus; g++){
-					double CPOWER = signature->gpu_sig.gpu_data[g].GPU_power;
-					double FP64 = dcgmis_data_64[g].values[FP64_EV];
-      		double FP16  = dcgmis_data_16[g].values[FP16_EV];
-      		double FP32 = dcgmis_data_32[g].values[FP32_EV];
-      		double TENSOR = dcgmis_data_ten[g].values[TNS_EV];
-      		double DRAM   = dcgmis_data_dram[g].values[DRAM_EV];
-
-					proj_power[g] = project_power(coeff, FP64, FP16, FP32, TENSOR, CPOWER, DRAM);
-				}
-		} else
-		{
-			debug("Coeffs from %lu to %lu not available",from_ps,to_ps);
-			*proj_power = 0;
-			st = EAR_ERROR;
+        return EAR_ERROR;
+      
+      for (uint g = 0; g < num_gpus; g++){
+        double CPOWER = signature->gpu_sig.gpu_data[g].GPU_power;
+        double FP64 = dcgmis_data_64[g].values[FP64_EV];
+        double FP16  = dcgmis_data_16[g].values[FP16_EV];
+        double FP32 = dcgmis_data_32[g].values[FP32_EV];
+        double TENSOR = dcgmis_data_ten[g].values[TNS_EV];
+        double DRAM   = dcgmis_data_dram[g].values[DRAM_EV];
+        proj_power[g] = project_power(coeff, FP16, FP32, FP64, TENSOR, CPOWER, DRAM, to_ps);
+	    }
+      
+	  }else
+	  {
+	    debug("Coeffs from %lu to %lu not available",from_ps,to_ps);
+	    *proj_power = 0;
+	    st = EAR_ERROR;
 		}
 	}else st = EAR_ERROR;
-	return st;
+	
+  return st;
 }
 
 
@@ -303,11 +301,20 @@ static double project_time(coefficient_gpu_t *coeff, double FP64, double FP16, d
 }
 
 
-static double project_power(coefficient_gpu_t *coeff,double FP64, double FP16, double FP32, double TENSOR, double CPOWER, double DRAM)
+static double project_power(coefficient_gpu_t *coeff, double FP16, double FP32, double FP64, double TENSOR, double CPOWER, double DRAM, ulong TOPS)
 {
-	debug("project_power with FP 64 %lf FP16 %lf FP32 %lf TENSOR %lf CPOWER %lf DRAM %lf", FP64, FP16, FP32, TENSOR, CPOWER, DRAM);
+	debug("project_power with TOPS %lu FP16 %lf FP32 %lf FP64 %lf TENSOR %lf CPOWER %lf DRAM %lf", TO_PS, FP16, FP32, FP64, TENSOR, CPOWER, DRAM);
 	/* Replace this function with the model */
-	return (double)CPOWER;
+  double FP_ACT;
+  double proj_power;
+  
+  FP_ACT = FP16 + FP32 + FP64 + TENSOR;
+  proj_power= coeff->A*CPOWER + coeff->B*FP_ACT + coeff->C*DRAM + coeff->D*TOPS + coeff->E; 
+  	
+  debug("Power %lf = %lf x %lf + %lf x %lf + %lf x %lf + %lf x %lu + %lf", 
+      proj_power, coeff->A, CPOWER, coeff->B, FP_ACT, coeff->C, DRAM, coeff->D, TOPS, coeff->E);
+
+  return proj_power;
 }
 
 
