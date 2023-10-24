@@ -163,23 +163,6 @@ ulong *frequency_get_freq_rank_list()
 	return list_khz;
 }
 
-ulong frequency_set_cpu(ulong freq_khz, uint cpu)
-{
-	uint pstate_index;
-	// Sets a frequency in KHz in all CPUs.
-	if (!init) {
-		return 0LU;
-	}
-	if (state_fail(mgt_cpufreq_get_index(no_ctx, (ullong) freq_khz, &pstate_index, 0))) {
-		return 0LU;
-	}
-	if (state_fail(mgt_cpufreq_set_current(no_ctx, pstate_index, cpu))) {
-		return 0LU;
-	}
-	// Returns written P_STATE.
-	return freq_khz;
-}
-
 ulong frequency_set_all_cpus(ulong freq_khz)
 {
 	uint pstate_index;
@@ -291,11 +274,6 @@ uint frequency_freq_to_pstate_list(ulong freq_khz, ulong *list, uint pstate_coun
 	return i-found;
 }
 
-void frequency_set_performance_governor_all_cpus()
-{
-	mgt_cpufreq_set_governor(no_ctx, Governor.performance);
-}
-
 state_t frequency_set_userspace_governor_all_cpus()
 {
     if (init)
@@ -377,27 +355,6 @@ ulong frequency_closest_high_freq(ulong freq_khz, int pstate_min)
     }
 
 	return frequency_closest_frequency(newf);
-}
-
-void get_governor(governor_t *_governor)
-{
-	uint governor;
-	// Clear
-	_governor->max_f = 0LU;
-	_governor->min_f = 0LU;
-	sprintf(_governor->name, "%s", Goverstr.unknown);
-	//
-	if (!init) {
-		return;
-	}
-	if (state_fail(mgt_cpufreq_get_governor(no_ctx, &governor))) {
-		return;
-	}
-	if (state_fail(mgt_governor_tostr(governor, _governor->name))) {
-		return;
-	}
-	_governor->max_f = available_list[0].khz;
-	_governor->min_f = available_list[pstate_count-1].khz;
 }
 
 void set_governor(governor_t *_governor)
