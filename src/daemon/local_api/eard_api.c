@@ -499,6 +499,8 @@ ulong eards_write_event(ear_event_t *event)
 
 ulong eards_write_loop_signature(loop_t *loop_signature)
 {
+    pack_noseque
+    pack_nosete
     init_service(WRITE_LOOP_SIGNATURE);
     memcpy(&req.req_data.loop, loop_signature, sizeof(loop_t));
     return sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ulong), "LOOP signature", 0);

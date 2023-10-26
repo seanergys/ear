@@ -195,4 +195,9 @@ int sig_gpus_used(signature_t *s);
  * to \p dst_ssig. The rest of metrics of the destination are initialised to 0. */
 void ssig_set_node_metrics(ssig_t *dst_ssig, ssig_t *src_ssig);
 
+
+signature_serialize();
+
+signature_deserialize();
+
 #endif

@@ -12,6 +12,8 @@ plug_BINS = \
     metrics.so \
     metrics_viewer.so \
     periodic_metrics.so \
+    serial_eater.so \
+    serial_feeder.so \
     test_cpufreq.so \
     test_gpu.so
 
@@ -28,7 +30,7 @@ endif
 all: $(plug_BINS) dummy.so
 
 %.so: %.c
-	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^
+	$(CC) -g -I $(SRCDIR) -fPIC -shared -o $@ $^
 
 eardcon.so: eardcon.c $(SRCDIR)/daemon/local_api/libeard.a
 	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^
