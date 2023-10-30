@@ -38,9 +38,9 @@ typedef struct dcgmi_sig
 	uint    dcgmi_sets;
 	uint    dcgmi_gpus;
 	uint    dcgmi_num_ev;
-	uint    **dcgmi_events;
-	uint    *dcgmi_instances;
-	dcgmi_t **dcgmi_metrics;
+	uint    **dcgmi_events; // #sets array of variable length each one.
+	uint    *dcgmi_instances; // #sets array
+	dcgmi_t **dcgmi_metrics; // #sets x #gpus array
 } dcgmi_sig_t;
 
 

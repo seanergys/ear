@@ -15,6 +15,9 @@
  * and COPYING.EPL files.
  */
 
+
+#define SHOW_DEBUGS 1
+
 #if !SHOW_DEBUGS
 #define NDEBUG
 #endif

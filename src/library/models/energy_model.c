@@ -15,6 +15,9 @@
  * and COPYING.EPL files.
  */
 
+
+#define SHOW_DEBUGS 1
+
 #include <library/models/energy_model.h>
 #include <library/common/verbose_lib.h>
 #include <common/system/symplug.h>
