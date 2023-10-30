@@ -38,6 +38,7 @@
 #include <common/types/generic.h>
 #include <common/output/verbose.h>
 #include <common/types/application.h>
+#include <common/utils/serial_buffer.h>
 #include <daemon/local_api/eard_api.h>
 #include <metrics/gpu/gpu.h>
 #include <metrics/common/apis.h>
@@ -483,11 +484,69 @@ ulong sendack(char *send_buf, size_t send_size, char *ack_buf, size_t ack_size, 
     req.sec=create_sec_tag();               \
     memset(&req.req_data, 0, sizeof(union daemon_req_opt));
 
-ulong eards_write_app_signature(application_t *app_signature)
+ulong eards_write_app_signature(application_t *app)
 {
-    init_service(WRITE_APP_SIGNATURE);
-    memcpy(&req.req_data.app, app_signature, sizeof(application_t));
-    return sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ulong), "APP signature", 0);
+    serial_buffer_t b;
+    state_t s;
+
+    serial_params_pack_auto(&b, app->is_mpi);
+    serial_params_pack_auto(&b, app->is_learning);
+    serial_params_pack_auto(&b, app->node_id);
+    serial_params_pack_auto(&b, app->job.id);
+    serial_params_pack_auto(&b, app->job.step_id);
+    serial_params_pack_auto(&b, app->job.user_id);
+    serial_params_pack_auto(&b, app->job.group_id);
+    serial_params_pack_auto(&b, app->job.app_id);
+    serial_params_pack_auto(&b, app->job.user_acc);
+    serial_params_pack_auto(&b, app->job.energy_tag);
+    serial_params_pack_auto(&b, app->job.start_time);
+    serial_params_pack_auto(&b, app->job.end_time);
+    serial_params_pack_auto(&b, app->job.start_mpi_time);
+    serial_params_pack_auto(&b, app->job.end_mpi_time);
+    serial_params_pack_auto(&b, app->job.policy);
+    serial_params_pack_auto(&b, app->job.th);
+    serial_params_pack_auto(&b, app->job.procs);
+    serial_params_pack_auto(&b, app->job.type);
+    serial_params_pack_auto(&b, app->job.def_f);
+    serial_params_pack_auto(&b, app->power_sig.DC_power); //
+    serial_params_pack_auto(&b, app->power_sig.DRAM_power);
+    serial_params_pack_auto(&b, app->power_sig.PCK_power);
+    serial_params_pack_auto(&b, app->power_sig.EDP);
+    serial_params_pack_auto(&b, app->power_sig.max_DC_power);
+    serial_params_pack_auto(&b, app->power_sig.min_DC_power);
+    serial_params_pack_auto(&b, app->power_sig.time);
+    serial_params_pack_auto(&b, app->power_sig.avg_f);
+    serial_params_pack_auto(&b, app->power_sig.def_f);
+    serial_params_pack_auto(&b, app->signature.DC_power); //
+    serial_params_pack_auto(&b, app->signature.DRAM_power);
+    serial_params_pack_auto(&b, app->signature.PCK_power);
+    serial_params_pack_auto(&b, app->signature.EDP);
+    serial_params_pack_auto(&b, app->signature.GBS);
+    serial_params_pack_auto(&b, app->signature.IO_MBS);
+    serial_params_pack_auto(&b, app->signature.TPI);
+    serial_params_pack_auto(&b, app->signature.CPI);
+    serial_params_pack_auto(&b, app->signature.Gflops);
+    serial_params_pack_auto(&b, app->signature.time);
+    serial_params_pack_auto(&b, app->signature.FLOPS);
+    serial_params_pack_auto(&b, app->signature.L1_misses);
+    serial_params_pack_auto(&b, app->signature.L2_misses);
+    serial_params_pack_auto(&b, app->signature.L3_misses);
+    serial_params_pack_auto(&b, app->signature.instructions);
+    serial_params_pack_auto(&b, app->signature.cycles);
+    serial_params_pack_auto(&b, app->signature.avg_f);
+    serial_params_pack_auto(&b, app->signature.avg_imc_f);
+    serial_params_pack_auto(&b, app->signature.def_f);
+    serial_params_pack_auto(&b, app->signature.perc_MPI);
+    #if USE_GPUS
+    serial_params_pack_auto(&b, app->signature.gpu_sig.num_gpus); //
+    serial_params_pack_auto(&b, app->signature.gpu_sig.gpu_data);
+    #endif
+    // WRITE_APP_SIGNATURE
+    serial_alloc(&b, SIZE_8KB);
+    s = eard_rpc(RPC_SET_APPLICATION, serial_data(&b), serial_size(&b), NULL, 0);
+    serial_free(&b);
+
+    return s;
 }
 
 ulong eards_write_event(ear_event_t *event)
@@ -499,8 +558,6 @@ ulong eards_write_event(ear_event_t *event)
 
 ulong eards_write_loop_signature(loop_t *loop_signature)
 {
-    pack_noseque
-    pack_nosete
     init_service(WRITE_LOOP_SIGNATURE);
     memcpy(&req.req_data.loop, loop_signature, sizeof(loop_t));
     return sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ulong), "LOOP signature", 0);

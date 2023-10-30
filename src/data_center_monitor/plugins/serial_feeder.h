@@ -18,6 +18,7 @@
 #ifndef UP_SERIAL_FEEDER_H
 #define UP_SERIAL_FEEDER_H
 
+#include <common/utils/serial_buffer.h>
 #include <common/system/plugin_manager.h>
 
 typedef struct signature
@@ -43,13 +44,5 @@ typedef struct signature
     ulong           def_f;
     double          perc_MPI;
 } signature_t;
-
-typedef struct serial_params_s {
-    char   *data;
-    size_t  data_size;
-} serial_params_t;
-
-#define serial_params_add_auto(sp, parameter) \
-    serial_params_add(sp, #parameter, (void *) &parameter, sizeof(parameter));
 
 #endif

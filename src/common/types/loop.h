@@ -87,5 +87,8 @@ int create_loop_header(char * header, char *path, int ts, uint num_gpus, int sin
 /** Given a loop_t and a file descriptor, outputs the contents of said loop to the fd.*/
 void print_loop_fd(int fd, loop_t *loop);
 
+void loop_serialize(serial_buffer_t *b, loop_t *loop);
+
+void loop_deserialize(serial_buffer_t *b, loop_t *loop);
 
 #endif

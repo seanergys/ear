@@ -18,10 +18,10 @@
 #ifndef COMMON_UTILS_SERIAL_BUFFER_H
 #define COMMON_UTILS_SERIAL_BUFFER_H
 
-// This is a buffer to hold data in packages or elements. It has intern metadata
-// to control the allocated data, the current used data and also a pointer to the
-// current element. The current data element is the one to be returned when using
-// functions like serial_copy_elem(). 
+// This is a buffer to keep data divided in elements. Its intern metadata
+// control the allocated data, the current used data and also a pointer to the
+// current element (for iterations). The current data element is the one to be
+// returned when using functions like serial_copy_elem().
 //
 //	1) Serial buffer initialization
 //
@@ -73,32 +73,56 @@ typedef serial_buffer_t wide_buffer_t;
 #define SIZE_4KB 4096
 #define SIZE_8KB 8192
 
-void serial_alloc(wide_buffer_t *b, size_t size);
+void serial_alloc(serial_buffer_t *b, size_t size);
 
-void serial_free(wide_buffer_t *b);
+void serial_free(serial_buffer_t *b);
 
 /* Allocates more space if needed. */
-void serial_resize(wide_buffer_t *b, size_t size);
+void serial_resize(serial_buffer_t *b, size_t size);
 
 /* Marks the data buffer as 0 bytes taken and rewinds the element pointer. */
-void serial_clean(wide_buffer_t *b);
+void serial_clean(serial_buffer_t *b);
 
 /* Resize + clean. */
-void serial_reset(wide_buffer_t *b, size_t size);
+void serial_reset(serial_buffer_t *b, size_t size);
 
 /* Back to the first the element pointer. */
-void serial_rewind(wide_buffer_t *b);
+void serial_rewind(serial_buffer_t *b);
 
 /* Adds a new element to the buffer. */
-void serial_add_elem(wide_buffer_t *b, char *data, size_t size);
+void serial_add_elem(serial_buffer_t *b, char *data, size_t size);
 
 /* Copies the next element inside the buffer. */
-char *serial_copy_elem(wide_buffer_t *b, char *data, size_t *size);
+char *serial_copy_elem(serial_buffer_t *b, char *data, size_t *size);
 
 /* Returns the pointer to the data (avoid the metadata). */
-char *serial_data(wide_buffer_t *b);
+char *serial_data(serial_buffer_t *b);
 
 /* Returns the size of the whole buffer or just the data (if 1). */
-size_t serial_size(wide_buffer_t *b);
+size_t serial_size(serial_buffer_t *b);
+
+// Serial params is a small extension of serial buffer. It saves struct
+// parameters/fields/variables in a serial buffer, adding a tag to properly
+// identify each introduced parameter. Pack and unpack functions are self
+// describing. You can use the auto macros for code cleaning.
+//
+// Sender example:
+//     serial_params_pack_auto(&b, appS->job.id);
+//     serial_params_pack_auto(&b, appS->job.step_id);
+//
+// Receiver example:
+//     serial_params_pack_auto(&b, appR->job.id);
+//     serial_params_pack_auto(&b, appR->job.step_id);
+
+
+#define serial_params_pack_auto(sp, parameter) \
+    serial_params_pack(sp, #parameter, (void *) &parameter, sizeof(parameter));
+
+#define serial_params_unpack_auto(sp, parameter) \
+    serial_params_unpack(sp, #parameter, (void *) &parameter, NULL);
+
+void serial_params_pack(serial_buffer_t *b, char *tag, void *param, size_t param_size);
+
+int serial_params_unpack(serial_buffer_t *b, char *tag, void *param, size_t *param_size);
 
 #endif

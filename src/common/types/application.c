@@ -568,3 +568,39 @@ void mark_as_eard_disconnected(int jid,int sid,int pid)
     debug("Removing %s",con_file);
     unlink(con_file);
 }
+
+void application_serialize(serial_buffer_t *b, application_t *app)
+{
+    serial_params_pack_auto(&b, app->is_mpi);
+    serial_params_pack_auto(&b, app->is_learning);
+    serial_params_pack_auto(&b, app->node_id);
+    serial_params_pack_auto(&b, app->power_sig.DC_power); //
+    serial_params_pack_auto(&b, app->power_sig.DRAM_power);
+    serial_params_pack_auto(&b, app->power_sig.PCK_power);
+    serial_params_pack_auto(&b, app->power_sig.EDP);
+    serial_params_pack_auto(&b, app->power_sig.max_DC_power);
+    serial_params_pack_auto(&b, app->power_sig.min_DC_power);
+    serial_params_pack_auto(&b, app->power_sig.time);
+    serial_params_pack_auto(&b, app->power_sig.avg_f);
+    serial_params_pack_auto(&b, app->power_sig.def_f);
+    signature_serialize(b, &app->signature);
+    job_serialize(b, &app->job);
+}
+
+void application_deserialize(serial_buffer_t *b, application_t *app)
+{
+    serial_params_unpack_auto(&b, app->is_mpi);
+    serial_params_unpack_auto(&b, app->is_learning);
+    serial_params_unpack_auto(&b, app->node_id);
+    serial_params_unpack_auto(&b, app->power_sig.DC_power); //
+    serial_params_unpack_auto(&b, app->power_sig.DRAM_power);
+    serial_params_unpack_auto(&b, app->power_sig.PCK_power);
+    serial_params_unpack_auto(&b, app->power_sig.EDP);
+    serial_params_unpack_auto(&b, app->power_sig.max_DC_power);
+    serial_params_unpack_auto(&b, app->power_sig.min_DC_power);
+    serial_params_unpack_auto(&b, app->power_sig.time);
+    serial_params_unpack_auto(&b, app->power_sig.avg_f);
+    serial_params_unpack_auto(&b, app->power_sig.def_f);
+    signature_deserialize(b, &app->signature);
+    job_deserialize(b, &app->job);
+}

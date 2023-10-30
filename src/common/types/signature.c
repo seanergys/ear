@@ -537,3 +537,69 @@ static double compute_vpi(const ullong *FLOPS, ullong instructions) {
 
     return (double) vins / (double) instructions;
 }
+
+static void gpu_signature_serialize(gpu_signature_t *gpusig)
+{
+#if USE_GPUS
+    serial_params_pack_auto(b, gpusig->num_gpus); //
+    serial_params_pack_auto(b, gpusig->gpu_data);
+#endif
+}
+
+void signature_serialize(serial_buffer_t *b, signature_t *sig)
+{
+    serial_params_pack_auto(b, sig->DC_power); //
+    serial_params_pack_auto(b, sig->DRAM_power);
+    serial_params_pack_auto(b, sig->PCK_power);
+    serial_params_pack_auto(b, sig->EDP);
+    serial_params_pack_auto(b, sig->GBS);
+    serial_params_pack_auto(b, sig->IO_MBS);
+    serial_params_pack_auto(b, sig->TPI);
+    serial_params_pack_auto(b, sig->CPI);
+    serial_params_pack_auto(b, sig->Gflops);
+    serial_params_pack_auto(b, sig->time);
+    serial_params_pack_auto(b, sig->FLOPS);
+    serial_params_pack_auto(b, sig->L1_misses);
+    serial_params_pack_auto(b, sig->L2_misses);
+    serial_params_pack_auto(b, sig->L3_misses);
+    serial_params_pack_auto(b, sig->instructions);
+    serial_params_pack_auto(b, sig->cycles);
+    serial_params_pack_auto(b, sig->avg_f);
+    serial_params_pack_auto(b, sig->avg_imc_f);
+    serial_params_pack_auto(b, sig->def_f);
+    serial_params_pack_auto(b, sig->perc_MPI);
+    gpu_signature_serialize(b, sig->gpu_sig)
+}
+
+static void gpu_signature_deserialize(gpu_signature_t *gpusig)
+{
+#if USE_GPUS
+    serial_params_unpack_auto(b, gpusig->num_gpus); //
+    serial_params_unpack_auto(b, gpusig->gpu_data);
+#endif
+}
+
+void signature_deserialize(serial_buffer_t *b, signature_t *sig)
+{
+    serial_params_unpack_auto(b, sig->DC_power); //
+    serial_params_unpack_auto(b, sig->DRAM_power);
+    serial_params_unpack_auto(b, sig->PCK_power);
+    serial_params_unpack_auto(b, sig->EDP);
+    serial_params_unpack_auto(b, sig->GBS);
+    serial_params_unpack_auto(b, sig->IO_MBS);
+    serial_params_unpack_auto(b, sig->TPI);
+    serial_params_unpack_auto(b, sig->CPI);
+    serial_params_unpack_auto(b, sig->Gflops);
+    serial_params_unpack_auto(b, sig->time);
+    serial_params_unpack_auto(b, sig->FLOPS);
+    serial_params_unpack_auto(b, sig->L1_misses);
+    serial_params_unpack_auto(b, sig->L2_misses);
+    serial_params_unpack_auto(b, sig->L3_misses);
+    serial_params_unpack_auto(b, sig->instructions);
+    serial_params_unpack_auto(b, sig->cycles);
+    serial_params_unpack_auto(b, sig->avg_f);
+    serial_params_unpack_auto(b, sig->avg_imc_f);
+    serial_params_unpack_auto(b, sig->def_f);
+    serial_params_unpack_auto(b, sig->perc_MPI);
+    gpu_signature_deserialize(b, sig->gpu_sig)
+}

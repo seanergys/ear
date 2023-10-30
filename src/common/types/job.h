@@ -46,25 +46,23 @@ typedef struct job
 
 typedef struct job
 {
-	job_id 	 id;
-	job_id 	 step_id;
-	char 	   user_id[GENERIC_NAME];
-	char 	   group_id[GENERIC_NAME];
-	char 	   app_id[GENERIC_NAME];
+	job_id 	 id; //ulong
+	job_id 	 step_id; //ulong
+	char 	 user_id[GENERIC_NAME];
+	char 	 group_id[GENERIC_NAME];
+	char 	 app_id[GENERIC_NAME];
 	char     user_acc[GENERIC_NAME];
-	char	   energy_tag[ENERGY_TAG_SIZE];
-  time_t 	 start_time;
+	char	 energy_tag[ENERGY_TAG_SIZE];
+    time_t 	 start_time;
 	time_t	 end_time;
 	time_t 	 start_mpi_time;
 	time_t	 end_mpi_time;
-	char 	   policy[POLICY_NAME];
+	char 	 policy[POLICY_NAME];
 	double   th;
 	ulong 	 procs; 
-	job_type type;	
+	job_type type; //uchar
 	ulong    def_f;
 } job_t;
-
-
 
 // Function declarations
 
@@ -96,5 +94,9 @@ void report_job(job_t *job);
 void print_job_fd_binary(int fd, job_t *job);
 /** Memory is already allocated for the job */
 void read_job_fd_binary(int fd, job_t *job);
+
+void job_serialize(serial_buffer_t *b, job_t *job);
+
+void job_deserialize(serial_buffer_t *b, job_t *job);
 
 #endif

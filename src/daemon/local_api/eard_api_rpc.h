@@ -27,6 +27,7 @@
 // want easy-to-read functions to ask for EARD request, look at eard_api.h class.
 
 #define RPC_GET_STATE                      2001
+#define RPC_SET_APPLICATION                2002
 #define RPC_MGT_CPUFREQ_GET_API            1001
 #define RPC_MGT_CPUFREQ_GET_AVAILABLE      1002
 #define RPC_MGT_CPUFREQ_GET_CURRENT        1003

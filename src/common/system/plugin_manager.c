@@ -635,7 +635,7 @@ int plugin_manager_main(int argc, char *argv[])
         verbose(0, "[ERROR] No plugins to load.")
         return 0;
     }
-    #if 1
+    #if 0
     afd_init(&fds_active);
     plugins_init(NULL);
     // 100 milliseconds

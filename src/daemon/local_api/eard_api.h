@@ -75,7 +75,6 @@ int eards_gpu_support();
 #define EAR_COM_ERROR                  -1
 #define READ_RAPL                       202
 #define DATA_SIZE_RAPL                  203
-#define WRITE_APP_SIGNATURE             300
 #define WRITE_EVENT                     302
 #define WRITE_LOOP_SIGNATURE            303
 #define READ_DC_ENERGY                  400

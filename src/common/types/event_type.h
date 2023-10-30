@@ -159,7 +159,11 @@ typedef struct ear_event {
  * "unknown(event_type)", where event_type is the type of the event passed as argument. */
 void event_type_to_str(ear_event_t *ev, char *str, size_t max);
 
-
 /** \todo */
 void event_value_to_str(ear_event_t *ev, char *str, size_t max);
+
+void event_serialize(serial_buffer_t *b, ear_event_t *event);
+
+void event_deserialize(serial_buffer_t *b, ear_event_t *event);
+
 #endif

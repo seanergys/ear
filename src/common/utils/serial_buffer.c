@@ -32,7 +32,7 @@
 //  8: elem next (pointer)
 // 16: data (first elem size + first elem)
 
-static void serial_debug(wide_buffer_t *b, char *from)
+static void serial_debug(serial_buffer_t *b, char *from)
 {
 	#if SHOW_DEBUGS
 	size_t *size_alloc;
@@ -72,7 +72,7 @@ static size_t size_calc(size_t size_pow, size_t size)
 	return size_calc(size_pow*2, size);
 }
 
-static void serial_init(wide_buffer_t *b, size_t size)
+static void serial_init(serial_buffer_t *b, size_t size)
 {
 	size_t *size_alloc;
 	size_t *size_taken;
@@ -93,21 +93,21 @@ static void serial_init(wide_buffer_t *b, size_t size)
 	serial_debug(b, "serial_init");
 }
 
-void serial_alloc(wide_buffer_t *b, size_t size)
+void serial_alloc(serial_buffer_t *b, size_t size)
 {
 	b->data = NULL;
 	b->size = 0;
 	serial_init(b, size);
 }
 
-void serial_free(wide_buffer_t *b)
+void serial_free(serial_buffer_t *b)
 {
 	free(b->data);
 	b->data = NULL;
 	b->size = 0;
 }
 
-void serial_resize(wide_buffer_t *b, size_t size)
+void serial_resize(serial_buffer_t *b, size_t size)
 {
 	size_t *size_alloc;
 
@@ -123,7 +123,7 @@ void serial_resize(wide_buffer_t *b, size_t size)
 	serial_debug(b, "serial_resize");
 }
 
-static void serial_expand(wide_buffer_t *b, size_t size_new_elem)
+static void serial_expand(serial_buffer_t *b, size_t size_new_elem)
 {
 	size_t *size_alloc = psize_alloc(b);
 	size_t *size_taken = psize_taken(b);
@@ -133,7 +133,7 @@ static void serial_expand(wide_buffer_t *b, size_t size_new_elem)
 	}
 }
 
-void serial_clean(wide_buffer_t *b)
+void serial_clean(serial_buffer_t *b)
 {
 	size_t *size_taken;
 	size_t *elem_next;
@@ -148,7 +148,7 @@ void serial_clean(wide_buffer_t *b)
 	serial_debug(b, "serial_clean");
 }
 
-void serial_reset(wide_buffer_t *b, size_t size)
+void serial_reset(serial_buffer_t *b, size_t size)
 {
 
 	// Resize with new value in case of requirement
@@ -159,7 +159,7 @@ void serial_reset(wide_buffer_t *b, size_t size)
 	serial_debug(b, "serial_reset");
 }
 
-void serial_rewind(wide_buffer_t *b)
+void serial_rewind(serial_buffer_t *b)
 {
 	size_t *elem;
 	
@@ -169,7 +169,7 @@ void serial_rewind(wide_buffer_t *b)
 	serial_debug(b, "serial_rewind");
 }
 
-void serial_add_elem(wide_buffer_t *b, char *data, size_t size)
+void serial_add_elem(serial_buffer_t *b, char *data, size_t size)
 {
 	size_t *size_taken;
 
@@ -187,7 +187,7 @@ void serial_add_elem(wide_buffer_t *b, char *data, size_t size)
 	serial_debug(b, "serial_add_elem");
 }
 
-char *serial_copy_elem(wide_buffer_t *b, char *data, size_t *size)
+char *serial_copy_elem(serial_buffer_t *b, char *data, size_t *size)
 {
 	size_t *size_taken;
 	size_t *size_elem;
@@ -224,13 +224,56 @@ char *serial_copy_elem(wide_buffer_t *b, char *data, size_t *size)
 	return p;
 }
 
-char *serial_data(wide_buffer_t *b)
+char *serial_data(serial_buffer_t *b)
 {
 	return b->data;
 }
 
-size_t serial_size(wide_buffer_t *b)
+size_t serial_size(serial_buffer_t *b)
 {
 	size_t *size_taken = psize_taken(b);
 	return *size_taken;
+}
+
+static char *name_clean(char *tag, int doit)
+{
+    int i = 0;
+    if (!doit) {
+        return tag;
+    }
+    while (tag[i] != '\0') {
+        if (tag[i] == '>') return &tag[i+1];
+        if (tag[i] == '.') return &tag[i+1];
+        ++i;
+    }
+    return tag;
+}
+
+void serial_params_pack(serial_buffer_t *b, char *tag, void *param, size_t param_size)
+{
+    char buffer_tag[64];
+    // String manipulation
+    memset(buffer_tag, 0, 64);
+    strcpy(buffer_tag, name_clean(tag, 0));
+    serial_add_elem(b, buffer_tag, 64);
+    serial_add_elem(b, param, param_size);
+}
+
+int serial_params_unpack(serial_buffer_t *b, char *tag, void *param, size_t *param_size)
+{
+    char *tag_cleaned = name_clean(tag, 0);
+    char buffer[1024];
+    size_t size;
+
+    // String manipulation
+    serial_rewind(b);
+    // Tag iterations
+    while (serial_copy_elem(b, buffer, &size) != NULL) {
+        if (strcmp(buffer, tag_cleaned) == 0) {
+            serial_copy_elem(b, param, param_size);
+            return 1;
+        }
+        serial_copy_elem(b, buffer, &size);
+    }
+    return 0;
 }
