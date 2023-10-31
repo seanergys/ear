@@ -515,7 +515,7 @@ static void metrics_static_init(topology_t *tp)
 #endif
 
 #if DCGMI
-    if (met_gpu.ok)
+    if (master && met_gpu.ok)
     {
 	    if state_fail(dcgmi_lib_load())
 	    {
@@ -1513,7 +1513,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 	sig_ext = metrics->sig_ext;
 
 #if USE_GPUS & DCGMI
-	if (dcgmi_lib_is_enabled() && master && (sig_ext->dcgmis.dcgmi_sets == 0))
+	if (master && dcgmi_lib_is_enabled() && (sig_ext->dcgmis.dcgmi_sets == 0))
 	{
 		dcgmi_lib_dcgmi_sig_init(&sig_ext->dcgmis);
   }

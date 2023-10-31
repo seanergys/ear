@@ -15,6 +15,9 @@
  */
 
 
+#define SHOW_DEBUGS 1
+
+
 #include <library/metrics/dcgmi_lib.h>
 
 #include <stdlib.h>
@@ -31,6 +34,7 @@
 
 #include <library/metrics/dcgmi_lib/turing.h>
 #include <library/metrics/dcgmi_lib/hopper.h>
+#include <library/metrics/dcgmi_lib/ampere.h>
 
 #include <metrics/gpu/gpu.h>
 #include <metrics/common/nvml.h>
@@ -474,6 +478,10 @@ static state_t set_init_fn(dcgmi_lib_init_fn *dst_fn_ptr)
 				case NVML_DEVICE_ARCH_HOPPER:
 					debug("Hopper microarch detected.");
 					*dst_fn_ptr = dcgmi_lib_hopper_init;
+					break;
+				case NVML_DEVICE_ARCH_AMPERE:
+					debug("Ampere microarch detected.");
+					*dst_fn_ptr = dcgmi_lib_ampere_init;
 					break;
 				default:
 					*dst_fn_ptr = NULL;
