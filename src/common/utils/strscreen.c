@@ -20,12 +20,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <common/output/verbose.h>
 #include <common/utils/strscreen.h>
 
 #define Y 0
 #define X 1
 #define clrscr()     printf("\e[1;1H\e[2J")
-#define debug(...)   printf(__VA_ARGS__)
 #define buffer(y, x) s->buffer[(y)*s->width+(x)]
 
 static void clean_buffer_background(strscreen_t *s)
@@ -40,7 +40,7 @@ static void clean_buffer_background(strscreen_t *s)
     buffer(y-1,x) = '\0';
 }
 
-void wprintf_init(strscreen_t *s, int height, int width, int fd, char bckchr)
+void scprintf_init(strscreen_t *s, int height, int width, int fd, char bckchr)
 {
     s->buffer       = calloc((width+1+000)*height, sizeof(char));
     s->buffer_final = calloc((width+1+100)*height, sizeof(char)); //+100 for the colors
@@ -62,7 +62,7 @@ static void clean_matrix_background(strscreen_t *s)
     }
 }
 
-void wprintf_divide(strscreen_t *s, int p1[2], int p2[2], int *id, cchar *title)
+void scprintf_divide(strscreen_t *s, int p1[2], int p2[2], int *id, cchar *title)
 {
     strscreen_t *div;
     int y;
@@ -87,7 +87,7 @@ void wprintf_divide(strscreen_t *s, int p1[2], int p2[2], int *id, cchar *title)
     clean_matrix_background(div);
 }
 
-void wsprintf(strscreen_t *s, int div_index, int append, int set_title, char *buffer)
+void scsprintf(strscreen_t *s, int div_index, int append, int set_title, char *buffer)
 {
     strscreen_t *div = &(((strscreen_t *) s->divs)[div_index]);
     size_t length = strlen(buffer);
@@ -148,7 +148,7 @@ static void clean_tag(strscreen_t *s, char *tag, char *new_string, uint spaces)
     }
 }
 
-char *wprintf(strscreen_t *s)
+char *scprintf(strscreen_t *s)
 {
     // Copying original buffer
     strcpy(&s->buffer_final[0], &s->buffer[0]);
@@ -160,6 +160,6 @@ char *wprintf(strscreen_t *s)
     // Returning to the terminal original position
     clrscr();
     // Printing in case valid file descriptor
-    if (s->fd >= 0) { dprintf(s->fd, "%s\n", s->buffer_final); }
+    if (s->fd >= 0) { dprintf(s->fd, "%s", s->buffer_final); }
     return s->buffer_final;
 }

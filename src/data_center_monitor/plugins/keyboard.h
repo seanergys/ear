@@ -15,14 +15,13 @@
 * and COPYING.EPL files.
 */
 
-#ifndef EAR_MODELS_H_
-#define EAR_MODELS_H_
+#ifndef UP_KEYBOARD_H
+#define UP_KEYBOARD_H
 
-#include <common/environment.h>
-#include <daemon/shared_configuration.h>
-#include <common/hardware/architecture.h>
+#include <common/system/plugin_manager.h>
 
-state_t init_power_models(uint user_type,conf_install_t *data,architecture_t *myarch);
+typedef void (*callback_t) (char **parameters);
 
+void command_register(cchar *command, cchar *format, callback_t call);
 
-#endif
+#endif //UP_CONFIG_H

@@ -19,6 +19,7 @@
 
 #include <stdlib.h>
 #include <pthread.h>
+#include <common/output/debug.h>
 #include <metrics/cpufreq/cpufreq.h>
 #include <metrics/cpufreq/archs/eard.h>
 #include <metrics/cpufreq/archs/dummy.h>
@@ -29,7 +30,7 @@ static cpufreq_ops_t ops;
 static uint cpu_count;
 static uint api;
 
-state_t cpufreq_load(topology_t *tp, int eard)
+state_t cpufreq_load(topology_t *tp, int force_api)
 {
 	state_t s;
 	while (pthread_mutex_trylock(&lock));
@@ -38,7 +39,10 @@ state_t cpufreq_load(topology_t *tp, int eard)
 		return EAR_SUCCESS;
 	}
 	api = API_DUMMY;
-	if (state_ok(s = cpufreq_eard_status(tp, &ops, eard))) {
+    if (API_IS(force_api, API_DUMMY)) {
+        goto dummy;
+    }
+	if (state_ok(s = cpufreq_eard_status(tp, &ops, API_IS(force_api, API_EARD)))) {
 		api = API_EARD;
 		debug("Loaded EARD");
 	}
@@ -48,9 +52,9 @@ state_t cpufreq_load(topology_t *tp, int eard)
 		debug("Loaded INTEL63");
 	}
 	debug("Not loaded INTEL63: %s (%d)", state_msg, s);
+dummy:
 	if (state_ok(s = cpufreq_dummy_status(tp, &ops))) {}
 	debug("Loaded metrics/cpufreq/DUMMY %p", ops.data_diff);
-	
 	cpu_count = tp->cpu_count;
 	pthread_mutex_unlock(&lock);
 	return EAR_SUCCESS;

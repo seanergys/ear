@@ -200,38 +200,29 @@ state_t perf_read(perf_t *perf, llong *value)
 
 	memset(&value_s, 0, sizeof(struct read_format_s));
 	ret = read(perf->fd, &value_s, sizeof(struct read_format_s));
-
-	#ifdef SHOW_DEBUGS
-	if (ret == -1) {
-		debug("error when reading %d (no: %d)", ret, errno);
-	}
-	#endif
+    debug("PERF read val/ret/err: %llu %d %d", value_s.nrval, ret, errno);
+    //
 	if (ret == -1) {
 		return_msg(EAR_ERROR, strerror(errno));
 	}
-
 	if (value_s.time_running > 0) {
 		time_act = (double) value_s.time_enabled;
 		time_run = (double) value_s.time_running;
 		time_mul = time_act / time_run;
 	}
-
-	debug("time act/run/mul %lf/%lf/%lf (group %p)",
+	debug("PERF time act/run/mul: %0.2lf %0.2lf %0.2lf (group %p)",
 		time_act, time_run, time_mul, perf->group);
 
-	if (perf->group == NULL)
-	{
+	if (perf->group == NULL) {
 		value_d = (double) value_s.nrval;
 		total_d = value_d * time_mul;
 		*value  = (llong) total_d;
+        debug("PERF final value     : %lld", *value);
 	}
-	else for (i = 0; i < value_s.nrval && i < 8; ++i)
-	{
+	else for (i = 0; i < value_s.nrval && i < 8; ++i) {
 		value_d  = (double) value_s.values[i];
 		total_d  = value_d * time_mul;
 		value[i] = (llong) total_d;
-		debug("i=%d value %llu\n",i,value_s.values[i]);
 	}
-
 	return EAR_SUCCESS;
 }

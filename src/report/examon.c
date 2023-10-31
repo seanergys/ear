@@ -19,7 +19,7 @@
 #define _GNU_SOURCE
 #endif
 
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 #include <stdio.h>
 #include <assert.h>
 #include <stdlib.h>

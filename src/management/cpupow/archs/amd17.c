@@ -32,10 +32,10 @@
 #include <management/cpupow/archs/amd17.h>
 
 #define NO_REG                         0x00
-#define HSMP_PKG_POWER_STATUS          0x04 //ReadSocketPower
-#define HSMP_PKG_POWER_LIMIT_READ      0x06 //ReadSocketPowerLimit
-#define HSMP_PKG_POWER_LIMIT_WRITE     0x05 //WriteSocketPowerLimit
-#define HSMP_PKG_POWER_INFO            0x07 //ReadMaxSocketPowerLimit
+#define HSMP_PKG_POWER_STATUS          HSMP_READ_SOCKET_POWER
+#define HSMP_PKG_POWER_LIMIT_READ      HSMP_READ_SOCKET_POWER_LIMIT
+#define HSMP_PKG_POWER_LIMIT_WRITE     HSMP_WRITE_SOCKET_POWER_LIMIT
+#define HSMP_PKG_POWER_INFO            HSMP_READ_MAX_SOCKET_POWER_LIMIT
 #define HSMP_DRAM_POWER_STATUS         NO_REG
 #define HSMP_DRAM_POWER_LIMIT_READ     NO_REG
 #define HSMP_DRAM_POWER_LIMIT_WRITE    NO_REG

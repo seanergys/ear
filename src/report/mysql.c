@@ -132,11 +132,11 @@ state_t report_init(report_id_t *id, cluster_conf_t *conf)
     num_sig_args = mysql_run_query_int_result(query);
 
     if (num_sig_args == EAR_ERROR)
-        set_signature_simple(db_config->report_sig_detail);
+        set_signature_detail(db_config->report_sig_detail);
     else if (num_sig_args < 20)
-        set_signature_simple(0);
+        set_signature_detail(0);
     else 
-        set_signature_simple(1);
+        set_signature_detail(1);
 
 
     sprintf(query, IS_NODE_FULL_QUERY, db_config->database);

@@ -3,31 +3,23 @@ CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC $(CONSTANTS) -Wall
 ######## FILES
 
 powercap_OBJS = \
-				powercap_status.o \
-				powercap_mgt.o \
-				powercap.o 
+    powercap_status.o \
+    powercap_mgt.o \
+    powercap.o
 
 powercap_BINS = \
-				inm.so \
-				dvfs.so 
-
-ifdef CUDA_BASE
-powercap_BINS += \
-				 gpu_dummy.so \
-				 gpu.so \
-				 gpu_dvfs.so
-endif
+    inm.so \
+    dvfs.so \
+    gpu_dummy.so \
+    gpu.so \
+    gpu_dvfs.so
 
 powercap_PATH = $(DESTDIR)/lib/plugins/powercap
 powercap_PERM = 0775
-
-gpu_DEPS = 
-
-gpu_dvfs_DEPS = 
-
-dvfs_DEPS = $(SRCDIR)/metrics/libmetrics.a
-
-inm_DEPS = $(SRCDIR)/common/libcommon.a
+gpu_DEPS      =
+gpu_dvfs_DEPS =
+dvfs_DEPS     = $(SRCDIR)/metrics/libmetrics.a
+inm_DEPS      = $(SRCDIR)/common/libcommon.a
 
 ######## RULES
 

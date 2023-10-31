@@ -22,7 +22,6 @@
 #include <common/utils/serial_buffer.h>
 #include <management/imcfreq/archs/eard.h>
 #include <daemon/local_api/eard_api.h>
-#include <daemon/local_api/eard_api_conf.h>
 
 #define RPC_GET_API       RPC_MGT_IMCFREQ_GET_API
 #define RPC_GET_AVAIL_PS  RPC_MGT_IMCFREQ_GET_AVAILABLE

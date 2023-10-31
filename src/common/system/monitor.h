@@ -57,6 +57,9 @@ state_t monitor_init();
 
 state_t monitor_dispose();
 
+// Waits until monitor finalizes
+void monitor_wait();
+
 state_t monitor_register(suscription_t *suscription);
 
 state_t monitor_unregister(suscription_t *suscription);

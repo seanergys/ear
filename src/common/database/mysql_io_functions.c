@@ -214,7 +214,7 @@ void *xrealloc(void *optr, size_t size)
 }
 
 
-void set_signature_simple(char full_sig)
+void set_signature_detail(char full_sig)
 {
     full_signature = full_sig;
     if (full_signature)
@@ -1208,23 +1208,23 @@ long long mysql_batch_insert_signatures(MYSQL *connection, signature_container_t
     if (full_signature)
     {
         params = ", (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        num_params = 29;
+        num_params = FULL_SIGNATURE_ARGS;
     }
     else
     {
         params = ", (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        num_params = 16;
+        num_params = SIMPLE_SIGNATURE_ARGS;
     }
 #else
     if (full_signature)
     {
         params = ", (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        num_params = 27;
+        num_params = FULL_SIGNATURE_ARGS;
     }
     else
     {
         params = ", (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        num_params = 14;
+        num_params = SIMPLE_SIGNATURE_ARGS;
     }
 #endif
 
@@ -1450,16 +1450,11 @@ int mysql_retrieve_signatures(MYSQL *connection, char *query, signature_t **sigs
     int status = 0;
 #if USE_GPUS
     long int min_gpu_sig_id = -1, max_gpu_sig_id = -1;
-    if (full_signature)
-        num_params = 30;
-    else 
-        num_params = 17;
-#else
-    if (full_signature)
-        num_params = 28;
-    else 
-        num_params = 15;
 #endif
+    if (full_signature)
+        num_params = FULL_SIGNATURE_ARGS + 1; //we add 1 because we also read the signature_id
+    else 
+        num_params = SIMPLE_SIGNATURE_ARGS + 1;
 
     MYSQL_BIND *bind = xcalloc(num_params, sizeof(MYSQL_BIND));
 
@@ -1611,49 +1606,6 @@ int mysql_retrieve_signatures(MYSQL *connection, char *query, signature_t **sigs
     *sigs = sigs_aux;
 
     return i;
-}
-
-int mysql_insert_power_signature(MYSQL *connection, power_signature_t *pow_sig)
-{
-    MYSQL_STMT *statement = mysql_stmt_init(connection);
-    if (!statement) return EAR_MYSQL_ERROR;
-
-    if (mysql_stmt_prepare(statement, POWER_SIGNATURE_MYSQL_QUERY, strlen(POWER_SIGNATURE_MYSQL_QUERY))) return mysql_statement_error(statement);
-
-    MYSQL_BIND bind[9];
-    memset(bind, 0, sizeof(bind));
-
-    //double types
-    int i;
-    for (i = 0; i < 7; i++)
-    {
-        bind[i].buffer_type = MYSQL_TYPE_DOUBLE;
-    }
-
-    //integer types
-    bind[7].buffer_type = bind[8].buffer_type = MYSQL_TYPE_LONGLONG;
-    bind[7].is_unsigned = bind[8].is_unsigned = 1;
-
-    //storage variable assignation
-    bind[0].buffer = (char *)&pow_sig->DC_power;
-    bind[1].buffer = (char *)&pow_sig->DRAM_power;
-    bind[2].buffer = (char *)&pow_sig->PCK_power;
-    bind[3].buffer = (char *)&pow_sig->EDP;
-    bind[4].buffer = (char *)&pow_sig->max_DC_power;
-    bind[5].buffer = (char *)&pow_sig->min_DC_power;
-    bind[6].buffer = (char *)&pow_sig->time;
-    bind[7].buffer = (char *)&pow_sig->avg_f;
-    bind[8].buffer = (char *)&pow_sig->def_f;
-
-    if (mysql_stmt_bind_param(statement, bind)) return mysql_statement_error(statement);
-
-    if (mysql_stmt_execute(statement)) return mysql_statement_error(statement);
-
-    int id = mysql_stmt_insert_id(statement);
-
-    if (mysql_stmt_close(statement)) return EAR_MYSQL_ERROR;
-
-    return id;
 }
 
 int mysql_batch_insert_power_signatures(MYSQL *connection, application_t *pow_sig, int num_sigs)
@@ -2056,11 +2008,7 @@ int mysql_batch_insert_periodic_metrics(MYSQL *connection, periodic_metric_t *pe
     if (!statement) return EAR_MYSQL_ERROR;
 
     char *params;
-#if USE_GPUS
-    int num_args = node_detail ? 11 : 6;
-#else
-    int num_args = node_detail ? 10 : 6;
-#endif
+    int num_args = node_detail ? FULL_PERIODIC_METRIC_ARGS : SIMPLE_PERIODIC_METRIC_ARGS;
 
     if (node_detail)
 #if USE_GPUS

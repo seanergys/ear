@@ -19,7 +19,7 @@
 
 #include <common/config.h>
 #include <common/includes.h>
-#include <common/output/verbose.h>
+#include <common/output/debug.h>
 #include <common/system/symplug.h>
 #include <common/hardware/hardware_info.h>
 #include <metrics/energy/energy_node.h>
@@ -61,7 +61,8 @@ const char *energy_names[] = {
 state_t energy_load(char *energy_obj)
 {
 	state_t ret;
-	
+
+    debug("loading energy plugins");	
 	if (energy_obj == NULL) {
 		return_msg(EAR_ERROR, "Trying to load NULL energy plugin");
 	}

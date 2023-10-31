@@ -113,6 +113,7 @@ src/common/config/config_install.h
 *edb_clean_pm
 *edb_clean_apps
 *edb_create
+*edcmon
 *ereport
 *get_active_nodes
 *get_app_list
@@ -146,6 +147,7 @@ src/tools/ear_lp_validation
 src/tools/external_attach
 src/tools/enode_control
 src/tools/get_projections
+src/tools/insert_test
 src/tools/learn_deleter
 src/tools/learn_validator
 src/tools/learning_delete

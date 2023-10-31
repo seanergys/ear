@@ -35,17 +35,23 @@ static double          line_size;
 
 BWIDTH_F_LOAD(bwidth_amd19_load)
 {
+    uint test[1] = { -1 };
+
     if (tpo->vendor != VENDOR_AMD || tpo->family < FAMILY_ZEN){
         return_msg(, Generr.api_incompatible);
     }
     if (state_fail(hsmp_scan(tpo))) {
         return;
     }
+    // Testing if the function is compatible
+    if (state_fail(hsmp_send(0, HSMP_GET_MAX_DDR_BANDIWDTH, test, test))) {
+        return;
+    }
     if (state_fail(topology_select(tpo, &tp, TPSelect.socket, TPGroup.merge, 0))) {
         return;
     }
     // ZEN3
-    fun = 0x14;
+    fun = HSMP_GET_MAX_DDR_BANDIWDTH;
     line_size = (double) tpo->cache_line_size;
     //
     pool = calloc(tp.cpu_count+1, sizeof(bwidth_t));

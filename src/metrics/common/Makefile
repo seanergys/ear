@@ -7,6 +7,7 @@ comm_OBJS = \
     cupti.o \
     file.o \
     hsmp.o \
+    hsmp_lib.o \
     hwmon.o \
     isst.o \
     likwid.o \

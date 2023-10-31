@@ -17,9 +17,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-//#define SHOW_DEBUGS 1
-
-
+#include <sys/stat.h>
 #include <common/config.h>
 #include <common/system/file.h>
 #include <common/utils/string.h>
@@ -116,8 +114,9 @@ state_t nodemgr_server_init(char *tmp, ear_njob_t **nodelist)
 	if (!file_lock_timeout(fd_node_mgr_lck, MAX_LOCK_TRIES)) return EAR_ERROR;
 
   /* The eard will create this area */
-	//verbose(WF_SUPPORT_VERB,"NODE MGR INFO path %s\n", node_mgr_info);
-  node_jobs_list = (ear_njob_t *)create_shared_area(node_mgr_info,(char *)node_jobs_list,sizeof(ear_njob_t)*MAX_CPUS_SUPPORTED, &fd_node_mgr_info,0);
+	debug("NODE MGR INFO %s\n", node_mgr_info);
+	mode_t perms = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH; // Read and write permission for the owner user. Read permission for group and others.
+  node_jobs_list = (ear_njob_t *) create_shared_area(node_mgr_info, perms, (char *) node_jobs_list, sizeof(ear_njob_t) * MAX_CPUS_SUPPORTED, &fd_node_mgr_info, 0);
 	
   file_unlock(fd_node_mgr_lck);
 	*nodelist = node_jobs_list;
