@@ -83,7 +83,7 @@ static char      **priority_paths;
 static char        date[128];
 static uint        exit_called;
 
-static int plugins_dependencies_read(cchar *string, ullong father_time_lapse, uint priority, int *father_deps_table)
+static int plugins_dependencies_read(cchar *string, ullong father_time_lapse, uint priority, uint *father_deps_table)
 {
     uint   list1_count;
     uint   list2_count;
@@ -190,7 +190,7 @@ static int plugins_dependencies_read(cchar *string, ullong father_time_lapse, ui
                 }
                 // Replacing dependency type
                 if (father_deps_table != NULL) {
-                    father_deps_table[j] = mandatory;
+                    father_deps_table[j] = (uint) mandatory;
                 }
                 break;
             }
@@ -201,7 +201,7 @@ static int plugins_dependencies_read(cchar *string, ullong father_time_lapse, ui
         }
         // If not found, update the father dependency table
         if (father_deps_table != NULL) {
-            father_deps_table[p.count] = mandatory;
+            father_deps_table[p.count] = (uint) mandatory;
         }
         // Not found, so this is a new plugin
         p.count += 1;
