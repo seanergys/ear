@@ -121,13 +121,13 @@ state_t policy_init(polctx_t *c)
 	if (c)
 	{
 		ulong g_freq = 0;
-
+#if 0
 		char *gpu_freq = ear_getenv(FLAG_GPU_DEF_FREQ);
 		if (gpu_freq && c->app->user_type == AUTHORIZED)
 		{
 			g_freq = atol(gpu_freq);
 		}
-
+#endif
 		gpuf_list       = (const ulong **) metrics_gpus_get(MGT_GPU)->avail_list;
 		gpuf_list_items = (const uint *)   metrics_gpus_get(MGT_GPU)->avail_count;
 
@@ -285,7 +285,7 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
 								// e.g., sig_aux.gpu_sig.gpu_data[i].GPU_power = projected_power;
 
 								float new_metric;
-								GPU_get_metric(i, my_sig, &new_metric); // TODO: Do some error check
+								GPU_get_metric(i, &sig_aux, &new_metric); // TODO: Do some error check
 
 								if (GPU_ok(i, &sig_aux, new_metric, current_metric))
 								{
@@ -516,6 +516,7 @@ static void GPU_metric_ready_update(signature_t *signature)
 }
 
 
+// optimanl gpu freq selection (min ed2p or max flops/w)
 static uint GPU_ok(uint gpu_idx, signature_t *signature, float curr, float last)
 {
 	verbose_master(2, "GPU ok validation curr %f last %f", curr, last);
