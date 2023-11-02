@@ -9,7 +9,9 @@ gpu_OBJS = \
     eard.o \
     nvml.o \
     oneapi.o \
-    rsmi.o
+    rsmi.o \
+    gpuprof_dcgmi.o \
+    gpuprof_dummy.o
 
 ######## RULES
 

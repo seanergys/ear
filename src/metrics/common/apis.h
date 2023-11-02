@@ -49,6 +49,7 @@
 #define API_AMD19             18
 #define API_INTEL143          19
 #define API_LINUX_POWERCAP    20
+#define API_DCGMI             21
 #define GRANULARITY_NONE       0
 #define GRANULARITY_DUMMY      1
 #define GRANULARITY_PROCESS    2
@@ -74,7 +75,7 @@ typedef struct ctx_s {
 typedef struct apinfo_s {
     char *layer;
     uint  api;
-		uint	ok;
+    uint  ok;
     char *api_str;
     uint  devs_count;
     uint  granularity;
@@ -82,8 +83,7 @@ typedef struct apinfo_s {
     uint  scope;
     char *scope_str;
     uint  bits;
-//    void *extra;
-    uint	dev_model;
+    uint  dev_model;
     void *list1;
     void *list2;
     void *list3;
@@ -96,9 +96,7 @@ typedef struct apinfo_s {
     void *set_list;
 } apinfo_t;
 
-
 #define metrics_t apinfo_t
-
 
 #if USE_GPUS
 // Below type was created to mantain compatibility with the current design of library/metrics and new GPU APIs

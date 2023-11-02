@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <errno.h>
 #include <fcntl.h>
@@ -97,7 +97,7 @@ static int static_read(popen_t *p, char *buffer)
         } while(buffer[len_acum-1] != EOF);
     } else {
         do {
-            // If not one shot, we are reading a bulk of bytes
+            // If not one shot, we are reading a bulk of bytes (less overhead)
             len_read = fread(&buffer[len_acum], sizeof(char), MAX_BUFFER-len_acum, p->file);
             len_acum = len_acum + len_read;
         } while(len_read > 0);
@@ -185,6 +185,7 @@ int popen_read(popen_t *p, const char* f, ...)
     if (!popen_pending(p)) {
         // If not end of file
         if (!popen_eof(p)) {
+            printf("1\n");
             // Then read and parse
             if ((static_read(p, buffer))) {
                 static_parse(p, buffer);
@@ -261,6 +262,16 @@ int popen_read(popen_t *p, const char* f, ...)
     }
 
     return was_pending;
+}
+
+uint popen_count_read(popen_t *p)
+{
+    return (uint) p->rows_count;
+}
+
+uint popen_count_pending(popen_t *p)
+{
+    return (uint) (p->rows_count - p->rows_index);
 }
 
 #if TEST

@@ -25,7 +25,7 @@
 char* strclean(char *string, char chr);
 
 /** Converts a string to lower case. */
-void strtolow(char *string);
+char *strtolow(char *string);
 
 /** Converts a string to upper case. */
 void strtoup(char *string);

@@ -63,6 +63,13 @@ state_t popen_open(char *command, int escape_lines, int one_shot, popen_t *p);
 
 void popen_close(popen_t *p);
 
+// Return 1 if there are elements pending to read.
 int popen_read(popen_t *p, const char* fmt, ...);
+
+// Counts the number of current elements kept in the buffer from last reading.
+uint popen_count_read(popen_t *p);
+
+// Count the number of elements pending.
+uint popen_count_pending(popen_t *p);
 
 #endif //METRICS_COMMON_POPEN_H
