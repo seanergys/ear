@@ -24,25 +24,19 @@
 #include <common/types.h>
 #include <common/states.h>
 
-
-#define NVML_ERROR_UNINIT_MSG			 "NVML was not first initialized."
-#define NVML_ERROR_INVALID_ARG_MSG "A supplied argument is invalid."
-
+#define NVML_ERROR_UNINIT_MSG       "NVML was not first initialized."
+#define NVML_ERROR_INVALID_ARG_MSG  "A supplied argument is invalid."
 
 #ifndef CUDA_BASE
-
-#define NVML_SUCCESS								0
-#define NVML_ERROR_UNINITIALIZED		1
-#define NVML_ERROR_INVALID_ARGUMENT 2
-
-#define NVML_FEATURE_ENABLED 0
-
-#define NVML_CLOCK_MEM									0
-#define NVML_CLOCK_SM        						0
-#define NVML_CLOCK_GRAPHICS  						0
+#define NVML_SUCCESS                    0
+#define NVML_ERROR_UNINITIALIZED        1
+#define NVML_ERROR_INVALID_ARGUMENT     2
+#define NVML_FEATURE_ENABLED            0
+#define NVML_CLOCK_MEM                  0
+#define NVML_CLOCK_SM                   0
+#define NVML_CLOCK_GRAPHICS             0
 #define NVML_CLOCK_ID_APP_CLOCK_TARGET	0
-
-#define NVML_TEMPERATURE_GPU 0
+#define NVML_TEMPERATURE_GPU            0
 
 #define NVML_DEVICE_ARCH_KEPLER  2
 #define NVML_DEVICE_ARCH_MAXWELL 3
@@ -53,7 +47,6 @@
 #define NVML_DEVICE_ARCH_ADA     8
 #define NVML_DEVICE_ARCH_HOPPER  9
 #define NVML_DEVICE_ARCH_UNKNOWN 0xffffffff
-
 
 typedef int nvmlDevice_t;
 typedef int nvmlDriverModel_t;
@@ -72,12 +65,14 @@ typedef struct nvmlUtilization_s
     int gpu;
 } nvmlUtilization_t;
 
+typedef int nvmlGpmMetricsGet_t;
+typedef int nvmlGpmSupport_t;
+typedef int nvmlGpmSample_t;
 #endif // CUDA_BASE
-
 
 typedef struct nvml_s
 {
-    nvmlReturn_t (*Init)										 (void);
+    nvmlReturn_t (*Init)                         (void);
     nvmlReturn_t (*Count)                		 (uint *devCount);
     nvmlReturn_t (*Handle)               		 (uint index, nvmlDevice_t *device);
     nvmlReturn_t (*GetSerial)            		 (nvmlDevice_t dev, char *serial, uint length);
@@ -88,19 +83,24 @@ typedef struct nvml_s
     nvmlReturn_t (*GetUtil)              		 (nvmlDevice_t dev, nvmlUtilization_t *utilization);
     nvmlReturn_t (*GetProcs)             		 (nvmlDevice_t dev, uint *infoCount, nvmlProcessInfo_t *infos);
     nvmlReturn_t (*GetDefaultAppsClock)	 		 (nvmlDevice_t dev, nvmlClockType_t clockType, uint* mhz);
-    nvmlReturn_t (*GetMemoryClocks)			 		 (nvmlDevice_t dev, uint *count, uint *mhz);
-    nvmlReturn_t (*GetGraphicsClocks)		 		 (nvmlDevice_t dev, uint mem_mhz, uint *count, uint *mhz);
-    nvmlReturn_t (*GetClock)						 		 (nvmlDevice_t device, nvmlClockType_t clockType, nvmlClockId_t clockId, uint* mhz);
-    nvmlReturn_t (*SetLockedClocks)			 		 (nvmlDevice_t dev, uint min_mhz, uint max_mhz);
-    nvmlReturn_t (*SetAppsClocks)				 		 (nvmlDevice_t dev, uint mem_mgz, uint gpu_mhz);
-    nvmlReturn_t (*ResetAppsClocks)			 		 (nvmlDevice_t dev);
-    nvmlReturn_t (*ResetLockedClocks)		 		 (nvmlDevice_t dev);
-    nvmlReturn_t (*GetPowerLimit)				 		 (nvmlDevice_t dev, uint *watts);
+    nvmlReturn_t (*GetMemoryClocks)	             (nvmlDevice_t dev, uint *count, uint *mhz);
+    nvmlReturn_t (*GetGraphicsClocks)            (nvmlDevice_t dev, uint mem_mhz, uint *count, uint *mhz);
+    nvmlReturn_t (*GetClock)                     (nvmlDevice_t device, nvmlClockType_t clockType, nvmlClockId_t clockId, uint* mhz);
+    nvmlReturn_t (*SetLockedClocks)              (nvmlDevice_t dev, uint min_mhz, uint max_mhz);
+    nvmlReturn_t (*SetAppsClocks)                (nvmlDevice_t dev, uint mem_mgz, uint gpu_mhz);
+    nvmlReturn_t (*ResetAppsClocks)              (nvmlDevice_t dev);
+    nvmlReturn_t (*ResetLockedClocks)            (nvmlDevice_t dev);
+    nvmlReturn_t (*GetPowerLimit)                (nvmlDevice_t dev, uint *watts);
     nvmlReturn_t (*GetPowerDefaultLimit) 		 (nvmlDevice_t dev, uint *watts);
-    nvmlReturn_t (*GetPowerLimitConstraints) (nvmlDevice_t dev, uint *min_watts, uint *max_watts);
-    nvmlReturn_t (*SetPowerLimit)						 (nvmlDevice_t dev, uint watts);
-    char*        (*ErrorString)							 (nvmlReturn_t result);
-		nvmlReturn_t (*GetArchitecture) 				 (nvmlDevice_t device, nvmlDeviceArchitecture_t* arch);
+    nvmlReturn_t (*GetPowerLimitConstraints)     (nvmlDevice_t dev, uint *min_watts, uint *max_watts);
+    nvmlReturn_t (*SetPowerLimit)                (nvmlDevice_t dev, uint watts);
+    char*        (*ErrorString)                  (nvmlReturn_t result);
+    nvmlReturn_t (*GetArchitecture)              (nvmlDevice_t device, nvmlDeviceArchitecture_t* arch);
+    nvmlReturn_t (*GpmMetricsGet)                (nvmlGpmMetricsGet_t *metricsGet); //GPM
+    nvmlReturn_t (*GpmSampleFree)                (nvmlGpmSample_t gpmSample);
+    nvmlReturn_t (*GpmSampleAlloc)               (nvmlGpmSample_t *gpmSample);
+    nvmlReturn_t (*GpmSampleGet)                 (nvmlDevice_t device, nvmlGpmSample_t gpmSample);
+    nvmlReturn_t (*GpmQueryDeviceSupport)        (nvmlDevice_t device, nvmlGpmSupport_t *gpmSupport);
 } nvml_t;
 
 state_t nvml_open(nvml_t *nvml);

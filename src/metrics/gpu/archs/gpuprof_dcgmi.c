@@ -15,7 +15,10 @@
 * and COPYING.EPL files.
 */
 
+#define SHOW_DEBUGS 1
+
 #include <stdlib.h>
+#include <common/output/debug.h>
 #include <common/string_enhanced.h>
 #include <metrics/common/popen.h>
 #include <metrics/gpu/archs/gpuprof_dcgmi.h>
@@ -34,33 +37,37 @@ GPUPROF_F_LOAD(gpuprof_dcgmi_load)
 
     //dcgmi dmon --list
     if (state_fail(s = popen_test("dcgmi"))) {
-        debug("Failed to test: %s", state_msg);
+        debug("Failed popen_test: %s", state_msg);
         return;
     }
     // Getting the number of GPUS
     if (state_fail(s = popen_open("dcgmi discovery -l", 0, 1, &p))) {
-        debug("Failed to open: %s", state_msg);
+        debug("Failed popen_open: %s", state_msg);
         return;
     }
     popen_read(&p, "s", &count);
     if (strstr(strtolow(count), "error") != NULL) {
+        debug("Failed while reading dcgmi discovery: %s", state_msg);
         popen_close(&p);
         return;
     }
     gpus_count = (uint) atoi(count);
     popen_close(&p);
     if (gpus_count == 0) {
+        debug("No GPUs found");
         return;
     }
     if (state_fail(s = popen_open("dcgmi dmon --list", 3, 1, &p))) {
-        debug("Failed to open: %s", state_msg);
+        debug("Failed popen_open: %s", state_msg);
         return;
     }
     // Allocating
     if (!popen_read(&p, "sai", &event_name, &event_id)) {
+        debug("Failed popen_read: %s", state_msg);
         return;
     }
     if ((mevs_count = popen_count_read(&p)) == 0) {
+        debug("No events found");
         return;
     }
     mevs = calloc(mevs_count, sizeof(gpuprof_evs_t));
@@ -70,15 +77,16 @@ GPUPROF_F_LOAD(gpuprof_dcgmi_load)
         strcpy(mevs[mevs_count].name, event_name);
         mevs[mevs_count].id = (uint) event_id;
         debug("EV%d: %s", event_id, event_name);
+        ++mevs_count;
     }
     while (popen_read(&p, "sai", &event_name, &event_id));
     //
-    apis_set(ops->get_info,         gpuprof_dcgmi_get_info);
-    apis_set(ops->events_get,       gpuprof_dcgmi_events_get);
-    apis_set(ops->events_set,       gpuprof_dcgmi_events_set);
-    apis_set(ops->events_multiplex, gpuprof_dcgmi_events_multiplex);
-    apis_set(ops->read,             gpuprof_dcgmi_read);
-    apis_set(ops->read_raw,         gpuprof_dcgmi_read_raw);
+    apis_put(ops->get_info,         gpuprof_dcgmi_get_info);
+    apis_put(ops->events_get,       gpuprof_dcgmi_events_get);
+    apis_put(ops->events_set,       gpuprof_dcgmi_events_set);
+    apis_put(ops->events_multiplex, gpuprof_dcgmi_events_multiplex);
+    apis_put(ops->read,             gpuprof_dcgmi_read);
+    apis_put(ops->read_raw,         gpuprof_dcgmi_read_raw);
     debug("Loaded DCGMI");
 }
 

@@ -17,6 +17,7 @@
 
 #include <pthread.h>
 #include <metrics/gpu/gpuprof.h>
+#include <metrics/gpu/archs/gpuprof_nvml.h>
 #include <metrics/gpu/archs/gpuprof_dcgmi.h>
 #include <metrics/gpu/archs/gpuprof_dummy.h>
 
@@ -35,7 +36,7 @@ void gpuprof_load(int force_api)
         goto dummy;
     }
     //gpuprof_rocm_load(&ops, force_api);
-    //gpuprof_nvml_load(&ops, force_api);
+    gpuprof_nvml_load(&ops);
     gpuprof_dcgmi_load(&ops);
 dummy:
     gpuprof_dummy_load(&ops);

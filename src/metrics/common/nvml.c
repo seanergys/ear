@@ -65,7 +65,12 @@ static const char *nvml_names[] =
     "nvmlDeviceGetPowerManagementLimitConstraints",
     "nvmlDeviceSetPowerManagementLimit",
     "nvmlErrorString",
-		"nvmlDeviceGetArchitecture",
+    "nvmlDeviceGetArchitecture",
+    "nvmlGpmMetricsGet", //GPM
+    "nvmlGpmSampleFree",
+    "nvmlGpmSampleAlloc",
+    "nvmlGpmSampleGet",
+    "nvmlGpmQueryDeviceSupport",
 };
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;

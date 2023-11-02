@@ -11,7 +11,8 @@ gpu_OBJS = \
     oneapi.o \
     rsmi.o \
     gpuprof_dcgmi.o \
-    gpuprof_dummy.o
+    gpuprof_dummy.o \
+    gpuprof_nvml.o
 
 ######## RULES
 

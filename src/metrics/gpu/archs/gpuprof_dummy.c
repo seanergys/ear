@@ -24,12 +24,12 @@ GPUPROF_F_LOAD(gpuprof_dummy_load)
     sprintf(mevs.name, "dummy");
     mevs.id = 1;
 
-    apis_set(ops->get_info,         gpuprof_dummy_get_info);
-    apis_set(ops->events_get,       gpuprof_dummy_events_get);
-    apis_set(ops->events_set,       gpuprof_dummy_events_set);
-    apis_set(ops->events_multiplex, gpuprof_dummy_events_multiplex);
-    apis_set(ops->read,             gpuprof_dummy_read);
-    apis_set(ops->read_raw,         gpuprof_dummy_read_raw);
+    apis_put(ops->get_info,         gpuprof_dummy_get_info);
+    apis_put(ops->events_get,       gpuprof_dummy_events_get);
+    apis_put(ops->events_set,       gpuprof_dummy_events_set);
+    apis_put(ops->events_multiplex, gpuprof_dummy_events_multiplex);
+    apis_put(ops->read,             gpuprof_dummy_read);
+    apis_put(ops->read_raw,         gpuprof_dummy_read_raw);
 }
 
 GPUPROF_F_GET_INFO(gpuprof_dummy_get_info)
