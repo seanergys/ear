@@ -947,8 +947,6 @@ int main(int argc,char *argv[])
         connection = PQconnectdbParams((const char * const *)keys, (const char * const *)values, 0);
     }
 
-    free(keys);
-    free(values);
     if (!print_out && PQstatus(connection) != CONNECTION_OK)
     {
         fprintf(stderr, "ERROR connecting to the database after its creation: %s\n", PQerrorMessage(connection));
@@ -958,6 +956,8 @@ int main(int argc,char *argv[])
         free_cluster_conf(&my_cluster);
         exit(1);
     }
+    free(keys);
+    free(values);
 #endif
 
     create_tables(connection);

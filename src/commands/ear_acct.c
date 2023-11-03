@@ -1328,10 +1328,12 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 
 void _add_string_filter(char *query, char *addition, char *value, bool quotes)
 {
-    if (query_filters < 1)
+    if (query_filters < 1) {
         strcat(query, " WHERE ");
-    else
+    } else {
         strcat(query, " AND ");
+    }
+
 
 	strcat(query, addition);
 	strcat(query, "=");
