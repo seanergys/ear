@@ -23,7 +23,6 @@
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static gpuprof_ops_t ops;
-//static uint          devs_count;
 static uint          ok_load;
 
 void gpuprof_load(int force_api)
@@ -51,14 +50,14 @@ void gpuprof_get_info(apinfo_t *info)
     ops.get_info(info);
 }
 
-void gpuprof_events_get(const gpuprof_evs_t **evs, uint *evs_count)
+GPUPROF_F_EVENTS_GET(gpuprof_events_get)
 {
     ops.events_get(evs, evs_count);
 }
 
-void gpuprof_events_set(char *evs, int group)
+GPUPROF_F_EVENTS_SET(gpuprof_events_set)
 {
-
+    ops.events_set(device, evs, data);
 }
 
 void gpuprof_events_multiplex()
@@ -141,8 +140,9 @@ int main(int argc, char *argv[])
     printf("%s %s %s\n", info.layer, info.api_str, info.granularity_str);
     gpuprof_events_get(&evs, &evs_count);
     for (i = 0; i < evs_count; ++i) {
-        printf("EV%d: %s.name %u.id\n", i, evs[i].name, evs[i].id);
+        printf("id.%02u %s\n", evs[i].id, evs[i].name);
     }
+    gpuprof_events_set(0, NULL, NULL);
 
     return 0;
 }

@@ -37,6 +37,7 @@
 #define NVML_CLOCK_GRAPHICS             0
 #define NVML_CLOCK_ID_APP_CLOCK_TARGET	0
 #define NVML_TEMPERATURE_GPU            0
+#define NVML_GPM_METRIC_MAX             1
 
 #define NVML_DEVICE_ARCH_KEPLER  2
 #define NVML_DEVICE_ARCH_MAXWELL 3
@@ -47,6 +48,7 @@
 #define NVML_DEVICE_ARCH_ADA     8
 #define NVML_DEVICE_ARCH_HOPPER  9
 #define NVML_DEVICE_ARCH_UNKNOWN 0xffffffff
+
 
 typedef int nvmlDevice_t;
 typedef int nvmlDriverModel_t;

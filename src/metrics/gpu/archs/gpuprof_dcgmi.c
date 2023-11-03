@@ -84,7 +84,6 @@ GPUPROF_F_LOAD(gpuprof_dcgmi_load)
     apis_put(ops->get_info,         gpuprof_dcgmi_get_info);
     apis_put(ops->events_get,       gpuprof_dcgmi_events_get);
     apis_put(ops->events_set,       gpuprof_dcgmi_events_set);
-    apis_put(ops->events_multiplex, gpuprof_dcgmi_events_multiplex);
     apis_put(ops->read,             gpuprof_dcgmi_read);
     apis_put(ops->read_raw,         gpuprof_dcgmi_read_raw);
     debug("Loaded DCGMI");
@@ -104,12 +103,7 @@ void gpuprof_dcgmi_events_get(const gpuprof_evs_t **evs, uint *evs_count)
     *evs = mevs;
 }
 
-void gpuprof_dcgmi_events_set(char *evs, int group)
-{
-
-}
-
-void gpuprof_dcgmi_events_multiplex()
+GPUPROF_F_EVENTS_SET(gpuprof_dcgmi_events_set)
 {
 
 }

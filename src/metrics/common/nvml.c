@@ -16,6 +16,8 @@
 */
 
 
+#define SHOW_DEBUGS 1
+
 #include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
@@ -37,7 +39,7 @@
 #define NVML_N               0
 #else
 #define NVML_PATH            CUDA_BASE
-#define NVML_N               24
+#define NVML_N               29
 #endif
 
 static const char *nvml_names[] =

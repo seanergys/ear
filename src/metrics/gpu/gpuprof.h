@@ -25,6 +25,7 @@
 
 typedef struct gpuprof_s {
 	timestamp_t time;
+    ullong     *values;
 } gpuprof_t;
 
 typedef struct gpuprof_evs_s {
@@ -36,8 +37,7 @@ typedef struct gpuprof_evs_s {
 #define GPUPROF_F_LOAD(name)             void name (gpuprof_ops_t *ops)
 #define GPUPROF_F_GET_INFO(name)         void name (apinfo_t *info)
 #define GPUPROF_F_EVENTS_GET(name)       void name (const gpuprof_evs_t **evs, uint *evs_count)
-#define GPUPROF_F_EVENTS_SET(name)       void name (char *evs, int group)
-#define GPUPROF_F_EVENTS_MULTIPLEX(name) void name ()
+#define GPUPROF_F_EVENTS_SET(name)       void name (int device, char *evs, gpuprof_t *data)
 #define GPUPROF_F_READ(name)             state_t name (gpuprof_t *data)
 #define GPUPROF_F_READ_RAW(name)         state_t name (gpuprof_t *data)
 
@@ -46,7 +46,6 @@ GPUPROF_F_LOAD             (gpuprof_ ##name ##_load); \
 GPUPROF_F_GET_INFO         (gpuprof_ ##name ##_get_info); \
 GPUPROF_F_EVENTS_GET       (gpuprof_ ##name ##_events_get); \
 GPUPROF_F_EVENTS_SET       (gpuprof_ ##name ##_events_set); \
-GPUPROF_F_EVENTS_MULTIPLEX (gpuprof_ ##name ##_events_multiplex); \
 GPUPROF_F_READ             (gpuprof_ ##name ##_read); \
 GPUPROF_F_READ_RAW         (gpuprof_ ##name ##_read_raw); \
 
@@ -54,11 +53,9 @@ typedef struct gpuprof_ops_s {
     GPUPROF_F_GET_INFO((*get_info));
     GPUPROF_F_EVENTS_GET((*events_get));
     GPUPROF_F_EVENTS_SET((*events_set));
-    GPUPROF_F_EVENTS_MULTIPLEX ((*events_multiplex));
     GPUPROF_F_READ((*read));
     GPUPROF_F_READ_RAW((*read_raw));
 } gpuprof_ops_t;
-
 
 void gpuprof_load(int force_api);
 
@@ -66,9 +63,8 @@ void gpuprof_get_info(apinfo_t *info);
 
 void gpuprof_events_get(const gpuprof_evs_t **evs, uint *evs_count);
 
-void gpuprof_events_set(char *evs, int group);
-
-void gpuprof_events_multiplex();
+// Events is a list in id, short or long name format. Device can be all_devs.
+void gpuprof_events_set(int device, char *evs, gpuprof_t *data);
 
 state_t gpuprof_read(gpuprof_t *data);
 
