@@ -36,6 +36,8 @@
 #include <common/colors.h>
 #include <common/types/classification_limits.h>
 
+#include <commands/query_helpers.h>
+
 #if USE_DB
 #include <common/states.h>
 #include <common/database/db_helper.h>
@@ -52,25 +54,11 @@ cluster_conf_t my_conf;
 
 int full_length = 0;
 int verbose = 0;
-int query_filters = 0;
 int all_mpi = 0;
 int avx = 0;
 int print_gpus = 1;
 int loop_extended = 0;
 char csv_path[256] = "";
-
-typedef struct query_addons 
-{
-	int limit;
-	int job_id;
-	int step_id;
-	int start_time;
-	int end_time;
-	char e_tag[64];
-	char app_id[64];
-	char job_ids[64];
-	char step_ids[64];
-} query_adds_t;
 
 #if COLORS
 static void print_colors_legend()
@@ -868,81 +856,6 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 }
 #endif
 
-void _add_string_filter(char *query, char *addition, char *value, bool quotes)
-{
-    if (query_filters < 1) {
-        strcat(query, " WHERE ");
-    } else {
-        strcat(query, " AND ");
-    }
-
-
-	strcat(query, addition);
-	strcat(query, "=");
-	if (quotes) strcat(query, "'");
-	strcat(query, value);
-	if (quotes) strcat(query, "'");
-	//	sprintf(query, query, value);
-	query_filters ++;
-}
-
-#define add_string_filter(query, addition, value) \
-    _add_string_filter(query, addition, value, 1); 
-
-#define add_string_filter_no_quotes(query, addition, value) \
-    _add_string_filter(query, addition, value, 0); 
-
-void add_int_filter(char *query, char *addition, int value)
-{
-    char query_tmp[512];
-    strcpy(query_tmp, query);
-    if (query_filters < 1)
-        strcat(query_tmp, " WHERE ");
-    else
-        strcat(query_tmp, " AND ");
-
-    strcat(query_tmp, addition);
-    strcat(query_tmp, "=");
-    strcat(query_tmp, "%llu");
-    sprintf(query, query_tmp, value);
-    query_filters ++;
-}
-
-void add_int_comp_filter(char *query, char *addition, int value, char greater_than)
-{
-    char query_tmp[512];
-    strcpy(query_tmp, query);
-    if (query_filters < 1)
-        strcat(query_tmp, " WHERE ");
-    else
-        strcat(query_tmp, " AND ");
-
-    strcat(query_tmp, addition);
-    if (greater_than)
-        strcat(query_tmp, ">");
-    else
-        strcat(query_tmp, "<");
-    strcat(query_tmp, "%llu");
-    sprintf(query, query_tmp, value);
-    query_filters ++;
-}
-
-void add_int_list_filter(char *query, char *addition, char *value)
-{
-    if (query_filters < 1)
-        strcat(query, " WHERE ");
-    else
-        strcat(query, " AND ");
-
-    strcat(query, addition);
-    strcat(query, " IN ");
-    strcat(query, "(");
-    strcat(query, value);
-    strcat(query, ")");
-    //	sprintf(query, query, value);
-    query_filters ++;
-}
-
 void print_event_type(int type, int fd)
 {
     char str[64];
@@ -1401,7 +1314,7 @@ void read_jobs_from_loops(query_adds_t *q_a)
     db_free_results(values, columns, rows);
 
     // reset filters
-    query_filters = 0;
+    reset_query_filters();
     strcpy(query, "SELECT * FROM Jobs ");
 
     if (q_a->job_id >= 0)
@@ -1551,7 +1464,7 @@ void read_from_database(char *user, query_adds_t *q_a)
     }
     strcat(query, ") as t1");
 
-	query_filters = 0;
+    reset_query_filters();
 	if (q_a->job_id >= 0)
 		add_int_filter(query, "id", q_a->job_id);
 	else if (strlen(q_a->job_ids) > 0)

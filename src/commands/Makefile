@@ -35,12 +35,17 @@ rapi_OBJS = \
     $(SRCDIR)/global_manager/eargm_rapi.o \
     $(SRCDIR)/database_cache/eardbd_api.o
 
+helper_OBJS = $(SRCDIR)/commands/query_helpers.o
+
 ######## RULES
 
-all: $(com1_BINS) $(com2_BINS)
+all: $(helper_OBJS) $(com1_BINS) $(com2_BINS)
 
-eacct: ear_acct.c $(comm_OBJS)
-	$(CCC) $(SLURM_CFLAGS) $(DB_CFLAGS) -o $@ $< $(comm_OBJS) $(DB_LDFLAGS) $(LDFLAGS)
+%.o: %.c %.h
+	$(CC) $(CC_FLAGS) $(CFLAGS) -c $<
+
+eacct: ear_acct.c $(comm_OBJS) $(helper_OBJS)
+	$(CCC) $(SLURM_CFLAGS) $(DB_CFLAGS) -o $@ $< $(comm_OBJS) $(helper_OBJS) $(DB_LDFLAGS) $(LDFLAGS)
 
 econtrol: ear_control.c $(rapi_OBJS) $(comm_OBJS)
 	$(CCC) $(SLURM_CFLAGS)  -o $@ $< $(rapi_OBJS) $(comm_OBJS) $(LDFLAGS)
