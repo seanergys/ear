@@ -242,6 +242,11 @@ state_t dvfs_pc_thread_init(void *p)
         pthread_exit(NULL);
     }
 
+    // set the governor to userspace just when needed
+
+    verbose(VEARD_PC, "Setting governor to userspace for DVFS powercap control");
+		state_t ret_st = frequency_set_userspace_governor_all_cpus();
+    check_usrspace_gov_set(ret_st, VEARD_PC);
 
 	// read initial values
 	energy_cpu_read(NULL, values_rapl_init);
@@ -333,6 +338,7 @@ state_t dvfs_pc_thread_main(void *p)
         frequency_npstate_to_nfreq(c_pstate,c_freq,node_size);
         //print_frequencies(node_size, c_freq);
         frequency_set_with_list(node_size,c_freq);
+        
         verbose(VEARD_PC+1,"%spower above limit. Curr %.2f Limit %.2f, setting freq0 %lu freqm %lu%s", COL_RED, power_rapl, my_limit, c_freq[0], c_freq[node_size-1], COL_CLR);
 
     }else{ /* We are below the PC */
@@ -404,8 +410,9 @@ state_t enable(suscription_t *sus)
 	}
 
     debug("DVFS:Initializing frequency in dvfs_pc %u cpus",node_size);
-    frequency_init(node_size);
-	frequency_set_userspace_governor_all_cpus();
+    frequency_init(0);
+		state_t ret_st = frequency_set_userspace_governor_all_cpus();
+	check_usrspace_gov_set(ret_st, VEARD_PC);
     num_pstates = frequency_get_num_pstates();
 
     /* node_size or MAX_CPUS_SUPPORTED */

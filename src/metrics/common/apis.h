@@ -20,14 +20,15 @@
 
 #include <common/types/generic.h>
 
-#define no_ctx           NULL
+#define no_ctx                 NULL
 // Load EARD API or not
-#define EARD                   1
-#define NO_EARD                0
+#define EARD                   API_EARD
+#define NO_EARD                API_FREE
 #define all_devs              -1
 #define all_cpus               all_devs
 #define all_cores             -2
 #define API_NONE               0
+#define API_FREE               API_NONE
 #define API_DUMMY              1
 #define API_EARD               2
 #define API_BYPASS             3
@@ -40,13 +41,14 @@
 #define API_LIKWID            10
 #define API_CUPTI             11
 #define API_ONEAPI            12
-#define API_RAPL              13
+#define API_RAPL              API_INTEL63
 #define API_ISST              14
 #define API_FAKE              15
 #define API_CPUMODEL          16
 #define API_RSMI              17
 #define API_AMD19             18
 #define API_INTEL143          19
+#define API_LINUX_POWERCAP    20
 #define GRANULARITY_NONE       0
 #define GRANULARITY_DUMMY      1
 #define GRANULARITY_PROCESS    2
@@ -61,26 +63,54 @@
 #define SCOPE_PROCESS          2
 #define SCOPE_NODE             3
 
+#define API_IS(flag, api) \
+    (flag == api)
+
 typedef struct ctx_s {
     void *context;
 } ctx_t;
 
+
 typedef struct apinfo_s {
     char *layer;
     uint  api;
+		uint	ok;
     char *api_str;
     uint  devs_count;
     uint  granularity;
     char *granularity_str;
     uint  scope;
     char *scope_str;
+    uint  bits;
+//    void *extra;
+    uint	dev_model;
     void *list1;
     void *list2;
     void *list3;
     uint  list1_count;
     uint  list2_count;
     uint  list3_count;
+    void *avail_list;
+    uint  avail_count;
+    void *current_list;
+    void *set_list;
 } apinfo_t;
+
+
+#define metrics_t apinfo_t
+
+
+#if USE_GPUS
+// Below type was created to mantain compatibility with the current design of library/metrics and new GPU APIs
+typedef struct metrics_gpus_s {
+    uint  api;
+    uint  ok;
+    uint  devs_count;
+    void **avail_list;
+    uint *avail_count;
+    void *current_list;
+} metrics_gpus_t;
+#endif
 
 /* Replaces the function of the operation if its NULL. */
 #define apis_put(op, func) \
@@ -137,29 +167,5 @@ void apinfo_tostr(apinfo_t *info);
 	if (p1 == NULL) { \
 		p1 = p2; \
 	}
-
-typedef struct metrics_s {
-    ctx_t c;
-    uint  api;
-    uint  ok;
-    uint  granularity;
-    uint  devs_count;
-    void *avail_list;
-    uint  avail_count;
-    void *current_list;
-    void *set_list;
-} metrics_t;
-
-#if USE_GPUS
-// Below type was created to mantain compatibility with the current design of library/metrics and new GPU APIs
-typedef struct metrics_gpus_s {
-    uint  api;
-    uint  ok;
-    uint  devs_count;
-    void **avail_list;
-    uint *avail_count;
-    void *current_list;
-} metrics_gpus_t;
-#endif
 
 #endif

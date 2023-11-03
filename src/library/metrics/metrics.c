@@ -15,11 +15,12 @@
 * and COPYING.EPL files.
 */
 
+
 #define _GNU_SOURCE
 #define FAKE_POWER_READING  0
 #define FAKE_ENERGY_READING 0
-
 // #define SHOW_DEBUGS            1
+
 
 #define INFO_METRICS           2
 #define IO_VERB                3
@@ -68,16 +69,6 @@
 #include <library/policies/common/mpi_stats_support.h> /* Should we move this file out out policies? */
 #include <library/tracer/tracer.h>
 #include <library/tracer/tracer_paraver_comp.h>
-
-#if USE_GPUS
-#define EAR_USE_CUPTI "EAR_USE_CUPTI"
-#include <metrics/gpu/gpu.h>
-#define USE_CUPTI 0
-#if USE_CUPTI
-#include <metrics/gpu/gpuproc.h>
-#endif
-#endif // USE_GPUS
-
 #include <metrics/io/io.h>
 #include <metrics/cpi/cpi.h>
 #include <metrics/cache/cache.h>
@@ -89,8 +80,21 @@
 #include <management/cpufreq/cpufreq.h>
 #include <management/imcfreq/imcfreq.h>
 #include <daemon/local_api/eard_api.h>
-
 #include <report/report.h>
+#if USE_GPUS
+#include <metrics/gpu/gpu.h>
+#include <management/gpu/gpu.h>
+#if USE_CUPTI
+#include <metrics/gpu/gpuproc.h>
+#endif
+#if DCGMI
+#include <library/metrics/dcgmi_lib.h>
+#endif
+#endif // USE_GPUS
+#if METRICS_OVH
+#include <common/utils/overhead.h>
+#endif
+
 
 // Registers
 #define LOO         0 // loop
@@ -102,12 +106,11 @@
 #define SIG_BEGIN 	0
 #define SIG_END		1
 
+#if USE_GPUS & USE_CUPTI
+#define EAR_USE_CUPTI "EAR_USE_CUPTI"
+#endif
 
-
-
-#define METRICS_OVH 1
 #if METRICS_OVH
-#include <common/utils/overhead.h>
 uint id_ovh_partial_stop;
 uint id_ovh_compute_data;
 uint id_ovh_dc_energy;
@@ -174,28 +177,11 @@ static ctx_t       ctx_io;
 /* MPI statistics */
 mpi_information_t *metrics_mpi_info[2];             // Contains the data of the period
 mpi_information_t *metrics_last_mpi_info[2];
-// mpi_calls_types_t *metrics_mpi_calls_types[2];      // Contains the data of the period
+#if MPI_CALL_TYPES
+mpi_calls_types_t *metrics_mpi_calls_types[2];      // Contains the data of the period
 mpi_calls_types_t *metrics_last_mpi_calls_types[2];
-
-#if USE_GPUS
-
-#if DCGMI
-//#define DCGMI_NUM_EVENTS 14
-#define DCGMI_NUM_EVENTS 4
-#define DCGMI_SETS       3
-static dcgmi_t     *dcgmi_metrics[DCGMI_SETS];
-static dcgmi_t     *dcgmi_metrics_accum[DCGMI_SETS];
-static uint        dcgmi_events[DCGMI_SETS][DCGMI_NUM_EVENTS];
-static char        dcgmi_events_str[DCGMI_SETS][DCGMI_NUM_EVENTS*64];
-static uint        dcgmi_curr_ev_set = 0;
-static char        dcgmi_metrics_str[2048];
-static double      dcgmi_elapsed = 0;
-static uint        dcgmi = 1;
-#else
-static uint        dcgmi = 0;
 #endif
-char        gpu_str[512];
-#endif // USE_GPUS
+
 
 
 /* These vectors have position APP for application granularity and LOO for loop granularity. */
@@ -250,6 +236,7 @@ static gpu_t      *gpu_metrics_read2[2];
 static gpu_t      *gpu_metrics_diff[2];
 static gpu_t      *gpu_metrics_busy;
 static gpu_t      *gpu_metrics_busy_diff;
+char        gpu_str[512];
 #endif // USE_GPUS
 
 
@@ -356,50 +343,17 @@ const metrics_gpus_t *metrics_gpus_get(uint api)
 }
 #endif // USE_GPUS
 
-#if DCGMI && USE_GPUS
-void report_dcgmi_metrics()
+uint metrics_CPU_phase_ok()
 {
-  dcgmi_t total;
-  uint    active[dcgmi_num_events];
-  uint index;
-  uint gcount = gpu_dcgmi_gpus_detected();
-
-  if (!dcgmi) return;
-  
- 
-  /* Cleaning */
-  memset(&total, 0, sizeof(dcgmi_t));
-  memset(&active, 0, sizeof(uint)*dcgmi_num_events);
-
-  /* Moving from accumulated data , per group and gpu to total */
-  for (uint g = 0; g < gcount; g++){
-    for (uint ev = 0; ev < DCGMI_NUM_EVENTS; ev ++){
-      for (uint set = 0; set < DCGMI_SETS; set++){
-        index = dcgmi_events[set][ev] - dcgmi_first_event;
-        active[index] += (dcgmi_metrics_accum[set][g].values[ev] > 0);
-        total.values[index] += dcgmi_metrics_accum[set][g].values[ev];
-      }
-    }
-  }
-  
-  /* Report */
-  for (uint ev = 0; ev < dcgmi_num_events; ev++){
-    if (total.values[ev] > 0){
-      if (gpu_dcgmi_event_type(ev + dcgmi_first_event) == RATIO){
-        verbose_master(1,"DCGMI %s = %.3lf %%  (%u GPUs actives)", gpu_dcgmi_event_to_name(ev + dcgmi_first_event), (total.values[ev]/active[ev])*100.0, active[ev]);
-      }else{
-        verbose_master(1,"DCGMI %s = %.3lf KB/sec", gpu_dcgmi_event_to_name(ev + dcgmi_first_event), total.values[ev]/1024.0);
-      }
-    }
-  }
-
+    if (!met_cpi.ok || !met_bwidth.ok || !met_flops.ok) return 0;
+    return 1;
 }
-#endif
+
 
 static void metrics_configuration(topology_t *tp)
 {
 	char topo_str[1024];
-	ulong freq_base;
+    cfb_t bf;
 	if (!EARL_LIGHT) return;
 	if (eards_connected()) {
 		verbose_master(2, "EARD connected");
@@ -411,23 +365,9 @@ static void metrics_configuration(topology_t *tp)
 		earl_default_domains.cpu = POL_NOT_SUPPORTED;
 		topology_tostr(tp, topo_str, sizeof(topo_str));
 		verbose_master(ERROR_VERB,"%s", topo_str);
-		if (topology_freq_getbase(0, &freq_base) == EAR_SUCCESS){
-			verbose_master(ERROR_VERB, "Frequency detected %lu", freq_base);
-		}
-	}else{
-      if (tp->base_freq == DUMMY_BASE_FREQ){
-      uint nominal;
-      pstate_t *pst_list;
-      mgt_cpufreq_get_nominal(no_ctx, &nominal);
-      pst_list                    = mgt_cpufreq.avail_list;
-      tp->base_freq               = pst_list[nominal].khz;
-      arch_desc.top.base_freq     = tp->base_freq;
-      verbose_master(ERROR_VERB, "Using base_freq cpufreq_list[%u] = %lu based on MGT cpufreq",nominal, tp->base_freq);
-
-      eard_dummy_replace_base_freq(tp->base_freq);
-    }    
-
-  }
+        cpufreq_base_init(tp, &bf);
+        verbose_master(ERROR_VERB, "Frequency detected %lu", (ulong) bf.frequency);
+	}
 	if (!mgt_imcfreq.ok){
 		verbose_master(ERROR_VERB, "Mgt imcfreq is not ok, swtching to monitoring for IMC");
 		earl_default_domains.mem = POL_NOT_SUPPORTED;
@@ -462,29 +402,9 @@ static void metrics_configuration(topology_t *tp)
 
 
 #if DCGMI & USE_GPUS
-static void dcgmi_static_events_init()
-{
-	/* Set 0 */
-  dcgmi_events[0][0] = tensor_active;
-  dcgmi_events[0][1] = fp64_active;
-  dcgmi_events[0][2] = dram_active;
-  dcgmi_events[0][3] = pcie_tx_bytes;
-	/* Set 1 */
-  dcgmi_events[1][0] = fp32_active;
-  dcgmi_events[1][1] = fp16_active;
-  dcgmi_events[1][2] = pcie_rx_bytes;
-  dcgmi_events[1][3] = gr_engine_active;
-	/* Set 2 */
-  dcgmi_events[2][0] = sm_active;
-  dcgmi_events[2][1] = sm_occupancy;
-  dcgmi_events[2][2] = nvlink_tx_bytes;
-  dcgmi_events[2][3] = nvlink_rx_bytes;
-	
-}
-
 uint metrics_dcgmi_enabled()
 {
-  return dcgmi;
+  return dcgmi_lib_is_enabled();
 }
 #endif
 
@@ -496,12 +416,12 @@ static void metrics_static_init(topology_t *tp)
         function;
 
     master = (masters_info.my_master_rank >= 0);
-    eard   = (master);
+    eard   = ((master) ? API_EARD : NO_EARD);
     // Load
 #if SINGLE_CONNECTION
     sa(mgt_cpufreq_load(tp, eard));
 #else
-    sa(mgt_cpufreq_load(tp, 1));
+    sa(mgt_cpufreq_load(tp, API_EARD));
 #endif
     sa(mgt_imcfreq_load(tp, eard, NULL));
     sa( energy_cpu_load(tp, eard));
@@ -519,15 +439,15 @@ static void metrics_static_init(topology_t *tp)
 		}else{
 			/* If master but EARD not connected */
 			if (eard && !eards_connected()){
-					  gpu_load(2);
+					  gpu_load(API_NVML);
 			}	else{
-						gpu_load(0);
+						gpu_load(API_FREE);
 			}
 		}
     mgt_gpu_load(eard);
 #if USE_CUPTI
     if (read_cupti_metrics) {
-      gpuproc_load(1);
+      gpuproc_load(eard);
     }
 #endif
 
@@ -547,9 +467,9 @@ static void metrics_static_init(topology_t *tp)
     sa(    cpufreq_get_api(&met_cpufreq.api));
     sa(    imcfreq_get_api(&met_imcfreq.api));
     sa(     bwidth_get_api(&met_bwidth.api ));
-    sa(      flops_get_api(&met_flops.api  ));
     sa(        cpi_get_api(&met_cpi.api    ));
     sa(mgt_cpuprio_get_api(&mgt_cpuprio.api));
+		flops_get_info(&met_flops);
 
 		if (met_cpufreq.api == API_DUMMY) estimate_met_cpuf = 1;
 		if (met_bwidth.api  == API_DUMMY) estimate_gbs = 1;
@@ -570,14 +490,13 @@ static void metrics_static_init(topology_t *tp)
     mgt_cpufreq.ok = (mgt_cpufreq.api > API_DUMMY);
     mgt_imcfreq.ok = (mgt_imcfreq.api > API_DUMMY);
     met_cpufreq.ok = (met_cpufreq.api > API_DUMMY);
+    mgt_cpuprio.ok = (mgt_cpuprio.api > API_DUMMY);
     met_imcfreq.ok = (met_imcfreq.api > API_DUMMY);
     met_bwidth.ok  = (met_bwidth.api  > API_DUMMY);
     met_energy.ok  = (met_energy.api  > API_DUMMY);
     met_cache.ok   = 1;
-    met_flops.ok   = (met_flops.api   > API_DUMMY);
+    met_flops.ok   = 1;
     met_cpi.ok     = (met_cpi.api     > API_DUMMY);
-
-    mgt_cpuprio.ok = (mgt_cpuprio.api > API_DUMMY);
 
 #if USE_GPUS
     mgt_gpu.ok     = (mgt_gpu.api     > API_DUMMY);
@@ -595,25 +514,18 @@ static void metrics_static_init(topology_t *tp)
     }
 #endif
 
-  #if DCGMI & USE_GPUS
-  if (met_gpu.ok == 0) dcgmi = 0;
-  if (dcgmi){
-      verbose_master(1,"DCGMI support ON");
-      dcgmi_static_events_init();
-      for (uint set = 0; set < DCGMI_SETS; set++){
-        gpu_dcgmi_events_to_str(dcgmi_events[set], DCGMI_NUM_EVENTS, dcgmi_events_str[set]);
-        /* The init is done only once becuase both sets has the same size */
-        if (set == 0) gpu_dcgmi_init(dcgmi_events_str[set], DCGMI_NUM_EVENTS);
-        gpu_dcgmi_data_alloc(&dcgmi_metrics[set]);
-        gpu_dcgmi_data_alloc(&dcgmi_metrics_accum[set]);
-        verbose_master(2, "DCGMI[%u] initialized with %u events list=%s", set, DCGMI_NUM_EVENTS, dcgmi_events_str[set]);
-      }
-   }else{
-      verbose_master(1,"DCGMI support OFF");
-   }
-  #endif
+#if DCGMI
+    if (master && met_gpu.ok)
+    {
+	    if state_fail(dcgmi_lib_load())
+	    {
+		    error_lib("Loading EARL DCGMI module: %s", state_msg);
+	    }
+    }
+#endif // DCGMI
 #endif // USE_GPUS
-	debug("metrics_api ready");
+
+  debug("metrics_api ready");
 
     // Init
     sa(mgt_cpufreq_init(no_ctx));
@@ -726,9 +638,10 @@ static void metrics_static_init(topology_t *tp)
     }
 #endif
     if (VERB_ON(2) && master){
-      cache_details_tostr(cache_description, sizeof(cache_description));
+      cache_internals_tostr(cache_description, sizeof(cache_description));
       verbose_master(2, "%s", cache_description);
     }
+
 
     cpufreq_data_alloc(&cpufreq_read1[0], empty);
     cpufreq_data_alloc(&cpufreq_read1[1], empty);
@@ -979,7 +892,7 @@ static void metrics_global_stop()
 		if (is_mpi_enabled()) {
 			read_diff_node_mpi_info(lib_shared_region, sig_shared_region,
 					metrics_mpi_info[APP], metrics_last_mpi_info[APP]);
-#if 0
+#if MPI_CALL_TYPES
             // Below is useful to have loop's MPI call types info. It is disabled as now MPI
             // call types data is just collected by using the flag FLAG_GET_MPI_STATS.
 			read_diff_node_mpi_types_info(lib_shared_region, sig_shared_region,
@@ -1349,7 +1262,7 @@ static int metrics_partial_stop(uint where)
 		if (is_mpi_enabled()) {
 			read_diff_node_mpi_info(lib_shared_region, sig_shared_region,
 					metrics_mpi_info[LOO], metrics_last_mpi_info[LOO]);
-#if 0
+#if MPI_CALL_TYPES
             // Below is useful to have loop's MPI call types info. It is disabled as now
             // MPI call types data is just collected by using the flag FLAG_GET_MPI_STATS.
             read_diff_node_mpi_types_info(lib_shared_region, sig_shared_region,
@@ -1357,12 +1270,19 @@ static int metrics_partial_stop(uint where)
 #endif
         }
 
-		/* Avg CPU freq */
+#if METRICS_OVH
     overhead_start(id_ovh_cpufreq);
+#endif
+
+		/* Avg CPU freq */
 		if (state_fail(s = cpufreq_read(no_ctx, cpufreq_read2[LOO]))) {
 			verbose_master(ERROR_VERB, "%sCPUFreq data read in partial stop failed%s", COL_RED, COL_CLR);
 		}
+
+#if METRICS_OVH
     overhead_stop(id_ovh_cpufreq);
+#endif
+
 		if (xtate_fail(s, cpufreq_data_diff(cpufreq_read2[LOO], cpufreq_read1[LOO], cpufreq_diff, &cpufreq_avrg[LOO]))){
 			verbose_master(ERROR_VERB, "%sCPUFreq data diff failed%s", COL_RED, COL_CLR);
 		} else {
@@ -1380,11 +1300,15 @@ static int metrics_partial_stop(uint where)
 
 		/* Avg IMC frequency */
 		if (mgt_imcfreq.ok){
+#if METRICS_OVH
       overhead_start(id_ovh_imcfreq);
+#endif
 			if (state_fail(s = imcfreq_read(no_ctx,imcfreq_read2[LOO]))){
 				verbose_master(ERROR_VERB, "%sError%s IMC freq. data read in partial stop", COL_RED, COL_CLR);
 			}
+#if METRICS_OVH
       overhead_stop(id_ovh_imcfreq);
+#endif
 			if (state_fail(s = imcfreq_data_diff(imcfreq_read2[LOO],imcfreq_read1[LOO], imcfreq_diff[LOO], &imcfreq_avrg[LOO]))){
 				verbose_master(ERROR_VERB, "IMC data diff fails");
 			}
@@ -1412,9 +1336,13 @@ static int metrics_partial_stop(uint where)
 
 		/* Only the master read RAPL because is not per-process metric */
 		/* RAPL energy */
+#if METRICS_OVH
     overhead_start(id_ovh_rapl);
+#endif
 		energy_cpu_read(no_ctx, aux_rapl);
+#if METRICS_OVH
     overhead_stop(id_ovh_rapl);
+#endif
 		// We read acuumulated energy
 		energy_cpu_data_diff(no_ctx, last_rapl, aux_rapl, metrics_rapl[LOO]);
 	
@@ -1583,24 +1511,13 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		metrics->sig_ext = (void *) calloc(1, sizeof(sig_ext_t));
 	}
 	sig_ext = metrics->sig_ext;
-  #if DCGMI
-  if (dcgmi && master && (sig_ext->dcgmis.dcgmi_sets == 0)){
-      sig_ext->dcgmis.dcgmi_sets 			= DCGMI_SETS;
-			sig_ext->dcgmis.dcgmi_gpus 			= gpu_dcgmi_gpus_detected();
-      sig_ext->dcgmis.dcgmi_num_ev 		= DCGMI_NUM_EVENTS;
-      sig_ext->dcgmis.dcgmi_events 		= calloc(DCGMI_SETS, sizeof(uint *));
-      sig_ext->dcgmis.dcgmi_instances	= calloc(DCGMI_SETS, sizeof(uint));
-      sig_ext->dcgmis.dcgmi_metrics 	= calloc(DCGMI_SETS, sizeof(dcgmi_t *));
-      for (uint set = 0; set < DCGMI_SETS; set++){
-				verbose_master(2,"Allocating events for set %u", set);
-        sig_ext->dcgmis.dcgmi_events[set] = calloc(DCGMI_NUM_EVENTS, sizeof(uint));
-				verbose_master(2,"Allocating metrics for set %u", set);
-        gpu_dcgmi_data_alloc(&sig_ext->dcgmis.dcgmi_metrics[set]);
-        /* The list of events is static */
-        memcpy(sig_ext->dcgmis.dcgmi_events[set], dcgmi_events[set], DCGMI_NUM_EVENTS * sizeof(uint));
-      }
+
+#if USE_GPUS & DCGMI
+	if (master && dcgmi_lib_is_enabled() && (sig_ext->dcgmis.dcgmi_sets == 0))
+	{
+		dcgmi_lib_dcgmi_sig_init(&sig_ext->dcgmis);
   }
-  #endif
+#endif
 	sig_ext = metrics->sig_ext;
 	sig_ext->elapsed = time_s;
 
@@ -1673,42 +1590,28 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		sig_ext->max_mpi = 0;
 		sig_ext->min_mpi = 100;
 
-    /* DCGMI: read only for master */
-    #if DCGMI && USE_GPUS
-    /* Accumulating */
-    if (dcgmi) {
-    if (sign_app_loop_idx == LOO){ 
-      verbose_master(2, "DCGMI[%u] loop metrics computation", dcgmi_curr_ev_set);
-      dcgmi_elapsed += time_s;
-      /* Read and accumulate */
-      gpu_dcgmi_read(dcgmi_metrics[dcgmi_curr_ev_set]);
-      gpu_dcgmi_accum_data(dcgmi_metrics_accum[dcgmi_curr_ev_set], dcgmi_metrics[dcgmi_curr_ev_set], time_s, dcgmi_events[dcgmi_curr_ev_set],DCGMI_NUM_EVENTS);
-      gpu_dcgmi_data_str(dcgmi_metrics[dcgmi_curr_ev_set], dcgmi_metrics_str, dcgmi_events[dcgmi_curr_ev_set], DCGMI_NUM_EVENTS);
-      verbose_master(2, "DCGMI[%u] loop metrics %s elapsed %.3lf sec (total %.3lf sec)", dcgmi_curr_ev_set, dcgmi_metrics_str, time_s, dcgmi_elapsed);
-
-      /* Copy in sig_ext */
-      gpu_dcgmi_data_copy(sig_ext->dcgmis.dcgmi_metrics[dcgmi_curr_ev_set], dcgmi_metrics[dcgmi_curr_ev_set]);
-      sig_ext->dcgmis.dcgmi_instances[dcgmi_curr_ev_set]++;
-
-      dcgmi_curr_ev_set = (dcgmi_curr_ev_set + 1) % DCGMI_SETS;
-
-      /* Change the active set of events */
-
-      /* Change the active set of events */
-      gpu_dcgmi_set_events(dcgmi_events_str[dcgmi_curr_ev_set], DCGMI_NUM_EVENTS);
-    }else{
-      for (uint set = 0; set < DCGMI_SETS; set ++){
-        verbose_master(2, "DCGMI[%u] accumulated metrics", set);
-        gpu_dcgmi_data_avg(dcgmi_metrics_accum[set], dcgmi_elapsed/DCGMI_SETS, dcgmi_events[set], DCGMI_NUM_EVENTS);
-        gpu_dcgmi_data_str(dcgmi_metrics_accum[set], dcgmi_metrics_str, dcgmi_events[set], DCGMI_NUM_EVENTS);
-        verbose_master(2, "DCGMI app metrics %s elapsed %.3lf sec", dcgmi_metrics_str, dcgmi_elapsed/DCGMI_SETS);
-        gpu_dcgmi_data_copy(sig_ext->dcgmis.dcgmi_metrics[set], dcgmi_metrics_accum[set]);
-      }
-      report_dcgmi_metrics();
-    }
-    }
-    #endif
-
+		/* DCGMI: read only for master */
+#if DCGMI & USE_GPUS
+		if (dcgmi_lib_is_enabled())
+		{
+			if (sign_app_loop_idx == LOO) // Loop signature
+			{
+				if (state_fail(dcgmi_lib_get_current_metrics(&sig_ext->dcgmis)))
+				{
+					error_lib("Getting current DCGMI metrics: %s", state_msg);
+				}
+			} else // App signature
+			{
+				if (state_ok(dcgmi_lib_get_global_metrics(&sig_ext->dcgmis)))
+				{
+					dcgmi_lib_report_total_metrics();
+				} else
+				{
+					error_lib("Getting global DCGMI metrics: %s", state_msg);
+				}
+			}
+		}
+#endif
 
 		/* MPI statistics */
 		if (is_mpi_enabled()) {
@@ -1741,7 +1644,11 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 
 		sig_ext->mpi_stats = metrics_mpi_info[sign_app_loop_idx];
         // Commented as not used.
-		// sig_ext->mpi_types = metrics_mpi_calls_types[sign_app_loop_idx];
+#if MPI_CALL_TYPES
+		sig_ext->mpi_types = metrics_mpi_calls_types[sign_app_loop_idx];
+#else
+		sig_ext->mpi_types = NULL;
+#endif
 
 		/* Power: Node, DRAM, PCK */
     /* If power is not estimated, we computed here, later otherwise */
@@ -1798,13 +1705,16 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 						total_gpu_util  += metrics->gpu_sig.gpu_data[p].GPU_util;
 			      total_gpu_power += metrics->gpu_sig.gpu_data[p].GPU_power;
         }
-		#if DCGMI
-		/* If there is not utilization we reset the number of instances. Instances are used by policies */
-		if (dcgmi && total_gpu_util == 0){
-      for (uint ev = 0; ev < DCGMI_SETS; ev++) sig_ext->dcgmis.dcgmi_instances[ev] = 0;
-    }
-		#endif
-#endif
+#if DCGMI
+				/* If there is no utilization we reset the number of instances.
+				 * Instances are used by policies */
+				if (dcgmi_lib_is_enabled() && total_gpu_util == 0)
+				{
+					dcgmi_lib_reset_instances(&sig_ext->dcgmis);
+				}
+#endif // DCGMI
+#endif // USE_GPUS
+
     if (!estimate_power){
       /* Power error control: computing the ratio */
       dc_power_ratio += metrics->DC_power / (total_gpu_power + metrics->DRAM_power + metrics->PCK_power);
@@ -1998,7 +1908,6 @@ int metrics_init(topology_t *topo)
     }
 
 	// Allocating data for energy node metrics
-	// node_energy_datasize=eards_node_energy_data_size();
 	energy_datasize(&node_energy_datasize);
 	debug("energy data size %lu", node_energy_datasize);
 	energy_units(&node_energy_units);
@@ -2019,10 +1928,12 @@ int metrics_init(topology_t *topo)
 		metrics_last_mpi_info[APP]        = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
 		metrics_mpi_info[LOO]             = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
 		metrics_last_mpi_info[LOO]        = calloc(lib_shared_region->num_processes,sizeof(mpi_information_t));
-		// metrics_mpi_calls_types[APP]      = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
+#if MPI_CALL_TYPES
+		metrics_mpi_calls_types[APP]      = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
 		metrics_last_mpi_calls_types[APP] = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
-		// metrics_mpi_calls_types[LOO]      = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
+		metrics_mpi_calls_types[LOO]      = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
 		metrics_last_mpi_calls_types[LOO] = calloc(lib_shared_region->num_processes,sizeof(mpi_calls_types_t));
+#endif
 
 		/* IMC management */
 		if (mgt_imcfreq.ok) {
@@ -2801,13 +2712,6 @@ static void read_metrics_options()
       }
       verbose_master(0,"RAPL power traces %s", (report_power_trace?"Enabled":"Disabled"));
     }
-#endif
-#if DCGMI
-  char *use_dcgmi = ear_getenv(FLAG_GPU_DCGMI_ENABLED);
-  if (use_dcgmi != NULL){
-    dcgmi = atoi(use_dcgmi);
-    verbose_master(1,"DCGMI metrics set to %s by env var", (dcgmi?"Enabled":"Disabled"));
-  }
 #endif
 }
 

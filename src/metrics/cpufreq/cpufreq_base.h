@@ -18,15 +18,6 @@
 #ifndef METRICS_CPUFREQ_BASE_H
 #define METRICS_CPUFREQ_BASE_H
 
-/*
- * Provisional files to discover the base frequency by low level calls.
- */
-
-#include <common/types/types.h>
-#include <common/hardware/topology.h>
-
-void cpufreq_get_base(topology_t *tp, ulong *freq_base);
-
-void cpufreq_get_boost_enabled(topology_t *tp, uint *boost_enabled);
+#include <management/cpufreq/cpufreq_base.h>
 
 #endif

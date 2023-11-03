@@ -15,15 +15,18 @@
 * and COPYING.EPL files.
 */
 
-#ifndef DAEMON_LOCAL_RPC_H
-#define DAEMON_LOCAL_RPC_H
+#ifndef EARD_LOCAL_API_RPCS_H
+#define EARD_LOCAL_API_RPCS_H
 
 #include <common/types.h>
 #include <common/sizes.h>
 #include <common/states.h>
-#include <daemon/local_api/eard_api.h>
 #include <daemon/local_api/eard_api_conf.h>
 
+// This class is intended to manage RPCs requests and EARD responses. If you
+// want easy-to-read functions to ask for EARD request, look at eard_api.h class.
+
+#define RPC_GET_STATE                      2001
 #define RPC_MGT_CPUFREQ_GET_API            1001
 #define RPC_MGT_CPUFREQ_GET_AVAILABLE      1002
 #define RPC_MGT_CPUFREQ_GET_CURRENT        1003
@@ -98,5 +101,4 @@ state_t eard_rpc_read_pending(int fd, char *recv_data, size_t read_size, size_t 
 
 state_t eard_rpc_clean(int fd, size_t size);
 
-#endif //DAEMON_LOCAL_RPC_H
-
+#endif //EARD_LOCAL_API_RPCS_H

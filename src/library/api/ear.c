@@ -76,7 +76,6 @@
 #include <library/dynais/dynais.h>
 #include <library/tracer/tracer.h>
 #include <library/states/states.h>
-#include <library/models/models.h>
 #include <library/models/cpu_power_model.h>
 #include <library/policies/policy.h>
 #include <library/metrics/metrics.h>
@@ -274,10 +273,10 @@ uint limit_exceeded = 0;
 
 #if DLB
 /** Creates a subscription to the EARL periodic monitor. Burst and relax timing is the same (10 seconds).
- * Init subscription function is left to NULL, and the main rutine is earl_periodic_actions_talp.
- * If an error occurred, state_msg can be used.
+ * Init subscription function is earl_periodic_actions_talp_init, and the main rutine is earl_periodic_actions_talp.
+ * If an error occurred, state_msg can be used to report the cause of error.
  *
- * \param[out] sus The address of the subscription created.
+ * \param[out] sus The address of the created subscription.
  *
  * \return EAR_ERROR if an error ocurred registering the subscription.
  * \return EAR_SUCCESS otherwise. */
@@ -1676,18 +1675,18 @@ void ear_init()
                     free_node_signatures(lib_shared_region, sig_shared_region);
                 }
 
-        verbose_master(2,"Init energy models");
-				init_power_models(system_conf->user_type, &system_conf->installation, &arch_desc);
+                // verbose_master(2,"Init energy models");
+                // init_power_models(system_conf->user_type, &system_conf->installation, &arch_desc);
 
-				if (state_ok(init_power_policy(system_conf, resched_conf))) {
+                if (state_ok(init_power_policy(system_conf, resched_conf))) {
 
-				    verbose_master(VEAR_INIT, "Policies and models initialized.");
+                  verbose_master(VEAR_INIT, "Policies and models initialized.");
 
-                } else {
+				} else {
 
-				    verbose_master(VEAR_INIT, "%sWARNING%s An error ocurred initializing the power policy.",
-                                   COL_YLW, COL_CLR);	
-                }
+					verbose_master(VEAR_INIT, "%sWARNING%s An error ocurred initializing the power policy.",
+							COL_YLW, COL_CLR);	
+				}
 
 
         verbose_master(2,"Init CPU power models for node sharing");
@@ -1898,6 +1897,8 @@ void ear_finalize(int exit_status)
 				uint fake_error = 0;
 				char *cfake = ear_getenv(FAKE_PROCESS_ERRROR);
 				if (cfake != NULL) fake_error = atoi(cfake);
+
+				if (synchronize_masters == 0) return;
 
          #if EAR_OFF
      //    print_resource_usage();
@@ -2732,151 +2733,151 @@ static state_t earl_periodic_actions_talp_init(void *p)
 
 static state_t earl_periodic_actions_talp(void *p)
 {
-    if (!talp_monitor)
-    {
-        return EAR_SUCCESS;
-    }
-
-    int must_call_libdlb = 0;
-    verbose(TALP_INFO + 1, "DLB-TALP Periodic action");
-
-    int sem_ret_val = sem_wait(lib_shared_lock_sem);
-    if (sem_ret_val < 0)
-    {
-        verbose(TALP_INFO, "%sWARNING%s Locking semaphor for DLB API status checking failed: %s",
-                COL_YLW, COL_CLR, strerror(errno));
-    }
-
-    if (lib_shared_region->must_call_libdlb)
-    {
-        sig_shared_region[my_node_id].libdlb_calls_cnt++;
-        debug("proc %d libdlb_cnt %d libflb_max %d",
-              my_node_id, sig_shared_region[my_node_id].libdlb_calls_cnt, lib_shared_region->max_libdlb_calls);
-
-        must_call_libdlb = 1;
-
-        if (sig_shared_region[my_node_id].libdlb_calls_cnt > lib_shared_region->max_libdlb_calls)
-        {
-            lib_shared_region->max_libdlb_calls = sig_shared_region[my_node_id].libdlb_calls_cnt;
-
-            if (msync(lib_shared_region, sizeof(lib_shared_data_t), MS_SYNC) < 0)
-            {
-                verbose(TALP_INFO, "%sError%s Memory sync. for lib shared region failed: %s",
-                        COL_RED, COL_CLR, strerror(errno));
-            }
-        }
-    }
-
-    if (sem_post(lib_shared_lock_sem) < 0)
-    {
-        verbose(TALP_INFO, "%sWARNING%s Unlocking semaphor for DLB API status checking failed: %s",
-                COL_YLW, COL_CLR, strerror(errno));
-    }
-
-    if (must_call_libdlb)
-    {
-        // TODO: This code is replicated on earl_periodic_actions_talp_finalize
-        sig_ext_t sig_ext_tmp;
-        if (state_ok(metrics_compute_talp_node_metrics(&sig_ext_tmp, dlb_loop_monitor)))
-        {
-            if (MASTER_ID >= 0)
-            {
-                sig_ext_t *node_sig_ext = (sig_ext_t *) lib_shared_region->node_signature.sig_ext;
-                node_sig_ext->dlb_talp_node_metrics = sig_ext_tmp.dlb_talp_node_metrics;
-                // TODO: Move in the outer condition scope
-                // verbose_talp_node_metrics(TALP_INFO, &node_sig_ext->dlb_talp_node_metrics);
-            }
-        }
-
-        if (dlb_loop_monitor)
-        {
-            DLB_MonitoringRegionReset(dlb_loop_monitor);
-            DLB_MonitoringRegionStart(dlb_loop_monitor);
-        }
-    }
+  if (!talp_monitor)
+  {
     return EAR_SUCCESS;
+  }
+
+  int must_call_libdlb = 0;
+  verbose(TALP_INFO + 1, "DLB-TALP Periodic action");
+
+  int sem_ret_val = sem_wait(lib_shared_lock_sem);
+  if (sem_ret_val < 0)
+  {
+    verbose(TALP_INFO, "%sWARNING%s Locking semaphor for DLB API status checking failed: %s",
+        COL_YLW, COL_CLR, strerror(errno));
+  }
+
+  if (lib_shared_region->must_call_libdlb)
+  {
+    sig_shared_region[my_node_id].libdlb_calls_cnt++;
+    debug("proc %d libdlb_cnt %d libflb_max %d",
+        my_node_id, sig_shared_region[my_node_id].libdlb_calls_cnt, lib_shared_region->max_libdlb_calls);
+
+    must_call_libdlb = 1;
+
+    if (sig_shared_region[my_node_id].libdlb_calls_cnt > lib_shared_region->max_libdlb_calls)
+    {
+      lib_shared_region->max_libdlb_calls = sig_shared_region[my_node_id].libdlb_calls_cnt;
+
+      if (msync(lib_shared_region, sizeof(lib_shared_data_t), MS_SYNC) < 0)
+      {
+        verbose(TALP_INFO, "%sError%s Memory sync. for lib shared region failed: %s",
+            COL_RED, COL_CLR, strerror(errno));
+      }
+    }
+  }
+
+  if (sem_post(lib_shared_lock_sem) < 0)
+  {
+    verbose(TALP_INFO, "%sWARNING%s Unlocking semaphor for DLB API status checking failed: %s",
+        COL_YLW, COL_CLR, strerror(errno));
+  }
+
+  if (must_call_libdlb)
+  {
+    // TODO: This code is replicated on earl_periodic_actions_talp_finalize
+    sig_ext_t sig_ext_tmp;
+    if (state_ok(metrics_compute_talp_node_metrics(&sig_ext_tmp, dlb_loop_monitor)))
+    {
+      if (MASTER_ID >= 0)
+      {
+        sig_ext_t *node_sig_ext = (sig_ext_t *) lib_shared_region->node_signature.sig_ext;
+        node_sig_ext->dlb_talp_node_metrics = sig_ext_tmp.dlb_talp_node_metrics;
+        // TODO: Move in the outer condition scope
+        // verbose_talp_node_metrics(TALP_INFO, &node_sig_ext->dlb_talp_node_metrics);
+      }
+    }
+
+    if (dlb_loop_monitor)
+    {
+      DLB_MonitoringRegionReset(dlb_loop_monitor);
+      DLB_MonitoringRegionStart(dlb_loop_monitor);
+    }
+  }
+  return EAR_SUCCESS;
 }
 
 
 static void verbose_talp_node_metrics(int verb_lvl, dlb_node_metrics_t *node_metrics)
 {
-    if (VERB_ON(verb_lvl))
+  if (VERB_ON(verb_lvl))
+  {
+    if (is_mpi_enabled())
     {
-        if (is_mpi_enabled())
+      if (MASTER_ID >= 0 && !talp_report)
+      {
+        char buff[GENERIC_NAME];
+        int ret = snprintf(buff, sizeof buff, "%d-%d-%d-talp.csv",
+            my_job_id, my_step_id, MASTER_ID);
+
+        if (ret < sizeof buff)
         {
-            if (MASTER_ID >= 0 && !talp_report)
+          talp_report = fopen(buff, "a");
+          if (talp_report)
+          {
+            char talp_report_header[] = "time,node_id,total_useful_time,"
+              "total_mpi_time,max_useful_time,"
+              "max_mpi_time,load_balance,parallel_efficiency";
+
+            size_t header_len = strlen(talp_report_header);
+
+            size_t fwrite_ret = fwrite((const void *) talp_report_header,
+                sizeof(char), header_len,
+                talp_report);
+
+            if (fwrite_ret != header_len)
             {
-                char buff[GENERIC_NAME];
-                int ret = snprintf(buff, sizeof buff, "%d-%d-%d-talp.csv",
-                                   my_job_id, my_step_id, MASTER_ID);
-
-                if (ret < sizeof buff)
-                {
-                    talp_report = fopen(buff, "a");
-                    if (talp_report)
-                    {
-                        char talp_report_header[] = "time,node_id,total_useful_time,"
-                                                    "total_mpi_time,max_useful_time,"
-                                                    "max_mpi_time,load_balance,parallel_efficiency";
-
-                        size_t header_len = strlen(talp_report_header);
-
-                        size_t fwrite_ret = fwrite((const void *) talp_report_header,
-                                                   sizeof(char), header_len,
-                                                   talp_report);
-
-                        if (fwrite_ret != header_len)
-                        {
-                            verbose(TALP_INFO, "%sWARNING%s Writing TALP report header: %d", COL_YLW, COL_CLR, errno)
-                        }
-                    } else
-                    {
-                        verbose(TALP_INFO, "%sERROR%s Creating and openning TALP report file: %d", COL_RED, COL_CLR, errno);
-                    }
-                } else
-                {
-                    verbose(TALP_INFO, "%sERROR%s TALP report file name did not created: increase the buffer size.", COL_RED, COL_CLR);
-                }
+              verbose(TALP_INFO, "%sWARNING%s Writing TALP report header: %d", COL_YLW, COL_CLR, errno)
             }
-           
-            if (MASTER_ID >= 0 && talp_report)
-            {
-                // Get the current time
-                time_t curr_time = time(NULL);
-
-                struct tm *loctime = localtime (&curr_time);
-
-                char time_buff[32];
-                strftime(time_buff, sizeof time_buff, "%c", loctime);
-
-                char talp_node_metrics_sum[512];
-
-                int ret = snprintf(talp_node_metrics_sum, sizeof talp_node_metrics_sum,
-                                   "\n%s,%d,%"PRId64",%"PRId64",%"PRId64",%"PRId64",%f,%f",
-                                   time_buff, node_metrics->node_id, node_metrics->total_useful_time,
-                                   node_metrics->total_mpi_time, node_metrics->max_useful_time,
-                                   node_metrics->max_mpi_time, node_metrics->load_balance,
-                                   node_metrics->parallel_efficiency);
-
-                if (ret < sizeof talp_node_metrics_sum)
-                {
-                    size_t char_count = strlen(talp_node_metrics_sum);
-                    size_t fwrite_ret = fwrite((const void *) talp_node_metrics_sum, sizeof(char), char_count, talp_report);
-
-                    if (fwrite_ret != char_count)
-                    {
-                        verbose(TALP_INFO, "%sERROR%s Writing TALP info: %d", errno);
-                    }
-                } else
-                {
-                    verbose(TALP_INFO, "%sERROR%s Writing the node metrics line. Increase the buffer size", COL_RED, COL_CLR);
-                }
-            } else if (MASTER_ID >= 0)
-            {
-                verbose(TALP_INFO, "%sWARNING%s TALP report file not created.", COL_YLW, COL_CLR);
-            }
+          } else
+          {
+            verbose(TALP_INFO, "%sERROR%s Creating and openning TALP report file: %d", COL_RED, COL_CLR, errno);
+          }
+        } else
+        {
+          verbose(TALP_INFO, "%sERROR%s TALP report file name did not created: increase the buffer size.", COL_RED, COL_CLR);
         }
+      }
+
+      if (MASTER_ID >= 0 && talp_report)
+      {
+        // Get the current time
+        time_t curr_time = time(NULL);
+
+        struct tm *loctime = localtime (&curr_time);
+
+        char time_buff[32];
+        strftime(time_buff, sizeof time_buff, "%c", loctime);
+
+        char talp_node_metrics_sum[512];
+
+        int ret = snprintf(talp_node_metrics_sum, sizeof talp_node_metrics_sum,
+            "\n%s,%d,%"PRId64",%"PRId64",%"PRId64",%"PRId64",%f,%f",
+            time_buff, node_metrics->node_id, node_metrics->total_useful_time,
+            node_metrics->total_mpi_time, node_metrics->max_useful_time,
+            node_metrics->max_mpi_time, node_metrics->load_balance,
+            node_metrics->parallel_efficiency);
+
+        if (ret < sizeof talp_node_metrics_sum)
+        {
+          size_t char_count = strlen(talp_node_metrics_sum);
+          size_t fwrite_ret = fwrite((const void *) talp_node_metrics_sum, sizeof(char), char_count, talp_report);
+
+          if (fwrite_ret != char_count)
+          {
+            verbose(TALP_INFO, "%sERROR%s Writing TALP info: %d", errno);
+          }
+        } else
+        {
+          verbose(TALP_INFO, "%sERROR%s Writing the node metrics line. Increase the buffer size", COL_RED, COL_CLR);
+        }
+      } else if (MASTER_ID >= 0)
+      {
+        verbose(TALP_INFO, "%sWARNING%s TALP report file not created.", COL_YLW, COL_CLR);
+      }
     }
+  }
 }
 
 

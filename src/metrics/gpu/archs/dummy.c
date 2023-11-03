@@ -110,6 +110,7 @@ static state_t fake_read(gpu_t *data)
 
 state_t gpu_dummy_read(ctx_t *c, gpu_t *data)
 {
+    debug("gpu_dummy_read");
     #if FAKE_GPUS
     return fake_read(data);
     #else
@@ -119,6 +120,7 @@ state_t gpu_dummy_read(ctx_t *c, gpu_t *data)
 
 state_t gpu_dummy_read_raw(ctx_t *c, gpu_t *data)
 {
+    debug("gpu_dummy_read_raw");
     #if FAKE_GPUS
     return fake_read(data);
     #else

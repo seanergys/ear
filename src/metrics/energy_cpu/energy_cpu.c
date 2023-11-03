@@ -16,12 +16,14 @@
 */
 
 //#define SHOW_DEBUGS 1
+
 #include <stdlib.h>
 #include <common/plugins.h>
 #include <common/system/lock.h>
 #include <common/output/debug.h>
 #include <metrics/energy_cpu/archs/msr.h>
 #include <metrics/energy_cpu/archs/eard.h>
+#include <metrics/energy_cpu/archs/linux_powercap.h>
 #include <metrics/energy_cpu/archs/dummy.h>
 #include <metrics/energy_cpu/archs/cpu_util.h>
 #include <metrics/energy_cpu/energy_cpu.h>
@@ -39,7 +41,7 @@ static struct energy_cpu_ops
 	state_t (*read)          (ctx_t *c, ullong *values);
 } ops;
 
-state_t energy_cpu_load(topology_t *tp, uint eard)
+state_t energy_cpu_load(topology_t *tp, uint force_api)
 {
 	
 	debug("entering cpu_load with tp->initialized %d", tp->initialized);
@@ -51,7 +53,9 @@ state_t energy_cpu_load(topology_t *tp, uint eard)
 		ear_unlock(&lock);
 		return EAR_SUCCESS;
 	}
-
+    if (API_IS(force_api, API_DUMMY)) {
+        goto dummy;
+    }
 	if (state_ok(rapl_msr_load(tp))) {
 		ops.init          = rapl_msr_init;
 		ops.dispose       = rapl_msr_dispose;
@@ -63,15 +67,21 @@ state_t energy_cpu_load(topology_t *tp, uint eard)
 		ops.data_tostr    = energy_cpu_data_tostr; */
 		api = API_RAPL;
 		debug("selected rapl_msr energy_cpu (api %u)", api);
-	} else if (state_ok(energy_cpu_eard_load(tp, eard))) {
+	} else if (state_ok(energy_cpu_eard_load(tp, API_IS(force_api, API_EARD)))) {
 		ops.init          = energy_cpu_eard_init;
 		ops.dispose       = energy_cpu_eard_dispose;
 		ops.read          = energy_cpu_eard_read;
 		ops.count_devices = energy_cpu_eard_count_devices;
 		api = API_EARD;
 		debug("selected eard energy_cpu (api %u)", api);
-	} 
-	else if (state_ok(energy_cpu_util_load(tp))) {
+	} else if (state_ok(linux_powercap_load(tp))){
+        ops.init          = linux_powercap_init;
+        ops.dispose       = linux_powercap_dispose;
+        ops.read          = linux_powercap_read;
+        ops.count_devices = linux_powercap_count_devices;
+        api = API_LINUX_POWERCAP;
+        debug("selected linux_powercap (api %u)", api);
+    } else if (state_ok(energy_cpu_util_load(tp))) {
 		ops.init          = energy_cpu_util_init;
 		ops.dispose       = energy_cpu_util_dispose;
 		ops.read          = energy_cpu_util_read;
@@ -80,6 +90,7 @@ state_t energy_cpu_load(topology_t *tp, uint eard)
 		debug("selected CPUMODEL energy_cpu (api %u)", api);
 	} 
 	else if (state_ok(energy_cpu_dummy_load(tp))) {
+dummy:
 		ops.init          = energy_cpu_dummy_init;
 		ops.dispose       = energy_cpu_dummy_dispose;
 		ops.read          = energy_cpu_dummy_read;
@@ -115,11 +126,12 @@ state_t energy_cpu_data_diff(ctx_t *c, ullong *start, ullong *end, ullong *resul
 {
 	int i;
 	for (i = 0; i < socket_count*NUM_PACKS; ++i) {
-		if (start[i] > end[i])
+		if (start[i] > end[i]) {
 			result[i] = ullong_diff_overflow(start[i], end[i]);
-		else
-			result[i] = end[i] - start[i];
-		debug("doing diff %d, result %llu", i, result[i]);
+        } else {
+            result[i] = end[i] - start[i];
+        }
+		debug("doing diff %d, result %llu = %llu - %llu", i, result[i], end[i], start[i]);
 	}
 	return EAR_SUCCESS;
 }
@@ -190,7 +202,18 @@ state_t energy_cpu_read(ctx_t *c, ullong *values)
 	}
 
 	return s;
+}
 
+state_t energy_cpu_read_copy(ctx_t *c, ullong *v2, ullong *v1, ullong *vD)
+{
+    state_t s = energy_cpu_read(c, v2);
+    if (state_ok(s)) {
+        s = energy_cpu_data_diff(c, v1, v2, vD);
+    }
+    if (state_ok(s)) {
+        s = energy_cpu_data_copy(c, v1, v2);
+    }
+    return s;
 }
 
 state_t energy_cpu_to_str(ctx_t *c, char *str, ullong *values)
@@ -215,13 +238,11 @@ state_t energy_cpu_to_str(ctx_t *c, char *str, ullong *values)
 
 double energy_cpu_compute_power(double energy, double elapsed_time)
 {
-    
-  if (elapsed_time > 0){
-	  double computed_power = ((energy / 1000000000.0) / elapsed_time);
-
-    debug("computed power: %lf", computed_power);
-    return computed_power;
-  }
-  return (double)0;
+    if (elapsed_time > 0){
+        double computed_power = ((energy / 1000000000.0) / elapsed_time);
+        debug("computed power: %lf", computed_power);
+        return computed_power;
+    }
+    return (double)0;
 }
 

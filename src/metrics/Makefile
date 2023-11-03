@@ -1,10 +1,4 @@
-CC_FLAGS += $(CONSTANTS)
-CFLAGS = $(CC_FLAGS) -fPIC -shared -Wextra 
-
 ######## INSTALLATION
-
-stat_BINS = libmetrics.a
-dyna_BINS = libmetrics.so
 
 ######## FILES
 
@@ -49,6 +43,7 @@ mets_OBJS = \
     $(SRCDIR)/metrics/energy_cpu/energy_cpu.o \
     $(SRCDIR)/metrics/energy_cpu/archs/cpu_util.o \
     $(SRCDIR)/metrics/energy_cpu/archs/dummy.o \
+    $(SRCDIR)/metrics/energy_cpu/archs/linux_powercap.o \
     $(SRCDIR)/metrics/energy_cpu/archs/eard.o \
     $(SRCDIR)/metrics/energy_cpu/archs/msr.o \
     $(SRCDIR)/metrics/flops/flops.o \
@@ -82,16 +77,16 @@ mets_OBJS = \
 
 ######## RULES
 
-all: all.components $(stat_BINS) $(dyna_BINS)
+all: all.components metrics.o libmetrics.a
 
 post: test
 	@ $(MAKE) -C 'gpu' post || exit
 
-libmetrics.a: $(mets_OBJS)
-	$(AR) rvs $@ $(mets_OBJS)
+metrics.o: metrics.c
+	$(CC) $(CC_FLAGS) -I$(SRCDIR) -fPIC -c $<
 
-libmetrics.so: $(mets_OBJS)
-	$(CC) $(CFLAGS) -o $@ $(mets_OBJS)
+libmetrics.a: metrics.o $(mets_OBJS)
+	$(AR) rvs $@ $^
 
 test: metrics.c
 	$(CC) -I $(SRCDIR) -DTEST=1 -fPIC -o $@ $^ libmetrics.a ../daemon/local_api/libeard.a ../common/libcommon.a -lm -lpthread -ldl

@@ -202,12 +202,12 @@ static void *monitor_main(void *p)
             // Unlocking suscription i because time is calculated
             pthread_mutex_unlock(&lock[i]);
 
-            if (reg->ok_init) {
+            if (reg->ok_init && is_running) {
 				//debug("S%d, called init", i);
 				sus->call_init(sus->memm_init);
 				reg->ok_init = 0;
 			}
-			if (reg->ok_main) {
+			if (reg->ok_main && is_running) {
 				//debug("S%d, called main", i);
 				sus->call_main(sus->memm_main);
 				reg->ok_main = 0;
@@ -262,13 +262,20 @@ state_t monitor_init()
 	m_errno = pthread_create(&thread, NULL, monitor_main, NULL);
 	if (m_errno != 0) {
         pthread_mutex_unlock(&lock_gen);
-        is_running =0;
+        is_running = 0;
 		return_msg(EAR_ERROR, strerror(m_errno));
 	}
 	pthread_mutex_unlock(&lock_gen);
     debug("monitor_init");
 
 	return EAR_SUCCESS;
+}
+
+void monitor_wait()
+{
+    if (!pthread_equal(pthread_self(), thread)) {
+        pthread_join(thread, NULL);
+    }
 }
 
 state_t monitor_dispose()
@@ -278,8 +285,8 @@ state_t monitor_dispose()
     debug("disposing...");
 	is_running = 0;
     goto_interrupt();
-	pthread_join(thread, NULL);
-	pthread_mutex_unlock(&lock_gen);
+    monitor_wait();
+    pthread_mutex_unlock(&lock_gen);
 	return EAR_SUCCESS;
 }
 

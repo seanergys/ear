@@ -23,7 +23,6 @@
 #include <common/types/loop.h>
 #include <common/types/application.h>
 #include <common/types/signature.h>
-#include <common/types/projection.h>
 #include <daemon/shared_configuration.h>
 #include <library/api/mpi_support.h>
 #if MPI

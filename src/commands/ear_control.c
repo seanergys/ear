@@ -206,7 +206,7 @@ void print_ips(ip_table_t *ips, int num_ips, char mode)
 	{
 		printf("%10s\t", "hostname");
 		if (mode == NODE_ONLY || mode == FULL_STATUS)
-			printf("%5s\t%4s\t%4s\t%4s\t%6s\t%6s", "power", "temp", "maxf", "freq", "job_id", "stepid");
+			printf("%5s\t%4s\t%4s\t%4s\t%6s\t%8s", "power", "temp", "maxf", "freq", "job_id", "stepid");
 		if (mode == FULL_STATUS || mode == POLICY_ONLY)
 			printf("  %6s  %5s  %2s", "policy", "pfreq", "th");
 		printf("\n");
@@ -216,19 +216,21 @@ void print_ips(ip_table_t *ips, int num_ips, char mode)
 	char step_id[12];
 	for (i=0; i<num_ips; i++)
 	{
-		if (ips[i].counter  )
+		if (ips[i].counter)
 		{
 			if (mode != ERR_ONLY) 
 			{
 				printf("%10s\t", ips[i].name);
 				if (ips[i].step_id == BATCH_STEP)
-					sprintf(step_id, "%-6s", "sbatch");
+					sprintf(step_id, "%-8s", "sbatch");
+                else if (ips[i].step_id == INTERACT_STEP)
+					sprintf(step_id, "%-8s", "interact");
 				else
-					sprintf(step_id, "%-6d", ips[i].step_id);
+					sprintf(step_id, "%-8d", ips[i].step_id);
 
 				if (mode == NODE_ONLY || mode == FULL_STATUS)
 				{
-					printf("%5d\t%3dC\t%.2lf\t%.2lf\t%6d\t%6s", ips[i].power, ips[i].temp, (double)ips[i].max_freq/1000000.0,
+					printf("%5d\t%3dC\t%.2lf\t%.2lf\t%6d\t%8s", ips[i].power, ips[i].temp, (double)ips[i].max_freq/1000000.0,
 							(double)ips[i].current_freq/1000000.0, ips[i].job_id, step_id);
 				}
 
@@ -371,16 +373,18 @@ void check_app_status(app_status_t status, ip_table_t *ips, int num_ips, char is
 		if (htonl(status.ip) == htonl(ips[i].ip_int))
 		{
 			if (status.step_id == BATCH_STEP)
-				sprintf(step_id, "%-6s", "sbatch");
+				sprintf(step_id, "%-8s", "sbatch");
+            else if (status.step_id == INTERACT_STEP)
+				sprintf(step_id, "%-8s", "interact");
 			else
-				sprintf(step_id, "%-6ld", status.step_id);
+				sprintf(step_id, "%-8ld", status.step_id);
 			if (is_master)
-				printf("%7lu-%-6s %6d %10.2lf %8.2lf %8.2lf %8.2lf %8.2lf %8.2lf", 
+				printf("%7lu-%-8s %6d %10.2lf %8.2lf %8.2lf %8.2lf %8.2lf %8.2lf", 
 						status.job_id, step_id, status.nodes,
 						status.signature.DC_power, status.signature.CPI, status.signature.GBS, 
 						status.signature.Gflops, status.signature.time, (double)status.signature.avg_f/1000000);
 			else
-				printf("%15s %7lu-%-6s %6d %10.2lf %8.2lf %8.2lf %8.2lf %8.2lf %8.2lf", 
+				printf("%15s %7lu-%-8s %6d %10.2lf %8.2lf %8.2lf %8.2lf %8.2lf %8.2lf", 
 						ips[i].name, status.job_id, step_id, status.master_rank,
 						status.signature.DC_power, status.signature.CPI, status.signature.GBS, 
 						status.signature.Gflops, status.signature.time, (double)status.signature.avg_f/1000000);
@@ -614,10 +618,10 @@ void process_app_status(int num_status, app_status_t *status, char is_master)
 		int i, num_ips;
 
 		if (is_master)
-			printf("%7s-%-6s %6s %10s %8s %8s %8s %8s %8s", 
+			printf("%7s-%-8s %6s %10s %8s %8s %8s %8s %8s", 
 					"Job", "Step", "Nodes", "DC power", "CPI", "GBS", "Gflops", "Time", "Avg Freq");
 		else
-			printf("%15s %7s-%-6s %6s %10s %8s %8s %8s %8s %8s", 
+			printf("%15s %7s-%-8s %6s %10s %8s %8s %8s %8s %8s", 
 					"Node id", "Job", "Step", "M-Rank", "DC power", "CPI", "GBS", "Gflops", "Time", "Avg Freq");
 #if USE_GPUS
 		printf(" %9s %9s", "GPU power", "GPU freq");
@@ -879,7 +883,6 @@ int main(int argc, char *argv[])
 					if (strcmp(node_name, optarg))
 					{
 						strcpy(node_name, optarg);
-						strcat(node_name, my_cluster_conf.net_ext);
 					}
 					else strcpy(node_name, optarg);
 				}
@@ -936,7 +939,6 @@ int main(int argc, char *argv[])
 					if (strcmp(node_name, optarg))
 					{
 						strcpy(node_name, optarg);
-						strcat(node_name, my_cluster_conf.net_ext);
 					}
 					else strcpy(node_name, optarg);
 				}

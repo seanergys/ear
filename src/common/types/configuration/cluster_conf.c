@@ -56,9 +56,6 @@ int get_ip(char *nodename, cluster_conf_t *conf)
     hints.ai_next = NULL;
 
     strcpy(buff, nodename);
-    /*#if USE_EXT
-      strcat(buff, NW_EXT);
-#endif*/
 
     if (conf != NULL) {
         if (strlen(conf->net_ext) > 0) {
@@ -897,7 +894,12 @@ void get_short_policy(char *buf, char *policy, cluster_conf_t *conf)
         strcpy(buf, "MO");
         return;
     }
-    else if (!strncmp(policy, "load_balance",strlen("load_balance")))
+    else if (!strcmp(policy, "min_time_energy"))
+    {
+        strcpy(buf, "MTE");
+        return;
+    }
+    else if (!strncmp(policy, "load_balance", strlen("load_balance")))
     {
         strcpy(buf, "LB");
         return;

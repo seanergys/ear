@@ -23,7 +23,6 @@
 #define EAR_TYPE_APPLICATION    1
 #define EAR_TYPE_LOOP           2
 
-//number of arguments inserted into periodic_metrics
 #define PERIODIC_AGGREGATION_ARGS   4
 #define EAR_EVENTS_ARGS             6
 #define POWER_SIGNATURE_ARGS        9
@@ -31,26 +30,33 @@
 #define LOOP_ARGS                   8
 #define JOB_ARGS                    16
 
-#define PERIODIC_METRIC_ARGS        10
 
-#if !DB_SIMPLE
 
-#if USE_GPUS //DB_FULL and GPUs
-#define SIGNATURE_ARGS              26
-#else //DB_FULL and no GPUs
-#define SIGNATURE_ARGS              24
+#if USE_GPUS 
+
+//Signatures
+#define FULL_SIGNATURE_ARGS              29
+#define SIMPLE_SIGNATURE_ARGS            16
+
+//Periodic_metrics
+#define FULL_PERIODIC_METRIC_ARGS        11
+#define SIMPLE_PERIODIC_METRIC_ARGS       6
+
+#else //no USE_GPU
+      
+//Signatures
+#define FULL_SIGNATURE_ARGS              27
+#define SIMPLE_SIGNATURE_ARGS            14
+
+//Periodic_metrics
+#define FULL_PERIODIC_METRIC_ARGS        10
+#define SIMPLE_PERIODIC_METRIC_ARGS       6
+
 #endif
-#define AVG_SIGNATURE_ARGS          25
 
-#else //if DB_SIMPLE
 
-#if USE_GPUS //DB_SIMPLE and GPUs
-#define SIGNATURE_ARGS              16
-#else //DB_SIMPLE and no GPUs
-#define SIGNATURE_ARGS              14
-#endif
-#define AVG_SIGNATURE_ARGS          15
-#endif
+#define FULL_AVG_SIGNATURE_ARGS          25
+#define SIMPLE_AVG_SIGNATURE_ARGS        15
 
 #if USE_GPUS
 #define GPU_SIGNATURE_ARGS 5

@@ -76,10 +76,11 @@ typedef struct gpu_ops_s
     state_t (*count_devices) (ctx_t *c, uint *devs_count);
     state_t (*read)        (ctx_t *c, gpu_t *data);
     state_t (*read_raw)    (ctx_t *c, gpu_t *data);
+    state_t (*get_info)    (apinfo_t *info);
 } gpu_ops_t;
 
 // Discovers the low level API.
-void gpu_load(int eard);
+void gpu_load(int force_api);
 
 void gpu_get_api(uint *api);
 
@@ -129,8 +130,11 @@ state_t gpu_data_copy(gpu_t *data_dst, gpu_t *data_src);
 void gpu_data_print(gpu_t *data, int fd);
 
 // Copies the printing string in a char buffer.
-void gpu_data_tostr(gpu_t *data, char *buffer, int length);
+char *gpu_data_tostr(gpu_t *data, char *buffer, int length);
 
 int gpu_is_supported();
+
+// Returns all available static information (Work in progress)
+state_t gpu_get_info(apinfo_t *info);
 
 #endif

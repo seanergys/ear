@@ -309,14 +309,16 @@ static state_t debug_monitor(void *x)
     int i;
 
     for (i = 0; i < p->tp->cpu_count; ++i) {
-        if (msr_read(p->tp->cpus[i].id, &reg, sizeof(ullong), p->es_address)) {
-            debug("msr_read: %s", state_msg);
+        if (state_fail(msr_read(p->tp->cpus[i].id, &reg, sizeof(ullong), p->es_address))) {
+            debug("msr_read returned %s", state_msg);
         }
         energy2[i] = getbits64(reg, 31, 0);
+        debug("SOCKET[%u] read: %llu", i, energy2[i]);
         if (energy1[i] > 0) {
             energy = ((double) (energy2[i] - energy1[i])) * pu[i].mult_energy;
             power  = energy / 2.0; // We know its 2 seconds
-            debug("SOCKET[%u] energy: %lf J, power: %lf W", i, energy, power);
+            debug("SOCKET[%u] diff: %llu = %llu - %llu", i, energy2[i] - energy1[i], energy2[i], energy1[i]);
+            debug("SOCKET[%u] energy: %lf J, power: %lf W (UNITS %lf)", i, energy, power, pu[i].mult_energy);
         }
         energy1[i] = energy2[i];
     }
@@ -417,7 +419,7 @@ CPUPOW_F_POWERCAP_IS_ENABLED(mgt_cpupow_intel63_powercap_is_enabled)
         }
         for (i = 0; i < p->tp->cpu_count; ++i) {
             enabled[i] = (watts[i] != p->pi[i].tdp);
-            debug("enabled[%d]: %d", p->tp->cpus[i].id, enabled[i], watts[i], p->pi[i].tdp);
+            debug("enabled[%d]: %d %u %u", p->tp->cpus[i].id, enabled[i], watts[i], p->pi[i].tdp);
         }
         return s;
 }

@@ -24,7 +24,7 @@
 #include <metrics/common/apis.h>
 
 // Domain/device types
-#define CPUPOW_DOMAINS  3
+#define CPUPOW_DOMAINS  4
 #define CPUPOW_SOCKET   0 //PKG (#devs = #sockets)
 #define CPUPOW_DRAM     1 //    (#devs = #sockets)
 #define CPUPOW_CORE     2 //PP0 (#devs = #cores), remember: cores != threads

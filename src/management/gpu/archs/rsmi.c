@@ -237,8 +237,11 @@ state_t mgt_gpu_rsmi_freq_limit_get_max(ctx_t *c, ulong *khz)
 	return EAR_SUCCESS;
 }
 
-static state_t clocks_set(int i, uint mhz)
+static state_t clocks_set(int i, ulong mhz)
 {
+    if (mhz == 0LU) {
+        return EAR_SUCCESS;
+    }
     rsmi.set_clock(i, RSMI_FREQ_IND_MAX, mhz, RSMI_CLK_TYPE_SYS);
 	return EAR_SUCCESS;
 }
@@ -309,6 +312,9 @@ state_t mgt_gpu_rsmi_power_cap_get_rank(ctx_t *c, ulong *watts_min, ulong *watts
 
 static state_t powercap_set(int i, ulong uw)
 {
+    if (uw == 0LU) {
+        return EAR_SUCCESS;
+    }
     rsmi.set_powercap(i, 0, uw);
 	return EAR_SUCCESS;
 }

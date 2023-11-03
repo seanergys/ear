@@ -128,7 +128,7 @@ void report_new_event(ear_event_t *event)
 	/* we request the daemon to write the event in the DB */
 	event->timestamp=time(NULL);
 	strcpy(event->node_id,log_nodename);
-	eards_write_event(event);
+	//eards_write_event(event);
 	//db_insert_ear_event(event);
 #endif
 
