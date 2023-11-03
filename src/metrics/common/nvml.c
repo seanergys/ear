@@ -1,4 +1,4 @@
-/*
+    /*
 *
 * This program is part of the EAR software.
 *
@@ -15,7 +15,6 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -38,7 +37,7 @@
 #define NVML_N               0
 #else
 #define NVML_PATH            CUDA_BASE
-#define NVML_N               23
+#define NVML_N               24
 #endif
 
 static const char *nvml_names[] =
@@ -66,6 +65,7 @@ static const char *nvml_names[] =
     "nvmlDeviceGetPowerManagementLimitConstraints",
     "nvmlDeviceSetPowerManagementLimit",
     "nvmlErrorString",
+		"nvmlDeviceGetArchitecture",
 };
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;

@@ -67,8 +67,6 @@ ulong frequency_get_nominal_freq();
 ulong frequency_get_nominal_pstate();
 // Returns a list of available frequencies.
 ulong *frequency_get_freq_rank_list();
-// Sets a frequency per CPU (privileged).
-ulong frequency_set_cpu(ulong freq_khz, uint cpu);
 // Sets a frequency in a CPU (privileged).
 ulong frequency_set_all_cpus(ulong freq_khz);
 // Sets a frequency if a bit is set (privileged).
@@ -83,8 +81,6 @@ uint frequency_freq_to_pstate(ulong freq_khz);
 ulong frequency_pstate_to_freq_list(uint pstate_index, ulong *freq_list, uint pstate_count);
 // Converts a frequency into P_STATE by searching in a list.
 uint frequency_freq_to_pstate_list(ulong freq_khz, ulong *freq_list, uint pstate_count);
-// Sets the governor performance (privileged).
-void frequency_set_performance_governor_all_cpus();
 // Sets the governor userspace (privileged).
 state_t frequency_set_userspace_governor_all_cpus();
 // Given a frequency returns if is valid.
@@ -98,12 +94,11 @@ ulong frequency_closest_frequency(ulong freq_khz);
 //
 ulong frequency_closest_high_freq(ulong freq_khz, int pstate_minimum);
 
-// Gets the current governor.
-void get_governor(governor_t *_governor);
 // Sets a specific governor (privileged).
 void set_governor(governor_t *_governor);
 
-
 void verbose_frequencies(int cpus, ulong *f);
+
 void vector_print_pstates(uint *pstates, uint num_cpus);
+
 #endif //MANAGEMENT_CPUFREQ_FREQUENCY
