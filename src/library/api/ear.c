@@ -1898,6 +1898,8 @@ void ear_finalize(int exit_status)
 				char *cfake = ear_getenv(FAKE_PROCESS_ERRROR);
 				if (cfake != NULL) fake_error = atoi(cfake);
 
+				if (synchronize_masters == 0) return;
+
          #if EAR_OFF
      //    print_resource_usage();
          return;
