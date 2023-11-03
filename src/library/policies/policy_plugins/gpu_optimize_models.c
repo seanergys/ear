@@ -118,6 +118,8 @@ static float estimate_system_gflops(signature_t *signature, uint gpu_idx);
 
 state_t policy_init(polctx_t *c)
 {
+  
+	debug("gpu_optimize_models: policy_init");
 	if (c)
 	{
 		ulong g_freq = 0;
