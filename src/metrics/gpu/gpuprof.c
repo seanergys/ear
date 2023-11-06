@@ -57,7 +57,7 @@ GPUPROF_F_EVENTS_GET(gpuprof_events_get)
 
 GPUPROF_F_EVENTS_SET(gpuprof_events_set)
 {
-    ops.events_set(device, evs, data);
+    ops.events_set(dev, evs, data);
 }
 
 void gpuprof_events_multiplex()
@@ -77,52 +77,26 @@ state_t gpuprof_read_raw(gpuprof_t *data)
 
 state_t gpuprof_read_diff(gpuprof_t *data2, gpuprof_t *data1, gpuprof_t *data_diff)
 {
-    state_t s;
+    state_t s = EAR_SUCCESS;
+    #if 0
     if (state_fail(s = gpuprof_read(data2))) {
         return s;
     }
     gpuprof_data_diff(data2, data1, data_diff);
+    #endif
     return s;
 }
 
 state_t gpuprof_read_copy(gpuprof_t *data2, gpuprof_t *data1, gpuprof_t *data_diff)
 {
-    state_t s;
+    state_t s = EAR_SUCCESS;
+    #if 0
     if (state_fail(s = gpuprof_read_diff(data2, data1, data_diff))) {
         return s;
     }
     gpuprof_data_copy(data1, data2);
+    #endif
     return s;
-}
-
-// Data
-void gpuprof_data_diff(gpuprof_t *data2, gpuprof_t *data1, gpuprof_t *data_diff)
-{
-}
-
-void gpuprof_data_alloc(gpuprof_t **data)
-{
-}
-
-void gpuprof_data_free(gpuprof_t **data)
-{
-}
-
-void gpuprof_data_null(gpuprof_t *data)
-{
-}
-
-void gpuprof_data_copy(gpuprof_t *data_dst, gpuprof_t *data_src)
-{
-}
-
-void gpuprof_data_print(gpuprof_t *data, int fd)
-{
-}
-
-char *gpuprof_data_tostr(gpuprof_t *data, char *buffer, int length)
-{
-    return NULL;
 }
 
 #include <metrics/common/apis.h>

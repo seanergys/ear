@@ -24,8 +24,8 @@
 #include <metrics/common/apis.h>
 
 typedef struct gpuprof_s {
-	timestamp_t time;
-    ullong     *values;
+	timestamp_t  time;
+    double       values[8];
 } gpuprof_t;
 
 typedef struct gpuprof_evs_s {
@@ -37,7 +37,7 @@ typedef struct gpuprof_evs_s {
 #define GPUPROF_F_LOAD(name)             void name (gpuprof_ops_t *ops)
 #define GPUPROF_F_GET_INFO(name)         void name (apinfo_t *info)
 #define GPUPROF_F_EVENTS_GET(name)       void name (const gpuprof_evs_t **evs, uint *evs_count)
-#define GPUPROF_F_EVENTS_SET(name)       void name (int device, char *evs, gpuprof_t *data)
+#define GPUPROF_F_EVENTS_SET(name)       void name (int dev, char *evs, gpuprof_t *data)
 #define GPUPROF_F_READ(name)             state_t name (gpuprof_t *data)
 #define GPUPROF_F_READ_RAW(name)         state_t name (gpuprof_t *data)
 
@@ -64,7 +64,9 @@ void gpuprof_get_info(apinfo_t *info);
 void gpuprof_events_get(const gpuprof_evs_t **evs, uint *evs_count);
 
 // Events is a list in id, short or long name format. Device can be all_devs.
-void gpuprof_events_set(int device, char *evs, gpuprof_t *data);
+void gpuprof_events_set(int dev, char *evs, gpuprof_t *data);
+
+void gpuprof_events_unset(int dev);
 
 state_t gpuprof_read(gpuprof_t *data);
 
@@ -73,20 +75,5 @@ state_t gpuprof_read_raw(gpuprof_t *data);
 state_t gpuprof_read_diff(gpuprof_t *data2, gpuprof_t *data1, gpuprof_t *data_diff);
 
 state_t gpuprof_read_copy(gpuprof_t *data2, gpuprof_t *data1, gpuprof_t *data_diff);
-
-// Data
-void gpuprof_data_diff(gpuprof_t *data2, gpuprof_t *data1, gpuprof_t *data_diff);
-
-void gpuprof_data_alloc(gpuprof_t **data);
-
-void gpuprof_data_free(gpuprof_t **data);
-
-void gpuprof_data_null(gpuprof_t *data);
-
-void gpuprof_data_copy(gpuprof_t *data_dst, gpuprof_t *data_src);
-
-void gpuprof_data_print(gpuprof_t *data, int fd);
-
-char *gpuprof_data_tostr(gpuprof_t *data, char *buffer, int length);
 
 #endif
