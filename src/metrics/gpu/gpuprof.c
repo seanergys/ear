@@ -60,9 +60,9 @@ GPUPROF_F_EVENTS_SET(gpuprof_events_set)
     ops.events_set(dev, evs, data);
 }
 
-void gpuprof_events_multiplex()
+GPUPROF_F_EVENTS_UNSET(gpuprof_events_unset)
 {
-
+    ops.events_unset(dev);
 }
 
 state_t gpuprof_read(gpuprof_t *data)
@@ -99,7 +99,23 @@ state_t gpuprof_read_copy(gpuprof_t *data2, gpuprof_t *data1, gpuprof_t *data_di
     return s;
 }
 
+GPUPROF_F_DATA_DIFF(gpuprof_data_diff)
+{
+    return ops.data_diff(data2, data1, dataD);
+}
+
+GPUPROF_F_DATA_ALLOC(gpuprof_data_alloc)
+{
+    return ops.data_alloc(data);
+}
+
+GPUPROF_F_DATA_COPY(gpuprof_data_copy)
+{
+    return ops.data_copy(dataD, dataS);
+}
+
 #include <metrics/common/apis.h>
+#include <common/system/monitor.h>
 
 static const gpuprof_evs_t *evs;
 static uint evs_count;
@@ -116,7 +132,11 @@ int main(int argc, char *argv[])
     for (i = 0; i < evs_count; ++i) {
         printf("id.%02u %s\n", evs[i].id, evs[i].name);
     }
-    gpuprof_events_set(0, NULL, NULL);
+    gpuprof_events_set(0, "20,21", NULL);
+    monitor_init();
+    sleep(4);
+    gpuprof_events_unset(0);
+    sleep(100);
 
     return 0;
 }

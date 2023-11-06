@@ -25,7 +25,9 @@
 
 typedef struct gpuprof_s {
 	timestamp_t  time;
-    double       values[8];
+    double       time_s;
+    uint        *samples;
+    double     **values; //Devices * metrics
 } gpuprof_t;
 
 typedef struct gpuprof_evs_s {
@@ -38,23 +40,35 @@ typedef struct gpuprof_evs_s {
 #define GPUPROF_F_GET_INFO(name)         void name (apinfo_t *info)
 #define GPUPROF_F_EVENTS_GET(name)       void name (const gpuprof_evs_t **evs, uint *evs_count)
 #define GPUPROF_F_EVENTS_SET(name)       void name (int dev, char *evs, gpuprof_t *data)
+#define GPUPROF_F_EVENTS_UNSET(name)     void name (int dev)
 #define GPUPROF_F_READ(name)             state_t name (gpuprof_t *data)
 #define GPUPROF_F_READ_RAW(name)         state_t name (gpuprof_t *data)
+#define GPUPROF_F_DATA_DIFF(name)        void name (gpuprof_t *data2, gpuprof_t *data1, gpuprof_t *dataD)
+#define GPUPROF_F_DATA_ALLOC(name)       void name (gpuprof_t *data)
+#define GPUPROF_F_DATA_COPY(name)        void name (gpuprof_t *dataD, gpuprof_t *dataS)
 
 #define GPUPROF_DEFINES(name) \
 GPUPROF_F_LOAD             (gpuprof_ ##name ##_load); \
 GPUPROF_F_GET_INFO         (gpuprof_ ##name ##_get_info); \
 GPUPROF_F_EVENTS_GET       (gpuprof_ ##name ##_events_get); \
 GPUPROF_F_EVENTS_SET       (gpuprof_ ##name ##_events_set); \
+GPUPROF_F_EVENTS_UNSET     (gpuprof_ ##name ##_events_unset); \
 GPUPROF_F_READ             (gpuprof_ ##name ##_read); \
 GPUPROF_F_READ_RAW         (gpuprof_ ##name ##_read_raw); \
+GPUPROF_F_DATA_DIFF        (gpuprof_ ##name ##_data_diff); \
+GPUPROF_F_DATA_ALLOC       (gpuprof_ ##name ##_data_alloc); \
+GPUPROF_F_DATA_COPY        (gpuprof_ ##name ##_data_copy);
 
 typedef struct gpuprof_ops_s {
     GPUPROF_F_GET_INFO((*get_info));
     GPUPROF_F_EVENTS_GET((*events_get));
     GPUPROF_F_EVENTS_SET((*events_set));
+    GPUPROF_F_EVENTS_UNSET((*events_unset));
     GPUPROF_F_READ((*read));
     GPUPROF_F_READ_RAW((*read_raw));
+    GPUPROF_F_DATA_DIFF((*data_diff));
+    GPUPROF_F_DATA_ALLOC((*data_alloc));
+    GPUPROF_F_DATA_COPY((*data_copy));
 } gpuprof_ops_t;
 
 void gpuprof_load(int force_api);
@@ -75,5 +89,12 @@ state_t gpuprof_read_raw(gpuprof_t *data);
 state_t gpuprof_read_diff(gpuprof_t *data2, gpuprof_t *data1, gpuprof_t *data_diff);
 
 state_t gpuprof_read_copy(gpuprof_t *data2, gpuprof_t *data1, gpuprof_t *data_diff);
+
+// Data
+void gpuprof_data_diff(gpuprof_t *data2, gpuprof_t *data1, gpuprof_t *dataD);
+
+void gpuprof_data_alloc(gpuprof_t *data);
+
+void gpuprof_data_copy(gpuprof_t *dataD, gpuprof_t *dataS);
 
 #endif

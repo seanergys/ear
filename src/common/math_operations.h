@@ -53,6 +53,7 @@
 #define overflow_mixed(type, suffix) \
     type overflow_mixed_ ##suffix (type v2, type v1, type max, uint bits)
 
+overflow_zeros(double, f64);
 overflow_zeros(ullong, u64);
 overflow_mixed(ullong, u64);
 overflow_magic(ullong, u64);
