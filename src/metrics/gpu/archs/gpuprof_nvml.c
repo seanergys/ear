@@ -38,6 +38,18 @@ static uint			        devs_count;
 static nvmlDevice_t        *devs;
 static suscription_t       *sus;
 
+
+// Why this class uses the monitor thread instead using multiple nvmlGpmMetricsGet_t?
+// Because if you add a void pointer to gpuprof_t to keep nvmlGpmMetricsGet_t 
+// independent, you have to:
+//  1) Remove the data1 or data2 and use single data, because nvmlGpmMetricsGet_t
+//     keeps the sample2 and sample1 itself, and you can't allocate two gpuprof_t
+//     and know in advance to which gpuprof_t is related. But is not recommended
+//     to change the design just because one intern API is different.
+//  2) If someone changes the events through events_set, the nvmlGpmMetricsGet_t 
+//     will become invalid.
+//
+
 static state_t gpuprof_nvml_pool(void *p);
 
 static int support_test()
@@ -105,6 +117,8 @@ static int events_fill(nvmlGpmMetricsGet_t *sev, int i)
     mevs_count++;
     return 1;
 }
+    
+static state_t gpuprof_nvml_pool2(void *p);
 
 GPUPROF_F_LOAD(gpuprof_nvml_load)
 {
@@ -123,14 +137,10 @@ GPUPROF_F_LOAD(gpuprof_nvml_load)
     if (!support_test()) {
         return;
     }
-    // Allocating space for our own event list (mevs)
-    mevs = calloc(NVML_GPM_METRIC_MAX, sizeof(gpuprof_evs_t));
-    // Allocating space for pooling counters
-    gpuprof_nvml_data_alloc(&pool);
-    // Allocating space for events references
-    pool_refs = calloc(devs_count, sizeof(char **));
     // Allocating space for NVML metrics for all devices + additional for testing
     gpms = calloc(devs_count + 1, sizeof(nvmlGpmMetricsGet_t));
+    // Allocating space for our own event list (mevs)
+    mevs = calloc(NVML_GPM_METRIC_MAX, sizeof(gpuprof_evs_t));
     // Allocating samples
     while (i < (devs_count+1)) {
         if (!samples_alloc(&gpms[i])) {
@@ -138,6 +148,10 @@ GPUPROF_F_LOAD(gpuprof_nvml_load)
         }
         i++;
     }
+    // Allocating space for pooling counters
+    gpuprof_nvml_data_alloc(&pool);
+    // Allocating space for events references
+    pool_refs = calloc(devs_count, sizeof(char **));
     // Getting event names and ids
     i = 1;
     while(events_fill(&gpms[devs_count], i++));
@@ -179,6 +193,8 @@ static state_t gpuprof_nvml_pool(void *p)
     nvmlReturn_t r;
     int d, m;
 
+    // nvmlGpmMetricsGet and nvmlGpmSampleGet overhead was measured between 0 and 3 ms.
+
     // Thread lock
     while (pthread_mutex_trylock(&lock));
     for (d = 0; d < devs_count; ++d) {
@@ -201,9 +217,10 @@ static state_t gpuprof_nvml_pool(void *p)
                 pool.values[d][m] += gpms[d].metrics[m].value;
                 pool.samples[d]   += 1.0;
             }
-            debug("%s: %lf.[%d][%d] += %lf %s",
+            debug("%s: %lf.[%d][%d] += %lf %s (nvmlReturn %d: %s)",
                 gpms[d].metrics[m].metricInfo.longName, pool.values[d][m], d, m,
-                gpms[d].metrics[m].value, gpms[d].metrics[m].metricInfo.unit);
+                gpms[d].metrics[m].value, gpms[d].metrics[m].metricInfo.unit,
+                gpms[d].metrics[m].nvmlReturn, nvml.ErrorString(gpms[d].metrics[m].nvmlReturn));
         }
         // Getting sample 1
         //memcpy(gpms[d].sample1, gpms[d].sample2, sizeof(nvmlGpmSample_t));
@@ -241,6 +258,10 @@ static void set(int dev, char *ref, uint *ids, uint ids_count)
     }
     gpms[dev].numMetrics = ids_count;
     //
+    if ((r = nvml.GpmMetricsGet(&gpms[dev])) != NVML_SUCCESS) {
+        debug("Error while loading NVML metrics: %s", nvml.ErrorString(r));
+        return;
+    }
     if ((r = nvml.GpmSampleGet(devs[dev], gpms[dev].sample1)) != NVML_SUCCESS) {
         debug("Error while loading NVML sample: %s", nvml.ErrorString(r));
         return;
@@ -284,7 +305,7 @@ GPUPROF_F_EVENTS_UNSET(gpuprof_nvml_events_unset)
 
 GPUPROF_F_READ(gpuprof_nvml_read)
 {
-    gpuprof_nvml_pool(NULL);
+//    gpuprof_nvml_pool(NULL);
 	while (pthread_mutex_trylock(&lock));
     gpuprof_nvml_data_copy(data, &pool);
 	pthread_mutex_unlock(&lock);
@@ -299,11 +320,16 @@ GPUPROF_F_READ_RAW(gpuprof_nvml_read_raw)
 GPUPROF_F_DATA_DIFF(gpuprof_nvml_data_diff)
 {
     int d, m;
+    // Float time in seconds with micro seconds precission
+    dataD->time_s = timestamp_fdiff(&data2->time, &data1->time, TIME_SECS, TIME_USECS);
     for (d = 0; d < devs_count; ++d) {
-        for (d = 0; d < devs_count; ++d) {
-            if (data2->samples[m] > data1->samples[m]) {
-                dataD->values[d][m] = overflow_zeros_f64(data2->values[d][m], data1->values[d][m]) / 
-                    (data2->samples[m] - data1->samples[m]);
+        for (m = 0; m < gpms[d].numMetrics; ++m) {
+            if (data2->samples[d] > data1->samples[d]) {
+                dataD->samples[d] = data2->samples[d] - data1->samples[d];
+                dataD->values[d][m] = overflow_zeros_f64(data2->values[d][m], data1->values[d][m]) /  (dataD->samples[d]);
+            } else {
+                dataD->samples[d] = 0U;
+                dataD->values[d][m] = 0.0;
             }
         }
     }
@@ -314,13 +340,17 @@ GPUPROF_F_DATA_ALLOC(gpuprof_nvml_data_alloc)
     double **aux;
     int d;
 
-    data->samples   = calloc(devs_count, sizeof(double));
-    data->values    = calloc(devs_count, sizeof(double *));
-    data->values[0] = calloc(devs_count*NVML_GPM_METRIC_MAX, sizeof(double));
+    data->devs_count   = devs_count;
+    data->samples      = calloc(devs_count, sizeof(double));
+    data->values       = calloc(devs_count, sizeof(double *));
+    data->values[0]    = calloc(devs_count*NVML_GPM_METRIC_MAX, sizeof(double));
+    data->values_count = calloc(devs_count, sizeof(uint)); 
+    // Setting all values to 0
     memset(data->values[0], 0, devs_count*NVML_GPM_METRIC_MAX*sizeof(double));
     // Setting pointers
     for (d = 0; d < devs_count; ++d) {
         data->values[d] = &data->values[0][d*NVML_GPM_METRIC_MAX];
+        data->values_count[d] = gpms[d].numMetrics;
     }
 }
 
@@ -328,4 +358,5 @@ GPUPROF_F_DATA_COPY(gpuprof_nvml_data_copy)
 {
     memcpy(dataD->values[0], dataS->values[0], devs_count*NVML_GPM_METRIC_MAX*sizeof(double));
     memcpy(dataD->samples  , dataS->samples  , devs_count*sizeof(double));
+    memcpy(&dataD->time, &dataS->time, sizeof(timestamp_t));
 }

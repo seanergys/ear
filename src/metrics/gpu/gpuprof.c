@@ -78,24 +78,20 @@ state_t gpuprof_read_raw(gpuprof_t *data)
 state_t gpuprof_read_diff(gpuprof_t *data2, gpuprof_t *data1, gpuprof_t *data_diff)
 {
     state_t s = EAR_SUCCESS;
-    #if 0
     if (state_fail(s = gpuprof_read(data2))) {
         return s;
     }
     gpuprof_data_diff(data2, data1, data_diff);
-    #endif
     return s;
 }
 
 state_t gpuprof_read_copy(gpuprof_t *data2, gpuprof_t *data1, gpuprof_t *data_diff)
 {
     state_t s = EAR_SUCCESS;
-    #if 0
     if (state_fail(s = gpuprof_read_diff(data2, data1, data_diff))) {
         return s;
     }
     gpuprof_data_copy(data1, data2);
-    #endif
     return s;
 }
 
@@ -117,13 +113,16 @@ GPUPROF_F_DATA_COPY(gpuprof_data_copy)
 #include <metrics/common/apis.h>
 #include <common/system/monitor.h>
 
+static gpuprof_t m1;
+static gpuprof_t m2;
+static gpuprof_t mD;
 static const gpuprof_evs_t *evs;
 static uint evs_count;
 static apinfo_t info;
 
 int main(int argc, char *argv[])
 {
-    int i;
+    int i, m, d;
     gpuprof_load(0);
     gpuprof_get_info(&info);
     apinfo_tostr(&info);
@@ -134,9 +133,18 @@ int main(int argc, char *argv[])
     }
     gpuprof_events_set(0, "20,21", NULL);
     monitor_init();
-    sleep(4);
-    gpuprof_events_unset(0);
-    sleep(100);
-
+    gpuprof_data_alloc(&m1);
+    gpuprof_data_alloc(&m2);
+    gpuprof_data_alloc(&mD);
+    gpuprof_read(&m1);
+    while(1)
+    {
+    sleep(2);
+    gpuprof_read_copy(&m2, &m1, &mD);
+    for (d = 0; d < mD.devs_count; ++d)  
+    for (m = 0; m < mD.values_count[d]; ++m) {
+        printf("D%d_M%d: %lf\n", d, m, mD.values[d][m]);
+    }
+    }
     return 0;
 }

@@ -24,15 +24,18 @@
 #include <metrics/common/apis.h>
 
 typedef struct gpuprof_s {
-	timestamp_t  time;
-    double       time_s;
-    uint        *samples;
-    double     **values; //Devices * metrics
+	timestamp_t     time;
+    double          time_s;
+    uint            devs_count;
+    uint           *samples;
+    double        **values; //Devices * metrics
+    uint           *values_count;
 } gpuprof_t;
 
 typedef struct gpuprof_evs_s {
     char name[64];
-    uint  id;
+    char units[16];
+    uint id;
 } gpuprof_evs_t;
 
 // API building scheme
@@ -77,7 +80,7 @@ void gpuprof_get_info(apinfo_t *info);
 
 void gpuprof_events_get(const gpuprof_evs_t **evs, uint *evs_count);
 
-// Events is a list in id, short or long name format. Device can be all_devs.
+// Events is a list in id or name format. Device can be all_devs.
 void gpuprof_events_set(int dev, char *evs, gpuprof_t *data);
 
 void gpuprof_events_unset(int dev);
