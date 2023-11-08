@@ -71,7 +71,6 @@ typedef struct ctx_s {
     void *context;
 } ctx_t;
 
-
 typedef struct apinfo_s {
     char *layer;
     uint  api;
