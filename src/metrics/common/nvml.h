@@ -37,8 +37,6 @@
 #define NVML_CLOCK_GRAPHICS             0
 #define NVML_CLOCK_ID_APP_CLOCK_TARGET	0
 #define NVML_TEMPERATURE_GPU            0
-#define NVML_GPM_METRIC_MAX             1
-#define NVML_GPM_METRICS_GET_VERSION    0
 
 #define NVML_DEVICE_ARCH_KEPLER  2
 #define NVML_DEVICE_ARCH_MAXWELL 3
@@ -50,7 +48,6 @@
 #define NVML_DEVICE_ARCH_HOPPER  9
 #define NVML_DEVICE_ARCH_UNKNOWN 0xffffffff
 
-
 typedef int nvmlDevice_t;
 typedef int nvmlDriverModel_t;
 typedef int nvmlEnableState_t;
@@ -59,13 +56,19 @@ typedef int nvmlTemperatureSensors_t;
 typedef int nvmlProcessInfo_t;
 typedef int nvmlClockId_t;
 typedef int nvmlReturn_t;
-typedef int nvmlGpmSample_t;
 typedef uint nvmlDeviceArchitecture_t;
 
 typedef struct nvmlUtilization_s {
     int memory;
     int gpu;
 } nvmlUtilization_t;
+#endif // CUDA_BASE
+
+#ifndef NVML_GPM_SUPPORT_VERSION
+#define NVML_GPM_METRIC_MAX             1
+#define NVML_GPM_METRICS_GET_VERSION    0
+
+typedef int nvmlGpmSample_t;
 
 typedef struct {
     uint version;
@@ -90,7 +93,7 @@ typedef struct {
     nvmlGpmSample_t sample2;
     nvmlGpmMetric_t metrics[NVML_GPM_METRIC_MAX];
 } nvmlGpmMetricsGet_t;
-#endif // CUDA_BASE
+#endif
 
 typedef struct nvml_s
 {

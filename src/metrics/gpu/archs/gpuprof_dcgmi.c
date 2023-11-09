@@ -26,13 +26,17 @@
 #include <metrics/common/popen.h>
 #include <metrics/gpu/archs/gpuprof_dcgmi.h>
 
-static gpuprof_evs_t *events;
-static uint           events_count;
-static uint           devs_count;
-static popen_t        p;
-static gpuprof_t      pool;
-static double        *values_buffer; //auxiliar buffer
-static uint           values_count;
+static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+static gpuprof_evs_t  *events;
+static uint            events_count;
+static uint            devs_count;
+static popen_t         p;
+static gpuprof_t       pool;
+static char           *pool_refs;
+static ullong          pool_hash; 
+static double         *pool_aux_buffer; //auxiliar buffer
+
+// DCGMI limits all GPUs to monitor the same events
 
 GPUPROF_F_LOAD(gpuprof_dcgmi_load)
 {
@@ -86,9 +90,9 @@ GPUPROF_F_LOAD(gpuprof_dcgmi_load)
         ++events_count;
     }
     while (popen_read(&p, "sai", &event_name, &event_id));
-    //
+    // Allocating pool and an auxiliar buffer
     gpuprof_dcgmi_data_alloc(&pool);
-    values_buffer = calloc(events_count, sizeof(double));
+    pool_aux_buffer = calloc(events_count, sizeof(double));
     //
     apis_put(ops->get_info,         gpuprof_dcgmi_get_info);
     apis_put(ops->events_get,       gpuprof_dcgmi_events_get);
@@ -119,14 +123,22 @@ GPUPROF_F_EVENTS_GET(gpuprof_dcgmi_events_get)
 GPUPROF_F_EVENTS_SET(gpuprof_dcgmi_events_set)
 {
     char command[512];
+    uint values_count;
     state_t s;
     uint *ids;
 
-    // String treatment (is a NULL terminated list)
+    // If its the same string we do nothing
+    if (evs == pool_refs) {
+        return;
+    }
+    // Its a different list of events, so we compute the new hash
+    pool_hash += 1; // Oh, so smart
+    // Getting the number of events to monitor
     ids = (uint *) strtoat(evs, ',', NULL, &values_count, ID_UINT);
     free(ids);
-
+    // Cleaning the current pool
     gpuprof_dcgmi_events_unset(dev);
+    // New popen every 2 seconds
     sprintf(command, "dcgmi dmon -e %s -d 2000", evs);
     if (state_fail(s = popen_open(command, 2, 0, &p))) {
         debug("Failed popen_open: %s", state_msg);
@@ -135,23 +147,28 @@ GPUPROF_F_EVENTS_SET(gpuprof_dcgmi_events_set)
 
 GPUPROF_F_EVENTS_UNSET(gpuprof_dcgmi_events_unset)
 {
+    pool_refs = NULL;    
     popen_close(&p);
 }
 
 GPUPROF_F_READ(gpuprof_dcgmi_read)
 {
+    char buffer[128];
     int dev;
     int m;
 
-    // All devices have the same events in DCGMI
-    while(popen_read(&p, "aiD", &dev, values_buffer)) {
+    while (pthread_mutex_trylock(&lock));
+    // Pooling
+    while(popen_read(&p, "siD", buffer, &dev, pool_aux_buffer)) {
         for (m = 0; m < values_count; ++m) {
-            if (!isnan(values_buffer[m])) {
-                pool.values[dev][m] += values_buffer[m];
-                pool.samples_count[dev] += 1.0;
-            }
+            pool.values[dev][m] += pool_aux_buffer[m];
+            debug("D%d_M%d: %lf += %lf %2.lf", dev, m, pool.values[dev][m], pool_aux_buffer[m], pool.samples_count[dev]);
         }
+        pool.samples_count[dev] += 1.0;
     }
+    // Once pooling is over, we copy the values to data
+    gpuprof_dcgmi_data_copy(data, &pool);
+    pthread_mutex_unlock(&lock);
     return EAR_SUCCESS;
 }
 
@@ -181,24 +198,23 @@ GPUPROF_F_DATA_DIFF(gpuprof_dcgmi_data_diff)
 GPUPROF_F_DATA_ALLOC(gpuprof_dcgmi_data_alloc)
 {
     int d;
-
     data->devs_count    = devs_count;
-    data->values        = calloc(devs_count, sizeof(double *));
+    data->hashes        = calloc(devs_count             , sizeof(ullong));
+    data->values        = calloc(devs_count             , sizeof(double *));
     data->values[0]     = calloc(devs_count*events_count, sizeof(double));
-    data->values_count  = calloc(devs_count, sizeof(uint));
-    data->samples_count = calloc(devs_count, sizeof(double));
-    // Setting all values to 0
-    memset(data->values[0], 0, devs_count*events_count*sizeof(double));
-    // Setting pointers
+    data->values_count  = calloc(devs_count             , sizeof(uint));
+    data->samples_count = calloc(devs_count             , sizeof(double));
+    // Setting values pointers
     for (d = 0; d < devs_count; ++d) {
         data->values[d] = &data->values[0][d*events_count];
-        data->values_count[d] = values_count;
     }
 }
 
 GPUPROF_F_DATA_COPY(gpuprof_dcgmi_data_copy)
 {
-    memcpy(dataD->values[0], dataS->values[0], devs_count*events_count*sizeof(double));
-    memcpy(dataD->samples_count, dataS->samples_count, devs_count*sizeof(double));
-    memcpy(&dataD->time, &dataS->time, sizeof(timestamp_t));
+    memcpy( dataD->values[0]    ,  dataS->values[0]    , devs_count*events_count*sizeof(double));
+    memcpy( dataD->samples_count,  dataS->samples_count, devs_count*sizeof(double));
+    memcpy( dataD->values_count ,  dataS->values_count , devs_count*sizeof(uint));
+    memcpy( dataD->hashes       ,  dataS->hashes       , devs_count*sizeof(ullong));
+    memcpy(&dataD->time         , &dataS->time         , sizeof(timestamp_t));
 }

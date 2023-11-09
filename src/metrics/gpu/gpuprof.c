@@ -131,8 +131,9 @@ int main(int argc, char *argv[])
     for (i = 0; i < evs_count; ++i) {
         printf("id.%02u %s\n", evs[i].id, evs[i].name);
     }
-    gpuprof_events_set(0, "20,21", NULL);
-    monitor_init();
+    //gpuprof_events_set(0, "20,21", NULL);
+    gpuprof_events_set(0, "1002,1003", NULL);
+    //monitor_init();
     gpuprof_data_alloc(&m1);
     gpuprof_data_alloc(&m2);
     gpuprof_data_alloc(&mD);

@@ -60,6 +60,10 @@ static int support_test()
     static nvmlGpmSupport_t support;
     nvmlReturn_t r;
 
+    #ifndef NVML_GPM_SUPPORT_VERSION
+    // Compiled without GPM header
+    return 0;
+    #endif
     support.version = NVML_GPM_METRICS_GET_VERSION;
     if (nvml.GpmQueryDeviceSupport == NULL || nvml.GpmMetricsGet == NULL) {
         debug("GPM symbols not found");
@@ -214,13 +218,13 @@ static state_t gpuprof_nvml_pool(void *p)
         for (m = 0; m < gpms[d].numMetrics; ++m) {
             if (!isnan(gpms[d].metrics[m].value)) {
                 pool.values[d][m] += gpms[d].metrics[m].value;
-                pool.samples_count[d] += 1.0;
             }
             debug("%s: %lf.[%d][%d] += %lf %s (nvmlReturn %d: %s)",
                 gpms[d].metrics[m].metricInfo.longName, pool.values[d][m], d, m,
                 gpms[d].metrics[m].value, gpms[d].metrics[m].metricInfo.unit,
                 gpms[d].metrics[m].nvmlReturn, nvml.ErrorString(gpms[d].metrics[m].nvmlReturn));
         }
+        pool.samples_count[d] += 1.0;
         // Getting sample 1
         //memcpy(gpms[d].sample1, gpms[d].sample2, sizeof(nvmlGpmSample_t));
         if ((r = nvml.GpmSampleGet(devs[d], gpms[d].sample1)) != NVML_SUCCESS) {

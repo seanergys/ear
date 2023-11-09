@@ -162,6 +162,7 @@ state_t nvml_open(nvml_t *nvml_in)
     if (nvml_in != NULL) {
         memcpy(nvml_in, &nvml, sizeof(nvml_t));
     }
+    debug("Initialized NVML");
     return s;
 }
 
