@@ -30,7 +30,7 @@ typedef struct gpuprof_s {
     double       *samples_count;
     double      **values; //Devices * metrics
     uint         *values_count;
-    ullong       *hash; //To control event changes
+    char         *hashes; //To control event changes
 } gpuprof_t;
 
 typedef struct gpuprof_evs_s {

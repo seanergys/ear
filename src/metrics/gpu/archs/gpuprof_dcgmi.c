@@ -32,8 +32,6 @@ static uint            events_count;
 static uint            devs_count;
 static popen_t         p;
 static gpuprof_t       pool;
-static char           *pool_refs;
-static ullong          pool_hash; 
 static double         *pool_aux_buffer; //auxiliar buffer
 
 // DCGMI limits all GPUs to monitor the same events
@@ -120,35 +118,67 @@ GPUPROF_F_EVENTS_GET(gpuprof_dcgmi_events_get)
     *evs = events;
 }
 
+static void invalidate(gpuprof_t *data, int dev)
+{
+    pool.hashes[dev]        = NULL;
+    pool.samples_count[dev] = 1.0;
+    pool.values_count[dev]  = 0U;
+    memset(pool.values[dev] , 0, NVML_GPM_METRIC_MAX*sizeof(double));
+}
+
+static void unset(int dev)
+{
+    invalidate(&pool, dev);
+}
+
+static void set(int dev, char *evs, uint ids_count)
+{
+    if (pool.hashes[dev] == evs) {
+        return;
+    }
+    // If different reference, unset
+    unset(dev);
+    // Changing pool values
+    pool.hashes[dev] = evs;
+    pool.values_count[dev] = ids_count;
+}
+
 GPUPROF_F_EVENTS_SET(gpuprof_dcgmi_events_set)
 {
     char command[512];
-    uint values_count;
+    uint ids_count;
     state_t s;
     uint *ids;
 
-    // If its the same string we do nothing
-    if (evs == pool_refs) {
+    if (evs == NULL) {
         return;
     }
-    // Its a different list of events, so we compute the new hash
-    pool_hash += 1; // Oh, so smart
     // Getting the number of events to monitor
     ids = (uint *) strtoat(evs, ',', NULL, &values_count, ID_UINT);
     free(ids);
-    // Cleaning the current pool
-    gpuprof_dcgmi_events_unset(dev);
+    // Filling the pool
+    while (pthread_mutex_trylock(&lock));
+    // Any device means all devices for DCGMI
+    for (d = 0; d < devs_count; ++d) {
+        set(d, evs, ids, ids_count);
+    }
     // New popen every 2 seconds
     sprintf(command, "dcgmi dmon -e %s -d 2000", evs);
     if (state_fail(s = popen_open(command, 2, 0, &p))) {
         debug("Failed popen_open: %s", state_msg);
     }
+    pthread_mutex_unlock(&lock);
 }
 
 GPUPROF_F_EVENTS_UNSET(gpuprof_dcgmi_events_unset)
 {
-    pool_refs = NULL;    
+    int d;
+    while (pthread_mutex_trylock(&lock));
     popen_close(&p);
+    for (d = 0; d < devs_count; ++d) {
+        unset(d);
+    }
+    pthread_mutex_unlock(&lock);
 }
 
 GPUPROF_F_READ(gpuprof_dcgmi_read)
@@ -183,6 +213,9 @@ GPUPROF_F_DATA_DIFF(gpuprof_dcgmi_data_diff)
     // Float time in seconds with micro seconds precission
     dataD->time_s = timestamp_fdiff(&data2->time, &data1->time, TIME_SECS, TIME_USECS);
     for (d = 0; d < devs_count; ++d) {
+        if (data2->hashes[dev] != data1->hashes[dev]) {
+            invalidate(dataD);
+        }
         for (m = 0; m < values_count; ++m) {
             dataD->samples_count[d] = 0U;
             dataD->values[d][m]     = 0.0;
@@ -199,11 +232,11 @@ GPUPROF_F_DATA_ALLOC(gpuprof_dcgmi_data_alloc)
 {
     int d;
     data->devs_count    = devs_count;
-    data->hashes        = calloc(devs_count             , sizeof(ullong));
-    data->values        = calloc(devs_count             , sizeof(double *));
+    data->hashes        = calloc(devs_count, sizeof(ullong));
+    data->values        = calloc(devs_count, sizeof(double *));
     data->values[0]     = calloc(devs_count*events_count, sizeof(double));
-    data->values_count  = calloc(devs_count             , sizeof(uint));
-    data->samples_count = calloc(devs_count             , sizeof(double));
+    data->values_count  = calloc(devs_count, sizeof(uint));
+    data->samples_count = calloc(devs_count, sizeof(double));
     // Setting values pointers
     for (d = 0; d < devs_count; ++d) {
         data->values[d] = &data->values[0][d*events_count];
