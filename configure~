@@ -5361,7 +5361,7 @@ echo "----------------------------------------------------------"
 #	AC_MSG_ERROR(not compilable)
 #fi
 
-ac_config_files="$ac_config_files Makefile etc/module/ear etc/module/ear-lite etc/slurm/ear.plugstack.conf etc/systemd/eard.service etc/systemd/eardbd.service etc/systemd/eargmd.service src/common/config/config_install.h etc/conf/ear.conf.full.template etc/conf/ear.conf.template etc/rpms/specs/ear.spec"
+ac_config_files="$ac_config_files Makefile etc/module/ear etc/module/ear-lite etc/module/ear-sing etc/slurm/ear.plugstack.conf etc/systemd/eard.service etc/systemd/eardbd.service etc/systemd/eargmd.service src/common/config/config_install.h etc/conf/ear.conf.full.template etc/conf/ear.conf.template etc/rpms/specs/ear.spec"
 
 ac_config_files="$ac_config_files etc/rpms/rpmbuild.sh"
 
@@ -6117,6 +6117,7 @@ do
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "etc/module/ear") CONFIG_FILES="$CONFIG_FILES etc/module/ear" ;;
     "etc/module/ear-lite") CONFIG_FILES="$CONFIG_FILES etc/module/ear-lite" ;;
+    "etc/module/ear-sing") CONFIG_FILES="$CONFIG_FILES etc/module/ear-sing" ;;
     "etc/slurm/ear.plugstack.conf") CONFIG_FILES="$CONFIG_FILES etc/slurm/ear.plugstack.conf" ;;
     "etc/systemd/eard.service") CONFIG_FILES="$CONFIG_FILES etc/systemd/eard.service" ;;
     "etc/systemd/eardbd.service") CONFIG_FILES="$CONFIG_FILES etc/systemd/eardbd.service" ;;

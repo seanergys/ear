@@ -666,6 +666,21 @@ int get_exec_name(char *name,int name_size)
 				return 0;
 }
 
+static void print_basic_configuration(uint vl)
+{
+	verbose(vl, "EARD[%s] Architectural compiled limits ", nodename);
+	verbose(vl, "EARD[%s] MAX_CPUS_SUPPORTED      %u", nodename, MAX_CPUS_SUPPORTED);
+	verbose(vl, "EARD[%s] MAX_SOCKETS_SUPPORTED 	%u", nodename, MAX_SOCKETS_SUPPORTED);
+	verbose(vl, "EARD[%s] MAX_GPUS_SUPPORTED      %u", nodename, MAX_GPUS_SUPPORTED);
+	verbose(vl, "EARD[%s] USE_GPUS                %u", nodename, USE_GPUS);
+	verbose(vl, "EARD[%s] VERSION                 %u", nodename, VERSION_MAJOR);
+	verbose(vl, "EARD[%s] SUBVERSION              %u", nodename, VERSION_MINOR);
+	verbose(vl, "EARD[%s] Library default options ", nodename);
+	verbose(vl, "EARD[%s] EAR_eUFS                %u", nodename, EAR_eUFS);
+	verbose(vl, "EARD[%s] MAX_CPUF_PSTATE         %u", nodename, MAX_CPUF_PSTATE);
+	verbose(vl, "EARD[%s] MAX_IMCF_PSTATE         %u", nodename, MAX_IMCF_PSTATE);
+}
+
 
 /*
  *
@@ -744,6 +759,7 @@ int main(int argc, char *argv[])
                     verbose(VEARD_INIT, "frequency information can't be initialized");
                     _exit(1);
                 }
+								print_basic_configuration(1);
                 verbose(VEARD_INIT,"Reading ear.conf configuration");
                 // We read the cluster configuration and sets default values in the shared memory
                 if (get_ear_conf_path(my_ear_conf_path) == EAR_ERROR) {
