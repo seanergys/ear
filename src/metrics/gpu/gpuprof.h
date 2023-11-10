@@ -24,13 +24,12 @@
 #include <metrics/common/apis.h>
 
 typedef struct gpuprof_s {
-	timestamp_t   time;
-    double        time_s;
-    uint          devs_count;
-    double       *samples_count;
-    double      **values; //Devices * metrics
-    uint         *values_count;
-    char         *hashes; //To control event changes
+	timestamp_t  time;
+    double       time_s;
+    double       samples_count;
+    double      *values; //Metrics in this device
+    uint         values_count;
+    char        *hash; //To control event changes
 } gpuprof_t;
 
 typedef struct gpuprof_evs_s {
@@ -43,12 +42,12 @@ typedef struct gpuprof_evs_s {
 #define GPUPROF_F_LOAD(name)             void name (gpuprof_ops_t *ops)
 #define GPUPROF_F_GET_INFO(name)         void name (apinfo_t *info)
 #define GPUPROF_F_EVENTS_GET(name)       void name (const gpuprof_evs_t **evs, uint *evs_count)
-#define GPUPROF_F_EVENTS_SET(name)       void name (int dev, char *evs, gpuprof_t *data)
+#define GPUPROF_F_EVENTS_SET(name)       void name (int dev, char *evs)
 #define GPUPROF_F_EVENTS_UNSET(name)     void name (int dev)
 #define GPUPROF_F_READ(name)             state_t name (gpuprof_t *data)
 #define GPUPROF_F_READ_RAW(name)         state_t name (gpuprof_t *data)
 #define GPUPROF_F_DATA_DIFF(name)        void name (gpuprof_t *data2, gpuprof_t *data1, gpuprof_t *dataD)
-#define GPUPROF_F_DATA_ALLOC(name)       void name (gpuprof_t *data)
+#define GPUPROF_F_DATA_ALLOC(name)       void name (gpuprof_t **data)
 #define GPUPROF_F_DATA_COPY(name)        void name (gpuprof_t *dataD, gpuprof_t *dataS)
 
 #define GPUPROF_DEFINES(name) \
@@ -82,7 +81,7 @@ void gpuprof_get_info(apinfo_t *info);
 void gpuprof_events_get(const gpuprof_evs_t **evs, uint *evs_count);
 
 // Events is a list of strings in id format. Device can be all_devs.
-void gpuprof_events_set(int dev, char *evs, gpuprof_t *data);
+void gpuprof_events_set(int dev, char *evs);
 
 void gpuprof_events_unset(int dev);
 
@@ -97,7 +96,7 @@ state_t gpuprof_read_copy(gpuprof_t *data2, gpuprof_t *data1, gpuprof_t *data_di
 // Data
 void gpuprof_data_diff(gpuprof_t *data2, gpuprof_t *data1, gpuprof_t *dataD);
 
-void gpuprof_data_alloc(gpuprof_t *data);
+void gpuprof_data_alloc(gpuprof_t **data);
 
 void gpuprof_data_copy(gpuprof_t *dataD, gpuprof_t *dataS);
 

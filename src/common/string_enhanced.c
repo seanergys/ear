@@ -24,11 +24,12 @@
 
 char *strtolow(char *string)
 {
-    while (*string) {
+    char *p = string;
+    while (*string != '\0') {
         *string = tolower((unsigned char) *string);
         string++;
     }
-    return string;
+    return p;
 }
 
 void strtoup(char *string)

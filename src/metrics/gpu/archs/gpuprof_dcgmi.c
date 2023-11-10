@@ -31,7 +31,7 @@ static gpuprof_evs_t  *events;
 static uint            events_count;
 static uint            devs_count;
 static popen_t         p;
-static gpuprof_t       pool;
+static gpuprof_t      *pool;
 static double         *pool_aux_buffer; //auxiliar buffer
 
 // DCGMI limits all GPUs to monitor the same events
@@ -55,7 +55,7 @@ GPUPROF_F_LOAD(gpuprof_dcgmi_load)
     }
     popen_read(&p, "s", &count);
     if (strstr(strtolow(count), "error") != NULL) {
-        debug("Failed while reading dcgmi discovery: %s", state_msg);
+        debug("Failed while reading dcgmi discovery: DCGMI returned error");
         popen_close(&p);
         return;
     }
@@ -120,27 +120,27 @@ GPUPROF_F_EVENTS_GET(gpuprof_dcgmi_events_get)
 
 static void invalidate(gpuprof_t *data, int dev)
 {
-    pool.hashes[dev]        = NULL;
-    pool.samples_count[dev] = 1.0;
-    pool.values_count[dev]  = 0U;
-    memset(pool.values[dev] , 0, NVML_GPM_METRIC_MAX*sizeof(double));
+    pool[dev].hash          = NULL;
+    pool[dev].samples_count = 1.0;
+    pool[dev].values_count  = 0U;
+    memset(pool[dev].values , 0, events_count*sizeof(double));
 }
 
 static void unset(int dev)
 {
-    invalidate(&pool, dev);
+    invalidate(pool, dev);
 }
 
 static void set(int dev, char *evs, uint ids_count)
 {
-    if (pool.hashes[dev] == evs) {
+    if (pool[dev].hash == evs) {
         return;
     }
     // If different reference, unset
     unset(dev);
     // Changing pool values
-    pool.hashes[dev] = evs;
-    pool.values_count[dev] = ids_count;
+    pool[dev].hash = evs;
+    pool[dev].values_count = ids_count;
 }
 
 GPUPROF_F_EVENTS_SET(gpuprof_dcgmi_events_set)
@@ -149,18 +149,19 @@ GPUPROF_F_EVENTS_SET(gpuprof_dcgmi_events_set)
     uint ids_count;
     state_t s;
     uint *ids;
+    int d;
 
     if (evs == NULL) {
         return;
     }
     // Getting the number of events to monitor
-    ids = (uint *) strtoat(evs, ',', NULL, &values_count, ID_UINT);
+    ids = (uint *) strtoat(evs, ',', NULL, &ids_count, ID_UINT);
     free(ids);
     // Filling the pool
     while (pthread_mutex_trylock(&lock));
     // Any device means all devices for DCGMI
     for (d = 0; d < devs_count; ++d) {
-        set(d, evs, ids, ids_count);
+        set(d, evs, ids_count);
     }
     // New popen every 2 seconds
     sprintf(command, "dcgmi dmon -e %s -d 2000", evs);
@@ -190,14 +191,15 @@ GPUPROF_F_READ(gpuprof_dcgmi_read)
     while (pthread_mutex_trylock(&lock));
     // Pooling
     while(popen_read(&p, "siD", buffer, &dev, pool_aux_buffer)) {
-        for (m = 0; m < values_count; ++m) {
-            pool.values[dev][m] += pool_aux_buffer[m];
-            debug("D%d_M%d: %lf += %lf %2.lf", dev, m, pool.values[dev][m], pool_aux_buffer[m], pool.samples_count[dev]);
+        for (m = 0; m < pool[dev].values_count; ++m) {
+            pool[dev].values[m] += pool_aux_buffer[m];
+            debug("D%d_M%d: %lf += %lf %2.lf", dev, m,
+                  pool[dev].values[m], pool_aux_buffer[m], pool[dev].samples_count);
         }
-        pool.samples_count[dev] += 1.0;
+        pool[dev].samples_count += 1.0;
     }
     // Once pooling is over, we copy the values to data
-    gpuprof_dcgmi_data_copy(data, &pool);
+    gpuprof_dcgmi_data_copy(data, pool);
     pthread_mutex_unlock(&lock);
     return EAR_SUCCESS;
 }
@@ -209,20 +211,21 @@ GPUPROF_F_READ_RAW(gpuprof_dcgmi_read_raw)
 
 GPUPROF_F_DATA_DIFF(gpuprof_dcgmi_data_diff)
 {
-    int d, m;
+    int dev, m;
     // Float time in seconds with micro seconds precission
-    dataD->time_s = timestamp_fdiff(&data2->time, &data1->time, TIME_SECS, TIME_USECS);
-    for (d = 0; d < devs_count; ++d) {
-        if (data2->hashes[dev] != data1->hashes[dev]) {
-            invalidate(dataD);
+    dataD->time_s = timestamp_fdiff(&data2[0].time, &data1[0].time, TIME_SECS, TIME_USECS);
+    for (dev = 0; dev < devs_count; ++dev) {
+        if (data2[dev].hash != data1[dev].hash) {
+            invalidate(dataD, dev);
         }
-        for (m = 0; m < values_count; ++m) {
-            dataD->samples_count[d] = 0U;
-            dataD->values[d][m]     = 0.0;
-            if (data2->samples_count[d] > data1->samples_count[d]) {
-                dataD->samples_count[d] = data2->samples_count[d] - data1->samples_count[d];
-                dataD->values[d][m]     = overflow_zeros_f64(data2->values[d][m], data1->values[d][m]);
-                dataD->values[d][m]     = dataD->values[d][m] / (dataD->samples_count[d]);
+        // Cleaning values
+        memset(dataD[dev].values, 0, events_count*sizeof(double));
+        // Computing values
+        if (data2[dev].samples_count > data1[dev].samples_count) {
+            dataD[dev].samples_count = data2[dev].samples_count - data1[dev].samples_count;
+            for (m = 0; m < pool[dev].values_count; ++m) {
+                dataD[dev].values[m]     = overflow_zeros_f64(data2[dev].values[m], data1[dev].values[m]);
+                dataD[dev].values[m]     = dataD[dev].values[m] / dataD[dev].samples_count;
             }
         }
     }
@@ -230,24 +233,29 @@ GPUPROF_F_DATA_DIFF(gpuprof_dcgmi_data_diff)
 
 GPUPROF_F_DATA_ALLOC(gpuprof_dcgmi_data_alloc)
 {
+    gpuprof_t *aux;
     int d;
-    data->devs_count    = devs_count;
-    data->hashes        = calloc(devs_count, sizeof(ullong));
-    data->values        = calloc(devs_count, sizeof(double *));
-    data->values[0]     = calloc(devs_count*events_count, sizeof(double));
-    data->values_count  = calloc(devs_count, sizeof(uint));
-    data->samples_count = calloc(devs_count, sizeof(double));
-    // Setting values pointers
+    aux = calloc(devs_count, sizeof(gpuprof_t));
+    // We allocate all values contiguously
+    aux[0].values = calloc(devs_count*events_count, sizeof(double));
+    // Setting pointers
     for (d = 0; d < devs_count; ++d) {
-        data->values[d] = &data->values[0][d*events_count];
+        aux[d].values = &aux[0].values[d*events_count];
     }
+    *data = aux;
 }
 
 GPUPROF_F_DATA_COPY(gpuprof_dcgmi_data_copy)
 {
-    memcpy( dataD->values[0]    ,  dataS->values[0]    , devs_count*events_count*sizeof(double));
-    memcpy( dataD->samples_count,  dataS->samples_count, devs_count*sizeof(double));
-    memcpy( dataD->values_count ,  dataS->values_count , devs_count*sizeof(uint));
-    memcpy( dataD->hashes       ,  dataS->hashes       , devs_count*sizeof(ullong));
-    memcpy(&dataD->time         , &dataS->time         , sizeof(timestamp_t));
+    int dev;
+
+    // The data[0] can access to all the allocated values
+    memcpy(dataD[0].values,  dataS[0].values, devs_count*events_count*sizeof(double));
+    // Copying index by index
+    for (dev = 0; dev < devs_count; ++dev) {
+        dataD[dev].samples_count = dataS[dev].samples_count;
+        dataD[dev].values_count  = dataS[dev].values_count;
+        dataD[dev].hash          = dataS[dev].hash;
+        dataD[dev].time          = dataS[dev].time;
+    }
 }

@@ -110,42 +110,61 @@ GPUPROF_F_DATA_COPY(gpuprof_data_copy)
     return ops.data_copy(dataD, dataS);
 }
 
+#include <stdlib.h>
 #include <metrics/common/apis.h>
 #include <common/system/monitor.h>
 
-static gpuprof_t m1;
-static gpuprof_t m2;
-static gpuprof_t mD;
+static gpuprof_t            *m1;
+static gpuprof_t            *m2;
+static gpuprof_t            *mD;
 static const gpuprof_evs_t *evs;
-static uint evs_count;
-static apinfo_t info;
+static uint                 evs_count;
+static apinfo_t             info;
+
+static int is(char *s1, const char *s2)
+{
+    return strcasecmp(s1, s2) == 0;
+}
 
 int main(int argc, char *argv[])
 {
+    static char command[128];
     int i, m, d;
-    gpuprof_load(0);
-    gpuprof_get_info(&info);
-    apinfo_tostr(&info);
-    printf("%s %s %s\n", info.layer, info.api_str, info.granularity_str);
-    gpuprof_events_get(&evs, &evs_count);
-    for (i = 0; i < evs_count; ++i) {
-        printf("id.%02u %s\n", evs[i].id, evs[i].name);
-    }
-    //gpuprof_events_set(0, "20,21", NULL);
-    gpuprof_events_set(0, "1002,1003", NULL);
-    //monitor_init();
-    gpuprof_data_alloc(&m1);
-    gpuprof_data_alloc(&m2);
-    gpuprof_data_alloc(&mD);
-    gpuprof_read(&m1);
+
+    monitor_init();
     while(1)
     {
-    sleep(2);
-    gpuprof_read_copy(&m2, &m1, &mD);
-    for (d = 0; d < mD.devs_count; ++d)  
-    for (m = 0; m < mD.values_count[d]; ++m) {
-        printf("D%d_M%d: %lf\n", d, m, mD.values[d][m]);
-    }
+        printf("Enter command: ");
+        scanf("%s", command);
+        if (is(command, "load")) {
+            gpuprof_load(0);
+            gpuprof_get_info(&info);
+            apinfo_tostr(&info);
+            printf("LOAD: %s %s %s\n", info.layer, info.api_str, info.granularity_str);
+        } else if (is(command, "alloc")) {
+            gpuprof_data_alloc(&m1);
+            gpuprof_data_alloc(&m2);
+            gpuprof_data_alloc(&mD);
+            printf("ALLOCATED\n");
+        } else if (is(command, "get")) {
+            gpuprof_events_get(&evs, &evs_count);
+            for (i = 0; i < evs_count; ++i) {
+                printf("EVENT_%d: id.%02u %s\n", i, evs[i].id, evs[i].name);
+            }
+        } else if (is(command, "set")) {
+            char *option = calloc(128, sizeof(char));
+            scanf("%s", option);
+            gpuprof_events_set(0, option, NULL);
+        } else if (is(command, "read")) {
+            gpuprof_read(m1);
+            sleep(1);
+            gpuprof_read_copy(m2, m1, mD);
+            for (d = 0; d < info.devs_count; ++d) {
+                for (m = 0; m < mD[d].values_count; ++m) {
+                    printf("METRIC_D%d_M%d: %lf\n", d, m, mD[d].values[m]);
+                }
+            }
+        }
     }
     return 0;
 }

@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <errno.h>
 #include <fcntl.h>
@@ -185,7 +185,6 @@ int popen_read(popen_t *p, const char* f, ...)
     if (!popen_pending(p)) {
         // If not end of file
         if (!popen_eof(p)) {
-            printf("1\n");
             // Then read and parse
             if ((static_read(p, buffer))) {
                 static_parse(p, buffer);
