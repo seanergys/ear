@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <math.h>
 #include <stdlib.h>
@@ -126,18 +126,13 @@ static void invalidate(gpuprof_t *data, int dev)
     memset(data[dev].values , 0, events_count*sizeof(double));
 }
 
-static void unset(int dev)
-{
-    invalidate(pool, dev);
-}
-
 static void set(int dev, char *evs, uint ids_count)
 {
     if (pool[dev].hash == evs) {
         return;
     }
     // If different reference, unset
-    unset(dev);
+    invalidate(pool, dev);
     // Changing pool values
     pool[dev].hash = evs;
     pool[dev].values_count = ids_count;
@@ -146,6 +141,8 @@ static void set(int dev, char *evs, uint ids_count)
 GPUPROF_F_EVENTS_SET(gpuprof_dcgmi_events_set)
 {
     char command[512];
+    char *retword1;
+    char *retword2;
     uint ids_count;
     state_t s;
     uint *ids;
@@ -159,47 +156,61 @@ GPUPROF_F_EVENTS_SET(gpuprof_dcgmi_events_set)
     free(ids);
     // Filling the pool
     while (pthread_mutex_trylock(&lock));
+    // New popen every 2 seconds
+    sprintf(command, "dcgmi dmon -e %s -d 2000 2>&1", evs);
+    if (state_fail(s = popen_open(command, 2, 0, &p))) {
+        debug("Failed popen_open: %s", state_msg);
+        goto leave1;
+    }
     // Any device means all devices for DCGMI
     for (d = 0; d < devs_count; ++d) {
         set(d, evs, ids_count);
     }
-    // New popen every 2 seconds
-    sprintf(command, "dcgmi dmon -e %s -d 2000", evs);
-    if (state_fail(s = popen_open(command, 2, 0, &p))) {
-        debug("Failed popen_open: %s", state_msg);
-    }
+leave1:
     pthread_mutex_unlock(&lock);
+}
+
+static void unset()
+{
+    int d;
+    popen_close(&p);
+    for (d = 0; d < devs_count; ++d) {
+        invalidate(pool, d);
+    }
 }
 
 GPUPROF_F_EVENTS_UNSET(gpuprof_dcgmi_events_unset)
 {
-    int d;
     while (pthread_mutex_trylock(&lock));
-    popen_close(&p);
-    for (d = 0; d < devs_count; ++d) {
-        unset(d);
-    }
+    unset();
     pthread_mutex_unlock(&lock);
 }
 
 GPUPROF_F_READ(gpuprof_dcgmi_read)
 {
-    char buffer[128];
+    char *buffer;
     int dev;
     int m;
 
     while (pthread_mutex_trylock(&lock));
     // Pooling
-    debug("Reading");
-    while(popen_read(&p, "siD", buffer, &dev, pool_aux_buffer)) {
-        for (m = 0; m < pool[dev].values_count; ++m) {
-            pool[dev].values[m] += pool_aux_buffer[m];
-            debug("D%d_M%d: %04.2lf += %04.2lf, %0.lf samples, %p hash", dev, m,
-                  pool[dev].values[m], pool_aux_buffer[m], pool[dev].samples_count, pool[dev].hash);
+    while(popen_read(&p, "siD", &buffer, &dev, pool_aux_buffer)) {
+        debug("RETURNED %s", buffer);
+        if (strstr(buffer, "Error") != NULL) {
+            unset();
+            goto leave2;
         }
-        pool[dev].samples_count += 1.0;
+        if (strstr(buffer, "GPU") != NULL) {
+            for (m = 0; m < pool[dev].values_count; ++m) {
+                pool[dev].values[m] += pool_aux_buffer[m];
+                debug("D%d_M%d: %04.2lf += %04.2lf, %0.lf samples, %p hash", dev, m,
+                    pool[dev].values[m], pool_aux_buffer[m], pool[dev].samples_count, pool[dev].hash);
+            }
+            pool[dev].samples_count += 1.0;
+        }
     }
     // Once pooling is over, we copy the values to data
+leave2:
     gpuprof_dcgmi_data_copy(data, pool);
     pthread_mutex_unlock(&lock);
     return EAR_SUCCESS;
@@ -229,8 +240,8 @@ GPUPROF_F_DATA_DIFF(gpuprof_dcgmi_data_diff)
         if (data2[dev].samples_count > data1[dev].samples_count) {
             dataD[dev].samples_count = data2[dev].samples_count - data1[dev].samples_count;
             for (m = 0; m < pool[dev].values_count; ++m) {
-                dataD[dev].values[m]     = overflow_zeros_f64(data2[dev].values[m], data1[dev].values[m]);
-                dataD[dev].values[m]     = dataD[dev].values[m] / dataD[dev].samples_count;
+                dataD[dev].values[m] = overflow_zeros_f64(data2[dev].values[m], data1[dev].values[m]);
+                dataD[dev].values[m] = dataD[dev].values[m] / dataD[dev].samples_count;
             }
         }
     }

@@ -51,6 +51,7 @@ typedef struct popen_s {
     int   rows_count;
     int   cols_count;
     int   one_shot;
+    int   opened;
     FILE *file;
     int   eof;
     int   fd;

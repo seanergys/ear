@@ -57,6 +57,7 @@ state_t popen_open(char *command, int escape_lines, int one_shot, popen_t *p)
         debug("popen error: %s", strerror(errno));
         return_msg(EAR_ERROR, strerror(errno));
     }
+    p->opened = 1;
     p->fd = fileno(p->file);
     p->rows_escape = escape_lines;
     p->one_shot = one_shot;
@@ -68,6 +69,7 @@ state_t popen_open(char *command, int escape_lines, int one_shot, popen_t *p)
 
 void popen_close(popen_t *p)
 {
+    p->opened = 0;
     pclose(p->file);
     memset(p, 0, sizeof(popen_t));
 }
@@ -181,6 +183,9 @@ int popen_read(popen_t *p, const char* f, ...)
     int was_pending;
     int c, r;
 
+    if (!p->opened) {
+        return 0;
+    }
     // If there is no pending data to return
     if (!popen_pending(p)) {
         // If not end of file

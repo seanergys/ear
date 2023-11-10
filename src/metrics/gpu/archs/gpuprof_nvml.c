@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <math.h>
 #include <stdlib.h>
@@ -274,7 +274,6 @@ static int set(int dev, char *evs, uint *ids, uint ids_count)
         }
         ++i;
     }
-    debug("GpmMetricsGet returned: %u %s", gpms[dev].metrics[0].nvmlReturn,  nvml.ErrorString(gpms[dev].metrics[0].nvmlReturn));
     if ((r = nvml.GpmSampleGet(devs[dev], gpms[dev].sample1)) != NVML_SUCCESS) {
         debug("Error while loading NVML sample: %s", nvml.ErrorString(r));
         return 0;
