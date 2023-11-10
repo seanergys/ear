@@ -57,7 +57,7 @@ GPUPROF_F_EVENTS_GET(gpuprof_events_get)
 
 GPUPROF_F_EVENTS_SET(gpuprof_events_set)
 {
-    ops.events_set(dev, evs, data);
+    ops.events_set(dev, evs);
 }
 
 GPUPROF_F_EVENTS_UNSET(gpuprof_events_unset)
@@ -140,7 +140,7 @@ int main(int argc, char *argv[])
             gpuprof_load(0);
             gpuprof_get_info(&info);
             apinfo_tostr(&info);
-            printf("LOAD: %s %s %s\n", info.layer, info.api_str, info.granularity_str);
+            printf("LOAD: %s %s %s %d\n", info.layer, info.api_str, info.granularity_str, info.devs_count);
         } else if (is(command, "alloc")) {
             gpuprof_data_alloc(&m1);
             gpuprof_data_alloc(&m2);
@@ -154,11 +154,11 @@ int main(int argc, char *argv[])
         } else if (is(command, "set")) {
             char *option = calloc(128, sizeof(char));
             scanf("%s", option);
-            gpuprof_events_set(0, option, NULL);
+            gpuprof_events_set(0, option);
         } else if (is(command, "read")) {
             gpuprof_read(m1);
-            sleep(1);
-            gpuprof_read_copy(m2, m1, mD);
+            sleep(4);
+            gpuprof_read_diff(m2, m1, mD);
             for (d = 0; d < info.devs_count; ++d) {
                 for (m = 0; m < mD[d].values_count; ++m) {
                     printf("METRIC_D%d_M%d: %lf\n", d, m, mD[d].values[m]);

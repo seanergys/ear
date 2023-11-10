@@ -120,10 +120,10 @@ GPUPROF_F_EVENTS_GET(gpuprof_dcgmi_events_get)
 
 static void invalidate(gpuprof_t *data, int dev)
 {
-    pool[dev].hash          = NULL;
-    pool[dev].samples_count = 1.0;
-    pool[dev].values_count  = 0U;
-    memset(pool[dev].values , 0, events_count*sizeof(double));
+    data[dev].hash          = NULL;
+    data[dev].samples_count = 1.0;
+    data[dev].values_count  = 0U;
+    memset(data[dev].values , 0, events_count*sizeof(double));
 }
 
 static void unset(int dev)
@@ -190,11 +190,12 @@ GPUPROF_F_READ(gpuprof_dcgmi_read)
 
     while (pthread_mutex_trylock(&lock));
     // Pooling
+    debug("Reading");
     while(popen_read(&p, "siD", buffer, &dev, pool_aux_buffer)) {
         for (m = 0; m < pool[dev].values_count; ++m) {
             pool[dev].values[m] += pool_aux_buffer[m];
-            debug("D%d_M%d: %lf += %lf %2.lf", dev, m,
-                  pool[dev].values[m], pool_aux_buffer[m], pool[dev].samples_count);
+            debug("D%d_M%d: %04.2lf += %04.2lf, %0.lf samples, %p hash", dev, m,
+                  pool[dev].values[m], pool_aux_buffer[m], pool[dev].samples_count, pool[dev].hash);
         }
         pool[dev].samples_count += 1.0;
     }
@@ -217,9 +218,13 @@ GPUPROF_F_DATA_DIFF(gpuprof_dcgmi_data_diff)
     for (dev = 0; dev < devs_count; ++dev) {
         if (data2[dev].hash != data1[dev].hash) {
             invalidate(dataD, dev);
+            continue;
         }
         // Cleaning values
         memset(dataD[dev].values, 0, events_count*sizeof(double));
+        // Copying relevant data
+        dataD[dev].hash          = data2[dev].hash;
+        dataD[dev].values_count  = data2[dev].values_count;
         // Computing values
         if (data2[dev].samples_count > data1[dev].samples_count) {
             dataD[dev].samples_count = data2[dev].samples_count - data1[dev].samples_count;
@@ -250,7 +255,7 @@ GPUPROF_F_DATA_COPY(gpuprof_dcgmi_data_copy)
     int dev;
 
     // The data[0] can access to all the allocated values
-    memcpy(dataD[0].values,  dataS[0].values, devs_count*events_count*sizeof(double));
+    memcpy(dataD[0].values, dataS[0].values, devs_count*events_count*sizeof(double));
     // Copying index by index
     for (dev = 0; dev < devs_count; ++dev) {
         dataD[dev].samples_count = dataS[dev].samples_count;

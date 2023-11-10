@@ -336,6 +336,9 @@ GPUPROF_F_DATA_DIFF(gpuprof_nvml_data_diff)
             invalidate(dataD, dev);
             continue;
         }
+        // Copying relevant data
+        dataD[dev].hash          = data2[dev].hash;
+        dataD[dev].values_count  = data2[dev].values_count;
         // Cleaning values
         memset(dataD[dev].values, 0, NVML_GPM_METRIC_MAX*sizeof(double));
         // Computing values
