@@ -29,15 +29,16 @@
 #include <common/output/debug.h>
 #include <metrics/common/popen.h>
 
-#define MAX_ROWS          16
+#define MAX_ROWS          512
 #define MAX_COLS          16
-#define MAX_BUFFER        4096
+#define MAX_BUFFER        32768
 
 static char no_string = '\0';
+static char buffer[MAX_BUFFER];
 
 state_t popen_test(char *exec)
 {
-    char command[MAX_BUFFER];
+    char command[1024];
     // This is not fully portable. There are too many
     // systems, and too many different shells.
     sprintf(command, "type %s > /dev/null 2>&1", exec);
@@ -58,6 +59,7 @@ state_t popen_open(char *command, int escape_lines, int one_shot, popen_t *p)
     }
     p->fd = fileno(p->file);
     p->rows_escape = escape_lines;
+    p->one_shot = one_shot;
     if (!one_shot) {
         fcntl(p->fd, F_SETFL, O_NONBLOCK);
     }
@@ -79,12 +81,28 @@ static int static_read(popen_t *p, char *buffer)
 {
     size_t len_acum = 0;
     size_t len_read = 0;
+    int space_count;
     int i;
 
-    do {
-        len_read = fread(&buffer[len_acum], sizeof(char), MAX_BUFFER-len_acum, p->file);
-        len_acum = len_acum + len_read;
-    } while(len_read > 0);
+    if (p->one_shot) {
+        do {
+            // If one shot, we are reading one by one and spaces ' ' are compressed
+            buffer[len_acum] = (char) getc(p->file);
+            len_acum = len_acum + 1;
+            if (len_acum > 1) {
+                if (buffer[len_acum-1] == ' ' && buffer[len_acum-2] == ' ') {
+                    len_acum = len_acum - 1;
+                }
+            }
+        } while(buffer[len_acum-1] != EOF);
+    } else {
+        do {
+            // If not one shot, we are reading a bulk of bytes
+            len_read = fread(&buffer[len_acum], sizeof(char), MAX_BUFFER-len_acum, p->file);
+            len_acum = len_acum + len_read;
+        } while(len_read > 0);
+    }
+    debug("read %lu bytes", len_acum);
     // Too much data
     if (len_acum == MAX_BUFFER) {
         static_flush(p, buffer);
@@ -139,7 +157,9 @@ static void static_parse(popen_t *p, char *buffer)
     int r;
     for (r = 0; r < p->rows_count; ++r) {
         for (c = 0; c < p->cols_count; ++c) {
-            debug("TABLE[%d][%d]: %s", r, c, p->table[r][c]);
+            if (strlen(p->table[r][c])) {
+                debug("TABLE[%d][%d]: '%s'", r, c, p->table[r][c]);
+            }
         }
     }
     #endif
@@ -157,7 +177,6 @@ static int popen_eof(popen_t *p)
 
 int popen_read(popen_t *p, const char* f, ...)
 {
-    char buffer[4096];
     va_list args;
     int was_pending;
     int c, r;

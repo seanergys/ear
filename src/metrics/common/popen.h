@@ -45,11 +45,12 @@
 //              ensuring you have something to read.
 
 typedef struct popen_s {
-    char  table[16][16][128];
+    char  table[512][16][128];
     int   rows_escape;
     int   rows_index;
     int   rows_count;
     int   cols_count;
+    int   one_shot;
     FILE *file;
     int   eof;
     int   fd;

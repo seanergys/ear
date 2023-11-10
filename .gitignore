@@ -57,6 +57,8 @@ Makefile.gpu.*
 # Build files
 etc/module/ear
 etc/module/ear-lite
+etc/module/ear-sing
+etc/module/ear-debug
 etc/conf/ear.conf
 etc/conf/ear.conf.template
 etc/conf/ear.conf.full.template

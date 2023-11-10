@@ -54,6 +54,9 @@ unsigned long eards_get_data_size_rapl();
 typedef struct eard_state_s {
     version_t version;
     uint gpus_supported_count;
+		uint cpus_supported_count;
+		uint sock_supported_count;
+		uint gpus_support_enabled;
     pid_t pid;
 } eard_state_t;
 
@@ -85,6 +88,9 @@ ulong eards_node_energy_frequency();
 
 // Returns if GPU is supported by the EARD.
 int eards_gpu_support();
+
+// Returns basic EARD compile configured limits & options for verification
+state_t eards_get_state(eard_state_t *state);
 
 // Legacy non-RPC services
 #define CONNECT_EARD_NODE_SERVICES      5

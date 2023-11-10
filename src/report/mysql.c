@@ -127,13 +127,16 @@ state_t report_init(report_id_t *id, cluster_conf_t *conf)
     memcpy(db_config, &conf->database, sizeof(db_conf_t));
     char query[256];
     int num_sig_args, num_per_args;
+    state_t ret = EAR_SUCCESS;
 
     sprintf(query, IS_SIG_FULL_QUERY, db_config->database);
     num_sig_args = mysql_run_query_int_result(query);
 
-    if (num_sig_args == EAR_ERROR)
+    if (num_sig_args == EAR_ERROR) {
+        ret = EAR_ERROR;
         set_signature_detail(db_config->report_sig_detail);
-    else if (num_sig_args < 20)
+    }
+    else if (num_sig_args < FULL_SIGNATURE_ARGS)
         set_signature_detail(0);
     else 
         set_signature_detail(1);
@@ -142,14 +145,15 @@ state_t report_init(report_id_t *id, cluster_conf_t *conf)
     sprintf(query, IS_NODE_FULL_QUERY, db_config->database);
     num_per_args = mysql_run_query_int_result(query);
     if (num_per_args == EAR_ERROR) {
+        ret = EAR_ERROR;
         set_node_detail(db_config->report_node_detail);
-    } else if (num_per_args < 8) {
+    } else if (num_per_args < FULL_PERIODIC_METRIC_ARGS) {
         set_node_detail(0);
     } else {
         set_node_detail(1);
     }
 
-	return EAR_SUCCESS;
+	return ret;
 }
 
 state_t report_applications(report_id_t *id, application_t *apps, uint count)

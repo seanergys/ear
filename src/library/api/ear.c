@@ -299,6 +299,21 @@ static void verbose_talp_node_metrics(int verb_lvl, dlb_node_metrics_t *node_met
 static state_t earl_periodic_actions_talp_finalize();
 #endif // DLB
 
+#define VERIFY_EARD_COMPAT 0
+static state_t check_eard_earl_compatibility(state_t eard_connect_state)
+{
+	state_t st = EAR_SUCCESS;
+	if (!eard_connect_state ) return EAR_ERROR;
+#if VERIFY_EARD_COMPAT
+	eard_state_t eard_conf;
+	if (state_ok(st = eards_get_state(&eard_conf))){
+		if ((eard_conf.gpus_supported_count != MAX_GPUS_SUPPORTED) || (eard_conf.cpus_supported_count != MAX_CPUS_SUPPORTED) 
+			|| (eard_conf.sock_supported_count != MAX_SOCKETS_SUPPORTED) || (eard_conf.gpus_support_enabled != USE_GPUS))
+			st = EAR_ERROR;
+	}
+#endif
+	return st;
+}
 
 static void print_local_data()
 {
@@ -2042,6 +2057,8 @@ void ear_finalize(int exit_status)
 				uint fake_error = 0;
 				char *cfake = ear_getenv(FAKE_PROCESS_ERRROR);
 				if (cfake != NULL) fake_error = atoi(cfake);
+
+				if (synchronize_masters == 0) return;
 
          #if EAR_OFF
      //    print_resource_usage();

@@ -184,7 +184,7 @@ static int answer(int fd, int call, char *data, size_t size, state_t s, char *st
 int services_misc(eard_head_t *head, int req_fd, int ack_fd)
 {
     uint call = head->req_service;
-    eard_state_t s;
+    eard_state_t s ;
 
     verbose(VEARD_LAPI_DEBUG, "EARD misc");
     switch (call) {
@@ -197,6 +197,9 @@ int services_misc(eard_head_t *head, int req_fd, int ack_fd)
     case RPC_GET_STATE:
         s.pid = getpid();
         s.gpus_supported_count = MAX_GPUS_SUPPORTED;
+				s.cpus_supported_count = MAX_CPUS_SUPPORTED;
+				s.sock_supported_count = MAX_SOCKETS_SUPPORTED;
+    		s.gpus_support_enabled = USE_GPUS;
         version_set(&s.version, VERSION_MAJOR, VERSION_MINOR);
         return answer(ack_fd, call, (char *) &s, sizeof(eard_state_t), EAR_SUCCESS, NULL);
     break;
