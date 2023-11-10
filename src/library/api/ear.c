@@ -1538,6 +1538,8 @@ void ear_init()
                     // Connect process with EARD
                     state_t ret = eards_connect(&application, ear_my_rank);
 
+										state_t eard_comp_state = check_eard_earl_compatibility(ret);
+
                     // Only for testing purposes
                     if (fake_eard_error == 3) {
                         ret = EAR_ERROR;
@@ -1551,7 +1553,7 @@ void ear_init()
                         ret = EAR_ERROR;
                     }
 
-                    if (ret == EAR_SUCCESS) {
+      							if ((ret == EAR_SUCCESS) && (eard_comp_state == EAR_SUCCESS)) {
 
                         verbose(3, "%sRank %d connected with EARD%s", COL_BLU, ear_my_rank, COL_CLR);
 
