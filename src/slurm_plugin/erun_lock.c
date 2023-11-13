@@ -32,15 +32,6 @@ static char command[SZ_PATH];
 //
 static int fd_master = -1;
 
-#define PERMS000(T) 0
-#define PERMS100(T) S_IR ## T
-#define PERMS010(T) S_IW ## T
-#define PERMS001(T) S_IX ## T
-#define PERMS110(T) (PERMS100(T)) | (PERMS010(T))
-#define PERMS111(T) (PERMS100(T)) | (PERMS010(T)) | (PERMS001(T))
-#define PEXPA(...) __VA_ARGS__
-#define PERMS(u, g, o) PEXPA(PERMS ## u)(USR) | PEXPA(PERMS ## g)(GRP) | PEXPA(PERMS ## o)(OTH)
-
 // Master/slave 1
 int lock_master(char *path_tmp, int job_id)
 {

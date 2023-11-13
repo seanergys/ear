@@ -26,7 +26,15 @@
 #include <common/sizes.h>
 #include <common/states.h>
 
-#define FC_MAX_OBJECTS	10
+#define PERMS000(T) 0
+#define PERMS100(T) S_IR ## T
+#define PERMS010(T) S_IW ## T
+#define PERMS001(T) S_IX ## T
+#define PERMS110(T) (PERMS100(T)) | (PERMS010(T))
+#define PERMS111(T) (PERMS100(T)) | (PERMS010(T)) | (PERMS001(T))
+#define PEXPA(...) __VA_ARGS__
+#define PERMS(u, g, o) PEXPA(PERMS ## u)(USR) | PEXPA(PERMS ## g)(GRP) | PEXPA(PERMS ## o)(OTH)
+
 #define F_WR 			O_WRONLY
 #define F_RD			O_RDONLY
 #define F_CR 			O_CREAT
