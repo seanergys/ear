@@ -383,7 +383,7 @@ int main(int argc, char *argv[])
 	{
 		if (_error == 1) {
 			if ((sd.erun.is_master = lock_master(path_tmp, sd.erun.job_id))) {
-				plug_verbose(_sp, 0, "missing environment vars, is the EAR module loaded?");
+				plug_verbose(_sp, 0, "missing environment vars, is the EAR module loaded? (only master prints this message)");
 				//
 				sleep(2);
 				//
@@ -393,7 +393,7 @@ int main(int argc, char *argv[])
 		}
 		if (_error == 2) {
 			if ((sd.erun.is_master = lock_master(path_tmp, sd.erun.job_id))) {
-				plug_verbose(_sp, 0, "detected SRUN, going inactive");	
+				plug_verbose(_sp, 0, "detected SRUN, going inactive (only master prints this message)");	
 			}
 			//	
 			execute(_argc, _argv);
