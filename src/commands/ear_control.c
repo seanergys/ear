@@ -1,19 +1,19 @@
 /*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* Copyright © 2017-present BSC-Lenovo
-* BSC Contact   mailto:ear-support@bsc.es
-* Lenovo contact  mailto:hpchelp@lenovo.com
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+ *
+ * This program is part of the EAR software.
+ *
+ * EAR provides a dynamic, transparent and ligth-weigth solution for
+ * Energy management. It has been developed in the context of the
+ * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
+ *
+ * Copyright © 2017-present BSC-Lenovo
+ * BSC Contact   mailto:ear-support@bsc.es
+ * Lenovo contact  mailto:hpchelp@lenovo.com
+ *
+ * EAR is an open source software, and it is licensed under both the BSD-3 license
+ * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
+ * and COPYING.EPL files.
+ */
 
 #include <errno.h>
 #include <netdb.h>
@@ -131,8 +131,8 @@ int generate_node_names(cluster_conf_t my_cluster_conf, ip_table_t **ips)
 	char node_name[256];
 	int num_ips = 0;
 	ip_table_t *new_ips = NULL;
-    int tag_id = 0;
-    int default_tag = get_default_tag_id(&my_cluster_conf);
+	int tag_id = 0;
+	int default_tag = get_default_tag_id(&my_cluster_conf);
 	for (i = 0; i < my_cluster_conf.num_islands; i++){
 		for (j = 0; j < my_cluster_conf.islands[i].num_ranges; j++)
 		{   
@@ -150,21 +150,21 @@ int generate_node_names(cluster_conf_t my_cluster_conf, ip_table_t **ips)
 				}   
 				new_ips = realloc(new_ips, sizeof(ip_table_t)*(num_ips+1));
 				strcpy(new_ips[num_ips].name, node_name);
-                for (n = 0; n < my_cluster_conf.islands[i].ranges[j].num_tags; n++) {
-                    tag_id = tag_id_exists(&my_cluster_conf, my_cluster_conf.islands[i].specific_tags[my_cluster_conf.islands[i].ranges[j].specific_tags[n]]);
-                    if (tag_id >= 0) {
-                        break;
-                    }
-                }
-                if (tag_id < 0) {
-                    tag_id = default_tag;
-                }
+				for (n = 0; n < my_cluster_conf.islands[i].ranges[j].num_tags; n++) {
+					tag_id = tag_id_exists(&my_cluster_conf, my_cluster_conf.islands[i].specific_tags[my_cluster_conf.islands[i].ranges[j].specific_tags[n]]);
+					if (tag_id >= 0) {
+						break;
+					}
+				}
+				if (tag_id < 0) {
+					tag_id = default_tag;
+				}
 
-                if (tag_id >= 0) { //still need to check
-                    new_ips[num_ips].max_power = my_cluster_conf.tags[tag_id].error_power;
-                } else {
-                    printf("Warning, no default tag and no tag_id found for node %s\n", node_name);
-                }
+				if (tag_id >= 0) { //still need to check
+					new_ips[num_ips].max_power = my_cluster_conf.tags[tag_id].error_power;
+				} else {
+					printf("Warning, no default tag and no tag_id found for node %s\n", node_name);
+				}
 
 				if (strlen(my_cluster_conf.net_ext) > 0)
 					strcat(node_name, my_cluster_conf.net_ext);
@@ -172,18 +172,18 @@ int generate_node_names(cluster_conf_t my_cluster_conf, ip_table_t **ips)
 				fill_ip(node_name, &new_ips[num_ips]);
 #if 0
 
-	            my_node_conf_t *aux_node_conf;
+				my_node_conf_t *aux_node_conf;
 				aux_node_conf = get_my_node_conf(&my_cluster_conf, node_name);
 				if (aux_node_conf == NULL) 
 					fprintf(stderr, "Error reading node %s configuration\n", node_name);
 				else {
-                    if (new_ips[num_ips].max_power != aux_node_conf->max_error_power) {
-                        printf("Warning, the max power is different!!\n");
-                    } else {
-                        printf("Same error power\n");
-                    }
+					if (new_ips[num_ips].max_power != aux_node_conf->max_error_power) {
+						printf("Warning, the max power is different!!\n");
+					} else {
+						printf("Same error power\n");
+					}
 					new_ips[num_ips].max_power = (uint) aux_node_conf->max_error_power;
-                }
+				}
 
 				free(aux_node_conf->policies);
 				free(aux_node_conf);
@@ -223,7 +223,7 @@ void print_ips(ip_table_t *ips, int num_ips, char mode)
 				printf("%10s\t", ips[i].name);
 				if (ips[i].step_id == BATCH_STEP)
 					sprintf(step_id, "%-8s", "sbatch");
-                else if (ips[i].step_id == INTERACT_STEP)
+				else if (ips[i].step_id == INTERACT_STEP)
 					sprintf(step_id, "%-8s", "interact");
 				else
 					sprintf(step_id, "%-8d", ips[i].step_id);
@@ -355,9 +355,9 @@ void check_ip(status_t *status, ip_table_t *ips, int num_ips)
 			{
 				memcpy(&ips[i].policies[j], &status->policy_conf[j], sizeof(eard_policy_info_t));
 			}	
-            return;
+			return;
 		}
-   
+
 }
 
 void check_app_status(app_status_t status, ip_table_t *ips, int num_ips, char is_master)
@@ -374,7 +374,7 @@ void check_app_status(app_status_t status, ip_table_t *ips, int num_ips, char is
 		{
 			if (status.step_id == BATCH_STEP)
 				sprintf(step_id, "%-8s", "sbatch");
-            else if (status.step_id == INTERACT_STEP)
+			else if (status.step_id == INTERACT_STEP)
 				sprintf(step_id, "%-8s", "interact");
 			else
 				sprintf(step_id, "%-8ld", status.step_id);
@@ -440,10 +440,10 @@ void process_status(int num_status, status_t *status, char error_only)
 		ip_table_t *ips = NULL;
 		num_ips = generate_node_names(my_cluster_conf, &ips);
 		clean_ips(ips, num_ips);
-        //idea to improve this: add an index to ips, sort the list by the ip_int to do the search, resort the list
-        //by the indexes to print the list -> nlogn + mlogn + nlogn
-        //alternatively: pass all the statuses sorted, and search each ip there once -> nlogm + mlogm
-        //it seems the second idea is better in terms of complexity (the second sort kills the first option)
+		//idea to improve this: add an index to ips, sort the list by the ip_int to do the search, resort the list
+		//by the indexes to print the list -> nlogn + mlogn + nlogn
+		//alternatively: pass all the statuses sorted, and search each ip there once -> nlogm + mlogm
+		//it seems the second idea is better in terms of complexity (the second sort kills the first option)
 		for (i = 0; i < num_status; i++)
 			check_ip(&status[i], ips, num_ips);
 		print_ips(ips, num_ips, error_only);
@@ -536,8 +536,8 @@ void process_eargm_status(int num_status, eargm_status_t *status, char **hosts, 
 		return;
 	}
 	printf("%3s %10s %6s %10s %10s %10s %10s\n", 
-				"ID", "NODE", "Status", "Cur. Power", "Powercap", "Req. Power", "Extra Pow.");
-	
+			"ID", "NODE", "Status", "Cur. Power", "Powercap", "Req. Power", "Extra Pow.");
+
 	for (j = 0; j < my_cluster_conf.eargm.num_eargms; j++) {
 		found = 0;
 		for (i = 0; i < num_status; i++) {
@@ -550,7 +550,7 @@ void process_eargm_status(int num_status, eargm_status_t *status, char **hosts, 
 
 		if (found) {
 			printf("%3d %10s %6d %10lu %10lu %10lu %10lu\n", 
-				egm->id, my_cluster_conf.eargm.eargms[j].node, egm->status, egm->current_power, egm->current_powercap, egm->requested, egm->extra_power);
+					egm->id, my_cluster_conf.eargm.eargms[j].node, egm->status, egm->current_power, egm->current_powercap, egm->requested, egm->extra_power);
 		} else { //store the node to print it later
 			if (hosts != NULL) { //if we have a hostlist, we don't need the nodes out of the list
 				for (i = 0; i < num_hosts; i++) {
