@@ -337,11 +337,14 @@ void cluster_only_powercap()
         /* For heterogeneous clusters we set the max powercap for each node, which should be set by the admin in ear.conf
          * For homogeneous clusters we can simply divide the current power between the number of active nodes. */
         if (max_num_nodes > 0) {
-            //new_limit = current_cluster_powercap/max_num_nodes; 
+#if EARGM_POWERCAP_SOFTPC_HOMOGENEOUS
+            new_limit = current_cluster_powercap/max_num_nodes; 
+#else
             new_limit = UINT_MAX; 
+#endif
             ear_set_powerlimit(&my_cluster_conf, new_limit, nodes, num_eargm_nodes); 
-            verbose(VGM_PC, "cluster_only_powercap: sending new limit %lu", (ulong)new_limit);
-            eargm_report_event(NODE_POWERCAP, (ulong)new_limit);
+            verbose(VGM_PC, "cluster_only_powercap: sending new limit %lu", (ulong) new_limit);
+            eargm_report_event(NODE_POWERCAP, (ulong) new_limit);
         } else {
             warning("No nodes detected for this EARGM");
         }
