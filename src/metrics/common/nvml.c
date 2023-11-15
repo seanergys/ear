@@ -16,6 +16,8 @@
 */
 
 
+#define SHOW_DEBUGS 1
+
 #include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
@@ -37,7 +39,7 @@
 #define NVML_N               0
 #else
 #define NVML_PATH            CUDA_BASE
-#define NVML_N               24
+#define NVML_N               29
 #endif
 
 static const char *nvml_names[] =
@@ -65,7 +67,12 @@ static const char *nvml_names[] =
     "nvmlDeviceGetPowerManagementLimitConstraints",
     "nvmlDeviceSetPowerManagementLimit",
     "nvmlErrorString",
-		"nvmlDeviceGetArchitecture",
+    "nvmlDeviceGetArchitecture",
+    "nvmlGpmMetricsGet", //GPM
+    "nvmlGpmSampleFree",
+    "nvmlGpmSampleAlloc",
+    "nvmlGpmSampleGet",
+    "nvmlGpmQueryDeviceSupport",
 };
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
@@ -155,6 +162,7 @@ state_t nvml_open(nvml_t *nvml_in)
     if (nvml_in != NULL) {
         memcpy(nvml_in, &nvml, sizeof(nvml_t));
     }
+    debug("Initialized NVML");
     return s;
 }
 
