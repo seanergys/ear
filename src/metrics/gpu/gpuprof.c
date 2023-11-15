@@ -110,6 +110,7 @@ GPUPROF_F_DATA_COPY(gpuprof_data_copy)
     return ops.data_copy(dataD, dataS);
 }
 
+#ifdef TEST_EXAMPLE
 #include <stdlib.h>
 #include <metrics/common/apis.h>
 #include <common/system/monitor.h>
@@ -140,21 +141,22 @@ int main(int argc, char *argv[])
             gpuprof_load(0);
             gpuprof_get_info(&info);
             apinfo_tostr(&info);
-            printf("LOAD: %s %s %s %d\n", info.layer, info.api_str, info.granularity_str, info.devs_count);
+            printf("LOADED: %s %s %s %d\n", info.layer, info.api_str, info.granularity_str, info.devs_count);
         } else if (is(command, "alloc")) {
             gpuprof_data_alloc(&m1);
             gpuprof_data_alloc(&m2);
             gpuprof_data_alloc(&mD);
-            printf("ALLOCATED\n");
-        } else if (is(command, "get")) {
+            printf("ALLOCATED DATA\n");
+        } else if (is(command, "get-events")) {
             gpuprof_events_get(&evs, &evs_count);
             for (i = 0; i < evs_count; ++i) {
                 printf("EVENT_%d: id.%02u %s\n", i, evs[i].id, evs[i].name);
             }
-        } else if (is(command, "set")) {
+        } else if (is(command, "set-events")) {
             char *option = calloc(128, sizeof(char));
             scanf("%s", option);
             gpuprof_events_set(0, option);
+            printf("EVENTS SET: %s\n", option);
         } else if (is(command, "read")) {
             gpuprof_read(m1);
             sleep(4);
@@ -168,3 +170,4 @@ int main(int argc, char *argv[])
     }
     return 0;
 }
+#endif

@@ -23,6 +23,11 @@
 #include <common/system/time.h>
 #include <metrics/common/apis.h>
 
+// This is a class to set a list of GPU events and add it to a GPU to compute
+// its metrics. You have a test example in gpuprof.c. Its important to take
+// into account that not all internal APIs allow different events on different
+// GPUs.
+
 typedef struct gpuprof_s {
 	timestamp_t  time;
     double       time_s;
@@ -85,6 +90,7 @@ void gpuprof_events_set(int dev, char *evs);
 
 void gpuprof_events_unset(int dev);
 
+// You need a list of events to read something.
 state_t gpuprof_read(gpuprof_t *data);
 
 state_t gpuprof_read_raw(gpuprof_t *data);
