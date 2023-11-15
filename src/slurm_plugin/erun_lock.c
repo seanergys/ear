@@ -47,14 +47,17 @@ int lock_master(char *path_tmp, int job_id)
     plug_verbose(_sp, 3, "function lock_master");
     // Creating temp folder
     if ((access(path_tmp, W_OK) != 0) && (errno == ENOENT)) {
-        mkdir(path_tmp, PERMS(111,000,000)); 
+        if ((mkdir(path_tmp, PERMS(111,110,110)) != 0) && (errno != EEXIST)) {
+            plug_error(_sp, "while creating TMP folder: %s", strerror(errno));
+            exit(0);
+        }
     }
-    // Creating erun folder
-    sprintf(path_job, "%s/erun%d", path_tmp, job_id);
-    mkdir(path_job, PERMS(111,110,110)); 
     // Creating job folder
     sprintf(path_job, "%s/erun%d", path_tmp, job_id);
-    mkdir(path_job, PERMS(111,110,110));
+    if ((mkdir(path_job, PERMS(111,110,110)) != 0) && (errno != EEXIST)) {
+        plug_error(_sp, "while creating job folder: %s", strerror(errno));
+        exit(0);
+    }
     // Setting the paths
     xsprintf(path_master_lock, "%s/master.lock", path_job);
     xsprintf(path_master_step, "%s/master.step", path_job);
