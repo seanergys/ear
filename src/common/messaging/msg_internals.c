@@ -46,6 +46,15 @@ int eards_sfd=-1;
 // 2000 and 65535
 #define DAEMON_EXTERNAL_CONNEXIONS 256
 
+uint32_t _get_sec_key()
+{
+#if SEC_KEY
+    return (uint)SEC_KEY;
+#else
+    return 0;
+#endif
+}
+
 
 int _read(int fd, void *data, size_t ssize)
 {
@@ -241,12 +250,18 @@ int read_command(int s, request_t *command)
         command->req = NO_COMMAND;
         if (head.size > 0) free(tmp_command);
         return EAR_SOCK_DISCONNECTED;
-        return command->req;
     }
     memcpy(command, tmp_command, sizeof(internal_request_t));
     aux_size += sizeof(internal_request_t);
 
-    if (command->nodes > 0)
+    if (command->sec_key != _get_sec_key()) {
+        warning("the request's sec. key does not correspond with our current one");
+        command->req = NO_COMMAND;
+        if (head.size > 0) free(tmp_command);
+        return command->req; //should we return EAR_SOCK_DISCONNECTED and leave the caller hanging??
+    }
+
+    if (command->num_nodes > 0)
     {
         command->nodes = calloc(command->num_nodes, sizeof(int)); //this will be freed in propagate_data since it's the last point where it is needed and the common point in all requests
         memcpy(command->nodes, &tmp_command[aux_size], command->num_nodes * sizeof(int));
@@ -402,6 +417,8 @@ int send_command(request_t *command)
 
 	debug("send_command: sending command %u",command->req);
 
+    command->sec_key = _get_sec_key();
+
     command_size = get_command_size(command, &command_b);
     debug("send_command: command size: %lu\t request_t size: %lu", command_size, sizeof(request_t));
     
@@ -421,13 +438,16 @@ int send_command(request_t *command)
 	}
 	else if (ret!=sizeof(ulong)) {
 		debug("send_command: Error receiving ack: expected %lu ret %d",sizeof(ulong),ret);
-	}
+	} else if (ret == EAR_IGNORE) {
+        verbose(VAPI, "Command was ignored by the target");
+        return 0;
+    }
 	return (ret==sizeof(ulong)); // Should we return ack ?
 }
 
 int send_non_block_data(int fd, size_t size, char *data, int type)
 {
-    int ret; 
+    int32_t ret; 
 	//int tries=0;
 	//uint to_send,sent=0;
 	//uint must_abort=0;
@@ -438,7 +458,7 @@ int send_non_block_data(int fd, size_t size, char *data, int type)
     head.size = size;
 
     /* Send header, blocking */
-    ret = _write(eards_sfd, &head, sizeof(request_header_t));
+    ret = _write(fd, &head, sizeof(request_header_t));
 
     if (ret < sizeof(request_header_t)) {
         verbose(VAPI, "send_non_block_data:error sending request_header in non_block command");
@@ -455,7 +475,7 @@ int send_non_block_data(int fd, size_t size, char *data, int type)
 
 int send_data(int fd, size_t size, char *data, int type)
 {
-    int ret;
+    int32_t ret;
     request_header_t head;
     head.size = size;
     head.type = type;
@@ -485,7 +505,7 @@ char is_valid_type(int type)
 
 request_header_t receive_data(int fd, void **data)
 {
-    int ret;
+    int32_t ret;
     request_header_t head;
     char *read_data;
     head.type = 0;
@@ -732,22 +752,26 @@ request_header_t correct_data_prop(int target_idx, int total_ips, int *ips, requ
         else
         {
             debug("correct_data_prop:connected with node: %s", next_ip);
-            send_command(command);
-            head = receive_data(rc, (void **)&temp_data);
-            if (head.size < 1)
-            {
-                if (head.type == EAR_TYPE_APP_STATUS)
-                    default_type = head.type;
-                else
-                    head.type = EAR_ERROR;
-            }
-            if (head.type == EAR_ERROR)
-            {
-                debug("propagate_req: Error propagating command to node %s", next_ip);
+            if (send_command(command)) {
+                head = receive_data(rc, (void **)&temp_data);
+                if (head.size < 1)
+                {
+                    if (head.type == EAR_TYPE_APP_STATUS)
+                        default_type = head.type;
+                    else
+                        head.type = EAR_ERROR;
+                }
+                if (head.type == EAR_ERROR)
+                {
+                    debug("propagate_req: Error propagating command to node %s", next_ip);
+                    remote_disconnect();
+                    head = correct_data_prop(current_idx, total_ips, ips, command, port, (void **)&temp_data);
+                }
+                else remote_disconnect();
+            } else { //if the command is ignored by the daemon
                 remote_disconnect();
                 head = correct_data_prop(current_idx, total_ips, ips, command, port, (void **)&temp_data);
             }
-            else remote_disconnect();
         }
 
         if (head.size > 0 && head.type != EAR_ERROR)
@@ -762,7 +786,7 @@ request_header_t correct_data_prop(int target_idx, int total_ips, int *ips, requ
     head.size = final_size;
     head.type = default_type;
     *data = final_data;
-    
+
     if (default_type == EAR_ERROR && final_size > 0)
     {
         free(final_data);
@@ -775,7 +799,7 @@ request_header_t correct_data_prop(int target_idx, int total_ips, int *ips, requ
 
 }
 
-void correct_error(int target_idx, int total_ips, int *ips, request_t *command, uint port)
+void correct_error(int target_idx, uint32_t total_ips, int *ips, request_t *command, uint port)
 {
     if (command->node_dist > total_ips) return;
     struct sockaddr_in temp;
@@ -821,7 +845,7 @@ void correct_error(int target_idx, int total_ips, int *ips, request_t *command, 
 
 void correct_error_nodes(request_t *command, int self_ip, uint port)
 {
-     
+
     request_t tmp_command;
     int i;
 
@@ -848,7 +872,7 @@ void correct_error_nodes(request_t *command, int self_ip, uint port)
 
     // we set num_nodes to 0 to prevent unknown errors, but memory is freed in request_propagation
     command->num_nodes = 0;
-    
+
 }
 
 request_header_t correct_data_prop_nodes(request_t *command, int self_ip, uint port, void **data)
@@ -908,15 +932,20 @@ request_header_t correct_data_prop_nodes(request_t *command, int self_ip, uint p
         }
         else
         {
-            send_command(&tmp_command);
-            head = receive_data(rc, (void **)&temp_data);
-            if ((head.size) < 1 || head.type == EAR_ERROR)
+            if (send_command(&tmp_command))
             {
-                verbose(VAPI, "correct_data_prop_nodes: Error propagating command to node %s\n", next_ip);
+                head = receive_data(rc, (void **)&temp_data);
+                if ((head.size) < 1 || head.type == EAR_ERROR)
+                {
+                    verbose(VAPI, "correct_data_prop_nodes: Error propagating command to node %s\n", next_ip);
+                    remote_disconnect();
+                    head = correct_data_prop_nodes(&tmp_command, command->nodes[base_distance * i], port, (void **)&temp_data);
+                }
+                else remote_disconnect();
+            } else { //the command is ignored by the daemon
                 remote_disconnect();
                 head = correct_data_prop_nodes(&tmp_command, command->nodes[base_distance * i], port, (void **)&temp_data);
             }
-            else remote_disconnect();
         }
 
         if (head.size > 0 && head.type != EAR_ERROR)
@@ -933,7 +962,7 @@ request_header_t correct_data_prop_nodes(request_t *command, int self_ip, uint p
     head.size = final_size;
     head.type = default_type;
     *data = final_data;
-    
+
     if (default_type == EAR_ERROR && final_size > 0)
     {
         free(final_data);
@@ -975,9 +1004,9 @@ int get_max_prop_group(int num_props, int max_depth, int num_nodes)
      * a certain % of nodes. The example is for 10%. Not implemented yet, certain cases would have to
      * be explored: the % makes a max_nodes > num_nodes / num_props; the % makes max_nodes = num_props. */
     /*while (max_nodes < num_nodes * 0.10)
-    {
-        max_nodes *= num_props;
-    }*/
+      {
+      max_nodes *= num_props;
+      }*/
 
     if (max_nodes > num_props) return max_nodes;
 
@@ -1103,15 +1132,20 @@ request_header_t internal_data_nodes(request_t *command, int port, int base_dist
         }
         else
         {
-            send_command(&tmp_command);
-            head = receive_data(rc, (void **)&temp_data);
-            if ((head.size) < 1 || head.type == EAR_ERROR)
-            {
-                verbose(VAPI, "correct_data_prop_nodes: Error propagating command to node %s\n", next_ip);
+            if (send_command(&tmp_command)) {
+                head = receive_data(rc, (void **)&temp_data);
+                if ((head.size) < 1 || head.type == EAR_ERROR)
+                {
+                    verbose(VAPI, "correct_data_prop_nodes: Error propagating command to node %s\n", next_ip);
+                    remote_disconnect();
+                    head = correct_data_prop_nodes(&tmp_command, command->nodes[base_distance*i], port, (void **)&temp_data);
+                }
+                else remote_disconnect();
+            } else { //if the command is ignored by the daemon
                 remote_disconnect();
                 head = correct_data_prop_nodes(&tmp_command, command->nodes[base_distance*i], port, (void **)&temp_data);
             }
-            else remote_disconnect();
+
         }
 
         if (head.size > 0 && head.type != EAR_ERROR)
@@ -1128,7 +1162,7 @@ request_header_t internal_data_nodes(request_t *command, int port, int base_dist
     head.size = final_size;
     head.type = default_type;
     *data = final_data;
-    
+
     if (default_type == EAR_ERROR && final_size > 0)
     {
         free(final_data);
@@ -1185,7 +1219,7 @@ void send_command_all(request_t command, cluster_conf_t *my_cluster_conf)
             command.node_dist = 0;
             temp.sin_addr.s_addr = ips[i][j];
             strcpy(next_ip, inet_ntoa(temp.sin_addr));
-            
+
             rc=remote_connect(next_ip, my_cluster_conf->eard.port);
             if (rc<0){
                 debug("Error connecting with node %s, trying to correct it", next_ip);
@@ -1200,7 +1234,7 @@ void send_command_all(request_t command, cluster_conf_t *my_cluster_conf)
                 }
                 else remote_disconnect();
             }
-            
+
         }
     }
     for (i = 0; i < total_ranges; i++)
@@ -1220,7 +1254,7 @@ request_header_t data_all_nodes(request_t *command, cluster_conf_t *my_cluster_c
     request_header_t head;
     char *temp_data, *all_data = NULL;
     char next_ip[64];
-    
+
     total_ranges = get_ip_ranges(my_cluster_conf, &ip_counts, &ips);
 
     for (i = 0; i < total_ranges; i++)
@@ -1229,7 +1263,7 @@ request_header_t data_all_nodes(request_t *command, cluster_conf_t *my_cluster_c
     /* Section to prevent max_connections to be used at the same time (otherwise data may be lost) */
     int iters = num_sfds/MAX_CALLER_CONNECTIONS;
     if (num_sfds%MAX_CALLER_CONNECTIONS) iters += 1; //to prevent ranges of < MAX_CALLER_CONNECTIONS to not be sent, as well as 
-                                                    //avoiding the remainder ranges to not be contacted
+                                                     //avoiding the remainder ranges to not be contacted
     int last_i_send = 0;
     int last_j_send = 0;
     int last_i_read = 0;
@@ -1266,8 +1300,20 @@ request_header_t data_all_nodes(request_t *command, cluster_conf_t *my_cluster_c
                 }
                 else {
                     debug("Node %s with distance %d contacted (fd %d)!", next_ip, command->node_dist, rc);
-                    sfds[offset_send] = rc;
-                    send_command(command);
+                    if (send_command(command)) {
+                        sfds[offset_send] = rc;
+                    } else { //command rejected by the node
+                        head = correct_data_prop(j, ip_counts[i], ips[i], command, my_cluster_conf->eard.port, (void **)&temp_data);
+
+                        if (head.size > 0 && head.type != EAR_ERROR)
+                        {
+                            head = process_data(head, (char **)&temp_data, (char **)&all_data, final_size);
+                            free(temp_data);
+                            final_size = head.size;
+                            default_type = head.type;
+                        }
+
+                    }
                 }
             }
 
