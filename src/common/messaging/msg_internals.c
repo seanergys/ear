@@ -257,6 +257,7 @@ int read_command(int s, request_t *command)
     if (command->sec_key != _get_sec_key()) {
         warning("the request's sec. key does not correspond with our current one");
         command->req = NO_COMMAND;
+        return EAR_BAD_ARGUMENT;
         if (head.size > 0) free(tmp_command);
         return command->req; //should we return EAR_SOCK_DISCONNECTED and leave the caller hanging??
     }
@@ -438,7 +439,7 @@ int send_command(request_t *command)
 	}
 	else if (ret!=sizeof(ulong)) {
 		debug("send_command: Error receiving ack: expected %lu ret %d",sizeof(ulong),ret);
-	} else if (ret == EAR_IGNORE) {
+	} else if (ack == EAR_IGNORE) {
         verbose(VAPI, "Command was ignored by the target");
         return 0;
     }
