@@ -64,18 +64,18 @@
 
 typedef struct ip_table
 {
-	int ip_int;
-	char ip[IP_LENGTH];
-	char name[IP_LENGTH];
-	int counter;
-	uint power;
-	uint rep_power;
-	uint max_power;
-	int job_id;
-	int step_id;
-	uint current_freq;
-	uint max_freq;
-	uint temp;
+	uint32_t ip_int;
+	char     ip[IP_LENGTH];
+	char     name[IP_LENGTH];
+	int32_t  counter;
+	uint32_t power;
+	uint32_t rep_power;
+	uint32_t max_power;
+	int32_t  job_id;
+	int32_t  step_id;
+	uint32_t current_freq;
+	uint32_t max_freq;
+	uint32_t temp;
 	eard_policy_info_t policies[TOTAL_POLICIES];
 } ip_table_t;
 
@@ -423,7 +423,7 @@ void process_powercap_status(powercap_status_t *powerstatus, int num_status)
 			printf("Powercap information[%d]:\nStatus: %s\nTotal idle_nodes: %d\nPotential power to be released: %d\nTotal number of greedy nodes : %d \nTotal extra power requested: %d\nTotal power used %u W\n", i, state_name,powerstatus[i].idle_nodes,
 					powerstatus[i].released, powerstatus[i].num_greedy, powerstatus[i].requested, powerstatus[i].current_power);
 
-			int j;
+			uint j;
 			for (j = 0; j < powerstatus->num_greedy; j++)
 				printf("greedy node %d extra_power: %u requested: %u stress: %u\n", powerstatus->greedy_nodes[j], powerstatus->greedy_data[j].extra_power, 
 						powerstatus->greedy_data[j].requested, powerstatus->greedy_data[j].stress);
@@ -484,7 +484,7 @@ char *get_eardbd_type(int i)
 
 int eardbd_status_all(cluster_conf_t *conf, eardbd_table_t **edbstatus) 
 {
-	int i, j, k, count = 0;
+	uint32_t i, j, k, count = 0;
 	char found = 0;
 
 	for (i = 0; i < conf->num_islands; i++) {
@@ -669,12 +669,12 @@ void process_single_status(int num_status, status_t *status, char *node_name, ch
 
 int main(int argc, char *argv[])
 {
-	int c = 0;
-	int num_status = 0;
-	int status_type = 0;
-	int mail_fd = -1;
-	int num_nodes = 0;
-	unsigned long set_limit = -2;
+	int32_t c = 0;
+	int32_t num_status = 0;
+	int32_t status_type = 0;
+	int32_t mail_fd = -1;
+	int32_t num_nodes = 0;
+    int64_t set_limit = -2;
 
 
 	char get_power = 0;
@@ -979,6 +979,7 @@ int main(int argc, char *argv[])
 					ear_cluster_release_idle_power(&my_cluster_conf, &pc);
 					printf("released %u watts\n", pc.released);
 				}
+                break;
 			case 'e':
 				num_status = ear_cluster_get_status(&my_cluster_conf, &status);
 				process_status(num_status, status, 1);

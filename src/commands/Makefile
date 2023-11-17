@@ -1,4 +1,4 @@
-CFLAGS  = $(CC_FLAGS) -I$(SRCDIR) -fstack-protector-strong $(CONSTANTS)
+CFLAGS  = $(CC_FLAGS) -I$(SRCDIR) -Wextra -fstack-protector-strong $(CONSTANTS)
 LDFLAGS = -lm
 ifeq ($(FEAT_RESEARCH), 1)
 CFLAGS += -DEXT_OPT=1
