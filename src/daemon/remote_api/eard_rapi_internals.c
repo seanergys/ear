@@ -881,7 +881,7 @@ int ear_cluster_get_policy_status(cluster_conf_t *my_cluster_conf, policy_status
 	int num_status = 0;
 
 	command.time_code = ctime;
-	command.req = EAR_RC_STATUS;
+	command.req = EAR_RC_POLICY_STATUS;
 	command.node_dist = 0;
 
 	head = data_all_nodes(&command, my_cluster_conf, (void **)&temp_status);
@@ -1034,7 +1034,7 @@ request_header_t send_powercap_status(request_t *command, powercap_status_t **st
 	head = receive_data(eards_sfd, (void**)status);
 	debug("receive_data with type %d and size %u", head.type, head.size);
 	if (head.type != EAR_TYPE_POWER_STATUS) {
-		error("Invalid type error, got type %d expected %d", head.type, EAR_TYPE_STATUS);
+		error("Invalid type error, got type %d expected %d", head.type, EAR_TYPE_POWER_STATUS);
 		if (head.size > 0 && head.type != EAR_ERROR) free(status);
 		head.size = 0;
 		head.type = EAR_ERROR;

@@ -492,7 +492,7 @@ void dyncon_get_app_status(int fd, request_t *command)
 }
 
 /* This function will propagate the status command and will return the list of node failures */
-void dyncon_get_status(int fd, request_t *command) 
+void dyncon_get_policy_status(int fd, request_t *command) 
 {
     policy_status_t *status;
     int num_status = propagate_policy_status(command, my_cluster_conf.eard.port, &status);
@@ -511,7 +511,7 @@ void dyncon_get_status(int fd, request_t *command)
     debug("status released");
 }
 
-void dyncon_get_policy_status(int fd, request_t *command)
+void dyncon_get_status(int fd, request_t *command)
 {
     status_t *status;
     int num_status = propagate_status(command, my_cluster_conf.eard.port, &status);

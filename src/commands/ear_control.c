@@ -369,6 +369,7 @@ void check_ip_policy(policy_status_t *status, ip_table_t *ips, int num_ips)
 		//if (htonl(status.ip) == htonl(ips[i].ip_int))
 		if (status->ip == ips[i].ip_int)
 		{
+            ips[i].counter = 1;
 			for (j = 0; j < TOTAL_POLICIES; j++)
 			{
 				memcpy(&ips[i].policies[j], &status->policy_conf[j], sizeof(eard_policy_info_t));
