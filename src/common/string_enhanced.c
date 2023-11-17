@@ -22,12 +22,14 @@
 #include <common/sizes.h>
 #include <common/string_enhanced.h>
 
-void strtolow(char *string)
+char *strtolow(char *string)
 {
-    while (*string) {
+    char *p = string;
+    while (*string != '\0') {
         *string = tolower((unsigned char) *string);
         string++;
     }
+    return p;
 }
 
 void strtoup(char *string)

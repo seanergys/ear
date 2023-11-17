@@ -104,6 +104,7 @@ AC_CONFIG_FILES([Makefile
                  etc/module/ear
                  etc/module/ear-lite
                  etc/module/ear-sing
+                 etc/module/ear-debug
                  etc/slurm/ear.plugstack.conf
                  etc/systemd/eard.service
                  etc/systemd/eardbd.service

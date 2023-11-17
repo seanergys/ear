@@ -285,7 +285,7 @@ extern timestamp init_last_phase, init_last_comp;
 extern uint policy_cpu_bound ;
 extern uint policy_mem_bound ;
 
-uint validate_cpu_busy = 1;
+uint validate_cpu_busy = EARL_CPUBUSYWAIT_VALIDATE;
 
 
 /** Compute the total node I/O data. */
