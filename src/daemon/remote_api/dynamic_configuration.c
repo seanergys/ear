@@ -492,7 +492,27 @@ void dyncon_get_app_status(int fd, request_t *command)
 }
 
 /* This function will propagate the status command and will return the list of node failures */
-void dyncon_get_status(int fd, request_t *command) {
+void dyncon_get_status(int fd, request_t *command) 
+{
+    policy_status_t *status;
+    int num_status = propagate_policy_status(command, my_cluster_conf.eard.port, &status);
+    unsigned long return_status = num_status;
+    debug("return_status %lu status=%p",return_status,status);
+    if (num_status < 1) {
+        error("Panic propagate_policy_status returns less than 1 status");
+        return_status = 0;
+        _write(fd, &return_status, sizeof(return_status));
+        return;
+    }
+    powermon_get_policy_status(&status[num_status - 1]);
+    send_data(fd, sizeof(status_t) * num_status, (char *)status, EAR_TYPE_POLICY_STATUS);
+    debug("Returning from dyncon_get_status");
+    free(status);
+    debug("status released");
+}
+
+void dyncon_get_policy_status(int fd, request_t *command)
+{
     status_t *status;
     int num_status = propagate_status(command, my_cluster_conf.eard.port, &status);
     unsigned long return_status = num_status;
@@ -913,6 +933,11 @@ state_t process_remote_requests(int clientfd) {
         case EAR_RC_STATUS:
             verbose(VRAPI + 1, "Status received");
             dyncon_get_status(clientfd, &command);
+            return EAR_SUCCESS;
+            break;
+        case EAR_RC_POLICY_STATUS:
+            verbose(VRAPI + 1, "Policy status received");
+            dyncon_get_policy_status(clientfd, &command);
             return EAR_SUCCESS;
             break;
         case EAR_RC_APP_NODE_STATUS:

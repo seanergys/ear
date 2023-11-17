@@ -154,9 +154,13 @@ typedef struct status{
     status_node_info_t  node;
     app_info_t          app;
     uint                eardbd_connected;
+} status_t;
+
+typedef struct policy_status{
+    unsigned int        ip;
     unsigned int        num_policies;
     eard_policy_info_t  policy_conf[TOTAL_POLICIES];
-} status_t;
+} policy_status_t;
 
 typedef struct app_status{
     unsigned int ip;
@@ -209,6 +213,7 @@ typedef struct power_check {
 #define EAR_RC_STATUS               600
 #define EAR_RC_APP_NODE_STATUS      601
 #define EAR_RC_APP_MASTER_STATUS    602
+#define EAR_RC_POLICY_STATUS        603
 
 /* New functions for power limits */
 #define EAR_RC_RED_POWER            700
@@ -240,7 +245,8 @@ typedef struct power_check {
 #define EAR_TYPE_POWER_CHECK    2003
 #define EAR_TYPE_RELEASED       2004
 #define EAR_TYPE_APP_STATUS     2005
-#define EAR_TYPE_EARGM_STATUS   2006
+#define EAR_TYPE_POLICY_STATUS  2006
+#define EAR_TYPE_EARGM_STATUS   2007
 ///  |||||
 ///  vvvvv
 /******************* IMPORTANT ***********************/

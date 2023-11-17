@@ -199,6 +199,7 @@ int ear_node_get_power(power_check_t *power);
  * */
 int ear_cluster_get_power(cluster_conf_t *my_cluster_conf, power_check_t *power);
 
+int ear_cluster_get_policy_status(cluster_conf_t *my_cluster_conf, policy_status_t **status);
 
 /* Nodelist functions, they do the same as their ear_cluster or ear_nodelist counterparts but only to the
  * nodes in the list. */
@@ -215,6 +216,7 @@ void ear_nodelist_set_default_powercap(cluster_conf_t *my_cluster_conf, int *ips
 /* The following functions return the number of status retrieved on success, 0 on error */
 int iplist_status(cluster_conf_t *my_cluster_conf, status_t **status, int *ips, int num_ips);
 int ear_nodelist_get_status(cluster_conf_t *my_cluster_conf, status_t **status, char **nodes, int num_nodes);
+int ear_nodelist_get_policy_status(cluster_conf_t *my_cluster_conf, policy_status_t **status, char **nodes, int num_nodes);
 int ear_nodelist_get_powercap_status(cluster_conf_t *my_cluster_conf, powercap_status_t **pc_status, int release_power, char **nodes, int num_nodes);
 int ear_nodelist_get_power(cluster_conf_t *my_cluster_conf, power_check_t *power, char **nodes, int num_nodes);
 int ear_nodelist_set_powercap_opt(cluster_conf_t *my_cluster_conf, powercap_opt_t *pc_opt, char **nodes, int num_nodes);

@@ -336,7 +336,7 @@ void usage(char *app)
 
 void check_ip(status_t *status, ip_table_t *ips, int num_ips)
 {
-	int i, j;
+	int i;
 	//printf("checking ip %d with status %d and power %lu\n", status.ip, status.ok, status.node.power);
 	for (i = 0; i < num_ips; i++)
 		//if (htonl(status.ip) == htonl(ips[i].ip_int))
@@ -351,13 +351,30 @@ void check_ip(status_t *status, ip_table_t *ips, int num_ips)
 			ips[i].job_id = status->app.job_id;
 			ips[i].step_id = status->app.step_id;
 			//refactor
+#if 0
+			for (j = 0; j < TOTAL_POLICIES; j++)
+			{
+				memcpy(&ips[i].policies[j], &status->policy_conf[j], sizeof(eard_policy_info_t));
+			}	
+#endif
+			return;
+		}
+}
+
+void check_ip_policy(policy_status_t *status, ip_table_t *ips, int num_ips)
+{
+    int i, j;
+	//printf("checking ip %d with status %d and power %lu\n", status.ip, status.ok, status.node.power);
+	for (i = 0; i < num_ips; i++)
+		//if (htonl(status.ip) == htonl(ips[i].ip_int))
+		if (status->ip == ips[i].ip_int)
+		{
 			for (j = 0; j < TOTAL_POLICIES; j++)
 			{
 				memcpy(&ips[i].policies[j], &status->policy_conf[j], sizeof(eard_policy_info_t));
 			}	
 			return;
-		}
-
+        }
 }
 
 void check_app_status(app_status_t status, ip_table_t *ips, int num_ips, char is_master)
@@ -430,6 +447,28 @@ void process_powercap_status(powercap_status_t *powerstatus, int num_status)
 		}
 		free(powerstatus);
 	}
+}
+
+void process_policy_status(int num_status, policy_status_t *status)
+{
+	if (num_status > 0)
+	{
+		int i, num_ips;
+		ip_table_t *ips = NULL;
+		num_ips = generate_node_names(my_cluster_conf, &ips);
+		clean_ips(ips, num_ips);
+		//idea to improve this: add an index to ips, sort the list by the ip_int to do the search, resort the list
+		//by the indexes to print the list -> nlogn + mlogn + nlogn
+		//alternatively: pass all the statuses sorted, and search each ip there once -> nlogm + mlogm
+		//it seems the second idea is better in terms of complexity (the second sort kills the first option)
+		for (i = 0; i < num_status; i++)
+			check_ip_policy(&status[i], ips, num_ips);
+		print_ips(ips, num_ips, POLICY_ONLY);
+		free(ips);
+		free(status);
+	}
+	else printf("No status were retrieved (nodes may be inactive).\n");
+
 }
 
 void process_status(int num_status, status_t *status, char error_only)
@@ -650,6 +689,19 @@ void generate_ip(ip_table_t *ips, char *node_name)
 		ips[0].max_power = (uint) aux_node_conf->max_error_power;
 
 	fill_ip(node_name, &ips[0]); //fill the ip using the net_ext
+
+}
+
+void process_single_policy_status(int num_status, policy_status_t *status, char *node_name)
+{
+	if (num_status > 0)
+	{
+		ip_table_t ips;
+		generate_ip(&ips, node_name);
+		check_ip_policy(status, &ips, 1);
+		print_ips(&ips, 1, POLICY_ONLY);
+	}
+	else printf("An error retrieving status has occurred.\n");
 
 }
 
@@ -1126,11 +1178,13 @@ int main(int argc, char *argv[])
 		int num_status = 0;
 		int rc = -1;
 
-		if (status_type != EAR_TYPE_EARDBD_STATUS) {
+		if (status_type != EAR_TYPE_EARDBD_STATUS || status_type != EAR_TYPE_POLICY) {
 			rc = remote_connect(node_name, my_cluster_conf.eard.port);
 		}
+        char *tmp = node_name; //for policy status
 		powercap_status_t *powerstatus;
 		app_status_t *appstatus;
+        policy_status_t *policystatus;
 		eardbd_table_t edbstatus;
 		if (rc<0 && status_type != EAR_TYPE_EARDBD_STATUS)
 			printf("Error connecting with node %s\n", node_name);
@@ -1144,19 +1198,21 @@ int main(int argc, char *argv[])
 					process_single_status(num_status, status, node_name, NODE_ONLY);
 					break;
 				case EAR_TYPE_POLICY:
-					if ((num_status = ear_node_get_status(&my_cluster_conf, &status)) != 1) 
+					if ((num_status = ear_nodelist_get_policy_status(&my_cluster_conf, &policystatus, &tmp, 1)) != 1) 
 						printf("Error doing status for node %s, returned (%d)\n", node_name, num_status);
-					process_single_status(num_status, status, node_name, POLICY_ONLY);
+					process_single_policy_status(num_status, policystatus, node_name);
 					break;
+#if 0
 				case EAR_TYPE_FULL_STATUS:
 					if ((num_status = ear_node_get_status(&my_cluster_conf, &status)) != 1) 
 						printf("Error doing status for node %s, returned (%d)\n", node_name, num_status);
 					process_single_status(num_status, status, node_name, FULL_STATUS);
 					break;
+#endif
 				case EAR_TYPE_POWER_STATUS:
 					printf("Reading power_status from node %s\n", node_name);
 					num_status = ear_node_get_powercap_status(&my_cluster_conf, &powerstatus, 0);
-					process_powercap_status(powerstatus,num_status);
+					process_powercap_status(powerstatus, num_status);
 					break;
 				case EAR_TYPE_APP_STATUS_MASTER:
 					num_status = ear_node_get_app_master_status(&my_cluster_conf, &appstatus);
@@ -1186,6 +1242,7 @@ int main(int argc, char *argv[])
 		eardbd_table_t *edbstatus;
 		powercap_status_t *powerstatus;
 		app_status_t *appstatus;
+		policy_status_t *policystatus;
 		eargm_status_t *egmstatus;
 		switch(status_type)
 		{
@@ -1194,13 +1251,15 @@ int main(int argc, char *argv[])
 				process_status(num_status, status, NODE_ONLY);
 				break;
 			case EAR_TYPE_POLICY:
-				num_status = ear_get_status(&my_cluster_conf, &status, nodes, num_nodes);
-				process_status(num_status, status, POLICY_ONLY);
+				num_status = ear_get_policy_status(&my_cluster_conf, &policystatus, nodes, num_nodes);
+				process_policy_status(num_status, policystatus);
 				break;
+#if 0
 			case EAR_TYPE_FULL_STATUS:
 				num_status = ear_get_status(&my_cluster_conf, &status, nodes, num_nodes);
 				process_status(num_status, status, FULL_STATUS);
 				break;
+#endif
 			case EAR_TYPE_POWER_STATUS:
 				num_status = ear_get_powercap_status(&my_cluster_conf, &powerstatus, 0, nodes, num_nodes);
 				process_powercap_status(powerstatus,num_status);
