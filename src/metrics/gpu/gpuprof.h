@@ -81,6 +81,10 @@ typedef struct gpuprof_ops_s {
 
 void gpuprof_load(int force_api);
 
+void gpuprof_init();
+
+void gpuprof_dispose();
+
 void gpuprof_get_info(apinfo_t *info);
 
 void gpuprof_events_get(const gpuprof_evs_t **evs, uint *evs_count);
