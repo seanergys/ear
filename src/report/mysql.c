@@ -1,19 +1,19 @@
 /*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* Copyright © 2017-present BSC-Lenovo
-* BSC Contact   mailto:ear-support@bsc.es
-* Lenovo contact  mailto:hpchelp@lenovo.com
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+ *
+ * This program is part of the EAR software.
+ *
+ * EAR provides a dynamic, transparent and ligth-weigth solution for
+ * Energy management. It has been developed in the context of the
+ * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
+ *
+ * Copyright © 2017-present BSC-Lenovo
+ * BSC Contact   mailto:ear-support@bsc.es
+ * Lenovo contact  mailto:hpchelp@lenovo.com
+ *
+ * EAR is an open source software, and it is licensed under both the BSD-3 license
+ * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
+ * and COPYING.EPL files.
+ */
 
 //#define SHOW_DEBUGS 1
 #include <stdio.h>
@@ -66,7 +66,7 @@ static MYSQL *mysql_create_connection()
 
 MYSQL_RES *mysql_run_query_result(char *query)
 {
-	MYSQL *connection = mysql_create_connection();
+    MYSQL *connection = mysql_create_connection();
 
     if (connection == NULL) {
         return NULL;
@@ -121,25 +121,25 @@ int mysql_run_query_int_result(char *query)
 
 state_t report_init(report_id_t *id, cluster_conf_t *conf)
 {
-	debug("mysql report_init");
-	verbose(VDBH,"mysql init");
-	uint db_i = 0;
+    debug("mysql report_init");
+    verbose(VDBH,"mysql init");
+    uint db_i = 0;
 
-		/* List of DBs initializaed to NULL */
-		memset(db_configs, 0, sizeof(db_conf_t *) * MAX_DBS_SUPPORTED);
-		/* Primary is mandatory */
+    /* List of DBs initializaed to NULL */
+    memset(db_configs, 0, sizeof(db_conf_t *) * MAX_DBS_SUPPORTED);
+    /* Primary is mandatory */
     db_configs[db_i] = calloc(1, sizeof(db_conf_t));
-		copy_eardb_conf(db_configs[db_i], &conf->database);
-	  db_config	 = db_configs[db_i];
-		/* sec_ip is for HA, can be null */	
-		if (strcmp(conf->sec_ip, "")){
-			db_i++;
-			db_configs[db_i] = calloc(1, sizeof(db_conf_t));
-			copy_eardb_conf(db_configs[db_i], &conf->database);
- 			/* We only support 2 DBs in ear.conf, so field name is hardcoded */
-			strcpy(db_configs[db_i]->ip, db_configs[db_i]->sec_ip);
-		}
-			
+    copy_eardb_conf(db_configs[db_i], &conf->database);
+    db_config	 = db_configs[db_i];
+    /* sec_ip is for HA, can be null */	
+    if (strcmp(conf->database.sec_ip, "")){
+        db_i++;
+        db_configs[db_i] = calloc(1, sizeof(db_conf_t));
+        copy_eardb_conf(db_configs[db_i], &conf->database);
+        /* We only support 2 DBs in ear.conf, so field name is hardcoded */
+        strcpy(db_configs[db_i]->ip, db_configs[db_i]->sec_ip);
+    }
+
     char query[256];
     int num_sig_args, num_per_args;
     state_t ret = EAR_SUCCESS;
@@ -168,48 +168,48 @@ state_t report_init(report_id_t *id, cluster_conf_t *conf)
         set_node_detail(1);
     }
 
-	return ret;
+    return ret;
 }
 
 state_t report_applications(report_id_t *id, application_t *apps, uint count)
 {
     int bulk_elms = _BULK_ELMS(_MMAAXX(APP_VARS, PSI_VARS, NSI_VARS, JOB_VARS));
-	int bulk_sets = _BULK_SETS(count, bulk_elms);
-	int e, s;
+    int bulk_sets = _BULK_SETS(count, bulk_elms);
+    int e, s;
 
-	for (uint db_i = 0; db_i < MAX_DBS_SUPPORTED; db_i ++){
-	if (db_configs[db_i] != NULL){
-	db_config  = db_configs[db_i];
+    for (uint db_i = 0; db_i < MAX_DBS_SUPPORTED; db_i ++){
+        if (db_configs[db_i] != NULL){
+            db_config  = db_configs[db_i];
 
-	/* mysql_create_connection uses db_config */
-	MYSQL *connection = mysql_create_connection();
+            /* mysql_create_connection uses db_config */
+            MYSQL *connection = mysql_create_connection();
 
-    if (connection == NULL) {
-        return EAR_ERROR;
-    }
+            if (connection == NULL) {
+                return EAR_ERROR;
+            }
 
-    // Inserting full bulks one by one
-	for (e = 0, s = 0; s < bulk_sets; e += bulk_elms, s += 1)
-    {
-    	if (mysql_batch_insert_applications(connection, &apps[e], bulk_elms) < 0) {
-        	verbose(VDBH, "ERROR while batch writing applications to database.");
+            // Inserting full bulks one by one
+            for (e = 0, s = 0; s < bulk_sets; e += bulk_elms, s += 1)
+            {
+                if (mysql_batch_insert_applications(connection, &apps[e], bulk_elms) < 0) {
+                    verbose(VDBH, "ERROR while batch writing applications to database.");
+                    mysql_close(connection);
+                    return EAR_ERROR;
+                }
+            }
+            // Inserting the lagging bulk, the incomplete last one
+            if (e < count)
+            {
+                if (mysql_batch_insert_applications(connection, &apps[e], count - e) < 0) {
+                    verbose(VDBH, "ERROR while batch writing applications to database.");
+                    mysql_close(connection);
+                    return EAR_ERROR;
+                }
+            }	 
+
             mysql_close(connection);
-        	return EAR_ERROR;
-    	}
-	}
-	// Inserting the lagging bulk, the incomplete last one
-	if (e < count)
-	{
-		if (mysql_batch_insert_applications(connection, &apps[e], count - e) < 0) {
-            verbose(VDBH, "ERROR while batch writing applications to database.");
-            mysql_close(connection);
-            return EAR_ERROR;
         }
-	}	 
-
-	mysql_close(connection);
-	}
-	}
+    }
 
     return EAR_SUCCESS;
 
@@ -218,43 +218,44 @@ state_t report_applications(report_id_t *id, application_t *apps, uint count)
 state_t report_loops(report_id_t *id, loop_t *loops, uint count)
 {
     int bulk_elms = _BULK_ELMS(_MMAAXX(APP_VARS, PSI_VARS, NSI_VARS, JOB_VARS));
-	int bulk_sets = _BULK_SETS(count, bulk_elms);
-	int e, s;
+    int bulk_sets = _BULK_SETS(count, bulk_elms);
+    int e, s;
 
-	for (uint db_i = 0; db_i < MAX_DBS_SUPPORTED; db_i ++){
-	if (db_configs[db_i] != NULL){
-	db_config  = db_configs[db_i];
-	/* mysql_create_connection uses db_config */
+    for (uint db_i = 0; db_i < MAX_DBS_SUPPORTED; db_i ++){
+        if (db_configs[db_i] != NULL){
+            db_config  = db_configs[db_i];
+            /* mysql_create_connection uses db_config */
 
-	MYSQL *connection = mysql_create_connection();
+            MYSQL *connection = mysql_create_connection();
 
-    if (connection == NULL) {
-        return EAR_ERROR;
-    }
+            if (connection == NULL) {
+                return EAR_ERROR;
+            }
 
-	verbose(VDBH,"Inserting %u loops in mysql DB", count);
+            verbose(VDBH,"Inserting %u loops in mysql DB", count);
 
-    // Inserting full bulks one by one
-	for (e = 0, s = 0; s < bulk_sets; e += bulk_elms, s += 1)
-    {
-    	if (mysql_batch_insert_loops(connection, &loops[e], bulk_elms) < 0) {
-        	verbose(VDBH, "ERROR while batch writing loops to database.");
+            // Inserting full bulks one by one
+            for (e = 0, s = 0; s < bulk_sets; e += bulk_elms, s += 1)
+            {
+                if (mysql_batch_insert_loops(connection, &loops[e], bulk_elms) < 0) {
+                    verbose(VDBH, "ERROR while batch writing loops to database.");
+                    mysql_close(connection);
+                    return EAR_ERROR;
+                }
+            }
+            // Inserting the lagging bulk, the incomplete last one
+            if (e < count)
+            {
+                if (mysql_batch_insert_loops(connection, &loops[e], count - e) < 0) {
+                    verbose(VDBH, "ERROR while batch writing loops to database.");
+                    mysql_close(connection);
+                    return EAR_ERROR;
+                }
+            }	 
+
             mysql_close(connection);
-        	return EAR_ERROR;
-    	}
-	}
-	// Inserting the lagging bulk, the incomplete last one
-	if (e < count)
-	{
-		if (mysql_batch_insert_loops(connection, &loops[e], count - e) < 0) {
-            verbose(VDBH, "ERROR while batch writing loops to database.");
-            mysql_close(connection);
-            return EAR_ERROR;
         }
-	}	 
-
-	mysql_close(connection);
-	}
+    }
 
     return EAR_SUCCESS;
 
@@ -263,41 +264,42 @@ state_t report_loops(report_id_t *id, loop_t *loops, uint count)
 state_t report_events(report_id_t *id, ear_event_t *eves, uint count)
 {
     int bulk_elms = _BULK_ELMS(_MMAAXX(APP_VARS, PSI_VARS, NSI_VARS, JOB_VARS));
-	int bulk_sets = _BULK_SETS(count, bulk_elms);
-	int e, s;
+    int bulk_sets = _BULK_SETS(count, bulk_elms);
+    int e, s;
 
-	for (uint db_i = 0; db_i < MAX_DBS_SUPPORTED; db_i ++){
-	if (db_configs[db_i] != NULL){
-	db_config  = db_configs[db_i];
-	/* mysql_create_connection uses db_config */
+    for (uint db_i = 0; db_i < MAX_DBS_SUPPORTED; db_i ++){
+        if (db_configs[db_i] != NULL){
+            db_config  = db_configs[db_i];
+            /* mysql_create_connection uses db_config */
 
-	MYSQL *connection = mysql_create_connection();
+            MYSQL *connection = mysql_create_connection();
 
-    if (connection == NULL) {
-        return EAR_ERROR;
-    }
+            if (connection == NULL) {
+                return EAR_ERROR;
+            }
 
-    // Inserting full bulks one by one
-	for (e = 0, s = 0; s < bulk_sets; e += bulk_elms, s += 1)
-    {
-    	if (mysql_batch_insert_ear_events(connection, &eves[e], bulk_elms) < 0) {
-        	verbose(VDBH, "ERROR while batch writing events to database.");
+            // Inserting full bulks one by one
+            for (e = 0, s = 0; s < bulk_sets; e += bulk_elms, s += 1)
+            {
+                if (mysql_batch_insert_ear_events(connection, &eves[e], bulk_elms) < 0) {
+                    verbose(VDBH, "ERROR while batch writing events to database.");
+                    mysql_close(connection);
+                    return EAR_ERROR;
+                }
+            }
+            // Inserting the lagging bulk, the incomplete last one
+            if (e < count)
+            {
+                if (mysql_batch_insert_ear_events(connection, &eves[e], count - e) < 0) {
+                    verbose(VDBH, "ERROR while batch writing events to database.");
+                    mysql_close(connection);
+                    return EAR_ERROR;
+                }
+            }	 
+
             mysql_close(connection);
-        	return EAR_ERROR;
-    	}
-	}
-	// Inserting the lagging bulk, the incomplete last one
-	if (e < count)
-	{
-		if (mysql_batch_insert_ear_events(connection, &eves[e], count - e) < 0) {
-            verbose(VDBH, "ERROR while batch writing events to database.");
-            mysql_close(connection);
-            return EAR_ERROR;
         }
-	}	 
-
-	mysql_close(connection);
-	}
+    }
 
     return EAR_SUCCESS;
 
@@ -306,41 +308,42 @@ state_t report_events(report_id_t *id, ear_event_t *eves, uint count)
 state_t report_periodic_metrics(report_id_t *id, periodic_metric_t *mets, uint count)
 {
     int bulk_elms = _BULK_ELMS(_MMAAXX(APP_VARS, PSI_VARS, NSI_VARS, JOB_VARS));
-	int bulk_sets = _BULK_SETS(count, bulk_elms);
-	int e, s;
+    int bulk_sets = _BULK_SETS(count, bulk_elms);
+    int e, s;
 
-	for (uint db_i = 0; db_i < MAX_DBS_SUPPORTED; db_i ++){
-	if (db_configs[db_i] != NULL){
-	db_config  = db_configs[db_i];
-	/* mysql_create_connection uses db_config */
+    for (uint db_i = 0; db_i < MAX_DBS_SUPPORTED; db_i ++){
+        if (db_configs[db_i] != NULL){
+            db_config  = db_configs[db_i];
+            /* mysql_create_connection uses db_config */
 
-	MYSQL *connection = mysql_create_connection();
+            MYSQL *connection = mysql_create_connection();
 
-    if (connection == NULL) {
-        return EAR_ERROR;
-    }
+            if (connection == NULL) {
+                return EAR_ERROR;
+            }
 
-    // Inserting full bulks one by one
-	for (e = 0, s = 0; s < bulk_sets; e += bulk_elms, s += 1)
-    {
-    	if (mysql_batch_insert_periodic_metrics(connection, &mets[e], bulk_elms) < 0) {
-        	verbose(VDBH, "ERROR while batch writing periodic_metrics to database.");
+            // Inserting full bulks one by one
+            for (e = 0, s = 0; s < bulk_sets; e += bulk_elms, s += 1)
+            {
+                if (mysql_batch_insert_periodic_metrics(connection, &mets[e], bulk_elms) < 0) {
+                    verbose(VDBH, "ERROR while batch writing periodic_metrics to database.");
+                    mysql_close(connection);
+                    return EAR_ERROR;
+                }
+            }
+            // Inserting the lagging bulk, the incomplete last one
+            if (e < count)
+            {
+                if (mysql_batch_insert_periodic_metrics(connection, &mets[e], count - e) < 0) {
+                    verbose(VDBH, "ERROR while batch writing periodic_metrics to database.");
+                    mysql_close(connection);
+                    return EAR_ERROR;
+                }
+            }	 
+
             mysql_close(connection);
-        	return EAR_ERROR;
-    	}
-	}
-	// Inserting the lagging bulk, the incomplete last one
-	if (e < count)
-	{
-		if (mysql_batch_insert_periodic_metrics(connection, &mets[e], count - e) < 0) {
-            verbose(VDBH, "ERROR while batch writing periodic_metrics to database.");
-            mysql_close(connection);
-            return EAR_ERROR;
         }
-	}	 
-
-	mysql_close(connection);
-	}
+    }
     return EAR_SUCCESS;
 
 }
@@ -349,67 +352,68 @@ state_t report_misc(report_id_t *id, uint type, const char *data, uint count)
 {
     int bulk_elms, bulk_sets, e, s;
 
-	for (uint db_i = 0; db_i < MAX_DBS_SUPPORTED; db_i ++){
-	if (db_configs[db_i] != NULL){
-	db_config  = db_configs[db_i];
-	/* mysql_create_connection uses db_config */
+    for (uint db_i = 0; db_i < MAX_DBS_SUPPORTED; db_i ++){
+        if (db_configs[db_i] != NULL){
+            db_config  = db_configs[db_i];
+            /* mysql_create_connection uses db_config */
 
-    MYSQL *connection = mysql_create_connection();
+            MYSQL *connection = mysql_create_connection();
 
-    if (connection == NULL) {
-        return EAR_ERROR;
-    }
-
-    periodic_aggregation_t *aggs = (periodic_aggregation_t *)data;
-    switch (type)
-    {
-        case PERIODIC_AGGREGATIONS:
-            bulk_elms = _BULK_ELMS(_MMAAXX(APP_VARS, PSI_VARS, NSI_VARS, JOB_VARS));
-            bulk_sets = _BULK_SETS(count, bulk_elms);
-            // Inserting full bulks one by one
-            for (e = 0, s = 0; s < bulk_sets; e += bulk_elms, s += 1)
-            {
-                if (mysql_batch_insert_periodic_aggregations(connection, &aggs[e], bulk_elms) < 0) {
-                    verbose(VDBH, "ERROR while batch writing periodic_aggregations to database.");
-                    mysql_close(connection);
-                    return EAR_ERROR;
-                }
+            if (connection == NULL) {
+                return EAR_ERROR;
             }
-            // Inserting the lagging bulk, the incomplete last one
-            if (e < count)
-            {
-                if (mysql_batch_insert_periodic_aggregations(connection, &aggs[e], count - e) < 0) {
-                    verbose(VDBH, "ERROR while batch writing periodic_aggregations to database.");
-                    mysql_close(connection);
-                    return EAR_ERROR;
-                }
-            }	 
-            break;
-        case EARGM_WARNINGS:
-            if (mysql_insert_gm_warning(connection, (gm_warning_t *)data) < 0) {
-                    verbose(VDBH, "ERROR while writing gm_warning to database.");
-                    mysql_close(connection);
-                    return EAR_ERROR;
-            }
-            break;
-        default:
-            verbose(VDBH, "Trying to insert unknown type to database");
-            break;
-    }
 
-    mysql_close(connection);
-		}
+            periodic_aggregation_t *aggs = (periodic_aggregation_t *)data;
+            switch (type)
+            {
+                case PERIODIC_AGGREGATIONS:
+                    bulk_elms = _BULK_ELMS(_MMAAXX(APP_VARS, PSI_VARS, NSI_VARS, JOB_VARS));
+                    bulk_sets = _BULK_SETS(count, bulk_elms);
+                    // Inserting full bulks one by one
+                    for (e = 0, s = 0; s < bulk_sets; e += bulk_elms, s += 1)
+                    {
+                        if (mysql_batch_insert_periodic_aggregations(connection, &aggs[e], bulk_elms) < 0) {
+                            verbose(VDBH, "ERROR while batch writing periodic_aggregations to database.");
+                            mysql_close(connection);
+                            return EAR_ERROR;
+                        }
+                    }
+                    // Inserting the lagging bulk, the incomplete last one
+                    if (e < count)
+                    {
+                        if (mysql_batch_insert_periodic_aggregations(connection, &aggs[e], count - e) < 0) {
+                            verbose(VDBH, "ERROR while batch writing periodic_aggregations to database.");
+                            mysql_close(connection);
+                            return EAR_ERROR;
+                        }
+                    }	 
+                    break;
+                case EARGM_WARNINGS:
+                    if (mysql_insert_gm_warning(connection, (gm_warning_t *)data) < 0) {
+                        verbose(VDBH, "ERROR while writing gm_warning to database.");
+                        mysql_close(connection);
+                        return EAR_ERROR;
+                    }
+                    break;
+                default:
+                    verbose(VDBH, "Trying to insert unknown type to database");
+                    break;
+            }
+
+            mysql_close(connection);
+        }
+    }
     return EAR_SUCCESS;
 
 }
 
 state_t report_dispose(report_id_t *id) 
 {
-	for (uint db_i = 0; db_i < MAX_DBS_SUPPORTED; db_i ++){
-		if (db_configs[db_i] != NULL) free(db_configs[db_i]);
-	}
+    for (uint db_i = 0; db_i < MAX_DBS_SUPPORTED; db_i ++){
+        if (db_configs[db_i] != NULL) free(db_configs[db_i]);
+    }
 
-  return EAR_SUCCESS;
+    return EAR_SUCCESS;
 }
 #endif
 
