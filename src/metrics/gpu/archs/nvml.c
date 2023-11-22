@@ -75,7 +75,7 @@ void gpu_nvml_load(gpu_ops_t *ops, int force_api)
     apis_set(ops->count_devices, gpu_nvml_count_devices);
     apis_pin(ops->read,          gpu_nvml_read, ok_pool);
     apis_set(ops->read_raw,      gpu_nvml_read_raw);
-    apis_set(ops->get_info,			 gpu_nvml_get_info);
+    apis_set(ops->get_info,      gpu_nvml_get_info);
     debug("Loaded NVML");
 }
 
@@ -138,6 +138,7 @@ state_t gpu_nvml_get_devices(ctx_t *c, gpu_devs_t **devs_in, uint *devs_count_in
             return_msg(EAR_ERROR, nvml.ErrorString(r));
         }
         (*devs_in)[i].serial = (ullong) atoll(serial);
+        printf("GPU SERIAL %s : %llu\n", serial, (*devs_in)[i].serial);
         (*devs_in)[i].index  = i;
     }
     if (devs_count_in != NULL) {

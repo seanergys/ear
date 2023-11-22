@@ -33,15 +33,19 @@ static uint            devs_count;
 static popen_t         p;
 static gpuprof_t      *pool;
 static double         *pool_aux_buffer; //auxiliar buffer
+static ullong         *serials;
 
 // DCGMI limits all GPUs to monitor the same events
 
 GPUPROF_F_LOAD(gpuprof_dcgmi_load)
 {
+    char buffer[128];
     char *event_name;
+    char *args[5];
     int event_id;
     char *count;
     state_t s;
+    int d;
 
     //dcgmi dmon --list
     if (state_fail(s = popen_test("dcgmi"))) {
@@ -65,6 +69,22 @@ GPUPROF_F_LOAD(gpuprof_dcgmi_load)
         debug("No GPUs found");
         return;
     }
+    // Getting serial numbers
+    serials = calloc(devs_count, sizeof(ullong));
+    for (d = 0; d < devs_count; ++d)
+    {
+        sprintf(buffer, "dcgmi discovery -i a -v --gpuid %d", d);
+        if (state_fail(s = popen_open(buffer, 3, 1, &p))) {
+            continue;
+        }
+        while(popen_read(&p, "sssssa", &args[0], &args[1], &args[2], &args[3], &args[4])) {
+            if (strcmp(strtolow(args[1]), "serial") == 0) {
+                serials[d] = (ullong) atoll(args[4]);
+                printf("SERIAL: %llu\n", serials[d]);
+            }
+        }
+    }    
+    // Events
     if (state_fail(s = popen_open("dcgmi dmon --list", 3, 1, &p))) {
         debug("Failed popen_open: %s", state_msg);
         return;
