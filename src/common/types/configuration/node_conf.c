@@ -41,7 +41,7 @@ int is_smaller_unit(int small, int big)
 	return big; //big will be > 0 if it's a bigger unit
 }
 
-char range_conf_contains_node(node_conf_t *node, char *nodename)
+int range_conf_contains_node(node_conf_t *node, char *nodename)
 {
     char aux_name[256];
     int i, j;
@@ -72,7 +72,7 @@ char range_conf_contains_node(node_conf_t *node, char *nodename)
     return 0;
 }
 
-char island_range_conf_contains_node(node_island_t *node, char *nodename)
+int island_range_conf_contains_node(node_island_t *node, char *nodename)
 {
     char aux_name[256];
     int i, j;

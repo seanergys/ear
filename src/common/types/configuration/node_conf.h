@@ -123,8 +123,8 @@ typedef struct node_island
  *
  */
 
-char range_conf_contains_node(node_conf_t *node, char *nodename);
-char island_range_conf_contains_node(node_island_t *node, char *nodename);
+int range_conf_contains_node(node_conf_t *node, char *nodename);
+int island_range_conf_contains_node(node_island_t *node, char *nodename);
 
 /** Copies dest=src */
 void copy_my_node_conf(my_node_conf_t *dest,my_node_conf_t *src);
