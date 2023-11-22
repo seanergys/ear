@@ -28,7 +28,8 @@
 
 #if DB_MYSQL
 
-
+#define MAX_DBS_SUPPORTED 2
+static db_conf_t *db_configs[MAX_DBS_SUPPORTED];
 static db_conf_t *db_config = NULL;
 
 #define IS_SIG_FULL_QUERY   "SELECT COUNT(*) FROM information_schema.columns where TABLE_NAME='Signatures' AND TABLE_SCHEMA='%s'"
@@ -122,9 +123,23 @@ state_t report_init(report_id_t *id, cluster_conf_t *conf)
 {
 	debug("mysql report_init");
 	verbose(VDBH,"mysql init");
+	uint db_i = 0;
 
-    db_config = calloc(1, sizeof(db_conf_t));
-    memcpy(db_config, &conf->database, sizeof(db_conf_t));
+		/* List of DBs initializaed to NULL */
+		memset(db_configs, 0, sizeof(db_conf_t *) * MAX_DBS_SUPPORTED);
+		/* Primary is mandatory */
+    db_configs[db_i] = calloc(1, sizeof(db_conf_t));
+		copy_eardb_conf(db_configs[db_i], &conf->database);
+	  db_config	 = db_configs[db_i];
+		/* sec_ip is for HA, can be null */	
+		if (strcmp(conf->sec_ip, "")){
+			db_i++;
+			db_configs[db_i] = calloc(1, sizeof(db_conf_t));
+			copy_eardb_conf(db_configs[db_i], &conf->database);
+ 			/* We only support 2 DBs in ear.conf, so field name is hardcoded */
+			strcpy(db_configs[db_i]->ip, db_configs[db_i]->sec_ip);
+		}
+			
     char query[256];
     int num_sig_args, num_per_args;
     state_t ret = EAR_SUCCESS;
@@ -162,6 +177,11 @@ state_t report_applications(report_id_t *id, application_t *apps, uint count)
 	int bulk_sets = _BULK_SETS(count, bulk_elms);
 	int e, s;
 
+	for (uint db_i = 0; db_i < MAX_DBS_SUPPORTED; db_i ++){
+	if (db_configs[db_i] != NULL){
+	db_config  = db_configs[db_i];
+
+	/* mysql_create_connection uses db_config */
 	MYSQL *connection = mysql_create_connection();
 
     if (connection == NULL) {
@@ -188,6 +208,8 @@ state_t report_applications(report_id_t *id, application_t *apps, uint count)
 	}	 
 
 	mysql_close(connection);
+	}
+	}
 
     return EAR_SUCCESS;
 
@@ -198,6 +220,11 @@ state_t report_loops(report_id_t *id, loop_t *loops, uint count)
     int bulk_elms = _BULK_ELMS(_MMAAXX(APP_VARS, PSI_VARS, NSI_VARS, JOB_VARS));
 	int bulk_sets = _BULK_SETS(count, bulk_elms);
 	int e, s;
+
+	for (uint db_i = 0; db_i < MAX_DBS_SUPPORTED; db_i ++){
+	if (db_configs[db_i] != NULL){
+	db_config  = db_configs[db_i];
+	/* mysql_create_connection uses db_config */
 
 	MYSQL *connection = mysql_create_connection();
 
@@ -227,6 +254,7 @@ state_t report_loops(report_id_t *id, loop_t *loops, uint count)
 	}	 
 
 	mysql_close(connection);
+	}
 
     return EAR_SUCCESS;
 
@@ -237,6 +265,11 @@ state_t report_events(report_id_t *id, ear_event_t *eves, uint count)
     int bulk_elms = _BULK_ELMS(_MMAAXX(APP_VARS, PSI_VARS, NSI_VARS, JOB_VARS));
 	int bulk_sets = _BULK_SETS(count, bulk_elms);
 	int e, s;
+
+	for (uint db_i = 0; db_i < MAX_DBS_SUPPORTED; db_i ++){
+	if (db_configs[db_i] != NULL){
+	db_config  = db_configs[db_i];
+	/* mysql_create_connection uses db_config */
 
 	MYSQL *connection = mysql_create_connection();
 
@@ -264,6 +297,7 @@ state_t report_events(report_id_t *id, ear_event_t *eves, uint count)
 	}	 
 
 	mysql_close(connection);
+	}
 
     return EAR_SUCCESS;
 
@@ -274,6 +308,11 @@ state_t report_periodic_metrics(report_id_t *id, periodic_metric_t *mets, uint c
     int bulk_elms = _BULK_ELMS(_MMAAXX(APP_VARS, PSI_VARS, NSI_VARS, JOB_VARS));
 	int bulk_sets = _BULK_SETS(count, bulk_elms);
 	int e, s;
+
+	for (uint db_i = 0; db_i < MAX_DBS_SUPPORTED; db_i ++){
+	if (db_configs[db_i] != NULL){
+	db_config  = db_configs[db_i];
+	/* mysql_create_connection uses db_config */
 
 	MYSQL *connection = mysql_create_connection();
 
@@ -301,7 +340,7 @@ state_t report_periodic_metrics(report_id_t *id, periodic_metric_t *mets, uint c
 	}	 
 
 	mysql_close(connection);
-
+	}
     return EAR_SUCCESS;
 
 }
@@ -309,6 +348,11 @@ state_t report_periodic_metrics(report_id_t *id, periodic_metric_t *mets, uint c
 state_t report_misc(report_id_t *id, uint type, const char *data, uint count)
 {
     int bulk_elms, bulk_sets, e, s;
+
+	for (uint db_i = 0; db_i < MAX_DBS_SUPPORTED; db_i ++){
+	if (db_configs[db_i] != NULL){
+	db_config  = db_configs[db_i];
+	/* mysql_create_connection uses db_config */
 
     MYSQL *connection = mysql_create_connection();
 
@@ -354,15 +398,18 @@ state_t report_misc(report_id_t *id, uint type, const char *data, uint count)
     }
 
     mysql_close(connection);
-
+		}
     return EAR_SUCCESS;
 
 }
 
 state_t report_dispose(report_id_t *id) 
 {
-    if (db_config != NULL) free(db_config);
-    return EAR_SUCCESS;
+	for (uint db_i = 0; db_i < MAX_DBS_SUPPORTED; db_i ++){
+		if (db_configs[db_i] != NULL) free(db_configs[db_i]);
+	}
+
+  return EAR_SUCCESS;
 }
 #endif
 
