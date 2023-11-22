@@ -79,7 +79,6 @@ GPUPROF_F_DATA_DIFF(gpuprof_dummy_data_diff)
 GPUPROF_F_DATA_ALLOC(gpuprof_dummy_data_alloc)
 {
     gpuprof_t *aux;
-    int d;
     aux = calloc(1, sizeof(gpuprof_t));
     // We allocate all values contiguously
     aux[0].values = calloc(1, sizeof(double));

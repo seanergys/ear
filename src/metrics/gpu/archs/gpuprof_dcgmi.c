@@ -41,7 +41,7 @@ static popen_t         p;
 static gpuprof_t      *pool;
 static double         *pool_aux_buffer; //auxiliar buffer
 static uint           *is_user_dev;
-static char            ids[128];
+static char            ids[256];
 static ullong         *serials;
 
 static void serials_comparison(int devs_count)
@@ -68,8 +68,8 @@ static void serials_comparison(int devs_count)
     for (d = 0; d < devs_count; ++d) {
         serials[d] = 0LLU;
         is_user_dev[d] = 0U;
-        sprintf(buffer, "dcgmi discovery -i a -v --gpu-id %d", d);
-        if (state_fail(s = popen_open(buffer, 3, 1, &p))) {
+        sprintf(command, "dcgmi discovery -i a -v --gpu-id %d", d);
+        if (state_fail(popen_open(command, 3, 1, &p))) {
             continue;
         }
         while(popen_read(&p, "sssssa", &args[0], &args[1], &args[2], &args[3], &args[4])) {
@@ -200,8 +200,6 @@ static void set(int dev, char *evs, uint ids_count)
 GPUPROF_F_EVENTS_SET(gpuprof_dcgmi_events_set)
 {
     char command[512];
-    char *retword1;
-    char *retword2;
     uint ids_count;
     state_t s;
     uint *ids;

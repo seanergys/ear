@@ -139,7 +139,7 @@ GPUPROF_F_LOAD(gpuprof_nvml_load)
         return;
     }
     // Allocating space for NVML metrics for all devices + additional for testing
-    gpms = calloc(devs_count + 1, sizeo<f(nvmlGpmMetricsGet_t));
+    gpms = calloc(devs_count + 1, sizeof(nvmlGpmMetricsGet_t));
     // Allocating space for our own event list (events)
     events = calloc(NVML_GPM_METRIC_MAX, sizeof(gpuprof_evs_t));
     // Allocating samples

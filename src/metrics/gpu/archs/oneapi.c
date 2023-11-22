@@ -103,10 +103,9 @@ state_t gpu_oneapi_init(ctx_t *c)
 	sus->time_relax = 2000;
 	sus->time_burst = 1000;
 	// Initializing monitoring thread.
-	if (state_fail(s = sus->suscribe(sus))) {
+	if (state_fail(sus->suscribe(sus))) {
 		debug("GPU monitor FAILS");
-		monitor_unregister(sus);
-		free(pool);
+        return gpu_oneapi_dispose(c);
 	}
     } // ok_pool
 	return EAR_SUCCESS;

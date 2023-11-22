@@ -144,7 +144,7 @@ static state_t static_init()
                   r, nvml.ErrorString(r));
             return static_free(EAR_ERROR, (char *) nvml.ErrorString(r));
         }
-        if ((r = nvml.GetSerial(devices[i], buffer, 32)) == NVML_SUCCESS) {
+        if ((r = nvml.GetSerial(devices[d], buffer, 32)) == NVML_SUCCESS) {
             serials[d] = (ullong) atoll(buffer);
         }
     }
