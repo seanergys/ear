@@ -84,9 +84,11 @@ void gpu_oneapi_get_api(uint *api)
 state_t gpu_oneapi_init(ctx_t *c)
 {
     timestamp_t time;
-    state_t s;
     int i;
 
+    if (pool != NULL) {
+        return EAR_SUCCESS;
+    }
     pool = calloc(devs_count, sizeof(gpu_t));
     // Initializing pool (pool at 0 is not incorrect)
     timestamp_getfast(&time);
@@ -112,6 +114,11 @@ state_t gpu_oneapi_init(ctx_t *c)
 
 state_t gpu_oneapi_dispose(ctx_t *c)
 {
+    if (ok_pool && pool != NULL) {
+        monitor_unregister(sus);
+        free(pool);
+        pool = NULL;
+    }
 	return EAR_SUCCESS;
 }
 
@@ -344,7 +351,7 @@ state_t gpu_oneapi_pool(void *p)
 		pool[dv].util_gpu += current.util_gpu;
 		pool[dv].temp_gpu += current.temp_gpu;
 		pool[dv].temp_mem += current.temp_mem;
-		pool[dv].energy_j += current.energy_j;
+		pool[dv].energy_j  = current.energy_j;
 		pool[dv].power_w  += 0.0;
 		pool[dv].working   = current.working;
 		pool[dv].correct   = 1;

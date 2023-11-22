@@ -63,10 +63,17 @@ void gpu_get_api(uint *api)
 
 state_t gpu_init(ctx_t *c)
 {
+    state_t s = EAR_ERROR;
+    while (pthread_mutex_trylock(&lock));
     if (ops.init != NULL) {
-        ops.init(c);
+        if (state_fail(s = ops.init(c))) {
+            goto unlock_init;
+        }
     }
-    return gpu_count_devices(c, &devs_count);
+    s = gpu_count_devices(c, &devs_count);
+unlock_init:
+    pthread_mutex_unlock(&lock);
+    return s;
 }
 
 state_t gpu_dispose(ctx_t *c)

@@ -19,12 +19,19 @@
 
 #include <math.h>
 #include <stdlib.h>
+#include <string.h>
 #include <pthread.h>
 #include <common/output/debug.h>
 #include <common/string_enhanced.h>
 #include <common/math_operations.h>
+#include <metrics/common/nvml.h>
 #include <metrics/common/popen.h>
 #include <metrics/gpu/archs/gpuprof_dcgmi.h>
+
+// DCGMI limits all GPUs to monitor the same events. Because under the hood we
+// are using POPEN which opens an additional process. If we wanted to add
+// different events in different GPUs, we would have to open multiple POPEN
+// processes.
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static gpuprof_evs_t  *events;
@@ -33,19 +40,64 @@ static uint            devs_count;
 static popen_t         p;
 static gpuprof_t      *pool;
 static double         *pool_aux_buffer; //auxiliar buffer
+static uint           *is_user_dev;
+static char            ids[128];
 static ullong         *serials;
 
-// DCGMI limits all GPUs to monitor the same events
+static void serials_comparison(int devs_count)
+{
+    uint          nvml_devs_count;
+    char          command[128];
+    char          buffer[128];
+    char         *args[5];
+    int           d;
+
+    if (state_fail(nvml_open(NULL))) {
+        return;
+    }
+    if (state_fail(nvml_get_devices(NULL, &nvml_devs_count))) {
+        return;
+    }
+    // If is the same number of GPUs, we don't have any problem.
+    if (nvml_devs_count == devs_count) {
+        return;
+    }
+    is_user_dev = calloc(devs_count, sizeof(uint));
+    serials = calloc(devs_count, sizeof(ullong));
+    //
+    for (d = 0; d < devs_count; ++d) {
+        serials[d] = 0LLU;
+        is_user_dev[d] = 0U;
+        sprintf(buffer, "dcgmi discovery -i a -v --gpu-id %d", d);
+        if (state_fail(s = popen_open(buffer, 3, 1, &p))) {
+            continue;
+        }
+        while(popen_read(&p, "sssssa", &args[0], &args[1], &args[2], &args[3], &args[4])) {
+            if (strcmp(strtolow(args[1]), "serial") == 0) {
+                serials[d] = (ullong) atoll(args[4]);
+                debug("D%d detected serial: %llu", d, serials[d]);
+            }
+        }
+        is_user_dev[d] = nvml_is_serial(serials[d]);
+        // Editing flag --gpu-id
+        if (is_user_dev[d]) {
+            strcpy(buffer, ids);
+            if (strlen(buffer)) {
+                sprintf(ids, "%s,%u", buffer, d);
+            } else {
+                sprintf(ids, "%u", d);
+            }
+            debug("D%d ids: %s", d, ids);
+        }
+    }
+}
 
 GPUPROF_F_LOAD(gpuprof_dcgmi_load)
 {
-    char buffer[128];
     char *event_name;
-    char *args[5];
     int event_id;
     char *count;
     state_t s;
-    int d;
 
     //dcgmi dmon --list
     if (state_fail(s = popen_test("dcgmi"))) {
@@ -69,21 +121,8 @@ GPUPROF_F_LOAD(gpuprof_dcgmi_load)
         debug("No GPUs found");
         return;
     }
-    // Getting serial numbers
-    serials = calloc(devs_count, sizeof(ullong));
-    for (d = 0; d < devs_count; ++d)
-    {
-        sprintf(buffer, "dcgmi discovery -i a -v --gpuid %d", d);
-        if (state_fail(s = popen_open(buffer, 3, 1, &p))) {
-            continue;
-        }
-        while(popen_read(&p, "sssssa", &args[0], &args[1], &args[2], &args[3], &args[4])) {
-            if (strcmp(strtolow(args[1]), "serial") == 0) {
-                serials[d] = (ullong) atoll(args[4]);
-                printf("SERIAL: %llu\n", serials[d]);
-            }
-        }
-    }    
+    // If NVML can be initialized, we compare the serial numbers
+    serials_comparison(devs_count);
     // Events
     if (state_fail(s = popen_open("dcgmi dmon --list", 3, 1, &p))) {
         debug("Failed popen_open: %s", state_msg);
@@ -215,7 +254,7 @@ GPUPROF_F_READ(gpuprof_dcgmi_read)
     while (pthread_mutex_trylock(&lock));
     // Pooling
     while(popen_read(&p, "siD", &buffer, &dev, pool_aux_buffer)) {
-        debug("RETURNED %s", buffer);
+        debug("Popen returned '%s'", buffer);
         if (strstr(buffer, "Error") != NULL) {
             unset();
             goto leave2;

@@ -138,7 +138,6 @@ state_t gpu_nvml_get_devices(ctx_t *c, gpu_devs_t **devs_in, uint *devs_count_in
             return_msg(EAR_ERROR, nvml.ErrorString(r));
         }
         (*devs_in)[i].serial = (ullong) atoll(serial);
-        printf("GPU SERIAL %s : %llu\n", serial, (*devs_in)[i].serial);
         (*devs_in)[i].index  = i;
     }
     if (devs_count_in != NULL) {

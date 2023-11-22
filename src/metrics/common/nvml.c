@@ -77,6 +77,7 @@ static const char *nvml_names[] =
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static nvmlDevice_t   *devices;
+static ullong         *serials;
 static nvml_t          nvml;
 static uint            devs_count;
 static uint            ok;
@@ -115,6 +116,7 @@ static state_t static_free(state_t s, char *error)
 
 static state_t static_init()
 {
+    char buffer[32];
     nvmlReturn_t r;
     int d;
 
@@ -132,11 +134,18 @@ static state_t static_init()
     if ((devices = calloc(devs_count, sizeof(nvmlDevice_t))) == NULL) {
         return static_free(EAR_ERROR, strerror(errno));
     }
+    if ((serials = calloc(devs_count, sizeof(ullong))) == NULL) {
+        return static_free(EAR_ERROR, strerror(errno));
+    }
+    // Some fillings
     for (d = 0; d < devs_count; ++d) {
         if ((r = nvml.Handle(d, &devices[d])) != NVML_SUCCESS) {
             debug("nvmlDeviceGetHandleByIndex returned %d (%s)",
                   r, nvml.ErrorString(r));
             return static_free(EAR_ERROR, (char *) nvml.ErrorString(r));
+        }
+        if ((r = nvml.GetSerial(devices[i], buffer, 32)) == NVML_SUCCESS) {
+            serials[d] = (ullong) atoll(buffer);
         }
     }
     return EAR_SUCCESS;
@@ -181,6 +190,22 @@ state_t nvml_get_devices(nvmlDevice_t **devs, uint *devs_count_in)
         *devs_count_in = devs_count;
     }
     return EAR_SUCCESS;
+}
+
+void nvml_get_serials(const ullong **serials_in)
+{
+    *serials_in = serials;
+}
+
+int nvml_is_serial(ullong serial)
+{
+    int d;
+    for (d = 0; d < devs_count; ++d) {
+        if (serials[d] == serial) {
+            return 1;
+        }
+    }
+    return 0;
 }
 
 int nvml_is_privileged()

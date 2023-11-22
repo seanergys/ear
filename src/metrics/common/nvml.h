@@ -134,6 +134,11 @@ state_t nvml_close();
 
 state_t nvml_get_devices(nvmlDevice_t **devs, uint *devs_count);
 
+void nvml_get_serials(const ullong **serials);
+
+// Return if a serial is present in the GPU list.
+int nvml_is_serial(ullong serial);
+
 int nvml_is_privileged();
 
 #endif //METRICS_COMMON_NVML_H
