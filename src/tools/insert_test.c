@@ -15,10 +15,6 @@
 * and COPYING.EPL files.
 */
 
-#if DB_MYSQL
-#include <mysql/mysql.h>
-#endif
-
 #include <stdio.h>
 #include <unistd.h>
 #include <termios.h>
@@ -27,8 +23,8 @@
 #include <common/string_enhanced.h>
 #include <common/types/application.h>
 #include <common/types/configuration/cluster_conf.h>
-#include <common/database/db_helper.h>
 
+#include <report/report.h>
 
 void usage(char *name) 
 {
@@ -49,7 +45,8 @@ int main(int argc,char *argv[])
     char test_name[256];
     time_t ttime = time(NULL);
     char ear_path[256];
-	cluster_conf_t my_conf;
+	cluster_conf_t conf;
+    state_t st;
 
     if (argc > 1) { usage(argv[0]); }
     
@@ -58,10 +55,20 @@ int main(int argc,char *argv[])
         printf("Error getting ear.conf path\n");
         exit(0);
     }
-    read_cluster_conf(ear_path, &my_conf);
+    read_cluster_conf(ear_path, &conf);
 
     //db init
-	init_db_helper(&my_conf.database);
+    st = report_load("/home/void/ear_install/lib/plugins", "mysql.so");
+    if (st != EAR_SUCCESS) {
+        printf("Error loading report libraries\n");
+        goto exit;
+    }
+    report_id_t id;
+    st = report_init(&id, &conf);
+    if (st != EAR_SUCCESS) {
+        printf("Error initializing report libraries\n");
+        goto exit;
+    }
 
     sprintf(test_name, "test_insert.%ld", ttime);
     application_t *apps = calloc(num_apps, sizeof(application_t));
@@ -74,10 +81,11 @@ int main(int argc,char *argv[])
         apps[i].signature.avg_f = 112;
     }
 
-    db_batch_insert_applications(apps, num_apps);
+    st = report_applications(&id, apps, num_apps);
 
 
-	free_cluster_conf(&my_conf);
+exit:
+	free_cluster_conf(&conf);
 
 	return 0;
 }

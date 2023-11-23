@@ -26,6 +26,7 @@
 typedef struct db_conf
 {
     char ip[USER];
+    char sec_ip[USER];
     char user[USER];
     char pass[USER];
     char user_commands[USER];
