@@ -36,39 +36,50 @@
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static gpuprof_evs_t  *events;
 static uint            events_count;
-static uint            devs_count;
 static popen_t         p;
 static gpuprof_t      *pool;
 static double         *pool_aux_buffer; //auxiliar buffer
-static uint           *is_user_dev;
-static char            ids[256];
+static char            command_ids[256];
 static ullong         *serials;
+static uint            devs_count;
+static uint            user_devs_count;
+static int            *user_devs;
 
-static void serials_comparison(int devs_count)
+static int get_user_devices()
 {
-    uint          nvml_devs_count;
     char          command[128];
     char          buffer[128];
     char         *args[5];
     int           d;
 
-    if (state_fail(nvml_open(NULL))) {
-        return;
+    // We suppose this is correct by now
+    user_devs_count = devs_count;
+    serials   = calloc(devs_count, sizeof(ullong));
+    user_devs = calloc(devs_count, sizeof(ullong));
+
+    for (d = 0; d < devs_count; ++d) {
+        user_devs[d] = d;
     }
-    if (state_fail(nvml_get_devices(NULL, &nvml_devs_count))) {
-        return;
+    // NVML is not working so, it's not our problem
+    if (state_fail(nvml_open(NULL))) {
+        return 1;
+    }
+    if (state_fail(nvml_get_devices(NULL, &user_devs_count))) {
+        return 1;
     }
     // If is the same number of GPUs, we don't have any problem.
-    if (nvml_devs_count == devs_count) {
-        return;
+    if (user_devs_count == devs_count || user_devs_count == 0) {
+        return 1;
     }
-    is_user_dev = calloc(devs_count, sizeof(uint));
-    serials = calloc(devs_count, sizeof(ullong));
+    // Counting again by serial codes
+    user_devs_count = 0;
     //
     for (d = 0; d < devs_count; ++d) {
         serials[d] = 0LLU;
-        is_user_dev[d] = 0U;
-        sprintf(command, "dcgmi discovery -i a -v --gpu-id %d", d);
+        // Negative means the device is not allocated by the user
+        user_devs[d] = -1;
+        // In dmon is -i or --gpu-id instead --gpuid
+        sprintf(command, "dcgmi discovery -i a -v --gpuid %d 2>&1", d);
         if (state_fail(popen_open(command, 3, 1, &p))) {
             continue;
         }
@@ -78,18 +89,27 @@ static void serials_comparison(int devs_count)
                 debug("D%d detected serial: %llu", d, serials[d]);
             }
         }
-        is_user_dev[d] = nvml_is_serial(serials[d]);
-        // Editing flag --gpu-id
-        if (is_user_dev[d]) {
-            strcpy(buffer, ids);
+        // Editing flag -i
+        if (nvml_is_serial(serials[d])) {
+            strcpy(buffer, command_ids);
             if (strlen(buffer)) {
-                sprintf(ids, "%s,%u", buffer, d);
+                sprintf(command_ids, "%s,%u", buffer, d);
             } else {
-                sprintf(ids, "%u", d);
+                sprintf(command_ids, "-i %u", d);
             }
-            debug("D%d ids: %s", d, ids);
+            user_devs[d] = user_devs_count;
+            ++user_devs_count;
         }
     }
+    // If no user GPUs... We have a problem
+    if (!user_devs_count) {
+        return 0;
+    }
+    debug("Detected user GPUs: %d", user_devs_count);
+    debug("IDs command: '%s'", command_ids);
+    // New devices counter is the number of detected user devices
+    devs_count = user_devs_count;
+    return 1;
 }
 
 GPUPROF_F_LOAD(gpuprof_dcgmi_load)
@@ -100,6 +120,9 @@ GPUPROF_F_LOAD(gpuprof_dcgmi_load)
     state_t s;
 
     //dcgmi dmon --list
+    if (apis_loaded(ops)) {
+        return;
+    }
     if (state_fail(s = popen_test("dcgmi"))) {
         debug("Failed popen_test: %s", state_msg);
         return;
@@ -121,8 +144,11 @@ GPUPROF_F_LOAD(gpuprof_dcgmi_load)
         debug("No GPUs found");
         return;
     }
-    // If NVML can be initialized, we compare the serial numbers
-    serials_comparison(devs_count);
+    // If NVML can be initialized, we check for the user serial GPUs
+    if (!get_user_devices(devs_count)) {
+        debug("A problem is detected with user allocated GPUs");
+        return;
+    }
     // Events
     if (state_fail(s = popen_open("dcgmi dmon --list", 3, 1, &p))) {
         debug("Failed popen_open: %s", state_msg);
@@ -151,6 +177,8 @@ GPUPROF_F_LOAD(gpuprof_dcgmi_load)
     gpuprof_dcgmi_data_alloc(&pool);
     pool_aux_buffer = calloc(events_count, sizeof(double));
     //
+    apis_put(ops->init,             gpuprof_dcgmi_init);
+    apis_put(ops->dispose,          gpuprof_dcgmi_dispose);
     apis_put(ops->get_info,         gpuprof_dcgmi_get_info);
     apis_put(ops->events_get,       gpuprof_dcgmi_events_get);
     apis_put(ops->events_set,       gpuprof_dcgmi_events_set);
@@ -163,12 +191,22 @@ GPUPROF_F_LOAD(gpuprof_dcgmi_load)
     debug("Loaded DCGMI");
 }
 
+GPUPROF_F_INIT(gpuprof_dcgmi_init)
+{
+    // Implement a monitor to clean the POPEN buffer
+    return EAR_SUCCESS;
+}
+
+GPUPROF_F_DISPOSE(gpuprof_dcgmi_dispose)
+{
+}
+
 GPUPROF_F_GET_INFO(gpuprof_dcgmi_get_info)
 {
     info->api         = API_DCGMI;
     info->scope       = SCOPE_NODE;
     info->granularity = GRANULARITY_PERIPHERAL;
-    info->devs_count  = devs_count;
+    info->devs_count  = user_devs_count;
 }
 
 GPUPROF_F_EVENTS_GET(gpuprof_dcgmi_events_get)
@@ -214,7 +252,8 @@ GPUPROF_F_EVENTS_SET(gpuprof_dcgmi_events_set)
     // Filling the pool
     while (pthread_mutex_trylock(&lock));
     // New popen every 2 seconds
-    sprintf(command, "dcgmi dmon -e %s -d 2000 2>&1", evs);
+    sprintf(command, "dcgmi dmon -e %s %s -d 2000 2>&1", evs, command_ids);
+    debug("Command: '%s'", command);
     if (state_fail(s = popen_open(command, 2, 0, &p))) {
         debug("Failed popen_open: %s", state_msg);
         goto leave1;
@@ -257,6 +296,14 @@ GPUPROF_F_READ(gpuprof_dcgmi_read)
             unset();
             goto leave2;
         }
+        // Converting a GPU in user GPU
+        debug("D%d -> D%d", dev, user_devs[dev]);
+        // If not a user GPU
+        if (user_devs[dev] == -1) {
+            continue;
+        }
+        dev = user_devs[dev];
+        // If its a correct entry...
         if (strstr(buffer, "GPU") != NULL) {
             for (m = 0; m < pool[dev].values_count; ++m) {
                 pool[dev].values[m] += pool_aux_buffer[m];
