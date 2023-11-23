@@ -56,8 +56,8 @@ learning_show: learning_show.c $(comm_OBJS)
 metrics_show: metrics_show.c $(comm_OBJS)
 	$(CCC) -o $@ $< $(comm_OBJS) $(DB_LDFLAGS) -lm
 
-insert_test: insert_test.c $(comm_OBJS)
-	$(CCC) -o $@ $< $(comm_OBJS) $(DB_LDFLAGS) -lm
+insert_test: insert_test.c $(comm_OBJS) $(SRCDIR)/report/report.o
+	$(CCC) -o $@ $< $(SRCDIR)/report/report.o $(comm_OBJS) $(DB_LDFLAGS) -lm
 
 get_periodic: get_periodic.c $(comm_OBJS)
 	$(CCC) -o $@ $< $(comm_OBJS) $(DB_LDFLAGS) -lm

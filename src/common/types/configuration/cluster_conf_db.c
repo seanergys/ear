@@ -50,7 +50,7 @@ state_t DB_parse_token(db_conf_t *conf,char *token)
       strcpy(conf->ip, token);
 			found = EAR_SUCCESS;
     }
-    else if (!strcmp(token, "DB_SEC_IP"))
+    else if (!strcmp(token, "DBSECIP"))
     {
       token = strtok(NULL, "=");
       strclean(token, '\n');
