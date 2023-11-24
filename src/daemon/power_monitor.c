@@ -1755,8 +1755,14 @@ void powermon_new_job(powermon_app_t *pmapp, ehandler_t *eh, application_t *appI
 
     /* Given a user type, application, and energy_tag,
      * my_policy is the cofiguration for this user and application. */
+#if CPUFREQ_SET_ALL_USERS
+    if (user_type != AUTHORIZED) appID->is_learning = 0;
+    uint user_type_policy = AUTHORIZED;
+#else
+    uint user_type_policy = user_type;
+#endif
 
-    policy_conf_t *my_policy = configure_context(pmapp, user_type, my_tag, appID); // Sets CPU and GPU frequency.
+    policy_conf_t *my_policy = configure_context(pmapp, user_type_policy, my_tag, appID); // Sets CPU and GPU frequency.
 
     set_default_powermon_init(pmapp);
 #if NAIVE_SETTINGS_SAVE
