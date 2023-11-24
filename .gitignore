@@ -10,6 +10,8 @@
 */lib/
 src/tests
 etc/rpms/rpmbuild.sh
+etc/rpms/rpmbuild.sh~
+etc/rpms/specs/ear.spec
 /*.sh
 
 # Autotools
