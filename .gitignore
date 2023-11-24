@@ -20,6 +20,7 @@ etc/rpms/rpmbuild.sh
 *cpu_property.out
 *defines.log
 /configure
+/configure~
 
 # IDE
 cmake*
