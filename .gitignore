@@ -170,3 +170,6 @@ src/commands/ear-info
 deployment.sh
 
 tags
+compile_commands.json
+.cache
+.cache/*
