@@ -27,6 +27,9 @@ tool_PERM = 0770
 
 ######## FILES
 
+db_OJBS = \
+    $(SRCDIR)/common/libdb.a
+
 comm_OBJS = \
     $(SRCDIR)/common/libcommon.a
 
@@ -38,8 +41,8 @@ mang_OBJS = \
 
 all: $(tool_BINS)
 
-coeffs_compute: coeffs_compute.c $(mang_OBJS) $(comm_OBJS)
-	$(CCC) -o $@ $< $(LDFLAGS) $(mang_OBJS) $(comm_OBJS) $(DB_LDFLAGS) -lpthread -ldl
+coeffs_compute: coeffs_compute.c $(mang_OBJS) $(db_OJBS) $(comm_OBJS)
+	$(CCC) -o $@ $< $(LDFLAGS) $(mang_OBJS) $(db_OJBS) $(comm_OBJS) $(DB_LDFLAGS) -lpthread -ldl
 
 coeffs_show: coeffs_show.c $(comm_OBJS)
 	$(CCC) -I$(SRCDIR) -o $@ $< $(comm_OBJS)
@@ -50,26 +53,26 @@ coeffs_null: coeffs_null.c $(comm_OBJS)
 coeffs_default: coeffs_default.c $(comm_OBJS)
 	$(CCC) -I$(SRCDIR) -o $@ $< $(comm_OBJS)
 
-learning_show: learning_show.c $(comm_OBJS)
-	$(CCC) -o $@ $< $(comm_OBJS) $(DB_LDFLAGS) -lm
+learning_show: learning_show.c $(db_OJBS) $(comm_OBJS)
+	$(CCC) -o $@ $< $(db_OJBS) $(comm_OBJS) $(DB_LDFLAGS) -lm
 
-metrics_show: metrics_show.c $(comm_OBJS)
-	$(CCC) -o $@ $< $(comm_OBJS) $(DB_LDFLAGS) -lm
+metrics_show: metrics_show.c $(db_OJBS) $(comm_OBJS)
+	$(CCC) -o $@ $< $(db_OJBS) $(comm_OBJS) $(DB_LDFLAGS) -lm
 
-insert_test: insert_test.c $(comm_OBJS)
-	$(CCC) -o $@ $< $(comm_OBJS) $(DB_LDFLAGS) -lm
+insert_test: insert_test.c $(comm_OBJS) $(SRCDIR)/report/report.o
+	$(CCC) -o $@ $< $(SRCDIR)/report/report.o $(comm_OBJS) $(DB_LDFLAGS) -lm
 
-get_periodic: get_periodic.c $(comm_OBJS)
-	$(CCC) -o $@ $< $(comm_OBJS) $(DB_LDFLAGS) -lm
+get_periodic: get_periodic.c $(db_OJBS) $(comm_OBJS)
+	$(CCC) -o $@ $< $(db_OJBS) $(comm_OBJS) $(DB_LDFLAGS) -lm
 
-learning_delete: learning_delete.c $(comm_OBJS)
-	$(CCC) -o $@ $< $(comm_OBJS) $(DB_LDFLAGS)
+learning_delete: learning_delete.c $(db_OJBS) $(comm_OBJS)
+	$(CCC) -o $@ $< $(db_OJBS) $(comm_OBJS) $(DB_LDFLAGS)
 
 ear_conf: ear_conf.c $(comm_OBJS)
-	$(CCC) -o $@ $< $(comm_OBJS) $(DB_LDFLAGS)
+	$(CCC) -o $@ $< $(comm_OBJS)
 
 enode_control: ear_node_control.c $(comm_OBJS) 
-	$(CCC) -o $@ $< $(comm_OBJS) $(DB_LDFLAGS)
+	$(CCC) -o $@ $< $(comm_OBJS)
 ######## OPTIONS
 
 install: tool.ginstall;

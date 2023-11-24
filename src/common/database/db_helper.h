@@ -44,9 +44,9 @@ static PGconn *postgresql_create_connection();
 #define _BULK_SETS(T,V)		T / V
 #define APP_VARS	        APPLICATION_ARGS
 #define PSI_VARS	        POWER_SIGNATURE_ARGS
-#define NSI_VARS	        SIGNATURE_ARGS
+#define NSI_VARS	        SIMPLE_SIGNATURE_ARGS
 #define JOB_VARS	        JOB_ARGS
-#define PER_VARS	        PERIODIC_METRIC_ARGS
+#define PER_VARS	        SIMPLE_PERIODIC_METRIC_ARGS
 #define LOO_VARS			LOOP_ARGS
 #define AGG_VARS			PERIODIC_AGGREGATION_ARGS
 #define EVE_VARS			EAR_EVENTS_ARGS

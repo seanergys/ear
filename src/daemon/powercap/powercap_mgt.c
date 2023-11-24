@@ -797,14 +797,13 @@ void pmgt_get_app_req_freq(uint domain, ulong *f, uint dom_size)
         }
 
     }
-#define USE_IDLE_PC_MINFREQ 1
     if (domain == DOMAIN_CPU){
         for (i=0; i < MAX_CPUS_SUPPORTED; i++){
-#if USE_IDLE_PC_MINFREQ
-            if (!f[i]) f[i] = frequency_pstate_to_freq(frequency_get_num_pstates() -1 );
+#if EARD_POWERCAP_IDLE_MINFREQ
+            if (!f[i]) f[i] = frequency_pstate_to_freq(frequency_get_num_pstates() - 1);
 #else
             if (!f[i]) f[i] = pmgt_idle_def_freq;
-#endif
+#endif // EARD_POWERCAP_IDLE_MINFREQ
         }
     }
 }

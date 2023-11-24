@@ -56,8 +56,6 @@
 #include <common/types/signature.h>
 #include <common/math_operations.h>
 #include <common/hardware/hardware_info.h>
-#include <common/system/monitor.h>
-#include <common/system/lock.h>
 
 #include <library/api/clasify.h>
 #include <library/api/eard_dummy.h>
@@ -81,11 +79,11 @@
 #include <metrics/energy_cpu/energy_cpu.h>
 #include <management/cpufreq/cpufreq.h>
 #include <management/imcfreq/imcfreq.h>
-#include <management/gpu/gpu.h>
 #include <daemon/local_api/eard_api.h>
 #include <report/report.h>
 #if USE_GPUS
 #include <metrics/gpu/gpu.h>
+#include <management/gpu/gpu.h>
 #if USE_CUPTI
 #include <metrics/gpu/gpuproc.h>
 #endif
@@ -287,7 +285,7 @@ extern timestamp init_last_phase, init_last_comp;
 extern uint policy_cpu_bound ;
 extern uint policy_mem_bound ;
 
-uint validate_cpu_busy = 1;
+uint validate_cpu_busy = EARL_CPUBUSYWAIT_VALIDATE;
 
 
 /** Compute the total node I/O data. */
@@ -517,7 +515,7 @@ static void metrics_static_init(topology_t *tp)
 #endif
 
 #if DCGMI
-    if (met_gpu.ok)
+    if (master && met_gpu.ok)
     {
 	    if state_fail(dcgmi_lib_load())
 	    {
@@ -1515,7 +1513,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 	sig_ext = metrics->sig_ext;
 
 #if USE_GPUS & DCGMI
-	if (dcgmi_lib_is_enabled() && master && (sig_ext->dcgmis.dcgmi_sets == 0))
+	if (master && dcgmi_lib_is_enabled() && (sig_ext->dcgmis.dcgmi_sets == 0))
 	{
 		dcgmi_lib_dcgmi_sig_init(&sig_ext->dcgmis);
   }

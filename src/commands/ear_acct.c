@@ -45,7 +45,7 @@
 cluster_conf_t my_conf;
 #endif
 
-#define COLORS 1
+#define COLORS 0
 
 #define STANDARD_NODENAME_LENGTH	25
 #define APP_TEXT_FILE_FIELDS		22
@@ -1364,8 +1364,6 @@ void read_from_database(char *user, query_adds_t *q_a)
 		strcpy(my_conf.database.pass, my_conf.database.pass_commands);
 	}
 	init_db_helper(&my_conf.database);
-
-	set_signature_simple(my_conf.database.report_sig_detail);
 
 	if (verbose) {
 		printf("Preparing query statement\n");

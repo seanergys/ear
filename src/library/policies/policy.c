@@ -34,6 +34,7 @@
 #include <management/cpufreq/frequency.h>
 #include <management/imcfreq/imcfreq.h>
 #include <management/cpufreq/cpufreq.h>
+#include <management/gpu/gpu.h>
 #include <report/report.h>
 #include <library/metrics/metrics.h>
 #include <library/api/mpi_support.h>
@@ -55,6 +56,9 @@
 #include <daemon/local_api/eard_api.h>
 #include <daemon/local_api/node_mgr.h>
 #include <daemon/powercap/powercap_status_conf.h>
+#if USE_GPUS
+#include <management/gpu/gpu.h>
+#endif
 
 /* Verbose levels */
 #define POLICY_INFO   2

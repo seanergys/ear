@@ -79,8 +79,12 @@ static void keeper_open()
         return;
     }
     sprintf(path, "%s/ear-dyn.conf", tmp);
+    // If we are root, we change the user and group of the keeper file.
+    if (getuid() == 0) {
+        chown(path, getuid(), getgid());
+    }
     debug("Opening %s", path);
-    if ((fd = open(path, O_RDWR | O_CREAT, F_UR | F_UW | F_GR | F_OR)) < 0) {
+    if ((fd = open(path, O_RDWR | O_CREAT, PERMS(111,100,100))) < 0) {
         debug("Failed: %s", strerror(errno));
         return;
     }
