@@ -1469,7 +1469,7 @@ void powermon_mpi_init(ehandler_t *eh, application_t *appID) {
         return;
     }
 
-    verbose(VJOBPMON , "powermon_mpi_init job_id %lu step_id %lu (is_mpi %u)",
+    verbose(VTASKMON, "powermon_mpi_init job_id %lu step_id %lu (is_mpi %u)",
             appID->job.id, appID->job.step_id, appID->is_mpi);
 
     int cc = find_context_for_job(jid, sid);
@@ -1512,7 +1512,7 @@ void powermon_mpi_init(ehandler_t *eh, application_t *appID) {
         start_mpi(&pmapp->app.job);
         pmapp->app.is_mpi = 1;
 
-        verbose(VJOBPMON , "powermon_mpi_init FINALIZE job_id %lu step_id %lu (is_mpi %u)",
+        verbose(VTASKMON + 1, "powermon_mpi_init FINALIZE job_id %lu step_id %lu (is_mpi %u)",
                 appID->job.id, appID->job.step_id, appID->is_mpi);
 
         ear_unlock(&pmapp->powermon_app_mutex);
@@ -1555,7 +1555,7 @@ void powermon_mpi_finalize(ehandler_t *eh, ulong jid,ulong sid)
 
     /* We set ccontex to the specific one */
 
-    verbose(VJOBPMON + 1, "powermon_mpi_finalize (%lu,%lu)", pmapp->app.job.id, pmapp->app.job.step_id);
+    verbose(VTASKMON, "powermon_mpi_finalize (%lu,%lu)", pmapp->app.job.id, pmapp->app.job.step_id);
 
     end_mpi(&pmapp->app.job);
 
@@ -1576,7 +1576,7 @@ void powermon_new_task(new_task_req_t *newtask)
 {
   powermon_app_t *pmapp;
 
-  verbose(VJOBPMON, "New task for %lu-%lu PID %d #CPUs %u",
+  verbose(VTASKMON, "New task for %lu-%lu PID %d #CPUs %u",
           newtask->jid, newtask->sid, newtask->pid, newtask->num_cpus);
 
   /* Getting the context of the task. */
@@ -1609,7 +1609,7 @@ void powermon_new_task(new_task_req_t *newtask)
   // to get a bad CPU count in the case where
   // multiple masks share CPUs.
   pmapp->plug_num_cpus = CPU_COUNT(&pmapp->plug_mask); 
-  verbose(VJOBPMON, "#CPUs of %lu-%lu updated: %u", newtask->jid, newtask->sid, pmapp->plug_num_cpus);
+  verbose(VTASKMON, "#CPUs of %lu-%lu updated: %u", newtask->jid, newtask->sid, pmapp->plug_num_cpus);
 
   // old condition: pmapp->app.job.step_id != (job_id) BATCH_STEP && pmapp->policy_freq
   if (pmapp->policy_freq) // "As EARD can force the CPU frequency"
@@ -1631,7 +1631,7 @@ void powermon_new_task(new_task_req_t *newtask)
     if (mgt_cpufreq_governor_is_available(no_ctx, Governor.userspace))
     {
 
-        verbose(VCONF + 1, "Setting userspace governor...");
+        verbose(VTASKMON, "Setting userspace governor...");
 
         // Governor 
         // governor_toint(cgov, &gov);
@@ -1645,10 +1645,10 @@ void powermon_new_task(new_task_req_t *newtask)
 
     mgt_cpufreq_get_index(no_ctx, pmapp->policy_freq, &app_pstate, 1);
 
-    verbose(VCONF + 1, "Setting CPU freq %.2f GHz and pstate %u",
+    verbose(VTASKMON, "Setting CPU freq %.2f GHz and pstate %u",
             (float) pmapp->policy_freq / 1000000, app_pstate);
 
-    verbose_affinity_mask(VCONF + 1, &newtask->mask, man.cpu.devs_count);
+    verbose_affinity_mask(VTASKMON, &newtask->mask, man.cpu.devs_count);
 
     /* CPU freq. */
     fill_cpufreq_list(&newtask->mask, man.cpu.devs_count, app_pstate, ps_nothing, powermon_restore_cpufreq_list);
@@ -2898,7 +2898,7 @@ static void set_default_powermon_end(powermon_app_t *app, uint idle)
 
       verbose(VCONF, "[End job %lu/%lu] Restoring to governor `%s` the CPU set in the job's mask...",
           app->app.job.id, app->app.job.step_id, cgov);
-      verbose_affinity_mask(VCONF + 1, &app->plug_mask, man.cpu.devs_count);
+      verbose_affinity_mask(VCONF + 2, &app->plug_mask, man.cpu.devs_count);
 
       mgt_cpufreq_governor_set_mask(no_ctx, gov, app->plug_mask);
     }
@@ -2917,7 +2917,7 @@ static void set_default_powermon_end(powermon_app_t *app, uint idle)
 
     verbose(VCONF, "[%lu/%lu] Restoring to governor `%s` the CPU set in the mask...",
         app->app.job.id, app->app.job.step_id, cgov);
-    verbose_affinity_mask(VCONF + 1, &app->plug_mask, man.cpu.devs_count);
+    verbose_affinity_mask(VCONF + 2, &app->plug_mask, man.cpu.devs_count);
 
     mgt_cpufreq_governor_set_mask(no_ctx, gov, app->plug_mask);
 
@@ -2943,7 +2943,7 @@ static void set_default_powermon_end(powermon_app_t *app, uint idle)
 
       verbose(VCONF, "[%lu/%lu] Restoring to CPU pstate %u with mask",
               app->app.job.id, app->app.job.step_id, rest_pstate);
-      verbose_affinity_mask(VCONF + 1, &app->plug_mask, man.cpu.devs_count);
+      verbose_affinity_mask(VCONF + 2, &app->plug_mask, man.cpu.devs_count);
 
       fill_cpufreq_list(&app->plug_mask, man.cpu.devs_count, rest_pstate,
                         ps_nothing, powermon_restore_cpufreq_list);
@@ -2981,7 +2981,7 @@ static void set_default_powermon_end(powermon_app_t *app, uint idle)
     ulong idle_gpu_freq;
     /* We assume all the gpus are the same */
     gpu_mgr_get_min(0, &idle_gpu_freq);
-    verbose(VCONF, "Restoring to GPU freq %.2f GHz", (float)idle_gpu_freq/1000000.0);
+    verbose(VCONF + 1, "Restoring to GPU freq %.2f GHz", (float)idle_gpu_freq/1000000.0);
     gpu_mgr_set_freq_all_gpus(idle_gpu_freq);
   }
 #endif

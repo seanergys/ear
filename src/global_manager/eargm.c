@@ -600,7 +600,7 @@ void parse_args(char *argv[])
     verbose_arg=atoi(argv[1]);	
 }
 
-#define GM_DEBUG 1
+#define GM_DEBUG 0
 
 int main(int argc,char *argv[])
 {
