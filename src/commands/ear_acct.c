@@ -45,7 +45,7 @@
 cluster_conf_t my_conf;
 #endif
 
-#define COLORS 1
+#define COLORS 0
 
 #define STANDARD_NODENAME_LENGTH	25
 #define APP_TEXT_FILE_FIELDS		22
@@ -1365,6 +1365,8 @@ void read_from_database(char *user, query_adds_t *q_a)
 	}
 	init_db_helper(&my_conf.database);
 
+	set_signature_simple(my_conf.database.report_sig_detail);
+
 	if (verbose) {
 		printf("Preparing query statement\n");
 	}
@@ -1515,6 +1517,7 @@ int main(int argc, char *argv[])
 
 	verb_level = -1;
 	verb_enabled = 0;
+	VCCONF = 2;
 	if (get_ear_conf_path(path_name)==EAR_ERROR){
 		fprintf(stderr, "Error getting ear.conf path\n");
 		exit(1);
