@@ -80,7 +80,7 @@
 #define RUN_AS_ROOT 1
 
 /** Allows normal users to change the CPU frequency without having to be authorized users. */
-#define CPUFREQ_SET_ALL_USERS
+#define CPUFREQ_SET_ALL_USERS 1
 
 /** Maximum number of tries when doing non-blocking communications. */
 #define MAX_SOCKET_COMM_TRIES               100000000

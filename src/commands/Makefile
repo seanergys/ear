@@ -55,8 +55,8 @@ ear-info: ear-info.c $(comm_OBJS)
 ereport: ear_report.c $(db_OBJS) $(comm_OBJS)
 	$(CCC) $(DB_CFLAGS) -o $@ $< $(db_OBJS) $(comm_OBJS) $(DB_LDFLAGS) $(LDFLAGS)
 
-edb_clean_pm: ear_clean_pm.c $(comm_OBJS)
-	$(CCC) $(DB_CFLAGS) -o $@ $< $(comm_OBJS) $(DB_LDFLAGS) $(LDFLAGS)
+edb_clean_pm: ear_clean_pm.c $(db_OBJS) $(comm_OBJS)
+	$(CCC) $(DB_CFLAGS) -o $@ $< $(db_OBJS) $(comm_OBJS) $(DB_LDFLAGS) $(LDFLAGS)
 
 edb_clean_apps: ear_clean_apps.c $(db_OBJS) $(comm_OBJS)
 	$(CCC) $(DB_CFLAGS) -o $@ $< $(db_OBJS) $(comm_OBJS) $(DB_LDFLAGS) $(LDFLAGS)

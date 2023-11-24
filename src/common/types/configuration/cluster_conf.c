@@ -840,6 +840,11 @@ int get_node_server_mirror(cluster_conf_t *conf, const char *hostname, char *mir
 
         for (k = 0; k < is->num_ranges && !found_both; k++)
         {
+            if (is->db_ips == NULL) {
+                warning("island %d does not have a DBIP assigned to it", is->id);
+                break;
+            }
+                
             p = is->db_ips[is->ranges[k].db_ip];
 
             if (!found_server && p != NULL &&
