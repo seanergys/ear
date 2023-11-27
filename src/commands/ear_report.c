@@ -274,7 +274,7 @@ long long get_sum(MYSQL *connection, int start_time, int end_time, unsigned long
         {
             max_power = my_conf.tags[def_id].error_power;
         }   
-        int i;
+        uint32_t i;
         for (i = 0; i < my_conf.num_tags; i++)
             max_power = ear_max(my_conf.tags[i].error_power, max_power);
     }
@@ -882,7 +882,7 @@ void print_mets(int start_time, int end_time, char *nodes, cluster_conf_t *my_co
 void print_all(MYSQL *connection, int start_time, int end_time, char *inc_query, char type)
 {
     char query[512];
-    int i;
+    uint32_t i;
     char all_nodes = 0;
 #if USE_GPUS
     char has_gpus = 0;
@@ -922,7 +922,7 @@ void print_all(MYSQL *connection, int start_time, int end_time, char *inc_query,
         return;
     }
 
-    int num_fields = mysql_num_fields(result);
+    uint32_t num_fields = mysql_num_fields(result);
 
     MYSQL_ROW row;
     if (type == GLOBAL_ENERGY_TYPE)
