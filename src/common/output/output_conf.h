@@ -34,12 +34,13 @@
 #define VJOBPMON         1 // Job accounting in power monitoring
 #define VJOBPMON_BASIC   0 // Basic job accounting in power monitoring. Only new & end msg
 #define VPMON_DEBUG      3 // Power monitoring debug level. Set to 0 when debugging, 4-5 for disabling.
+#define VTASKMON         2 // Task monitoring
 #define VRAPI            2 // dynamic_configuration
 #define VAPI             2 // eard_api.c
 #define VCHCK            2 // checkpoint
 #define VGM              0 // GM
 #define VGM_PC           0 // GM POWERCAP
-#define VCCONF           0 // cluster_conf
+#define VCCONF_DEF       0 // cluster_conf
 #define VPRIV            0 // cluster_conf
 #define VMYSQL           0 // mysql
 #define VDBH             0 // db_helper.c

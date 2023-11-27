@@ -8,15 +8,13 @@ COMPONENTS = \
     daemon \
     library \
     global_manager \
-    commands \
     tools \
     slurm_plugin \
     pbs_hook \
+	database_cache\
+	commands \
     data_center_monitor
 
-#ifdef DB_BASE
-COMPONENTS += database_cache
-#endif
 
 ######## RULES
 

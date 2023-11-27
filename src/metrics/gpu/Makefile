@@ -4,7 +4,8 @@ CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC -Wall
 
 gpu_BINS = \
     gpu.o \
-    gpuproc.o
+    gpuproc.o \
+    gpuprof.o
 
 ######## RULES
 

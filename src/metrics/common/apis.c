@@ -59,6 +59,7 @@ static char *_apis_tostr(uint api)
     else if (api == API_AMD19   ) return "AMD19";
     else if (api == API_INTEL143) return "INTEL143";
     else if (api == API_LINUX_POWERCAP) return "LINUX_POWERCAP";
+    else if (api == API_DCGMI   ) return "DCGMI";
     return "NONE";
 }
 

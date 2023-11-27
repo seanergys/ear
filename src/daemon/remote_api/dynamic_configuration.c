@@ -804,13 +804,19 @@ state_t process_remote_requests(int clientfd) {
     debug("Process remote request %d", req);
 
     if (req == EAR_SOCK_DISCONNECTED) return req;
+    else if (req == EAR_BAD_ARGUMENT) {
+        verbose(VRAPI, "Recieved command with wrong security key");
+        ack = EAR_IGNORE;
+        send_answer(clientfd, &ack);
+        return EAR_SUCCESS;
+    }
     /* New job and end job are different */
     /* Is it necesary */
     if (!is_new_command(&command)) {
-            verbose(VRAPI, "Recieved repeating command: %u", req);
-            ack = EAR_IGNORE;
-            send_answer(clientfd, &ack);
-            return EAR_SUCCESS;
+        verbose(VRAPI, "Recieved repeating command: %u", req);
+        ack = EAR_IGNORE;
+        send_answer(clientfd, &ack);
+        return EAR_SUCCESS;
     }
 
     //new_job is a special case because ack means that shared files are created
@@ -827,28 +833,28 @@ state_t process_remote_requests(int clientfd) {
             verbose(VRAPI, "*******************************************");
             verbose(VRAPI, "new_job command received %lu", command.my_req.new_job.job.id);
             application_t req_app;
-			// check pending contexts by looking at their pids (if they no longer exists we finish the jobs)
-			num_contexts = mark_contexts_to_finish_by_pid();
-			//do the end_jobs for the marked jobs
-			if (num_contexts) finish_pending_contexts(&my_eh_rapi);
+            // check pending contexts by looking at their pids (if they no longer exists we finish the jobs)
+            num_contexts = mark_contexts_to_finish_by_pid();
+            //do the end_jobs for the marked jobs
+            if (num_contexts) finish_pending_contexts(&my_eh_rapi);
 
-			//begin the new_job
+            //begin the new_job
             adap_new_job_req_to_app(&req_app,&command.my_req.new_job);
             powermon_new_job(NULL, &my_eh_rapi, &req_app, 0, req == EAR_RC_NEW_JOB_LIST);
             send_answer(clientfd, &ack);
             break;
         case EAR_RC_END_JOB:
 #if SLURM_FAKE_ERROR
-			break;
+            break;
 #endif
         case EAR_RC_END_JOB_LIST:
             powermon_end_job(&my_eh_rapi, command.my_req.end_job.jid, command.my_req.end_job.sid, req == EAR_RC_END_JOB_LIST);
-			// mark any pending context for that job if it's an SBATCH
-		    num_contexts = mark_contexts_to_finish_by_jobid(command.my_req.end_job.jid, command.my_req.end_job.sid);
-			// do the end_jobs for the marked jobs
-			if (num_contexts) finish_pending_contexts(&my_eh_rapi);
+            // mark any pending context for that job if it's an SBATCH
+            num_contexts = mark_contexts_to_finish_by_jobid(command.my_req.end_job.jid, command.my_req.end_job.sid);
+            // do the end_jobs for the marked jobs
+            if (num_contexts) finish_pending_contexts(&my_eh_rapi);
 #if SHOW_DEBUGS
-			print_contexts_status();
+            print_contexts_status();
 #endif
             verbose(VRAPI, "end_job command received %lu", command.my_req.end_job.jid);
             verbose(VRAPI, "*******************************************");

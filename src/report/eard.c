@@ -15,7 +15,8 @@
 * and COPYING.EPL files.
 */
 
-// #define SHOW_DEBUGS 1
+
+#include <common/config/config_def.h>
 #include <common/states.h>
 #include <common/types/types.h>
 #include <common/types/configuration/cluster_conf.h>
@@ -26,7 +27,7 @@
 
 static uint must_report;
 static char report_nodename[GENERIC_NAME];
-static uint earl_report_loops = 1;
+static uint earl_report_loops = EARL_REPORT_LOOPS;
 
 state_t report_init(report_id_t *id,cluster_conf_t *cconf)
 {

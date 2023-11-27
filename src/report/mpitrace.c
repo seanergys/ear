@@ -72,10 +72,6 @@ static state_t append_data(report_id_t *id, shsignature_t *data)
 
     FILE *fd;
 
-    if (csv_log_file == NULL) {
-        return EAR_ERROR;
-    }
-
     fd = fopen(csv_log_file, "a");
     if (fd == NULL) {
         return EAR_ERROR;

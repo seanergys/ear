@@ -203,7 +203,8 @@ state_t mgt_intel_pstate_set_current(uint freq_index, int cpu)
             sprintf(data, "%llu", avail_list[freq_index]);
         }
         debug("writing a word '%s'", data);
-        return (filemagic_word_write(fds_smf[cpu], data, strlen(data), 1) ? EAR_SUCCESS:EAR_ERROR);
+        strcat(data, "\n");
+        return (filemagic_word_write(fds_smf[cpu], data, strlen(data), 0) ? EAR_SUCCESS:EAR_ERROR);
     }
     return_msg(EAR_ERROR, Generr.cpu_invalid);
 }
@@ -281,9 +282,10 @@ state_t mgt_intel_pstate_governor_set_mask(uint governor, cpu_set_t mask)
     if (state_fail(s = mgt_governor_tostr(governor, buffer))) {
         return s;
     }
+    strcat(buffer, "\n");
     for (i = 0; i < cpu_count; ++i) {
         if (CPU_ISSET(i, &mask)) {
-            if (!filemagic_word_write(fds_sgv[i], buffer, strlen(buffer), 1)) {
+            if (!filemagic_word_write(fds_sgv[i], buffer, strlen(buffer), 0)) {
                 s = EAR_ERROR;
             }
         }
@@ -304,7 +306,8 @@ state_t mgt_intel_pstate_governor_set_list(uint *governors)
         if (state_fail(s = mgt_governor_tostr(governors[i], buffer))) {
             return s;
         }
-        if (!filemagic_word_write(fds_sgv[i], buffer, strlen(buffer), 1)) {
+        strcat(buffer, "\n");
+        if (!filemagic_word_write(fds_sgv[i], buffer, strlen(buffer), 0)) {
             return EAR_ERROR;
         }
     }

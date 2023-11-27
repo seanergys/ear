@@ -11,7 +11,9 @@ eargmd_PERM = 0770
 comm_BINS = \
     $(SRCDIR)/daemon/remote_api/eard_rapi.o \
     $(SRCDIR)/daemon/remote_api/eard_rapi_internals.o \
-    $(SRCDIR)/common/libcommon.a
+    $(SRCDIR)/common/libdb.a \
+    $(SRCDIR)/common/libcommon.a 
+
 
 eargmd_OBJS = \
     eargm_rapi.o
