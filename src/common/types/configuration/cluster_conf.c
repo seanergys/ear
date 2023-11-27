@@ -432,10 +432,10 @@ my_node_conf_t *get_my_node_conf(cluster_conf_t *my_conf, char *nodename)
 
         strcpy(n->tag, my_conf->tags[tag_id].id);
 
-        if (my_conf->tags[tag_id].energy_plugin != NULL && strlen(my_conf->tags[tag_id].energy_plugin) > 0)
+        if (strlen(my_conf->tags[tag_id].energy_plugin) > 0)
             n->energy_plugin = my_conf->tags[tag_id].energy_plugin;
 
-        if (my_conf->tags[tag_id].energy_model != NULL && strlen(my_conf->tags[tag_id].energy_model) > 0)
+        if (strlen(my_conf->tags[tag_id].energy_model) > 0)
             n->energy_model = my_conf->tags[tag_id].energy_model;
 
         n->idle_governor = my_conf->tags[tag_id].idle_governor;
