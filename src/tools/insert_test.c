@@ -83,6 +83,11 @@ int main(int argc,char *argv[])
 
     st = report_applications(&id, apps, num_apps);
 
+    if (st != EAR_SUCCESS) {
+        printf("Error while reporting applications\n");
+    }
+
+    free(apps);
 
 exit:
 	free_cluster_conf(&conf);
