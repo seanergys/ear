@@ -69,7 +69,7 @@ metrics_show: metrics_show.c $(db_OJBS) $(comm_OBJS)
 	$(CCC) -o $@ $< $(db_OJBS) $(comm_OBJS) $(DB_LDFLAGS) -lm
 
 insert_test: insert_test.c $(comm_OBJS) $(SRCDIR)/report/report.o
-	$(CCC) -o $@ $< $(SRCDIR)/report/report.o $(comm_OBJS) -lm
+	$(CCC) -o $@ $< $(SRCDIR)/report/report.o $(comm_OBJS) -ldl -lpthread -lm
 
 get_periodic: get_periodic.c $(db_OJBS) $(comm_OBJS)
 	$(CCC) -o $@ $< $(db_OJBS) $(comm_OBJS) $(DB_LDFLAGS) -lm
