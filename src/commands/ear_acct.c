@@ -49,7 +49,7 @@ cluster_conf_t my_conf;
 
 #define IMPROVEMENTS 1
 
-#define COLORS 1
+#define COLORS 0
 
 #define STANDARD_NODENAME_LENGTH	25
 #define APP_TEXT_FILE_FIELDS		22
@@ -128,7 +128,7 @@ void print_values(int fd, char ***values, int columns, int rows)
 	}
 }
 
-void print_header(int fd, char ***values, int columns, int rows)
+void print_header(int fd, char ***values, __attribute__((unused))int columns, int rows)
 {
 	int i = 0;
 	dprintf(fd, "%s", values[i][0]);
@@ -210,8 +210,10 @@ bool print_power_signature_format(application_t *app, char f)
             printf("%-10.2lf ", app->power_sig.DC_power);
             break;
         case 'F': //FLOPS
-            for (int i = 0; i < FLOPS_EVENTS; i++)
+            for (int i = 0; i < FLOPS_EVENTS; i++) {
                 printf("%-10s ", "---");
+            }
+            break;
         case 'D': //DRAM power
             printf("%-10.2lf ", app->power_sig.DRAM_power);
             break;
@@ -343,7 +345,7 @@ bool print_signature_format(signature_t *sig, char f)
 
 void print_app_format(application_t *app, char *fmt, int num_nodes)
 {
-    int i;
+    uint32_t i;
     char is_sbatch;
     bool is_consumed;
 
@@ -365,7 +367,7 @@ void print_app_format(application_t *app, char *fmt, int num_nodes)
                 printf("%-10s ", app->job.app_id);
                 break;
             case 'j': //jobid
-                is_sbatch = ((uint)app->job.step_id == BATCH_STEP) ? 1 : 0;
+                is_sbatch = (app->job.step_id == (uint32_t)BATCH_STEP) ? 1 : 0;
                 if (is_sbatch) 
                     printf("%8lu-%-4s ", app->job.id, "sb");
                 else
@@ -1098,7 +1100,7 @@ void read_from_database(char *user, query_adds_t *q_a)
 }
 #endif
 
-void read_from_files(char *path, char *user, query_adds_t *q_a)
+void read_from_files(char *path)
 {
     application_t *apps;
     int num_apps = read_application_text_file(path, &apps, 0);
@@ -1293,7 +1295,7 @@ int main(int argc, char *argv[])
 
     if (verbose) printf("Limit set to %d\n", query_adds.limit);
 
-    if (file_name != NULL) read_from_files(file_name, user, &query_adds);
+    if (file_name != NULL) read_from_files(file_name);
     else if (is_events) read_events(user, &query_adds);
     else if (is_loops) read_loops(user, &query_adds);
     else read_from_database(user, &query_adds); 

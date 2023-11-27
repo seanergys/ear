@@ -740,6 +740,7 @@ int main(int argc, char *argv[])
 	char **nodes = NULL;
 
 	strcpy(node_name,"");
+    VCCONF = 2;
 
 	status_t *status;
 	power_check_t power;

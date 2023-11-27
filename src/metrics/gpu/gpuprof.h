@@ -45,6 +45,8 @@ typedef struct gpuprof_evs_s {
 
 // API building scheme
 #define GPUPROF_F_LOAD(name)             void name (gpuprof_ops_t *ops)
+#define GPUPROF_F_INIT(name)             state_t name ()
+#define GPUPROF_F_DISPOSE(name)          void name ()
 #define GPUPROF_F_GET_INFO(name)         void name (apinfo_t *info)
 #define GPUPROF_F_EVENTS_GET(name)       void name (const gpuprof_evs_t **evs, uint *evs_count)
 #define GPUPROF_F_EVENTS_SET(name)       void name (int dev, char *evs)
@@ -57,6 +59,8 @@ typedef struct gpuprof_evs_s {
 
 #define GPUPROF_DEFINES(name) \
 GPUPROF_F_LOAD             (gpuprof_ ##name ##_load); \
+GPUPROF_F_INIT             (gpuprof_ ##name ##_init); \
+GPUPROF_F_DISPOSE          (gpuprof_ ##name ##_dispose); \
 GPUPROF_F_GET_INFO         (gpuprof_ ##name ##_get_info); \
 GPUPROF_F_EVENTS_GET       (gpuprof_ ##name ##_events_get); \
 GPUPROF_F_EVENTS_SET       (gpuprof_ ##name ##_events_set); \
@@ -68,6 +72,8 @@ GPUPROF_F_DATA_ALLOC       (gpuprof_ ##name ##_data_alloc); \
 GPUPROF_F_DATA_COPY        (gpuprof_ ##name ##_data_copy);
 
 typedef struct gpuprof_ops_s {
+    GPUPROF_F_INIT((*init));
+    GPUPROF_F_DISPOSE((*dispose));
     GPUPROF_F_GET_INFO((*get_info));
     GPUPROF_F_EVENTS_GET((*events_get));
     GPUPROF_F_EVENTS_SET((*events_set));
@@ -81,7 +87,7 @@ typedef struct gpuprof_ops_s {
 
 void gpuprof_load(int force_api);
 
-void gpuprof_init();
+state_t gpuprof_init();
 
 void gpuprof_dispose();
 

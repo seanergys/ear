@@ -189,7 +189,7 @@ void report_my_node_conf(my_node_conf_t *my_node_conf)
                 my_node_conf->cpus, my_node_conf->max_pstate,
                 my_node_conf->island, my_node_conf->tag);
         printf("%60.60s", buffer);
-        xsnprintf(buffer, sizeof(buffer), "eardbd main server %s eardbd mirror %s \n", my_node_conf->db_ip, (my_node_conf->db_sec_ip == NULL)?"not defined":my_node_conf->db_sec_ip);
+        xsnprintf(buffer, sizeof(buffer), "eardbd main server %s eardbd mirror %s \n", my_node_conf->db_ip, (strlen(my_node_conf->db_sec_ip) < 1) ? "not defined" : my_node_conf->db_sec_ip);
         printf("%60.60s", buffer);
         xsnprintf(buffer, sizeof(buffer), "coefficients file %s\n", (my_node_conf->coef_file == NULL)?"not defined":my_node_conf->coef_file);
         printf("%60.60s", buffer);
@@ -242,11 +242,14 @@ void print_my_node_conf(my_node_conf_t *my_node_conf)
     int i;
     char buffer[64];
     if (my_node_conf!=NULL){
-        verbose(VCCONF,"My node: cpus %u max_pstate %lu island %u ip %s tag %s",
+        verbose(VCCONF,"My node: cpus %u max_pstate %lu island %u main eardbd %s tag %s",
                 my_node_conf->cpus, my_node_conf->max_pstate,
                 my_node_conf->island, my_node_conf->db_ip, my_node_conf->tag);
-        if (my_node_conf->db_sec_ip!=NULL) {
-            verbose(VCCONF,"sec_ip %s ",my_node_conf->db_sec_ip);
+        if (strlen(my_node_conf->db_sec_ip) > 0) {
+            verbose(VCCONF, "secondary eardbd %s", my_node_conf->db_sec_ip);
+        } else
+        {
+            verbose(VCCONF, "secondary eardbd not set.");
         }
         if (my_node_conf->coef_file!=NULL) {
             verbose(VCCONF,"coeffs %s ",my_node_conf->coef_file);

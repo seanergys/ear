@@ -48,6 +48,7 @@
 #define NVML_DEVICE_ARCH_HOPPER  9
 #define NVML_DEVICE_ARCH_UNKNOWN 0xffffffff
 
+
 typedef int nvmlDevice_t;
 typedef int nvmlDriverModel_t;
 typedef int nvmlEnableState_t;
@@ -133,6 +134,11 @@ state_t nvml_open(nvml_t *nvml);
 state_t nvml_close();
 
 state_t nvml_get_devices(nvmlDevice_t **devs, uint *devs_count);
+
+void nvml_get_serials(const ullong **serials);
+
+// Return if a serial is present in the GPU list.
+int nvml_is_serial(ullong serial);
 
 int nvml_is_privileged();
 

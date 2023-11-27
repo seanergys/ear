@@ -701,7 +701,13 @@ int main(int argc, char *argv[])
 								Usage(argv[0]);
 				}
 
-
+#if RUN_AS_ROOT
+				if (getuid() != 0)
+				{
+					fprintf(stderr, "EARD error: It must be executed as root. Exiting...\n");
+					exit(0);
+				}
+#endif
 
 				verbose(VCONF, "Starting eard...................pid %d", getpid());
 				create_log("/tmp", "eard_journal", fd_my_log);

@@ -24,14 +24,18 @@
 #include <common/output/verbose.h>
 #include <common/system/time.h>
 
+
 void init_job(job_t *job, ulong def_f, char *policy, double th, ulong procs)
 {
     memset(job, 0, sizeof(job_t));
-    job->def_f = def_f;
     strcpy(job->policy, policy);
-    job->th = th;
-    job->procs = procs;
+
+    job->def_f  = def_f;
+    job->th     = th;
+    job->procs  = procs;
 }
+
+
 void start_job(job_t *job)
 {
 	time(&job->start_time);
@@ -44,16 +48,15 @@ void end_job(job_t *job)
 
 void start_mpi(job_t *job)
 {
-    time_t j_time;
-    j_time=time(NULL);
-    job->start_mpi_time=j_time;
+    time_t j_time = time(NULL);
+    job->start_mpi_time = j_time;
 }
 
 void end_mpi(job_t *job)
 {
-		time_t j_time;
+    time_t j_time;
     j_time=time(NULL);
-		job->end_mpi_time=j_time;
+    job->end_mpi_time=j_time;
 }
 
 void copy_job(job_t *destiny, job_t *source)
@@ -65,7 +68,7 @@ void print_job_fd(int fd, job_t *job)
 {
 	char job_buff[4096];
 	assert(job!=NULL);
-	if ((job->user_id==NULL) || (job->app_id==NULL) || (job->policy==NULL)){
+	if (!strlen(job->user_id) || !strlen(job->app_id) || !strlen(job->policy)){
 		verbose(VTYPE,"print_job_fd some of the args are null\n");
 		return;
 	}

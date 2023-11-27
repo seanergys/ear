@@ -6,7 +6,7 @@ CFLAGS = -fPIC -I$(SRCDIR) $(CONSTANTS) -DUSER_TEST=0
 ######## FILES
 
 # The list of full_OBJS is in Makefile.files
-comm_BINS = libusual.a libcommon.a
+comm_BINS = libdb.a libcommon.a
 comm_OBJS = $(patsubst %.c, %.o, $(shell find -maxdepth 1 -type f -name '*.c'))
 incl_BINS = states.h
 incl_PATH = $(DESTDIR)/include
@@ -19,11 +19,12 @@ all: all.components $(comm_OBJS) $(comm_BINS)
 %.o: %.c %.h
 	$(CC) $(CC_FLAGS) $(CFLAGS) -c $<
 
-libusual.a: $(lite_OBJS)
-	$(AR) rvs $@ $(lite_OBJS)
+libcommon.a: $(core_OBJS)
+	$(AR) rvs $@ $(core_OBJS)
 
-libcommon.a: $(full_OBJS)
-	$(AR) rvs $@ $(full_OBJS)
+libdb.a: $(db_OBJS)
+	$(AR) rvs $@ $(db_OBJS)
+
 
 ######## OPTIONS
 

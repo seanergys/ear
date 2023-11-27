@@ -32,6 +32,7 @@ static nvmlGpmMetricsGet_t *gpms; //N devices
 static gpuprof_evs_t       *events;
 static uint                 events_count;
 static gpuprof_t           *pool;
+static uint                 pooling;
 static nvml_t               nvml;
 static uint			        devs_count;
 static nvmlDevice_t        *devs;
@@ -127,6 +128,9 @@ GPUPROF_F_LOAD(gpuprof_nvml_load)
 {
     int i = 0;
 
+    if (apis_loaded(ops)) {
+        return;
+    }
     if (state_fail(nvml_open(&nvml))) {
         debug("nvml_open failed: %s", state_msg);
         return;
@@ -136,6 +140,7 @@ GPUPROF_F_LOAD(gpuprof_nvml_load)
         return;
     }
     if (!support_test()) {
+        debug("Unsupported NVML profiling functions");
         return;
     }
     // Allocating space for NVML metrics for all devices + additional for testing
@@ -154,13 +159,6 @@ GPUPROF_F_LOAD(gpuprof_nvml_load)
     // Getting event names and ids
     i = 1;
     while(events_fill(&gpms[devs_count], i++));
-    // Creating pooling thread
-    sus = suscription();
-    sus->call_main  = gpuprof_nvml_pool;
-    sus->time_relax = 2000;
-    sus->time_burst = 2000;
-    sus->suscribe(sus);
-
     apis_put(ops->get_info,         gpuprof_nvml_get_info);
     apis_put(ops->events_get,       gpuprof_nvml_events_get);
     apis_put(ops->events_set,       gpuprof_nvml_events_set);
@@ -172,6 +170,31 @@ GPUPROF_F_LOAD(gpuprof_nvml_load)
     apis_put(ops->data_copy,        gpuprof_nvml_data_copy);
     debug("Loaded NVML");
 }
+
+GPUPROF_F_INIT(gpuprof_nvml_init)
+{
+    if (pooling) {
+        return EAR_SUCCESS;
+    }
+    // Creating pooling thread
+    sus = suscription();
+    sus->call_main  = gpuprof_nvml_pool;
+    sus->time_relax = 2000;
+    sus->time_burst = 2000;
+    sus->suscribe(sus);
+    pooling = 1;
+
+    return EAR_SUCCESS;
+}
+
+GPUPROF_F_DISPOSE(gpuprof_nvml_dispose)
+{
+    if (pooling) {
+        monitor_unregister(sus);
+        pooling = 0;
+    }
+}
+
 
 GPUPROF_F_GET_INFO(gpuprof_nvml_get_info)
 {

@@ -20,6 +20,11 @@
 
 #include <metrics/gpu/gpuprof.h>
 
+// DCGMI limits all GPUs to monitor the same events. Because under the hood we
+// are using POPEN which opens an additional process. If we wanted to add
+// different events in different GPUs, we would have to open multiple POPEN
+// processes.
+
 GPUPROF_DEFINES(dcgmi);
 
 #endif //METRICS_GPUPROF_DCGMI_H

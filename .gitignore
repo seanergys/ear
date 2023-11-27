@@ -10,6 +10,8 @@
 */lib/
 src/tests
 etc/rpms/rpmbuild.sh
+etc/rpms/rpmbuild.sh~
+etc/rpms/specs/ear.spec
 /*.sh
 
 # Autotools
@@ -20,6 +22,7 @@ etc/rpms/rpmbuild.sh
 *cpu_property.out
 *defines.log
 /configure
+/configure~
 
 # IDE
 cmake*
@@ -169,3 +172,7 @@ deployment.sh
 
 #Other
 gmon.out
+tags
+compile_commands.json
+.cache
+.cache/*

@@ -1160,6 +1160,8 @@ int main(int argc,char *argv[])
     char islands_expanded = 0;
     struct tm tinfo = {0};
 
+    VCCONF = 2;
+
     if (get_ear_conf_path(path_name) == EAR_ERROR)
     {
         printf( "Error getting ear.conf path.\n"); //error
