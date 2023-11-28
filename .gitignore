@@ -173,6 +173,7 @@ deployment.sh
 #Other
 gmon.out
 tags
+gmon.out
 compile_commands.json
 .cache
 .cache/*
