@@ -170,27 +170,6 @@ int generate_node_names(cluster_conf_t my_cluster_conf, ip_table_t **ips)
 					strcat(node_name, my_cluster_conf.net_ext);
 
 				fill_ip(node_name, &new_ips[num_ips]);
-#if 0
-
-				my_node_conf_t *aux_node_conf;
-				aux_node_conf = get_my_node_conf(&my_cluster_conf, node_name);
-				if (aux_node_conf == NULL) 
-					fprintf(stderr, "Error reading node %s configuration\n", node_name);
-				else {
-					if (new_ips[num_ips].max_power != aux_node_conf->max_error_power) {
-						printf("Warning, the max power is different!!\n");
-					} else {
-						printf("Same error power\n");
-					}
-					new_ips[num_ips].max_power = (uint) aux_node_conf->max_error_power;
-				}
-
-				free(aux_node_conf->policies);
-				free(aux_node_conf);
-#endif
-
-
-
 				num_ips++;
 			}
 		}
