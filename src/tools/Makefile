@@ -10,6 +10,7 @@ tool_BINS = \
     coeffs_null \
     enode_control \
     ear_conf \
+    insert_test \
 	cluster_ping
 
 ifdef DB_BASE
@@ -17,7 +18,6 @@ tool_BINS += \
     learning_show \
     get_periodic \
     metrics_show \
-    insert_test \
     learning_delete
 endif
 
