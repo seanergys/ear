@@ -9,23 +9,32 @@ tool_BINS = \
     coeffs_default \
     coeffs_null \
     enode_control \
-    ear_conf
+    ear_conf \
+    insert_test \
+	cluster_ping
+
 ifdef DB_BASE
 tool_BINS += \
     learning_show \
     get_periodic \
     metrics_show \
-    insert_test \
     learning_delete
 endif
+
 ifdef GSL_BASE
 tool_BINS += \
 	coeffs_compute
 endif
+
 tool_PATH = $(DESTDIR)/bin/tools
 tool_PERM = 0770
 
 ######## FILES
+
+rapi_OBJS = \
+			$(SRCDIR)/daemon/remote_api/eard_rapi_internals.o \
+			$(SRCDIR)/daemon/remote_api/eard_rapi.o \
+			$(SRCDIR)/common/messaging/msg_internals.o
 
 db_OJBS = \
     $(SRCDIR)/common/libdb.a
@@ -60,7 +69,7 @@ metrics_show: metrics_show.c $(db_OJBS) $(comm_OBJS)
 	$(CCC) -o $@ $< $(db_OJBS) $(comm_OBJS) $(DB_LDFLAGS) -lm
 
 insert_test: insert_test.c $(comm_OBJS) $(SRCDIR)/report/report.o
-	$(CCC) -o $@ $< $(SRCDIR)/report/report.o $(comm_OBJS) $(DB_LDFLAGS) -lm
+	$(CCC) -o $@ $< $(SRCDIR)/report/report.o $(comm_OBJS) -ldl -lpthread -lm
 
 get_periodic: get_periodic.c $(db_OJBS) $(comm_OBJS)
 	$(CCC) -o $@ $< $(db_OJBS) $(comm_OBJS) $(DB_LDFLAGS) -lm
@@ -73,6 +82,10 @@ ear_conf: ear_conf.c $(comm_OBJS)
 
 enode_control: ear_node_control.c $(comm_OBJS) 
 	$(CCC) -o $@ $< $(comm_OBJS)
+
+cluster_ping: cluster_ping.c $(comm_OBJS) $(rapi_OBJS)
+	$(CCC) -o $@ $< $(rapi_OBJS) $(comm_OBJS) -lm
+
 ######## OPTIONS
 
 install: tool.ginstall;

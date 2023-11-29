@@ -170,6 +170,7 @@ src/commands/ear-info
 deployment.sh
 
 tags
+gmon.out
 compile_commands.json
 .cache
 .cache/*
