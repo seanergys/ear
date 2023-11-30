@@ -253,8 +253,8 @@ static state_t oneapi_read_utilization(int dv, gpu_t *data)
     #endif
 
 	for (d = 0; d < devs[dv].sengines_count; ++d) {
-        #if SHOW_DEBUGS
         if_fail(ze.sEngineGetActivity(devs[dv].sengines[d], &info), continue);
+        #if SHOW_DEBUGS
         debug("DEV%d ENGINE DOMAIN%d: %lu active uS (%lu timestamp) (sub %d) (%s)", dv, d,
             info.activeTime, info.timestamp, devs[dv].sengines_props[d].subdeviceId,
             engtostr(devs[dv].sengines_props[d].type, NULL));
