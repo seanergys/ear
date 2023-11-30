@@ -180,12 +180,12 @@ state_t report_init(report_id_t *id, cluster_conf_t *cconf){
 	island = get_node_island(cconf, nodename);
 
 	env1=getenv("METRICS_ROOT_DIR");
-	if (env1 = NULL) {
+	if (env1 == NULL) {
 		env1="/home/ear-sysfs-report";
 	}
 
 	env2=getenv("CLUSTER_NAME");
-	if (env2 = NULL) {
+	if (env2 == NULL) {
 		env2="cluster";
 	}
 
