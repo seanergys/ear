@@ -33,15 +33,12 @@ static uint   pcis_count;
 static uint   imc_maps_count;
 static uint   imc_ctrs_count;
 static char **imc_maps;
-static uint  *imc_ctrs;
-static uint  *imc_ctls;
 
 static state_t load_icelake()
 {
 	addr_t addr_hi;
 	addr_t addr_lo;
 	addr_t addr_fi;
-	uint ctrs, ctls;
 	uint p, i;
 	state_t s;
 

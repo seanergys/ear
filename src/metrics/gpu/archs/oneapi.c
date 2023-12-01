@@ -248,6 +248,7 @@ static state_t oneapi_read_utilization(int dv, gpu_t *data)
     int                       prio_count = 0;
     int                       prio_set = NO_PRIO;
     int                       prio;
+    ze_result_t               z;
     #if SHOW_DEBUGS
 	ze_result_t               z;
     #endif

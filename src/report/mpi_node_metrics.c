@@ -25,7 +25,6 @@
 
 #include <report/report.h>
 
-static char nodename[128];
 static char csv_log_file[64];
 static char jobid[32];
 

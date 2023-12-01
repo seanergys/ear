@@ -236,7 +236,6 @@ static void topology_cpuinfo(topology_t *topo)
 {
     char *line      = NULL;
     char *col       = NULL; //column
-    char *aux       = NULL;
     size_t len      = 0;
     int cpu         = 0;
 
@@ -267,7 +266,6 @@ static void topology_cpuinfo(topology_t *topo)
 static int cpu_exists(uint cpu)
 {
     char path[PATH_MAX];
-	char c = '0';
     //
     sprintf(path, "/sys/devices/system/cpu/cpu%d", cpu);
     //

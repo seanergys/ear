@@ -26,13 +26,6 @@
 #include <common/config/config_env.h>
 #include <common/system/plugin_manager.h>
 
-static const char *names[] = {
-    "up_get_tag",
-    "up_action_init",
-    "up_action_periodic",
-    "up_post_data",
-};
-
 #define MAX_SYMBOLS 4
 #define MAX_PLUGINS 128
 
@@ -92,7 +85,6 @@ static int plugins_dependencies_read(cchar *string, ullong father_time_lapse, ui
     int    priority_plus;
     int    time_inherit;
     int    mandatory;
-    int    silenced;
     int    l, j;
     char  *c;
 
@@ -113,7 +105,6 @@ static int plugins_dependencies_read(cchar *string, ullong father_time_lapse, ui
         priority_plus = 0;
         time_inherit  = 0;
         mandatory     = 0;
-        silenced      = 0;
         // Configuration = file:path:conf1:conf2
         if (strtoa(list1[l], ':', &list2, &list2_count) != NULL) {
             if (list2_count > 1) {
@@ -389,7 +380,6 @@ static int plugins_action_periodic_call(int i, int d, void *data)
 static void plugins_action_periodic(int i, timestamp_t *time_now, ullong time_passed)
 {
     uint time_isup;
-    char *sout;
     int j;
 
     // Base case
@@ -547,7 +537,6 @@ static state_t plugins_init(void *whatever)
 static int plugin_manager_configure(int argc, char *argv[])
 {
     char buffer[8192];
-    uint i, j;
 
     if (argc == 1 || args_get(argc, argv, "help", buffer)) {
         verbose(0, "Usage: %s [OPTIONS]\n", argv[0]);
