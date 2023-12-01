@@ -40,9 +40,9 @@ ifeq ($(DCGMI), 1)
 CFLAGS += -DDCGMI=1
 endif
 
-ifeq ($(DLB), 1)
-CFLAGS += -DDLB=1 -I/home/xvlopez/local/dlb/openmpi/include
-LDFLAGS += -L/home/xvlopez/local/dlb/openmpi/lib -ldlb
+ifeq ($(FEAT_DLB), 1)
+CFLAGS += -DDLB=1 -I$(DLB_BASE)/include
+LDFLAGS += -L$(DLB_BASE)lib -ldlb
 endif
 
 

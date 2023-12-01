@@ -24,6 +24,7 @@ FEAT_DB_MYSQL      = @FEAT_DB_MYSQL@
 FEAT_DB_PSQL       = @FEAT_DB_PGSQL@
 FEAT_EXAMON        = 0
 FEAT_DB_CASSANDRA  = 0
+FEAT_DLB           = 0
 # Compilers
 CC                 = @CC@
 CC_FLAGS           = @CC_FLAGS@
@@ -57,6 +58,7 @@ FREEIPMI_BASE      = @FREEIPMI_DIR@
 FREEIPMI_CFLAGS    = @FREEIPMI_CFLAGS@
 FREEIPMI_LDFLAGS   = @FREEIPMI_LDFLAGS@
 COUNTDOWN_BASE     =
+DLB_BASE           = 
 # Installation directories and options
 ROOTDIR            = $(shell pwd)
 SRCDIR             = $(ROOTDIR)/src

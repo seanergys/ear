@@ -1490,7 +1490,7 @@ void ear_init()
 
 				// Getting environment data
 				get_app_name(ear_app_name);
-				verbose(0, "App name is %s",ear_app_name);
+				verbose_master(2, "App name is %s",ear_app_name);
 				if (application.is_learning){
 								verbose_master(VEAR_INIT,"Learning phase app %s p_state %lu\n",ear_app_name,application.job.def_f);
 				}
@@ -2169,7 +2169,11 @@ void ear_finalize(int exit_status)
 								if (report_applications(&rep_id,&application,1) != EAR_SUCCESS){
 												verbose_master(1,"Error reporting application");
 								}
-								report_mpi_application_data(&application);
+                if (masters_info.my_master_rank == 0){
+								  report_mpi_application_data(1, &application);
+                }else{
+								  report_mpi_application_data(2, &application);
+                }
 				}
 				// Closing any remaining loop
 				if (loop_with_signature) {

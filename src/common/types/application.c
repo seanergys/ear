@@ -447,7 +447,7 @@ void report_application_data(application_t *app)
 }
 
 // TODO: Try to port the below implementation to verbose_application_data function
-void report_mpi_application_data(application_t *app)
+void report_mpi_application_data(int vl, application_t *app)
 {
     /* Convert values to GHz */
     float avg_f     = ((double) app->signature.avg_f)     / 1000000.0;
@@ -493,15 +493,15 @@ void report_mpi_application_data(application_t *app)
 
     /* Verbose the summary */
 
-    verbose(VTYPE, "%s%s%s\n%s\n", app_summ_hdr_dec_txt, app_summ_hdr_txt, app_summ_hdr_dec_txt, job_info_txt); // header and job info
+    verbose(vl, "%s%s%s\n%s\n", app_summ_hdr_dec_txt, app_summ_hdr_txt, app_summ_hdr_dec_txt, job_info_txt); // header and job info
 
     free(app_summ_hdr_dec_txt);
 
     if (app->is_mpi) {
-        verbose(VTYPE, "%s", mpi_info_txt); // signature details
+        verbose(vl, "%s", mpi_info_txt); // signature details
     }
 
-    verbose_gpu_app(VTYPE, app); // This method outputs GPU summary
+    verbose_gpu_app(vl, app); // This method outputs GPU summary
 
     /* Build a beautiful footer */
 
@@ -511,7 +511,7 @@ void report_mpi_application_data(application_t *app)
     memset(app_summ_ftr_dec, '-', app_summ_ftr_dec_len);
     app_summ_ftr_dec[app_summ_ftr_dec_len] = '\0';
 
-    verbose(VTYPE, "%s", app_summ_ftr_dec);
+    verbose(vl, "%s", app_summ_ftr_dec);
 
     free(app_summ_ftr_dec);
 }

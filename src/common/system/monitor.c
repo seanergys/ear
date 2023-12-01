@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <error.h>
 #include <signal.h>
@@ -273,6 +273,8 @@ state_t monitor_init()
 
 state_t monitor_dispose()
 {
+
+  debug("monitor_dispose running %u", is_running);
 	if (!is_running) return_msg(EAR_ERROR, "not initialized");
 	while (pthread_mutex_trylock(&lock_gen));
     debug("disposing...");
@@ -316,9 +318,16 @@ state_t monitor_register(suscription_t *s)
 
 state_t monitor_unregister(suscription_t *s)
 {
+  debug("monitor_unregister %u", is_running);
+  if (!is_running) {
+    return_msg(EAR_BAD_ARGUMENT, "not initialized");
+  }
+
 	if (s     == NULL      ) return_msg(EAR_ERROR, "the suscription can't be NULL");
 	if (s->id  > queue_last) return_msg(EAR_ERROR, "incorrect suscription index");
 	if (s->id  < 0         ) return_msg(EAR_ERROR, "incorrect suscription index");
+
+  debug("unregisteing position %u", s->id);
 
 	while (pthread_mutex_trylock(&lock[s->id]));
 	memset(&queue[s->id], 0, sizeof(queue_t));
