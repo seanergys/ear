@@ -340,7 +340,7 @@ void cluster_only_powercap()
             //new_limit = current_cluster_powercap/max_num_nodes; 
             new_limit = UINT_MAX; 
             ear_set_powerlimit(&my_cluster_conf, new_limit, nodes, num_eargm_nodes); 
-            verbose(VGM_PC, "cluster_only_powercap: sending new limit %u", new_limit);
+            verbose(VGM_PC, "cluster_only_powercap: sending new limit %lu", (ulong)new_limit);
             eargm_report_event(NODE_POWERCAP, (ulong)new_limit);
         } else {
             warning("No nodes detected for this EARGM");

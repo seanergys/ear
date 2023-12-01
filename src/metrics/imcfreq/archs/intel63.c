@@ -105,6 +105,7 @@ state_t imcfreq_intel63_ext_load_addresses(topology_t *tp)
     return EAR_SUCCESS;
 }
 
+#if 0
 static int fix_global_command(ullong *command)
 {
     ullong mask = 0LLU;
@@ -112,6 +113,7 @@ static int fix_global_command(ullong *command)
     mask = mask | command_global_ctl;
     return 1;
 }
+#endif
 
 state_t imcfreq_intel63_ext_enable_cpu(int cpu)
 {

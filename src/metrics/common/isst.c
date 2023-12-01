@@ -622,6 +622,9 @@ static state_t init()
 
 state_t isst_init(topology_t *_tp)
 {
+    if (tp.vendor != VENDOR_INTEL || tp.model < MODEL_ICELAKE_X) {
+		return_msg(EAR_ERROR, Generr.api_incompatible);
+    }
     // Opening driver
     if ((driver_fd = open(driver_path, O_RDWR)) < 0) {
         return EAR_ERROR;

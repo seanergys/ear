@@ -470,7 +470,7 @@ void powercap_set_opt(powercap_opt_t *opt, int id)
 {
     print_powercap_opt(opt);
     if (!is_powercap_on(&my_pc_opt)) return;    
-    if (is_powercap_unlimited()) return EAR_SUCCESS;
+    if (is_powercap_unlimited()) return;
     uint event;
     ulong value;
     debug("powercap_set_opt command received");

@@ -20,13 +20,15 @@
 
 #include <metrics/gpu/gpu.h>
 
-void gpu_oneapi_load(gpu_ops_t *ops);
+void gpu_oneapi_load(gpu_ops_t *ops, int force_api);
 
 void gpu_oneapi_get_api(uint *api);
 
 state_t gpu_oneapi_init(ctx_t *c);
 
 state_t gpu_oneapi_dispose(ctx_t *c);
+
+state_t gpu_oneapi_get_devices(ctx_t *c, gpu_devs_t **devs, uint *devs_count);
 
 state_t gpu_oneapi_count_devices(ctx_t *c, uint *devs_count);
 

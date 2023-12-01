@@ -24,7 +24,6 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/types.h>
-#include <sys/stat.h>
 #include <common/config.h>
 #include <common/states.h>
 //#define SHOW_DEBUGS 1
@@ -32,54 +31,70 @@
 #include <common/system/shared_areas.h>
 
 
-
 /** BASIC FUNCTIONS */
 
-void *create_shared_area(char *path,char *data,int area_size,int *shared_fd,int must_clean)
+
+void *create_shared_area(char *path, mode_t file_perms_bits, char *data, int area_size, int *shared_fd, int must_clean)
 {
-	/* This function creates a shared memory region based on files and mmap */
-	int ret;
-	void * my_shared_region=NULL;		
-	char buff[256];
-	int fd;
-	mode_t my_mask;
-	if ((area_size==0) || (data==NULL) || (path==NULL)){
+	if (!area_size || !data || !path)
+	{
 		debug("creating shared region, invalid arguments. Not created\n");
 		return NULL;
 	}
-	my_mask=umask(0);
-	strcpy(buff,path);
-	debug("creating file %s for shared memory",buff);
-	fd=open(buff,O_CREAT|O_RDWR|O_TRUNC,S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
-	if (fd<0){
-		debug("error creating sharing memory (%s)\n",strerror(errno));
+
+	int ret;
+	void *my_shared_region = NULL;		
+	char buff[256];
+	int fd;
+
+	mode_t my_mask;
+	my_mask = umask(0);
+
+	strcpy(buff, path);
+	debug("creating file %s for shared memory", buff);
+
+	fd = open(buff, O_CREAT | O_RDWR | O_TRUNC, file_perms_bits);
+	if (fd < 0)
+	{
+		debug("error creating sharing memory (%s)\n", strerror(errno));
 		umask(my_mask);
 		return NULL;
 	}
-	chmod(buff,S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+
+	// Is the below call to chmod needed after setting the file permissions when openning the file?
+	chmod(buff, file_perms_bits);
 	debug("shared file for mmap created");
+
 	umask(my_mask);
+
 	// Default values
-	if (must_clean) bzero(data,area_size);
+	if (must_clean) bzero(data, area_size);
+
 	debug("writting default values");
-	ret=write(fd,data,area_size);
-	if (ret<0){
-		debug("error creating sharing memory (%s)\n",strerror(errno));
+	ret = write(fd, data, area_size);
+
+	if (ret<0)
+	{
+		debug("error creating sharing memory (%s)\n", strerror(errno));
 		close(fd);
 		return NULL;
 	}
+
 	debug(,"mapping shared memory");
-	my_shared_region= mmap(NULL, area_size,PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);                                     
-	if ((my_shared_region == MAP_FAILED) || (my_shared_region == NULL)){
-		debug(" error creating sharing memory (%s)\n",strerror(errno));
+	my_shared_region= mmap(NULL, area_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);                                     
+	if (my_shared_region == MAP_FAILED || my_shared_region == NULL)
+	{
+		debug(" error creating sharing memory (%s)\n", strerror(errno));
 		close(fd);
 		return NULL;
 	}
-	*shared_fd=fd;
+
+	*shared_fd = fd;
 	return my_shared_region;
 }
 
-void * attach_shared_area(char *path,int area_size,uint perm,int *shared_fd,int *s)
+
+void *attach_shared_area(char *path, int area_size, uint perm, int *shared_fd, int *s)
 {
     void * my_shared_region=NULL;
 		char buff[256];

@@ -33,7 +33,7 @@
 #define MSR_IA32_MPERF 0x000000E7
 
 static topology_t tp;
-static ulong freq_base;
+static cfb_t bf;
 
 // aperf
 state_t cpufreq_intel63_status(topology_t *tp_in, cpufreq_ops_t *ops)
@@ -41,32 +41,29 @@ state_t cpufreq_intel63_status(topology_t *tp_in, cpufreq_ops_t *ops)
 	int compat1;
 	int compat2;
 	state_t s;
-
 	// Compatibility test
 	compat1 = (tp_in->vendor == VENDOR_AMD   && tp_in->family >= FAMILY_ZEN);
 	compat2 = (tp_in->vendor == VENDOR_INTEL && tp_in->model  >= MODEL_HASWELL_X);
 	if (!compat1 && !compat2) {
 		return_msg(EAR_ERROR, Generr.api_incompatible);
 	}
-	// Copying the topology
+    // Permissions test
+    if (state_fail(s = msr_test(tp_in, MSR_RD))) {
+        debug("msr_test failed");
+        return EAR_ERROR;
+    }
+	// Copying the topology and base frequency
 	topology_copy(&tp, tp_in);
-	// Getting base frequency
-	cpufreq_get_base(&tp, &freq_base);
-	// If it is compatible these functions takes the control
-	replace_ops(ops->count_devices, cpufreq_intel63_count_devices);
-	replace_ops(ops->data_diff,     cpufreq_intel63_data_diff);
-	// Permissions test
-	if (state_fail(s = msr_test(tp_in, MSR_RD))) {
-		debug("msr_test failed");
-		return EAR_ERROR;
-	}
-	//debug("INTEL63 full permissions? %d", can_read);
-	debug("INTEL63 cpufreq ok");
+    // Getting base frequency
+    cpufreq_base_init(&tp, &bf);
 	// If reading MSR is allowed
-	replace_ops(ops->init,    cpufreq_intel63_init);
-	replace_ops(ops->dispose, cpufreq_intel63_dispose);
-	replace_ops(ops->read,    cpufreq_intel63_read);
-	
+	replace_ops(ops->init,          cpufreq_intel63_init);
+	replace_ops(ops->dispose,       cpufreq_intel63_dispose);
+    replace_ops(ops->count_devices, cpufreq_intel63_count_devices);
+	replace_ops(ops->read,          cpufreq_intel63_read);
+    replace_ops(ops->data_diff,     cpufreq_intel63_data_diff);
+    debug("INTEL63 cpufreq ok");
+
 	return EAR_SUCCESS;
 }
 
@@ -182,7 +179,7 @@ state_t cpufreq_intel63_data_diff(cpufreq_t *f2, cpufreq_t *f1, ulong *freqs, ul
 		// With the percentage applied to the base frequency, finally can be
 		// computed the average frequency of a specific CPU.
 		aperf_pcnt = (aperf_diff * 100LU) / mperf_diff;
-		freq_aux   = (freq_base * aperf_pcnt) / 100LU;
+		freq_aux   = (bf.frequency * aperf_pcnt) / 100LU;
 		//
 		if (freqs != NULL) {
 			freqs[cpu] = freq_aux;

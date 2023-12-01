@@ -23,14 +23,12 @@
 #include <unistd.h>
 #include <semaphore.h>
 #include <time.h>
-//#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
 #include <common/system/file.h>
 #include <common/hardware/topology.h>
 #include <common/output/verbose.h>
 #include <common/environment.h>
-#include <common/types/projection.h>
 
 #include <management/cpufreq/frequency.h>
 
@@ -41,7 +39,6 @@
 #include <library/common/verbose_lib.h>
 #include <library/api/clasify.h>
 #include <library/metrics/metrics.h>
-#include <library/policies/policy_api.h>
 #include <library/policies/policy_state.h>
 #include <library/policies/common/imc_policy_support.h>
 #include <library/policies/common/gpu_support.h>
@@ -94,6 +91,7 @@ extern ulong *cpufreq_diff;
 
 static uint num_processes;
 static ulong nominal_node;
+static node_freq_domain_t me_freq_dom;
 
 /*  Load balance management */
 extern int my_globalrank;
@@ -171,6 +169,12 @@ static state_t policy_mpi_init_optimize(polctx_t *c, mpi_call call_type, node_fr
 static state_t policy_mpi_end_optimize(node_freqs_t *freqs, int *process_id);
 
 
+static state_t create_policy_domain(polctx_t *c, node_freq_domain_t *domain);
+
+
+static energy_model_t cpu_energy_model;
+
+
 state_t policy_init(polctx_t *c)
 {
     if (c == NULL)
@@ -178,8 +182,34 @@ state_t policy_init(polctx_t *c)
         return EAR_ERROR;
     }
 
+		create_policy_domain(c, &me_freq_dom);
+
     char *cnetwork_use_imc = ear_getenv(FLAG_NTWRK_IMC);
     char *cimc_set_by_hw   = ear_getenv(FLAG_LET_HW_IMC);
+
+    if (use_energy_models)
+    {
+      cpu_energy_model = energy_model_load_cpu_model(c->app->user_type, &c->app->installation, &arch_desc);
+
+      if (!cpu_energy_model)
+      {
+				error_lib("Loading energy model");
+        use_energy_models = 0;
+      } else
+      {
+#if 0
+        if (!energy_model_all_projections_available(cpu_energy_model))
+        {
+					error_lib("Not all projections available");
+					use_energy_models = 0;
+				}
+#endif
+      }
+    } else
+    {
+      cpu_energy_model = NULL;
+    }
+    verbose_master(2, "%sMIN ENERGY%s Using energy models: %u", COL_BLU, COL_CLR, use_energy_models);
 
     int i, sid = 0;
 
@@ -277,6 +307,11 @@ state_t policy_end(polctx_t *c)
 {
     policy_end_summary(2); // Summary of optimization
 
+    if (use_energy_models)
+    {
+      energy_model_dispose(cpu_energy_model);
+    }
+
     if (c != NULL) {
         return mpi_app_end(c);
     }
@@ -288,7 +323,7 @@ state_t policy_end(polctx_t *c)
 state_t policy_loop_init(polctx_t *c, loop_id_t *l)
 {
     if (c != NULL) {
-        projection_reset(c->num_pstates);
+        // projection_reset(c->num_pstates);
 
         if (!use_energy_models) {
             memset(sig_ready, 0, sizeof(uint) * c->num_pstates);
@@ -534,14 +569,14 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                     local_penalty = base_penalty + EXTRA_TH * (my_node_mpi_calls[i].perc_mpi - my_node_mpi_calls[min_mpi].perc_mpi) / 10.0;
                 }
             }
-            if (use_energy_models) {
-                /* If energy models are availables, we use them for CPU frequency selection */
+            if (use_energy_models)
+            {
+                /* If energy models are availables, we use them for CPU frequency selection. */
                 curr_freq = def_freq;
                 curr_pstate = def_pstate;
-                compute_reference(c,my_app,&curr_freq,&def_freq,&best_freq,&time_ref,&power_ref);
-                verbose_master(3,"Time ref %lf Power ref %lf Freq ref %lu",time_ref,power_ref,best_freq);
-                compute_cpu_freq_min_energy(c,my_app,best_freq,time_ref,power_ref,
-                        local_penalty,curr_pstate,min_pstate,c->num_pstates,&new_freq[i]);
+                compute_reference(my_app, cpu_energy_model, &curr_freq, &def_freq, &best_freq, &time_ref, &power_ref);
+                verbose_master(3, "Time ref %lf Power ref %lf Freq ref %lu", time_ref, power_ref, best_freq);
+                compute_cpu_freq_min_energy(my_app, cpu_energy_model, best_freq, time_ref, power_ref, local_penalty, curr_pstate, min_pstate, c->num_pstates, &new_freq[i]);
                 if (freq_per_core){
                   verbose_master(2, "PROC[%u][%u] CPI %.2f TPI %.2f GFlops %.2f Power %.2f PMPI %.2f penalty %.2lf", MASTER_ID, i,
                   sig_shared_region[i].sig.CPI, sig_shared_region[i].sig.TPI, sig_shared_region[i].sig.Gflops, sig_shared_region[i].sig.DC_power,
@@ -812,6 +847,13 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
     }
     verbose_master(2, "Next min_energy state %u next policy state %u", min_energy_state, *ready);
     min_energy_readiness = *ready;
+
+
+    if (cpu_ready && use_energy_models)
+    {
+	    compute_policy_savings(cpu_energy_model, sig, freqs, &me_freq_dom);
+    }
+
     return EAR_SUCCESS;
 }
 
@@ -851,22 +893,9 @@ state_t policy_max_tries(polctx_t *c,int *intents)
 }
 
 
-state_t policy_domain(polctx_t *c,node_freq_domain_t *domain)
+state_t policy_domain(polctx_t *c, node_freq_domain_t *domain)
 {
-    domain->cpu                  = POL_GRAIN_CORE;
-    if (dyn_unc) domain->mem     = POL_GRAIN_NODE;
-    else         domain->mem     = POL_NOT_SUPPORTED;
-
-#if USE_GPUS
-    if (c->num_gpus) domain->gpu = POL_GRAIN_CORE;
-    else             domain->gpu = POL_NOT_SUPPORTED;
-#else
-    domain->gpu                  = POL_NOT_SUPPORTED;
-#endif
-
-    domain->gpumem = POL_NOT_SUPPORTED;
-
-    return EAR_SUCCESS;
+	return create_policy_domain(c, domain);
 }
 
 
@@ -1197,9 +1226,22 @@ static state_t int_policy_ok(signature_t *curr_sig, signature_t *last_sig, int *
             *ok = 0;
         }
     }
-    if (*ok == 0) {
+    if (*ok == 0)
+		{
         first_time = 1;
-    }
+    } else
+		{
+        compute_energy_savings(curr_sig, last_sig);
+
+#if USE_ENERGY_SAVING
+				if (curr_sig->sig_ext->saving < 0)
+				{
+          *ok = 0;
+
+          verbose(2, "%sMIN ENERGY POLICY OK%s We are not saving energy.", COL_RED, COL_CLR);
+        }
+#endif
+		}
 
     return EAR_SUCCESS;
 }
@@ -1277,4 +1319,29 @@ static state_t policy_mpi_end_optimize(node_freqs_t *freqs, int *process_id)
 #endif
 
     return EAR_SUCCESS;
+}
+
+
+static state_t create_policy_domain(polctx_t *c, node_freq_domain_t *domain)
+{
+	if (c && domain)
+	{
+		domain->cpu                  = POL_GRAIN_CORE;
+		if (dyn_unc) domain->mem     = POL_GRAIN_NODE;
+		else         domain->mem     = POL_NOT_SUPPORTED;
+
+#if USE_GPUS
+		if (c->num_gpus) domain->gpu = POL_GRAIN_CORE;
+		else             domain->gpu = POL_NOT_SUPPORTED;
+#else
+		domain->gpu                  = POL_NOT_SUPPORTED;
+#endif
+
+		domain->gpumem = POL_NOT_SUPPORTED;
+
+		return EAR_SUCCESS;
+	} else
+	{
+		return_msg(EAR_ERROR, Generr.input_null);
+	}
 }

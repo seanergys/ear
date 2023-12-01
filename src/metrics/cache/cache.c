@@ -27,13 +27,17 @@ static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static cache_ops_t ops;
 static uint load;
 
-void cache_load(topology_t *tp, int eard)
+void cache_load(topology_t *tp, int force_api)
 {
 	while (pthread_mutex_trylock(&lock));
     if (load) {
         goto out;
     }
+    if (API_IS(force_api, API_DUMMY)) {
+        goto dummy;
+    }
     cache_perf_load(tp, &ops);
+dummy:
     cache_dummy_load(tp, &ops);
     // Getting cache line, is used to get the bandwidth
 	load = 1;
@@ -111,14 +115,14 @@ snprintf(buffer, length,
     ca->l1d_misses, ca->l2_misses, ca->l3_misses, ca->ll_misses, ca->lbw_misses, gbs);
 }
 
-void cache_details_print(int fd)
+void cache_internals_print(int fd)
 {
     char buffer[1024];
-    cache_details_tostr(buffer, 1024);
+    cache_internals_tostr(buffer, 1024);
     dprintf(fd, "%s", buffer);
 }
 
-void cache_details_tostr(char *buffer, int length)
+void cache_internals_tostr(char *buffer, int length)
 {
-    ops.details_tostr(buffer, length);
+    ops.internals_tostr(buffer, length);
 }

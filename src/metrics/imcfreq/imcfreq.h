@@ -72,7 +72,7 @@ typedef struct imcfreq_ops_s
 } imcfreq_ops_t;
 
 // Frequency is KHz
-void imcfreq_load(topology_t *tp, int eard);
+void imcfreq_load(topology_t *tp, int force_api);
 
 void imcfreq_get_api(uint *api);
 

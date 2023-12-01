@@ -42,7 +42,7 @@ typedef struct
 } signature_container_t;
 
 /** Sets the database layer to operate with full signatures or simplified one. */
-void set_signature_simple(char full_sig);
+void set_signature_detail(char full_sig);
 
 /** Sets the database layer to operate with normal periodic_metrics or exteded ones. */
 void set_node_detail(char node_det);
@@ -127,11 +127,6 @@ long long mysql_batch_insert_signatures(MYSQL *connection, signature_container_t
 *   number of signatures found on success, and either EAR_MYSQL_ERROR or
 *   EAR_MYSQL_STMT_ERROR on error. */
 int mysql_retrieve_signatures(MYSQL *connection, char *query, signature_t **sigs);
-
-/** Given a MYSQL connection and a power_signature, inserts said power_signature into
-*   the database. Returns the power_signature's database id on success, and either 
-*   EAR_MYSQL_ERROR or EAR_MYSQL_STMT_ERROR on error.*/
-int mysql_insert_power_signature(MYSQL *connection, power_signature_t *pow_sig);
 
 /** Given a MYSQL connection and an array of aplications , inserts said application's
 *   power_signatures into the database. Returns the first power_signature's database

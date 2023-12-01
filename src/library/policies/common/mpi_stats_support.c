@@ -120,7 +120,9 @@ static uint get_mpi_stats = 0;
 static char mpi_stats_prefix[MAX_PATH_SIZE];
 #endif // MPI_STATS
 
+#if PER_MPI_CALL_STATS && MPI
 static int in_mpi_call;
+#endif
 
 float LB_TH = EAR_LB_TH;
 
@@ -187,7 +189,9 @@ static state_t mpi_stats_evaluate_mean_sd_mag(int nump, double *percs_mpi, doubl
 static state_t mpi_stats_evaluate_median(int nump, double *percs_mpi, double *median);
 
 
+#if MPI_STATS
 static state_t build_mpi_ear_stats_filenames(char *prefix, char *mpi_stats_fn, char *mpi_calls_stats_fn);
+#endif
 
 
 state_t mpi_app_init(polctx_t *c)
@@ -266,163 +270,161 @@ state_t mpi_app_init(polctx_t *c)
 
 state_t mpi_app_end(polctx_t *c)
 {
-    timestamp end;
-    ullong elap;
-    int fd;
+	timestamp end;
 
 #if MPI_OPTIMIZED
-    if (num_mpi_to_optimize) {
+	if (num_mpi_to_optimize) {
 
-      for (uint mo = 0; mo < num_mpi_to_optimize; mo++) {
+		for (uint mo = 0; mo < num_mpi_to_optimize; mo++) {
 
-        verbose(2, "MPI_OPTIMI[%u-%u de %u] call %lu buff %lu dest %lu elap %lu",
-                my_node_id, mo, num_mpi_to_optimize, (ulong) list_mpi_to_optimize[mo].call,
-                (ulong) list_mpi_to_optimize[mo].last_buf, (ulong) list_mpi_to_optimize[mo].last_dest,
-                list_mpi_to_optimize[mo].elap);
-      }
-    }
+			verbose(2, "MPI_OPTIMI[%u-%u de %u] call %lu buff %lu dest %lu elap %lu",
+					my_node_id, mo, num_mpi_to_optimize, (ulong) list_mpi_to_optimize[mo].call,
+					(ulong) list_mpi_to_optimize[mo].last_buf, (ulong) list_mpi_to_optimize[mo].last_dest,
+					list_mpi_to_optimize[mo].elap);
+		}
+	}
 #endif
 
 #if MPI_STATS
-    if (VERB_ON(INFO_LVL + 1)) {
+	if (VERB_ON(INFO_LVL + 1)) {
 
-        for (int i = 0; i < N_CALL_TYPES; i++) {
+		for (int i = 0; i < N_CALL_TYPES; i++) {
 
-            if (mpi_call_count[i]) {
+			if (mpi_call_count[i]) {
 
-                verbose(INFO_LVL + 1, "[%d] CALL %d Time %llu instances %d avg %lf",
-                        my_node_id, i, mpi_call_time[i], mpi_call_count[i],
-                        (double) mpi_call_time[i] / (double) mpi_call_count[i]);
-            }
-        }
-    }
+				verbose(INFO_LVL + 1, "[%d] CALL %d Time %llu instances %d avg %lf",
+						my_node_id, i, mpi_call_time[i], mpi_call_count[i],
+						(double) mpi_call_time[i] / (double) mpi_call_count[i]);
+			}
+		}
+	}
 #endif
 
-    /* Global statistics */
+	/* Global statistics */
 #if MPI_OPTIMIZED
-    timestamp_getprecise(&end);
+	timestamp_getprecise(&end);
 #else
-    timestamp_getfast(&end);
+	timestamp_getfast(&end);
 #endif
 
 #if MPI_SAMPLING
-    if (dynamic_monitor_state == MPI_SAMPLING_IDLE){
-      elap = timestamp_diff(&end, &start_no_mpi, TIME_USECS);
-      mpi_stats.exec_time += elap;
-    }
+	if (dynamic_monitor_state == MPI_SAMPLING_IDLE){
+		ullong elap = timestamp_diff(&end, &start_no_mpi, TIME_USECS);
+		mpi_stats.exec_time += elap;
+	}
 #endif
 
-    if (mpi_stats.total_mpi_calls && mpi_stats.exec_time)
-    {
-        mpi_stats.perc_mpi = (float) mpi_stats.mpi_time / (float) mpi_stats.exec_time;
+	if (mpi_stats.total_mpi_calls && mpi_stats.exec_time)
+	{
+		mpi_stats.perc_mpi = (float) mpi_stats.mpi_time / (float) mpi_stats.exec_time;
 
 #if MPI_STATS
-        if (get_mpi_stats) {
+		if (get_mpi_stats) {
 
-            char mpi_stats_per_call_filename[256];
-            char mpi_stats_filename[256];
+			char mpi_stats_per_call_filename[256];
+			char mpi_stats_filename[256];
 
-            if (state_fail(build_mpi_ear_stats_filenames(mpi_stats_prefix, mpi_stats_filename,
-                           mpi_stats_per_call_filename))) {
-                verbose(MPI_STATS_VERB_LVL, "%sWARNING%s MPI stats files won't be created.", COL_RED, COL_CLR);
-                return EAR_WARNING;
-            }
+			if (state_fail(build_mpi_ear_stats_filenames(mpi_stats_prefix, mpi_stats_filename,
+							mpi_stats_per_call_filename))) {
+				verbose(MPI_STATS_VERB_LVL, "%sWARNING%s MPI stats files won't be created.", COL_RED, COL_CLR);
+				return EAR_WARNING;
+			}
 
-            verbose_master(MPI_STATS_VERB_LVL,"      MPI stats file: %s\nMPI calls stats file: %s",
-                           mpi_stats_filename, mpi_stats_per_call_filename);
+			verbose_master(MPI_STATS_VERB_LVL,"      MPI stats file: %s\nMPI calls stats file: %s",
+					mpi_stats_filename, mpi_stats_per_call_filename);
 
-            // Open mpi_stats_filename to store per process global MPI stats
-            fd = open(mpi_stats_filename, O_WRONLY|O_CREAT|O_APPEND, S_IRUSR|S_IWUSR);
+			// Open mpi_stats_filename to store per process global MPI stats
+			int fd = open(mpi_stats_filename, O_WRONLY|O_CREAT|O_APPEND, S_IRUSR|S_IWUSR);
 
-            char mpi_stats_buff[512];
-            char mpi_stats_buff_aux[64];
+			char mpi_stats_buff[512];
+			char mpi_stats_buff_aux[64];
 
-            if (fd < 0) {
-                verbose(MPI_STATS_VERB_LVL, "%sWARNING%s MPI stats file couldn't have opened: %d",
-                        COL_YLW, COL_CLR, errno);
+			if (fd < 0) {
+				verbose(MPI_STATS_VERB_LVL, "%sWARNING%s MPI stats file couldn't have opened: %d",
+						COL_YLW, COL_CLR, errno);
 
-                mpi_info_to_str(&mpi_stats, mpi_stats_buff, sizeof(mpi_stats_buff));
-                verbose(MPI_STATS_VERB_LVL - 1, "MR[%d] %s",
-                        lib_shared_region->master_rank, mpi_stats_buff);
-            } else {
-                // Only the master writes the header
-                if (masters_info.my_master_rank >= 0) {
-                    char mpi_stats_hdr_buff_aux[64];
-                    mpi_info_head_to_str_csv(mpi_stats_hdr_buff_aux, sizeof(mpi_stats_hdr_buff_aux));
-                    snprintf(mpi_stats_buff, sizeof mpi_stats_buff, "mrank;pid;%s\n", mpi_stats_hdr_buff_aux);
-                    write(fd, mpi_stats_buff, strlen(mpi_stats_buff));
-                }
+				mpi_info_to_str(&mpi_stats, mpi_stats_buff, sizeof(mpi_stats_buff));
+				verbose(MPI_STATS_VERB_LVL - 1, "MR[%d] %s",
+						lib_shared_region->master_rank, mpi_stats_buff);
+			} else {
+				// Only the master writes the header
+				if (masters_info.my_master_rank >= 0) {
+					char mpi_stats_hdr_buff_aux[64];
+					mpi_info_head_to_str_csv(mpi_stats_hdr_buff_aux, sizeof(mpi_stats_hdr_buff_aux));
+					snprintf(mpi_stats_buff, sizeof mpi_stats_buff, "mrank;pid;%s\n", mpi_stats_hdr_buff_aux);
+					write(fd, mpi_stats_buff, strlen(mpi_stats_buff));
+				}
 
-                mpi_info_to_str_csv(&mpi_stats, mpi_stats_buff_aux,
-                                    sizeof(mpi_stats_buff_aux));
+				mpi_info_to_str_csv(&mpi_stats, mpi_stats_buff_aux,
+						sizeof(mpi_stats_buff_aux));
 
-                sprintf(mpi_stats_buff, "%d;%d;%s\n", lib_shared_region->master_rank,
-                        sig_shared_region[my_node_id].pid, mpi_stats_buff_aux);
+				sprintf(mpi_stats_buff, "%d;%d;%s\n", lib_shared_region->master_rank,
+						sig_shared_region[my_node_id].pid, mpi_stats_buff_aux);
 
-                write(fd, mpi_stats_buff, strlen(mpi_stats_buff));
-                close(fd);
-            }
+				write(fd, mpi_stats_buff, strlen(mpi_stats_buff));
+				close(fd);
+			}
 
-            // Open mpi_stats_per_call_filename to store per process MPI calls stats
-            fd = open(mpi_stats_per_call_filename, O_WRONLY|O_CREAT|O_APPEND, S_IRUSR|S_IWUSR);
+			// Open mpi_stats_per_call_filename to store per process MPI calls stats
+			fd = open(mpi_stats_per_call_filename, O_WRONLY|O_CREAT|O_APPEND, S_IRUSR|S_IWUSR);
 
-            if (fd >= 0) {
-                // Only the master writes the header
-                if (mpi_stats.rank == 0) {
-                    snprintf(mpi_stats_buff, sizeof(mpi_stats_buff),
-                             "Master;Rank;Total MPI calls;MPI_time/Exec_time;Exec_time;Sync_time;"
-                             "Block_time;Collec_time;Total MPI sync calls;Total blocking calls;"
-                             "Total collective calls;Gather;Reduce;All2all;Barrier;Bcast;Send;Comm;Receive;"
-                             "Scan;Scatter;SendRecv;Wait;t_Gather;t_Reduce;t_All2all;t_Barrier;t_Bcast;"
-                             "t_Send;t_Comm;t_Receive;t_Scan;t_Scatter;t_SendRecv;t_Wait\n");
-                    write(fd, mpi_stats_buff, strlen(mpi_stats_buff));
-                }
+			if (fd >= 0) {
+				// Only the master writes the header
+				if (mpi_stats.rank == 0) {
+					snprintf(mpi_stats_buff, sizeof(mpi_stats_buff),
+							"Master;Rank;Total MPI calls;MPI_time/Exec_time;Exec_time;Sync_time;"
+							"Block_time;Collec_time;Total MPI sync calls;Total blocking calls;"
+							"Total collective calls;Gather;Reduce;All2all;Barrier;Bcast;Send;Comm;Receive;"
+							"Scan;Scatter;SendRecv;Wait;t_Gather;t_Reduce;t_All2all;t_Barrier;t_Bcast;"
+							"t_Send;t_Comm;t_Receive;t_Scan;t_Scatter;t_SendRecv;t_Wait\n");
+					write(fd, mpi_stats_buff, strlen(mpi_stats_buff));
+				}
 
-                sprintf(mpi_stats_buff,"%d;%d;%llu;%.4f;%llu;%lu;%lu;%lu;%lu;%lu;%lu;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;"
-                        "%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu\n",
-                        lib_shared_region->master_rank,
-                        mpi_stats.rank,
-                        mpi_stats.total_mpi_calls,
-                        mpi_stats.perc_mpi,
-                        mpi_stats.exec_time,
-                        total_mpi_time_sync,
-                        total_mpi_time_blocking,
-                        total_mpi_time_collectives,
-                        total_synchronizations,
-                        total_blocking_calls,
-                        total_collectives,
-                        mpi_call_count[GATHER],
-                        mpi_call_count[REDUCE],
-                        mpi_call_count[ALL2ALL],
-                        mpi_call_count[BARRIER],
-                        mpi_call_count[BCAST],
-                        mpi_call_count[SEND],
-                        mpi_call_count[COMM],
-                        mpi_call_count[RECEIVE],
-                        mpi_call_count[SCAN],
-                        mpi_call_count[SCATTER],
-                        mpi_call_count[SENDRECV],
-                        mpi_call_count[WAIT],
-                        mpi_call_time[GATHER],
-                        mpi_call_time[REDUCE],
-                        mpi_call_time[ALL2ALL],
-                        mpi_call_time[BARRIER],
-                        mpi_call_time[BCAST],
-                        mpi_call_time[SEND],
-                        mpi_call_time[COMM],
-                        mpi_call_time[RECEIVE],
-                        mpi_call_time[SCAN],
-                        mpi_call_time[SCATTER],
-                        mpi_call_time[SENDRECV],
-                        mpi_call_time[WAIT]
-                        );
-                write(fd, mpi_stats_buff, strlen(mpi_stats_buff));
-            }
-        }
+				sprintf(mpi_stats_buff,"%d;%d;%llu;%.4f;%llu;%lu;%lu;%lu;%lu;%lu;%lu;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;%u;"
+						"%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu\n",
+						lib_shared_region->master_rank,
+						mpi_stats.rank,
+						mpi_stats.total_mpi_calls,
+						mpi_stats.perc_mpi,
+						mpi_stats.exec_time,
+						total_mpi_time_sync,
+						total_mpi_time_blocking,
+						total_mpi_time_collectives,
+						total_synchronizations,
+						total_blocking_calls,
+						total_collectives,
+						mpi_call_count[GATHER],
+						mpi_call_count[REDUCE],
+						mpi_call_count[ALL2ALL],
+						mpi_call_count[BARRIER],
+						mpi_call_count[BCAST],
+						mpi_call_count[SEND],
+						mpi_call_count[COMM],
+						mpi_call_count[RECEIVE],
+						mpi_call_count[SCAN],
+						mpi_call_count[SCATTER],
+						mpi_call_count[SENDRECV],
+						mpi_call_count[WAIT],
+						mpi_call_time[GATHER],
+						mpi_call_time[REDUCE],
+						mpi_call_time[ALL2ALL],
+						mpi_call_time[BARRIER],
+						mpi_call_time[BCAST],
+						mpi_call_time[SEND],
+						mpi_call_time[COMM],
+						mpi_call_time[RECEIVE],
+						mpi_call_time[SCAN],
+						mpi_call_time[SCATTER],
+						mpi_call_time[SENDRECV],
+						mpi_call_time[WAIT]
+							);
+						write(fd, mpi_stats_buff, strlen(mpi_stats_buff));
+			}
+		}
 #endif // MPI_STATS
-    }
+	}
 
-    return EAR_SUCCESS;
+	return EAR_SUCCESS;
 }
 
 
@@ -1265,6 +1267,7 @@ state_t must_be_optimized(mpi_call call_type, p2i buf, p2i dest, ulong *elapsed)
 #endif
 
 
+#if MPI_STATS
 static state_t build_mpi_ear_stats_filenames(char *prefix, char *mpi_stats_fn, char *mpi_calls_stats_fn)
 {
     if (sprintf(mpi_stats_fn, "%s.ear_mpi_stats.", prefix) < 0) {
@@ -1291,6 +1294,7 @@ static state_t build_mpi_ear_stats_filenames(char *prefix, char *mpi_stats_fn, c
 
     return EAR_SUCCESS;
 }
+#endif
 
 /* These functions are used to control peaks of power */
 #define DEF_MAX_TOTAL_POWER       500

@@ -57,7 +57,7 @@ typedef struct bwidth_ops_s {
     BWIDTH_F_READ    ((*read));
 } bwidth_ops_t;
 
-void bwidth_load(topology_t *tp, int eard);
+void bwidth_load(topology_t *tp, int force_api);
 
 void bwidth_get_info(apinfo_t *api);
 // Obsolete (use bwidth_get_info)

@@ -100,6 +100,13 @@ state_t temp_read(ctx_t *c, llong *temp, llong *average)
 	preturn(ops.read, c, temp, average);
 }
 
+state_t temp_read_copy(ctx_t *c, llong *t2, llong *t1, llong *tD, llong *average)
+{
+    state_t s = temp_read(c, t2, average);
+    temp_data_copy(tD, t2);
+    return s;
+}
+
 // Data
 state_t temp_data_alloc(llong **temp)
 {
@@ -109,12 +116,25 @@ state_t temp_data_alloc(llong **temp)
 	return EAR_SUCCESS;
 }
 
-state_t temp_data_copy(llong *temp2, llong *temp1)
+state_t temp_data_copy(llong *tempD, llong *tempS)
 {
-	if (memcpy((void *) temp2, (const void *) temp1, sizeof(llong)*devs_count) != temp2) {
+	if (memcpy((void *) tempD, (const void *) tempS, sizeof(llong)*devs_count) != tempD) {
 		return_msg(EAR_ERROR, strerror(errno));
 	}
 	return EAR_SUCCESS;
+}
+
+void temp_data_diff(llong *temp2, llong *temp1, llong *tempD, llong *average)
+{
+    int i;
+    temp_data_copy(tempD, temp2);
+    if (average) {
+        *average = 0;
+        for (i = 0; i < devs_count; ++i) {
+            *average += temp2[i];
+        }
+        *average /= (llong) devs_count;
+    }
 }
 
 state_t temp_data_free(llong **temp)

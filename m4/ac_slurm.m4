@@ -42,12 +42,18 @@ AC_DEFUN([X_AC_SLURM],
         [slurm],
         AS_HELP_STRING(--with-slurm=PATH,Specify path to SLURM installation),
         [
-			_x_ac_slurm_dirs_root="$withval"
-            _x_ac_slurm_aux="$withval"
-			_x_ac_slurm_custom="yes"
+		    if test "x$withval" = "xno"; then
+                _x_ac_slurm_force="no"
+    		else
+			    _x_ac_slurm_dirs_root="$withval"
+                _x_ac_slurm_aux="$withval"
+	    		_x_ac_slurm_custom="yes"
+            fi
 		]
     )
-
+   
+    # Forced no through --without-slurm 
+    if test "x$_x_ac_slurm_force" != "xno"; then
     AC_CACHE_CHECK(
         [for SLURM root directory],
         [_cv_slurm_dir_root],
@@ -65,6 +71,11 @@ AC_DEFUN([X_AC_SLURM],
 				fi
         ]
     )
+    else
+        if test "x$SCHED_NAME" = "xSLURM"; then
+            SCHED_NAME=""
+        fi
+    fi
 
     # Force custom (if custom = yes but dir (not dirs) root is empty)
     if test "x$_x_ac_slurm_custom" = "xyes" && test -z "$_cv_slurm_dir_root"; then

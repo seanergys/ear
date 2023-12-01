@@ -15,9 +15,15 @@
 * and COPYING.EPL files.
 */
 
-#ifndef EARD_API_FRESH_H
-#define EARD_API_FRESH_H
+#ifndef EAR_MODELS_H_
+#define EAR_MODELS_H_
+#warning Deprecated header file. You must use the new Energy model API at library/models/energy_model.h
+
+#include <common/environment.h>
+#include <daemon/shared_configuration.h>
+#include <common/hardware/architecture.h>
+
+state_t init_power_models(uint user_type,conf_install_t *data,architecture_t *myarch);
 
 
-
-#endif //EARD_API_FRESH_H
+#endif

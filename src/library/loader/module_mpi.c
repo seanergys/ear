@@ -294,7 +294,7 @@ static int module_mpi_is()
   verbose(2,"MPI_Get_library_version NOT detected");
 
 	/* We check the env var only for MPI+Python */
-	if ((strstr(program_invocation_name,"python") != NULL) || (strstr(program_invocation_name,"gmx") != NULL) (strstr(program_invocation_name,"julia") != NULL)){
+	if ((strstr(program_invocation_name,"python") != NULL) || (strstr(program_invocation_name,"gmx") != NULL) || (strstr(program_invocation_name,"julia") != NULL)){
     // The env var oversubscribes the library version detected.
     load_mpi_version = ear_getenv(FLAG_LOAD_MPI_VERSION);
     if (load_mpi_version != NULL){ 

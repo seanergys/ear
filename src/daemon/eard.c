@@ -15,6 +15,8 @@
 * and COPYING.EPL files.
 */
 
+//#define SHOW_DEBUGS 1
+
 #include <signal.h>
 #include <pthread.h>
 #include <sys/stat.h>
@@ -26,13 +28,13 @@
 #include <string.h>
 #include <math.h>
 
-//#define SHOW_DEBUGS 1
 #include <common/includes.h>
 #include <common/environment.h>
 #include <common/types/pc_app_info.h>
 #include <common/hardware/hardware_info.h>
 #include <common/system/monitor.h>
 #include <common/system/execute.h>
+#include <common/output/debug.h>
 
 #include <report/report.h>
 
@@ -50,7 +52,7 @@
 
 #include <daemon/eard.h>
 #include <daemon/eard_node_services.h>
-#include <daemon/local_api/eard_api_conf.h>
+#include <daemon/local_api/eard_api.h>
 #include <daemon/remote_api/dynamic_configuration.h>
 #include <daemon/power_monitor.h>
 #include <daemon/powercap/powercap.h>
@@ -143,8 +145,6 @@ ulong current_node_freq;
 int eard_must_exit = 0;
 topology_t node_desc;
 int fd_rapl[MAX_PACKAGES];
-uint rapl_pck_tdps[MAX_PACKAGES];
-uint rapl_dram_tdps[MAX_PACKAGES];
 
 #define EARD_RESTORE 1
 
@@ -257,11 +257,6 @@ void init_frequency_list()
 				}
 }
 
-void init_tdps()
-{
-  mgt_cpupow_tdp_get(CPUPOW_SOCKET, rapl_pck_tdps);
-  mgt_cpupow_tdp_get(CPUPOW_DRAM, rapl_dram_tdps);
-}
 
 void set_verbose_variables() {
 	verb_level = my_cluster_conf.eard.verbose;
@@ -671,6 +666,21 @@ int get_exec_name(char *name,int name_size)
 				return 0;
 }
 
+static void print_basic_configuration(uint vl)
+{
+	verbose(vl, "EARD[%s] Architectural compiled limits ", nodename);
+	verbose(vl, "EARD[%s] MAX_CPUS_SUPPORTED      %u", nodename, MAX_CPUS_SUPPORTED);
+	verbose(vl, "EARD[%s] MAX_SOCKETS_SUPPORTED 	%u", nodename, MAX_SOCKETS_SUPPORTED);
+	verbose(vl, "EARD[%s] MAX_GPUS_SUPPORTED      %u", nodename, MAX_GPUS_SUPPORTED);
+	verbose(vl, "EARD[%s] USE_GPUS                %u", nodename, USE_GPUS);
+	verbose(vl, "EARD[%s] VERSION                 %u", nodename, VERSION_MAJOR);
+	verbose(vl, "EARD[%s] SUBVERSION              %u", nodename, VERSION_MINOR);
+	verbose(vl, "EARD[%s] Library default options ", nodename);
+	verbose(vl, "EARD[%s] EAR_eUFS                %u", nodename, EAR_eUFS);
+	verbose(vl, "EARD[%s] MAX_CPUF_PSTATE         %u", nodename, MAX_CPUF_PSTATE);
+	verbose(vl, "EARD[%s] MAX_IMCF_PSTATE         %u", nodename, MAX_IMCF_PSTATE);
+}
+
 
 /*
  *
@@ -749,6 +759,7 @@ int main(int argc, char *argv[])
                     verbose(VEARD_INIT, "frequency information can't be initialized");
                     _exit(1);
                 }
+								print_basic_configuration(1);
                 verbose(VEARD_INIT,"Reading ear.conf configuration");
                 // We read the cluster configuration and sets default values in the shared memory
                 if (get_ear_conf_path(my_ear_conf_path) == EAR_ERROR) {
@@ -892,7 +903,6 @@ int main(int argc, char *argv[])
                     error_rapl=1;
                 }
 								#endif
-				init_tdps();
                 verbose(VEARD_INIT,"Initialzing energy plugin");
                 // We initilize energy_node
                 debug("Initializing energy in main EARD thread");
@@ -914,7 +924,6 @@ int main(int argc, char *argv[])
                     report_create_id(&rid, 0, 0, 0);
                 }
                 report_init(&rid, &my_cluster_conf);
-
                 report_eard_init_error();
 
                 uint thread_setup_count = 1 + POWERMON_THREAD + EXTERNAL_COMMANDS_THREAD; // eard + power mon + dyn conf
@@ -923,35 +932,26 @@ int main(int argc, char *argv[])
                 verbose(VEARD_INIT,"Creating EARD threads");
                 verbose(VEARD_INIT,"Creating power  monitor thread");
 #if POWERMON_THREAD
-
                 if ((ret=pthread_create(&power_mon_th, NULL, eard_power_monitoring, NULL))){
                     errno=ret;
                     error("error creating power_monitoring thread %s\n",strerror(errno));
                     log_report_eard_init_error(&rid,PM_CREATION_ERROR,ret);
                 }
 #endif
-
                 verbose(VEARD_INIT,"Creating the remote connections server");
-
 #if EXTERNAL_COMMANDS_THREAD
-
                 if ((ret=pthread_create(&dyn_conf_th, NULL, eard_dynamic_configuration, (void *)ear_tmp))){
                     error("error creating dynamic_configuration thread \n");
                     log_report_eard_init_error(&rid,DYN_CREATION_ERROR,ret);
                 }
 #endif
-
                 verbose(VEARD_INIT,"Creating APP-API thread");
-
 #if APP_API_THREAD
-
                 if ((ret=pthread_create(&app_eard_api_th,NULL,eard_non_earl_api_service,NULL))){
                     error("error creating server thread for non-earl api\n");
                     log_report_eard_init_error(&rid,APP_API_CREATION_ERROR,ret);
                 }
 #endif
-
-
                 verbose(VEARD_INIT,"EARD initialized succesfully");
                 /* This function never ends, EARD exits with SIGTERM o SIGINT */
                 eard_local_api();

@@ -24,43 +24,9 @@
 #ifndef _EAR_TYPES_PROJECTION
 #define _EAR_TYPES_PROJECTION
 
-#include <common/config.h>
 #include <common/types/signature.h>
-#include <common/types/configuration/cluster_conf.h>
 #include <common/types/coefficient.h>
-#include <common/hardware/architecture.h>
 
-typedef struct projection
-{
-	double Time;
-	double Power;
-} projection_t;
-
-state_t projections_init(uint user_type,conf_install_t *data,architecture_t *myarch);
-
-// Projections
-
-state_t project_time(signature_t *sign, ulong from,ulong to,double *ptime);
-
-state_t project_power(signature_t *sign, ulong from,ulong to,double *ppower);
-
-state_t projection_available(ulong from,ulong to);
-state_t projections_available();
-
-// Inherited
-/** Allocates memory to contain the projections for the p_states given by
-*   parameter */
-void projection_create(uint p_states);
-
-/** Sets the values of the performance projection i to the ones given by parameter */
-void projection_set(int i, double TP, double PP);
-
-/** Resets the projections for power, CPI and time to 0 */
-void projection_reset(uint p_states);
-
-/** Given a frequency f, returns the projection of the associated p_state of said
-*   frequency */
-projection_t *projection_get(int pstate);
 
 /* Basic for compatibility and tools */
 double basic_project_time(signature_t *sign,coefficient_t *coeff);

@@ -22,25 +22,24 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/stat.h>
 //#define SHOW_DEBUGS 1
-#include <common/config.h>
-#include <common/config/config_env.h>
-#include <common/output/verbose.h>
-#include <library/common/verbose_lib.h>
-#include <library/common/global_comm.h>
-#include <common/output/debug.h>
 #include <common/states.h>
+#include <common/config.h>
+#include <common/output/debug.h>
+#include <common/output/verbose.h>
+#include <common/config/config_env.h>
 #include <common/types/configuration/cluster_conf.h>
 #include <common/types/configuration/cluster_conf_generic.h>
+#include <library/common/verbose_lib.h>
+#include <library/common/global_comm.h>
+#include <metrics/cpufreq/cpufreq_base.h>
 #include <daemon/local_api/node_mgr.h>
-
-
 #include <daemon/shared_configuration.h>
 
 #define DEFAULT_EAR_INSTALL_PATH "/usr/lib/ear"
 #define DEFAULT_EAR_ETC_PATH "/etc"
 #define DEFAULT_ENERGY_PLUGIN "energy_rapl.so"
-
 
 static char path[GENERIC_NAME];
 static cluster_conf_t dummy_cc;
@@ -59,11 +58,13 @@ static ulong           * dummy_frequencies;
 		return EAR_ERROR;\
 	}
 
+
 void create_dummy_path_lock(char *ear_tmp, uint ID, char *dummy_areas_path, uint size)
 {
 	snprintf(dummy_areas_path, size, "%s/.dummy_areas_lock.%u", ear_tmp, ID);
 	debug("dummy lock file %s", dummy_areas_path);
 }
+
 
 static void create_dummy_island(cluster_conf_t *dummycc)
 {
@@ -84,8 +85,8 @@ static void create_dummy_island(cluster_conf_t *dummycc)
 	strcpy(dummycc->tags[0].powercap_plugin, "");
 	strncpy(dummycc->tags[0].id,  "default", sizeof(dummycc->tags[0].id));
 	dummycc->tags[0].is_default = 1;
-		
 }
+
 
 static void create_dummy_node_conf(cluster_conf_t *dummycc, char *nodename)
 {
@@ -102,6 +103,7 @@ static void create_dummy_node_conf(cluster_conf_t *dummycc, char *nodename)
   island->num_ranges++;
 }
 
+
 static void create_dummy_policy(cluster_conf_t *dummycc)
 {
 	dummycc->num_policies = 1;
@@ -112,6 +114,7 @@ static void create_dummy_policy(cluster_conf_t *dummycc)
 	dummycc->power_policies[0].p_state = 0;
 	dummycc->power_policies[0].is_available = 1;
 }
+
 
 static void create_dummy_conf_paths(cluster_conf_t *dummycc, char *ear_tmp)
 {
@@ -196,10 +199,14 @@ state_t eard_dummy_cluster_conf(char *ear_tmp, uint ID)
 
 state_t eard_dummy_earl_settings(char *ear_tmp, uint ID)
 {
-				resched_t       * dummy_resch;
-  			policy_conf_t   * my_policy;
-			ulong             freq_base;
-			topology_freq_getbase(0, &freq_base);
+    resched_t       *dummy_resch;
+    policy_conf_t   *my_policy;
+    ulong             freq_base;
+    cfb_t             bf;
+
+    cpufreq_base_init(NULL, &bf);
+    freq_base = (ulong) bf.frequency;
+
 			//verbose_master(1,"Using freq_base %lu", freq_base);
 
 				//verbose_master(2, "looking for policy %d", dummy_cc.default_policy);	
@@ -307,6 +314,8 @@ state_t eard_dummy_coefficients(char *ear_tmp, uint ID)
 				return EAR_SUCCESS;
 }
 
+static int freqs_fd;
+
 state_t eard_dummy_frequency_list(char *ear_tmp, uint ID)
 {
 				ulong * frequencies, freq_base;
@@ -315,16 +324,27 @@ state_t eard_dummy_frequency_list(char *ear_tmp, uint ID)
 				int size = ps * sizeof(ulong);
 				frequencies = (ulong *) malloc(size);
 				check_null(frequencies, "Error allocating memory for frequencies %s", " ");	
-				topology_freq_getbase(0, &freq_base);
+
+				cfb_t             bf;
+    		cpufreq_base_init(NULL, &bf);
+
+    		freq_base = (ulong) bf.frequency;
+
 				frequencies[0] = freq_base;
-				//verbose_master(1,"Using freq_base %lu", freq_base);
+				// verbose_master(1,"Using freq_base %lu", freq_base);
 
 				get_frequencies_path(ear_tmp, path);
-				dummy_frequencies = create_frequencies_shared_area(path, frequencies, size);
+				struct stat buffer;
+				if (stat(path, &buffer))
+				{
+					dummy_frequencies = create_frequencies_shared_area(path, frequencies, size);
+				} else
+				{
+					dummy_frequencies = attach_shared_area(path, size, O_RDONLY, &freqs_fd, NULL);
+				}
 				check_null(dummy_frequencies, "Error creating frequencies area at path %s", path);	
 
 				return EAR_SUCCESS;
-	
 }
 
 void eard_dummy_replace_base_freq(ulong base)

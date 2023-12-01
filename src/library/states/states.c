@@ -722,6 +722,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             begin_iter = iterations;
 
             // Only the master process will report the loop.
+            verbose_master(2, "Reporting data starts");
             report_loop_signature(iterations, &curr_loop);
 
             policy_get_current_freq(&node_freqs);
@@ -856,6 +857,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             /* At this point curr_loop, loop_signature and job_signature are the
              * JOB signature with accumulated per process and global metrics */
 
+						verbose_master(2, "Reporting data starts");
             report_loop_signature(iterations, &curr_loop);
 
             /* VERBOSE */
@@ -1170,6 +1172,7 @@ static void report_loop_signature(uint iterations, loop_t *my_loop)
     }
 
     signature_reported = 1;
+		debug("report_loop_signature ends");
 }
 
 static void accumulate_phases_summary(signature_t *loops, signature_t *apps)

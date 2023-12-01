@@ -32,22 +32,24 @@ static gpu_t          *pool;
 static uint            init;
 static uint            ok_pool;
 
-void gpu_rsmi_load(gpu_ops_t *ops, int eard)
+void gpu_rsmi_load(gpu_ops_t *ops, int force_api)
 {
     // If EARD is demanded we do not want pooling.
     // If EARD is not demanded but RSMI is unprivileged
     // means that this function is called by the library.
-    #if 0
-    ok_pool = (eard == 0) && (rsmi_is_privileged() == 1);
-    ok_pool = 1;
-    #endif
-    if (eard == 2)      ok_pool = 1;
-    else if (eard == 1) ok_pool = 0;
-    else if (eard == 0){
-      if (rsmi_is_privileged() == 1) ok_pool = 1;
-      else                      ok_pool = 0;
+    // Is API_NVML because we are temporary using that
+    // flag to identify when we want to pool.
+    if (API_IS(force_api, API_EARD)) {
+        ok_pool = 0;
+    } else if (API_IS(force_api, API_NVML)) {
+        ok_pool = 1;
+    } else {
+        if (rsmi_is_privileged()) {
+            ok_pool = 1;
+        } else {
+            ok_pool = 0;
+        }
     }
-
     debug("Pooling %d", ok_pool);
     if (state_fail(rsmi_open(&rsmi))) {
         debug("rsmi_open failed: %s", state_msg);

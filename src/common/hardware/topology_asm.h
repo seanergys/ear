@@ -25,4 +25,6 @@
 
 void topology_asm(topology_t *topo);
 
+ullong topology_asm_freqspec();
+
 #endif

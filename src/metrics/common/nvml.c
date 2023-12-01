@@ -1,4 +1,4 @@
-/*
+    /*
 *
 * This program is part of the EAR software.
 *
@@ -15,9 +15,11 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
+
 #include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <common/output/debug.h>
 #include <common/system/symplug.h>
 #include <common/config/config_env.h>
 #include <metrics/common/nvml.h>
@@ -35,7 +37,7 @@
 #define NVML_N               0
 #else
 #define NVML_PATH            CUDA_BASE
-#define NVML_N               23
+#define NVML_N               24
 #endif
 
 static const char *nvml_names[] =
@@ -63,6 +65,7 @@ static const char *nvml_names[] =
     "nvmlDeviceGetPowerManagementLimitConstraints",
     "nvmlDeviceSetPowerManagementLimit",
     "nvmlErrorString",
+		"nvmlDeviceGetArchitecture",
 };
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
@@ -74,6 +77,7 @@ static uint            ok;
 static state_t static_open()
 {
     #define open_test(path) \
+        debug("Opening %s", path); \
         if (state_ok(plug_open(path, (void **) &nvml, nvml_names, NVML_N, RTLD_NOW | RTLD_LOCAL))) { \
             return EAR_SUCCESS; \
         } 

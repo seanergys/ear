@@ -1,0 +1,64 @@
+/*
+ * This program is part of the EAR software.
+ *
+ * EAR provides a dynamic, transparent and ligth-weigth solution for
+ * Energy management. It has been developed in the context of the
+ * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
+ *
+ * Copyright © 2017-present BSC-Lenovo
+ * BSC Contact   mailto:ear-support@bsc.es
+ * Lenovo contact  mailto:hpchelp@lenovo.com
+ *
+ * EAR is an open source software, and it is licensed under both the BSD-3 license
+ * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
+ * and COPYING.EPL files.
+ */
+
+
+#ifndef _DCGMI_LIB_H_
+#define _DCGMI_LIB_H_
+
+
+#include <common/states.h>
+#include <common/types.h>
+
+#include <metrics/gpu/archs/dcgmi.h>
+
+#include <library/metrics/dcgmi_lib/common.h>
+
+
+typedef struct dcgmi_sig
+{
+	uint    dcgmi_sets;
+	uint    dcgmi_gpus;
+	uint    dcgmi_num_ev;
+	uint    **dcgmi_events;
+	uint    *dcgmi_instances;
+	dcgmi_t **dcgmi_metrics;
+} dcgmi_sig_t;
+
+
+/** Loads this module. */
+state_t dcgmi_lib_load();
+
+
+/** Returns whether this module is enabled. */
+uint dcgmi_lib_is_enabled();
+
+
+void dcgmi_lib_dcgmi_sig_init(dcgmi_sig_t *dcgmi_sig);
+
+
+state_t dcgmi_lib_get_current_metrics(dcgmi_sig_t *dcgmi_sig);
+
+
+state_t dcgmi_lib_get_global_metrics(dcgmi_sig_t *dcgmi_sig);
+
+
+void dcgmi_lib_report_total_metrics();
+
+
+void dcgmi_lib_reset_instances(dcgmi_sig_t *dcgmi_sig);
+
+
+#endif // _DCGMI_LIB_H_

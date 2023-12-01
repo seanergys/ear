@@ -79,7 +79,7 @@ typedef struct mgt_gpu_ops_s {
 } mgt_gpu_ops_t;
 
 // Discovers the low level API. Returns function pointers, but is not required.
-void mgt_gpu_load(int eard);
+void mgt_gpu_load(int force_api);
 
 void mgt_gpu_get_api(uint *api);
 
@@ -106,8 +106,12 @@ state_t mgt_gpu_freq_limit_get_max(ctx_t *c, ulong *freq_list);
 // Resets the current clock cap on each GPU to its default value.
 state_t mgt_gpu_freq_limit_reset(ctx_t *c);
 
+state_t mgt_gpu_freq_limit_reset_dev(ctx_t *c, int gpu);
+
 // Sets the current clock cap on each GPU (one value per GPU in the KHz array).
 state_t mgt_gpu_freq_limit_set(ctx_t *c, ulong *freq_list);
+
+state_t mgt_gpu_freq_limit_set_dev(ctx_t *c, ulong freq, int gpu);
 
 // Given a GPU index and reference frequency, get the nearest valid (in khz).
 state_t mgt_gpu_freq_get_valid(ctx_t *c, uint dev, ulong freq_ref, ulong *freq_near);
@@ -130,8 +134,12 @@ state_t mgt_gpu_power_cap_get_rank(ctx_t *c, ulong *watt_list_min, ulong *watt_l
 // Resets the current power cap on each GPU to its default value.
 state_t mgt_gpu_power_cap_reset(ctx_t *c);
 
+state_t mgt_gpu_power_cap_reset_dev(ctx_t *c, int gpu);
+
 // Sets the current power cap on each GPU (one value per GPU in the watts array).
 state_t mgt_gpu_power_cap_set(ctx_t *c, ulong *watt_list);
+
+state_t mgt_gpu_power_cap_set_dev(ctx_t *c, ulong watts, int gpu);
 
 // Allocates an array of watts or clocks (one per device).
 state_t mgt_gpu_data_alloc(ulong **list);
@@ -141,6 +149,8 @@ state_t mgt_gpu_data_free(ulong **list);
 state_t mgt_gpu_data_null(ulong *list);
 
 int mgt_gpu_is_supported();
+
+char *mgt_gpu_features_tostr(char *buffer, size_t length);
 
 // Renamed functions
 #define mgt_gpu_freq_list mgt_gpu_freq_get_available

@@ -11,12 +11,11 @@ com1_PATH = $(DESTDIR)/bin
 com1_PERM = 2771
 com2_PATH = $(DESTDIR)/sbin
 com2_PERM = 0770
-com1_BINS = ear-info
+com1_BINS = ear-info econtrol
 
 ifdef DB_BASE
 com1_BINS += \
     eacct \
-    econtrol \
     ereport
 
 com2_BINS += \

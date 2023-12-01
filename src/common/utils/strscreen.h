@@ -35,12 +35,14 @@ typedef struct screen_s {
     int         y;
 } strscreen_t;
 
-void wprintf_init(strscreen_t *screen, int height, int width, int fd, char bckchr);
+void scprintf_init(strscreen_t *screen, int height, int width, int fd, char bckchr);
 
-void wprintf_divide(strscreen_t *screen, int p1[2], int p2[2], int *id, cchar *title);
+void scprintf_divide(strscreen_t *screen, int p1[2], int p2[2], int *id, cchar *title);
 
-char *wprintf(strscreen_t *s);
+// Writes the content of a buffer in the 'id' division.
+void scsprintf(strscreen_t *s, int id, int append, int set_title, char *buffer);
 
-void wsprintf(strscreen_t *s, int id, int append, int set_title, char *buffer);
+// Returns and writes in the 'fd' output the whole formatted screen.
+char *scprintf(strscreen_t *s);
 
 #endif //COMMON_UTILS_STRSCREEN_H
