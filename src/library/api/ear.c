@@ -111,6 +111,7 @@
 char shexternal_region_path[GENERIC_NAME];
 ear_mgt_t *external_mgt;
 
+static uint use_dlb = 0 ;
 #if DLB
 #include <dlb_talp.h>
 
@@ -2018,11 +2019,14 @@ void ear_init()
 #endif
 
 #if DLB
-        if (state_fail(earl_create_talp_monitor(earl_talp)))
+        char *cuse_dlb = ear_getenv(FLAG_USE_DLB);
+        use_dlb = (cuse_dlb != NULL ? atoi(cuse_dlb): 0);
+        if (use_dlb && state_fail(earl_create_talp_monitor(earl_talp)))
         {
             char *err_msg = "Error creating TALP monitor:";
             verbose(TALP_INFO, "[%d] %s %s", my_node_id, err_msg, state_msg);
         }
+        if (!use_dlb) talp_monitor = 1;
 #endif // DLB
 #endif // !EAR_OFF
 
