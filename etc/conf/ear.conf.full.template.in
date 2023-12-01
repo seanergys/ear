@@ -4,6 +4,7 @@
 # DB confguration: This configuration conrrespondons with the DB server installation.
 #---------------------------------------------------------------------------------------------------
 DBIp=127.0.0.1
+#DBSECIP=add_secondary_ip_for_ha
 DBUser=ear_daemon
 DBPassw=password
 # User and password for usermode querys.
