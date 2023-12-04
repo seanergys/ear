@@ -186,10 +186,9 @@ void *envtoat(const char *var, void **list, uint *list_count, int id_type)
 int rantoa(char *string, uint *array, uint array_length)
 {
     uint list_count;
+    int a, b, i;
     char **list;
     char *c;
-    int i, j;
-    int a, b;
 
     if (string == NULL) {
         return 0;

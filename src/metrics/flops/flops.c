@@ -27,7 +27,6 @@
 
 // 0       1       2      3      4      5      6      7      8
 // CPU-SP, CPU-DP, 128SP, 128DP, 256SP, 256DP, 512HP, 512SP, 512DP
-static ullong *weights;
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static flops_ops_t ops;
 static uint load;

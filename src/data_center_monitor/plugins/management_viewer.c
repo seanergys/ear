@@ -23,10 +23,6 @@
 #include <common/system/plugin_manager.h>
 #include <data_center_monitor/plugins/management.h>
 
-static metrics_read_t     mr1;
-static metrics_read_t     mr2;
-static metrics_diff_t     mrD;
-
 declr_up_get_tag()
 {
     *tag = "management_viewer";

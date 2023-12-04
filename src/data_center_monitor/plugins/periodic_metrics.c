@@ -24,7 +24,9 @@
 #include <data_center_monitor/plugins/conf.h>
 #include <data_center_monitor/plugins/metrics.h>
 
+#if SHOW_DEBUGS
 static cchar             *self_tag = "periodic_metrics";
+#endif
 // Metrics
 static periodic_metric_t  cs; // Current sample
 static metrics_read_t     mr1;

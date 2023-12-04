@@ -25,7 +25,6 @@
 
 static mans_t     m;
 static conf_t    *conf;
-static char       buffer[4096];
 
 declr_up_get_tag()
 {

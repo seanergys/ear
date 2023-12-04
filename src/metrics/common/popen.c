@@ -83,8 +83,6 @@ static int static_read(popen_t *p, char *buffer)
 {
     size_t len_acum = 0;
     size_t len_read = 0;
-    int space_count;
-    int i;
 
     if (p->one_shot) {
         do {

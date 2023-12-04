@@ -61,7 +61,7 @@ ullong mrs_ ##name () { \
 
 // File functions are hidden
 mrs_file(midr,   "/sys/devices/system/cpu/cpu0/regs/identification/midr_el1"  );
-mrs_file(revidr, "/sys/devices/system/cpu/cpu0/regs/identification/revidr_el1");
+//mrs_file(revidr, "/sys/devices/system/cpu/cpu0/regs/identification/revidr_el1");
 // Introduce new register reading functions as required
 mrs_function(midr     , MIDR_EL1       , mrsf_midr());
 mrs_function(cntfrq   , CNTFRQ_EL0     , mrsf_zero());

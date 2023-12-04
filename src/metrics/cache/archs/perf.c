@@ -46,7 +46,6 @@ typedef struct cmeta_s {
     cchar  *desc;
 } cmeta_t;
 
-static topology_t *tp;
 static cmeta_t     meta[5];
 static uint        meta_count;
 static uint        enabled_count;

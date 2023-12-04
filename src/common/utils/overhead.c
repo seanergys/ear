@@ -122,7 +122,7 @@ void overhead_report(int print_header)
     double wall_secs;
     double wall_call_msecs;
     double wall_percent;
-    double cpu_last_msecs;
+    ATTR_UNUSED double cpu_last_msecs;
     double cpu_msecs;
     double cpu_secs;
     double cpu_call_msecs;

@@ -145,7 +145,7 @@ GPUPROF_F_LOAD(gpuprof_dcgmi_load)
         return;
     }
     // If NVML can be initialized, we check for the user serial GPUs
-    if (!get_user_devices(devs_count)) {
+    if (!get_user_devices()) {
         debug("A problem is detected with user allocated GPUs");
         return;
     }

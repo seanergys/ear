@@ -607,6 +607,7 @@ void cluster_power_monitor()
         verbose(VGM_PC+1,"num_power_status in cluster_check_powercap is 0");
         return;
     }
+	eargm_report_event(CLUSTER_POWER, (ulong)my_cluster_power_status->current_power);
     if (my_cluster_power_status->current_power >= ((float)(current_cluster_powercap*my_cluster_conf.eargm.defcon_power_limit)/100.0) && !actions_executed){
         execute_powercap_limit_action();
     } else if (my_cluster_power_status->current_power <= ((float)(current_cluster_powercap*my_cluster_conf.eargm.defcon_power_lower)/100.0) && actions_executed) {
