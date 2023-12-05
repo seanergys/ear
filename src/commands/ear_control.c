@@ -239,9 +239,18 @@ void print_ips(ip_table_t *ips, int num_ips, char mode)
 			}
 			else {
 				if (!ips[i].counter) {
-					printf("%10s\t%10s\n", ips[i].name, ips[i].ip);
+                    int rc;
+                    if ((rc = remote_connect(ips[i].ip, my_cluster_conf.eard.port)) < 0) {
+					    printf("%10s\t%10s -> connection fails\n", ips[i].name, ips[i].ip);
+                    } else {
+                        if (!ear_node_ping()) {
+					        printf("%10s\t%10s -> connected, but ping fails\n", ips[i].name, ips[i].ip);
+                        } else {
+					        printf("%10s\t%10s -> node is responding, but data is not present\n", ips[i].name, ips[i].ip);
+                        }
+                    }
 				} else if (!ips[i].power || ips[i].power > ips[i].max_power) {
-					printf("%10s\t%10s\t->power error (reported %dW)\n", ips[i].name, ips[i].ip, ips[i].power);
+					printf("%10s\t%10s\t->connected, but power error (reported %dW)\n", ips[i].name, ips[i].ip, ips[i].power);
 				}
 			}
 		}

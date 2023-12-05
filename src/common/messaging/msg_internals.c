@@ -1271,11 +1271,15 @@ request_header_t data_all_nodes(request_t *command, cluster_conf_t *my_cluster_c
     int last_j_read = 0;
 
     debug("number of outer iterations %d (each of <= %d connections)", iters, MAX_CALLER_CONNECTIONS);
+    int *failed_js = NULL;
+    int *failed_is = NULL;
+    int count_failed = 0;
 
     sfds = calloc(num_sfds, sizeof(int));
 
     for (k = 0; k < iters; k++) 
     {
+        verbose(VCOMM, "\nDoing round %d (of %d) of connections", k+1, iters);
         for (i = last_i_send; i < total_ranges; i++)
         {
             /* for every range we connect to a maximum of NUM_PROPS connections. If we have MAX_CALLER_CONNECTIONS opened, we break out
@@ -1287,8 +1291,13 @@ request_header_t data_all_nodes(request_t *command, cluster_conf_t *my_cluster_c
 
                 rc=remote_connect(next_ip, my_cluster_conf->eard.port);
                 if (rc < 0){
-                    //debug("data_all_nodes: Error connecting with node %s, trying to correct it", next_ip);
-                    //debug("data_all_nodes: (node %s was %d in the current list of ips", next_ip, j);
+                    verbose(VCOMM, "Node %s with distance %d failed to contact!", next_ip, command->node_dist);
+                    failed_is = realloc(failed_is, sizeof(int)*count_failed+1);
+                    failed_js = realloc(failed_js, sizeof(int)*count_failed+1);
+                    failed_is[count_failed] = i;
+                    failed_js[count_failed] = j;
+                    count_failed++;
+#if 0
                     head = correct_data_prop(j, ip_counts[i], ips[i], command, my_cluster_conf->eard.port, (void **)&temp_data);
 
                     if (head.size > 0 && head.type != EAR_ERROR)
@@ -1298,12 +1307,19 @@ request_header_t data_all_nodes(request_t *command, cluster_conf_t *my_cluster_c
                         final_size = head.size;
                         default_type = head.type;
                     }
+#endif
                 }
                 else {
-                    debug("Node %s with distance %d contacted (fd %d)!", next_ip, command->node_dist, rc);
+                    verbose(VCOMM, "Node %s with distance %d contacted but the message failed!", next_ip, command->node_dist);
                     if (send_command(command)) {
                         sfds[offset_send] = rc;
                     } else { //command rejected by the node
+                        failed_is = realloc(failed_is, sizeof(int)*count_failed+1);
+                        failed_js = realloc(failed_js, sizeof(int)*count_failed+1);
+                        failed_is[count_failed] = i;
+                        failed_js[count_failed] = j;
+                        count_failed++;
+#if 0
                         head = correct_data_prop(j, ip_counts[i], ips[i], command, my_cluster_conf->eard.port, (void **)&temp_data);
 
                         if (head.size > 0 && head.type != EAR_ERROR)
@@ -1313,6 +1329,7 @@ request_header_t data_all_nodes(request_t *command, cluster_conf_t *my_cluster_c
                             final_size = head.size;
                             default_type = head.type;
                         }
+#endif
 
                     }
                 }
@@ -1328,7 +1345,7 @@ request_header_t data_all_nodes(request_t *command, cluster_conf_t *my_cluster_c
         last_i_send = i;
         last_j_send = j;
 
-        debug("Finished sending to eards, now reading data\n\n");
+        verbose(VCOMM, "Finished sending to eards, now reading data");
 
         for (i = last_i_read; i < total_ranges; i++)
         {
@@ -1347,9 +1364,17 @@ request_header_t data_all_nodes(request_t *command, cluster_conf_t *my_cluster_c
                 }
                 if (head.type == EAR_ERROR)
                 {
-                    debug("data_all_nodes:Error reading data from node %d in the list, trying to correct it", j);
+                    verbose(VCOMM, "Error reading data from node %d in the list", j);
                     eards_remote_disconnect_fd(sfds[offset_read]);
+
+                    failed_is = realloc(failed_is, sizeof(int)*count_failed+1);
+                    failed_js = realloc(failed_js, sizeof(int)*count_failed+1);
+                    failed_is[count_failed] = i;
+                    failed_js[count_failed] = j;
+                    count_failed++;
+#if 0
                     head = correct_data_prop(j, ip_counts[i], ips[i], command, my_cluster_conf->eard.port, (void **)&temp_data);
+#endif
                 }
                 else eards_remote_disconnect_fd(sfds[offset_read]);
 
@@ -1372,6 +1397,22 @@ request_header_t data_all_nodes(request_t *command, cluster_conf_t *my_cluster_c
 
         if (last_i_read != last_i_send) {
             debug("warning: last_i_read %d and last_i_send %d do not match!", last_i_read, last_i_send);
+        }
+        verbose(VCOMM, "\n");//to pretify the output
+    }
+
+    verbose(VCOMM, "Finished reading data from all the nodes that responded, now doing %d corrections\n", count_failed);
+    for (int i = 0; i < count_failed; i++) {
+        for (int j = 0; j < count_failed; j++) {
+            head = correct_data_prop(j, ip_counts[i], ips[i], command, my_cluster_conf->eard.port, (void **)&temp_data);
+
+            if (head.size > 0 && head.type != EAR_ERROR)
+            {
+                head = process_data(head, (char **)&temp_data, (char **)&all_data, final_size);
+                free(temp_data);
+                final_size = head.size;
+                default_type = head.type;
+            }
         }
     }
     debug("exiting data_all_nodes with %d num_sfds and %d offset and %d iterations\n", num_sfds, offset_read, iters);
