@@ -46,6 +46,7 @@ int eards_sfd=-1;
 // 2000 and 65535
 #define DAEMON_EXTERNAL_CONNEXIONS 256
 
+#if USE_SEC_KEY_RC
 uint32_t _get_sec_key()
 {
 #if SEC_KEY
@@ -54,6 +55,7 @@ uint32_t _get_sec_key()
     return 0;
 #endif
 }
+#endif
 
 
 int _read(int fd, void *data, size_t ssize)
@@ -254,6 +256,7 @@ int read_command(int s, request_t *command)
     memcpy(command, tmp_command, sizeof(internal_request_t));
     aux_size += sizeof(internal_request_t);
 
+#if USE_SEC_KEY_RC
     if (command->sec_key != _get_sec_key()) {
         warning("the request's sec. key does not correspond with our current one");
         command->req = NO_COMMAND;
@@ -261,6 +264,7 @@ int read_command(int s, request_t *command)
         if (head.size > 0) free(tmp_command);
         return command->req; //should we return EAR_SOCK_DISCONNECTED and leave the caller hanging??
     }
+#endif
 
     if (command->num_nodes > 0)
     {
@@ -418,7 +422,9 @@ int send_command(request_t *command)
 
 	debug("send_command: sending command %u",command->req);
 
+#if USE_SEC_KEY_RC
     command->sec_key = _get_sec_key();
+#endif
 
     command_size = get_command_size(command, &command_b);
     debug("send_command: command size: %lu\t request_t size: %lu", command_size, sizeof(request_t));

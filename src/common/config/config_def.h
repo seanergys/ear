@@ -184,6 +184,11 @@
  * Ex: MAX_RANGE 30 and NUM_PROPS 3 -> sum = 3 + 9 + 27 -> depth of propagation = 3 */
 #define MAX_RANGE                           30
 
+/* Whether the security key is send and used by the remote communication layer. If
+ * set to 0, all remote messages will be accepted. Components compiled with 
+ * different values of this constant will NOT be compatible */
+#define USE_SEC_KEY_RC                      0
+
 
 /** @name Library
  * EARL defaults. */
