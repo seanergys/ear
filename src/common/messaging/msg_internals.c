@@ -1408,16 +1408,14 @@ request_header_t data_all_nodes(request_t *command, cluster_conf_t *my_cluster_c
 
     verbose(VCOMM, "Finished reading data from all the nodes that responded, now doing %d corrections\n", count_failed);
     for (int i = 0; i < count_failed; i++) {
-        for (int j = 0; j < count_failed; j++) {
-            head = correct_data_prop(j, ip_counts[i], ips[i], command, my_cluster_conf->eard.port, (void **)&temp_data);
+        head = correct_data_prop(failed_js[i], ip_counts[failed_is[i]], ips[failed_is[i]], command, my_cluster_conf->eard.port, (void **)&temp_data);
 
-            if (head.size > 0 && head.type != EAR_ERROR)
-            {
-                head = process_data(head, (char **)&temp_data, (char **)&all_data, final_size);
-                free(temp_data);
-                final_size = head.size;
-                default_type = head.type;
-            }
+        if (head.size > 0 && head.type != EAR_ERROR)
+        {
+            head = process_data(head, (char **)&temp_data, (char **)&all_data, final_size);
+            free(temp_data);
+            final_size = head.size;
+            default_type = head.type;
         }
     }
     debug("exiting data_all_nodes with %d num_sfds and %d offset and %d iterations\n", num_sfds, offset_read, iters);
@@ -1439,6 +1437,10 @@ request_header_t data_all_nodes(request_t *command, cluster_conf_t *my_cluster_c
         free(ip_counts);
         free(ips);
         free(sfds);
+    }
+    if (count_failed > 0) {
+        free(failed_is);
+        free(failed_js);
     }
 
     return head;
