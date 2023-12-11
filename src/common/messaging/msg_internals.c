@@ -35,6 +35,7 @@
 #include <common/config.h>
 #include <common/states.h>
 #include <common/types/job.h>
+#include <common/system/poll.h>
 
 #include <common/messaging/msg_conf.h>
 #include <common/messaging/msg_internals.h>
@@ -582,7 +583,7 @@ int remote_connect(char *nodename,uint port)
     struct addrinfo *result, *rp;
     char port_number[50]; 	// that size needs to be validated
     int sfd, s;
-    fd_set r_set, w_set;
+    afd_set_t rw_set = { 0 };
 
     /*if (remote_connected){ 
         debug("Connection already done!");
@@ -629,11 +630,9 @@ int remote_connect(char *nodename,uint port)
         }
         else
         {
-            FD_ZERO(&w_set);
-            FD_SET(sfd, &w_set);
-            FD_ZERO(&r_set);
-            FD_SET(sfd, &r_set);
-            if (select(sfd+1, &r_set, &w_set, NULL, &timeout) > 0) 
+            AFD_ZERO(&rw_set);
+            AFD_SET(sfd, &rw_set);
+            if (aselectv(&rw_set, &timeout) > 0) 
             {
                 optlen = sizeof(int);
                 sysret = getsockopt(sfd, SOL_SOCKET, SO_ERROR, (void *)(&valopt), &optlen);
