@@ -2830,19 +2830,24 @@ static void set_default_powermon_init(powermon_app_t *app)
 
 #if POWERMON_RESTORE
     /* IMC freq */
-    verbose(VCONF, "Resetting IMC frequency...");
+    verbose(VCONF, "Setting default IMC frequency...");
     if (node_desc.vendor == VENDOR_INTEL) {
         mgt_imcfreq_set_auto(no_ctx);
     } else if (node_desc.vendor == VENDOR_AMD) {
         mgt_imcfreq_set_current(no_ctx, 0, all_sockets);
     }
 
-    /* If policy_freq is zero, we don't need to change the current configuration */
-    if (app->policy_freq) {
+    /* If policy_freq is zero, we don't need to change the current configuration:
+     * EARL is not used and !ForceFrequencies */
+    if (app->policy_freq)
+    {
 #if USE_GPUS
         /* GPU freq. */
-        if (my_node_conf->gpu_def_freq > 0) {
-            verbose(VCONF, "Restoring to GPU freq %.2f GHz", (float) my_node_conf->gpu_def_freq / 1000000);
+        if (my_node_conf->gpu_def_freq > 0)
+        {
+            verbose(VCONF, "Setting default GPU freq.: %.2f GHz",
+                    (float) my_node_conf->gpu_def_freq / 1000000);
+
             gpu_mgr_set_freq_all_gpus(my_node_conf->gpu_def_freq);
         }
 #endif
@@ -2977,21 +2982,28 @@ static void set_default_powermon_end(powermon_app_t *app, uint idle)
 
 #if USE_GPUS
   /* GPUs */
-  if (idle && my_node_conf->gpu_def_freq) { /* EARD is not aware of the GPUs used */
+#if 0
+  if (idle && app->policy_freq && my_node_conf->gpu_def_freq)
+  {
+    /* EARD is not aware of the GPUs used */
     ulong idle_gpu_freq;
     /* We assume all the gpus are the same */
     gpu_mgr_get_min(0, &idle_gpu_freq);
-    verbose(VCONF + 1, "Restoring to GPU freq %.2f GHz", (float)idle_gpu_freq/1000000.0);
+    verbose(VCONF, "Set idle GPU freq %.2f GHz", (float) idle_gpu_freq / 1000000.0);
     gpu_mgr_set_freq_all_gpus(idle_gpu_freq);
   }
 #endif
+#endif
 
-  if (idle) {
+  if (idle)
+  {
     /* IMC freq : It's already done at init, but it's included here for simplicity*/
     verbose(VCONF, "Restoring IMC freq");
-    if (node_desc.vendor == VENDOR_INTEL) {
+    if (node_desc.vendor == VENDOR_INTEL)
+    {
       mgt_imcfreq_set_auto(no_ctx);
-    } else if (node_desc.vendor == VENDOR_AMD) {
+    } else if (node_desc.vendor == VENDOR_AMD)
+    {
       mgt_imcfreq_set_current(no_ctx, 0, all_sockets);
     }
   }
