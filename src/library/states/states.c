@@ -69,6 +69,9 @@
 
 #define MAX_SIG_TIME    10000000 // 10 s. It is a time limit for signature computation.
 
+#define states_verbose2_master(msg, ...) \
+    verbose_info2_master("States:" msg, ##__VA_ARGS__);
+
 extern masters_info_t masters_info; // TODO: Where declared ?
 extern float          ratio_PPN;    // TODO: Where declared ?
 
@@ -232,22 +235,27 @@ void states_begin_job(int my_id, char *app_name)
     /* LOOP WAS CREATED HERE BEFORE */
 
     perf_accuracy_min_time = get_ear_performance_accuracy();
-	verbose_master(2, "perf_accuracy_min_time default: %lu", perf_accuracy_min_time);
+	states_verbose2_master("perf_accuracy_min_time default: %lu", perf_accuracy_min_time);
 
     ulong architecture_min_perf_accuracy_time;
-    if (master && eards_connected()) {
+    if (master && eards_connected())
+    {
         architecture_min_perf_accuracy_time = eards_node_energy_frequency();
-        if (architecture_min_perf_accuracy_time == (ulong) EAR_ERROR) {
+        if (architecture_min_perf_accuracy_time == (ulong) EAR_ERROR)
+        {
             architecture_min_perf_accuracy_time = perf_accuracy_min_time;
         }
-        verbose_master(2, "eard perf_accuracy_min_time default %lu", architecture_min_perf_accuracy_time);
+
+        states_verbose2_master("eard perf_accuracy_min_time default: %lu",
+                               architecture_min_perf_accuracy_time);
     } else {
         architecture_min_perf_accuracy_time = 1000000;
     }
-    if ((architecture_min_perf_accuracy_time > perf_accuracy_min_time) && (architecture_min_perf_accuracy_time < MAX_SIG_TIME)) {
+    if ((architecture_min_perf_accuracy_time > perf_accuracy_min_time) && (architecture_min_perf_accuracy_time < MAX_SIG_TIME))
+    {
         perf_accuracy_min_time = architecture_min_perf_accuracy_time;
     }
-    verbose_master(2, "perf_accuracy_min_time %lu", perf_accuracy_min_time);
+    states_verbose2_master("perf_accuracy_min_time: %lu", perf_accuracy_min_time);
 
     EAR_STATE = NO_PERIOD;
 
@@ -257,7 +265,7 @@ void states_begin_job(int my_id, char *app_name)
     init_log();
 
     if (state_fail(policy_max_tries(&policy_max_tries_cnt))) {
-        verbose_master(VERBOSE_WARN, "%sWARNING%s Policy max tries could not be read.", COL_RED, COL_CLR);
+        verbose_warning("Policy max tries could not be read.");
     }
 
     total_threads_cnt =  get_total_resources();
@@ -281,13 +289,12 @@ void states_begin_period(int my_id, ulong event, ulong size, ulong level)
 {
     EAR_STATE = TEST_LOOP;
 
-
     tries_current_loop           = 0;
     tries_current_loop_same_freq = 0;
 
     if (state_fail(loop_init(&curr_loop, application.job.id,
                     application.job.step_id, application.node_id, event, size, level))) {
-        verbose_master(2, "%sEAR Error%s Creating loop: %s", COL_RED, COL_CLR, state_msg);
+        verbose_error_master("Creating loop: %s", state_msg);
     }
 
     policy_loop_init(&curr_loop.id);
@@ -375,11 +382,12 @@ void states_new_iteration(int my_id, uint period, uint iterations,
     /* Add the node mgt external feature management.
      * Detect, prints and set to 0 again */
     if (external_mgt != NULL && (masters_info.my_master_rank >= 0)) {
-        if (external_mgt->new_mask == 1) {
-            verbose_master(1, "%sExternal library requested rescheduling%s", COL_RED, COL_CLR);
+        if (external_mgt->new_mask == 1)
+        {
+            verbose_info_master("%sExternal library requested rescheduling%s", COL_RED, COL_CLR);
             if (state_fail(update_job_affinity_mask(lib_shared_region, sig_shared_region)))
             {
-                verbose(1, "An error occurred updating the affinity mask: %s", state_msg);
+                verbose_error("Updating the affinity mask: %s", state_msg);
             }
             external_mgt->new_mask = 0;
             resched_conf->force_rescheduling = 2;
@@ -391,7 +399,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
     if (state_ok(metrics_new_iteration(&loop_signature))) {
         if (state_fail(policy_new_iteration(&loop_signature))) {
 
-            verbose_master(2, "%sNew Phase detected%s", COL_BLU, COL_CLR);
+            verbose_info2_master("New Phase detected!");
 
             /* Accumulate statistics of savings */
             accumulate_phases_summary(&loop_signature, &application.signature);
@@ -528,9 +536,10 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
             assert(comp_N_time != 0); // Only compiled with SHOW_DEBUGS enabled.
 
-            // TODO: Here we don't tolerate comp_N_begin equal to 0
+            // Here we don't tolerate comp_N_begin equal to 0
             if (comp_N_time == 0) {
-                error( "EAR(%s): PANIC comp_N_time must be > 0", ear_app_name);
+                error_lib("EAR(%s): PANIC comp_N_time must be > 0", ear_app_name);
+                // TODO: Should we terminate ?
             }
 
             compute_perf_count_period(comp_N_time, (llong) perf_accuracy_min_time,
@@ -894,8 +903,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                     loop_signature.CPI, loop_signature.GBS, loop_signature.DC_power,
                     policy_sel_signature.CPI, policy_sel_signature.GBS, policy_sel_signature.DC_power);
 
-                verbose_master(1, "%sWARNING%s EARL state reset because signature changed from the last passed to the policy: %s",
-                    COL_YLW, COL_CLR, sigs_metrics_buff);
+                verbose_info_master("EARL state reset because signature changed from the last passed to the policy: %s", sigs_metrics_buff);
               }
 
               overhead_stop(id_ovh_stable);
@@ -903,7 +911,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             }
 
             if (sig_ready[def_pstate] == 0) {
-                verbose_master(2,"Signature at default freq not available, assuming policy ok");
+                verbose_info2_master("Signature at default freq not available, assuming policy ok.");
                 /* If default is not available, that means a dynamic configuration has been decided, we assume we are ok */
                 if (sig_ready[curr_pstate] == 0) {
                     sig_ready[curr_pstate] = 1;
@@ -1167,7 +1175,7 @@ static void report_loop_signature(uint iterations, loop_t *my_loop)
         application.power_sig.max_DC_power = ear_max(application.power_sig.max_DC_power, my_loop->signature.DC_power);
 
         if (state_fail(report_loops(&rep_id, my_loop, 1))) {
-            verbose_master(2, "%sError%s Reporting loop.", COL_RED, COL_CLR);
+            verbose_error_master("Reporting loop.");
         }
     }
 
@@ -1186,7 +1194,7 @@ static void accumulate_phases_summary(signature_t *loops, signature_t *apps)
   for (uint ph = 0; ph < EARL_MAX_PHASES; ph++){
     se->earl_phase[ph].elapsed += se_loop->earl_phase[ph].elapsed; 
     if (se->earl_phase[ph].elapsed || se_loop->earl_phase[ph].elapsed){
-      verbose_master(2, "Phase[%s] accumulated elapsed %llu", phase_to_str(ph), se->earl_phase[ph].elapsed);
+      verbose_info2_master("Phase[%s] accumulated elapsed %llu", phase_to_str(ph), se->earl_phase[ph].elapsed);
     }
   }
 }
