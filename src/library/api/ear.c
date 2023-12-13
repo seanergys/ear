@@ -2540,8 +2540,6 @@ extern ulong local_max_sync_block;
 
 state_t earl_periodic_actions(void *no_arg)
 {
-    uint mpi_period;
-    float mpi_in_period;
     ulong period_elapsed, last_signature_elapsed;
     timestamp_t curr_periodic_time;
     uint new_ear_guided = ear_guided;
