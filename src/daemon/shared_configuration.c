@@ -72,12 +72,21 @@ int get_coeffs_default_path(char *tmp,char *path)
 //// SETTINGS
 
 // Creates a shared memory region between eard and ear_lib. returns NULL if error.
-settings_conf_t *create_settings_conf_shared_area(char * path)  
+settings_conf_t *create_settings_conf_shared_area(char * path, int *fd)  
 {
 	settings_conf_t my_settings;
+
 	// Read and write permission for the owner. Read permission for the group and others.
 	mode_t perms = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
-	return (settings_conf_t *) create_shared_area(path, perms, (char *) &my_settings, sizeof(my_settings), &fd_settings, 1);
+
+	settings_conf_t *mem = (settings_conf_t *) create_shared_area(path, perms, (char *) &my_settings,
+																																sizeof(my_settings), &fd_settings, 1);
+	if (fd)
+	{
+		*fd = fd_settings;
+	}
+
+	return mem;
 }
 
 
@@ -85,14 +94,25 @@ settings_conf_t * attach_settings_conf_shared_area(char * path)
 {
     return (settings_conf_t *)attach_shared_area(path,sizeof(settings_conf_t),O_RDONLY,&fd_settings,NULL);
 }                                
+
+
 void dettach_settings_conf_shared_area()
 {
 	dettach_shared_area(fd_settings);
 }
 
-void settings_conf_shared_area_dispose(char * path)
+
+void settings_conf_shared_area_dispose(char *path, settings_conf_t *mem, int fd)
 {
-	dispose_shared_area(path,fd_settings);
+	if (mem != NULL) munmap(mem, sizeof(settings_conf_t));
+
+	int fd_to_close = fd_settings;
+	if (fd >= 0)
+	{
+		fd_to_close = fd;
+	}
+	
+	dispose_shared_area(path, fd_to_close);
 }
 
 
@@ -115,25 +135,49 @@ void print_settings_conf(settings_conf_t *setting)
 /// RESCHED
 
 // Creates a shared memory region between eard and ear_lib. returns NULL if error.
-resched_t *create_resched_shared_area(char *path)  
+resched_t *create_resched_shared_area(char *path, int *fd)  
 {
 	resched_t my_settings;
 	mode_t perms = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
-	return (resched_t *) create_shared_area(path, perms, (char *) &my_settings, sizeof(my_settings), &fd_resched, 1);
+
+	resched_t *mem = (resched_t *) create_shared_area(path, perms, (char *) &my_settings,
+																										sizeof(my_settings), &fd_resched, 1);
+
+	if (fd != NULL)
+	{
+		*fd = fd_resched;
+	}
+
+	return mem;
 }
 
 
 resched_t * attach_resched_shared_area(char * path)
 {
     return (resched_t *)attach_shared_area(path,sizeof(resched_t),O_RDWR,&fd_resched,NULL);
-}                                
+}
+
+
 void dettach_resched_shared_area()
 {
 	dettach_shared_area(fd_resched);
 }
-void resched_shared_area_dispose(char * path)
+
+
+void resched_shared_area_dispose(char * path, resched_t *mem, int fd)
 {
-	dispose_shared_area(path,fd_resched);
+	if (mem)
+	{
+		munmap(mem, sizeof(resched_t));
+	}
+
+	int fd_to_close = fd_resched;
+	if (fd >= 0)
+	{
+		fd_to_close = fd;
+	}
+
+	dispose_shared_area(path, fd_to_close);
 }
 
 
@@ -152,11 +196,21 @@ int get_app_mgt_path(char *tmp, uint ID,char *path)
 
 /** Creates the shared mmemory. It is used by EARD and APP. App puts information here
  * @param ear_conf_path specifies the path (folder) to create the file used by mmap. */
-app_mgt_t * create_app_mgt_shared_area(char *path)
+app_mgt_t * create_app_mgt_shared_area(char *path, int *fd)
 {
   app_mgt_t my_app_data;
 	mode_t perms = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
-  return (app_mgt_t *) create_shared_area(path, perms, (char *) &my_app_data, sizeof(my_app_data), &fd_app_mgt, 1);
+
+	app_mgt_t *mem;
+  mem = (app_mgt_t *) create_shared_area(path, perms, (char *) &my_app_data,
+																				 sizeof(my_app_data), &fd_app_mgt, 1);
+
+	if (fd)
+	{
+		*fd = fd_app_mgt;
+	}
+
+	return mem;
 }
 
 
@@ -168,6 +222,7 @@ app_mgt_t * attach_app_mgt_shared_area(char *path)
 
 }
 
+
 /** Disconnect from a previously connected shared memory region. It is used by EARLib (client)
  *  *  * */
 void dettach_app_mgt_shared_area()
@@ -175,12 +230,20 @@ void dettach_app_mgt_shared_area()
 	dettach_shared_area(fd_app_mgt);
 }
 
+
 /** Releases a shared memory area previously created. It is used by EARD (server)
  *  *  * */
-void app_mgt_shared_area_dispose(char * path)
+void app_mgt_shared_area_dispose(char * path, app_mgt_t *mem, int fd)
 {
-	dispose_shared_area(path,fd_app_mgt);
+	if (mem)
+	{
+		munmap(mem, sizeof(app_mgt_t));
+	}
+
+	int fd_to_close = (fd >= 0) ? fd : fd_app_mgt;
+	dispose_shared_area(path, fd_to_close);
 }
+
 
 /****************************** PC_APP_INFO REGION *******************/
 int get_pc_app_info_path(char *tmp,uint ID,char *path)
@@ -189,24 +252,47 @@ int get_pc_app_info_path(char *tmp,uint ID,char *path)
   sprintf(path,"%s/%u/.ear_pc_app_info",tmp, ID);
   return EAR_SUCCESS;
 }
-pc_app_info_t  * create_pc_app_info_shared_area(char *path)
+
+
+pc_app_info_t  *create_pc_app_info_shared_area(char *path, int *fd)
 {
 	pc_app_info_t my_data;
 	mode_t perms = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
-  return (pc_app_info_t *) create_shared_area(path, perms, (char *) &my_data, sizeof(my_data), &fd_pc_app_info, 1);
 
+	pc_app_info_t *mem;
+  mem = (pc_app_info_t *) create_shared_area(path, perms, (char *) &my_data,
+																						 sizeof(my_data), &fd_pc_app_info, 1);
+
+	if (fd)
+	{
+		*fd = fd_pc_app_info;
+	}
+
+	return mem;
 }
+
+
 pc_app_info_t * attach_pc_app_info_shared_area(char * path)
 {
     return (pc_app_info_t *)attach_shared_area(path,sizeof(pc_app_info_t),O_RDWR,&fd_pc_app_info,NULL);
 }
+
+
 void dettach_pc_app_info_shared_area()
 {
 	dettach_shared_area(fd_pc_app_info);
 }
-void pc_app_info_shared_area_dispose(char * path)
+
+
+void pc_app_info_shared_area_dispose(char * path, pc_app_info_t  *mem, int fd)
 {
-	dispose_shared_area(path,fd_pc_app_info);
+	if (mem)
+	{
+		munmap(mem, sizeof(pc_app_info_t));
+	}
+
+	int fd_to_close = (fd >= 0) ? fd : fd_pc_app_info;
+	dispose_shared_area(path, fd_to_close);
 }
 
 
