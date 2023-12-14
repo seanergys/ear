@@ -108,7 +108,15 @@ void close_ips()
 }
 
 
+/* Uncomment too fake the EARD allocation error 
+ * Set to 1 to simulate a situation where the "general" allocation fails,
+ * but the individual suceeds.
+ * Set to 2 to simulate a situation where every allocation, however small, fails.
+ */
+#define FAKE_EARD_ALLOC_ERROR 1
+
 #define CHECK_ALLOC 1
+
 /* checks if the propagation will have enough memory for its items 
  * Returns:
  * 0 if it cannot allocate the minimum
@@ -130,11 +138,17 @@ int can_allocate(request_t *command, size_t size, int num_items)
     if (tmp_size == 0) { //no propagation, current node is a leaf node
         tmp_size = num_items; 
     }
+#ifdef FAKE_EARD_ALLOC_ERROR
+    tmp = NULL;
+#else
     tmp = calloc(tmp_size, size);
+#endif
     if (tmp == NULL) {
         error("EARD does not have enough memory for propagation, returning");
 
+#if FAKE_EARD_ALLOC_ERROR != 2
         tmp = calloc(num_items, size); //minimum required
+#endif
         if (tmp == NULL) {
             error("EARD does not have enough memory for a single status");
             return 0;
