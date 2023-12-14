@@ -108,6 +108,7 @@ void close_ips()
 }
 
 
+#define CHECK_ALLOC 1
 /* checks if the propagation will have enough memory for its items 
  * Returns:
  * 0 if it cannot allocate the minimum
@@ -119,6 +120,7 @@ int can_allocate(request_t *command, size_t size, int num_items)
     /* Since we've had errors with out of memory before, we check beforehand if we can allocate
      * enough memory for all the statuses for all */
 
+#if CHECK_ALLOC
     uint32_t tmp_size;
     char *tmp;
     verbose(0, "prefetching %lu bytes to check if status propagation is possible", total_ips*size);
@@ -142,6 +144,7 @@ int can_allocate(request_t *command, size_t size, int num_items)
     verbose(0, "prefetching was successful, freeing memory");
 
     free(tmp);
+#endif
     return 2; //everything can be allocated
 }
 
