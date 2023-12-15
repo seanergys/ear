@@ -113,7 +113,7 @@ void close_ips()
  * but the individual suceeds.
  * Set to 2 to simulate a situation where every allocation, however small, fails.
  */
-#define FAKE_EARD_ALLOC_ERROR 1
+#define FAKE_EARD_ALLOC_ERROR 0
 
 #define CHECK_ALLOC 1
 
