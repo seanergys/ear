@@ -300,7 +300,7 @@ static state_t earl_periodic_actions_talp_finalize();
 static state_t check_eard_earl_compatibility(state_t eard_connect_state)
 {
 	state_t st = EAR_SUCCESS;
-	if (!eard_connect_state ) return EAR_ERROR;
+	if (state_fail(eard_connect_state)) return EAR_ERROR;
 #if VERIFY_EARD_COMPAT
 	eard_state_t eard_conf;
 	if (state_ok(st = eards_get_state(&eard_conf))){
@@ -1247,32 +1247,34 @@ void ear_init()
         #if FAKE_EAR_NOT_INSTALLED
         uint first_dummy = 1;
         #endif
-				do{
-	
-	
+				do
+				{
 					system_conf = attach_settings_conf_shared_area(system_conf_path);
 					resched_conf = attach_resched_shared_area(resched_conf_path);
 
-          #if FAKE_EAR_NOT_INSTALLED
-          if (first_dummy){
+#if FAKE_EAR_NOT_INSTALLED
+					if (first_dummy){
             system_conf  = NULL;
             resched_conf = NULL;
             verbose_master(0, "FAKE_EAR_NOT_INSTALLED in shared areas");
             first_dummy = 0;
           }
-          #endif
+#endif
 
 					/* If I'm the master, I will create the dummy regions */
 					create_dummy_path_lock(get_ear_tmp(), ID, dummy_areas_path, GENERIC_NAME);
-					if ((system_conf == NULL) && (resched_conf == NULL) && !my_id){
+
+					if ((system_conf == NULL) && (resched_conf == NULL) && !my_id)
+					{
 							verbose(2, "[%s] Shared memory not present, creating dummy areas", node_name);
 							create_eard_dummy_shared_regions(get_ear_tmp(), create_ID(my_job_id,my_step_id));
 							fd_dummy = file_lock_create(dummy_areas_path);
-					}else if ((system_conf == NULL) && (resched_conf == NULL) && my_id){
+					} else if ((system_conf == NULL) && (resched_conf == NULL) && my_id)
+					{
 							/* If I'm not the master, I will wait */
 							while(!file_is_regular(dummy_areas_path));
 					}
-				}while((system_conf == NULL) || (resched_conf == NULL));
+				} while((system_conf == NULL) || (resched_conf == NULL));
 
 				debug("[%s.%d] system_conf  = %p", node_name, ear_my_rank, system_conf);
 				debug("resched_conf = %p", resched_conf);
@@ -1426,8 +1428,8 @@ void ear_init()
 
                     } else {
                         verbose(2, "%sRank %d NOT connected with EARD%s %s",
-                                COL_BLU,ear_my_rank,COL_CLR, state_msg);
-                        eard_ok=0;
+                                COL_BLU, ear_my_rank, COL_CLR, state_msg);
+                        eard_ok = 0;
                         if (!my_id) notify_eard_connection(0);
                     }
        }
