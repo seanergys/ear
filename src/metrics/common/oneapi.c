@@ -153,7 +153,6 @@ static ullong fnv1a(char c)
 
 static ullong hash(char *string)
 {
-    uint length = ZE_MAX_DEVICE_UUID_SIZE;
     uint hash = 0;
     uint i = 0;
 
@@ -169,7 +168,6 @@ static state_t static_init()
     ze_device_handle_t    *devices;
     uint                   drivers_count = 0;
     uint                   devices_count = 0;
-    uint                   uuid_length;
     ze_result_t            z;
     int                    dr;
     int                    dv;
@@ -255,7 +253,7 @@ static state_t static_init()
                 hs[hs_count].scard_count = 1;
             }
             // Getting the serial
-            hs[hs_count].uuid = hash(hs[dv].device_props.uuid.id);
+            hs[hs_count].uuid = hash((char *) hs[dv].device_props.uuid.id);
             // Last printings
             print_device_info(dv);
 

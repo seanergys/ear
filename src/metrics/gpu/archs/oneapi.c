@@ -84,9 +84,11 @@ void gpu_oneapi_get_api(uint *api)
 state_t gpu_oneapi_init(ctx_t *c)
 {
     timestamp_t time;
-    state_t s;
     int i;
 
+    if (pool != NULL) {
+        return EAR_SUCCESS;
+    }
     pool = calloc(devs_count, sizeof(gpu_t));
     // Initializing pool (pool at 0 is not incorrect)
     timestamp_getfast(&time);
@@ -101,10 +103,9 @@ state_t gpu_oneapi_init(ctx_t *c)
 	sus->time_relax = 2000;
 	sus->time_burst = 1000;
 	// Initializing monitoring thread.
-	if (state_fail(s = sus->suscribe(sus))) {
+	if (state_fail(sus->suscribe(sus))) {
 		debug("GPU monitor FAILS");
-		monitor_unregister(sus);
-		free(pool);
+        return gpu_oneapi_dispose(c);
 	}
     } // ok_pool
 	return EAR_SUCCESS;
@@ -112,6 +113,11 @@ state_t gpu_oneapi_init(ctx_t *c)
 
 state_t gpu_oneapi_dispose(ctx_t *c)
 {
+    if (ok_pool && pool != NULL) {
+        monitor_unregister(sus);
+        free(pool);
+        pool = NULL;
+    }
 	return EAR_SUCCESS;
 }
 
@@ -242,13 +248,14 @@ static state_t oneapi_read_utilization(int dv, gpu_t *data)
     int                       prio_count = 0;
     int                       prio_set = NO_PRIO;
     int                       prio;
+    ze_result_t               z;
     #if SHOW_DEBUGS
 	ze_result_t               z;
     #endif
 
 	for (d = 0; d < devs[dv].sengines_count; ++d) {
-        #if SHOW_DEBUGS
         if_fail(ze.sEngineGetActivity(devs[dv].sengines[d], &info), continue);
+        #if SHOW_DEBUGS
         debug("DEV%d ENGINE DOMAIN%d: %lu active uS (%lu timestamp) (sub %d) (%s)", dv, d,
             info.activeTime, info.timestamp, devs[dv].sengines_props[d].subdeviceId,
             engtostr(devs[dv].sengines_props[d].type, NULL));
@@ -344,7 +351,7 @@ state_t gpu_oneapi_pool(void *p)
 		pool[dv].util_gpu += current.util_gpu;
 		pool[dv].temp_gpu += current.temp_gpu;
 		pool[dv].temp_mem += current.temp_mem;
-		pool[dv].energy_j += current.energy_j;
+		pool[dv].energy_j  = current.energy_j;
 		pool[dv].power_w  += 0.0;
 		pool[dv].working   = current.working;
 		pool[dv].correct   = 1;

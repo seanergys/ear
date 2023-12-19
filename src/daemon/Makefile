@@ -1,5 +1,5 @@
 CFLAGS  = $(CC_FLAGS) -O2 -I$(SRCDIR) $(CONSTANTS) -Wall $(DB_CFLAGS)
-LDFLAGS = $(DB_LDFLAGS) -lm -pthread -ldl -rdynamic 
+LDFLAGS = -lm -pthread -ldl -rdynamic 
 
 ######## INSTALLATION
 

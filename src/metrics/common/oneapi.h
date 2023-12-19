@@ -31,7 +31,7 @@
 #define ZES_FREQ_DOMAIN_GPU                       0
 #define ZES_FREQ_DOMAIN_MEMORY                    0
 #define ZES_ENGINE_GROUP_ALL                      0
-#define ZE_MAX_DEVICE_UUID_SIZE                   0
+#define ZE_MAX_DEVICE_UUID_SIZE                   1
 #define ZES_TEMP_SENSORS_MEMORY                   0
 #define ZES_TEMP_SENSORS_GPU                      0
 #define ZES_ENGINE_GROUP_ALL                      0

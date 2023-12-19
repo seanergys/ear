@@ -50,6 +50,14 @@ state_t DB_parse_token(db_conf_t *conf,char *token)
       strcpy(conf->ip, token);
 			found = EAR_SUCCESS;
     }
+    else if (!strcmp(token, "DBSECIP"))
+    {
+      token = strtok(NULL, "=");
+      strclean(token, '\n');
+      remove_chars(token, ' ');
+      strcpy(conf->sec_ip, token);
+			found = EAR_SUCCESS;
+    }
     else if (!strcmp(token, "MARIADBUSER") || !strcmp(token, "DBUSER"))
     {
       token = strtok(NULL, "=");
@@ -127,8 +135,8 @@ state_t DB_parse_token(db_conf_t *conf,char *token)
 void print_database_conf(db_conf_t *conf)
 {
   verbosen(VCCONF,"\n--> DB configuration\n");
-  verbosen(VCCONF, "---> IP: %s\tUser: %s\tUser commands %s\tPort:%u\tDB:%s\n",
-      conf->ip, conf->user, conf->user_commands,conf->port, conf->database);
+  verbosen(VCCONF, "---> IP: %s sec_ip %s \tUser: %s\tUser commands %s\tPort:%u\tDB:%s\n",
+      conf->ip, conf->sec_ip, conf->user, conf->user_commands,conf->port, conf->database);
   verbosen(VCCONF,"-->max_connections %u report_node_details %u report_sig_details %u report_loops %u\n",conf->max_connections,conf->report_node_detail,conf->report_sig_detail,conf->report_loops);
 
 
@@ -139,6 +147,7 @@ void set_default_db_conf(db_conf_t *db_conf)
   strcpy(db_conf->database, "EAR");
   strcpy(db_conf->user_commands, "ear_commands");
   strcpy(db_conf->ip, "127.0.0.1");
+  strcpy(db_conf->sec_ip, "");
   db_conf->port = 3306;
   db_conf->max_connections=MAX_DB_CONNECTIONS;
   db_conf->report_node_detail=1;

@@ -156,13 +156,13 @@ void init_db_helper(db_conf_t *conf)
     if (num_per_args == EAR_ERROR) {
         warning("Could not retrieve number of elements in Periodic_metrics table");
         set_node_detail(db_config->report_node_detail);
-    } else if (num_per_args < FULL_PERIODIC_METRIC_ARGS) {
-        if (num_sig_args != SIMPLE_PERIODIC_METRIC_ARGS) {
+    } else if (num_per_args < (FULL_PERIODIC_METRIC_ARGS + 1)) {
+        if (num_per_args != (SIMPLE_PERIODIC_METRIC_ARGS + 1)) {
             warning("ERROR: The number of columns in the Periodic_metrics table does not correspond to the one set up (%d columns in table, %d are used in code)", num_sig_args, SIMPLE_PERIODIC_METRIC_ARGS);
         }
         set_node_detail(0);
     }else {
-        if (num_sig_args != FULL_PERIODIC_METRIC_ARGS) {
+        if (num_per_args != (FULL_PERIODIC_METRIC_ARGS + 1)) {
             warning("ERROR: The number of columns in the Periodic_metrics table does not correspond to the one set up (%d columns in table, %d are used in code)", num_sig_args, FULL_PERIODIC_METRIC_ARGS);
         }
         set_node_detail(1);

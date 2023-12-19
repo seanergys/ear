@@ -18,6 +18,7 @@
 //#define SHOW_DEBUGS 1
 
 #include <CL/cl.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <common/utils/string.h>

@@ -66,7 +66,7 @@ int send_non_block_data(int fd, size_t size, char *data, int type);
 void send_command_all(request_t command, cluster_conf_t *my_cluster_conf);
 
 /** Corrects a propagation error, sending to the child nodes when the parent isn't responding. */
-void correct_error(int target_idx, int total_ips, int *ips, request_t *command, uint port);
+void correct_error(int target_idx, uint32_t total_ips, int *ips, request_t *command, uint port);
 
 request_header_t correct_data_prop(int target_idx, int total_ips, int *ips, request_t *command, uint port, void **data);
 
