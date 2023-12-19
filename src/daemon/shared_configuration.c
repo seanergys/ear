@@ -92,8 +92,8 @@ settings_conf_t *create_settings_conf_shared_area(char * path, int *fd)
 
 settings_conf_t * attach_settings_conf_shared_area(char * path)
 {
-    return (settings_conf_t *)attach_shared_area(path,sizeof(settings_conf_t),O_RDONLY,&fd_settings,NULL);
-}                                
+    return (settings_conf_t *) attach_shared_area(path, sizeof(settings_conf_t), O_RDONLY, &fd_settings, NULL);
+}
 
 
 void dettach_settings_conf_shared_area()
@@ -138,7 +138,7 @@ void print_settings_conf(settings_conf_t *setting)
 resched_t *create_resched_shared_area(char *path, int *fd)  
 {
 	resched_t my_settings;
-	mode_t perms = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+	mode_t perms = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH;
 
 	resched_t *mem = (resched_t *) create_shared_area(path, perms, (char *) &my_settings,
 																										sizeof(my_settings), &fd_resched, 1);
@@ -199,7 +199,7 @@ int get_app_mgt_path(char *tmp, uint ID,char *path)
 app_mgt_t * create_app_mgt_shared_area(char *path, int *fd)
 {
   app_mgt_t my_app_data;
-	mode_t perms = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+	mode_t perms = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH;
 
 	app_mgt_t *mem;
   mem = (app_mgt_t *) create_shared_area(path, perms, (char *) &my_app_data,
@@ -257,7 +257,7 @@ int get_pc_app_info_path(char *tmp,uint ID,char *path)
 pc_app_info_t  *create_pc_app_info_shared_area(char *path, int *fd)
 {
 	pc_app_info_t my_data;
-	mode_t perms = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+	mode_t perms = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH;
 
 	pc_app_info_t *mem;
   mem = (pc_app_info_t *) create_shared_area(path, perms, (char *) &my_data,
