@@ -41,43 +41,43 @@
 
 
 #define verbose_info(msg, ...) do { \
-	verbose(VEARL_INFO, COL_BLU "[%s][%d][INFO]" COL_CLR msg, \
+	verbose(VEARL_INFO, COL_BLU "[%s][%d][INFO] " COL_CLR msg, \
 					node_name, my_node_id, ##__VA_ARGS__); \
 } while (0);
 
 
 #define verbose_error(msg, ...) do { \
-    verbose(VEARL_ERROR, COL_BLU "[%s][%d][INFO]" COL_CLR msg, \
+    verbose(VEARL_ERROR, COL_BLU "[%s][%d][INFO] " COL_CLR msg, \
 						node_name, my_node_id, ##__VA_ARGS__); \
 } while (0);
 
 
 #define verbose_warning(msg, ...) do { \
-    verbose(VEARL_WARN, COL_YLW "[%s][%d][WARNING]" COL_CLR msg, \
+    verbose(VEARL_WARN, COL_YLW "[%s][%d][WARNING] " COL_CLR msg, \
 						node_name, my_node_id, ##__VA_ARGS__); \
 } while (0);
 
 
 #define verbose_info_master(msg, ...) do { \
-    verbose_master(VEARL_INFO, COL_BLU "[%s][%d][INFO]" COL_CLR msg, \
+    verbose_master(VEARL_INFO, COL_BLU "[%s][%d][INFO] " COL_CLR msg, \
 									 node_name, my_node_id, ##__VA_ARGS__); \
 } while (0);
 
 
 #define verbose_info2_master(msg, ...) do { \
-	verbose_master(VEARL_INFO2, COL_BLU "[%s][%d][INFO2]" COL_CLR msg, \
+	verbose_master(VEARL_INFO2, COL_BLU "[%s][%d][INFO2] " COL_CLR msg, \
 								 node_name, my_node_id, ##__VA_ARGS__); \
 } while (0);
 
 
 #define verbose_error_master(msg, ...) do { \
-    verbose_master(VEARL_ERROR, COL_RED "[%s][%d][ERROR]" COL_CLR msg, \
+    verbose_master(VEARL_ERROR, COL_RED "[%s][%d][ERROR] " COL_CLR msg, \
 									 node_name, my_node_id, ##__VA_ARGS__); \
 } while (0);
 
 
 #define verbose_warning_master(msg, ...) do { \
-    verbose_master(VEARL_WARN, COL_YLW "[%s][%d][WARNING]" COL_CLR msg, \
+    verbose_master(VEARL_WARN, COL_YLW "[%s][%d][WARNING] " COL_CLR msg, \
 									 node_name, my_node_id, ##__VA_ARGS__); \
 } while (0);
 

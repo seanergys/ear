@@ -60,15 +60,17 @@
 #include <management/gpu/gpu.h>
 #endif
 
+
 /* Verbose levels */
 #define POLICY_INFO   2
 #define POLICY_PHASES 2
 #define POLICY_GPU    2
 
+
 /* Wrap verbosing policy general info.
  * Currently, it is a verbose master with level 2. */
-#define verbose_policy_info(msg, ...)\
-    verbose_info2_master("Policy:" msg, ##__VA_ARGS__);
+#define verbose_policy_info(msg, ...) \
+    verbose_info2_master("Policy: " msg, ##__VA_ARGS__);
 
 
 #define DEF_USE_CPUPRIO 0
@@ -1340,7 +1342,7 @@ state_t policy_ok(signature_t *curr, signature_t *prev, int *ok)
     /* Below definition wraps verbose messages triggered from this function.
      * It is a verbose master with level 2. */
 #define verbose_policy_ok(msg, ...) \
-    verbose_policy_info("%sPOLICY OK%s" msg, COL_BLU, COL_CLR, ##__VA_ARGS__)
+    verbose_policy_info("%sPOLICY OK%s " msg, COL_BLU, COL_CLR, ##__VA_ARGS__)
 
     if (masters_info.my_master_rank < 0) {
         *ok = 1;
