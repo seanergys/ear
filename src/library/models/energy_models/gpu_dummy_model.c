@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #if !SHOW_DEBUGS
@@ -275,7 +275,7 @@ state_t energy_model_project_power(signature_t *signature, ulong from_ps, ulong 
 
 			for (uint g = 0; g < num_gpus; g++)
 			{
-				debug("Going to project the power for the GPU %d...");
+				debug("Going to project the power for the GPU %d...", g);
 				double CPOWER = signature->gpu_sig.gpu_data[g].GPU_power;
 
 				double FP64 = dcgmis_data_64[g].values[fp64_info[event_info_pos]];

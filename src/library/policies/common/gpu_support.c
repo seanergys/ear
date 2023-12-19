@@ -27,6 +27,7 @@
 #include <library/policies/policy_ctx.h>
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
+#include <library/common/utils.h>
 #include <library/metrics/metrics.h>
 
 extern const int     polsyms_n;

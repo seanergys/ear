@@ -54,7 +54,7 @@ static dcgmi_lib_t dcgmi_data;
 
 static uint *dcgmi_instances;
 
-static int event_info[DCGMI_LIB_SUPPORTED_EVENTS][2];
+static int **event_info;
 
 /* DCGMI monitor variables. */ 
 static suscription_t *dcgmi_monitor;
@@ -74,6 +74,10 @@ static state_t dcgmi_paction(void *p);
 
 /** Selects the dcgmi_lib init (allocation) function based on GPU model. */
 static state_t set_init_fn(dcgmi_lib_init_fn *dst_fn_ptr);
+
+
+static state_t event_info_alloc(int ***event_info_src);
+static void event_info_free(int ***event_info_src);
 
 
 state_t dcgmi_lib_load()
@@ -97,97 +101,110 @@ state_t dcgmi_lib_load()
 		{
 			dcgmi_lib_init_fn init_fn;
 
-			if (state_ok(set_init_fn(&init_fn)))
+			// We first allocate memory for event_info
+			if (state_ok(event_info_alloc(&event_info)))
 			{
-				// TODO: Allocate and initialize here all data structures based on GPU microarch.
-				if (state_ok(init_fn(&dcgmi_data, event_info)))
+				// Detect the GPU model and set the device-specific init function
+				if (state_ok(set_init_fn(&init_fn)))
 				{
-					dcgmi_instances = calloc(dcgmi_data.dcgmi_set_count, sizeof(uint));
-
-					if (dcgmi_instances)
+					// Allocate and initialize here all data structures based on GPU microarch.
+					if (state_ok(init_fn(&dcgmi_data, event_info)))
 					{
-						/* Common set up */
-						for (uint set = 0; set < dcgmi_data.dcgmi_set_count; set++)
+						dcgmi_instances = calloc(dcgmi_data.dcgmi_set_count, sizeof(uint));
+
+						if (dcgmi_instances)
 						{
-							gpu_dcgmi_events_to_str(dcgmi_data.dcgmi_events[set], dcgmi_data.dcgmi_set_sizes[set],
-																			dcgmi_data.dcgmi_events_str[set]);
-
-							/* The init is done only once because because it is not needed to do it more times. */
-							if (set == 0)
+							/* Common set up */
+							for (uint set = 0; set < dcgmi_data.dcgmi_set_count; set++)
 							{
-								gpu_dcgmi_init(dcgmi_data.dcgmi_events_str[set], dcgmi_data.dcgmi_set_sizes[set]);
-							}
+								gpu_dcgmi_events_to_str(dcgmi_data.dcgmi_events[set], dcgmi_data.dcgmi_set_sizes[set],
+																				dcgmi_data.dcgmi_events_str[set]);
 
-							gpu_dcgmi_data_alloc(&dcgmi_data.dcgmi_metrics[set]);
-							gpu_dcgmi_data_alloc(&dcgmi_data.dcgmi_metrics_agg[set]);
-						}
-
-						if (state_ok(monitor_init()))
-						{
-							dcgmi_monitor							= suscription();
-							dcgmi_monitor->call_init 	= dcgmi_paction_init;
-							dcgmi_monitor->call_main 	= dcgmi_paction;
-
-							/* Configure the sampling period time. */
-
-							float sampling_period = DCGMI_LIB_SAMPLING_PERIOD;
-
-							char *csampling_period = ear_getenv(FLAG_DCGMI_SAMPLING_PERIOD);
-
-							if (csampling_period)
-							{
-								sampling_period = strtof(csampling_period, NULL);
-								if (sampling_period <= 0)
+								/* The init is done only once because because it is not needed to do it more times. */
+								if (set == 0)
 								{
-									// If invalid value, reset to the default value
-									sampling_period = DCGMI_LIB_SAMPLING_PERIOD;
+									gpu_dcgmi_init(dcgmi_data.dcgmi_events_str[set], dcgmi_data.dcgmi_set_sizes[set]);
 								}
+
+								gpu_dcgmi_data_alloc(&dcgmi_data.dcgmi_metrics[set]);
+								gpu_dcgmi_data_alloc(&dcgmi_data.dcgmi_metrics_agg[set]);
 							}
 
-							// Time burst and relax are the same here.
-							dcgmi_monitor->time_relax	= (int) (sampling_period * 1000);  // Miliseconds
-							dcgmi_monitor->time_burst	= dcgmi_monitor->time_relax;
+							if (state_ok(monitor_init()))
+							{
+								dcgmi_monitor							= suscription();
+								dcgmi_monitor->call_init 	= dcgmi_paction_init;
+								dcgmi_monitor->call_main 	= dcgmi_paction;
 
-							verbose_master(DCGMI_INIT_LVL, "DCGMI library sampling period: %d ms", dcgmi_monitor->time_relax);
+								/* Configure the sampling period time. */
 
-							if (state_fail(monitor_register(dcgmi_monitor)))
+								float sampling_period = DCGMI_LIB_SAMPLING_PERIOD;
+
+								char *csampling_period = ear_getenv(FLAG_DCGMI_SAMPLING_PERIOD);
+
+								if (csampling_period)
+								{
+									sampling_period = strtof(csampling_period, NULL);
+									if (sampling_period <= 0)
+									{
+										// If invalid value, reset to the default value
+										sampling_period = DCGMI_LIB_SAMPLING_PERIOD;
+									}
+								}
+
+								// Time burst and relax are the same here.
+								dcgmi_monitor->time_relax	= (int) (sampling_period * 1000);  // Miliseconds
+								dcgmi_monitor->time_burst	= dcgmi_monitor->time_relax;
+
+								verbose_master(DCGMI_INIT_LVL, "DCGMI library sampling period: %d ms", dcgmi_monitor->time_relax);
+
+								if (state_fail(monitor_register(dcgmi_monitor)))
+								{
+									dcgmi_lib_enabled = 0;
+
+									return_msg(EAR_ERROR, "Subscription failed.");
+								}
+
+								return EAR_SUCCESS;
+							} else
 							{
 								dcgmi_lib_enabled = 0;
 
-								return_msg(EAR_ERROR, "Subscription failed.");
-							}
+								verbose(3, "Monitor init failed (%s)", state_msg)
 
-							return EAR_SUCCESS;
+								return_msg(EAR_ERROR, "Monitor init failed.");
+							}
 						} else
 						{
 							dcgmi_lib_enabled = 0;
 
-							verbose(3, "Monitor init failed (%s)", state_msg)
+							// TODO: Free dcgmi_data memory
 
-							return_msg(EAR_ERROR, "Monitor init failed.");
+							dcgmi_lib_ret_alloc_err();
 						}
 					} else
 					{
 						dcgmi_lib_enabled = 0;
 
-						// TODO: Free dcgmi_data memory
+						verbose(3, "Allocating data (%s)", state_msg);
 
-						dcgmi_lib_ret_alloc_err();
+						return_msg(EAR_ERROR, "Allocating data");
 					}
 				} else
 				{
 					dcgmi_lib_enabled = 0;
 
-					verbose(3, "Allocating data (%s)", state_msg);
+					char err_msg[64];
+					snprintf(err_msg, sizeof(err_msg), "Getting device model: %s", state_msg);
 
-					return_msg(EAR_ERROR, "Allocating data");
+					return_msg(EAR_ERROR, err_msg);
 				}
 			} else
 			{
 				dcgmi_lib_enabled = 0;
 
 				char err_msg[64];
-				snprintf(err_msg, sizeof(err_msg), "Getting device model: %s", state_msg);
+				snprintf(err_msg, sizeof(err_msg), "Allocating event info data: %s", state_msg);
 
 				return_msg(EAR_ERROR, err_msg);
 			}
@@ -307,6 +324,8 @@ state_t dcgmi_lib_get_global_metrics(dcgmi_sig_t *dcgmi_sig)
 
 				gpu_dcgmi_data_copy(dcgmi_sig->dcgmi_metrics[set], dcgmi_data.dcgmi_metrics_agg[set]);
 			}
+
+			event_info_free(&event_info);
 
 			ear_unlock(&dcgmi_lock);
 
@@ -514,5 +533,67 @@ static state_t set_init_fn(dcgmi_lib_init_fn *dst_fn_ptr)
 	} else
 	{
 		return_msg(EAR_ERROR, Generr.input_null);
+	}
+}
+
+
+static state_t event_info_alloc(int ***event_info_src)
+{
+	if (event_info_src)
+	{
+		// We allocate event_info_src memory:
+		// # supported events x 2 values per event (group and set at which the event belongs to)
+
+		*event_info_src = (int **) malloc(DCGMI_LIB_SUPPORTED_EVENTS * sizeof(int *));
+
+		if (*event_info_src)
+		{
+			int i = 0;
+			int alloc_err = 0;
+
+			for (i = 0; i < DCGMI_LIB_SUPPORTED_EVENTS && !alloc_err; i++)
+			{
+				(*event_info_src)[i] = (int *) calloc(2, sizeof(int));
+				if (!(*event_info_src)[i])
+				{
+					alloc_err = 1;
+				}
+			}
+
+			// If an allocation error was detected, we free the allocated memory.
+			if (alloc_err)
+			{
+				for (int j = 0; j < i; j++)
+				{
+					free((*event_info_src)[j]);
+				}
+				free(*event_info_src);
+				*event_info_src = NULL;
+
+				return_msg(EAR_ERROR, Generr.alloc_error);
+			}
+
+			return EAR_SUCCESS;
+		} else
+		{
+			return_msg(EAR_ERROR, Generr.alloc_error);
+		}
+	} else
+	{
+		return_msg(EAR_ERROR, Generr.input_null);
+	}
+}
+
+
+static void event_info_free(int ***event_info_src)
+{
+	if (event_info_src)
+	{
+		for (int i = 0; i < DCGMI_LIB_SUPPORTED_EVENTS; i++)
+		{
+			free((*event_info_src)[i]);
+		}
+		free(*event_info_src);
+		*event_info_src = NULL;
 	}
 }
