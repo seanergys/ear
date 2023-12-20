@@ -85,11 +85,11 @@ void print_gpu_coefficients(coefficient_gpu_t *avg, int n_pstates)
 	int i;
   coefficient_gpu_t *coeff;
 
-  verbose(2, "FROM\t\tTO\tA\tB\tC\tD\tE\tF\tG\tH\tI\tJ");
+  verbose(2, "FROM\tTO\tA\tB\tC\tD\tE\tF\tG\tH\tI\tJ");
 	for (i=0; i<n_pstates; i++){
     coeff = &avg[i];
     if(coeff->available){
-      verbose(2,"%lu\t\t%lu\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf",
+      verbose(2,"%lu\t\t%lu\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf",
                  coeff->pstate_ref, coeff->pstate, 
                  coeff->A, coeff->B, coeff->C, coeff->D, coeff->E, 
                  coeff->F, coeff->G, coeff->H, coeff->I, coeff->J);

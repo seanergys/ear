@@ -262,7 +262,7 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
 				new_freq[i] = gpu_def_freq[i];
 			} else
 			{
-				if (GPU_metric_ready(my_sig, i))
+				if (GPU_metric_ready(my_sig, i)) // CALL It before call the model
 				{
 					verbose_master(2, "GPU[%d] optimize metric ready instances %d", i, dcgmi_instances);
 					metric_ready = 1;

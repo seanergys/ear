@@ -39,7 +39,7 @@ typedef struct coefficient
 
 typedef struct coefficient_gpu
 {
-  ulong pstate_ref;
+    ulong pstate_ref;
     ulong pstate;
     uint available;
     /* For power projection */

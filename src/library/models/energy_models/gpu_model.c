@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #if !SHOW_DEBUGS
@@ -54,13 +54,13 @@ static int valid_range(ulong from_ps, ulong to_ps);
 
 /** Computes the projection of the \ref signature loop time by using \ref coeff.
  * \pre All pointers must be initialized. Also freq_dst and signature's CPI must be non-zero. */
-static double project_time(coefficient_gpu_t *coeff, double FP64, double FP16, double FP32, double TENSOR, double CTIME, ulong DF);
+static double project_time(coefficient_gpu_t *coeff, double ctime, double fp16, double fp32, double fp64, double tensor, ulong df);
 
 
 
 /** Computes the projection of the \ref signature DC node power by using \ref coeffs.
  * \pre Input arguments must be initialized. */
-static double project_power(coefficient_gpu_t *coeff,double FP64, double FP16, double FP32, double TENSOR, double CPOWER, double DRAM, ulong TO_FREQ);
+static double project_power(coefficient_gpu_t *coeff, double cpower, double fp16, double fp32, double fp64, double tensor, double dram, ulong to_freq);
 
 
 /** Returns whether there exists a coefficients entry from \ref from_ps to \ref to_ps. */
@@ -193,15 +193,14 @@ state_t energy_model_project_time(signature_t *signature, ulong from_ps, ulong t
 
 
 			for (uint g = 0; g < num_gpus; g++) {
-
-			double CTIME = signature->time;
-			double FP64 = dcgmis_data_64[g].values[FP64_EV];
-			double FP16  = dcgmis_data_16[g].values[FP16_EV];
-			double FP32 = dcgmis_data_32[g].values[FP32_EV];
-			double TENSOR = dcgmis_data_ten[g].values[TNS_EV];
-			double DRAM   = dcgmis_data_dram[g].values[DRAM_EV];
-      ulong DF =  from_ps - to_ps;
-			proj_time[g]  = project_time(coeff, FP64, FP16, FP32, TENSOR, CTIME, DF);
+        double ctime = signature->time;
+        double fp16  = dcgmis_data_16[g].values[FP16_EV];
+        double fp32 = dcgmis_data_32[g].values[FP32_EV];
+        double fp64 = dcgmis_data_64[g].values[FP64_EV];
+        double tensor = dcgmis_data_ten[g].values[TNS_EV];
+        double dram   = dcgmis_data_dram[g].values[DRAM_EV];
+        ulong df =  from_ps - to_ps;
+        proj_time[g]  = project_time(coeff, ctime, fp16, fp32, fp64, tensor, df);
 			}
 		}
 	} else st = EAR_ERROR;
@@ -274,15 +273,14 @@ state_t energy_model_project_power(signature_t *signature, ulong from_ps, ulong 
 			for (uint g = 0; g < num_gpus; g++)
 			{
 				debug("Going to project the power for the GPU %d...", g);
-				double CPOWER = signature->gpu_sig.gpu_data[g].GPU_power;
+				double cpower = signature->gpu_sig.gpu_data[g].GPU_power;
+				double fp16 = dcgmis_data_16[g].values[fp16_info[event_info_pos]];
+				double fp32 = dcgmis_data_32[g].values[fp32_info[event_info_pos]];
+				double fp64 = dcgmis_data_64[g].values[fp64_info[event_info_pos]];
+				double tensor = dcgmis_data_ten[g].values[tensor_info[event_info_pos]];
+				double dram   = dcgmis_data_dram[g].values[dram_info[event_info_pos]];
 
-				double FP64 = dcgmis_data_64[g].values[fp64_info[event_info_pos]];
-				double FP16  = dcgmis_data_16[g].values[fp16_info[event_info_pos]];
-				double FP32 = dcgmis_data_32[g].values[fp32_info[event_info_pos]];
-				double TENSOR = dcgmis_data_ten[g].values[tensor_info[event_info_pos]];
-				double DRAM   = dcgmis_data_dram[g].values[dram_info[event_info_pos]];
-
-				proj_power[g] = project_power(coeff, FP64, FP16, FP32, TENSOR, CPOWER, DRAM, to_ps);
+				proj_power[g] = project_power(coeff, cpower, fp16, fp32, fp64, tensor, dram, to_ps);
 			}
 		} else
 		{
@@ -326,32 +324,31 @@ static int valid_range(ulong from_ps, ulong to_ps)
 
 
 
-static double project_time(coefficient_gpu_t *coeff, double FP64, double FP16, double FP32, double TENSOR, double CTIME, ulong DF)
+static double project_time(coefficient_gpu_t *coeff, double ctime, double fp16, double fp32, double fp64, double tensor, ulong df)
 {
-	debug("project_time with FP 64 %lf FP16 %lf FP32 %lf TENSOR %lf CTIME %lf FREQDIFF %lu", FP64, FP16, FP32, TENSOR, CTIME, DF);
-	/* Replace this function with the model */
-  double FP_ACT;
+	debug("project_time with: CTIME %lf FP16 %lf FP32 %lf FP64 %lf TENSOR %lf FREQDIFF %lu", ctime, fp16, fp32, fp64, tensor, df);
+  double fp_act;
   double proj_time;
 
-  FP_ACT = FP16 + FP32 + FP64 + TENSOR;
-  proj_time= CTIME + coeff->F*FP_ACT+ coeff->G*DF + coeff->H*FP_ACT*FP_ACT + coeff->I*FP_ACT*DF + coeff->J*DF*DF; 
+  fp_act = fp16 + fp32 + fp64 + tensor;
+  proj_time= ctime + coeff->F*fp_act+ coeff->G*df + coeff->H*fp_act*fp_act + coeff->I*fp_act*df + coeff->J*df*df; 
 	
   return proj_time;
 }
 
 
-static double project_power(coefficient_gpu_t *coeff, double FP64, double FP16, double FP32, double TENSOR, double CPOWER, double DRAM, ulong TO_FREQ)
+static double project_power(coefficient_gpu_t *coeff, double cpower, double fp16, double fp32, double fp64, double tensor, double dram, ulong to_freq)
 {
-	debug("project_power with TO_FREQ %lu FP16 %lf FP32 %lf FP64 %lf TENSOR %lf CPOWER %lf DRAM %lf", TO_FREQ, FP16, FP32, FP64, TENSOR, CPOWER, DRAM);
+	debug("project_power with to_freq %lu cpower %lf fp16 %lf fp32 %lf fp64 %lf tensor %lf dram %lf", to_freq, cpower, fp16, fp32, fp64, tensor, dram);
 	/* Replace this function with the model */
-  double FP_ACT;
+  double fp_act;
   double proj_power;
   
-  FP_ACT = FP16 + FP32 + FP64 + TENSOR;
-  proj_power = coeff->A*CPOWER + coeff->B*FP_ACT + coeff->C*DRAM + coeff->D*TO_FREQ + coeff->E; 
+  fp_act = fp16 + fp32 + fp64 + tensor;
+  proj_power = coeff->A*cpower + coeff->B*fp_act + coeff->C*dram + coeff->D*to_freq/1000000.0; //+ coeff->E; 
   	
-  debug("Power %lf = %lf x %lf + %lf x %lf + %lf x %lf + %lf x %lu + %lf", 
-        proj_power, coeff->A, CPOWER, coeff->B, FP_ACT, coeff->C, DRAM, coeff->D, TO_FREQ, coeff->E);
+  debug("Power: %lf = %lf x %lf + %lf x %lf + %lf x %lf + %lf x %lu", 
+        proj_power, coeff->A, cpower, coeff->B, fp_act, coeff->C, dram, coeff->D, to_freq);
 
   return proj_power;
 }
