@@ -31,7 +31,7 @@ int error_enabled	__attribute__((weak)) = 1;
 
 // Set
 #define ERROR_SET_FD(fd) error_channel = fd;
-#define ERROR_SET_EN(en) error_enabled = 0;
+#define ERROR_SET_EN(en) error_enabled = en;
 
 //
 #if SHOW_ERRORS

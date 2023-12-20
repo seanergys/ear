@@ -78,7 +78,11 @@
 #define PER_MPI_CALL_STATS 1 // This macro enables the stats computation on each MPI call.
                              // You can disable it for overhead testing.
 
-static timestamp pol_time_init, start_no_mpi;
+#if MPI && PER_MPI_CALL_STATS
+static timestamp pol_time_init;
+#endif
+
+static timestamp start_no_mpi;
 
 static mpi_information_t mpi_stats;
 
@@ -97,7 +101,7 @@ static uint mpi_sampling_enabled = 1;
 
 #else
 static uint dynamic_monitor_state = MPI_SAMPLING_IDLE;
-static uint mpi_sampling_enabled = 0;
+// static uint mpi_sampling_enabled = 0;
 #endif
 static uint monitor_mpi     = 1;
 static uint verb            = 1;

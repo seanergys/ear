@@ -15,6 +15,8 @@
 * and COPYING.EPL files.
 */
 
+// #define SHOW_DEBUGS 1
+
 #include <fcntl.h>
 #include <errno.h>
 #include <stdio.h>
@@ -26,7 +28,6 @@
 #include <sys/types.h>
 #include <common/config.h>
 #include <common/states.h>
-//#define SHOW_DEBUGS 1
 #include <common/output/debug.h>
 #include <common/system/shared_areas.h>
 
@@ -80,7 +81,7 @@ void *create_shared_area(char *path, mode_t file_perms_bits, char *data, int are
 		return NULL;
 	}
 
-	debug(,"mapping shared memory");
+	debug("mapping shared memory");
 	my_shared_region= mmap(NULL, area_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);                                     
 	if (my_shared_region == MAP_FAILED || my_shared_region == NULL)
 	{
@@ -96,22 +97,26 @@ void *create_shared_area(char *path, mode_t file_perms_bits, char *data, int are
 
 void *attach_shared_area(char *path, int area_size, uint perm, int *shared_fd, int *s)
 {
-    void * my_shared_region=NULL;
+    void *my_shared_region = NULL;
 		char buff[256];
 		int flags;
 		int size;
 		int fd;
-		strcpy(buff,path);
-    fd=open(buff,perm);
+
+		strcpy(buff, path);
+    fd = open(buff, perm);
     *shared_fd = fd;
-    if (fd<0){
-				#if SHOW_DEBUGS
-        error("error attaching to sharing memory (%s)\n",strerror(errno));
-        char buffout[1024];
-        sprintf(buffout, "echo '%s, %s, %d, %u, %d' >> /tmp/PLUGIN", strerror(errno), path, area_size, perm, fd);
-        system(buffout);
-				#endif
-        return NULL;
+
+    if (fd < 0)
+		{
+#if SHOW_DEBUGS
+			error("error attaching to shared memory at %s: %s", path, strerror(errno));
+			char buffout[1024];
+			sprintf(buffout, "echo '%s, %s, %d, %u, %d' >> /tmp/PLUGIN",
+							strerror(errno), path, area_size, perm, fd);
+			system(buffout);
+#endif
+				return NULL;
     }
 	if (area_size==0){
 		size=lseek(fd,0,SEEK_END);
