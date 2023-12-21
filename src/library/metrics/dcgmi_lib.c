@@ -550,11 +550,12 @@ static state_t event_info_alloc(int ***event_info_src)
 		{
 			int i = 0;
 			int alloc_err = 0;
-
+      
 			for (i = 0; i < DCGMI_LIB_SUPPORTED_EVENTS && !alloc_err; i++)
 			{
 				(*event_info_src)[i] = (int *) calloc(2, sizeof(int));
-				if (!(*event_info_src)[i])
+        if((*event_info_src)[i] == NULL)
+        //if (!(*event_info_src)[i])
 				{
 					alloc_err = 1;
 				}
@@ -563,7 +564,7 @@ static state_t event_info_alloc(int ***event_info_src)
 			// If an allocation error was detected, we free the allocated memory.
 			if (alloc_err)
 			{
-				for (int j = 0; j < i; j++)
+				for (int j = 0; j < i-1; j++)
 				{
 					free((*event_info_src)[j]);
 				}
