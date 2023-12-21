@@ -28,7 +28,7 @@
 #define DCGMI_SET3_SIZE 1
 
 
-state_t dcgmi_lib_turing_init(dcgmi_lib_t *dcgmi_data, int **event_info)
+state_t dcgmi_lib_turing_init(dcgmi_lib_t *dcgmi_data, int **event_info[2])
 {
 	if (dcgmi_data)
 	{
@@ -111,7 +111,7 @@ state_t dcgmi_lib_turing_init(dcgmi_lib_t *dcgmi_data, int **event_info)
 				{0, 9} // nvlink_rx_bytes
 			};
 
-			memcpy(event_info, turing_event_info, sizeof(turing_event_info));
+			memcpy((*event_info), turing_event_info, sizeof(turing_event_info));
 
 			return EAR_SUCCESS;
 		} else

@@ -24,7 +24,7 @@
 #include <library/metrics/dcgmi_lib/common.h>
 
 
-state_t dcgmi_lib_ampere_init(dcgmi_lib_t *dcgmi_data, int **event_info);
+state_t dcgmi_lib_ampere_init(dcgmi_lib_t *dcgmi_data, int **event_info[2]);
 
 
 #endif // _DCGMI_LIB_AMPERE_H_

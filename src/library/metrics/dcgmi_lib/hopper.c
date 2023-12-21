@@ -20,7 +20,7 @@
 #include <stdlib.h>
 
 
-state_t dcgmi_lib_hopper_init(dcgmi_lib_t *dcgmi_data, int **event_info)
+state_t dcgmi_lib_hopper_init(dcgmi_lib_t *dcgmi_data, int **event_info[2])
 {
 	if (dcgmi_data)
 	{

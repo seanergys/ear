@@ -46,7 +46,7 @@
 #define DCGMI_LIB_MODULE_DISABLED_MSG "DCGMI module not enabled."
 
 
-typedef state_t (*dcgmi_lib_init_fn) (dcgmi_lib_t *dcgmi_data, int **event_info);
+typedef state_t (*dcgmi_lib_init_fn) (dcgmi_lib_t *dcgmi_data, int **event_info[2]);
 
 static uint dcgmi_lib_enabled = (USE_GPUS && DCGMI) ? DCGMI_DEFAULT : 0;
 
@@ -54,7 +54,7 @@ static dcgmi_lib_t dcgmi_data;
 
 static uint *dcgmi_instances;
 
-static int **event_info;
+static int event_info[DCGMI_LIB_SUPPORTED_EVENTS][2];
 
 /* DCGMI monitor variables. */ 
 static suscription_t *dcgmi_monitor;
@@ -76,8 +76,8 @@ static state_t dcgmi_paction(void *p);
 static state_t set_init_fn(dcgmi_lib_init_fn *dst_fn_ptr);
 
 
-static state_t event_info_alloc(int ***event_info_src);
-static void event_info_free(int ***event_info_src);
+// static state_t event_info_alloc(int **event_info_src[2]);
+// static void event_info_free(int **event_info_src[2]);
 
 
 state_t dcgmi_lib_load()
@@ -101,14 +101,16 @@ state_t dcgmi_lib_load()
 		{
 			dcgmi_lib_init_fn init_fn;
 
-			// We first allocate memory for event_info
+#if 0
+      // We first allocate memory for event_info
 			if (state_ok(event_info_alloc(&event_info)))
 			{
+#endif
 				// Detect the GPU model and set the device-specific init function
 				if (state_ok(set_init_fn(&init_fn)))
 				{
 					// Allocate and initialize here all data structures based on GPU microarch.
-					if (state_ok(init_fn(&dcgmi_data, event_info)))
+					if (state_ok(init_fn(&dcgmi_data, &event_info)))
 					{
 						dcgmi_instances = calloc(dcgmi_data.dcgmi_set_count, sizeof(uint));
 
@@ -199,6 +201,7 @@ state_t dcgmi_lib_load()
 
 					return_msg(EAR_ERROR, err_msg);
 				}
+#if 0
 			} else
 			{
 				dcgmi_lib_enabled = 0;
@@ -208,6 +211,7 @@ state_t dcgmi_lib_load()
 
 				return_msg(EAR_ERROR, err_msg);
 			}
+#endif
 		} else
 		{
 			return_msg(EAR_ERROR, DCGMI_LIB_MODULE_DISABLED_MSG);
@@ -325,7 +329,7 @@ state_t dcgmi_lib_get_global_metrics(dcgmi_sig_t *dcgmi_sig)
 				gpu_dcgmi_data_copy(dcgmi_sig->dcgmi_metrics[set], dcgmi_data.dcgmi_metrics_agg[set]);
 			}
 
-			event_info_free(&event_info);
+			// event_info_free(&event_info);
 
 			ear_unlock(&dcgmi_lock);
 
@@ -536,7 +540,7 @@ static state_t set_init_fn(dcgmi_lib_init_fn *dst_fn_ptr)
 	}
 }
 
-
+/*
 static state_t event_info_alloc(int ***event_info_src)
 {
 	if (event_info_src)
@@ -598,3 +602,4 @@ static void event_info_free(int ***event_info_src)
 		*event_info_src = NULL;
 	}
 }
+*/
