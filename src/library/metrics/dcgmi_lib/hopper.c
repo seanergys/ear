@@ -20,7 +20,7 @@
 #include <stdlib.h>
 
 
-state_t dcgmi_lib_hopper_init(dcgmi_lib_t *dcgmi_data, int **event_info[2])
+state_t dcgmi_lib_hopper_init(dcgmi_lib_t *dcgmi_data, int **event_info, int event_info_rows, int event_info_cols)
 {
 	if (dcgmi_data)
 	{
@@ -84,7 +84,13 @@ state_t dcgmi_lib_hopper_init(dcgmi_lib_t *dcgmi_data, int **event_info[2])
 				{0, 11} // nvlink_rx_bytes
 			};
 
-			memcpy(event_info, hopper_event_info, sizeof(hopper_event_info));
+			for (int i = 0; i < ear_min(event_info_rows, 12); i++)
+			{
+				for (int j = 0; j < ear_min(event_info_cols, 2); j++)
+				{
+					event_info[i][j] = hopper_event_info[i][j];
+				}
+			}
 
 			return EAR_SUCCESS;
 		} else
