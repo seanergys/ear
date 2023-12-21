@@ -654,22 +654,16 @@ int plug_serialize_task_preload(spank_t sp, plug_serialization_t *sd)
 	plug_verbose(sp, 2, "trying to load file '%s'", buffer1);
 
 	// Testing the access to the library folder.
-	if (access(buffer1, X_OK) == 0)
-	{
-		char *ld_buf = sd->job.user.env.ld_preload;
-		// If LD_PRELOAD already exists.
-		if (getenv_agnostic(sp, Var.ld_preload.ear, ld_buf, bsize))
-		{
-			xsprintf(buffer2, "%s:", buffer1);
-			// Append the current LD_PRELOAD content to our library.
-			xsprintf(buffer1, "%s%s", buffer2, ld_buf);
-		}
-		// Setting LD_PRELOAD environment variable.
-		setenv_agnostic(sp, Var.ld_preload.ear, buffer1, 1);
-	} else {
-		plug_verbose(sp, 2, "this file can't be loaded '%s' (%d, %s)",
-			buffer1, errno, strerror(errno));
-	}
+    char *ld_buf = sd->job.user.env.ld_preload;
+    // If LD_PRELOAD already exists.
+    if (getenv_agnostic(sp, Var.ld_preload.ear, ld_buf, bsize))
+    {
+        xsprintf(buffer2, "%s:", buffer1);
+        // Append the current LD_PRELOAD content to our library.
+        xsprintf(buffer1, "%s%s", buffer2, ld_buf);
+    }
+    // Setting LD_PRELOAD environment variable.
+    setenv_agnostic(sp, Var.ld_preload.ear, buffer1, 1);
 
 	// These environment variables are required if loader is loaded.	
 	if (getenv_agnostic(sp, Var.name_app.slurm, buffer1, sizeof(buffer1)) == 1) {
