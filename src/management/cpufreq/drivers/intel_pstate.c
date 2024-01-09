@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #define _GNU_SOURCE
 #include <sched.h>
@@ -23,6 +23,8 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <common/config/config_def.h>
+#include <common/output/verbose.h>
 #include <common/output/debug.h>
 #include <common/utils/keeper.h>
 #include <metrics/common/file.h>
@@ -73,6 +75,8 @@ void mgt_intel_pstate_load(topology_t *tp, mgt_ps_driver_ops_t *ops)
     freq_max      = (ullong) atoi(buffer); // Based on cpuinfo_max_freq
     freq_max0     = freq_max;
     current_list  = calloc(cpu_count, sizeof(ullong));
+
+		verbose(1, "Intel pstate: Max CPU freq detected when cpufreq mgt loaded %llu", freq_max0);
     //
     mgt_intel_pstate_governor_get(&governor0);
     // Saved initial values
@@ -104,6 +108,14 @@ state_t mgt_intel_pstate_init()
     debug("freq_max     : %llu", freq_max);
     debug("freq_base    : %llu", bf.frequency);
     debug("boost_enabled: %u  ", bf.boost_enabled);
+		
+		verbose(1, "Intel pstate: Boost cfg when cpufreq mgt was loaded %s",
+						(bf.boost_enabled) ? "enabled" : "disabled");
+#if DYNAMIC_BOOST_MGT
+		bf.boost_enabled = 1;
+		verbose(1, "'Boost enabled' forced.");
+#endif
+
     // Discovering if boost is enabled
     if (bf.boost_enabled) {
         // Boost is marked as base clock + 1MHz
@@ -188,6 +200,7 @@ state_t mgt_intel_pstate_set_current(uint freq_index, int cpu)
     }
     // If is one P_STATE for all CPUs
     if (cpu == all_cpus) {
+				debug("All cpus: boost enabled: %u, freq index %u", bf.boost_enabled, freq_index);
         if (bf.boost_enabled && freq_index == 0) {
             sprintf(data, "%llu", freq_max0);
         } else {

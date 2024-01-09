@@ -709,6 +709,21 @@ int main(int argc, char *argv[])
 				}
 #endif
 
+			// Check
+			if (argc == 2) {
+				if (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0) Usage(argv[0]);
+
+				verb_level = atoi(argv[1]);
+
+
+				if ((verb_level < 0) || (verb_level > 4)) {
+					Usage(argv[0]);
+				}
+
+			}
+			set_ear_verbose(verb_level);
+			VERB_SET_LV(verb_level);
+
 				verbose(VCONF, "Starting eard...................pid %d", getpid());
 				create_log("/tmp", "eard_journal", fd_my_log);
 
@@ -719,6 +734,7 @@ int main(int argc, char *argv[])
 				}
 				strtok(nodename, ".");
 				verbose(VEARD_INIT,"Executed %s in node name %s", argv[0],nodename);
+
 				get_exec_name(my_name,sizeof(my_name));
 				verbose(VEARD_INIT,"My name is %s",my_name);
 
@@ -728,7 +744,7 @@ int main(int argc, char *argv[])
 
 				init_eard_rt_log();
 				log_report_eard_min_interval(MIN_INTERVAL_RT_ERROR);
-				verbose(VEARD_INIT,"Reading hardware topology");
+				verbose(VEARD_INIT, "Reading hardware topology");
 
                 /** Change the open file limit */
                 struct rlimit rl;
@@ -789,8 +805,18 @@ int main(int argc, char *argv[])
                     copy_my_node_conf(&my_original_node_conf, my_node_conf);
                     update_global_configuration_with_local_ssettings(&my_cluster_conf,my_node_conf);
                 }
-                verbose(VEARD_INIT,"Serializing cluster_conf");
-                serialize_cluster_conf(&my_cluster_conf, &ser_cluster_conf, &ser_cluster_conf_size);
+
+								if (argc < 2)
+								{
+									// If verbose level not given as program argument, we set the default.
+									set_verbose_variables();
+								} else
+								{
+									TIMESTAMP_SET_EN(my_cluster_conf.eard.use_log);
+								}
+
+								verbose(VEARD_INIT,"Serializing cluster_conf");
+								serialize_cluster_conf(&my_cluster_conf, &ser_cluster_conf, &ser_cluster_conf_size);
                 verbose(VEARD_INIT,"Serialized cluster conf requires %lu bytes", ser_cluster_conf_size);
 
                 verbose(VEARD_INIT,"Initializing dynamic information and creating tmp");
@@ -805,7 +831,6 @@ int main(int argc, char *argv[])
                     verbose(VEARD_INIT,"Creating log file");
                     create_log(my_cluster_conf.install.dir_temp, "eard", fd_my_log);
                 }
-                set_verbose_variables();
 
                 verbose(VEARD_INIT,"Creating frequency list in shared memory");
                 /** Shared memory is used between EARD and EARL **/
@@ -863,19 +888,6 @@ int main(int argc, char *argv[])
                 /* After potential recoveries, we set the info in the shared memory */
                 configure_default_values(&my_cluster_conf,my_node_conf);
 
-                // Check
-                if (argc == 2) {
-                    if (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0) Usage(argv[0]);
-                    verb_level = atoi(argv[1]);
-
-
-                    if ((verb_level < 0) || (verb_level > 4)) {
-                        Usage(argv[0]);
-                    }
-
-                }
-                set_ear_verbose(verb_level);
-                VERB_SET_LV(verb_level);
                 verbose(VEARD_INIT,"Catching signals");
                 // We catch signals
                 signal_catcher();
