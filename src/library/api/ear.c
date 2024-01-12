@@ -1064,6 +1064,34 @@ static void read_hack_env()
 		verbose(0,"[%s] Using HACK etc %s ", node_name, hack_etc);
 	}
 }
+
+
+static struct sigaction term_action, int_action, segv_action;
+static void configure_sigactions()
+{
+	// SIGTERM action for job cancellation
+	sigemptyset(&term_action.sa_mask);
+	term_action.sa_handler = ear_lib_sig_handler;
+	term_action.sa_flags = 0;
+	sigaction(SIGTERM, &term_action, NULL);
+
+	// SIGINT
+	sigemptyset(&int_action.sa_mask);
+	int_action.sa_handler = ear_lib_sig_handler;
+	int_action.sa_flags = 0;
+	sigaction(SIGINT, &int_action, NULL);
+
+	if (ear_getenv(FLAG_EAR_DEBUG) != NULL)
+	{
+		// SIGSEGV
+		sigemptyset(&segv_action.sa_mask);
+		segv_action.sa_handler = ear_lib_sig_handler;
+		segv_action.sa_flags = 0;
+		sigaction(SIGSEGV, &segv_action, NULL);
+	}
+}
+
+
 /*****************************************************************************************************************************************************/
 /*****************************************************************************************************************************************************/
 /*****************************************************************************************************************************************************/
@@ -1821,15 +1849,6 @@ void ear_init()
 				if (masters_info.my_master_rank==0) {
 								verbose_master(1, "EAR initialized successfully.");
 				}
-
-				/* SIGTERM action for job cancellation */
-				struct sigaction term_action;
-				sigemptyset(&term_action.sa_mask);
-				term_action.sa_handler = ear_lib_sig_handler;
-				term_action.sa_flags = 0;
-				sigaction(SIGTERM, &term_action, NULL);
-				sigaction(SIGINT, &term_action, NULL);
-				sigaction(SIGSEGV, &term_action, NULL);
 
        #if !EAR_OFF
 				/* Monitor is used for applications with no mpi of few mpi calss per second. Gets control of signature computation
