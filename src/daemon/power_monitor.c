@@ -1399,19 +1399,22 @@ policy_conf_t *configure_context(powermon_app_t *pmapp, uint user_type,
             my_policy->p_state, cpus_free, cpus_used);
 		state_t ret_st = frequency_set_userspace_governor_all_cpus();
     check_usrspace_gov_set(ret_st, VJOBPMON);
+
     /* Setting the default CPU freq for the new job */
     frequency_set_with_mask(&not_in_jobs_mask, f);
+
     /* Moved to powermon_init mgw configuration */
     /* Setting the default IMC freq by default in all the sockets */
+    verbose(VJOBPMON, "Restoring IMC frequency");
     if (state_fail(mgt_imcfreq_set_auto(no_ctx))){
         verbose(VJOBPMON, "Error when setting IMCFREQ by default");
     }
-    verbose(VJOBPMON,"Restoring IMC frequency" );
 #if USE_GPUS
-    if (my_node_conf->gpu_def_freq > 0){
+    if (my_node_conf->gpu_def_freq > 0)
+    {
       /** Can we know which GPUS are used by this job?? */
+      verbose(VJOBPMON, "Restoring GPU frequency to %lu", my_node_conf->gpu_def_freq);
       gpu_mgr_set_freq_all_gpus(my_node_conf->gpu_def_freq);
-      verbose(VJOBPMON,"Restoring GPU frequency to %lu", my_node_conf->gpu_def_freq);
     }
 #endif
 

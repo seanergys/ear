@@ -2351,9 +2351,7 @@ static state_t policy_setup_priority_per_cpu(uint *setup_prio_list, uint setup_p
                 }
 
             } else {
-                char err_msg[64];
-                snprintf(err_msg, sizeof(err_msg), "Setting priority list (%s)", state_msg);
-                return_msg(EAR_ERROR, err_msg);
+							return_msg(EAR_ERROR, "Setting priority list.");
             }
         } else {
             // If we don't have an API, we won't set any priority configuration.

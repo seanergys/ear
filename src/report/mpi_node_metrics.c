@@ -80,10 +80,6 @@ static state_t append_data(report_id_t *id, sig_ext_t *data, uint count)
 
     debug("[%d] report mpi node metrics print", id->master_rank);
 
-    if (csv_log_file == NULL) {
-        return EAR_ERROR;
-    }
-
     if (!report_file_created)
     {
         stream = fopen(csv_log_file, "a");
