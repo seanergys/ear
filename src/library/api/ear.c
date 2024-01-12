@@ -1124,6 +1124,9 @@ void ear_init()
 				if (cfake_eard_error != NULL) fake_eard_error = atoi(cfake_eard_error);
         if (cfake_force_shared_node != NULL) fake_force_shared_node = atoi(cfake_force_shared_node);
 
+				set_no_files_limit(ULONG_MAX);
+				set_stack_size_limit(ULONG_MAX);
+
         #if START_END_OVH
         ullong elap_eard_init;
         timestamp start_eard_init, end_eard_init;
