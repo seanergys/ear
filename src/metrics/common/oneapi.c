@@ -33,8 +33,12 @@
 #else
 #define ZE_PATH          ONEAPI_BASE
 #endif
-#define ZE_N             34
+#define ZE_N             37
 #define ZE_LIB           "libze_loader.so"
+
+#ifndef USE_SYSMAN
+#define USE_SYSMAN 0
+#endif
 
 static const char *ze_names[] = {
     // Core
@@ -49,6 +53,9 @@ static const char *ze_names[] = {
     "zeDeviceGetMemoryProperties",
     "zeDriverGetLastErrorDescription",
     // Sysman
+    "zesInit",
+    "zesDriverGet",
+    "zesDeviceGet",
     "zesDeviceGetProperties",
     "sDeviceProcessesGetState",
     "zesDeviceEnumPowerDomains",
@@ -81,6 +88,12 @@ static uint                 hs_count;
 static ze_t                 ze;
 static uint                 ok;
 
+#if USE_SYSMAN
+typedef zes_driver_handle_t driver_handle_t ;
+#else
+typedef ze_driver_handle_t driver_handle_t;
+#endif
+
 static state_t static_open()
 {
     #define _open_test(path) \
@@ -112,14 +125,14 @@ static state_t static_open()
         action; \
     }
 
-static void print_driver_info(ze_driver_handle_t driver, int dr)
+static void print_driver_info(driver_handle_t driver, int dr)
 {
     ze_driver_properties_t           props;
     ze_api_version_t                 version;
     ze_result_t                      z;
 
     // Driver info
-    if_fail(ze.DriverGetProperties(driver, &props), return);
+    if_fail(ze.DriverGetProperties(driver, &props), return); // There's not exist an equivalent function using sysman API
     if_fail(ze.DriverGetApiVersion(driver, &version), return);
     debug("DRIVER%d version: %d (API %d) ", dr, props.driverVersion, version);
 }
@@ -164,8 +177,13 @@ static ullong hash(char *string)
 
 static state_t static_init()
 {
-    ze_driver_handle_t    *drivers;
+    driver_handle_t				*drivers;
+
+#if USE_SYSMAN
+    zes_device_handle_t    *devices;
+#else
     ze_device_handle_t    *devices;
+#endif // USE_SYSMAN
     uint                   drivers_count = 0;
     uint                   devices_count = 0;
     ze_result_t            z;
@@ -174,57 +192,137 @@ static state_t static_init()
     int                    dp;
 
     // Enabling SYSMAN
+		// Note: The documentation says that now it is not needed.
     setenv("ZES_ENABLE_SYSMAN", "1", 1);
+		setenv("ZES_ENABLE_SYSMAN_LOW_POWER", "1", 1);
     // This functions is protected from above. Lock is not required.
-    if_fail(ze.Init(0), reterr);
-    // Discovering all drivers
-    if_fail(ze.DriverGet(&drivers_count, NULL), reterr);
-    drivers = calloc(drivers_count, sizeof(ze_driver_handle_t));
-    if_fail(ze.DriverGet(&drivers_count, drivers), reterr);
+		if (USE_SYSMAN)
+		{
+			debug("Sysman init...");
+			if_fail(ze.sInit(0), reterr);
+
+			// Discovering all drivers
+			if_fail(ze.sDriverGet(&drivers_count, NULL), reterr);
+		} else
+		{
+			if_fail(ze.Init(0), reterr);
+
+			// Discovering all drivers
+			if_fail(ze.DriverGet(&drivers_count, NULL), reterr);
+		}
     debug("#drivers %u", drivers_count);
 
+		// driver_handle_t is compatible with both core and sysman APIs (see its definition above)
+    drivers = malloc(drivers_count * sizeof(driver_handle_t));
+		if (!drivers)
+		{
+			return_msg(EAR_ERROR, Generr.alloc_error);
+		}
+
+		if (USE_SYSMAN)
+		{
+			if_fail(ze.sDriverGet(&drivers_count, drivers), reterr);
+		} else
+		{
+			if_fail(ze.DriverGet(&drivers_count, drivers), reterr);
+		}
+
     // Counting to allocate
-    for (dr = 0; dr < drivers_count; ++dr) {
-        // Printing driver information
-        print_driver_info(drivers[dr], dr);
+    for (dr = 0; dr < drivers_count; ++dr)
+		{
         // Counting devices per driver
-        if_fail(ze.DeviceGet(drivers[dr], &devices_count, NULL), reterr);
+				if (USE_SYSMAN)
+				{
+					if_fail(ze.sDeviceGet(drivers[dr], &devices_count, NULL), reterr);
+				} else
+				{
+					// Printing driver information
+					// Note: The following function can not be used with SYSMAN.
+					print_driver_info(drivers[dr], dr);
+
+					if_fail(ze.DeviceGet(drivers[dr], &devices_count, NULL), reterr);
+				}
         hs_count += devices_count;
     }
     // No GPUs
-    if (hs_count == 0) {
+    if (hs_count == 0)
+		{
         return_msg(EAR_ERROR, "No GPUs detected");
     }
     // Allocating all the devices
     debug("#devices %u", hs_count);
-    devices  = calloc(hs_count, sizeof(ze_device_handle_t));
+		if (USE_SYSMAN)
+		{
+			devices  = calloc(hs_count, sizeof(zes_device_handle_t));
+		} else
+		{
+			devices  = calloc(hs_count, sizeof(ze_device_handle_t));
+		}
     hs       = calloc(hs_count, sizeof(ze_handlers_t));
     hs_count = 0;
     // Filling
     for (dr = 0; dr < drivers_count; ++dr) {
         devices_count = 0;
         // Discovering all devices
-        if_fail(ze.DeviceGet(drivers[dr], &devices_count, NULL), reterr);
-        if_fail(ze.DeviceGet(drivers[dr], &devices_count, devices), reterr);
+				if (USE_SYSMAN)
+				{
+					if_fail(ze.sDeviceGet(drivers[dr], &devices_count, NULL), reterr);
+					if_fail(ze.sDeviceGet(drivers[dr], &devices_count, devices), reterr);
+				} else
+				{
+					if_fail(ze.DeviceGet(drivers[dr], &devices_count, NULL), reterr);
+					if_fail(ze.DeviceGet(drivers[dr], &devices_count, devices), reterr);
+				}
 
-        for (dv = 0; dv < devices_count; ++dv) {
+        for (dv = 0; dv < devices_count; ++dv)
+				{
             debug("-- DEVICE%d -----------------------------", dv);
             // Getting properties to see if is a GPU device
-            if_fail(ze.DeviceGetProperties(devices[dv], &hs[dv].device_props), reterr);
-            if_fail(ze.sDeviceGetProperties(devices[dv], &hs[dv].sdevice_props), reterr);
-            // If not a GPU
-            if(ZE_DEVICE_TYPE_GPU != hs[dv].device_props.type) {
+						ze_device_type_t dev_type;
+
+						if (USE_SYSMAN)
+						{
+							debug("Getting Device %d properties", dv);
+							if_fail(ze.sDeviceGetProperties(devices[dv], &hs[dv].sdevice_props), reterr);
+
+							// WARNING: "core" attribute is started to being deprecated in favor of the
+							// usage of the zes_device_ext_properties_t since v1.8. But there is no
+							// way to get that zes_device_ext_properties_t yet
+							dev_type = hs[dv].sdevice_props.core.type; // It is a 0. We can't use it later to check
+																												 // whether the device is a GPU
+
+						} else
+						{
+							if_fail(ze.DeviceGetProperties(devices[dv], &hs[dv].device_props), reterr);
+							dev_type = hs[dv].device_props.type;
+						}
+
+            // If not a GPU: We currently (level_zero >= v1.8) can't check this when using SYSMAN
+            if(!USE_SYSMAN && ZE_DEVICE_TYPE_GPU != dev_type) {
+							debug("Not a GPU");
                 continue;
             }
             // Copying main (single) domains
-            memcpy(&hs[hs_count].driver , &drivers[dr], sizeof(ze_driver_handle_t));
+						memcpy(&hs[hs_count].driver , &drivers[dr], sizeof(driver_handle_t));
+						// Below copy operations are save regardless devices' type (see its declaration),
+						// as ze_device_handle_t and zes_device_handle_t are compatible.
             memcpy(&hs[hs_count].device , &devices[dv], sizeof(ze_device_handle_t));
             memcpy(&hs[hs_count].sdevice, &devices[dv], sizeof(zes_device_handle_t));
+
             // Counting specific domains
+						debug("enumerating Power domains for Device %d", dv);
             if_fail(ze.sDeviceEnumPowerDomains      (devices[dv], &hs[hs_count].spowers_count , NULL), );
+
+						debug("enumerating Freq domains for Device %d", dv);
             if_fail(ze.sDeviceEnumFrequencyDomains  (devices[dv], &hs[hs_count].sfreqs_count  , NULL), );
+
+						debug("enumerating Engine groups for Device %d", dv);
             if_fail(ze.sDeviceEnumEngineGroups      (devices[dv], &hs[hs_count].sengines_count, NULL), );
+
+						debug("enumerating  Temp sensors for Device %d", dv);
             if_fail(ze.sDeviceEnumTemperatureSensors(devices[dv], &hs[hs_count].stemps_count  , NULL), );
+
+						debug("Getting Device psus %d properties", dv);
             if_fail(ze.sDeviceEnumPsus              (devices[dv], &hs[hs_count].spsus_count   , NULL), );
             // Allocating specific domains
             hs[hs_count].spowers  = calloc(hs[hs_count].spowers_count , sizeof(zes_pwr_handle_t));
@@ -253,7 +351,7 @@ static state_t static_init()
                 hs[hs_count].scard_count = 1;
             }
             // Getting the serial
-            hs[hs_count].uuid = hash((char *) hs[dv].device_props.uuid.id);
+            hs[hs_count].uuid = hash(hs[dv].device_props.uuid.id);
             // Last printings
             print_device_info(dv);
 
