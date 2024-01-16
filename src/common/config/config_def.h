@@ -35,6 +35,7 @@
 #define OPENMPI_EXT     "ompi.so"
 #define CUDA_EXT        "gen.so"
 #define OPENMP_EXT      "gen.so"
+#define ONEAPI_EXT			"gen.so"	
 #define DEF_EXT         "gen.so"
 
 #define FUJITSU_MPI_EXT "fujitsu.so"
