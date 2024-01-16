@@ -799,11 +799,11 @@ static state_t mpi_call_read_diff(mpi_information_t *diff, mpi_information_t *la
             i, diff->mpi_time, current.mpi_time, last->mpi_time,
             diff->exec_time, current.exec_time, last->exec_time);
 
-    diff->perc_mpi = (double) diff->mpi_time * 100.0 / (double) diff->exec_time;
+    diff->perc_mpi = ((diff->exec_time > 0) ?(double) diff->mpi_time * 100.0 / (double) diff->exec_time: 0);
 
     // mpi_call_copy(last, &current);
     mpi_call_get_stats(last, &current, -1); // Copy from current to last
-    last->perc_mpi =  (double) last->mpi_time * 100.0 / (double) last->exec_time;
+    last->perc_mpi =  ((last->exec_time > 0)? (double) last->mpi_time * 100.0 / (double) last->exec_time : 0);
 
     //  Check wether values are correctly bounded
     if (diff->perc_mpi < 0 || diff->perc_mpi > 100 || last->perc_mpi < 0 || last->perc_mpi > 100) {
