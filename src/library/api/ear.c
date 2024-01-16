@@ -1852,7 +1852,7 @@ void ear_init()
 				if (masters_info.my_master_rank==0) {
 								verbose_master(1, "EAR initialized successfully.");
 				}
-
+		configure_sigactions();
        #if !EAR_OFF
 				/* Monitor is used for applications with no mpi of few mpi calss per second. Gets control of signature computation
          * if neded*/
