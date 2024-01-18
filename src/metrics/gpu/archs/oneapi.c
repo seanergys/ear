@@ -268,11 +268,11 @@ static state_t oneapi_read_utilization(int dv, gpu_t *data)
             ulong tdiff = info.timestamp - save[dv][d].timestamp;
             if (prio < prio_set) {
                 debug("DEV%d ENGINE DOMAIN%d: selecting %s", dv, d, engtostr(devs[dv].sengines_props[d].type, NULL));
-                data->util_gpu  = (tdiff > 0LU) ? adiff / tdiff : 0LU;
+                data->util_gpu  = (tdiff > 0LU) ? adiff * 100 / tdiff : 0LU;
                 prio_set        = prio;
                 prio_count      = 1;
             } else if (prio == prio_set) {
-                data->util_gpu += (tdiff > 0LU) ? adiff / tdiff : 0LU;
+                data->util_gpu += (tdiff > 0LU) ? adiff * 100 / tdiff : 0LU;
                 prio_count     += 1;
             }
             memcpy(&save[dv][d], &info, sizeof(zes_engine_stats_t));

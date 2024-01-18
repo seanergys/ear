@@ -300,7 +300,7 @@ static state_t earl_periodic_actions_talp_finalize();
 static state_t check_eard_earl_compatibility(state_t eard_connect_state)
 {
 	state_t st = EAR_SUCCESS;
-	if (!eard_connect_state ) return EAR_ERROR;
+	if (state_fail(eard_connect_state)) return EAR_ERROR;
 #if VERIFY_EARD_COMPAT
 	eard_state_t eard_conf;
 	if (state_ok(st = eards_get_state(&eard_conf))){
@@ -1064,6 +1064,34 @@ static void read_hack_env()
 		verbose(0,"[%s] Using HACK etc %s ", node_name, hack_etc);
 	}
 }
+
+
+static struct sigaction term_action, int_action, segv_action;
+static void configure_sigactions()
+{
+	// SIGTERM action for job cancellation
+	sigemptyset(&term_action.sa_mask);
+	term_action.sa_handler = ear_lib_sig_handler;
+	term_action.sa_flags = 0;
+	sigaction(SIGTERM, &term_action, NULL);
+
+	// SIGINT
+	sigemptyset(&int_action.sa_mask);
+	int_action.sa_handler = ear_lib_sig_handler;
+	int_action.sa_flags = 0;
+	sigaction(SIGINT, &int_action, NULL);
+
+	if (ear_getenv(FLAG_EAR_DEBUG) != NULL)
+	{
+		// SIGSEGV
+		sigemptyset(&segv_action.sa_mask);
+		segv_action.sa_handler = ear_lib_sig_handler;
+		segv_action.sa_flags = 0;
+		sigaction(SIGSEGV, &segv_action, NULL);
+	}
+}
+
+
 /*****************************************************************************************************************************************************/
 /*****************************************************************************************************************************************************/
 /*****************************************************************************************************************************************************/
@@ -1095,6 +1123,9 @@ void ear_init()
         char *cfake_force_shared_node = ear_getenv(FLAG_FORCE_SHARED_NODE);
 				if (cfake_eard_error != NULL) fake_eard_error = atoi(cfake_eard_error);
         if (cfake_force_shared_node != NULL) fake_force_shared_node = atoi(cfake_force_shared_node);
+
+				set_no_files_limit(ULONG_MAX);
+				set_stack_size_limit(ULONG_MAX);
 
         #if START_END_OVH
         ullong elap_eard_init;
@@ -1247,32 +1278,34 @@ void ear_init()
         #if FAKE_EAR_NOT_INSTALLED
         uint first_dummy = 1;
         #endif
-				do{
-	
-	
+				do
+				{
 					system_conf = attach_settings_conf_shared_area(system_conf_path);
 					resched_conf = attach_resched_shared_area(resched_conf_path);
 
-          #if FAKE_EAR_NOT_INSTALLED
-          if (first_dummy){
+#if FAKE_EAR_NOT_INSTALLED
+					if (first_dummy){
             system_conf  = NULL;
             resched_conf = NULL;
             verbose_master(0, "FAKE_EAR_NOT_INSTALLED in shared areas");
             first_dummy = 0;
           }
-          #endif
+#endif
 
 					/* If I'm the master, I will create the dummy regions */
 					create_dummy_path_lock(get_ear_tmp(), ID, dummy_areas_path, GENERIC_NAME);
-					if ((system_conf == NULL) && (resched_conf == NULL) && !my_id){
+
+					if ((system_conf == NULL) && (resched_conf == NULL) && !my_id)
+					{
 							verbose(2, "[%s] Shared memory not present, creating dummy areas", node_name);
 							create_eard_dummy_shared_regions(get_ear_tmp(), create_ID(my_job_id,my_step_id));
 							fd_dummy = file_lock_create(dummy_areas_path);
-					}else if ((system_conf == NULL) && (resched_conf == NULL) && my_id){
+					} else if ((system_conf == NULL) && (resched_conf == NULL) && my_id)
+					{
 							/* If I'm not the master, I will wait */
 							while(!file_is_regular(dummy_areas_path));
 					}
-				}while((system_conf == NULL) || (resched_conf == NULL));
+				} while((system_conf == NULL) || (resched_conf == NULL));
 
 				debug("[%s.%d] system_conf  = %p", node_name, ear_my_rank, system_conf);
 				debug("resched_conf = %p", resched_conf);
@@ -1426,8 +1459,8 @@ void ear_init()
 
                     } else {
                         verbose(2, "%sRank %d NOT connected with EARD%s %s",
-                                COL_BLU,ear_my_rank,COL_CLR, state_msg);
-                        eard_ok=0;
+                                COL_BLU, ear_my_rank, COL_CLR, state_msg);
+                        eard_ok = 0;
                         if (!my_id) notify_eard_connection(0);
                     }
        }
@@ -1819,16 +1852,7 @@ void ear_init()
 				if (masters_info.my_master_rank==0) {
 								verbose_master(1, "EAR initialized successfully.");
 				}
-
-				/* SIGTERM action for job cancellation */
-				struct sigaction term_action;
-				sigemptyset(&term_action.sa_mask);
-				term_action.sa_handler = ear_lib_sig_handler;
-				term_action.sa_flags = 0;
-				sigaction(SIGTERM, &term_action, NULL);
-				sigaction(SIGINT, &term_action, NULL);
-				sigaction(SIGSEGV, &term_action, NULL);
-
+		configure_sigactions();
        #if !EAR_OFF
 				/* Monitor is used for applications with no mpi of few mpi calss per second. Gets control of signature computation
          * if neded*/
@@ -2540,8 +2564,6 @@ extern ulong local_max_sync_block;
 
 state_t earl_periodic_actions(void *no_arg)
 {
-    uint mpi_period;
-    float mpi_in_period;
     ulong period_elapsed, last_signature_elapsed;
     timestamp_t curr_periodic_time;
     uint new_ear_guided = ear_guided;

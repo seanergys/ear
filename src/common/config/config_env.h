@@ -109,6 +109,7 @@
  * These variables are not HACKS as there is no other way to specify in EAR.
  * @{
  */
+#define FLAG_EAR_DEBUG							 "EAR_DEBUG"
 #define FLAG_TRACE_PLUGIN            "EAR_TRACE_PLUGIN"       // Sets the trace plugin in EARL.
 #define FLAG_GPU_DEF_FREQ            "EAR_GPU_DEF_FREQ"       // This var sets a default GPU frequency.
 #define FLAG_GPU_DCGMI_ENABLED       "EAR_GPU_DCGMI_ENABLED"  // if DCGMI is enable at compile time, this flag allows to explicitly disable it: Default 1. (Use 1/0)

@@ -37,7 +37,7 @@
 #include <common/string_enhanced.h>
 
 #define EDB_NTYPES                    7
-#define EDB_MAX_CONNECTIONS           FD_SETSIZE - 48
+#define EDB_MAX_CONNECTIONS           2048
 #define EDB_OFFLINE                   0 // To test EARDBD offline
 // These are the type of the events passed by sockets.
 #define EDB_TYPE_ENERGY_REP           1

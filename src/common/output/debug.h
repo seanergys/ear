@@ -31,9 +31,11 @@ int debug_channel	     __attribute__((weak)) = 2;
 // Long format
 #if 1
 #define _debug(...) \
-    dprintf(debug_channel, "%s:%s:%d: ", __FILE__, __FUNCTION__, __LINE__); \
-    dprintf(debug_channel, __VA_ARGS__); \
-    dprintf(debug_channel, "\n");
+    do {\
+      dprintf(debug_channel, "%s:%s:%d: ", __FILE__, __FUNCTION__, __LINE__);\
+      dprintf(debug_channel, __VA_ARGS__);\
+      dprintf(debug_channel, "\n");\
+    } while(0);
 #else
 // Short format
 #define _debug(...) \

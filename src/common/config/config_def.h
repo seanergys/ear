@@ -35,6 +35,7 @@
 #define OPENMPI_EXT     "ompi.so"
 #define CUDA_EXT        "gen.so"
 #define OPENMP_EXT      "gen.so"
+#define ONEAPI_EXT			"gen.so"	
 #define DEF_EXT         "gen.so"
 
 #define FUJITSU_MPI_EXT "fujitsu.so"
@@ -88,6 +89,10 @@
 /* These flags configures EARL */
 /* When set to 1, turbo is allowed */
 #define USE_TURBO                           0
+
+/* Forces the intel pstate to create the cpufreq list using turbo freq. Used in cases where the turbo
+ * is on/off dynamically. It just works when using intel_pstate CPUFreq driver. */
+#define DYNAMIC_BOOST_MGT										0
 /* When set to 1, frequency is set to default when a new loop starts.
  * Otherwise, the current frequency is used till the policy is applied */
 #define RESET_FREQ                          0
@@ -183,6 +188,11 @@
  * and getting the number of elements that constitue the sum such as the minimum sum >= MAX_RANGE.
  * Ex: MAX_RANGE 30 and NUM_PROPS 3 -> sum = 3 + 9 + 27 -> depth of propagation = 3 */
 #define MAX_RANGE                           30
+
+/* Whether the security key is send and used by the remote communication layer. If
+ * set to 0, all remote messages will be accepted. Components compiled with 
+ * different values of this constant will NOT be compatible */
+#define USE_SEC_KEY_RC                      0
 
 
 /** @name Library

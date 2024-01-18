@@ -15,6 +15,7 @@
 * and COPYING.EPL files.
 */
 
+
 #define _GNU_SOURCE
 
 // #define SHOW_DEBUGS 1
@@ -70,6 +71,7 @@
 
 #include <report/report.h>
 
+
 #define POWERMON_RESTORE 1 // Enables the restore settings mechanism.
 
 extern pthread_barrier_t setup_barrier;
@@ -78,7 +80,6 @@ extern pthread_barrier_t setup_barrier;
 extern uint report_eard ;
 extern report_id_t rid;
 extern state_t report_connection_status;
-
 
 /** These variables come from eard.c */
 extern topology_t node_desc;
@@ -95,11 +96,9 @@ extern char nodename[MAX_PATH_SIZE];
 
 extern state_t report_connection_status;
 
-
 /* from eard_node_services */
 extern manages_info_t man;
 extern metrics_info_t met;
-
 
 state_t s;
 nm_t my_nm_id;
@@ -108,16 +107,13 @@ nm_data_t nm_init, nm_end, nm_diff, last_nm;
 dom_power_t pdomain;
 cpu_set_t in_jobs_mask;
 
-
 static pthread_mutex_t app_lock = PTHREAD_MUTEX_INITIALIZER;
 static ehandler_t my_eh_pm;
 static char *TH_NAME = "PowerMon";
 
-
 /* Used to compute avg freq for jobs. Must be moved to powermon_app */
 static cpufreq_t *freq_job2;
 static uint       freq_count;
-
 
 // This array has 1 entry per job supported
 static job_context_t jobs_in_node_list[MAX_CPUS_SUPPORTED];
@@ -126,7 +122,6 @@ static char shmem_path[MAX_PATH_SIZE];
 static int fd_powermon = -1;
 static int fd_periodic = -1;
 static energy_data_t c_energy;
-
 
 /* Powercap */
 static energy_data_t e_pmon_begin, e_pmon_end, e_pmon;
@@ -137,7 +132,6 @@ static int powermon_num_pstates;
 static periodic_metric_t current_sample;
 static double last_power_reported = 0;
 static ulong  last_node_power     = 0;
-
 
 static uint *powermon_restore_cpufreq_list;
 
@@ -502,15 +496,15 @@ void end_context(int cc)
 
             get_settings_conf_path(ear_tmp, ID, shmem_path);
 
-            settings_conf_shared_area_dispose(shmem_path);
+            settings_conf_shared_area_dispose(shmem_path, current_ear_app[cc]->settings, current_ear_app[cc]->fd_shared_areas[SETTINGS_AREA]);
             get_resched_path(ear_tmp, ID, shmem_path);
-            resched_shared_area_dispose(shmem_path);
+            resched_shared_area_dispose(shmem_path, current_ear_app[cc]->resched, current_ear_app[cc]->fd_shared_areas[RESCHED_AREA]);
 
             get_app_mgt_path(ear_tmp, ID, shmem_path);
-            app_mgt_shared_area_dispose(shmem_path);
+            app_mgt_shared_area_dispose(shmem_path, current_ear_app[cc]->app_info, current_ear_app[cc]->fd_shared_areas[APP_MGT_AREA]);
 
             get_pc_app_info_path(ear_tmp, ID, shmem_path);
-            pc_app_info_shared_area_dispose(shmem_path);
+            pc_app_info_shared_area_dispose(shmem_path, current_ear_app[cc]->pc_app_info, current_ear_app[cc]->fd_shared_areas[PC_APP_AREA]);
 
             cpufreq_data_free(&current_ear_app[cc]->freq_job1,
                               &current_ear_app[cc]->freq_diff);
@@ -657,7 +651,7 @@ int new_context(job_id id, job_id sid, int *cc)
     get_settings_conf_path(ear_tmp, ID, shmem_path);
     debug("Settings for new context placed at %s", shmem_path);
 
-    current_ear_app[ccontext]->settings = create_settings_conf_shared_area(shmem_path);
+    current_ear_app[ccontext]->settings = create_settings_conf_shared_area(shmem_path, &current_ear_app[ccontext]->fd_shared_areas[SETTINGS_AREA]);
     if (current_ear_app[ccontext]->settings == NULL) {
         error("Error creating shared memory between EARD & EARL for (%lu,%lu)",
               id,sid);
@@ -671,7 +665,7 @@ int new_context(job_id id, job_id sid, int *cc)
     get_resched_path(ear_tmp, ID, shmem_path);
     debug("Resched path for new context placed at %s",shmem_path);
 
-    current_ear_app[ccontext]->resched = create_resched_shared_area(shmem_path);
+    current_ear_app[ccontext]->resched = create_resched_shared_area(shmem_path, &current_ear_app[ccontext]->fd_shared_areas[RESCHED_AREA]);
 
     if (current_ear_app[ccontext]->resched == NULL) {
         error("Error creating resched shared memory between EARD & EARL for (%lu,%lu)",id,sid);
@@ -689,7 +683,7 @@ int new_context(job_id id, job_id sid, int *cc)
 
     debug("App_MGR for new context placed at %s",shmem_path);
 
-    current_ear_app[ccontext]->app_info = create_app_mgt_shared_area(shmem_path);
+    current_ear_app[ccontext]->app_info = create_app_mgt_shared_area(shmem_path, &current_ear_app[ccontext]->fd_shared_areas[APP_MGT_AREA]);
 
     if (current_ear_app[ccontext]->app_info == NULL) {
         error("Error creating shared memory between EARD & EARL for app_mgt (%lu,%lu)",id,sid);
@@ -703,7 +697,7 @@ int new_context(job_id id, job_id sid, int *cc)
 
     debug("PC_app_info for new context placed at %s", shmem_path);
 
-    current_ear_app[ccontext]->pc_app_info = create_pc_app_info_shared_area(shmem_path);
+    current_ear_app[ccontext]->pc_app_info = create_pc_app_info_shared_area(shmem_path, &current_ear_app[ccontext]->fd_shared_areas[PC_APP_AREA]);
     if (current_ear_app[ccontext]->pc_app_info == NULL){
         error("Error creating shared memory between EARD & EARL for pc_app_infoi (%lu,%lu)",id,sid);
         ear_unlock(&current_ear_app[ccontext]->powermon_app_mutex);
@@ -942,20 +936,20 @@ state_t powermon_create_idle_context()
   /* Shared memory regions for default context */
   get_settings_conf_path(ear_tmp, ID, shmem_path);
   verbose(VJOBPMON,"Settings for new context placed at %s",shmem_path);
-  pmapp->settings = create_settings_conf_shared_area(shmem_path);
+  pmapp->settings = create_settings_conf_shared_area(shmem_path, &pmapp->fd_shared_areas[SETTINGS_AREA]);
 	if (pmapp->settings == NULL){
 		verbose(VJOBPMON,"Error creating shared memory region for earl shared data");
 	}
   get_resched_path(ear_tmp, ID,shmem_path);
   verbose(VJOBPMON,"Resched area for new context placed at %s",shmem_path);
-  pmapp->resched = create_resched_shared_area(shmem_path);
+  pmapp->resched = create_resched_shared_area(shmem_path, &pmapp->fd_shared_areas[RESCHED_AREA]);
 	if (pmapp->resched == NULL){
 		verbose(VJOBPMON,"Error creating shared memory region for re-scheduling data");
 	}
   reset_shared_memory(pmapp);
   get_app_mgt_path(ear_tmp, ID, shmem_path);
   verbose(VJOBPMON,"App- Mgr area for new context placed at %s",shmem_path);
-  pmapp->app_info = create_app_mgt_shared_area(shmem_path);
+  pmapp->app_info = create_app_mgt_shared_area(shmem_path, &pmapp->fd_shared_areas[APP_MGT_AREA]);
 	if (pmapp->app_info == NULL){
 		verbose(VJOBPMON,"Error creating app mgr shared region ");
 	}
@@ -963,7 +957,7 @@ state_t powermon_create_idle_context()
 
   get_pc_app_info_path(ear_tmp, ID, shmem_path);
   verbose(VJOBPMON,"App PC area for new context placed at %s",shmem_path);
-  pmapp->pc_app_info = create_pc_app_info_shared_area(shmem_path);
+  pmapp->pc_app_info = create_pc_app_info_shared_area(shmem_path, &pmapp->fd_shared_areas[PC_APP_AREA]);
 	if (pmapp->pc_app_info == NULL){
 		verbose(VJOBPMON,"Error creating app pc shared region");
 	}
@@ -1405,19 +1399,22 @@ policy_conf_t *configure_context(powermon_app_t *pmapp, uint user_type,
             my_policy->p_state, cpus_free, cpus_used);
 		state_t ret_st = frequency_set_userspace_governor_all_cpus();
     check_usrspace_gov_set(ret_st, VJOBPMON);
+
     /* Setting the default CPU freq for the new job */
     frequency_set_with_mask(&not_in_jobs_mask, f);
+
     /* Moved to powermon_init mgw configuration */
     /* Setting the default IMC freq by default in all the sockets */
+    verbose(VJOBPMON, "Restoring IMC frequency");
     if (state_fail(mgt_imcfreq_set_auto(no_ctx))){
         verbose(VJOBPMON, "Error when setting IMCFREQ by default");
     }
-    verbose(VJOBPMON,"Restoring IMC frequency" );
 #if USE_GPUS
-    if (my_node_conf->gpu_def_freq > 0){
+    if (my_node_conf->gpu_def_freq > 0)
+    {
       /** Can we know which GPUS are used by this job?? */
+      verbose(VJOBPMON, "Restoring GPU frequency to %lu", my_node_conf->gpu_def_freq);
       gpu_mgr_set_freq_all_gpus(my_node_conf->gpu_def_freq);
-      verbose(VJOBPMON,"Restoring GPU frequency to %lu", my_node_conf->gpu_def_freq);
     }
 #endif
 
@@ -2830,19 +2827,24 @@ static void set_default_powermon_init(powermon_app_t *app)
 
 #if POWERMON_RESTORE
     /* IMC freq */
-    verbose(VCONF, "Resetting IMC frequency...");
+    verbose(VCONF, "Setting default IMC frequency...");
     if (node_desc.vendor == VENDOR_INTEL) {
         mgt_imcfreq_set_auto(no_ctx);
     } else if (node_desc.vendor == VENDOR_AMD) {
         mgt_imcfreq_set_current(no_ctx, 0, all_sockets);
     }
 
-    /* If policy_freq is zero, we don't need to change the current configuration */
-    if (app->policy_freq) {
+    /* If policy_freq is zero, we don't need to change the current configuration:
+     * EARL is not used and !ForceFrequencies */
+    if (app->policy_freq)
+    {
 #if USE_GPUS
         /* GPU freq. */
-        if (my_node_conf->gpu_def_freq > 0) {
-            verbose(VCONF, "Restoring to GPU freq %.2f GHz", (float) my_node_conf->gpu_def_freq / 1000000);
+        if (my_node_conf->gpu_def_freq > 0)
+        {
+            verbose(VCONF, "Setting default GPU freq.: %.2f GHz",
+                    (float) my_node_conf->gpu_def_freq / 1000000);
+
             gpu_mgr_set_freq_all_gpus(my_node_conf->gpu_def_freq);
         }
 #endif
@@ -2977,21 +2979,28 @@ static void set_default_powermon_end(powermon_app_t *app, uint idle)
 
 #if USE_GPUS
   /* GPUs */
-  if (idle && my_node_conf->gpu_def_freq) { /* EARD is not aware of the GPUs used */
+#if 0
+  if (idle && app->policy_freq && my_node_conf->gpu_def_freq)
+  {
+    /* EARD is not aware of the GPUs used */
     ulong idle_gpu_freq;
     /* We assume all the gpus are the same */
     gpu_mgr_get_min(0, &idle_gpu_freq);
-    verbose(VCONF + 1, "Restoring to GPU freq %.2f GHz", (float)idle_gpu_freq/1000000.0);
+    verbose(VCONF, "Set idle GPU freq %.2f GHz", (float) idle_gpu_freq / 1000000.0);
     gpu_mgr_set_freq_all_gpus(idle_gpu_freq);
   }
 #endif
+#endif
 
-  if (idle) {
+  if (idle)
+  {
     /* IMC freq : It's already done at init, but it's included here for simplicity*/
     verbose(VCONF, "Restoring IMC freq");
-    if (node_desc.vendor == VENDOR_INTEL) {
+    if (node_desc.vendor == VENDOR_INTEL)
+    {
       mgt_imcfreq_set_auto(no_ctx);
-    } else if (node_desc.vendor == VENDOR_AMD) {
+    } else if (node_desc.vendor == VENDOR_AMD)
+    {
       mgt_imcfreq_set_current(no_ctx, 0, all_sockets);
     }
   }

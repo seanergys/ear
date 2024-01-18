@@ -15,6 +15,7 @@
 * and COPYING.EPL files.
 */
 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
@@ -26,6 +27,10 @@
 #include <common/system/shared_areas.h>
 #include <common/output/debug.h>
 
+
+#define MAX_LOCK_TRIES (MAX_SOCKET_COMM_TRIES * 10)
+
+
 static char node_mgr_tmp[PATH_MAX];
 static char node_mgr_info[PATH_MAX];
 static char node_mgr_lock[PATH_MAX];
@@ -33,7 +38,6 @@ static int fd_node_mgr_lck = -1;
 static int fd_node_mgr_info = -1;
 static ear_njob_t *node_jobs_list = NULL;
 
-#define MAX_LOCK_TRIES (MAX_SOCKET_COMM_TRIES * 10)
 
 /** Initialices the lock file and attaches the shared memory region. nodelist is internally allocated. Must be used by earl */
 state_t nodemgr_job_init(char *tmp, ear_njob_t **nodelist )
@@ -99,7 +103,7 @@ state_t nodemgr_server_init(char *tmp, ear_njob_t **nodelist)
 
   /* The eard will create this area */
 	debug("NODE MGR INFO %s\n", node_mgr_info);
-	mode_t perms = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH; // Read and write permission for the owner user. Read permission for group and others.
+	mode_t perms = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH; // Read and write permission for the owner user. Read permission for group and others.
   node_jobs_list = (ear_njob_t *) create_shared_area(node_mgr_info, perms, (char *) node_jobs_list, sizeof(ear_njob_t) * MAX_CPUS_SUPPORTED, &fd_node_mgr_info, 0);
 	
   file_unlock(fd_node_mgr_lck);

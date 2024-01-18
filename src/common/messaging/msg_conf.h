@@ -108,7 +108,9 @@ typedef union req_data{
 typedef struct request{
     uint32_t        req;
     uint32_t        node_dist;
+#if USE_SEC_KEY_RC
     uint32_t        sec_key;
+#endif
     int32_t         time_code;
     int32_t         num_nodes;
     int32_t         *nodes;
@@ -118,7 +120,9 @@ typedef struct request{
 typedef struct internal_request {
     uint32_t    req;
     uint32_t    node_dist;
+#if USE_SEC_KEY_RC
     uint32_t    sec_key;
+#endif
     int32_t     time_code; 
     int32_t     num_nodes;
     int32_t     *nodes;

@@ -53,7 +53,7 @@ uint                    sockets_timeout;
 // Descriptors
 struct sockaddr_storage addr_new;
 afd_set_t               fds_active;
-long                    fd_hosts[FD_SETSIZE]; // Saving host IPs
+long                    fd_hosts[EDB_MAX_CONNECTIONS + 48]; // Saving host IPs
 // Nomenclature:
 // 	- Server: main buffer of the gathered metrics. Inserts buffered metrics in
 //	the database.
