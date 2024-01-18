@@ -521,7 +521,11 @@ int plug_deserialize_remote(spank_t sp, plug_serialization_t *sd)
 	}
 
 	// Master
+	#if !ERUN || SLURM_VERSION_NUMBER >= 0x170b00
+    hostlist_t *hostlist;
+    #else
 	hostlist_t hostlist;
+    #endif
 	int from_sbatch;
 	int from_srun;
 	char *node;
