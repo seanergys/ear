@@ -106,7 +106,7 @@
 
 /**
  * @defgroup OTHER Other
- * These variables are not HACKS as there is no other way to specify in EAR.
+ * These variables are not HACKS and there is not other way to specify in EAR.
  * @{
  */
 #define FLAG_EAR_DEBUG							 "EAR_DEBUG"

@@ -76,6 +76,7 @@
 #include <library/dynais/dynais.h>
 #include <library/tracer/tracer.h>
 #include <library/states/states.h>
+#include <library/states/states_comm.h>
 #include <library/models/cpu_power_model.h>
 #include <library/policies/policy.h>
 #include <library/metrics/metrics.h>
@@ -270,6 +271,8 @@ uint exclusive = 1;
 ear_classify_t phases_limits;
 static ulong dynais_calls = 0;
 uint limit_exceeded = 0;
+
+extern ulong perf_accuracy_min_time;
 
 #if DLB
 /** Creates a subscription to the EARL periodic monitor. Burst and relax timing is the same (10 seconds).
@@ -984,29 +987,40 @@ void check_large_job_use_case()
 
 void update_configuration()
 {
-				char *cdynais_window;
-				int dynais_window=system_conf->lib_info.dynais_window;
-				/* print_settings_conf(system_conf);*/
-				set_ear_power_policy(system_conf->policy);
-				set_ear_power_policy_th(system_conf->settings[0]);
-				set_ear_p_state(system_conf->def_p_state);
-				set_ear_coeff_db_pathname(system_conf->lib_info.coefficients_pathname);
-				set_ear_dynais_levels(system_conf->lib_info.dynais_levels);
-				/* Included for dynais tunning */
-				cdynais_window=ear_getenv(HACK_DYNAIS_WINDOW_SIZE);
-				if ((cdynais_window!=NULL) && (system_conf->user_type==AUTHORIZED)){
-								dynais_window=atoi(cdynais_window);
-				}
-				set_ear_dynais_window_size(dynais_window);
-				set_ear_learning(system_conf->learning);
-				dynais_timeout=system_conf->lib_info.dynais_timeout;
-				lib_period=system_conf->lib_info.lib_period;
-				check_every=system_conf->lib_info.check_every;
-        #if FAKE_LEARNING
-        ear_whole_app = 1;
-        #else
-				ear_whole_app = system_conf->learning;
-        #endif
+	char *cdynais_window;
+	int dynais_window=system_conf->lib_info.dynais_window;
+
+	// print_settings_conf(system_conf);
+
+	set_ear_power_policy(system_conf->policy);
+	set_ear_power_policy_th(system_conf->settings[0]);
+
+	set_ear_p_state(system_conf->def_p_state);
+
+	set_ear_coeff_db_pathname(system_conf->lib_info.coefficients_pathname);
+
+	set_ear_dynais_levels(system_conf->lib_info.dynais_levels);
+
+	/* Included for dynais tunning */
+	cdynais_window = ear_getenv(HACK_DYNAIS_WINDOW_SIZE);
+	if ((cdynais_window != NULL) && (system_conf->user_type == AUTHORIZED)){
+		dynais_window = atoi(cdynais_window);
+	}
+	set_ear_dynais_window_size(dynais_window);
+
+	set_ear_learning(system_conf->learning);
+
+	dynais_timeout = system_conf->lib_info.dynais_timeout;
+
+	lib_period = system_conf->lib_info.lib_period;
+
+	check_every = system_conf->lib_info.check_every;
+
+#if FAKE_LEARNING
+	ear_whole_app = 1;
+#else
+	ear_whole_app = system_conf->learning;
+#endif
 }
 
 void pin_processes(topology_t *t,cpu_set_t *mask,int is_set,int ppn,int idx)
@@ -1326,6 +1340,7 @@ void ear_init()
 				}else {
 					valid_ID = 0;
 				}
+
 				/* Updating configuration */
 				if (valid_ID){
 								debug("Updating the configuration sent by the EARD");
@@ -2564,66 +2579,79 @@ extern ulong local_max_sync_block;
 
 state_t earl_periodic_actions(void *no_arg)
 {
-    ulong period_elapsed, last_signature_elapsed;
-    timestamp_t curr_periodic_time;
-    uint new_ear_guided = ear_guided;
+	ulong period_elapsed, last_signature_elapsed;
+	timestamp_t curr_periodic_time;
+	uint new_ear_guided = ear_guided;
 
-    overhead_start(id_ovh_earl_monitor);
+	overhead_start(id_ovh_earl_monitor);
 
-    if (ear_guided == TIME_GUIDED){
-      ear_iterations += ITERS_PER_PERIOD;
-    }
+	if (ear_guided == TIME_GUIDED)
+	{
+		ear_iterations += ITERS_PER_PERIOD;
+	}
 
-    timestamp_getfast(&curr_periodic_time);
-    period_elapsed = timestamp_diff(&curr_periodic_time, &periodic_time,TIME_SECS);
-    last_signature_elapsed = timestamp_diff(&curr_periodic_time, &time_last_signature, TIME_SECS);
+	timestamp_getfast(&curr_periodic_time);
+	period_elapsed = timestamp_diff(&curr_periodic_time, &periodic_time,TIME_SECS);
+	last_signature_elapsed = timestamp_diff(&curr_periodic_time, &time_last_signature, TIME_SECS);
 
+	debug("%s [%d] elapsed %lu: first_exec_monitor %d Iterations %d MPI %d time_guided %d periodic %u dynais(%d) calls %lu",
+				node_name, my_node_id, period_elapsed, first_exec_monitor, ear_iterations, is_mpi_enabled(), ear_guided == TIME_GUIDED, ear_periodic_mode, dynais_enabled, dynais_calls);
 
-     debug("%s [%d] elapsed %lu: first_exec_monitor %d Iterations %d MPI %d time_guided %d periodic %u dynais(%d) calls %lu",
-              node_name, my_node_id, period_elapsed, first_exec_monitor, ear_iterations, is_mpi_enabled(), ear_guided == TIME_GUIDED, ear_periodic_mode, dynais_enabled, dynais_calls);
+	if (first_exec_monitor)
+	{
+		first_exec_monitor = 0;
+		overhead_stop(id_ovh_earl_monitor);
+		return EAR_SUCCESS;
+	}
 
-    if (first_exec_monitor) {
-            first_exec_monitor = 0;
-            overhead_stop(id_ovh_earl_monitor);
-            return EAR_SUCCESS;
-    }
+	if (!is_mpi_enabled() || (ear_guided == TIME_GUIDED))
+	{
+		//if (ear_guided == TIME_GUIDED) verbose_master(1, "(Time guided) elapsed %lu iteration iters %d period %u", period_elapsed, ear_iterations, lib_period);
+		states_new_iteration(my_id, ITERS_PER_PERIOD, ear_iterations, 1, 1, lib_period, 0);
+		if (avg_mpi_calls_per_second() >= MAX_MPI_CALLS_SECOND) limit_exceeded = 1;
+	}
 
-    if (!is_mpi_enabled() || (ear_guided == TIME_GUIDED)) {
-            //if (ear_guided == TIME_GUIDED) verbose_master(1, "(Time guided) elapsed %lu iteration iters %d period %u", period_elapsed, ear_iterations, lib_period);
-            states_new_iteration(my_id, ITERS_PER_PERIOD, ear_iterations, 1, 1,lib_period,0);
-            if (avg_mpi_calls_per_second() >= MAX_MPI_CALLS_SECOND) limit_exceeded = 1;
-    }
+	seconds = period_elapsed - last_check;
+	if ((seconds >= 5) && (ear_periodic_mode != PERIODIC_MODE_ON))
+	{
+		last_check = period_elapsed;
 
-    seconds = period_elapsed - last_check;
-    if ((seconds >= 5) && (ear_periodic_mode != PERIODIC_MODE_ON)){
-            last_check = period_elapsed;
-            /* total_mpi_calls is computed per process in this file, not in metrics. It is used to automatically switch to time_guided */
-            /* IO metrics are now computed in metrics.c as part of the signature */
-            if (must_switch_to_time_guide(last_signature_elapsed, &new_ear_guided) != EAR_SUCCESS){
-                verbose_master(2,"Error estimating dynais/time guided");
-            }
-            verbose_master(EARL_GUIDED_LVL, "%d: Phase time_guided %d dynais_guided %d period %u",my_node_id,new_ear_guided==TIME_GUIDED, new_ear_guided==DYNAIS_GUIDED,lib_period);
-            if (new_ear_guided != DYNAIS_GUIDED){
-                ear_periodic_mode = PERIODIC_MODE_ON;
-                if (ear_guided != new_ear_guided){ 
-                    if (earl_monitor->time_burst < earl_monitor->time_relax){
-                        ITERS_PER_PERIOD = earl_monitor->time_burst/1000;
-                        monitor_burst(earl_monitor, 0);
-                    }
-                    //verbose(0,"[%d]: Dynais guided --> time guided at time %lu",
-                    //        my_node_id, period_elapsed);
-                    lib_period = PERIOD;
-                    ear_iterations = 0;
-                    mpi_calls_in_period = lib_period;
-                    lib_period = PERIOD;
-                    ear_iterations = 1;
-                    states_begin_period(my_id, 1, (ulong) lib_period,1);
-               }
-          }
-          ear_guided = new_ear_guided;
-    }
-    overhead_stop(id_ovh_earl_monitor);
-    return EAR_SUCCESS;
+		/* total_mpi_calls is computed per process in this file, not in metrics. It is used to automatically switch to time_guided */
+		/* IO metrics are now computed in metrics.c as part of the signature */
+		if (must_switch_to_time_guide(last_signature_elapsed, &new_ear_guided) != EAR_SUCCESS)
+		{
+			verbose_master(2, "Error estimating dynais/time guided");
+		}
+
+		verbose_master(EARL_GUIDED_LVL, "%d: Phase time_guided %d dynais_guided %d period %u", my_node_id, new_ear_guided==TIME_GUIDED, new_ear_guided==DYNAIS_GUIDED, lib_period);
+
+		if (new_ear_guided != DYNAIS_GUIDED)
+		{
+			ear_periodic_mode = PERIODIC_MODE_ON;
+
+			if (ear_guided != new_ear_guided)
+			{
+				if (earl_monitor->time_burst < earl_monitor->time_relax)
+				{
+					ITERS_PER_PERIOD = earl_monitor->time_burst / 1000;
+					monitor_burst(earl_monitor, 0);
+				}
+
+				//verbose(0,"[%d]: Dynais guided --> time guided at time %lu",
+				//        my_node_id, period_elapsed);
+
+				states_comm_configure_performance_accuracy(&cconf, &perf_accuracy_min_time, &lib_period);
+
+				mpi_calls_in_period = lib_period;
+				ear_iterations = 1;
+				states_begin_period(my_id, 1, (ulong) lib_period, 1);
+			}
+		}
+		ear_guided = new_ear_guided;
+	}
+
+	overhead_stop(id_ovh_earl_monitor);
+	return EAR_SUCCESS;
 }
 
 /* PERIODIC Actions for MPI optimization */
