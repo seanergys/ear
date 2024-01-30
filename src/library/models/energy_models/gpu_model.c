@@ -101,18 +101,17 @@ state_t energy_model_init(char *ear_etc_path, char *ear_tmp_path, architecture_t
 			return EAR_ERROR;
     }
 
+    //debug("index i %d freq %lu", i, gpuf_list[0][i]);
     for (ref = 0; ref < num_gpu_pstates; ref++)
     {
       /* We assume all the GPUs have the same list of frequencies */	
       coefficients[i][ref].pstate_ref = gpuf_list[0][i]; 
       coefficients[i][ref].pstate = gpuf_list[0][ref];   
-      coefficients[i][ref].available = 1;
+      coefficients[i][ref].available = 0;
     }
   }
 
-
   char coeffs_path[GENERIC_NAME];
-
 
   if (hack_file == NULL){
 	  verbose(0, "ERROR: GPU coefficients are not yet supported in ear.conf. Define %s", HACK_EARL_GPU_COEFF_FILE);
@@ -129,23 +128,22 @@ state_t energy_model_init(char *ear_etc_path, char *ear_tmp_path, architecture_t
       debug("%d coefficients found in file", num_coeffs_in_file);
       coefficients_sm = (coefficient_gpu_t *) calloc(num_coeffs_in_file, sizeof(coefficient_gpu_t));
       coeff_gpu_file_read_no_alloc(coeffs_path, coefficients_sm, cfile_size);
-      debug("Coefficients read from file");
     }
   }
 
   if (num_coeffs > 0){
       num_coeffs = num_coeffs / sizeof(coefficient_gpu_t);
-
+      // TODO ref=0 (projection form nominal) and i from 0 to num_coeffs_in_file
       int ccoeff;
       state_t st, st1;
-      for (ccoeff=0;ccoeff<num_coeffs;ccoeff++){
+      for (ccoeff=0; ccoeff<num_coeffs; ccoeff++){
           st = mgt_gpu_freq_get_next(no_ctx, 0, coefficients_sm[ccoeff].pstate_ref, &ref, FREQ_TOP); 
           st1 = mgt_gpu_freq_get_next(no_ctx, 0, coefficients_sm[ccoeff].pstate, &i, FREQ_TOP); 
           if (state_ok(st) && state_ok(st1)){  
-							debug("Freqs %lu and %lu found at indexes %u and %u", coefficients_sm[ccoeff].pstate_ref, 	coefficients_sm[ccoeff].pstate, ref, i);
-              memcpy(&coefficients[ref][i],&coefficients_sm[ccoeff],sizeof(coefficient_gpu_t));
+							//debug("Freqs %lu and %lu found at indexes %u and %u", coefficients_sm[ccoeff].pstate_ref, 	coefficients_sm[ccoeff].pstate, ref, i);
+              memcpy(&coefficients[ref][i], &coefficients_sm[ccoeff], sizeof(coefficient_gpu_t));
           }else{
-						debug("Freqs %lu and %lu not found", coefficients_sm[ccoeff].pstate_ref,   coefficients_sm[ccoeff].pstate);
+						debug("Freqs %lu and %lu not found", coefficients_sm[ccoeff].pstate_ref, coefficients_sm[ccoeff].pstate);
 					}
       }
   }
@@ -153,7 +151,7 @@ state_t energy_model_init(char *ear_etc_path, char *ear_tmp_path, architecture_t
 	return EAR_SUCCESS;
 }
 
-
+// TODO
 state_t energy_model_project_time(signature_t *signature, ulong from_ps, ulong to_ps, double *proj_time)
 {
 	state_t st = EAR_SUCCESS;
@@ -191,7 +189,6 @@ state_t energy_model_project_time(signature_t *signature, ulong from_ps, ulong t
 		 || (dcgmis_data_ten == NULL) || (dcgmis_data_dram == NULL)) 
 						return EAR_ERROR;
 
-
 			for (uint g = 0; g < num_gpus; g++) {
         double ctime = signature->time;
         double fp16  = dcgmis_data_16[g].values[FP16_EV];
@@ -199,7 +196,7 @@ state_t energy_model_project_time(signature_t *signature, ulong from_ps, ulong t
         double fp64 = dcgmis_data_64[g].values[FP64_EV];
         double tensor = dcgmis_data_ten[g].values[TNS_EV];
         double dram   = dcgmis_data_dram[g].values[DRAM_EV];
-        ulong df =  from_ps - to_ps;
+        ulong df =  coeff->pstate_ref - coeff->pstate;
         proj_time[g]  = project_time(coeff, ctime, fp16, fp32, fp64, tensor, df);
 			}
 		}
@@ -226,13 +223,12 @@ state_t energy_model_project_power(signature_t *signature, ulong from_ps, ulong 
 		return st;
 	}
 
-	debug("module init: %d - valid: %d", gpu_model_init, valid_range(from_ps,to_ps));
-
 	if (gpu_model_init && valid_range(from_ps, to_ps))
 	{
 		coeff = &coefficients[from_ps][to_ps];
 		if (coeff->available)
 		{
+      //debug("Power proj: ffrom %lu fto %lu", coeff->pstate_ref, coeff->pstate);
 			sig_ext_t *sigex;
 			dcgmi_sig_t *dcgmis;
 
@@ -280,11 +276,11 @@ state_t energy_model_project_power(signature_t *signature, ulong from_ps, ulong 
 				double tensor = dcgmis_data_ten[g].values[tensor_info[event_info_pos]];
 				double dram   = dcgmis_data_dram[g].values[dram_info[event_info_pos]];
 
-				proj_power[g] = project_power(coeff, cpower, fp16, fp32, fp64, tensor, dram, to_ps);
+				proj_power[g] = project_power(coeff, cpower, fp16, fp32, fp64, tensor, dram, coeff->pstate);
 			}
 		} else
 		{
-			debug("Coeffs from %lu to %lu not available",from_ps,to_ps);
+			debug("Coeffs from %lu to %lu not available",from_ps, to_ps);
 			st = EAR_ERROR;
 		}
 	} else st = EAR_ERROR;
@@ -295,6 +291,7 @@ state_t energy_model_project_power(signature_t *signature, ulong from_ps, ulong 
 
 uint energy_model_projection_available(ulong from_ps, ulong to_ps)
 {
+  //debug("gpu_model : from %lu to %lu", from_ps, to_ps);
 	return projection_available(from_ps, to_ps);
 }
 
@@ -303,7 +300,7 @@ uint energy_model_all_projections_available()
 {
 	uint not_avail = 0;
 
-	debug("Checking availability for %u p-states", num_gpu_pstates);
+	//debug("Checking availability for %u p-states", num_gpu_pstates);
 	for (uint ps = 0; ps < num_gpu_pstates && !not_avail; ps++)
 	{
 		for (uint pt = 0; pt < num_gpu_pstates && !not_avail; pt++)
@@ -318,15 +315,15 @@ uint energy_model_all_projections_available()
 
 static int valid_range(ulong from_ps, ulong to_ps)
 {
+  //debug("valid_range: from_ps %lu to_ps %lu num_gpu_pstates %d",  from_ps, to_ps, num_gpu_pstates);
 	if ((from_ps < num_gpu_pstates) && (to_ps < num_gpu_pstates)) return 1;
 	else return 0;
 }
 
 
-
 static double project_time(coefficient_gpu_t *coeff, double ctime, double fp16, double fp32, double fp64, double tensor, ulong df)
 {
-	debug("project_time with: CTIME %lf FP16 %lf FP32 %lf FP64 %lf TENSOR %lf FREQDIFF %lu", ctime, fp16, fp32, fp64, tensor, df);
+	//debug("project_time with: CTIME %lf FP16 %lf FP32 %lf FP64 %lf TENSOR %lf FREQDIFF %lu", ctime, fp16, fp32, fp64, tensor, df);
   double fp_act;
   double proj_time;
 
@@ -339,16 +336,15 @@ static double project_time(coefficient_gpu_t *coeff, double ctime, double fp16, 
 
 static double project_power(coefficient_gpu_t *coeff, double cpower, double fp16, double fp32, double fp64, double tensor, double dram, ulong to_freq)
 {
-	debug("project_power with to_freq %lu cpower %lf fp16 %lf fp32 %lf fp64 %lf tensor %lf dram %lf", to_freq, cpower, fp16, fp32, fp64, tensor, dram);
-	/* Replace this function with the model */
+	//debug("project_gpu_power: to_freq %lu power %lf fp16 %lf fp32 %lf fp64 %lf tensor %lf dram %lf", to_freq, cpower, fp16, fp32, fp64, tensor, dram);
   double fp_act;
   double proj_power;
   
   fp_act = fp16 + fp32 + fp64 + tensor;
   proj_power = coeff->A*cpower + coeff->B*fp_act + coeff->C*dram + coeff->D*to_freq/1000000.0; //+ coeff->E; 
   	
-  debug("Power: %lf = %lf x %lf + %lf x %lf + %lf x %lf + %lf x %lu", 
-        proj_power, coeff->A, cpower, coeff->B, fp_act, coeff->C, dram, coeff->D, to_freq);
+  //debug("Power: %lf = %lf x %lf + %lf x %lf + %lf x %lf + %lf x %lu", 
+  //      proj_power, coeff->A, cpower, coeff->B, fp_act, coeff->C, dram, coeff->D, to_freq);
 
   return proj_power;
 }

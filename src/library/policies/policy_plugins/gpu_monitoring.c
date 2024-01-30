@@ -55,7 +55,8 @@ state_t policy_init(polctx_t *c)
     for (i = 0; i < c->num_gpus; i++) {
         verbose_master(2,"Freqs in GPU[%d]=%u", i, gpuf_list_items[i]);
         for (j = 0; j < gpuf_list_items[i]; j++) {
-            verbose_master(2, "GPU[%d][%d]=%.2f", i, j, (float) gpuf_list[i][j] / 1000000.0);
+            //verbose_master(2, "GPU[%d][%d]=%.2f", i, j, (float) gpuf_list[i][j] / 1000000.0);
+            verbose_master(2, "GPU[%d][%d]=%.2f (%lu KHz)", i, j, (float) gpuf_list[i][j] / 1000000.0, gpuf_list[i][j]);
         }
     }
     mgt_gpu_data_alloc(&gfreqs);

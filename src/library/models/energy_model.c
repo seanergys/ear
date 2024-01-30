@@ -16,7 +16,7 @@
  */
 
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <library/models/energy_model.h>
 #include <library/common/verbose_lib.h>
@@ -111,7 +111,6 @@ state_t energy_model_project_power(energy_model_t energy_model, signature_t *sig
 
 uint energy_model_projection_available(energy_model_t energy_model, ulong from_ps, ulong to_ps)
 {
-
 	if (energy_model)
 	{
 		// In the case where the loaded plug-in does not implement this method, a 0 (false) is returned.
@@ -266,7 +265,6 @@ static energy_model_t energy_model_load(uint user_type, conf_install_t *data, ar
 				if (state_ok(symplug_open(energy_model_base_path, (void *) energy_model,
 								energy_model_sym_names, model_sym_cnt)))
 				{
-
 					if (energy_model->model_init)
 					{
 						if (state_fail(energy_model->model_init(data->dir_conf, data->dir_temp, arch_desc)))
@@ -276,6 +274,7 @@ static energy_model_t energy_model_load(uint user_type, conf_install_t *data, ar
 					}
 				} else // An error occurred loading plug-in symbols.
 				{
+          debug("An error occurred loading plug-in symbols.");
 				}
 			} else // An error occurred building the energy model plug-in path.
 			{
