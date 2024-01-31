@@ -19,8 +19,6 @@
 #define _GNU_SOURCE
 #define FAKE_POWER_READING  0
 #define FAKE_ENERGY_READING 0
-// #define SHOW_DEBUGS            1
-
 
 #define INFO_METRICS           2
 #define IO_VERB                3
@@ -1954,7 +1952,7 @@ int metrics_init(topology_t *topo)
 #endif
 
 		/* IMC management */
-		if (mgt_imcfreq.ok) {
+		// if (mgt_imcfreq.ok) {
 
 			imc_devices = mgt_imcfreq.devs_count;
 
@@ -2031,9 +2029,9 @@ int metrics_init(topology_t *topo)
 						(float) imc_pstates[imc_min_pstate[0]].khz, (float) imc_pstates[imc_max_pstate[0]].khz);
 			}
 
-		} else {
-			verbose_warning_master("IMCFREQ not supported.");
-		} // IMC
+		// } else {
+		// 	verbose_warning_master("IMCFREQ not supported.");
+		// } // IMC
 	} // master
 
 #if USE_GPUS
