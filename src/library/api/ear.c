@@ -1165,6 +1165,12 @@ void ear_lib_sig_handler(int s)
           return;
         }
 
+        if (s == SIGBUS){
+          mark_as_eard_disconnected(get_ear_tmp(), my_job_id,my_step_id,AID, getpid());
+          eards_connection_failure();
+          print_stack(verb_channel);
+        }
+
         if (s == SIGSEGV){ 
           verbose(0, "%d: EAR finalized by signal SIGSEGV", getpid());
           print_stack(verb_channel);
@@ -1210,6 +1216,39 @@ static int get_ear_application_id()
   return master_pid;
 }
 
+static struct sigaction term_action, int_action, segv_action;
+static void configure_sigactions()
+{
+  // SIGTERM action for job cancellation
+  sigemptyset(&term_action.sa_mask);
+  term_action.sa_handler = ear_lib_sig_handler;
+  term_action.sa_flags = 0;
+  sigaction(SIGTERM, &term_action, NULL);
+
+  // SIGINT
+  sigemptyset(&int_action.sa_mask);
+  int_action.sa_handler = ear_lib_sig_handler;
+  int_action.sa_flags = 0;
+  sigaction(SIGINT, &int_action, NULL);
+
+  sigaction(SIGCHLD, &int_action, NULL);
+  sigaction(SIGPIPE, &int_action, NULL);
+
+
+  if (ear_getenv(FLAG_EAR_DEBUG) != NULL)
+  {
+  verbose(2,"EARL[%d] SIGSEGV and SIGBUS sig handler defined", getpid());
+  // SIGSEGV
+  sigemptyset(&segv_action.sa_mask);
+  segv_action.sa_handler = ear_lib_sig_handler;
+  segv_action.sa_flags = 0;
+  sigaction(SIGSEGV, &segv_action, NULL);
+  sigaction(SIGBUS, &segv_action, NULL);
+  }
+}
+
+
+
 /*****************************************************************************************************************************************************/
 /*****************************************************************************************************************************************************/
 /*****************************************************************************************************************************************************/
@@ -1241,6 +1280,10 @@ void ear_init()
         char *cfake_force_shared_node = ear_getenv(FLAG_FORCE_SHARED_NODE);
 				if (cfake_eard_error != NULL) fake_eard_error = atoi(cfake_eard_error);
         if (cfake_force_shared_node != NULL) fake_force_shared_node = atoi(cfake_force_shared_node);
+
+        set_no_files_limit(ULONG_MAX);
+        set_stack_size_limit(ULONG_MAX);
+
 
 
         #if START_END_OVH
@@ -1961,16 +2004,8 @@ void ear_init()
 								verbose_master(1, "EAR initialized successfully.");
 				}
 
-				/* SIGTERM action for job cancellation */
-				struct sigaction term_action;
-				sigemptyset(&term_action.sa_mask);
-				term_action.sa_handler = ear_lib_sig_handler;
-				term_action.sa_flags = 0;
-				sigaction(SIGTERM, &term_action, NULL);
-				sigaction(SIGINT, &term_action, NULL);
-				sigaction(SIGSEGV, &term_action, NULL);
-				sigaction(SIGCHLD, &term_action, NULL);
-				sigaction(SIGPIPE, &term_action, NULL);
+        configure_sigactions();
+
 
        #if !EAR_OFF
 				/* Monitor is used for applications with no mpi of few mpi calss per second. Gets control of signature computation
@@ -2118,19 +2153,22 @@ void ear_finalize(int exit_status)
 				}
 #endif
 				if (!eard_ok && !EARL_LIGHT){ 
+                verbose(WF_SUPPORT_VERB, "EARL[%d]: Cleaning folders and returnin", getpid());
 								cleanup_job_folder();
 								return;
 				}
 				if (!lib_shared_region->earl_on){
+                verbose(WF_SUPPORT_VERB, "EARL[%d]: EARL disabled, returning", getpid());
 								return;
 				}
 				if (!eards_connected() && !EARL_LIGHT && (masters_info.my_master_rank>=0)){
 								lib_shared_region->earl_on = 0;
 								cleanup_job_folder();
 								sig_shared_region[my_node_id].exited = 1;
+                
 								return;
 				}
-				debug("%d: Finalizing", my_node_id);
+				verbose(WF_SUPPORT_VERB, "EARL[%d] node id %d: Finalizing", getpid(), my_node_id);
 #if USE_LOCK_FILES
 				if (!my_id){
                 /* Releasing master lock file. Used to select the master */
@@ -2158,11 +2196,12 @@ void ear_finalize(int exit_status)
         earl_periodic_actions_talp_finalize();
 #endif
         if (ear_guided == TIME_GUIDED){
+          verbose(WF_SUPPORT_VERB, "EARL[%d]  stopping  EARL monitor", getpid());
           monitor_unregister(earl_monitor);
 				  monitor_dispose();
 				  debug("%d: monitor_disposed", my_node_id);
         }
-
+        verbose(WF_SUPPORT_VERB, "EARL[%d]  report dispose", getpid());
 
         report_dispose(&rep_id);
 
