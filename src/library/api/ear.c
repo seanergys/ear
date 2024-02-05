@@ -1579,6 +1579,7 @@ void ear_init()
 
 
 		// Initializing metrics
+		verbose_master(2, "EARL Metrics initialization");
                 if (metrics_init(&arch_desc.top) != EAR_SUCCESS) {
                     verbose(1, "%sError%s EAR metrics initialization not succeed (%s), turning off EARL...", COL_RED, COL_CLR, state_msg);
                     eard_ok = 0;
@@ -1742,7 +1743,7 @@ void ear_init()
                     free_node_signatures(lib_shared_region, sig_shared_region);
                 }
 
-                // verbose_master(2,"Init energy models");
+                verbose_master(2, "EARL Init power policy");
                 // init_power_models(system_conf->user_type, &system_conf->installation, &arch_desc);
 
                 if (state_ok(init_power_policy(system_conf, resched_conf))) {
@@ -2568,6 +2569,8 @@ state_t earl_periodic_actions_init(void *no_arg)
     pthread_setname_np(pthread_self(), "EARL_monitor");
 
     overhead_suscribe("earl_monitor", &id_ovh_earl_monitor);
+
+		configure_sigactions();
 
     return EAR_SUCCESS;
 }

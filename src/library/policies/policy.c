@@ -620,7 +620,7 @@ state_t policy_init()
     if (cdyn_unc != NULL && metrics_get(MGT_IMCFREQ)->ok) {
         conf_dyn_unc = atoi(cdyn_unc);
     }
-    dyn_unc = conf_dyn_unc;
+    dyn_unc = (metrics_get(MGT_IMCFREQ)->ok) ? conf_dyn_unc : 0;
 
 #if MPI_OPTIMIZED
     if (cear_mpi_opt != NULL) ear_mpi_opt = atoi(cear_mpi_opt);
