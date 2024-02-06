@@ -2888,6 +2888,8 @@ static void set_default_powermon_end(powermon_app_t *app, uint idle)
 
     /* --- Setting governor --- */
 
+		// TODO: Check whether this function returns SUCCESS
+		// and then do the below conditional block.
     governor_toint(cgov, &gov);
 
     if (idle) {
