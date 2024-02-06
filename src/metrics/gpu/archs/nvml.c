@@ -15,6 +15,7 @@
 * and COPYING.EPL files.
 */
 
+//#define SHOW_DEBUGS 1
 
 #include <dlfcn.h>
 #include <stdlib.h>
@@ -289,7 +290,7 @@ state_t gpu_nvml_get_info(apinfo_t *info)
 {
 	if (info)
 	{
-		debug("Calling GetArch %p %d", nvml.GetArchitecture, devs[0]);
+		debug("Calling GetArch %p", nvml.GetArchitecture);
 		// Warning: We are assumming all devices have the same architecture
 		nvmlReturn_t ret = nvml.GetArchitecture(devs[0], &info->dev_model);
 

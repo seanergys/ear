@@ -268,7 +268,7 @@ state_t energy_model_project_power(signature_t *signature, ulong from_ps, ulong 
 
 			for (uint g = 0; g < num_gpus; g++)
 			{
-				debug("Going to project the power for the GPU %d...", g);
+				//debug("Going to project the power for the GPU %d...", g);
 				double cpower = signature->gpu_sig.gpu_data[g].GPU_power;
 				double fp16 = dcgmis_data_16[g].values[fp16_info[event_info_pos]];
 				double fp32 = dcgmis_data_32[g].values[fp32_info[event_info_pos]];

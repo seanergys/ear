@@ -57,9 +57,9 @@ extern unsigned long ext_def_freq;
 
 /* Configuration */
 typedef enum {
-	SYS_FLOPS_W = 1,
-	GPU_FLOPS_W = 2,
-	EDP         = 3,
+	GPU_FLOPS_W = 0,
+	SYS_FLOPS_W,
+	EDP
 } gpu_opt_metric_t;
 
 typedef enum {
@@ -389,10 +389,12 @@ static void GPU_get_metric(uint gpu_idx, signature_t *signature, float *curr)
     case SYS_FLOPS_W: 
     {
       float fp_act = get_fp_activities(signature, gpu_idx);
-		  float cpu_gflops = (float) signature->Gflops;     
+		  float cpu_gflops = (float) signature->Gflops;    
+      // TODO use Hz instead of GHz 
       gpu_freq = (float)(signature->gpu_sig.gpu_data[gpu_idx].GPU_freq/1000000.0);
+      // TODO in CPU_FLOPS_W use total gpu_power (from all used GPUs)
       gpu_power = (float) signature->gpu_sig.gpu_data[gpu_idx].GPU_power;
-      debug("CPU_FLOPS_W %f GPU_FLOPS_W %f", cpu_gflops/(signature->DC_power - gpu_power), (fp_act*gpu_freq)/gpu_power); 
+      debug("GPU_FREQ %f CPU_FLOPS_W %f GPU_FLOPS_W %f",gpu_freq, cpu_gflops/(signature->DC_power - gpu_power), (fp_act*gpu_freq)/gpu_power); 
       *curr = cpu_gflops/(signature->DC_power - gpu_power) + (fp_act*gpu_freq)/gpu_power; 
       break;
     }
@@ -500,10 +502,10 @@ static float get_fp_activities(signature_t *signature, uint gpu_idx)
 	dcgmi_t *dcgmis_data_ten = dcgmis->dcgmi_metrics[tensor_info[event_info_set]];
 
   verbose_master(2, "GPU[%u] computing CPU gflops...", gpu_idx);
-  float fp16 = (float)dcgmis_data_16[gpu_idx].values[fp16_info[event_info_pos]];
-  float fp32 = (float)dcgmis_data_32[gpu_idx].values[fp32_info[event_info_pos]];
-  float fp64 = (float)dcgmis_data_64[gpu_idx].values[fp64_info[event_info_pos]];
-  float tensor = (float)dcgmis_data_ten[gpu_idx].values[tensor_info[event_info_pos]];
+  float fp16 = (float)(dcgmis_data_16[gpu_idx].values[fp16_info[event_info_pos]]*16);
+  float fp32 = (float)(dcgmis_data_32[gpu_idx].values[fp32_info[event_info_pos]]*32);
+  float fp64 = (float)(dcgmis_data_64[gpu_idx].values[fp64_info[event_info_pos]]*64);
+  float tensor = (float)(dcgmis_data_ten[gpu_idx].values[tensor_info[event_info_pos]]*128);
 
   return fp16 + fp32 + fp64 + tensor;
 #else
