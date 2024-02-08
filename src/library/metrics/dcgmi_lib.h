@@ -35,12 +35,12 @@
 
 typedef struct dcgmi_sig
 {
-	uint    dcgmi_sets;
-	uint    dcgmi_gpus;
-	uint    dcgmi_num_ev;
-	uint    **dcgmi_events; // #sets array of variable length each one.
-	uint    *dcgmi_instances; // #sets array
-	dcgmi_t **dcgmi_metrics; // #sets x #gpus array
+	uint    dcgmi_sets;				/**< The total number of sets. */
+	uint    dcgmi_gpus; 			/**< The number of GPUs supported by DCGMI module. */
+	uint    dcgmi_num_ev; 		/**< The total number of events supported. */
+	uint    **dcgmi_events; 	/**< The event index list for each set. */
+	uint    *dcgmi_instances; /**< The number of instances for each set. */
+	dcgmi_t **dcgmi_metrics;	/**< For each set, and for each GPU,the event metrics list. */
 } dcgmi_sig_t;
 
 
@@ -52,7 +52,16 @@ state_t dcgmi_lib_load();
 uint dcgmi_lib_is_enabled();
 
 
+// TODO: An analogous dispose should be implemented.
 void dcgmi_lib_dcgmi_sig_init(dcgmi_sig_t *dcgmi_sig);
+
+
+/** Fills \p buffer with a semi-colon separated header
+ *	of the DCGMI data capable to report this module. */
+state_t dcgmi_lib_dcgmi_sig_csv_header(char *buffer, size_t buff_size);
+
+
+state_t dcgmi_lib_dcgmi_sig_to_csv(dcgmi_sig_t *dcgmi_sig, char *buffer, size_t buff_size);
 
 
 state_t dcgmi_lib_get_current_metrics(dcgmi_sig_t *dcgmi_sig);

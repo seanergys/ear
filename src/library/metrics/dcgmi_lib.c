@@ -25,6 +25,7 @@
 #include <common/system/lock.h>
 #include <common/system/monitor.h>
 #include <common/output/debug.h>
+#include <common/types/generic.h>
 
 #include <library/common/verbose_lib.h>
 #include <library/common/externs.h>
@@ -252,6 +253,77 @@ void dcgmi_lib_dcgmi_sig_init(dcgmi_sig_t *dcgmi_sig)
 			/* The list of events is static. */
 			memcpy(dcgmi_sig->dcgmi_events[set], dcgmi_data.dcgmi_events[set], dcgmi_data.dcgmi_set_sizes[set] * sizeof(uint));
 		}
+	}
+}
+
+
+state_t dcgmi_lib_dcgmi_sig_csv_header(char *buffer, size_t buff_size)
+{
+	if (buffer && buff_size)
+	{
+		strncpy(buffer, "DCGMI_EVENTS_COUNT", buff_size);
+		for (int set_idx = 0; set_idx < dcgmi_data.dcgmi_set_count; set_idx++)
+		{
+			int set_size = dcgmi_data.dcgmi_set_sizes[set_idx];
+			uint *set_events_list = dcgmi_data.dcgmi_events[set_idx];
+			for (int event_idx = 0; event_idx < set_size; event_idx++)
+			{
+				for (int gpu_idx = 0; gpu_idx < MAX_GPUS_SUPPORTED; gpu_idx++)
+				{
+					char gpu_event_field[ID_SIZE];
+					snprintf(gpu_event_field, sizeof(gpu_event_field),
+									 ";GPU%d_%u", gpu_idx, set_events_list[event_idx]);
+
+					strncat(buffer, gpu_event_field,
+									buff_size - strlen(buffer) - 1);
+				}
+			}
+		}
+		return EAR_SUCCESS;
+	} else
+	{
+		return EAR_ERROR;
+	}
+}
+
+
+state_t dcgmi_lib_dcgmi_sig_to_csv(dcgmi_sig_t *dcgmi_sig, char *buffer, size_t buff_size)
+{
+	if (dcgmi_sig && buffer && buff_size)
+	{
+		/* The total number of events */
+		snprintf(buffer, buff_size, "%u", dcgmi_sig->dcgmi_num_ev);
+
+		/* We iterate across sets */
+		for (int set_idx = 0; set_idx < dcgmi_sig->dcgmi_sets; set_idx++)
+		{
+			int set_size = dcgmi_data.dcgmi_set_sizes[set_idx];
+			dcgmi_t *set_metrics = dcgmi_sig->dcgmi_metrics[set_idx];
+
+			/* Iterate across set's event list */
+			for (int event_idx = 0; event_idx < set_size; event_idx++)
+			{
+				/* Iterate across GPUs supported */
+				for (int gpu_idx = 0; gpu_idx < MAX_GPUS_SUPPORTED; gpu_idx++)
+				{
+					char set_event_metric_buff[32];
+					if (dcgmi_sig->dcgmi_gpus > gpu_idx)
+					{
+						snprintf(set_event_metric_buff, sizeof(set_event_metric_buff),
+										 ";%f", set_metrics[gpu_idx].values[event_idx]);
+					} else
+					{
+						snprintf(set_event_metric_buff, sizeof(set_event_metric_buff),
+										 ";0.0");
+					}
+					strncat(buffer, set_event_metric_buff, buff_size - strlen(buffer) - 1);
+				}
+			}
+		}
+		return EAR_SUCCESS;
+	} else
+	{
+		return EAR_ERROR;
 	}
 }
 
