@@ -91,7 +91,7 @@ void scsprintf(strscreen_t *s, int div_index, int append, int set_title, char *b
 {
     strscreen_t *div = &(((strscreen_t *) s->divs)[div_index]);
     size_t length = strlen(buffer);
-    int c, x, y;
+    int c, x;
 
     // Cleaning
     if (!append) {

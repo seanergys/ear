@@ -57,6 +57,7 @@ state_t popen_open(char *command, int escape_lines, int one_shot, popen_t *p)
         debug("popen error: %s", strerror(errno));
         return_msg(EAR_ERROR, strerror(errno));
     }
+    p->opened = 1;
     p->fd = fileno(p->file);
     p->rows_escape = escape_lines;
     p->one_shot = one_shot;
@@ -68,6 +69,7 @@ state_t popen_open(char *command, int escape_lines, int one_shot, popen_t *p)
 
 void popen_close(popen_t *p)
 {
+    p->opened = 0;
     pclose(p->file);
     memset(p, 0, sizeof(popen_t));
 }
@@ -81,8 +83,6 @@ static int static_read(popen_t *p, char *buffer)
 {
     size_t len_acum = 0;
     size_t len_read = 0;
-    int space_count;
-    int i;
 
     if (p->one_shot) {
         do {
@@ -97,7 +97,7 @@ static int static_read(popen_t *p, char *buffer)
         } while(buffer[len_acum-1] != EOF);
     } else {
         do {
-            // If not one shot, we are reading a bulk of bytes
+            // If not one shot, we are reading a bulk of bytes (less overhead)
             len_read = fread(&buffer[len_acum], sizeof(char), MAX_BUFFER-len_acum, p->file);
             len_acum = len_acum + len_read;
         } while(len_read > 0);
@@ -181,6 +181,9 @@ int popen_read(popen_t *p, const char* f, ...)
     int was_pending;
     int c, r;
 
+    if (!p->opened) {
+        return 0;
+    }
     // If there is no pending data to return
     if (!popen_pending(p)) {
         // If not end of file
@@ -261,6 +264,16 @@ int popen_read(popen_t *p, const char* f, ...)
     }
 
     return was_pending;
+}
+
+uint popen_count_read(popen_t *p)
+{
+    return (uint) p->rows_count;
+}
+
+uint popen_count_pending(popen_t *p)
+{
+    return (uint) (p->rows_count - p->rows_index);
 }
 
 #if TEST

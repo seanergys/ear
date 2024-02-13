@@ -15,6 +15,7 @@
 * and COPYING.EPL files.
 */
 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
@@ -115,7 +116,7 @@ state_t nodemgr_server_init(char *tmp, ear_njob_t **nodelist)
 
   /* The eard will create this area */
 	debug("NODE MGR INFO %s\n", node_mgr_info);
-	mode_t perms = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH; // Read and write permission for the owner user. Read permission for group and others.
+	mode_t perms = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH; // Read and write permission for the owner user. Read permission for group and others.
   node_jobs_list = (ear_njob_t *) create_shared_area(node_mgr_info, perms, (char *) node_jobs_list, sizeof(ear_njob_t) * MAX_CPUS_SUPPORTED, &fd_node_mgr_info, 0);
 	
   file_unlock(fd_node_mgr_lck);
@@ -126,8 +127,6 @@ state_t nodemgr_server_init(char *tmp, ear_njob_t **nodelist)
 	}
   return EAR_SUCCESS;
 }
-
-
 
 
 /* Computes the number of jobs attached */

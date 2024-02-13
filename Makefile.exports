@@ -2,6 +2,7 @@ export ARCH
 export FEAT_MPI_API
 export FEAT_AVX512
 export FEAT_RESEARCH
+export FEAT_GPUS
 export FEAT_GPU_OPT  
 export FEAT_AMD_OSCPUFREQ
 export FEAT_DB_MYSQL

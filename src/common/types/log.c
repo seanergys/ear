@@ -40,8 +40,9 @@ static int fd_log=-1;
 static char my_log_buffer[1024];
 static char log_name[128];
 #endif
+#if USE_DB
 static char log_nodename[GENERIC_NAME];
-
+#endif
 
 void init_log()
 {

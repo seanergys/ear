@@ -19,6 +19,8 @@
 
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/resource.h>
+#include <linux/limits.h>
 #include <database_cache/eardbd.h>
 #include <database_cache/eardbd_body.h>
 #include <database_cache/eardbd_sync.h>
@@ -51,7 +53,7 @@ uint                    sockets_timeout;
 // Descriptors
 struct sockaddr_storage addr_new;
 afd_set_t               fds_active;
-long                    fd_hosts[FD_SETSIZE]; // Saving host IPs
+long                    fd_hosts[EDB_MAX_CONNECTIONS + 48]; // Saving host IPs
 // Nomenclature:
 // 	- Server: main buffer of the gathered metrics. Inserts buffered metrics in
 //	the database.
@@ -647,6 +649,15 @@ void create_tmp(char *tmp_dir) {
         }
 }
 
+static void change_limits()
+{
+	struct rlimit rl;
+	getrlimit(RLIMIT_NOFILE, &rl);
+	debug("current limit %lu max %lu", rl.rlim_cur, rl.rlim_max);
+	rl.rlim_cur = rl.rlim_max;
+	setrlimit(RLIMIT_NOFILE, &rl);
+
+}
 
 int main(int argc, char **argv)
 {
@@ -655,6 +666,7 @@ int main(int argc, char **argv)
 		return 0;
 	}
 
+	change_limits();
 	while(!exitting)
 	{
 		//

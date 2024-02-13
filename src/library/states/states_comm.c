@@ -31,6 +31,7 @@
 #include <common/config.h>
 #include <common/states.h>
 #include <common/output/verbose.h>
+#include <common/output/debug.h>
 #include <common/colors.h>
 #include <common/math_operations.h>
 #include <common/types/log.h>
@@ -40,6 +41,7 @@
 #include <library/metrics/metrics.h>
 #include <library/tracer/tracer.h>
 #include <library/common/verbose_lib.h>
+#include <daemon/local_api/eard_api.h>
 
 extern masters_info_t masters_info;
 extern float ratio_PPN;
@@ -331,3 +333,52 @@ static void debug_loop_signature(char *title, signature_t *loop)
 }
 #endif
 
+
+void states_comm_configure_performance_accuracy(cluster_conf_t *cluster_conf, ulong *hw_perf_acc, uint *library_period)
+{
+	// Default: ear.conf
+	*hw_perf_acc = (ulong) cluster_conf->min_time_perf_acc;
+	debug("Default values for hw_perf_acc and library_period: %lu and %u", *hw_perf_acc, *library_period);
+
+	// Try to change LibraryPeriod by reading an environment variable
+	char *my_lib_period = ear_getenv("EARL_TIME_LOOP_SIGNATURE");
+	long my_lib_period_l = 0; 
+
+	if (my_lib_period)
+	{
+		my_lib_period_l = atol(my_lib_period);
+	}
+
+	if (my_lib_period_l > 0)
+	{
+		// *hw_perf_acc = (ulong) my_lib_period_l;
+		*library_period = (ulong) my_lib_period_l;
+		debug("library_period overwritten by environment variable: %u", *library_period);
+	}
+
+	// Hardware limit
+	ulong architecture_min_perf_accuracy_time = 0;
+	if (masters_info.my_master_rank >= 0 && eards_connected())
+	{
+		// eards_node_energy_frequency returns the granularity at which the energy
+		// plugin can read the power but we increment this period to minimize the
+		// error in the power read.
+		architecture_min_perf_accuracy_time = eards_node_energy_frequency() * 10;
+		if (architecture_min_perf_accuracy_time == (ulong) EAR_ERROR)
+		{
+			architecture_min_perf_accuracy_time = *hw_perf_acc;
+		}
+
+		debug("eard hw_perf_acc: %lu",
+				architecture_min_perf_accuracy_time);
+	}
+
+	// hw_perf_acc lower bounded by hardware
+	*hw_perf_acc = ear_max(*hw_perf_acc, architecture_min_perf_accuracy_time);
+	debug("hw_perf_acc bounded by energy plug-in: %lu", *hw_perf_acc);
+
+	// library_period is in seconds, hw_perf_acc is in microseconds
+	*library_period = ear_max(*library_period, *hw_perf_acc / 1000000);
+	*hw_perf_acc = *library_period * 1000000;
+	debug("library_period: %u | hw_perf_acc %lu", *library_period, *hw_perf_acc);
+}

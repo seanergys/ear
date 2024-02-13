@@ -23,6 +23,7 @@
 #include <common/includes.h>
 
 #include <common/output/verbose.h>
+#include <common/output/debug.h>
 
 #include <common/system/lock.h>
 #include <common/system/symplug.h>

@@ -2199,6 +2199,8 @@ int mysql_batch_insert_ear_events(MYSQL *connection, ear_event_t *ear_ev, int nu
         bind[offset+5].buffer_type = MYSQL_TYPE_STRING;
         bind[offset+5].buffer_length = strlen(ear_ev[i].node_id);
 
+        bind[2+offset].is_unsigned = bind[3+offset].is_unsigned = 1;
+
         //storage variable assignation
         bind[0+offset].buffer = (char *)&ear_ev[i].timestamp;
         bind[1+offset].buffer = (char *)&ear_ev[i].event;

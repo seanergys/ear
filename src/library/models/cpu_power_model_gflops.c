@@ -118,13 +118,13 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
 
             for (uint lp = 0; lp < nmgr[j].libsh->num_processes; lp++) {
                 if (nmgr[j].shsig[lp].sig.DC_power > 0) {
-                    job_in_process[node_process] = j;
                     L3[node_process]             = nmgr[j].shsig[lp].sig.L3_misses;
                     inst[node_process]           = nmgr[j].shsig[lp].sig.instructions;
                     gflops[node_process]         = nmgr[j].shsig[lp].sig.Gflops;
                     total_gflops                += gflops[node_process];
                     node_L3                     += L3[node_process];
                 }
+                job_in_process[node_process] = j;
                 node_process++;
             }
         }

@@ -104,7 +104,6 @@ state_t hsmp_lib_close()
 
 state_t hsmp_lib_send(int socket, uint function, uint *args, uint *reps)
 {
-    struct smu_fw_version smu;
     struct ddr_bw_metrics ddr;
     esmi_status_t s;
 

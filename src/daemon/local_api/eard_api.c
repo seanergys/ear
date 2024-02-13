@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #define _GNU_SOURCE             
 #include <time.h>
@@ -67,7 +67,6 @@ static int my_step_id;
 static int my_job_id;
 static char *ear_tmp;
 // Metrics: Needed for old API where data size must be requested in advance
-static ulong energy_size;
 static ulong rapl_size;
 
 extern pthread_mutex_t lock_rpc;
@@ -348,8 +347,9 @@ int eards_connect(application_t *my_app, ulong lid)
     /* We now connect with the EARD, the tag CONNECT_EARD_NODE_SERVICES is used as the first service requested (for backward compatibility ) */
     req.req_service = CONNECT_EARD_NODE_SERVICES;
     req.sec         = create_sec_tag();
+		debug("sec: %lu", req.sec);
 
-    if (ear_fd_req_global >= 0) {
+		if (ear_fd_req_global >= 0) {
         debug("Sending connection request to EARD\n");
         if (warning_api(eards_write(ear_fd_req_global, (char *)&req, sizeof(req)), sizeof(req), "writting req_service in ear_daemon_client_connect"))
         {
@@ -384,7 +384,9 @@ int eards_connect(application_t *my_app, ulong lid)
             return EAR_ERROR;
         }
         /* ACK received */
-        verbose(3,"ACK received from EARD %s,opening REQ", nodename);
+        verbose(3,"ACK received from EARD %s. Opening REQ...", nodename);
+				debug("ACK received: %lu", ack);
+
         verbose(3,"%s: Open %s",nodename, ear_commreq);
         if ((ear_fd_req = open(ear_commreq,O_WRONLY)) < 0) {
             error("Error opening local req communicator, closing the EARD connection");

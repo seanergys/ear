@@ -26,7 +26,15 @@
 #include <common/sizes.h>
 #include <common/states.h>
 
-#define FC_MAX_OBJECTS	10
+#define PERMS000(T) 0
+#define PERMS100(T) S_IR ## T
+#define PERMS010(T) S_IW ## T
+#define PERMS001(T) S_IX ## T
+#define PERMS110(T) (PERMS100(T)) | (PERMS010(T))
+#define PERMS111(T) (PERMS100(T)) | (PERMS010(T)) | (PERMS001(T))
+#define PEXPA(...) __VA_ARGS__
+#define PERMS(u, g, o) PEXPA(PERMS ## u)(USR) | PEXPA(PERMS ## g)(GRP) | PEXPA(PERMS ## o)(OTH)
+
 #define F_WR 			O_WRONLY
 #define F_RD			O_RDONLY
 #define F_CR 			O_CREAT
@@ -80,17 +88,20 @@ state_t ear_file_write(const char *path, const char *buffer, size_t size);
 /** */
 state_t ear_file_clean(const char *path);
 
+
 /* Changes the limit of files open , use ULONG_MAX to set the maximum*/
 void   set_no_files_limit(ulong new_limit);
+
+
 /* Returns the current limit of files open */
 ulong  get_no_files_limit();
 
+
 /* Returns the current limit of stack size */
 ulong get_stack_size_limit();
+
+
 /* Changes the limit of stack size, use ULONG_MAX to set the maximum*/
-
 void  set_stack_size_limit(ulong new_limit);
-
-
 
 #endif

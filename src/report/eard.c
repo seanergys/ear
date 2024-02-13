@@ -15,7 +15,8 @@
 * and COPYING.EPL files.
 */
 
-// #define SHOW_DEBUGS 1
+
+#include <common/config/config_def.h>
 #include <common/states.h>
 #include <common/types/types.h>
 #include <common/types/configuration/cluster_conf.h>
@@ -26,7 +27,7 @@
 
 static uint must_report;
 static char report_nodename[GENERIC_NAME];
-static uint earl_report_loops = 1;
+static uint earl_report_loops = EARL_REPORT_LOOPS;
 
 state_t report_init(report_id_t *id,cluster_conf_t *cconf)
 {
@@ -35,6 +36,8 @@ state_t report_init(report_id_t *id,cluster_conf_t *cconf)
   gethostname(report_nodename, sizeof(report_nodename));
   char * cearl_report_loops = ear_getenv(FLAG_REPORT_LOOPS);
 	if (cearl_report_loops != NULL) earl_report_loops = atoi(cearl_report_loops);
+
+	debug("EARL loops will be reported ? %u", earl_report_loops);
 
   strtok(report_nodename, ".");
 
