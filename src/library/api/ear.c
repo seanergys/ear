@@ -765,7 +765,7 @@ void create_shared_regions()
         /* Add here the initialization of the shared region to coordinate with external libraries such as DLB */
         get_ear_external_path(tmp, ID, shexternal_region_path);
         external_mgt = create_ear_external_shared_area(shexternal_region_path);
-        verbose_master(2, "Created shared region for external libraries!");
+        verbose_master(2, "Created shared region for external libraries! (%s)", shexternal_region_path);
 
 }
 
@@ -883,6 +883,22 @@ void attach_shared_regions()
 
 
 }
+
+static void release_shared_memory_areas()
+{
+  
+  verbose(WF_SUPPORT_VERB, "EARL[%d] releasing shared memory regions", getpid());
+  return;
+
+  verbose(WF_SUPPORT_VERB, "EARL[%d] sig_shared_region", getpid());
+  munmap(sig_shared_region, lib_shared_region->num_processes * sizeof(shsignature_t));
+  verbose(WF_SUPPORT_VERB, "EARL[%d] lib_shared_region", getpid());
+  munmap(lib_shared_region, sizeof(lib_shared_data_t));
+  verbose(WF_SUPPORT_VERB, "EARL[%d] external_mgt", getpid());
+  munmap(external_mgt, sizeof(ear_mgt_t));
+  verbose(WF_SUPPORT_VERB, "EARL[%d] end releasing shared memory regions", getpid());
+}
+
 
 /****************************************************************************************************************************************************************/
 /******************  This data is shared with EARD, it's per-application info************************************************************************************/
@@ -2877,6 +2893,7 @@ static void  reset_earl_environment()
   monitor_dispose();
   metrics_lib_reset();
   report_dispose(&rep_id);
+  release_shared_memory_areas();
 }
 
 
