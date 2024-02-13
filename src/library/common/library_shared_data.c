@@ -696,6 +696,7 @@ void compute_total_node_avx_and_avx_fops(lib_shared_data_t *data,shsignature_t *
 static uint total_num_earl_apps = 0;
 void  init_earl_node_mgr_info()
 {
+  #if WF_SUPPORT
   verbose(WF_SUPPORT_VERB,"%sinit_earl_node_mgr_info..................%s", COL_RED,COL_CLR);
   if (total_num_earl_apps){
     //verbose(WF_SUPPORT_VERB,"New process?: Releasing node_mgr_data info ");
@@ -781,8 +782,44 @@ void  init_earl_node_mgr_info()
   }
   node_mgr_info_unlock();
   verbose_master(WF_SUPPORT_VERB,"init_earl_node_mgr_info done: Total apps computed %d , based on folders %d", total_num_earl_apps, curr_app);
+  #else
+  for (uint j = 0;j < MAX_CPUS_SUPPORTED; j++){
+    uint ID;
+    job_id id,sid;
+    
+    char *tmp = get_ear_tmp();
+    id = node_mgr_data[j].jid;
+    sid = node_mgr_data[j].sid;
+    if ((id != -1) && (sid != -1)){
+      /* Double validation */
+      if (node_mgr_info_lock() == EAR_SUCCESS){
+        id = node_mgr_data[j].jid;
+        sid = node_mgr_data[j].sid;
+        node_mgr_job_info[j].creation_time = node_mgr_data[j].creation_time;
+        node_mgr_info_unlock();
+      }
+      if ((id != -1) && (sid != -1) && (j != node_mgr_index) ){
+        verbose_master(2,"Job %lu.%lu is sharing the node", id,sid);
+        ID = create_ID(id, sid);
+        if (get_lib_shared_data_path(tmp,ID,0, lib_shared_region_path_jobs) == EAR_SUCCESS){
+          node_mgr_job_info[j].libsh = attach_lib_shared_data_area(lib_shared_region_path_jobs, &node_mgr_job_info[j].fd_lib);
+        }else{
+          node_mgr_job_info[j].creation_time = 0;
+        }
+        if (get_shared_signatures_path(tmp,ID,0, sig_shared_region_path_jobs) == EAR_SUCCESS){
+          node_mgr_job_info[j].shsig = attach_shared_signatures_area(sig_shared_region_path_jobs, node_mgr_job_info[j].libsh->num_processes, &node_mgr_job_info[j].fd_sig);
+        }
+      }else if (j == node_mgr_index){ 
+        node_mgr_job_info[j].libsh =  lib_shared_region;
+        node_mgr_job_info[j].shsig =  sig_shared_region;
+      }
+    }
+  }
+
+  #endif
 }
 
+#if WF_SUPPORT
 void release_earl_node_mgr_info()
 {
   verbose_master(WF_SUPPORT_VERB,"Releasing Node MGR info total apps %u", total_num_earl_apps);
@@ -798,6 +835,7 @@ void release_earl_node_mgr_info()
   total_num_earl_apps = 0;
   node_mgr_info_unlock();
 }
+#endif
 
 uint node_manager_job_changed(job_id jid, job_id sid, time_t mt)
 {
@@ -820,8 +858,9 @@ uint node_mgr_earl_apps()
 
 void update_earl_node_mgr_info()
 {
-    char *tmp = get_ear_tmp();
     uint release = 0;
+
+#if WF_SUPPORT
 
     verbose_master(WF_SUPPORT_VERB,"%supdate_earl_node_mgr_info..................%s", COL_RED,COL_CLR);
 
@@ -844,6 +883,52 @@ void update_earl_node_mgr_info()
       init_earl_node_mgr_info();
     }
 
+#else
+    char *tmp = get_ear_tmp();
+
+    for (uint j = 0; j < MAX_CPUS_SUPPORTED; j++) {
+        job_id jid = node_mgr_data[j].jid;
+        job_id sid = node_mgr_data[j].sid;
+
+        time_t ct = node_mgr_data[j].creation_time;
+
+        if (ct != node_mgr_job_info[j].creation_time) {
+            while (node_mgr_info_lock() != EAR_SUCCESS);
+
+            jid = node_mgr_data[j].jid;
+            sid = node_mgr_data[j].sid;
+            ct  = node_mgr_data[j].creation_time;
+
+            node_mgr_info_unlock();
+
+            /* Double validation after getting the lock */
+            if (ct != node_mgr_job_info[j].creation_time) {
+                if (ct == 0) {
+                    dettach_lib_shared_data_area(node_mgr_job_info[j].fd_lib);
+                    dettach_shared_signatures_area(node_mgr_job_info[j].fd_sig);
+                    node_mgr_job_info[j].creation_time = 0;
+                } else {
+
+                    uint ID = create_ID(jid, sid);
+
+                    get_lib_shared_data_path(tmp, ID, 0, lib_shared_region_path_jobs);
+                    node_mgr_job_info[j].libsh = attach_lib_shared_data_area(lib_shared_region_path_jobs,
+                            &node_mgr_job_info[j].fd_lib);
+
+                    get_shared_signatures_path(tmp, ID, 0, sig_shared_region_path_jobs);
+                    node_mgr_job_info[j].shsig = attach_shared_signatures_area(sig_shared_region_path_jobs,
+                            node_mgr_job_info[j].libsh->num_processes,
+                            &node_mgr_job_info[j].fd_sig);
+
+                    node_mgr_job_info[j].creation_time = ct;
+                }
+            }
+        }
+    }
+
+
+#endif
+
     uint current_jobs_in_node = 0;
     nodemgr_get_num_jobs_attached(&current_jobs_in_node);
     exclusive = exclusive && (current_jobs_in_node == 1);
@@ -864,15 +949,20 @@ void verbose_jobs_in_node(int vl, ear_njob_t *nmgr_eard, node_mgr_sh_data_t *nmg
             if ((nmgr_earl[i].libsh != NULL) && (nmgr_earl[i].shsig != NULL)) {
 
 				      signature_to_str(&nmgr_earl[i].libsh->job_signature, sig_buff, sizeof(sig_buff));
+              #if WF_SUPPORT
                 verbose_master(vl,"Job[%u] %lu.%lu.%lu %s\nNode [%.2lf GB/s %.2lf W]",
                         i, nmgr_earl[i].jid, nmgr_earl[i].sid, nmgr_earl[i].lid, sig_buff,
+              #else
+                verbose_master(vl,"Job[%u] %lu.%lu %s\nNode [%.2lf GB/s %.2lf W]",
+                        i, nmgr_earl[i].jid, nmgr_earl[i].sid, sig_buff,
+              #endif
                         nmgr_earl[i].libsh->node_signature.GBS,
                         nmgr_earl[i].libsh->node_signature.DC_power);
 
-                /*
-				signature_to_str(&nmgr_earl[i].libsh->node_signature, sig_buff, sizeof(sig_buff));
+              #if 0
+				      signature_to_str(&nmgr_earl[i].libsh->node_signature, sig_buff, sizeof(sig_buff));
                 verbose_master(vl,"JOB[%u]=%lu.%lu \nNode: %s",i , nmgr_eard[i].jid, nmgr_eard[i].sid, sig_buff);
-                */
+              #endif
 
             }
         }

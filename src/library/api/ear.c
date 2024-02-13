@@ -897,6 +897,10 @@ static void release_shared_memory_areas()
   verbose(WF_SUPPORT_VERB, "EARL[%d] releasing shared memory regions", getpid());
   return;
 
+#if WF_SUPPORT
+
+  /* WARNING */
+
   verbose(WF_SUPPORT_VERB, "EARL[%d] sig_shared_region", getpid());
   munmap(sig_shared_region, lib_shared_region->num_processes * sizeof(shsignature_t));
   verbose(WF_SUPPORT_VERB, "EARL[%d] lib_shared_region", getpid());
@@ -904,6 +908,7 @@ static void release_shared_memory_areas()
   verbose(WF_SUPPORT_VERB, "EARL[%d] external_mgt", getpid());
   munmap(external_mgt, sizeof(ear_mgt_t));
   verbose(WF_SUPPORT_VERB, "EARL[%d] end releasing shared memory regions", getpid());
+#endif
 }
 
 
