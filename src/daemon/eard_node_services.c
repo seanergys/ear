@@ -676,7 +676,7 @@ int services_met_bwidth(eard_head_t *head, int req_fd, int ack_fd)
     break;
     case RPC_MET_BWIDTH_READ:
         if(state_fail(s = bwidth_read(no_ctx, (bwidth_t *) ub.current_list))) {
-            serror("Could not get imc frequency");
+            serror("Could not get mem frequency");
         }
         data = (char *) ub.current_list;
         size = sizeof(bwidth_t) * ub.devs_count;
@@ -814,6 +814,7 @@ uint is_anonymous(ulong jid,ulong sid)
 int is_valid_sec_tag(ulong tag)
 {
 	#if 1
+	debug("received tag: %lu / SEC_KEY %lu", tag, SEC_KEY);
 	// You make define a constant at makefile time called SEC_KEY to use that option
 	return ((ulong) SEC_KEY == tag);
 	#endif

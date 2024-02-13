@@ -178,7 +178,6 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
 
         if (nmgr[j].shsig[lp].sig.instructions > 0) {
 
-          job_in_process[node_process] = j;
 
           L3[node_process]             = nmgr[j].shsig[lp].sig.L3_misses;
           inst[node_process]           = nmgr[j].shsig[lp].sig.instructions;
@@ -201,6 +200,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
           node_L3          += L3[node_process];
         }
 
+        job_in_process[node_process] = j;
         node_process++;
       }
     }

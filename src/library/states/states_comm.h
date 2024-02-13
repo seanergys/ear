@@ -51,5 +51,13 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
 void state_report_traces(int master_rank, int my_rank, int lid, loop_t *lsig, ulong freq, ulong status);
 void state_report_traces_state(int master_rank, int my_rank,int lid, ulong status);
 void state_print_policy_state(int master_rank, int st);
+
+/** Sets \p perf_accuracy_min_time and \p lib_period variables.
+ * Order of precedence:
+ * - environment variable EARL_TIME_LOOP_SIGNATURE
+ * - ear.conf's LibraryPeriod field.
+ * The value of \p perf_accuracy_min_time sets a lower bound for \p lib_period.
+ * The value returned by eards_node_energy_frequency sets the lowerest bound. */
+void states_comm_configure_performance_accuracy(cluster_conf_t *cluster_conf, ulong *hw_perf_acc, uint *library_period);
 #endif
 

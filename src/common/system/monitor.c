@@ -84,9 +84,11 @@ static void goto_interrupt()
 
 static void goto_sleep(int sleep_units, int sleep_reason, int *passed_units, int *alignment)
 {
+    #ifdef SHOW_DEBUGS
     char       *sleep_str[3] = { "next call", "alignment", "wandering" };
     char       *wake_str[2]  = { "time passed", "interruption" };
-    int         wake_reason;
+    #endif
+    ATTR_UNUSED int wake_reason;
     timestamp_t tW; // Wait time
 	timestamp_t t2;
 	timestamp_t t1;

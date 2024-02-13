@@ -16,7 +16,7 @@
 */
 
 #ifndef _EAR_BASE_H_
-#define _EAR_BASE_H
+#define _EAR_BASE_H_
 #include <common/types.h>
 
 /** Executed at application start. Reads EAR configuration environment variables. */

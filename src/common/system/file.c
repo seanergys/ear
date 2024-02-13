@@ -175,40 +175,43 @@ state_t ear_file_clean(const char *path)
 	state_return(EAR_SUCCESS);
 }
 
+
 void set_no_files_limit(ulong new_limit)
 {
-  
-    /** Change the open file limit */
-      struct rlimit rl; 
-        getrlimit(RLIMIT_NOFILE, &rl);
-          debug("current limit %lu max %lu", rl.rlim_cur, rl.rlim_max);
-            rl.rlim_cur = ear_min(rl.rlim_max, new_limit);
-              debug("NEW NO file limit %lu", rl.rlim_cur);
-                setrlimit(RLIMIT_NOFILE, &rl);
+	/** Change the open file limit */
+	struct rlimit rl;
+	getrlimit(RLIMIT_NOFILE, &rl);
+	debug("current limit %lu max %lu", rl.rlim_cur, rl.rlim_max);
+	rl.rlim_cur = ear_min(rl.rlim_max, new_limit);
+	debug("NEW NO file limit %lu", rl.rlim_cur);
+	setrlimit(RLIMIT_NOFILE, &rl);
 }
-                
+
+
 ulong get_no_files_limit()
-{ 
-                  struct rlimit rl;
-                    getrlimit(RLIMIT_NOFILE, &rl);
-                      return rl.rlim_cur;
+{
+	struct rlimit rl;
+	getrlimit(RLIMIT_NOFILE, &rl);
+	return rl.rlim_cur;
 }
-                      
+
+
 void set_stack_size_limit(ulong new_limit)
 {
-                      
-                        /** Change the open file limit */
-                          struct rlimit rl;
-                            getrlimit(RLIMIT_STACK, &rl);
-                              debug("current limit %lu max %lu", rl.rlim_cur, rl.rlim_max);
-                                rl.rlim_cur = ear_min(rl.rlim_max, new_limit);
-                                  debug("NEW STACK limit %lu", rl.rlim_cur);
-                                    setrlimit(RLIMIT_STACK, &rl);
+
+	/** Change the open file limit */
+	struct rlimit rl;
+	getrlimit(RLIMIT_STACK, &rl);
+	debug("current limit %lu max %lu", rl.rlim_cur, rl.rlim_max);
+	rl.rlim_cur = ear_min(rl.rlim_max, new_limit);
+	debug("NEW STACK limit %lu", rl.rlim_cur);
+	setrlimit(RLIMIT_STACK, &rl);
 }
-                                    
+
+
 ulong get_stack_size_limit()
 {
-                                      struct rlimit rl;
-                                        getrlimit(RLIMIT_STACK, &rl);
-                                          return rl.rlim_cur;
+	struct rlimit rl;
+	getrlimit(RLIMIT_STACK, &rl);
+	return rl.rlim_cur;
 }

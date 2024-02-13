@@ -25,7 +25,6 @@
 
 #include <report/report.h>
 
-static char nodename[128];
 static char csv_log_file[64];
 static char jobid[32];
 
@@ -80,10 +79,6 @@ static state_t append_data(report_id_t *id, sig_ext_t *data, uint count)
 {
 
     debug("[%d] report mpi node metrics print", id->master_rank);
-
-    if (csv_log_file == NULL) {
-        return EAR_ERROR;
-    }
 
     if (!report_file_created)
     {

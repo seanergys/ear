@@ -21,7 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
 #include <common/output/verbose.h>
@@ -396,7 +396,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
     signature_copy(my_app, sig);
     memcpy(my_app->sig_ext, se, sizeof(sig_ext_t));
 
-    if (c->pc_limit > 0) {
+    if (c->pc_limit > 0 && c->pc_limit != POWER_CAP_UNLIMITED) {
         verbose_master(2, "PC set to %u", c->pc_limit);
         curr_freq = frequency_closest_high_freq(my_app->avg_f, 1);
     } else {
@@ -404,28 +404,32 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
     }
 
     curr_pstate = frequency_closest_pstate(curr_freq);
+		debug("curr_pstate: %u", curr_pstate);
 
     if (!use_energy_models) {
         sig_ready[curr_pstate] = 1;
         signature_copy(&sig_list[curr_pstate], my_app);
     }
 
-    /*  We save data in imc data structure for policy comparision.
-     *  We are computing the imc_pstate based on the avg_imc_freq, no looking at selection */
-    pstate_t tmp_pstate;
-    curr_imc_freq = avg_to_khz(my_app->avg_imc_f);
-
-    if (state_fail(pstate_freqtops_upper((pstate_t *) imc_pstates, imc_num_pstates,
-                                         curr_imc_freq, &tmp_pstate)))
-    {
-        verbose_master(2, "%sWarning%s Current Avg IMC freq %lu can not be converted to psate."
-                       " %llu was set.",
-                       COL_YLW, COL_CLR, curr_imc_freq, tmp_pstate.khz);
-    }
-
-    curr_imc_pstate = tmp_pstate.idx;
-
     if (eUFS) {
+
+			/*  We save data in imc data structure for policy comparision.
+			 *  We are computing the imc_pstate based on the avg_imc_freq, no looking at selection */
+			pstate_t tmp_pstate;
+			curr_imc_freq = avg_to_khz(my_app->avg_imc_f);
+
+			debug("Curr imc freq %lu imc ps count %u", curr_imc_freq, imc_num_pstates);
+			if (state_fail(pstate_freqtops_upper((pstate_t *) imc_pstates, imc_num_pstates,
+																					 curr_imc_freq, &tmp_pstate)))
+			{
+					verbose_master(2, "%sWarning%s Current Avg IMC freq %lu can not be converted to psate."
+												 " %llu was set.",
+												 COL_YLW, COL_CLR, curr_imc_freq, tmp_pstate.khz);
+			}
+
+			curr_imc_pstate = tmp_pstate.idx;
+			debug("curr_imc_pstate: %u", curr_imc_pstate);
+
         /*  Min time has more stable IMC freq. Below code avoids overriding the first IMC ref data*/
         if (ref_imc_pstate == -1 || curr_imc_pstate != ref_imc_pstate) {
 

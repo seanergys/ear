@@ -177,6 +177,7 @@ void flops_perf_data_diff(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs)
     flops_t flB; // flAux (holds the final flops_t)
     ullong *pA = (ullong *) &flA;
     ullong *pB = (ullong *) &flB;
+    ATTR_UNUSED ullong *pD = (ullong *)  flD;
     ullong *p2 = (ullong *)  fl2;
     ullong *p1 = (ullong *)  fl1;
     ullong time = 0LLU;

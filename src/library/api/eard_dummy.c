@@ -15,6 +15,7 @@
 * and COPYING.EPL files.
 */
 
+
 #define _GNU_SOURCE
 #include <sched.h>
 
@@ -40,6 +41,7 @@
 #define DEFAULT_EAR_INSTALL_PATH "/usr/lib/ear"
 #define DEFAULT_EAR_ETC_PATH "/etc"
 #define DEFAULT_ENERGY_PLUGIN "energy_rapl.so"
+
 
 static char path[GENERIC_NAME];
 static cluster_conf_t dummy_cc;
@@ -216,7 +218,7 @@ state_t eard_dummy_earl_settings(char *ear_tmp, uint ID)
 				get_settings_conf_path(ear_tmp, ID, path);
 
 				debug("Creating settings dummy in %s", path);
-				dummy_sett = create_settings_conf_shared_area(path);
+				dummy_sett = create_settings_conf_shared_area(path, NULL);
 				check_null(dummy_sett, "create_settings_conf_shared_area returns NULL for path %s", path);
 
 				memset(dummy_sett, 0, sizeof(settings_conf_t));
@@ -244,7 +246,7 @@ state_t eard_dummy_earl_settings(char *ear_tmp, uint ID)
 				verbose_master(2, "Dummy earl settings done %s", path);
 
 				get_resched_path(ear_tmp, ID, path);
-				dummy_resch = create_resched_shared_area(path);
+				dummy_resch = create_resched_shared_area(path, NULL);
 
 				check_null(dummy_resch, "Resched are returns NULL for path %s", path);
 
@@ -259,7 +261,7 @@ state_t eard_dummy_earl_settings(char *ear_tmp, uint ID)
 state_t eard_dummy_app_mgt(char *ear_tmp, uint ID)
 {
 				get_app_mgt_path(ear_tmp, ID, path);
-				app_mgt_t *dummy = create_app_mgt_shared_area(path);
+				app_mgt_t *dummy = create_app_mgt_shared_area(path, NULL);
 				check_null(dummy, "Error creating app_mgr in path %s ", path);
 
 				//verbose_master(2, "Dummy app_mgt area done path %s", path);
@@ -272,7 +274,7 @@ state_t eard_dummy_pc_app_info(char *ear_tmp, uint ID)
 				pc_app_info_t *dummy;
 
 				get_pc_app_info_path(ear_tmp, ID, path);	
-				dummy = create_pc_app_info_shared_area(path);
+				dummy = create_pc_app_info_shared_area(path, NULL);
 				check_null(dummy, "Error creating pc area in path %s", path);
 
 				memset(dummy, 0 , sizeof(pc_app_info_t));

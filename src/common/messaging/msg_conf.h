@@ -106,20 +106,26 @@ typedef union req_data{
 }req_data_t;
 
 typedef struct request{
-    uint        req;
-    uint        node_dist;
-    int         time_code;
-    int         num_nodes;
-    int         *nodes;
+    uint32_t        req;
+    uint32_t        node_dist;
+#if USE_SEC_KEY_RC
+    uint32_t        sec_key;
+#endif
+    int32_t         time_code;
+    int32_t         num_nodes;
+    int32_t         *nodes;
     req_data_t  my_req; //all new variables must be specified after time_code so the first portion aligns with internal_request_t
 }request_t;
 
 typedef struct internal_request {
-    uint    req;
-    uint    node_dist;
-    int     time_code; 
-    int     num_nodes;
-    int     *nodes;
+    uint32_t    req;
+    uint32_t    node_dist;
+#if USE_SEC_KEY_RC
+    uint32_t    sec_key;
+#endif
+    int32_t     time_code; 
+    int32_t     num_nodes;
+    int32_t     *nodes;
 } internal_request_t; //only the necessary my_req content is sent, and what is sent can be identified by the req code 
 
 typedef struct status_node_info{
@@ -136,8 +142,8 @@ typedef struct app_info{
 }app_info_t;
 
 typedef struct request_header {
-    int     type;
-    uint    size;
+    int32_t     type;
+    uint32_t    size;
 } request_header_t;
 
 typedef struct eard_policy_info{
@@ -151,7 +157,7 @@ typedef struct status{
     char                ok;
     status_node_info_t  node;
     app_info_t          app;
-    uint							eardbd_connected;
+    uint                eardbd_connected;
     unsigned int        num_policies;
     eard_policy_info_t  policy_conf[TOTAL_POLICIES];
 } status_t;

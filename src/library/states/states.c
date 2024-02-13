@@ -67,9 +67,11 @@
 #define VERB_SIGN_TRACK 3 // Verbose level for signature tracking.
 #define DYNAIS_CUTOFF	1 // Enables the dynamic DynAIS turning off.
 
-#define MAX_SIG_TIME    10000000 // 10 s. It is a time limit for signature computation.
+#define states_verbose2_master(msg, ...) \
+    verbose_info2_master("States:" msg, ##__VA_ARGS__);
 
-extern masters_info_t masters_info; // TODO: Where declared ?
+
+extern masters_info_t masters_info; // Defined at externs.h
 extern float          ratio_PPN;    // TODO: Where declared ?
 extern uint   AID;
 
@@ -88,8 +90,10 @@ static llong comp_N_end;
 static llong comp_N_time;
 
 
-       ulong perf_accuracy_min_time = 1000000; // The minimum period time to be elapsed
-                                               // before starting signature computation.
+       ulong perf_accuracy_min_time = 10000000; // The minimum period time to be elapsed
+                                                // before starting signature computation.
+																								// Defaults to 10s, but it is initiated at
+																								// states_begin_job
 
 // TODO: usage
 static uint begin_iter;
@@ -186,6 +190,7 @@ void fill_common_event(ear_event_t *ev)
 	strcpy(ev->node_id, application.node_id);
 }
 
+
 void fill_event(ear_event_t *ev, uint event, llong value)
 {
   ev->event = event;
@@ -194,79 +199,65 @@ void fill_event(ear_event_t *ev, uint event, llong value)
 }
 
 
-/** Executed at application start. Reads EAR configuration environment variables.*/
+/** Executed at application start. Reads EAR configuration environment variables. */
 void states_begin_job(int my_id, char *app_name)
 {
-    master = !my_id;
+	master = !my_id;
 
-    char *max_dyn_ov = ear_getenv("EAR_MAX_DYNAIS_OVERHEAD");
-    if (max_dyn_ov != NULL) {
-        MAX_DYNAIS_OVERHEAD_DYN = atof(max_dyn_ov);
-        debug("Using dynamic limit for dynais %lf", MAX_DYNAIS_OVERHEAD_DYN);
-    }
+	char *max_dyn_ov = ear_getenv("EAR_MAX_DYNAIS_OVERHEAD");
+	if (max_dyn_ov != NULL) {
+		MAX_DYNAIS_OVERHEAD_DYN = atof(max_dyn_ov);
+		debug("Using dynamic limit for dynais %lf", MAX_DYNAIS_OVERHEAD_DYN);
+	}
 
-    node_freqs_alloc(&node_freqs);
+	node_freqs_alloc(&node_freqs);
 
 
-    // The number of available pstates
+	// The number of available pstates
 #if NEW_CPUFREQ_API
-    uint pstate_cnt = metrics_get(MGT_CPUFREQ)->avail_count;
+	uint pstate_cnt = metrics_get(MGT_CPUFREQ)->avail_count;
 #else
-    uint pstate_cnt = frequency_get_num_pstates();
+	uint pstate_cnt = frequency_get_num_pstates();
 #endif
 
-    sig_ready  = (uint *) calloc(pstate_cnt, sizeof(uint));
+	sig_ready  = (uint *) calloc(pstate_cnt, sizeof(uint));
 
 #if 0
-    // Disabled code as calloc automatically inits data to 0
-    for (uint i = 0; i < pstate_cnt; i++) {
-        sig_ready[i] = 0;
-    }
+	// Disabled code as calloc automatically inits data to 0
+	for (uint i = 0; i < pstate_cnt; i++) {
+		sig_ready[i] = 0;
+	}
 #endif
 
-    fill_common_event(&curr_state_event);
+	fill_common_event(&curr_state_event);
 
 #if ONLY_MASTER
-    if (my_id) return;
+	if (my_id) return;
 #endif
 
-    /* LOOP WAS CREATED HERE BEFORE */
+	/* LOOP WAS CREATED HERE BEFORE */
 
-    perf_accuracy_min_time = get_ear_performance_accuracy();
-	verbose_master(2, "perf_accuracy_min_time default: %lu", perf_accuracy_min_time);
+	states_comm_configure_performance_accuracy(&cconf, &perf_accuracy_min_time, &lib_period);
+	states_verbose2_master("library_period: %u", lib_period);
 
-    ulong architecture_min_perf_accuracy_time;
-    if (master && eards_connected()) {
-        architecture_min_perf_accuracy_time = eards_node_energy_frequency();
-        if (architecture_min_perf_accuracy_time == (ulong) EAR_ERROR) {
-            architecture_min_perf_accuracy_time = perf_accuracy_min_time;
-        }
-        verbose_master(2, "eard perf_accuracy_min_time default %lu", architecture_min_perf_accuracy_time);
-    } else {
-        architecture_min_perf_accuracy_time = 1000000;
-    }
-    if ((architecture_min_perf_accuracy_time > perf_accuracy_min_time) && (architecture_min_perf_accuracy_time < MAX_SIG_TIME)) {
-        perf_accuracy_min_time = architecture_min_perf_accuracy_time;
-    }
-    verbose_master(2, "perf_accuracy_min_time %lu", perf_accuracy_min_time);
+	EAR_STATE = NO_PERIOD;
 
-    EAR_STATE = NO_PERIOD;
+	policy_cpufreq_khz   = EAR_default_frequency;
+	loop_signature.def_f = EAR_default_frequency;
 
-    policy_cpufreq_khz   = EAR_default_frequency;
-    loop_signature.def_f = EAR_default_frequency;
+	init_log();
 
-    init_log();
+	if (state_fail(policy_max_tries(&policy_max_tries_cnt))) {
+		verbose_warning("Policy max tries could not be read.");
+	}
 
-    if (state_fail(policy_max_tries(&policy_max_tries_cnt))) {
-        verbose_master(VERBOSE_WARN, "%sWARNING%s Policy max tries could not be read.", COL_RED, COL_CLR);
-    }
+	total_threads_cnt =  get_total_resources();
+	debug("Total threads: %u", total_threads_cnt);
 
-    total_threads_cnt =  get_total_resources();
-    debug("Total threads: %u", total_threads_cnt);
-
-    overhead_suscribe("evaluate_sig",&id_ovh_ev_sig);
-    overhead_suscribe("sig_stable",&id_ovh_stable);
+	overhead_suscribe("evaluate_sig",&id_ovh_ev_sig);
+	overhead_suscribe("sig_stable",&id_ovh_stable);
 }
+
 
 /** This function is executed at application end. */
 void states_end_job(int my_id,  char *app_name)
@@ -282,13 +273,12 @@ void states_begin_period(int my_id, ulong event, ulong size, ulong level)
 {
     EAR_STATE = TEST_LOOP;
 
-
     tries_current_loop           = 0;
     tries_current_loop_same_freq = 0;
 
     if (state_fail(loop_init(&curr_loop, application.job.id,
                     application.job.step_id, application.job.local_id, application.node_id, event, size, level))) {
-        verbose_master(2, "%sEAR Error%s Creating loop: %s", COL_RED, COL_CLR, state_msg);
+        verbose_error_master("Creating loop: %s", state_msg);
     }
 
     policy_loop_init(&curr_loop.id);
@@ -376,11 +366,12 @@ void states_new_iteration(int my_id, uint period, uint iterations,
     /* Add the node mgt external feature management.
      * Detect, prints and set to 0 again */
     if (external_mgt != NULL && (masters_info.my_master_rank >= 0)) {
-        if (external_mgt->new_mask == 1) {
-            verbose_master(1, "%sExternal library requested rescheduling%s", COL_RED, COL_CLR);
+        if (external_mgt->new_mask == 1)
+        {
+            verbose_info_master("%sExternal library requested rescheduling%s", COL_RED, COL_CLR);
             if (state_fail(update_job_affinity_mask(lib_shared_region, sig_shared_region)))
             {
-                verbose(1, "An error occurred updating the affinity mask: %s", state_msg);
+                verbose_error("Updating the affinity mask: %s", state_msg);
             }
             external_mgt->new_mask = 0;
             resched_conf->force_rescheduling = 2;
@@ -392,7 +383,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
     if (state_ok(metrics_new_iteration(&loop_signature))) {
         if (state_fail(policy_new_iteration(&loop_signature))) {
 
-            verbose_master(2, "%sNew Phase detected%s", COL_BLU, COL_CLR);
+            verbose_info2_master("New Phase detected!");
 
             /* Accumulate statistics of savings */
             accumulate_phases_summary(&loop_signature, &application.signature);
@@ -464,6 +455,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             comp_N_end = metrics_time();
             comp_N_time = metrics_usecs_diff(comp_N_end, comp_N_begin);
 
+						// TODO: Should we use lib_period?
             if (comp_N_time > perf_accuracy_min_time * 0.1) {
                 debug("EAR_STATE <- FIRST_ITERATION. %d iterations elapsed", iterations);
 
@@ -489,6 +481,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
             if (comp_N_time == 0) comp_N_time = 1;
 
+						// TODO: Should we use lib_period?
             compute_perf_count_period(comp_N_time, (llong) perf_accuracy_min_time,
                                       &perf_count_period, &perf_count_period_10p);
 
@@ -514,6 +507,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             comp_N_end = metrics_time();
             comp_N_time = metrics_usecs_diff(comp_N_end, comp_N_begin);
 
+						// TODO: Should we use lib_period?
             compute_perf_count_period(comp_N_time, (llong) perf_accuracy_min_time,
                                       &perf_count_period, &perf_count_period_10p);
 
@@ -529,9 +523,10 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
             assert(comp_N_time != 0); // Only compiled with SHOW_DEBUGS enabled.
 
-            // TODO: Here we don't tolerate comp_N_begin equal to 0
+            // Here we don't tolerate comp_N_begin equal to 0
             if (comp_N_time == 0) {
-                error( "EAR(%s): PANIC comp_N_time must be > 0", ear_app_name);
+                error_lib("EAR(%s): PANIC comp_N_time must be > 0", ear_app_name);
+                // TODO: Should we terminate ?
             }
 
             compute_perf_count_period(comp_N_time, (llong) perf_accuracy_min_time,
@@ -626,9 +621,10 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                     //verbose_master(0,"%s Using new period %u accel %u (iters per second %f)", node_name, perf_count_period, perf_count_period_10p, (float)N_iter / (float)passed_time);
 
                   }
-                  else if (ear_guided != TIME_GUIDED){
-                    lib_period = (uint)((float)perf_accuracy_min_time/(float)passed_time)*lib_period;
-                    //verbose_master(0,"%s Using new lib_period %u", node_name, lib_period);
+                  else if (ear_guided != TIME_GUIDED)
+									{
+                    lib_period = (uint) ((float) perf_accuracy_min_time / (float) passed_time) * lib_period;
+                    states_verbose2_master("Library period updated: %u", lib_period);
                   }
                 }
                 overhead_stop(id_ovh_ev_sig);
@@ -734,7 +730,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             begin_iter = iterations;
 
             // Only the master process will report the loop.
-            verbose_master(2, "Reporting data starts");
+            states_verbose2_master("Reporting loop signature data starts");
             report_loop_signature(iterations, &curr_loop);
 
             policy_get_current_freq(&node_freqs);
@@ -833,8 +829,8 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                     //verbose_master(0,"%s Using new period %u accel %u (iters per second %f)", node_name, perf_count_period, perf_count_period_10p, (float)N_iter / (float)passed_time);
                     }
                   else if (ear_guided != TIME_GUIDED){
-                    lib_period = (uint)((float)perf_accuracy_min_time/(float)passed_time)*lib_period;
-                    //verbose_master(0,"%s Using new lib_period %u", node_name, lib_period);
+                    lib_period = (uint) ((float) perf_accuracy_min_time / (float) passed_time) * lib_period;
+                    states_verbose2_master("Library period updated: %u", lib_period);
                   }
                 }
                 overhead_stop(id_ovh_stable);
@@ -869,7 +865,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             /* At this point curr_loop, loop_signature and job_signature are the
              * JOB signature with accumulated per process and global metrics */
 
-						verbose_master(2, "Reporting data starts");
+						states_verbose2_master("Reporting loop signature");
             report_loop_signature(iterations, &curr_loop);
 
             /* VERBOSE */
@@ -906,8 +902,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                     loop_signature.CPI, loop_signature.GBS, loop_signature.DC_power,
                     policy_sel_signature.CPI, policy_sel_signature.GBS, policy_sel_signature.DC_power);
 
-                verbose_master(1, "%sWARNING%s EARL state reset because signature changed from the last passed to the policy: %s",
-                    COL_YLW, COL_CLR, sigs_metrics_buff);
+                verbose_info_master("EARL state reset because signature changed from the last passed to the policy: %s", sigs_metrics_buff);
               }
 
               overhead_stop(id_ovh_stable);
@@ -915,7 +910,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             }
 
             if (sig_ready[def_pstate] == 0) {
-                verbose_master(2,"Signature at default freq not available, assuming policy ok");
+                verbose_info2_master("Signature at default freq not available, assuming policy ok.");
                 /* If default is not available, that means a dynamic configuration has been decided, we assume we are ok */
                 if (sig_ready[curr_pstate] == 0) {
                     sig_ready[curr_pstate] = 1;
@@ -941,7 +936,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                   }
                   else if (ear_guided != TIME_GUIDED){
                     lib_period = lib_period * 2;
-                    //verbose_master(0,"%s Using new lib_period %u", node_name, lib_period);
+                    states_verbose2_master("Library period updated %u.", lib_period);
                   }
                   sig_enlarged = 1;
                 }
@@ -1032,7 +1027,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                     }
                   else if (ear_guided != TIME_GUIDED){
                     lib_period = (uint)((float)perf_accuracy_min_time/(float)passed_time)*lib_period;
-                    //verbose_master(0,"%s Using new lib_period %u", node_name,lib_period);
+                    states_verbose2_master("Library period updated %u.", lib_period);
                   }
                     }
                     break;
@@ -1138,7 +1133,7 @@ static uint policy_had_effect(const signature_t *A, const signature_t *B)
 }
 
 static void compute_perf_count_period(llong n_iters_time, llong n_iters_time_min,
-        uint *loop_perf_count_period, uint *loop_perf_count_period_accel)
+																			uint *loop_perf_count_period, uint *loop_perf_count_period_accel)
 {
     if (n_iters_time < (llong) n_iters_time_min) {
         *loop_perf_count_period = (n_iters_time_min / n_iters_time) + 1;
@@ -1179,7 +1174,7 @@ static void report_loop_signature(uint iterations, loop_t *my_loop)
         application.power_sig.max_DC_power = ear_max(application.power_sig.max_DC_power, my_loop->signature.DC_power);
 
         if (state_fail(report_loops(&rep_id, my_loop, 1))) {
-            verbose_master(2, "%sError%s Reporting loop.", COL_RED, COL_CLR);
+            verbose_error_master("Reporting loop.");
         }
     }
 
@@ -1198,7 +1193,7 @@ static void accumulate_phases_summary(signature_t *loops, signature_t *apps)
   for (uint ph = 0; ph < EARL_MAX_PHASES; ph++){
     se->earl_phase[ph].elapsed += se_loop->earl_phase[ph].elapsed; 
     if (se->earl_phase[ph].elapsed || se_loop->earl_phase[ph].elapsed){
-      verbose_master(2, "Phase[%s] accumulated elapsed %llu", phase_to_str(ph), se->earl_phase[ph].elapsed);
+      verbose_info2_master("Phase[%s] accumulated elapsed %llu", phase_to_str(ph), se->earl_phase[ph].elapsed);
     }
   }
 }

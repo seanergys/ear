@@ -29,6 +29,7 @@
 #include <library/loader/module_mpi.h>
 #include <library/loader/module_cuda.h>
 #include <library/loader/module_openmp.h>
+#include <library/loader/module_oneapi.h>
 #include <library/loader/module_default.h>
 #include <common/config/config_env.h>
 #include <common/output/debug.h>
@@ -140,6 +141,9 @@ void  __attribute__ ((constructor)) loader()
 
         _loaded = module_constructor_cuda(path_lib_so,libhack);
         if (_loaded) return;
+
+	_loaded = module_constructor_oneapi(path_lib_so,libhack);
+	if (_loaded) return;
 
         // Module default
         if (load_no_parallel()) {

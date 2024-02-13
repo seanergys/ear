@@ -98,26 +98,31 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 	}
 
 	
-	/* compute_total_node_fff compute the metrics only for the calling job. It is needed to iterate over the jobs to have per node */
-	
-	for (uint j = 0; j < node_mgr_earl_apps(); j ++){
-		/* Power condition is to do only in case the signature is ready */
-		if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL) && (nmgr[j].libsh->node_signature.DC_power)){  
-			used_cpus += nmgr[j].libsh->num_cpus;
-			for (uint lp = 0; lp < nmgr[j].libsh->num_processes; lp++){
-				if (nmgr[j].shsig[lp].sig.DC_power > 0){
-				  job_in_process[node_process] = j;
-				  L3[node_process]  = nmgr[j].shsig[lp].sig.L3_misses;
-				  node_L3 += L3[node_process];
-				}
-				node_process++;
-			}
+  /* compute_total_node_fff compute the metrics only for the calling job. It is needed to iterate over the jobs to have per node */
 
-		}
-	}
-	#if EARL_LIGHT
-	debug("There are %d jobs in node ", node_process);
-	#endif
+  for (uint j = 0; j < node_mgr_earl_apps(); j ++){
+    /* Power condition is to do only in case the signature is ready */
+    if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL) && (nmgr[j].libsh->node_signature.DC_power))
+    {
+      used_cpus += nmgr[j].libsh->num_cpus;
+      for (uint lp = 0; lp < nmgr[j].libsh->num_processes; lp++)
+      {
+        if (nmgr[j].shsig[lp].sig.DC_power > 0)
+        {
+          L3[node_process]  = nmgr[j].shsig[lp].sig.L3_misses;
+          node_L3 += L3[node_process];
+        }
+        job_in_process[node_process] = j;
+        node_process++;
+      }
+    } else
+    {
+      debug("node manager %d: libsh %p shsig %p", j, nmgr[j].libsh, nmgr[j].shsig);
+    }
+  }
+#if EARL_LIGHT
+  debug("There are %d jobs in node ", node_process);
+#endif
 
   if (used_cpus == 0) return EAR_SUCCESS;
 

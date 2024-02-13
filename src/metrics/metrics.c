@@ -206,7 +206,6 @@ static char *cpupow_data_tostr(ullong *diffs, double secs, char *buffer, size_t 
 void nodepow_read(void *nod)
 {
     nodepow(dc_read, &e_ctx, nod);
-    ulong *lunod = (ulong *) nod;
 }
 
 void nodepow_data_diff(void *nod2, void *nod1, ulong *nodD)
@@ -219,7 +218,7 @@ void nodepow_data_copy(void *nodD, void *nodS)
     memcpy(nodD, nodS, 8192);
 }
 
-static void nodepow_read_copy(void *nod2, void *nod1, ulong *nodD)
+ATTR_UNUSED static void nodepow_read_copy(void *nod2, void *nod1, ulong *nodD)
 {
     nodepow_read(nod2);
     nodepow_data_diff(nod2, nod1, nodD);

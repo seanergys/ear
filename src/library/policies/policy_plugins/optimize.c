@@ -115,7 +115,6 @@ static uint *sig_ready;
 
 static polsym_t gpus;
 static const ulong **gpuf_pol_list;
-static const ulong **cpuf_pol_list;
 static const uint *gpuf_pol_list_items;
 
 
@@ -283,7 +282,6 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
 
     int gready; // GPU ready
     ulong curr_freq,  curr_pstate;
-    state_t st;
     sig_ext_t *se     = (sig_ext_t *) sig->sig_ext;
     optimize_readiness = EAR_POLICY_CONTINUE;
 
@@ -342,7 +340,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
     /* Else check to go to next */
     if (optimize_state == FIRST){
       verbose_master(2 , "Optimize, FIRST state: going to next ");
-      st = policy_no_models_go_next_optimize(curr_pstate,&optimize_readiness ,freqs,optimize_num_pstates);
+      policy_no_models_go_next_optimize(curr_pstate,&optimize_readiness ,freqs,optimize_num_pstates);
       optimize_state = SEARCHING;
     }else{
       if (curr_pstate == 0){
@@ -353,7 +351,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
       }else{
         uint go_next;
         go_next = policy_no_models_is_better_optimize(&sig_list[curr_pstate], &sig_list[curr_pstate -1]);
-        if (go_next) st = policy_no_models_go_next_optimize(curr_pstate,&optimize_readiness ,freqs,optimize_num_pstates);
+        if (go_next) policy_no_models_go_next_optimize(curr_pstate,&optimize_readiness ,freqs,optimize_num_pstates);
         else{         
           optimize_state = FIRST;
           policy_no_models_stop_searching(curr_pstate, &optimize_readiness, freqs);
