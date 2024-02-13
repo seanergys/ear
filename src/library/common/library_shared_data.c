@@ -162,7 +162,8 @@ int all_signatures_initialized(lib_shared_data_t *data,shsignature_t *sig)
 void aggregate_all_the_cpumasks(lib_shared_data_t *data,shsignature_t *sig, cpu_set_t *m)
 {
 	CPU_ZERO(m);
-	for (uint p = 0; p < data->num_processes; p++){
+	for (uint p = 0; p < data->num_processes; p++)
+	{
 		aggregate_cpus_to_mask(m, &sig[p].cpu_mask);
 	}
 }
@@ -577,15 +578,10 @@ state_t compute_job_node_io_mbs(const shsignature_t *sig, int n_procs, double *i
 }
 
 
-void compute_job_cpus(lib_shared_data_t *data,shsignature_t *sig,uint *cpus)
+void compute_job_cpus(lib_shared_data_t *data, uint *cpus)
 {
-    int i;
-    *cpus = 0;
-    for (i = 0; i < data->num_processes; i++) {
-        uint lcpus = num_cpus_in_mask(&sig[i].cpu_mask);
-        *cpus += lcpus;
-    }
-    verbose_master(2,"Job %u has %u cpus ",node_mgr_index,*cpus);
+	*cpus = num_cpus_in_mask(&data->node_mask);
+	verbose_master(2, "Job: %u. CPUs: %u.", node_mgr_index, *cpus);
 }
 
 uint compute_max_vpi_idx(const shsignature_t *sig, int n_procs, double *max_vpi)

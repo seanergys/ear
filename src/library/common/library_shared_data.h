@@ -329,7 +329,11 @@ uint compute_max_vpi_idx(const shsignature_t *sig, int n_procs, double *max_vpi)
 
 void compute_total_io(lib_shared_data_t *data,shsignature_t *sig,ullong *total_io);
 void compute_total_node_avx_and_avx_fops(lib_shared_data_t *data,shsignature_t *sig,ullong *avx);
-void compute_job_cpus(lib_shared_data_t *data,shsignature_t *sig,uint *cpus);
+
+
+/** Counts the number of CPUs of the job (on the current node) based on 
+ * \p data's node_mask attribute and stores it on \p cpus. */
+void compute_job_cpus(lib_shared_data_t *data, uint *cpus);
 
 
 void load_app_mgr_env();

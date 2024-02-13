@@ -1713,9 +1713,6 @@ void ear_init()
                     /* Synchro: Wait for slaves CPU masks set. */
                     while (!are_signatures_ready(lib_shared_region, sig_shared_region, NULL)) usleep(100);
 
-                    debug("Computing number of cpus per job and node mask");
-                    compute_job_cpus(lib_shared_region, sig_shared_region, &lib_shared_region->num_cpus);
-
                     cpu_set_t jmask;
                     aggregate_all_the_cpumasks(lib_shared_region, sig_shared_region, &jmask);
 
@@ -1728,7 +1725,10 @@ void ear_init()
                     /* app_mgt_info is shared with the eard through the powermon_app_t */
                     app_mgt_info->node_mask = jmask;
 
-                    debug("Node mask computed in");
+                    debug("Node mask computed");
+
+                    debug("Computing number of cpus per job and node mask");
+                    compute_job_cpus(lib_shared_region, &lib_shared_region->num_cpus);
                 } else {
                     // Slaves: wait for master to set up node mask
                     while (!lib_shared_region->num_cpus){ 
