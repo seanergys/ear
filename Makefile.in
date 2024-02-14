@@ -26,6 +26,7 @@ FEAT_DB_PSQL       = @FEAT_DB_PGSQL@
 FEAT_EXAMON        = 0
 FEAT_DB_CASSANDRA  = 0
 FEAT_DLB           = 0
+FEAT_WF_SUPPORT    = 0
 # Compilers
 CC                 = @CC@
 CC_FLAGS           = @CC_FLAGS@

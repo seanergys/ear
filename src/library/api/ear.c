@@ -1597,7 +1597,9 @@ void ear_init()
 				strcpy(application.job.user_acc,my_account);
 				application.job.id        = my_job_id;
 				application.job.step_id   = my_step_id;
+#if WF_SUPPORT
         application.job.local_id  = AID;
+#endif
 
 				debug("Starting job");
 				// sets the job start_time

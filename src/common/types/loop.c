@@ -80,7 +80,9 @@ int loop_init(loop_t *loop, ulong job_id, ulong step_id, ulong local_id, const c
 
     loop->jid      = job_id;
     loop->step_id  = step_id;
+#if WF_SUPPORT
     loop->local_id = local_id;
+#endif
 
     memcpy(loop->node_id, node_id, sizeof loop->node_id);
 
@@ -274,7 +276,11 @@ static int append_loop_text_file_no_job_int(char *path, loop_t *loop,int ts, ull
 
     assert(loop!=NULL);
     assert(loop->node_id!=NULL);
+#if WF_SUPPORT
     dprintf(fd,"%lu;%lu;%lu;",loop->jid,loop->step_id,loop->local_id);
+#else
+    dprintf(fd,"%lu;%lu;",loop->jid,loop->step_id);
+#endif
     dprintf(fd, "%s;", loop->node_id);
     signature_print_fd(fd, &loop->signature,1, single_column, sep);
     print_loop_id_fd(fd, &loop->id);

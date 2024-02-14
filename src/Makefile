@@ -31,6 +31,20 @@ COMPONENT_DISABLE = \
   database_cache
 endif
 
+ifeq ($(FEAT_WF_SUPPORT), 1)  
+CC_FLAGS += -DWF_SUPPORT=1
+MPI_CFLAGS += -DWF_SUPPORT=1
+else
+CC_FLAGS += -DWF_SUPPORT=0
+MPI_CFLAGS += -DWF_SUPPORT=0
+COMPONENT_DISABLE += \
+  commands\
+  database_cache \
+  tools \
+  global_manager 
+endif
+
+
 
 ######## RULES
 

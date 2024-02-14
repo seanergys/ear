@@ -11,6 +11,7 @@ export FEAT_EXAMON
 export FEAT_DB_CASSANDRA
 export FEAT_DLB
 export FEAT_DB_PROMETHEUS
+export FEAT_WF_SUPPORT   
 export CC
 export CC_FLAGS
 export MPICC
