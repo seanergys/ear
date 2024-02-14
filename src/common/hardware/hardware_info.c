@@ -86,9 +86,7 @@ void fill_cpufreq_list(cpu_set_t *my_mask, uint n_cpus, uint value, uint no_valu
 
 void aggregate_cpus_to_mask(cpu_set_t *dst, cpu_set_t *src)
 {
-    for (uint c = 0; c < MAX_CPUS_SUPPORTED; c++) {
-      if (CPU_ISSET(c, src)) CPU_SET(c, dst);
-  }
+	CPU_OR(dst, dst, src);
 }
 
 
