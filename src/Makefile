@@ -40,8 +40,7 @@ MPI_CFLAGS += -DWF_SUPPORT=0
 COMPONENT_DISABLE += \
   commands\
   database_cache \
-  tools \
-  global_manager 
+  global_manager
 endif
 
 
