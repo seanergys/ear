@@ -2761,7 +2761,7 @@ static state_t energy_lib_init(settings_conf_t *conf)
 
         strcpy(energy_objc, hack_energy_plugin_path);
 
-    } else if (conf->installation.obj_ener != NULL) {
+    } else if (strlen(conf->installation.obj_ener)) {
 
         debug("Using the configured energy plugin shared object file");
 

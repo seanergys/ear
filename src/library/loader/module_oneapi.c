@@ -144,7 +144,7 @@ const char *libs_oneapi_nam[] = {
 
 static int callback(struct dl_phdr_info *info, size_t size, void *data)
 {
-	char *type;
+	// char *type;
 	// int p_type, j;
 	uint lib_found = 0;
 

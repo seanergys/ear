@@ -21,7 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
 #include <common/output/verbose.h>
@@ -404,7 +404,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
     }
 
     curr_pstate = frequency_closest_pstate(curr_freq);
-		debug("curr_pstate: %u", curr_pstate);
+		debug("curr_pstate: %lu", curr_pstate);
 
     if (!use_energy_models) {
         sig_ready[curr_pstate] = 1;
