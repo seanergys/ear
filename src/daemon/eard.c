@@ -919,7 +919,7 @@ int main(int argc, char *argv[])
 
                 if (eard_min_pstate < 0)
 								{
-									eard_error("Minimum P-State (%d) must be greater or equal to 0.", eard_min_pstate);
+									eard_error("Minimum P-State (%u) must be greater or equal to 0.", eard_min_pstate);
 								} else
 								{
 									uint api_pstate_count = frequency_get_num_pstates();
