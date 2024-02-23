@@ -1005,81 +1005,134 @@ state_t policy_domain(polctx_t *c, node_freq_domain_t *domain)
 
 state_t policy_io_settings(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs)
 {
-    if (c == NULL) {
-        return EAR_ERROR;
-    }
+	if (!c) {
+		return EAR_ERROR;
+	}
 
-    verbose_master(2, "%sCPU IO phase%s", COL_BLU, COL_CLR);
+	const uint min_time_io_veb_lvl = 2; // Used to control the verbose level in this function
+	verbose_master(min_time_io_veb_lvl, "%sMIN TIME%s CPU I/O settings", COL_BLU, COL_CLR);
 
-    cpu_ready = EAR_POLICY_READY;
+	cpu_ready = EAR_POLICY_READY;
 
-    for (uint i=0;i<num_processes;i++) {
-        freqs->cpu_freq[i] = frequency_pstate_to_freq(c->num_pstates - 1);
-    }
-    memcpy(last_nodefreq_sel.cpu_freq, freqs->cpu_freq, MAX_CPUS_SUPPORTED * sizeof(ulong));
+	for (uint i = 0; i < num_processes; i++)
+	{
+		freqs->cpu_freq[i] = min_time_def_freqs.cpu_freq[i];
 
-    if (dyn_unc) {
-        for (uint sock_id=0; sock_id < arch_desc.top.socket_count; sock_id++) {
-            freqs->imc_freq[sock_id*IMC_VAL+IMC_MAX] = imc_max_pstate[sock_id];
-            freqs->imc_freq[sock_id*IMC_VAL+IMC_MIN] = imc_max_pstate[sock_id];
-        }
-        memcpy(last_nodefreq_sel.imc_freq, freqs->imc_freq, imc_devices * IMC_VAL * sizeof(ulong));
-    }
+		signature_t local_sig;
+		signature_from_ssig(&local_sig, &sig_shared_region[i].sig);
+
+		uint io_bound;
+		is_io_bound(&local_sig, sig_shared_region[i].num_cpus, &io_bound);
+
+		uint busy_waiting;
+
+		if (!io_bound)
+		{
+			is_process_busy_waiting(&sig_shared_region[i].sig, &busy_waiting); // Julita
+			if (busy_waiting) {
+				freqs->cpu_freq[i] = frequency_pstate_to_freq(c->num_pstates - 1);
+			}
+		} else if (me_top.vendor == VENDOR_INTEL)
+		{
+			freqs->cpu_freq[i] = frequency_pstate_to_freq(c->num_pstates - 1);
+		}
+
+		char ssig_buff[256];
+		ssig_tostr(&sig_shared_region[i].sig, ssig_buff, sizeof(ssig_buff));
+
+		verbose_master(min_time_io_veb_lvl, "%s.[%d] [I/O config: %u, I/O busy waiting config: %u] %s",
+				node_name, i, io_bound, busy_waiting, ssig_buff);
+
+		/* We copy in shared memory to be used later in MPI init/end if needed. */
+		sig_shared_region[i].new_freq = freqs->cpu_freq[i];
+	}
+
+	memcpy(last_nodefreq_sel.cpu_freq, freqs->cpu_freq, MAX_CPUS_SUPPORTED * sizeof(ulong));
+
+	if (dyn_unc)
+	{
+		for (uint sock_id=0; sock_id < arch_desc.top.socket_count; sock_id++)
+		{
+			freqs->imc_freq[sock_id*IMC_VAL+IMC_MAX] = imc_min_pstate[sock_id];
+			freqs->imc_freq[sock_id*IMC_VAL+IMC_MIN] = imc_min_pstate[sock_id];
+		}
+		memcpy(last_nodefreq_sel.imc_freq, freqs->imc_freq, imc_devices * IMC_VAL * sizeof(ulong));
+	}
 
 #if USE_GPUS
-    if (gpu_plugin.io_settings != NULL){
-      return gpu_plugin.io_settings(c, my_sig, freqs);
-    }else{
-      gpu_ready = EAR_POLICY_READY;
-    }
-    return EAR_SUCCESS;
+	if (gpu_plugin.io_settings != NULL){
+		return gpu_plugin.io_settings(c, my_sig, freqs);
+	}else{
+		gpu_ready = EAR_POLICY_READY;
+	}
+	return EAR_SUCCESS;
 #else
-    gpu_ready = EAR_POLICY_READY;
+	gpu_ready = EAR_POLICY_READY;
 #endif
 
-    /* GPU mem is pending */
+	/* GPU mem is pending */
 
-    return EAR_SUCCESS;
+	return EAR_SUCCESS;
 }
 
 state_t policy_busy_wait_settings(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs)
 {
-    if (c == NULL) {
-        return EAR_ERROR;
-    }
+	if (c == NULL)
+	{
+		return EAR_ERROR;
+	}
 
-    verbose_master(2, "%sCPU busy waiting phase%s", COL_BLU, COL_CLR);
+	const uint min_ener_bw_veb_lvl = 2; // Used to control the verbose level in this function
 
-    cpu_ready = EAR_POLICY_READY;
+	verbose_master(min_ener_bw_veb_lvl, "%sMIN TIME%s CPU Busy waiting settings", COL_BLU, COL_CLR);
 
-    // for (uint i = 0; i < num_processes; i++) {
-    set_all_cores(freqs->cpu_freq, num_processes, frequency_pstate_to_freq(c->num_pstates - 1));
-    // }
-    copy_cpufreq_sel(last_nodefreq_sel.cpu_freq, freqs->cpu_freq, sizeof(ulong)*MAX_CPUS_SUPPORTED);
+	cpu_ready = EAR_POLICY_READY;
 
-    if (dyn_unc) {
-        for (uint sock_id = 0; sock_id < arch_desc.top.socket_count; sock_id++) {
-            freqs->imc_freq[sock_id*IMC_VAL+IMC_MAX] = imc_max_pstate[sock_id];
-            freqs->imc_freq[sock_id*IMC_VAL+IMC_MIN] = imc_max_pstate[sock_id];
-        }
-        memcpy(last_nodefreq_sel.imc_freq, freqs->imc_freq, imc_devices * IMC_VAL * sizeof(ulong));
-    }
+	for (uint i = 0; i < num_processes; i++) { 
 
+		signature_t local_sig;
+		signature_from_ssig(&local_sig, &sig_shared_region[i].sig);
+
+		uint busy_waiting;
+		// is_cpu_busy_waiting(&local_sig, sig_shared_region[i].num_cpus, &busy_waiting);
+		is_process_busy_waiting(&sig_shared_region[i].sig, &busy_waiting);
+		char ssig_buff[256];
+		ssig_tostr(&sig_shared_region[i].sig, ssig_buff, sizeof(ssig_buff));
+		if (busy_waiting) {
+			verbose_master(min_ener_bw_veb_lvl, "%s.[%d] Busy waiting config %s", node_name, i, ssig_buff);
+			freqs->cpu_freq[i] = frequency_pstate_to_freq(c->num_pstates - 1);
+		} else {
+			verbose_master(min_ener_bw_veb_lvl, "%s.[%d] NO Busy waiting config %s ", node_name, i, ssig_buff);
+			freqs->cpu_freq[i] = min_energy_def_freqs.cpu_freq[i];
+		}
+
+
+		/* We copy in shared  memory to be used later in MPI init/end if needed */
+		sig_shared_region[i].new_freq = freqs->cpu_freq[i] ;
+	}
+
+	copy_cpufreq_sel(last_nodefreq_sel.cpu_freq, freqs->cpu_freq, sizeof(ulong)*MAX_CPUS_SUPPORTED);
+	if (dyn_unc){
+		for (uint sock_id=0;sock_id<arch_desc.top.socket_count;sock_id++){
+			freqs->imc_freq[sock_id*IMC_VAL+IMC_MAX] = imc_max_pstate[sock_id];
+			freqs->imc_freq[sock_id*IMC_VAL+IMC_MIN] = imc_max_pstate[sock_id];
+		}
+		memcpy(last_nodefreq_sel.imc_freq,freqs->imc_freq,imc_devices*IMC_VAL*sizeof(ulong));
+	}
 #if USE_GPUS
-    if (gpu_plugin.busy_wait_settings != NULL){
-      return gpu_plugin.busy_wait_settings(c, my_sig, freqs);
-    }else{
-      gpu_ready = EAR_POLICY_READY;
-    }
-    return EAR_SUCCESS;
-
+	if (gpu_plugin.busy_wait_settings != NULL){
+		return gpu_plugin.busy_wait_settings(c, my_sig, freqs);
+	}else{
+		gpu_ready = EAR_POLICY_READY;
+	}
+	return EAR_SUCCESS;
 #else
-    gpu_ready = EAR_POLICY_READY;
+	gpu_ready = EAR_POLICY_READY;
 #endif
-    /* GPU mem is pending */
-
-    return EAR_SUCCESS;
+	/* GPU mem is pending */
+	return EAR_SUCCESS;
 }
+
 
 state_t policy_cpu_gpu_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
 {
