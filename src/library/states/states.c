@@ -598,7 +598,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
             N_iter = iterations - begin_iter;
 
-            /* We update periodically because some jobs changes it at runtime */
+            /* We update periodically because some jobs change it at runtime. */
             if (masters_info.my_master_rank >= 0){
               if (state_fail(update_job_affinity_mask(lib_shared_region, sig_shared_region)))
              {

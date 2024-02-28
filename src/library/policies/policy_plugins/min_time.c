@@ -128,6 +128,8 @@ static polsym_t gpu_plugin;
 static const ulong **gpuf_pol_list;
 static const uint *gpuf_pol_list_items;
 
+static topology_t mt_top;
+
 static state_t int_policy_ok(signature_t *curr_sig, signature_t *last_sig, int *ok);
 static state_t policy_no_models_go_next_mt(int curr_pstate,int *ready,node_freqs_t *freqs,int min_pstate);
 static int policy_no_models_is_better_min_time(signature_t * curr_sig, signature_t *prev_sig, double time_ref,
@@ -177,6 +179,10 @@ state_t policy_init(polctx_t *c)
     verbose_master(2, "%sMIN TIME%s Using energy models: %u", COL_BLU, COL_CLR, use_energy_models);
 
 		int i, sid = 0;
+
+		topology_init(&mt_top);
+
+		debug("min_time init");
 
 		if (is_mpi_enabled()) {
 			mpi_app_init(c);
@@ -1032,7 +1038,7 @@ state_t policy_io_settings(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs
 			if (busy_waiting) {
 				freqs->cpu_freq[i] = frequency_pstate_to_freq(c->num_pstates - 1);
 			}
-		} else if (me_top.vendor == VENDOR_INTEL)
+		} else if (mt_top.vendor == VENDOR_INTEL)
 		{
 			freqs->cpu_freq[i] = frequency_pstate_to_freq(c->num_pstates - 1);
 		}
@@ -1103,7 +1109,7 @@ state_t policy_busy_wait_settings(polctx_t *c, signature_t *my_sig, node_freqs_t
 			freqs->cpu_freq[i] = frequency_pstate_to_freq(c->num_pstates - 1);
 		} else {
 			verbose_master(min_ener_bw_veb_lvl, "%s.[%d] NO Busy waiting config %s ", node_name, i, ssig_buff);
-			freqs->cpu_freq[i] = min_energy_def_freqs.cpu_freq[i];
+			freqs->cpu_freq[i] = min_time_def_freqs.cpu_freq[i];
 		}
 
 
