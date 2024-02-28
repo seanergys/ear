@@ -692,17 +692,22 @@ void compute_total_node_avx_and_avx_fops(lib_shared_data_t *data,shsignature_t *
 static uint total_num_earl_apps = 0;
 void  init_earl_node_mgr_info()
 {
-  #if WF_SUPPORT
-  verbose(WF_SUPPORT_VERB,"%sinit_earl_node_mgr_info..................%s", COL_RED,COL_CLR);
-  if (total_num_earl_apps){
+#if WF_SUPPORT
+	verbose(WF_SUPPORT_VERB, "%sinit_earl_node_mgr_info..................%s", COL_RED, COL_CLR);
+  if (total_num_earl_apps)
+	{
     //verbose(WF_SUPPORT_VERB,"New process?: Releasing node_mgr_data info ");
     release_earl_node_mgr_info();
   }
-  if (node_mgr_info_lock() == EAR_SUCCESS){
-    for (uint j = 0;j < MAX_CPUS_SUPPORTED; j++){
+
+  if (node_mgr_info_lock() == EAR_SUCCESS)
+	{
+    for (uint j = 0;j < MAX_CPUS_SUPPORTED; j++)
+		{
       if (node_mgr_data[j].jid != -1) total_num_earl_apps += ear_max(node_mgr_data[j].num_earl_apps, 1);
     }
-  }else{
+  } else
+	{
     verbose(WF_SUPPORT_VERB,"ERROR: EARL cannot get node_mgr_info_lock");
     node_mgr_job_info = NULL;
     return;
@@ -710,13 +715,14 @@ void  init_earl_node_mgr_info()
 
   verbose(WF_SUPPORT_VERB," EARL: allocation %d apps", total_num_earl_apps);
 
-  node_mgr_job_info = calloc(total_num_earl_apps,sizeof(node_mgr_sh_data_t));
+  node_mgr_job_info = calloc(total_num_earl_apps, sizeof(node_mgr_sh_data_t));
 
   uint curr_app = 0;
 
   /* Each job could have more than 1 app */
 
-  for (uint j = 0;j < MAX_CPUS_SUPPORTED; j++){
+  for (uint j = 0;j < MAX_CPUS_SUPPORTED; j++)
+	{
     uint ID;
     job_id jid,sid,lid;
     char *appid_folder, *appid_folder_full;
@@ -778,8 +784,10 @@ void  init_earl_node_mgr_info()
   }
   node_mgr_info_unlock();
   verbose_master(WF_SUPPORT_VERB,"init_earl_node_mgr_info done: Total apps computed %d , based on folders %d", total_num_earl_apps, curr_app);
-  #else
-  for (uint j = 0;j < MAX_CPUS_SUPPORTED; j++){
+#else
+	node_mgr_job_info = calloc(MAX_CPUS_SUPPORTED,sizeof(node_mgr_sh_data_t));
+
+	for (uint j = 0;j < MAX_CPUS_SUPPORTED; j++){
     uint ID;
     job_id id,sid;
     
@@ -833,6 +841,7 @@ void release_earl_node_mgr_info()
 }
 #endif
 
+#if WF_SUPPORT
 uint node_manager_job_changed(job_id jid, job_id sid, time_t mt)
 {
   while (node_mgr_info_lock() != EAR_SUCCESS);
@@ -845,6 +854,7 @@ uint node_manager_job_changed(job_id jid, job_id sid, time_t mt)
   node_mgr_info_unlock();
   return 0;
 }
+#endif
 
 uint node_mgr_earl_apps()
 {
@@ -1016,7 +1026,7 @@ state_t update_job_affinity_mask(lib_shared_data_t *data, shsignature_t *sig)
         cpu_set_t node_mask_backup = data->node_mask;
         uint node_mask_num_cpus_backup = data->num_cpus;
 
-        verbose_master(1, "Current job mask: %u CPUs ", node_mask_num_cpus_backup);
+        verbose_master(2, "Current job mask: %u CPUs ", node_mask_num_cpus_backup);
         verbose_affinity_mask(3, (const cpu_set_t *) &node_mask_backup, MAX_CPUS_SUPPORTED);
 
         cpu_set_t *cpu_masks_backup = malloc(sizeof(cpu_set_t) * data->num_processes);
@@ -1094,7 +1104,7 @@ state_t update_job_affinity_mask(lib_shared_data_t *data, shsignature_t *sig)
         // Update all remaining mask related fields
         data->num_cpus = CPU_COUNT(&data->node_mask);
 
-        verbose_master(1, "New job mask: %u CPUs ", data->num_cpus);
+        verbose_master(2, "New job mask: %u CPUs ", data->num_cpus);
         verbose_affinity_mask(3, (const cpu_set_t *) &data->node_mask, MAX_CPUS_SUPPORTED);
 
         if (data->num_cpus != node_mask_num_cpus_backup)

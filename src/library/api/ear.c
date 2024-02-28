@@ -747,9 +747,11 @@ void create_shared_regions()
 				ear_njob_t me;
 				me.jid = application.job.id;
 				me.sid = application.job.step_id;
-        me.num_earl_apps = 1;
 				me.creation_time     = time(NULL);
+#if WF_SUPPORT
+        me.num_earl_apps = 1;
 				me.modification_time = me.creation_time;
+#endif
 				CPU_ZERO(&me.node_mask);
 				verbose_master(2,"Attaching to node_mgr region");
 				if (nodemgr_attach_job(&me, &node_mgr_index) != EAR_SUCCESS){
