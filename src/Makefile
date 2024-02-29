@@ -38,8 +38,7 @@ CC_FLAGS += -DWF_SUPPORT=0
 MPI_CFLAGS += -DWF_SUPPORT=0
 COMPONENT_DISABLE += \
 										 commands\
-										 tools \
-										 global_manager
+										 tools 
 endif
 
 

@@ -18,15 +18,18 @@ comm_BINS = \
 eargmd_OBJS = \
     eargm_rapi.o
 
-ifdef DB_BASE
+
 eargmd_OBJS += \
     cluster_powercap.o \
     cluster_energycap.o \
     meta_eargm.o \
     eargm_ext_rm.o
 
+ifdef DB_BASE
+ifeq ($(FEAT_WF_SUPPORT), 1)
 eargmd_BINS = \
     eargmd
+endif
 endif
 
 ######## RULES
