@@ -50,22 +50,22 @@ state_t cpufreq_intel63_status(topology_t *tp_in, cpufreq_ops_t *ops)
 	/* These operations have to be done before the msr_test to guarantee they are executed */
 	// Copying the topology and base frequency
 	topology_copy(&tp, tp_in);
-    // Getting base frequency
-    cpufreq_base_init(&tp, &bf);
-    replace_ops(ops->count_devices, cpufreq_intel63_count_devices);
-    replace_ops(ops->data_diff,     cpufreq_intel63_data_diff);
+	// Getting base frequency
+	cpufreq_base_init(&tp, &bf);
+	replace_ops(ops->count_devices, cpufreq_intel63_count_devices);
+	replace_ops(ops->data_diff,     cpufreq_intel63_data_diff);
 
-		/* Do not move before previous initializations */
-    // Permissions test
-    if (state_fail(s = msr_test(tp_in, MSR_RD))) {
-        debug("msr_test failed");
-        return EAR_ERROR;
-    }
+	/* Do not move before previous initializations */
+	// Permissions test
+	if (state_fail(s = msr_test(tp_in, MSR_RD))) {
+		debug("msr_test failed");
+		return EAR_ERROR;
+	}
 	// If reading MSR is allowed
 	replace_ops(ops->init,          cpufreq_intel63_init);
 	replace_ops(ops->dispose,       cpufreq_intel63_dispose);
 	replace_ops(ops->read,          cpufreq_intel63_read);
-    debug("INTEL63 cpufreq ok");
+	debug("INTEL63 cpufreq ok");
 
 	return EAR_SUCCESS;
 }
