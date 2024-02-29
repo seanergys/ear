@@ -28,8 +28,8 @@
 #define N_QUEUE  128
 #define SIGNAL   SIGCONT
 
-#define debugv(...) verbose(0,__VA_ARGS__)
-//#define debugv(...) debug(__VA_ARGS__)
+//#define debugv(...) verbose(0,__VA_ARGS__)
+#define debugv(...) debug(__VA_ARGS__)
 
 typedef struct wait_s {
 	int relax;

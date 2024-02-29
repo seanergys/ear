@@ -762,8 +762,8 @@ void create_shared_regions()
           verbose(1, "Error synchronizing EARL shared memory (%s)", strerror(errno));
         }
 				verbose_master(2,"Attached! at pos %u", node_mgr_index);
-				/* node_mgr_job_info maps other jobs data sharing the node */
-				//node_mgr_job_info = calloc(MAX_CPUS_SUPPORTED,sizeof(node_mgr_sh_data_t));
+
+				/* Creates the specific region in shared memory, for jobs sharing the node */
 				init_earl_node_mgr_info();
 				if (nodemgr_get_num_jobs_attached(&current_jobs_in_node) == EAR_SUCCESS){
 								verbose_master(2,"There are %u jobs sharing the node ",current_jobs_in_node);
@@ -1963,7 +1963,7 @@ void ear_init()
 				}
 
 				strcpy(application.job.policy,system_conf->policy_name);
-        verbose(2,"Initializing APP name %s", ear_app_name);
+        verbose(3,"Initializing APP name %s", ear_app_name);
 				strcpy(application.job.app_id, ear_app_name);
 
 				// Passing the frequency in KHz to MHz

@@ -33,25 +33,6 @@
 	if (!ptr) return_msg(EAR_ERROR, Generr.input_null);
 
 
-#if 0
-typedef struct energy_model_sym_s
-{
-	state_t (*model_init)					(char *ear_etc_path, char *ear_tmp_path, void *arch_desc);
-	state_t (*model_project_time) (signature_t *signature, ulong from_ps, ulong to_ps, double *proj_time); 
-	state_t (*model_project_power) (signature_t *signature, ulong from_ps, ulong to_ps, double *proj_power);
-	uint (*model_projection_available) (ulong from_ps, ulong to_ps);
-	uint (*model_all_projections_available) ();
-} energy_model_sym_t;
-
-
-struct energy_model_s
-{
-	char *ear_etc_path;
-	char *ear_tmp_path;
-	energy_model_sym_t energy_model_sym;
-	void *arch_desc;
-};
-#endif
 
 
 struct energy_model_s
@@ -97,25 +78,7 @@ energy_model_t energy_model_load_cpu_model(uint user_type, conf_install_t *data,
       if (state_ok(build_energy_model_path(energy_model_base_path, sizeof(energy_model_base_path),
                                            data->dir_plug, data->obj_power_model, user_type)))
       {
-#if 0
-        // Fill the EAR_ETC path
-        energy_model->ear_etc_path = (char *) malloc(sizeof(data->dir_conf));
-        if (energy_model->ear_etc_path)
-        {
-          memcpy(energy_model->ear_etc_path, data->dir_conf, sizeof(data->dir_conf));
-
-          // Fill the EAR_TMP path
-          energy_model->ear_tmp_path = (char *) malloc(sizeof(data->dir_temp));
-          if (energy_model->ear_tmp_path)
-          {
-            memcpy(energy_model->ear_tmp_path, data->dir_temp, sizeof(data->dir_temp));
-
-            // Copy the architecture descriptor
-            energy_model->arch_desc = malloc(sizeof(architecture_t));
-            if (energy_model->arch_desc)
-            {
-              memcpy(energy_model->arch_desc, arch_desc, sizeof(architecture_t));
-#endif
+				verbose_master(3, "Energy models: Loading '%s'", energy_model_base_path);
               // Load the model plug-in symbols
               if (state_ok(symplug_open(energy_model_base_path, (void *) energy_model,
                                         energy_model_sym_names, model_sym_cnt)))
@@ -130,30 +93,7 @@ energy_model_t energy_model_load_cpu_model(uint user_type, conf_install_t *data,
                 }
               } else // An error occurred loading plug-in symbols.
               {
-#if 0
-                free_and_null(energy_model->arch_desc);
-                free_and_null(energy_model->ear_tmp_path);
-                free_and_null(energy_model->ear_etc_path);
-                free_and_null(energy_model);
-#endif
               }
-#if 0
-            } else // An error occurred mallocing arch_desc
-            {
-              free_and_null(energy_model->ear_tmp_path);
-              free_and_null(energy_model->ear_etc_path);
-              free_and_null(energy_model);
-            }
-          } else // An error occurred mallocing ear_tmp_path
-          {
-            free_and_null(energy_model->ear_etc_path);
-            free_and_null(energy_model);
-          }
-        } else // An error occurred mallocing ear_etc_path.
-        {
-          free_and_null(energy_model);
-        }
-#endif
       } else // An error occurred building the energy model plug-in path.
       {
         free_and_null(energy_model);
