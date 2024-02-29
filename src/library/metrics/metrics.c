@@ -113,7 +113,6 @@
 #define EAR_USE_CUPTI "EAR_USE_CUPTI"
 #endif
 
-
 #if METRICS_OVH
 uint id_ovh_partial_stop;
 uint id_ovh_compute_data;
@@ -373,7 +372,6 @@ uint metrics_CPU_phase_ok()
 }
 
 
-
 static void metrics_configuration(topology_t *tp)
 {
 	char topo_str[1024];
@@ -439,6 +437,14 @@ uint metrics_dcgmi_enabled()
   return dcgmi_lib_is_enabled();
 }
 #endif
+
+void metrics_lib_reset()
+{
+    cpi_dispose(no_ctx);
+  flops_dispose(no_ctx);
+  cache_dispose(no_ctx);
+}
+
 
 static void metrics_static_init(topology_t *tp)
 {
@@ -1525,13 +1531,16 @@ static void estimate_metrics_not_available_by_node(uint sign_app_loop_idx, signa
 				verbose_info2_master("Estimating AVG CPU freq using mgt CPU freq for %u CPUs", met_cpufreq.devs_count);
 				metrics->avg_f = metrics->def_f;
 				verbose_info2_master("Using def_freq %lu as avg_freq", metrics->def_f);
-				for (uint i=0; i< met_cpufreq.devs_count; i ++) cpufreq_avrg[sign_app_loop_idx] = metrics->def_f;
+        cpufreq_avrg[sign_app_loop_idx] = metrics->def_f;
+				for (uint i=0; i< mgt_cpufreq.devs_count; i ++) cpufreq_diff[i] = metrics->def_f;
         // Copy the average CPU freq. in the shared signature
+
         memcpy(lib_shared_region->avg_cpufreq, cpufreq_diff,
-                met_cpufreq.devs_count * sizeof(cpufreq_diff[0]));
+                mgt_cpufreq.devs_count * sizeof(cpufreq_diff[0]));
 
 			}
 		}
+
 }
 
 
@@ -2009,7 +2018,7 @@ int metrics_init(topology_t *topo)
 #endif
 
 		/* IMC management */
-		if (mgt_imcfreq.ok) {
+		// if (mgt_imcfreq.ok) {
 
 			imc_devices = mgt_imcfreq.devs_count;
 
@@ -2086,9 +2095,9 @@ int metrics_init(topology_t *topo)
 						(float) imc_pstates[imc_min_pstate[0]].khz, (float) imc_pstates[imc_max_pstate[0]].khz);
 			}
 
-		} else {
-			verbose_warning_master("IMCFREQ not supported.");
-		} // IMC
+		// } else {
+		// 	verbose_warning_master("IMCFREQ not supported.");
+		// } // IMC
 	} // master
 
 #if USE_GPUS
@@ -2807,7 +2816,7 @@ static state_t energy_lib_init(settings_conf_t *conf)
 
         strcpy(energy_objc, hack_energy_plugin_path);
 
-    } else if (conf->installation.obj_ener != NULL) {
+    } else if (strlen(conf->installation.obj_ener)) {
 
         debug("Using the configured energy plugin shared object file");
 

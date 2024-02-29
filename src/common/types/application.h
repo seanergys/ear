@@ -81,14 +81,11 @@ int scan_application_fd(FILE *fd, application_t *app, char is_extended);
  */
 
 #define create_ID(id,sid)	(id*100+sid)
+#define EID(app)          (app->job.local_id)
 
 void read_application_fd_binary(int fd,application_t *app);
 
 void print_application_fd_binary(int fd,application_t *app);
-
-void mark_as_eard_connected(int jid,int sid,int pid);
-uint is_already_connected(int jid,int sid,int pid);
-void mark_as_eard_disconnected(int jid,int sid,int pid);
 
 /*
  *
@@ -106,6 +103,6 @@ void report_application_data(application_t *app);
 void verbose_application_data(uint vl,application_t *app);
 
 /** Prints a summary of the application (only mpi part,power signature is not reported) to STDOUT */
-void report_mpi_application_data(application_t *app);
+void report_mpi_application_data(int vl, application_t *app);
 
 #endif

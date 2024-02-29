@@ -93,6 +93,7 @@ int load_no_official()
         }
     }
     if (app_to_load == NULL) return 0;
+    verbose(2, "LOADER: Using %s = %s as special cases", FLAG_LOADER_APPLICATION, app_to_load);
     if (strinlist(app_to_load, ",", program_invocation_name)){
       verbose(1,"LOADER: %s found in list ", program_invocation_name);
       return 1;
@@ -115,10 +116,10 @@ void  __attribute__ ((constructor)) loader()
 
     // Initialization
     if (!init()) {
-        verbose(4, "LOADER: escaping the application '%s'", program_invocation_name);
+        verbose(4, "LOADER[%d]: escaping the application '%s'", getpid(), program_invocation_name);
         return;
     }
-    verbose(2, "LOADER: loading for application '%s'", program_invocation_name);
+    verbose(2, "LOADER[%d]: loading for application '%s'", getpid(), program_invocation_name);
 
     if (must_load()){
         module_get_path_libear(&path_lib_so,&libhack);

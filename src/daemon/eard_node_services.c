@@ -862,14 +862,24 @@ void connect_service(struct daemon_req *new_req)
   ulong lid = new_req->con_id.lid;
   int pid = create_ID(new_job->id, new_job->step_id);
 	uint ID = (uint)pid;
+#if WF_SUPPORT
+  uint AID = (uint)(new_job->local_id);
+#endif
+
   // Let's check if there is another application
   verbose(VEARD_LAPI, "request for connection at service (%lu,%lu)",new_job->id,new_job->step_id);
 
   /* Creates 1 pipe (per node),  jobid and step id to send acks. pid is a combination of jobid and stepid */
   verbose(VEARD_LAPI, "New local connection job_id=%lu step_id=%lu local_id %lu\n", new_job->id, new_job->step_id,new_req->con_id.lid);
   /* This pipe is to send data, 1 per connection */
+
+#if WF_SUPPORT
+  sprintf(ear_commack, "%s/%u/%u/.ear_comm.ack_0.%d.%lu", ear_tmp, ID, AID, pid,lid);
+  sprintf(ear_commreq, "%s/%u/%u/.ear_comm.req_0.%d.%lu", ear_tmp, ID, AID, pid,lid);
+#else
   sprintf(ear_commack, "%s/%u/.ear_comm.ack_0.%d.%lu", ear_tmp, ID, pid,lid);
   sprintf(ear_commreq, "%s/%u/.ear_comm.req_0.%d.%lu", ear_tmp, ID, pid,lid);
+#endif
   verbose(VEARD_LAPI,"Comm channels %s and %s",ear_commack,ear_commreq);
   /* We must create a new local connection, for now, 1 connection per job is allowed  */
   if ((newc = add_new_local_connection(eard_local_conn,new_job->id,new_job->step_id,new_req->con_id.lid)) <0){

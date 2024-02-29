@@ -27,6 +27,30 @@
 // This class is intended to provide easy-to-read functions instead RPCs to
 // communicate between binaries and EAR Daemon (EARD).
 
+/** Sets the connection status as failed 
+ */
+void eards_connection_failure();
+
+state_t eard_new_application(application_t *app);
+state_t eard_end_application(application_t *app);
+
+/** \defgroup rapl_services RAPL services
+ * \ingroup local_api
+ * \todo Add a description.
+ * @{ */
+/** Sends a request to read the RAPL counters. Returns -1 if there's an error,
+ * and on success returns 0 and fills the array \p values with the counters' values. */
+int eards_read_rapl(unsigned long long *values);
+/** Sends the request to start the RAPL counters. Returns 0 on success or if
+ * the application is not connected, -1 if there's an error. */
+int eards_start_rapl();
+/** Sends the request to reset the RAPL counters. Returns 0 on success or if
+ * the application is not connected, -1 if there's an error. */
+int eards_reset_rapl();
+/** Requests the rapl data size.
+ * Returns -1 if there's an error, and the actual value otherwise. */
+unsigned long eards_get_data_size_rapl();
+/** @} */
 typedef struct eard_state_s {
     version_t version;
     uint gpus_supported_count;
@@ -40,12 +64,6 @@ state_t eards_get_state(eard_state_t *state);
 
 // Legacy functions
 
-// Request to read the RAPL counters. Returns -1 if there's an error, and 0 on
-// success and fills the array with the counter values.
-int eards_read_rapl(ullong *values);
-
-// Requests the rapl data size, but returns -1 if there's an error. */
-ulong eards_get_data_size_rapl();
 
 // Request to write an application signature. Returns 0 on success, -1 on error.
 ulong eards_write_app_signature(application_t *app_signature);

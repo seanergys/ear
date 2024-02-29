@@ -34,6 +34,7 @@ state_t folder_open(folder_t *folder, char *path)
 
 state_t folder_close(folder_t *folder)
 {
+  if (folder->dir == NULL) return EAR_SUCCESS;
 	closedir(folder->dir);
 	folder->dir = NULL;
 	return EAR_SUCCESS;
@@ -88,6 +89,58 @@ char *folder_getnext(folder_t *folder, char *prefix, char *suffix)
 	return NULL;
 }
 
+char *folder_getnext_type(folder_t *folder, char *prefix, char *suffix, uint type)
+{
+	struct dirent *file;
+	int lpre, lsuf, lfil;
+	char *pfil;
+
+	pfil = folder->file_name;
+	lpre = (prefix != NULL) ? (int) strlen(prefix) : 0;
+	lsuf = (suffix != NULL) ? (int) strlen(suffix) : 0;
+
+	while ((file = readdir(folder->dir)) != NULL)
+	{
+    if (type != DT_UNKNOWN){
+		  if (file->d_type != type) {
+			  continue;
+		  }
+    }
+
+		if (prefix != NULL)
+		{
+			if (strstr(file->d_name, prefix) != NULL) {
+				strcpy(pfil, &file->d_name[lpre]);
+			} else {
+				continue;
+			}
+		} else {
+			strcpy(pfil, &file->d_name[0]);
+		}
+
+		if ((lfil = (int) strlen(pfil)) <= lsuf) {
+			continue;
+		}
+
+		if (suffix != NULL)
+		{
+			if (strcmp(&pfil[lfil - lsuf], suffix) == 0) {
+				pfil[lfil - lsuf] = '\0';
+				return pfil;
+			} else {
+				continue;
+			}
+		} else {
+			return pfil;
+		}
+	}
+
+	//folder_close(folder);
+
+	return NULL;
+}
+
+
 state_t folder_remove(char *path)
 {
   char job_path[MAX_PATH_SIZE];
@@ -102,18 +155,25 @@ state_t folder_remove(char *path)
     debug("Error opening job path %s",job_path);
     return EAR_ERROR;
   }
-  debug("Cleaning job_path: %s", job_path);
+  verbose(0,"Cleaning job_path: %s", job_path);
 
   while ((file = folder_getnext(&job_folder, NULL, NULL)))
   {
     xsnprintf(file_path,sizeof(file_path),"%s/%s",job_path,file);
-    debug("Deleting: %s",file_path);
+    verbose(0,"Deleting: %s",file_path);
     unlink(file_path);
   }
-  folder_close(&job_folder);
+  //folder_close(&job_folder);
+  verbose(0,"Deleting folder %s", job_path);
   rmdir(job_path);
 	return EAR_SUCCESS;
 
+}
+
+state_t folder_rename(char *oldp, char *newp)
+{
+  if (rename(oldp, newp) >= 0) return EAR_SUCCESS;
+  else                       return EAR_ERROR;
 }
 
 /*

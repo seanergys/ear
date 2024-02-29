@@ -12,7 +12,8 @@ tool_BINS = \
 		cluster_ping \
     ear_conf \
     insert_test \
-		enode_info
+		enode_info \
+		list_folders
 
 ifdef DB_BASE
 tool_BINS += \
@@ -88,6 +89,8 @@ enode_info: ear_node_info.c $(comm_OBJS) $(SRCDIR)/daemon/local_api/libeard.a $(
 cluster_ping: cluster_ping.c $(comm_OBJS) $(rapi_OBJS)
 	$(CCC) -o $@ $< $(rapi_OBJS) $(comm_OBJS) -lm
 
+list_folders: list_folders.c $(comm_OBJS)
+	$(CCC) -I$(SRCDIR) -o $@ $< $(comm_OBJS)
 ######## OPTIONS
 
 install: tool.ginstall;

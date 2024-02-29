@@ -32,7 +32,11 @@ typedef struct loop_id
 typedef struct loop
 {
     loop_id_t id;
-	ulong jid, step_id;
+	ulong jid;
+    ulong step_id;
+#if WF_SUPPORT
+    ulong local_id;
+#endif
     char node_id[GENERIC_NAME];
     ulong total_iterations;
     signature_t signature;
@@ -52,7 +56,7 @@ int set_null_loop(loop_t *loop);
 int is_null(loop_t *loop);
 
 /** Initalizes the loop given by parameter. */
-int loop_init(loop_t *loop, ulong job_id, ulong step_id, const char *node_id, ulong event, ulong size, ulong level);
+int loop_init(loop_t *loop, ulong job_id, ulong step_id, ulong local_id, const char *node_id, ulong event, ulong size, ulong level);
 
 /* Cleans information that could generate DB failures */
 void clean_db_loop(loop_t *loop, double limit);

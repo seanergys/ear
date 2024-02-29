@@ -219,10 +219,11 @@ void create_tables(void *connection)
     sprintf(query, "CREATE TABLE IF NOT EXISTS Applications ("
             "job_id INT unsigned NOT NULL, "
             "step_id INT unsigned NOT NULL, "
+            "local_id INT unsigned NOT NULL, "
             "node_id VARCHAR(64), "
             "signature_id BIGINT unsigned, "
             "power_signature_id INT unsigned, "
-            "PRIMARY KEY(job_id, step_id, node_id))");
+            "PRIMARY KEY(job_id, step_id, local_id, node_id))");
     run_query(connection, query);
 
     sprintf(query, "CREATE TABLE IF NOT EXISTS Loops ("
@@ -231,6 +232,7 @@ void create_tables(void *connection)
             "level INT unsigned NOT NULL, "
             "job_id INT unsigned NOT NULL, "
             "step_id INT unsigned NOT NULL, "
+            "local_id INT unsigned NOT NULL, "
             "node_id VARCHAR(64), "
             "total_iterations INT unsigned, "
             "signature_id BIGINT unsigned)");
@@ -239,6 +241,7 @@ void create_tables(void *connection)
     sprintf(query, "CREATE TABLE IF NOT EXISTS Jobs ("
             "id INT unsigned NOT NULL, "
             "step_id INT unsigned NOT NULL, "
+            "local_id INT unsigned NOT NULL, "
             "user_id VARCHAR(128), "
             "app_id VARCHAR(128), "
             "start_time INT NOT NULL, "
@@ -253,7 +256,7 @@ void create_tables(void *connection)
             "user_acc VARCHAR(256), "
             "user_group VARCHAR(256), "
             "e_tag VARCHAR(256), "
-            "PRIMARY KEY(id, step_id))");
+            "PRIMARY KEY(id, step_id, local_id))");
     run_query(connection, query);
 
     if (signature_detail)
@@ -402,15 +405,17 @@ void create_tables(void *connection)
     sprintf(query, "CREATE TABLE IF NOT EXISTS Learning_applications ("
             "job_id INT unsigned NOT NULL, "
             "step_id INT unsigned NOT NULL, "
+            "local_id INT unsigned NOT NULL, "
             "node_id VARCHAR(64), "
             "signature_id BIGINT unsigned, "
             "power_signature_id INT unsigned, "
-            "PRIMARY KEY(job_id, step_id, node_id))");
+            "PRIMARY KEY(job_id, step_id, local_id, node_id))");
     run_query(connection, query);
 
     sprintf(query, "CREATE TABLE IF NOT EXISTS Learning_jobs ("
             "id INT unsigned NOT NULL, "
             "step_id INT unsigned NOT NULL, "
+            "local_id INT unsigned NOT NULL, "
             "user_id VARCHAR(256), "
             "app_id VARCHAR(256), "
             "start_time INT NOT NULL, "
@@ -425,7 +430,7 @@ void create_tables(void *connection)
             "user_acc VARCHAR(256) NOT NULL, "
             "user_group VARCHAR(256), "
             "e_tag VARCHAR(256), "
-            "PRIMARY KEY(id, step_id))");
+            "PRIMARY KEY(id, step_id, local_id))");
     run_query(connection, query);
 
     if (signature_detail)
@@ -510,10 +515,11 @@ void create_tables(void *connection)
     sprintf(query, "CREATE TABLE IF NOT EXISTS Applications ("
             "job_id INT  NOT NULL, "
             "step_id INT  NOT NULL, "
+            "local_idINT  NOT NULL, "
             "node_id VARCHAR(64), "
             "signature_id BIGINT , "
             "power_signature_id INT , "
-            "PRIMARY KEY(job_id, step_id, node_id))");
+            "PRIMARY KEY(job_id, step_id, local_id, node_id))");
     run_query(connection, query);
 
     sprintf(query, "CREATE TABLE IF NOT EXISTS Loops ("
@@ -522,6 +528,7 @@ void create_tables(void *connection)
             "level INT  NOT NULL, "
             "job_id INT  NOT NULL, "
             "step_id INT  NOT NULL, "
+            "local_id INT  NOT NULL, "
             "node_id VARCHAR(64), "
             "total_iterations INT , "
             "signature_id BIGINT )");
@@ -530,6 +537,7 @@ void create_tables(void *connection)
     sprintf(query, "CREATE TABLE IF NOT EXISTS Jobs ("
             "id INT  NOT NULL, "
             "step_id INT  NOT NULL, "
+            "local_id INT  NOT NULL, "
             "user_id VARCHAR(128), "
             "app_id VARCHAR(128), "
             "start_time INT NOT NULL, "
@@ -544,7 +552,7 @@ void create_tables(void *connection)
             "user_acc VARCHAR(256), "
             "user_group VARCHAR(256), "
             "e_tag VARCHAR(256), "
-            "PRIMARY KEY(id, step_id))");
+            "PRIMARY KEY(id, step_id, local_id))");
     run_query(connection, query);
 
     if (signature_detail)
@@ -693,15 +701,17 @@ void create_tables(void *connection)
     sprintf(query, "CREATE TABLE IF NOT EXISTS Learning_applications ("
             "job_id INT  NOT NULL, "
             "step_id INT  NOT NULL, "
+            "local_id INT  NOT NULL, "
             "node_id VARCHAR(64), "
             "signature_id BIGINT , "
             "power_signature_id INT , "
-            "PRIMARY KEY(job_id, step_id, node_id))");
+            "PRIMARY KEY(job_id, step_id, local_id, node_id))");
     run_query(connection, query);
 
     sprintf(query, "CREATE TABLE IF NOT EXISTS Learning_jobs ("
             "id INT  NOT NULL, "
             "step_id INT  NOT NULL, "
+            "local_id INT  NOT NULL, "
             "user_id VARCHAR(256), "
             "app_id VARCHAR(256), "
             "start_time INT NOT NULL, "
@@ -716,7 +726,7 @@ void create_tables(void *connection)
             "user_acc VARCHAR(256) NOT NULL, "
             "user_group VARCHAR(256), "
             "e_tag VARCHAR(256), "
-            "PRIMARY KEY(id, step_id))");
+            "PRIMARY KEY(id, step_id, local_id))");
     run_query(connection, query);
 
     if (signature_detail)

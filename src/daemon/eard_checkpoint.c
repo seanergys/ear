@@ -26,7 +26,7 @@
 #include <daemon/eard_checkpoint.h>
 
 extern char nodename[MAX_PATH_SIZE];
-extern ulong eard_max_pstate;
+extern ulong eard_min_pstate;
 
 void save_eard_conf(eard_dyn_conf_t *eard_dyn_conf)
 {
@@ -69,7 +69,7 @@ void restore_eard_conf(eard_dyn_conf_t *eard_dyn_conf)
 	read_my_node_conf_fd_binary(fd,eard_dyn_conf->nconf);	
 	read_powermon_app_fd_binary(fd,eard_dyn_conf->pm_app);
 	verbose(VCHCK,"restoring node conf");
-	eard_max_pstate=eard_dyn_conf->nconf->max_pstate;
+	eard_min_pstate=eard_dyn_conf->nconf->max_pstate;
 	verbose(VCHCK,"Node information recovered");
 	print_my_node_conf(eard_dyn_conf->nconf);
 	verbose(VCHCK,"Job recovered");

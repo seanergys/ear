@@ -79,6 +79,10 @@ extern pthread_mutex_t lock_rpc;
   unlink(ear_commack);      \
   unlink(ear_commreq);
 
+
+static state_t create_base_path(char *base_path, size_t base_path_sz, char *tmp_path, uint job_step_id, uint app_local_id);
+static state_t create_app_directory(char *path);
+
 int eards_read(int fd,char *buff,int size, uint wait_mode)
 {
 #if USE_NON_BLOCKING_IO
@@ -183,29 +187,6 @@ int eards_write(int fd,char *buff,int size)
 #endif
 }
 
-void eards_signal_handler(int s)
-{
-	debug("EARD has been disconnected");
-	mark_as_eard_disconnected(my_job_id,my_step_id,getpid());
-	app_connected=0;
-}
-
-void eards_signal_catcher()
-{
-    struct sigaction action;
-    sigset_t earl_mask;
-    
-    sigfillset(&earl_mask);
-    sigdelset(&earl_mask,SIGPIPE);
-    sigprocmask(SIG_UNBLOCK,&earl_mask,NULL);
-    sigemptyset(&action.sa_mask);
-    action.sa_handler = eards_signal_handler;
-    action.sa_flags = 0;
-    
-    if (sigaction(SIGPIPE, &action, NULL) < 0) {
-    	error( "sigaction error on signal s=%d (%s)", SIGPIPE, strerror(errno));
-    }
-}    
 
 
 // If this approach is selected, we will substitute the function call by the key
@@ -232,6 +213,31 @@ uint warning_api(int return_value, int expected, char *msg)
 	}
 	return (return_value != expected);
 }
+
+void eards_signal_handler(int s)
+{
+  debug("EARD has been disconnected");
+  //mark_as_eard_disconnected(my_job_id,my_step_id,getpid());
+  app_connected=0;
+}
+
+void eards_signal_catcher()
+{
+  struct sigaction action;
+  sigset_t earl_mask;
+
+  sigfillset(&earl_mask);
+  sigdelset(&earl_mask,SIGPIPE);
+  sigprocmask(SIG_UNBLOCK,&earl_mask,NULL);
+  sigemptyset(&action.sa_mask);
+  action.sa_handler = eards_signal_handler;
+  action.sa_flags = 0;
+
+  if (sigaction(SIGPIPE, &action, NULL) < 0) {
+    error( "sigaction error on signal s=%d (%s)", SIGPIPE, strerror(errno));
+  }
+}
+
 
 int eards_connected()
 {
@@ -300,20 +306,46 @@ int eards_connect(application_t *my_app, ulong lid)
     i = 0;
 
 	/* There are three channels: One global for acceptance , and the ones for each connection */
-    sprintf(ear_commreq_global, "%s/.ear_comm.globalreq", ear_tmp);
-    sprintf(ear_commreq, "%s/%u/.ear_comm.req_%d.%d.%lu", ear_tmp, (uint) my_id, i, my_id, lid);
-    sprintf(ear_commack, "%s/%u/.ear_comm.ack_%d.%d.%lu", ear_tmp, (uint) my_id, i, my_id, lid);
-    debug("comreq_global: %s", ear_commreq_global);
-    debug("comreq_self  : %s", ear_commreq);
-    debug("comack_self  : %s", ear_commack);
+  sprintf(ear_commreq_global,"%s/.ear_comm.globalreq",ear_tmp);
 
-    /* Private pipes are created before the connection request is sent */
-    //verbose(2,"Creating %s",ear_commack);
-    if (mknod(ear_commack, S_IFIFO | S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH, 0) < 0) {
-        debug("Error when creating ear communicator for ack %s", strerror(errno));
-        return_print(EAR_ERROR, "Error when creating ear communicator for ack %s", strerror(errno));
-    }
-    chmod(ear_commack, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+#if WF_SUPPORT
+
+	/* Create the common base path used inside this block ("tmp/id/local_id") */
+	char base_path[MAX_PATH_SIZE];
+	state_t ret_st = create_base_path(base_path, sizeof(base_path),
+																		ear_tmp, (uint) my_id, (uint) my_app->job.local_id);
+
+	if (state_fail(ret_st))
+	{
+     return_print(EAR_ERROR, "Error when building the EAR communicator directory path name.");
+	}
+
+
+	/* We must first create the directory of this application */
+	if (state_fail(create_app_directory(base_path)))
+	{
+     return_print(EAR_ERROR, "Error when creating the EAR communicator directory.");
+	}
+
+	/* Pipe full paths. They're stored at base_path as well. */
+  sprintf(ear_commreq,"%s/.ear_comm.req_%d.%d.%lu", base_path, i, my_id, lid);
+  sprintf(ear_commack,"%s/.ear_comm.ack_%d.%d.%lu", base_path, i, my_id, lid);
+
+#else
+ sprintf(ear_commreq, "%s/%u/.ear_comm.req_%d.%d.%lu", ear_tmp, (uint) my_id, i, my_id, lid);
+ sprintf(ear_commack, "%s/%u/.ear_comm.ack_%d.%d.%lu", ear_tmp, (uint) my_id, i, my_id, lid);
+#endif
+
+  debug("comreq_global %s comreq %s comack %s",ear_commreq_global,ear_commreq,ear_commack);
+  debug("comreq_self  : %s", ear_commreq);
+  debug("comack_self  : %s", ear_commack);
+
+  /* Private pipes are created before the connection request is sent */
+	//verbose(2,"Creating %s",ear_commack);
+  if (mknod(ear_commack, S_IFIFO | S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH, 0) < 0) {
+     return_print(EAR_ERROR, "Error when creating ear communicator for ack %s", strerror(errno));
+  }
+  chmod(ear_commack, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 	//verbose(2,"Creating %s",ear_commreq);
     if (mknod(ear_commreq, S_IFIFO | S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH, 0) < 0) {
         debug("Error when creating ear communicator for requests %s", strerror(errno));
@@ -410,6 +442,11 @@ int eards_connect(application_t *my_app, ulong lid)
     eards_signal_catcher();
     debug("Connected");
     return EAR_SUCCESS;
+}
+
+void eards_connection_failure()
+{
+  app_connected = 0;
 }
 
 void eards_disconnect()
@@ -541,7 +578,46 @@ int eards_gpu_support()
   return (int) sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ack), "GPU support", 0);
 }
 
+state_t eard_new_application(application_t *app)
+{
+  
+  return EAR_SUCCESS;
+}
+
+state_t eard_end_application(application_t *app)
+{
+  return EAR_SUCCESS;
+}
 state_t eards_get_state(eard_state_t *state)
 {
     return eard_rpc(RPC_GET_STATE, NULL, 0, (char *) state, sizeof(eard_state_t));
 }
+
+
+static state_t create_base_path(char *base_path, size_t base_path_sz, char *tmp_path, uint job_step_id, uint app_local_id)
+{
+	int ret = snprintf(base_path, base_path_sz, "%s/%u/%u", tmp_path, job_step_id, app_local_id);
+	if (ret < base_path_sz && ret >= 0)
+	{
+		return EAR_SUCCESS;
+	} else
+	{
+		return EAR_ERROR;
+	}
+}
+
+
+static state_t create_app_directory(char *path)
+{
+	int ret = mkdir(path, S_IRWXU);
+	if (ret < 0 && errno != EEXIST)
+	{
+		debug("App directory could not be created: %s", strerror(errno));
+		return EAR_ERROR;
+	} else if (!ret)
+	{
+		debug("Directory created");
+	}
+	return EAR_SUCCESS;
+}
+

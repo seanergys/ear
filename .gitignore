@@ -10,6 +10,8 @@
 */lib/
 src/tests
 etc/rpms/rpmbuild.sh
+src/tests
+src/tools/list_folders
 etc/rpms/rpmbuild.sh~
 etc/rpms/specs/ear.spec
 /*.sh
@@ -169,9 +171,3 @@ src/tools/ear_conf
 src/tools/metrics_show
 src/commands/ear-info
 deployment.sh
-
-tags
-gmon.out
-compile_commands.json
-.cache
-.cache/*

@@ -15,7 +15,6 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
 #include <time.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -25,6 +24,9 @@
 #include <unistd.h>
 #include <sys/types.h>
 
+// #define SHOW_DEBUGS 1
+
+#include <common/output/debug.h>
 #include <common/config.h>
 #include <common/system/monitor.h>
 #include <common/output/verbose.h>
@@ -113,7 +115,11 @@ static int pm_connect(ehandler_t *my_eh, topology_t *tp)
 		return EAR_SUCCESS;
 	}
 
+#if RUN_AS_ROOT
 	rootp = (getuid() == 0);
+#else
+	rootp = 1;
+#endif
 	if (!rootp) {
 		return_msg(EAR_ERROR, Generr.no_permissions);
 	}
@@ -276,6 +282,7 @@ void compute_power(energy_data_t *e_begin, energy_data_t *e_end, power_data_t *m
 
     // eh is not needed here
     energy_accumulated(NULL, &curr_node_energy, e_begin->DC_node_energy, e_end->DC_node_energy);
+		debug("curr dc energy %lu dc energy begin %lu end %lu", curr_node_energy, (ulong) *((ulong *) e_begin->DC_node_energy), (ulong) *((ulong *) e_end->DC_node_energy));
 
     t_diff           = difftime(e_end->sample_time, e_begin->sample_time);
     my_power->begin  = e_begin->sample_time;

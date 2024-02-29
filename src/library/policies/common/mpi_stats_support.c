@@ -684,13 +684,16 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
                     start_no_mpi.tv_sec, start_no_mpi.tv_nsec);
         }
 #endif // SHOW_DEBUGS
-    }
+    } else
+		{
+#if !MPI_OPTIMIZED
+			timestamp_getfast(&end);
+#endif
+		}
 
 #if MPI_OPTIMIZED
     timestamp_getprecise(&start_no_mpi);
 #else
-    // timestamp_getfast(&start_no_mpi);
-    // TODO: end can be uninitialized
     start_no_mpi = end;
 #endif
 
@@ -1064,11 +1067,11 @@ state_t mpi_support_select_critical_path(uint *critical_path, double *percs_mpi,
 
     for (uint i=0; i < num_procs; i++) {
         /*  Decides whether process i is part of the critical path */
-        if (abs(percs_mpi[i] - percs_mpi[*min_mpi]) < (abs(percs_mpi[i] - *median) * critical_path_th)) {
+        if (fabs(percs_mpi[i] - percs_mpi[*min_mpi]) < (fabs(percs_mpi[i] - *median) * critical_path_th)) {
             verbose_master(LB_VERB_LVL, "Process %d selected as part of the critical path", i);
             critical_path[i] = 1;
             total_cp++;
-        } else if (abs(percs_mpi[i] - percs_mpi[*min_mpi]) < abs(percs_mpi[i] - mean)) {
+        } else if (fabs(percs_mpi[i] - percs_mpi[*min_mpi]) < fabs(percs_mpi[i] - mean)) {
             debug("%sWARNING%s Proc %d is closer to the minimum than the mean, but not selected as part of the critical path",
                     COL_RED, COL_CLR, i);
         }

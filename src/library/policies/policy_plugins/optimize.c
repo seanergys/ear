@@ -55,8 +55,6 @@ extern unsigned long ext_def_freq;
 #define FREQ_DEF(f) f
 #endif
 
-#define MASTER (masters_info.my_master_rank >= 0)
-#define MASTER_ID masters_info.my_master_rank
 
 extern uint cpu_ready, gpu_ready;
 // extern gpu_state_t curr_gpu_state;

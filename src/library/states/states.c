@@ -73,6 +73,7 @@
 
 extern masters_info_t masters_info; // Defined at externs.h
 extern float          ratio_PPN;    // TODO: Where declared ?
+extern uint   AID;
 
 /* Defined at ear.c */
 extern report_id_t    rep_id;
@@ -274,11 +275,17 @@ void states_begin_period(int my_id, ulong event, ulong size, ulong level)
 
     tries_current_loop           = 0;
     tries_current_loop_same_freq = 0;
-
+#if WF_SUPPORT
     if (state_fail(loop_init(&curr_loop, application.job.id,
-                    application.job.step_id, application.node_id, event, size, level))) {
+                    application.job.step_id, application.job.local_id, application.node_id, event, size, level))) {
         verbose_error_master("Creating loop: %s", state_msg);
     }
+#else
+    if (state_fail(loop_init(&curr_loop, application.job.id,
+                    application.job.step_id, 0, application.node_id, event, size, level))) {
+        verbose_error_master("Creating loop: %s", state_msg);
+    }
+#endif
 
     policy_loop_init(&curr_loop.id);
 
@@ -591,6 +598,17 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
             N_iter = iterations - begin_iter;
 
+            /* We update periodically because some jobs change it at runtime. */
+            if (masters_info.my_master_rank >= 0){
+              if (state_fail(update_job_affinity_mask(lib_shared_region, sig_shared_region)))
+             {
+               verbose(1, "An error occurred updating the affinity mask: %s", state_msg);
+             }else{
+               verbose(2,"EARL[%d] Affinity mask updated", AID);
+             }
+            }
+
+
             /* Signature computation */
             result = metrics_compute_signature_finish(&loop_signature, N_iter,
                                                       perf_accuracy_min_time, total_threads_cnt, &passed_time);
@@ -607,6 +625,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                     perf_count_period     = ear_max(perf_count_period, 1);
                     perf_count_period_10p = perf_count_period;
                     //verbose_master(0,"%s Using new period %u accel %u (iters per second %f)", node_name, perf_count_period, perf_count_period_10p, (float)N_iter / (float)passed_time);
+
                   }
                   else if (ear_guided != TIME_GUIDED)
 									{

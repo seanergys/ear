@@ -141,6 +141,7 @@
 
 #define FLAG_NO_AFFINITY_MASK        "EARL_NO_AFFINITY_MASK"   // Prevents EARL from using the affinity mask. Only for special use cases
 #define FLAG_REPORT_LOOPS            "EARL_REPORT_LOOPS"       // Reports or not report EAR library loops
+#define FLAG_EAR_DEBUG               "EAR_DEBUG"
 
 //#define FLAG_USE_PRIO                "EAR_USE_PRIO"           // Enables CPU priority system.
 #define FLAG_PRIO_CPUS               "EAR_PRIO_CPUS"          // A list of priorities for each CPU.
@@ -152,6 +153,7 @@
 #define FLAG_BW_FAKE_PHASE           "EARL_BW_FAKE_PHASE"
 #define FLAG_FORCE_SHARED_NODE       "EARL_FORCE_SHARED_NODE"
 #define FLAG_DISABLE_CNTD            "EAR_DISABLE_CNTD"       // disables automatic CNTD loadin
+#define FLAG_USE_DLB                 "EAR_USE_DLB_TALP"
 
 /** @} */
 

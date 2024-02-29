@@ -19,12 +19,11 @@ CFLAGS     += -DEAR_DEF_TIME_GUIDED=0 -DMPI_SAMPLING=1 -DMPI_STATS=1
 endif
 
 ifeq ($(FEAT_RESEARCH), 1)
-	CFLAGS +=  \
-						 -DEAR_DEF_TIME_GUIDED=0
+CFLAGS += -DEAR_DEF_TIME_GUIDED=0
 endif
 
 ifeq ($(FEAT_EAR_OFF), 1)
-	CFLAGS += -DEAR_OFF=1
+CFLAGS += -DEAR_OFF=1
 endif
 
 
@@ -42,9 +41,9 @@ else
 CFLAGS += -DDCGMI=0
 endif
 
-ifeq ($(DLB), 1)
-CFLAGS += -DDLB=1 -I/home/xvlopez/local/dlb/openmpi/include
-LDFLAGS += -L/home/xvlopez/local/dlb/openmpi/lib -ldlb
+ifeq ($(FEAT_DLB), 1)
+CFLAGS += -DDLB=1 -I$(DLB_BASE)/include
+LDFLAGS += -L$(DLB_BASE)/lib -ldlb
 endif
 
 
