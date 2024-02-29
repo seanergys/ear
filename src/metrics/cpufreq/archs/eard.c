@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <common/output/debug.h>
@@ -52,6 +52,7 @@ state_t cpufreq_eard_status(topology_t *tp, cpufreq_ops_t *ops, int eard)
 
 state_t cpufreq_eard_read(ctx_t *c, cpufreq_t *list)
 {
+		debug("cpufreq_eard_read");
     memset((void *) list, 0, sizeof(cpufreq_t)*cpu_count);
     return eard_rpc(RPC_MET_CPUFREQ_GET_CURRENT, NULL, 0, (char *) list, sizeof(cpufreq_t)*cpu_count);
 }
