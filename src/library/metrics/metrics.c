@@ -20,10 +20,12 @@
 #define FAKE_POWER_READING  0
 #define FAKE_ENERGY_READING 0
 // #define SHOW_DEBUGS            1
+#define USE_PROC_PS            1
 
 
 #define INFO_METRICS           2
 #define IO_VERB                3
+#define VERB_PROCPS 					 2
 #define SET_DYN_UNC_BY_DEFAULT 1
 #define MPI_VERB               3
 #define GPU_VERB               2
@@ -70,6 +72,7 @@
 #include <library/tracer/tracer.h>
 #include <library/tracer/tracer_paraver_comp.h>
 #include <metrics/io/io.h>
+#include <metrics/proc/stat.h>
 #include <metrics/cpi/cpi.h>
 #include <metrics/cache/cache.h>
 #include <metrics/flops/flops.h>
@@ -174,6 +177,25 @@ static io_data_t   metrics_io_end[4];
 static io_data_t   metrics_io_diff[5]; // Another position was added to store per-loop node
                                        // accumulated, to be used at the end if some read fails
 static ctx_t       ctx_io;
+
+/* Per proc statistics using OS API */
+uint proc_ps_ok = 0; 
+#if USE_PROC_PS
+#define metric_cond(cond, call, vlevel, msg) \
+  if (cond){ \
+    if (state_fail(call)){ \
+    verbose_master(vlevel, msg); \
+    } \
+  }
+
+static proc_stat_t metrics_proc_init[2];
+static proc_stat_t metrics_proc_end[2];
+static proc_stat_t metrics_proc_diff[2];
+static ctx_t       proc_ctx;
+#else
+#define metric_cond(cond, call, vlevel, msg)
+#endif
+
 
 /* MPI statistics */
 mpi_information_t *metrics_mpi_info[2];             // Contains the data of the period
@@ -460,6 +482,18 @@ static void metrics_static_init(topology_t *tp)
       gpuproc_load(eard);
     }
 #endif
+
+#if USE_PROC_PS
+    if (state_fail(proc_stat_load())){
+      verbose_master(2, "proc_stat API failed");
+      proc_ps_ok = 0;
+    }else{
+      verbose_master(2, "proc_stat API loaded");
+      proc_ps_ok = 1;
+    }
+#endif 
+    metric_cond(proc_ps_ok, proc_stat_init(&proc_ctx, getpid()), VERB_PROCPS, "EARL proc_stat_init failed");
+
 
 #endif // USE_GPUS
     debug("metics_load ready");
@@ -819,6 +853,11 @@ static void metrics_global_start()
     /* To be used in partial_start */
     io_copy(&metrics_io_end[LOO_NODE], &metrics_io_init[APP_NODE]);
 	}
+
+  /* OS procs statistics */
+  metric_cond(proc_ps_ok, proc_stat_read(&proc_ctx, &metrics_proc_init[APP]), VERB_PROCPS, "proc_stat_read failed in global start");
+  metric_cond(proc_ps_ok, proc_stat_data_copy(&metrics_proc_init[LOO], &metrics_proc_init[APP]), VERB_PROCPS, "proc_stat_data_copy failed in global start");
+
   #if USE_CUPTI
   if (read_cupti_metrics){
     if (state_fail(gpuproc_read(no_ctx, proc_gpu_data_init[APP]))){
@@ -1060,6 +1099,10 @@ static void metrics_partial_start()
   io_copy(&metrics_io_init[LOO], &metrics_io_end[LOO]);
 	debug("IO read done");
 
+
+  metric_cond(proc_ps_ok, proc_stat_data_copy(&metrics_proc_init[LOO], &metrics_proc_end[LOO]), VERB_PROCPS, "proc_stat_data_copy failed in partial start");
+
+
 	/* These data is measured only by the master */
 	if (master) {
 		/* Avg CPU freq */
@@ -1269,6 +1312,11 @@ static int metrics_partial_stop(uint where)
 		verbose_warning_master("I/O data not available");
 	}
 	io_diff(&metrics_io_diff[LOO], &metrics_io_init[LOO], &metrics_io_end[LOO]);
+
+
+  /* Process statistics */
+  metric_cond(proc_ps_ok, proc_stat_read(&proc_ctx, &metrics_proc_end[LOO]), VERB_PROCPS, "EARL proc_stat_read failed in partial_stop");
+
 
 	//  Manual time accumulation
 	metrics_usecs[LOO] = c_time;
@@ -1582,6 +1630,13 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 
 	/* Per Node IO data */
 	int io_app_loop_idx = sign_app_loop_idx;
+
+
+  /* OS process statistics */
+
+  metric_cond(proc_ps_ok, proc_stat_data_diff(&metrics_proc_end[sign_app_loop_idx], &metrics_proc_init[sign_app_loop_idx], &metrics_proc_diff[sign_app_loop_idx]), VERB_PROCPS, "EARL proc_stat_data_diff failed in compute signature_data");
+  metric_cond(proc_ps_ok, proc_stat_data_copy(&(sig_ext->proc_ps), &metrics_proc_diff[sign_app_loop_idx]), VERB_PROCPS, "EARL proc_stat_data_copy in compute_signature");
+
 
 	/* Each process will compute its own IO_MBS, except
 	 * the master, that computes per node IO_MBS */
@@ -2460,7 +2515,7 @@ void metrics_job_signature(const signature_t *master, signature_t *dst)
 extern uint last_earl_phase_classification;
 extern gpu_state_t last_gpu_state;
 
-
+/* This function returns EAR_SUCCESS when metrics are ready to be compared */
 state_t metrics_new_iteration(signature_t *sig)
 {
     

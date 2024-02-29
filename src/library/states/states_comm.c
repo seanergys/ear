@@ -48,6 +48,7 @@ extern float ratio_PPN;
 extern unsigned long long int total_mpi;
 extern uint using_verb_files;
 extern uint per_proc_verb_file;
+extern uint proc_ps_ok;
 
 #ifdef SHOW_DEBUGS
 static void debug_loop_signature(char *title, signature_t *loop);
@@ -135,6 +136,16 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
         } else {
             sprintf(io_info, "No IO data");
         }
+
+        // Proc OS statistics
+        char proc_data_str[2048];
+        if ((sigex != NULL) && (proc_ps_ok)) {
+        	proc_stat_t *proc_data = &sigex->proc_ps;
+        	proc_stat_data_to_str(proc_data, proc_data_str, sizeof(proc_data_str));
+				}else{
+					snprintf(proc_data_str, sizeof(proc_data_str), "No process OS statistics");
+				}
+
 
         // TODO: period or time ? time is the time per iteration. This metric is computed periodically by a thread.
         // If enabled each process computes it I/O bandwidth, otherwise the node I/O bandwidth is already computed
@@ -272,6 +283,7 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
 
         verbosen(2," VPI %.2f Total MPI calls %llu",VPI, n_mpi_calls);
         verbosen(2,"\n\t IO DATA: %s ",io_info);
+				verbosen(2,"\n\t Proc OS DATA: %s", proc_data_str);
 
         verbose(1,"%s",COL_CLR);
     }

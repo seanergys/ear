@@ -27,6 +27,7 @@
 #include <library/common/library_shared_data.h>
 #include <metrics/common/apis.h>
 #include <metrics/io/io.h>
+#include <metrics/proc/stat.h>
 #include <library/api/clasify.h>
 #include <library/metrics/dcgmi_lib.h>
 
@@ -63,6 +64,7 @@ typedef struct sig_ext
 #if DLB
     dlb_node_metrics_t dlb_talp_node_metrics;
 #endif
+		proc_stat_t        proc_ps;
 } sig_ext_t;
 
 /** New metrics **/
