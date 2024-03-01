@@ -27,7 +27,6 @@
 
 // 0       1       2      3      4      5      6      7      8
 // CPU-SP, CPU-DP, 128SP, 128DP, 256SP, 256DP, 512HP, 512SP, 512DP
-static ullong *weights;
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static flops_ops_t ops;
 static uint load;
@@ -65,7 +64,8 @@ state_t flops_init(ctx_t *c)
 
 state_t flops_dispose(ctx_t *c)
 {
-	return ops.dispose();
+  load = 0;
+	return ops.dispose(c);
 }
 
 state_t flops_read(ctx_t *c, flops_t *fl)

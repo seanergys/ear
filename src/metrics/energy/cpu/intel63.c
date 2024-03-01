@@ -73,9 +73,14 @@ int init_rapl_msr(int *fd_map)
 	vendor = topo.vendor;
 
 	if (is_msr_initialized() == 0) {
-		debug("MSR registers already initialized");
-		init_msr(fd_map);
+		if (state_fail(init_msr(fd_map)))
+		{
+			debug("MSR registers init error");
+			pthread_mutex_unlock(&rapl_msr_lock);
+			return EAR_ERROR;
+		}
 	} else {
+		debug("MSR registers already initialized");
 		get_msr_ids(fd_map);
 	}
 	

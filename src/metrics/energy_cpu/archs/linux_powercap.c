@@ -16,26 +16,33 @@
 */
 
 //#define SHOW_DEBUGS 1
-
 #include <math.h>
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+
 #include <common/config.h>
 #include <common/states.h>
+
 #include <common/output/verbose.h>
 #include <common/output/debug.h>
 #include <common/hardware/hardware_info.h>
 #include <metrics/common/apis.h>
 
 
-// https://www.kernel.org/doc/html/next/power/powercap/powercap.html
-#define linux_powercap_folder        "/sys/devices/virtual/powercap/intel-rapl/intel-rapl:%d"
-// Core means package in this case
+
+
+
+/* 
+* https://www.kernel.org/doc/html/next/power/powercap/powercap.html
+*/
+
+#define linux_powercap_folder "/sys/devices/virtual/powercap/intel-rapl/intel-rapl:%d"
+/* Core means package in this case */
 #define linux_powercap_core_folder   "/sys/devices/virtual/powercap/intel-rapl/intel-rapl:%d/"
-#define linux_powercap_pck_metric    "/sys/devices/virtual/powercap/intel-rapl/intel-rapl:%d/%s"
+#define linux_powercap_pck_metric   "/sys/devices/virtual/powercap/intel-rapl/intel-rapl:%d/%s"
 #define linux_powercap_uncore_folder "/sys/devices/virtual/powercap/intel-rapl/intel-rapl:%d/intel-rapl:%d:0"
 #define linux_powercap_metric        "/sys/devices/virtual/powercap/intel-rapl/intel-rapl:%d/intel-rapl:%d:%d/%s"
 #define linux_powercap_energy_file   "energy_uj"

@@ -30,6 +30,7 @@ state_t cpufreq_dummy_status(topology_t *tp, cpufreq_ops_t *ops)
     cpu_count = tp->cpu_count;
     // Getting base frequency and boost
     cpufreq_base_init(tp, &bf);
+		debug("cpufreq_dummy_status base freq %lu", bf.frequency);
 
 	replace_ops(ops->init,          cpufreq_dummy_init);
 	replace_ops(ops->dispose,       cpufreq_dummy_dispose);

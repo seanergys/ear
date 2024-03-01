@@ -27,7 +27,9 @@
 #include <sys/types.h>
 #include <sys/utsname.h>
 #include <metrics/proc/stat.h>
+#include <common/system/time.h>
 
+static long clk_per_second;
 
 typedef struct psctx_s {
 	pid_t pid;
@@ -79,7 +81,12 @@ state_t proc_stat_load()
 	if (state_fail(s = kernel_version(&kernel, &major, &minor, &patch))) {
 		return s;
 	}
-	debug("Detected kernel version %u.%u.%u.%u", kernel, major, minor, patch);
+	clk_per_second = sysconf(_SC_CLK_TCK);
+	if (clk_per_second < 0){
+		return_msg(EAR_ERROR, "CLock tics per seconf cannot be detected");
+	}
+
+	debug("Detected kernel version %u.%u.%u.%u", kernel, major, minor, patch, clk_per_second);
 	// 2.6.24
 	if ((kernel < 3) || (kernel == 3 && major < 3)) {
 		mode = 1;
@@ -209,6 +216,10 @@ state_t proc_stat_read(ctx_t *c, proc_stat_t *ps)
 	}
 	// Cleaning buffer
 	memset(buffer, 0, SZ_BUFFER);
+
+	// To compute CPU usage
+	timestamp_getfast(&ps->ts);
+
 	// Reading
 	sbuff = SZ_BUFFER;
 	sread = 0;
@@ -222,7 +233,7 @@ state_t proc_stat_read(ctx_t *c, proc_stat_t *ps)
 	debug("Read a total of %ld bytes", soff);
 	//
 	if (buffer[soff-1] != '\n') {
-		debug("Buffer to short to read");
+		debug("Buffer too short to read");
 		return_msg(EAR_ERROR, "Buffer to short to read /proc/<pid>/stat");
 	}
 	buffer[soff-1] = '\0';
@@ -272,6 +283,14 @@ state_t proc_stat_data_diff(proc_stat_t *ps2, proc_stat_t *ps1, proc_stat_t *psD
 	psD->cutime = ps2->cutime - ps1->cutime;
 	psD->cstime = ps2->cstime - ps1->cstime;
 
+	ullong elap = timestamp_diff(&ps2->ts, &ps1->ts, TIME_MSECS);
+
+	if (elap){
+		psD->cpu_util = 100*(((psD->utime + psD->stime)*1000/clk_per_second)/elap);
+	}else{
+		psD->cpu_util = 0;
+	}
+
 	return EAR_SUCCESS;
 }
 
@@ -283,6 +302,7 @@ state_t proc_stat_data_copy(proc_stat_t *dest, proc_stat_t *src)
 
 state_t proc_stat_data_print(proc_stat_t *ps)
 {
+	char time_str[256];
 	printf("[ 1] pid:    %d\n", ps->pid);
 	printf("[ 2] file:   %s\n", ps->file);
 	printf("[ 3] state:  %c\n", ps->state);
@@ -298,12 +318,15 @@ state_t proc_stat_data_print(proc_stat_t *ps)
 	printf("[39] processor:  %d\n", ps->processor);
 	printf("[43] guest_time:  %lu\n", ps->guest_time);
 	printf("[44] cguest_time: %ld\n", ps->cguest_time);
+	timestamp_tostr(&ps->ts, time_str, sizeof(time_str));
+	printf("[D]  timestamp  : %s\n", time_str); 
+	printf("[D]  CPU usage: %u\n", ps->cpu_util);
 	return EAR_SUCCESS;
 }
 
 state_t proc_stat_data_to_str(proc_stat_t *ps,char *buffer,size_t len)
 {
-	snprintf(buffer,len,"(pid %d state %c utime %lu stime %lu cutime %ld cstime %ld)",ps->pid,ps->state,ps->utime,ps->stime,ps->cutime,ps->cstime);
+	snprintf(buffer,len,"(pid %d state %c utime %lu stime %lu cutime %ld cstime %ld CPU usage %u)",ps->pid,ps->state,ps->utime,ps->stime,ps->cutime,ps->cstime, ps->cpu_util);
 	return EAR_SUCCESS;
 }
 

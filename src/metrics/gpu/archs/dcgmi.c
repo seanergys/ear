@@ -15,8 +15,15 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-
+#define SHOW_DEBUGS 1
 #include <stdlib.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 #include <metrics/common/popen.h>
 #include <metrics/gpu/archs/dcgmi.h>
 
@@ -77,6 +84,26 @@ static char *dcgmi_ev_names[dcgmi_num_events]={
   "tensor_hmma_active" /* 1014 */
 };
 
+static state_t discover_dcgmi()
+{
+	int ret;
+	ret = fork();
+	if (ret == 0){
+		ret = open("/dev/null", O_WRONLY);
+		dup2(ret, 1);dup2(ret, 2);
+		execlp("dcgmi", "dcgmi", "--help", NULL);
+		/* The number is ramdom, just to compare with a specific value */
+		exit(100);
+	}else{
+		waitpid(-1, &ret, 0);
+		if (WIFEXITED(ret) && (WEXITSTATUS(ret) == 100)){
+				debug("dcgmi command not detected");
+			return_msg( EAR_ERROR, "dcgmi command not detected");
+		}
+			debug("dcgmi command detected");
+			return EAR_SUCCESS;
+	}
+}
 
 state_t gpu_dcgmi_init(char *events, uint events_count_in)
 {
@@ -86,10 +113,15 @@ state_t gpu_dcgmi_init(char *events, uint events_count_in)
     if (events == NULL) {
         return_msg(EAR_ERROR, Generr.input_null);
     }
+		/* popen_test uses an approach not valid for virtualization */
+		#if 0
     if (state_fail(s = popen_test("dcgmi"))) {
+		#endif
+    if (state_fail(s = discover_dcgmi())) {
         debug("Failed to test: %s", state_msg);
         return s;
     }
+		debug("testing discovery");
     // Getting the number of GPUS
     if (state_fail(s = popen_open("dcgmi discovery -l", 0, 1, &p))) {
         debug("Failed to open: %s", state_msg);

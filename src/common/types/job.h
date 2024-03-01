@@ -24,31 +24,14 @@
 #include <common/types/generic.h>
 #include <common/utils/serial_buffer.h>
 
-/* Proposal for new job
-typedef struct job
-{
-    job_id  id;
-    job_id  step_id;
-    char    user_id[UID_NAME];
-    char    app_id[GENERIC_NAME];
-    char    user_acc[GENERIC_NAME];
-	char	energy_tag[ENEGY_TAG_SIZE];
-    time_t  start_time;
-    time_t  end_time;
-    time_t  start_mpi_time;
-    time_t  end_mpi_time;
-    char    policy[POLICY_NAME];
-    double  th;
-    ulong   procs;
-    job_type    type;
-    ulong       def_f;
-} job_t;
-*/
 
 typedef struct job
 {
 	job_id 	 id; //ulong
 	job_id 	 step_id; //ulong
+#if WF_SUPPORT
+    job_id 	 local_id;
+#endif
 	char 	 user_id[GENERIC_NAME];
 	char 	 group_id[GENERIC_NAME];
 	char 	 app_id[GENERIC_NAME];

@@ -167,22 +167,6 @@ static void topology_asm_getbrand(topology_t *topo)
     #endif
 }
 
-static int msr_microread(char *buffer, size_t size, off_t offset)
-{
-    size_t size_accum = 0;
-    size_t size_read = 0;
-    int fd;
-
-    if ((fd = open("/dev/cpu/0/msr", O_RDONLY)) < 0) {
-        return 0;
-    }
-    while ((size > 0) && ((size_read = read(fd, (void *) &buffer[size_accum], size)) > 0)){
-        size = size - size_read;
-        size_accum += size_read;
-    }
-    return 1;
-}
-
 static void topology_asm_getsimd(topology_t *topo)
 {
     if (topo->vendor == VENDOR_ARM) {

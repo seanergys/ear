@@ -1,4 +1,4 @@
-lite_OBJS = \
+core_OBJS = \
     $(SRCDIR)/common/environment.o \
     $(SRCDIR)/common/environment_common.o \
     $(SRCDIR)/common/math_operations.o \
@@ -71,11 +71,16 @@ lite_OBJS = \
     $(SRCDIR)/common/utils/stress.o \
     $(SRCDIR)/common/external/ear_external.o
 
-full_OBJS = $(lite_OBJS)
+full_OBJS = $(core_OBJS)
 
 ifdef DB_BASE
-full_OBJS += \
+db_OBJS += \
     $(SRCDIR)/common/database/db_helper.o \
-    $(SRCDIR)/common/database/mysql_io_functions.o \
     $(SRCDIR)/common/database/postgresql_io_functions.o
+
+ifeq ($(FEAT_WF_SUPPORT), 1)
+    db_OBJS += \
+    $(SRCDIR)/common/database/mysql_io_functions.o 
+endif
+full_OBJS += $(db_OBJS)
 endif

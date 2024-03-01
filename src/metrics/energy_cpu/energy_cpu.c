@@ -26,6 +26,7 @@
 #include <metrics/energy_cpu/archs/linux_powercap.h>
 #include <metrics/energy_cpu/archs/dummy.h>
 #include <metrics/energy_cpu/archs/cpu_util.h>
+#include <metrics/energy_cpu/archs/linux_powercap.h>
 #include <metrics/energy_cpu/energy_cpu.h>
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
@@ -75,12 +76,12 @@ state_t energy_cpu_load(topology_t *tp, uint force_api)
 		api = API_EARD;
 		debug("selected eard energy_cpu (api %u)", api);
 	} else if (state_ok(linux_powercap_load(tp))){
-        ops.init          = linux_powercap_init;
-        ops.dispose       = linux_powercap_dispose;
-        ops.read          = linux_powercap_read;
-        ops.count_devices = linux_powercap_count_devices;
-        api = API_LINUX_POWERCAP;
-        debug("selected linux_powercap (api %u)", api);
+    ops.init          = linux_powercap_init;
+    ops.dispose       = linux_powercap_dispose;
+    ops.read          = linux_powercap_read;
+    ops.count_devices = linux_powercap_count_devices;
+    api = API_LINUX_POWERCAP;
+    debug("selected linux_powercap (api %u)", api);
     } else if (state_ok(energy_cpu_util_load(tp))) {
 		ops.init          = energy_cpu_util_init;
 		ops.dispose       = energy_cpu_util_dispose;

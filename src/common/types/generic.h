@@ -15,14 +15,14 @@
 * and COPYING.EPL files.
 */
 
-#ifndef _EAR_TYPES_GENERIC
-#define _EAR_TYPES_GENERIC
+#ifndef COMMON_TYPES_GENERIC
+#define COMMON_TYPES_GENERIC
 
 #include <stddef.h>
 #include <stdint.h>
 #include <limits.h>
 
-
+//
 typedef const char          cchar;
 typedef unsigned char		uchar;
 typedef   signed char       byte;
@@ -35,22 +35,23 @@ typedef unsigned short		ushort;
 typedef unsigned int		uint;
 typedef unsigned long long  addr_t;
 
-// Not generic
-typedef uint8_t			job_type;
-typedef ulong			job_id;
+// Attributes
+#define ATTR_UNUSED __attribute__((unused))
+
+// Not generic (in process of cleaning)
+typedef uint8_t			    job_type;
+typedef ulong			    job_id;
 
 #define GENERIC_NAME        256
 #define SHORT_GENERIC_NAME  16
-#define	UID_NAME            8
 #define POLICY_NAME         32
 #define ENERGY_TAG_SIZE     32
 #define MAX_PATH_SIZE       256
 #define NODE_SIZE           256
-#define NAME_SIZE           128
 #define ID_SIZE             64
 #define USER                64
 
 #define ear_min(X, Y) (((X) < (Y)) ? (X) : (Y))
 #define ear_max(X, Y) (((X) > (Y)) ? (X) : (Y))
 
-#endif
+#endif //COMMON_TYPES_GENERIC

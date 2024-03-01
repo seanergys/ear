@@ -26,7 +26,7 @@
 #include <unistd.h>
 #include <math.h>
 
-// #define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/states.h>
 #include <common/math_operations.h>
@@ -56,7 +56,7 @@ state_t compute_reference(signature_t *signature, energy_model_t energy_model, u
   if (curr_freq[0] != def_freq[0]) // Use configuration when available
   {
     debug("curr_freq[0] != def_freq[0] %lu != %lu", curr_freq[0], def_freq[0]);
-    if (state_ok(energy_model_projection_available(energy_model, curr_pstate, def_pstate)))
+    if (energy_model_projection_available(energy_model, curr_pstate, def_pstate))
     {
       verbose_master(3, "Using projections for references");
 
@@ -102,9 +102,13 @@ state_t compute_cpu_freq_min_energy(signature_t *signature, energy_model_t energ
   compute_sig_vpi(&vpi,signature);
   verbose_master(3, "CPUfreq algorithm for min_energy timeref %lf powerref %lf energy %lf F=%lu VPI %lf. Pstates %lu...%lu", time_ref, power_ref, energy_ref, best_freq, vpi, minp, maxp);
 
+	verbose_master(3, "CPUfreq algorithm for min_energy, projecting from pstate %lu to %lu", minp, maxp);
+	if (from == minp) minp++;
   for (i = minp; i < maxp; i++)
   {
-    if (state_ok(energy_model_projection_available(energy_model, from, i)))
+	
+		verbose_master(3, "CPUfreq algorithm testing pstate %lu", i);
+    if (energy_model_projection_available(energy_model, from, i))
     {
       // If energy_model is invalid, the above condition is false, so we don't need to check
       // the correctness of the below calls.
@@ -121,7 +125,9 @@ state_t compute_cpu_freq_min_energy(signature_t *signature, energy_model_t energ
         verbose(3,"new best solution found %lu",best_freq);
         best_solution = energy_proj;
       }
-    }
+    }else{
+			verbose_master(3, "CPUfreq algorithm pstate %lu projection not available", i);
+		}
   }
   *newf = best_freq;
   return EAR_SUCCESS;
@@ -143,7 +149,7 @@ state_t compute_cpu_freq_min_time(signature_t *signature, energy_model_t energy_
   time_current = time_ref;
   while(try_next && i >= min_pstate)
   {
-    if (state_ok(energy_model_projection_available(energy_model, curr_pstate, i)))
+    if (energy_model_projection_available(energy_model, curr_pstate, i))
     {
       verbose_master(3, "Looking for pstate %d",i);
 

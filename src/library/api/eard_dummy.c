@@ -15,6 +15,7 @@
 * and COPYING.EPL files.
 */
 
+
 #define _GNU_SOURCE
 #include <sched.h>
 
@@ -40,6 +41,7 @@
 #define DEFAULT_EAR_INSTALL_PATH "/usr/lib/ear"
 #define DEFAULT_EAR_ETC_PATH "/etc"
 #define DEFAULT_ENERGY_PLUGIN "energy_rapl.so"
+
 
 static char path[GENERIC_NAME];
 static cluster_conf_t dummy_cc;
@@ -192,7 +194,7 @@ state_t eard_dummy_cluster_conf(char *ear_tmp, uint ID)
     local_dummy_ser_cc = create_ser_cluster_conf_shared_area(path, dummy_ser_cc, dummy_ser_cc_size);
 
     check_null(local_dummy_ser_cc, "Error serializing cluster_conf in path %s", " ");
-    verbose_master(2, "Dummy cluster_conf done");
+    //verbose_master(2, "Dummy cluster_conf done %s", path);
 
     return EAR_SUCCESS;
 }
@@ -209,14 +211,14 @@ state_t eard_dummy_earl_settings(char *ear_tmp, uint ID)
 
 			//verbose_master(1,"Using freq_base %lu", freq_base);
 
-				verbose_master(2, "looking for policy %d", dummy_cc.default_policy);	
+				//verbose_master(2, "looking for policy %d", dummy_cc.default_policy);	
   			my_policy = get_my_policy_conf(dummy_node_conf,dummy_cc.default_policy);
 				check_null(my_policy, "My policy returns NULL for policy %d", dummy_cc.default_policy);
 
 				get_settings_conf_path(ear_tmp, ID, path);
 
 				debug("Creating settings dummy in %s", path);
-				dummy_sett = create_settings_conf_shared_area(path);
+				dummy_sett = create_settings_conf_shared_area(path, NULL);
 				check_null(dummy_sett, "create_settings_conf_shared_area returns NULL for path %s", path);
 
 				memset(dummy_sett, 0, sizeof(settings_conf_t));
@@ -241,16 +243,16 @@ state_t eard_dummy_earl_settings(char *ear_tmp, uint ID)
   			copy_ear_lib_conf(&dummy_sett->lib_info , &dummy_cc.earlib);
 	
 
-				verbose_master(2, "Dummy earl settings done");
+				verbose_master(2, "Dummy earl settings done %s", path);
 
 				get_resched_path(ear_tmp, ID, path);
-				dummy_resch = create_resched_shared_area(path);
+				dummy_resch = create_resched_shared_area(path, NULL);
 
 				check_null(dummy_resch, "Resched are returns NULL for path %s", path);
 
 				dummy_resch->force_rescheduling = 0;
 
-				verbose_master(2, "Dummy resched are done");
+				//verbose_master(2, "Dummy resched are done %s", path);
 
 				return EAR_SUCCESS;
 
@@ -259,10 +261,10 @@ state_t eard_dummy_earl_settings(char *ear_tmp, uint ID)
 state_t eard_dummy_app_mgt(char *ear_tmp, uint ID)
 {
 				get_app_mgt_path(ear_tmp, ID, path);
-				app_mgt_t *dummy = create_app_mgt_shared_area(path);
+				app_mgt_t *dummy = create_app_mgt_shared_area(path, NULL);
 				check_null(dummy, "Error creating app_mgr in path %s ", path);
 
-				verbose_master(2, "Dummy app_mgt area done path %s", path);
+				//verbose_master(2, "Dummy app_mgt area done path %s", path);
 
 				return EAR_SUCCESS;
 }
@@ -272,7 +274,7 @@ state_t eard_dummy_pc_app_info(char *ear_tmp, uint ID)
 				pc_app_info_t *dummy;
 
 				get_pc_app_info_path(ear_tmp, ID, path);	
-				dummy = create_pc_app_info_shared_area(path);
+				dummy = create_pc_app_info_shared_area(path, NULL);
 				check_null(dummy, "Error creating pc area in path %s", path);
 
 				memset(dummy, 0 , sizeof(pc_app_info_t));
@@ -281,7 +283,7 @@ state_t eard_dummy_pc_app_info(char *ear_tmp, uint ID)
 				dummy->gpu_mode = PC_POWER;
 				#endif
 
-				verbose_master(2, "Dummy powercap are done path %s", path);
+				//verbose_master(2, "Dummy powercap are done path %s", path);
 	
 				return EAR_SUCCESS;
 }
@@ -291,7 +293,9 @@ state_t eard_dummy_nodemgr(char *ear_tmp, uint ID)
 				nodemgr_server_init(ear_tmp, &dummy_nodemgr);
 				check_null(dummy_nodemgr, "Error creating dummy node_mgr %s", " ");				
 
-				verbose_master(2, "Dummy node mgr area done");
+
+
+				//verbose_master(2, "Dummy node mgr area done");
 				return EAR_SUCCESS;
 }
 
@@ -308,7 +312,7 @@ state_t eard_dummy_coefficients(char *ear_tmp, uint ID)
 				dummy_coeff = create_coeffs_default_shared_area(path, coeffs, size);
 				check_null(dummy_coeff, "Error creating coefficients for path %s", path);
 
-				verbose_master(2, "Dummy coefficients area done");
+				//verbose_master(2, "Dummy coefficients area done %s", path);
 				return EAR_SUCCESS;
 }
 
@@ -347,7 +351,7 @@ state_t eard_dummy_frequency_list(char *ear_tmp, uint ID)
 
 void eard_dummy_replace_base_freq(ulong base)
 {
-        verbose_master(2,"Replacing list of frequencies with freq %lu", base);
+        //verbose_master(2,"Replacing list of frequencies with freq %lu", base);
 
         if ((dummy_frequencies == NULL) || (dummy_sett == NULL)) {
           verbose_master(2,"Error, dummy_frequencies %p dummy_sett %p", dummy_frequencies, dummy_sett);
@@ -355,7 +359,7 @@ void eard_dummy_replace_base_freq(ulong base)
         }
         dummy_frequencies[0]         = base;
 
-        verbose_master(2,"EARL settings");
+        //verbose_master(2,"EARL settings");
         dummy_sett->def_freq         = base;
         dummy_sett->max_freq         = base;
 
@@ -375,7 +379,7 @@ state_t create_eard_dummy_shared_regions(char *ear_tmp, uint ID)
 				eard_dummy_pc_app_info(ear_tmp, ID);
 				eard_dummy_coefficients(ear_tmp, ID);
 
-				verbose_master(2,"All the dummy regions ready");
+				verbose_master(2,"All the dummy regions ready create in tmp=%s", ear_tmp);
 				return EAR_SUCCESS;
 }
 

@@ -62,6 +62,7 @@ state_t cache_init(ctx_t *c)
 
 state_t cache_dispose(ctx_t *c)
 {
+  load = 0;
 	return ops.dispose();
 }
 

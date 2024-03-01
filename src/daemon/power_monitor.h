@@ -65,6 +65,7 @@ typedef struct powermon_app {
     accum_power_sig_t accum_ps; //
     uint             *prio_idx_list; // List of CPU priorities before job beginning.
     pthread_mutex_t   powermon_app_mutex;
+    int								fd_shared_areas[PER_JOB_SHARED_REGIONS]; 
 } powermon_app_t;
 
 

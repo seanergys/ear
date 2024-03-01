@@ -25,6 +25,8 @@
 #include <management/cpufreq/frequency.h>
 #include <daemon/shared_configuration.h>
 #include <library/models/energy_models/common.h>
+#include <library/common/verbose_lib.h>
+
 
 
 static coefficient_t **coefficients;
@@ -144,6 +146,7 @@ state_t energy_model_init(char *ear_etc_path, char *ear_tmp_path, architecture_t
           i=frequency_closest_pstate(coefficients_sm[ccoeff].pstate);
           if (frequency_is_valid_pstate(ref) && frequency_is_valid_pstate(i)){
               memcpy(&coefficients[ref][i],&coefficients_sm[ccoeff],sizeof(coefficient_t));
+							//verbose_master(3,"initializing coeffs for ref: %d i: %d\n", ref, i);
           }
       }
   }
@@ -307,12 +310,10 @@ static double project_power(coefficient_t *coeff,signature_t *signature)
 
 static uint projection_available(ulong from_ps, ulong to_ps)
 {
+	//verbose_master(2, "projection_available test: from %lu to %lu aval %lu", from_ps, to_ps, coefficients[from_ps][to_ps].available);
 	if (valid_range(from_ps, to_ps))
 	{
-		if (coefficients[from_ps][to_ps].available)
-		{
-			return 1;
-		}
+		return coefficients[from_ps][to_ps].available;
 	}
 
 	return 0;

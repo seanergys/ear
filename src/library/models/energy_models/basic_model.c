@@ -25,6 +25,7 @@
 #include <management/cpufreq/frequency.h>
 #include <daemon/shared_configuration.h>
 #include <library/models/energy_models/common.h>
+#include <library/common/verbose_lib.h>
 
 
 static coefficient_t **coefficients;
@@ -106,7 +107,7 @@ state_t energy_model_init(char *ear_etc_path, char *ear_tmp_path, architecture_t
       i = frequency_closest_pstate(coefficients_sm[ccoeff].pstate);
       if (frequency_is_valid_pstate(ref) && frequency_is_valid_pstate(i)){
 				memcpy(&coefficients[ref][i],&coefficients_sm[ccoeff],sizeof(coefficient_t));
-        debug("initializing coeffs for ref: %d i: %d\n", ref, i);
+        //verbose_master(3,"initializing coeffs for ref: %d i: %d\n", ref, i);
       }
     }
   }

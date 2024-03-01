@@ -131,7 +131,15 @@ state_t flops_perf_init(ctx_t *c)
 
 state_t flops_perf_dispose(ctx_t *c)
 {
-    return EAR_SUCCESS;
+  uint i;
+  if (started){
+    for (i = 0; i < meta_count; ++i) {
+      perf_close(&meta[i].perf);
+    }
+    started = 0;
+		meta_count = 0;
+  }
+	return EAR_SUCCESS;
 }
 
 state_t flops_perf_read(flops_t *fl)
@@ -169,7 +177,7 @@ void flops_perf_data_diff(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs)
     flops_t flB; // flAux (holds the final flops_t)
     ullong *pA = (ullong *) &flA;
     ullong *pB = (ullong *) &flB;
-    ullong *pD = (ullong *)  flD;
+    ATTR_UNUSED ullong *pD = (ullong *)  flD;
     ullong *p2 = (ullong *)  fl2;
     ullong *p1 = (ullong *)  fl1;
     ullong time = 0LLU;

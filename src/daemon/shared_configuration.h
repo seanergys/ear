@@ -15,14 +15,17 @@
 * and COPYING.EPL files.
 */
 
+
 /**
-*    \file shared_configuration.h
-*    \brief This file defines the API to create/attach/dettach/release the shared memory area between the EARD and the EARLib. It is used to communicate the EARLib updates 
-*	remotelly requested
+ * \file shared_configuration.h
+ * \brief This file defines the API to create/attach/dettach/release the shared memory area between the EARD and the EARL.
+ * It is used to communicate the EARLib updates remotelly requested.
 */
+
 
 #ifndef _SHARED_CONF_H
 #define _SHARED_CONF_H
+
 
 #include <common/config.h>
 #include <common/system/shared_areas.h>
@@ -34,12 +37,21 @@
 #include <daemon/app_mgt.h>
 #include <common/types/pc_app_info.h>
 
-typedef struct services_conf{
-	eard_conf_t     eard;
-    eargm_conf_t    eargmd;
-	db_conf_t 		db;
-    eardb_conf_t 	eardbd;
-	char net_ext[ID_SIZE];
+
+#define PER_JOB_SHARED_REGIONS	4
+#define SETTINGS_AREA						0
+#define RESCHED_AREA						1
+#define APP_MGT_AREA						2
+#define PC_APP_AREA							3
+
+
+typedef struct services_conf
+{
+	eard_conf_t		eard;
+	eargm_conf_t	eargmd;
+	db_conf_t			db;
+	eardb_conf_t	eardbd;
+	char					net_ext[ID_SIZE];
 } services_conf_t;
 
 typedef struct settings_conf
@@ -69,9 +81,11 @@ typedef struct settings_conf
   int                 imc_max_pstate;
 } settings_conf_t;
 
-typedef struct resched{
+typedef struct resched
+{
 	int	force_rescheduling;
-}resched_t;
+} resched_t;
+
 
 /*********** SETTINGS configuration *******************/
 
@@ -84,7 +98,7 @@ int get_settings_conf_path(char *tmp, uint ID, char *path);
 *	@param ear_conf_path specifies the path (folder) to create the file used by mmap
 */
 
-settings_conf_t * create_settings_conf_shared_area(char * path);
+settings_conf_t * create_settings_conf_shared_area(char * path, int *fd);
 
 /** Connects with a previously created shared memory region. It is used by EARLib (client)
 *	@param path specifies the path (folder) where the mapped file were created
@@ -96,7 +110,7 @@ void dettach_settings_conf_shared_area();
 
 /** Releases a shared memory area previously created. It is used by EARD (server)
 */
-void settings_conf_shared_area_dispose(char * path);
+void settings_conf_shared_area_dispose(char * path, settings_conf_t *mem, int fd);
 
 /** Prints in the stderr values for the setting 
 */
@@ -112,7 +126,7 @@ int get_resched_path(char *tmp, uint ID, char *path);
  * *   @param ear_conf_path specifies the path (folder) to create the file used by mmap
  * */
 
-resched_t * create_resched_shared_area(char *path);
+resched_t * create_resched_shared_area(char *path, int *fd);
 
 /** Connects with a previously created shared memory region. It is used by EARLib (client)
  * *   @param ear_conf_path specifies the path (folder) where the mapped file were created
@@ -125,7 +139,7 @@ void dettach_resched_shared_area();
 
 /** Releases a shared memory area previously created. It is used by EARD (server)
  * */
-void resched_shared_area_dispose(char * path);
+void resched_shared_area_dispose(char * path, resched_t *mem, int fd);
 
 /****************** APP AREA ***************/
 
@@ -138,7 +152,7 @@ int get_app_mgt_path(char *tmp, uint ID, char *path);
  *  * *   @param ear_conf_path specifies the path (folder) to create the file used by mmap
  *   * */
 
-app_mgt_t * create_app_mgt_shared_area(char *path);
+app_mgt_t * create_app_mgt_shared_area(char *path, int *fd);
 
 /** Connects with a previously created shared memory region. It is used by EARLib (client)
  *  * *   @param ear_conf_path specifies the path (folder) where the mapped file were created
@@ -151,7 +165,7 @@ void dettach_app_mgt_shared_area();
 
 /** Releases a shared memory area previously created. It is used by EARD (server)
  *  * */
-void app_mgt_shared_area_dispose(char * path);
+void app_mgt_shared_area_dispose(char * path, app_mgt_t *mem, int fd);
 
 
 /***************** COEFFICIENTS **********/
@@ -213,10 +227,10 @@ void dettach_frequencies_shared_area();
 
 /************** PC_APP_INFO_T ****************/
 int get_pc_app_info_path(char *tmp, uint ID, char *path);
-pc_app_info_t  * create_pc_app_info_shared_area(char *path);
+pc_app_info_t  * create_pc_app_info_shared_area(char *path, int *fd);
 pc_app_info_t * attach_pc_app_info_shared_area(char * path);
 void dettach_pc_app_info_shared_area();
-void pc_app_info_shared_area_dispose(char * path);
+void pc_app_info_shared_area_dispose(char *path, pc_app_info_t  *mem, int fd);
 
 /******************** ear conf ****************************/
 int get_ser_cluster_conf_path(char *tmp, char *path);

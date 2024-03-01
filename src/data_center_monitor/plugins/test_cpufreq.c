@@ -81,7 +81,6 @@ static void freqs_print(char **params)
 
 static void freqs_set(char **params)
 {
-    pstate_t freqs[1024];
     if (state_fail(mgt_cpufreq_set_current(no_ctx, atoi(params[0]), atoi(params[1])))) {
         debug("mgt_cpufreq_get_current_list: %s", state_msg);
     }

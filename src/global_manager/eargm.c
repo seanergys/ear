@@ -600,7 +600,7 @@ void parse_args(char *argv[])
     verbose_arg=atoi(argv[1]);	
 }
 
-#define GM_DEBUG 1
+#define GM_DEBUG 0
 
 int main(int argc,char *argv[])
 {
@@ -613,6 +613,14 @@ int main(int argc,char *argv[])
     risk_t current_risk;
     if (argc > 2) usage(argv[0]);
     if (argc==2) parse_args(argv);
+
+#if RUN_AS_ROOT
+    if (getuid() != 0)
+    {
+        fprintf(stderr, "EARGM error: It must be executed as root. Exiting...\n");
+        exit(0);
+    }
+#endif
 
     gethostname(host, sizeof(host));
     strtok(host, ".");

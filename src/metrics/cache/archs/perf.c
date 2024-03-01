@@ -46,7 +46,6 @@ typedef struct cmeta_s {
     cchar  *desc;
 } cmeta_t;
 
-static topology_t *tp;
 static cmeta_t     meta[5];
 static uint        meta_count;
 static uint        enabled_count;
@@ -154,6 +153,15 @@ state_t cache_perf_init()
 
 state_t cache_perf_dispose()
 {
+  if (started){
+    for (int i = 0; i < meta_count; ++i) {
+        if (meta[i].enabled) {
+            perf_close(&meta[i].perf);
+        }
+    }
+  }
+  started = 0;
+	meta_count = 0;
 	return EAR_SUCCESS;
 }
 

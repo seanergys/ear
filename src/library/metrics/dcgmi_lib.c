@@ -14,9 +14,7 @@
  * and COPYING.EPL files.
  */
 
-
 #define SHOW_DEBUGS 1
-
 
 #include <library/metrics/dcgmi_lib.h>
 
@@ -489,6 +487,16 @@ static state_t set_init_fn(dcgmi_lib_init_fn *dst_fn_ptr)
 			}
 		} else
 		{
+			#define AMPERE 1
+			#if AMPERE == 1
+			*dst_fn_ptr = dcgmi_lib_ampere_init;
+			return EAR_SUCCESS;
+			#endif
+			#if HOPPER == 1
+			*dst_fn_ptr = dcgmi_lib_hopper_init;
+			return EAR_SUCCESS;
+			#endif
+			
 			return_msg(EAR_ERROR, state_msg);
 		}
 		return EAR_SUCCESS;

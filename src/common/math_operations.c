@@ -52,6 +52,7 @@
 		return v2 - v1; \
 	}
 
+overflow_zeros_def(double, f64);
 overflow_zeros_def(ullong, u64);
 overflow_mixed_def(ullong, u64);
 overflow_magic_def(ullong, u64);

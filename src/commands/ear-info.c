@@ -148,17 +148,14 @@ int main(int argc, char *argv[])
     }
     char dummy[SZ_NAME_MEDIUM];
     mode = get_node_server_mirror(&my_cluster, nodename, dummy);
-    if (mode && 1) {
+    if (mode & 1) {
         printf("\nEARDBD server found in node %s.........\n", nodename);
-    } if (mode && 2) {
+    } if (mode & 2) {
         printf("\nEARDBD mirror found in node %s.........\n", nodename);
     }
     if (mode) {
       printf("............................................\n");
     }
-
-    
-
   }
 
   printf("\n\nEnvironment configuration section..............\n");

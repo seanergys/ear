@@ -81,6 +81,8 @@ typedef struct mpi_calls_types
 /**@}*/
 
 
+#define MASTER    (masters_info.my_master_rank >= 0)
+#define MASTER_ID masters_info.my_master_rank
 /** \name Shared info
  * This group of definitions is used to share data between processes. */
 /**@{*/
@@ -173,19 +175,25 @@ typedef struct sh_signatures_s
 
 
 typedef struct node_mgr_sh_data {
+  job_id            jid;
+  job_id            sid;
+  job_id            lid;
 	time_t            creation_time;
+	time_t            modification_time;
 	int               fd_lib;
 	int               fd_sig;
 	lib_shared_data_t *libsh;
 	shsignature_t     *shsig;
 } node_mgr_sh_data_t;
 
+void eid_folder(char *dst, int size, char *tmp, int jid, int sid, uint aid);
+
 
 /*********** SETTINGS configuration *******************/
 
 /** Sets in path the filename for the shared memory area between MPI processes
  * @param[out] path Output path. */
-int get_lib_shared_data_path(char *tmp, uint ID, char *path);
+int get_lib_shared_data_path(char *tmp, uint ID, uint AID, char *path);
 
 
 /** \brief Creates the shared memory.
@@ -215,7 +223,7 @@ void print_lib_shared_data(lib_shared_data_t *setting);
 
 /** Sets in path the filename for the shared memory area between MPI processes
  * @param path (output) */
-int get_shared_signatures_path(char *tmp,uint ID, char *path);
+int get_shared_signatures_path(char *tmp,uint ID, uint AID, char *path);
 
 
 /** Creates the shared mmemory.
@@ -329,7 +337,11 @@ uint compute_max_vpi_idx(const shsignature_t *sig, int n_procs, double *max_vpi)
 
 void compute_total_io(lib_shared_data_t *data,shsignature_t *sig,ullong *total_io);
 void compute_total_node_avx_and_avx_fops(lib_shared_data_t *data,shsignature_t *sig,ullong *avx);
-void compute_job_cpus(lib_shared_data_t *data,shsignature_t *sig,uint *cpus);
+
+
+/** Counts the number of CPUs of the job (on the current node) based on 
+ * \p data's node_mask attribute and stores it on \p cpus. */
+void compute_job_cpus(lib_shared_data_t *data, uint *cpus);
 
 
 void load_app_mgr_env();
@@ -341,6 +353,10 @@ void* mpi_info_get_perc_mpi(void *mpi_inf);
 /* Node mgr earl support functions */
 void init_earl_node_mgr_info();
 void update_earl_node_mgr_info();
+void release_earl_node_mgr_info();
+
+/** Returns how many apps are running in the node */
+uint node_mgr_earl_apps();
 #define PER_PROCESS 0
 #define PER_JOB     1
 void accum_estimations(lib_shared_data_t *data,shsignature_t *sig);

@@ -10,6 +10,10 @@
 */lib/
 src/tests
 etc/rpms/rpmbuild.sh
+src/tests
+src/tools/list_folders
+etc/rpms/rpmbuild.sh~
+etc/rpms/specs/ear.spec
 /*.sh
 
 # Autotools
@@ -20,6 +24,7 @@ etc/rpms/rpmbuild.sh
 *cpu_property.out
 *defines.log
 /configure
+/configure~
 
 # IDE
 cmake*
@@ -55,6 +60,8 @@ Makefile.gpu.*
 # Build files
 etc/module/ear
 etc/module/ear-lite
+etc/module/ear-sing
+etc/module/ear-debug
 etc/conf/ear.conf
 etc/conf/ear.conf.template
 etc/conf/ear.conf.full.template
@@ -124,6 +131,7 @@ src/common/config/config_install.h
 *traces_to_paraver
 *erun
 *metrics_show
+*enode_info
 
 src/daemon/commands/ear_check_node_test
 src/database_cache/tmpi
@@ -163,3 +171,4 @@ src/tools/ear_conf
 src/tools/metrics_show
 src/commands/ear-info
 deployment.sh
+

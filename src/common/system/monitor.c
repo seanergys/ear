@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-// #define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <error.h>
 #include <signal.h>
@@ -27,6 +27,9 @@
 
 #define N_QUEUE  128
 #define SIGNAL   SIGCONT
+
+//#define debugv(...) verbose(0,__VA_ARGS__)
+#define debugv(...) debug(__VA_ARGS__)
 
 typedef struct wait_s {
 	int relax;
@@ -56,6 +59,8 @@ struct sigaction        action_new;
 struct sigaction        action_old;
 static uint             is_running;
 
+static void clean_suscriptions();
+
 static void goto_handler(int sig)
 {
     if (sigaction(SIGNAL, &action_old, NULL) < 0) {
@@ -72,15 +77,18 @@ static void goto_interrupt()
         error("SIGACTION1 on signal SIGCONT (%s)", strerror(errno));
     }
     if (is_running) {
+        debugv("sending signal %d to thread %ld", SIGNAL, thread);
         pthread_kill(thread, SIGNAL);
     }
 }
 
 static void goto_sleep(int sleep_units, int sleep_reason, int *passed_units, int *alignment)
 {
+    #ifdef SHOW_DEBUGS
     char       *sleep_str[3] = { "next call", "alignment", "wandering" };
     char       *wake_str[2]  = { "time passed", "interruption" };
-    int         wake_reason;
+    #endif
+    ATTR_UNUSED int wake_reason;
     timestamp_t tW; // Wait time
 	timestamp_t t2;
 	timestamp_t t1;
@@ -221,6 +229,18 @@ static void *monitor_main(void *p)
 	return NULL;
 }
 
+/* Assumes the generic lock is acquired */
+static state_t release_locks()
+{
+  int i;
+  if (!locks_allocated) return EAR_SUCCESS;
+  for (i = 0; i < N_QUEUE ; i++){
+    pthread_mutex_destroy(&lock[i]);
+  }
+  locks_allocated = 0;
+  return EAR_SUCCESS;
+}
+
 static state_t allocate_locks()
 {
 	int error = 0;
@@ -260,6 +280,7 @@ state_t monitor_init()
 	}
 	is_running = 1;
 	m_errno = pthread_create(&thread, NULL, monitor_main, NULL);
+  debugv("Threead created %ld", thread);
 	if (m_errno != 0) {
         pthread_mutex_unlock(&lock_gen);
         is_running = 0;
@@ -274,18 +295,26 @@ state_t monitor_init()
 void monitor_wait()
 {
     if (!pthread_equal(pthread_self(), thread)) {
+        debugv("waiting for thread %ld", thread);
         pthread_join(thread, NULL);
     }
 }
 
 state_t monitor_dispose()
 {
+
+  debug("monitor_dispose running %u", is_running);
 	if (!is_running) return_msg(EAR_ERROR, "not initialized");
 	while (pthread_mutex_trylock(&lock_gen));
-    debug("disposing...");
-	is_running = 0;
+    debugv("disposing...");
     goto_interrupt();
+    debugv("monitor wait");
+	  is_running = 0;
     monitor_wait();
+    debugv("release_locks");
+    release_locks();
+    debugv("clean_suscriptions");
+    clean_suscriptions();
     pthread_mutex_unlock(&lock_gen);
 	return EAR_SUCCESS;
 }
@@ -298,6 +327,9 @@ static state_t monitor_register_void(void *p)
 
 state_t monitor_register(suscription_t *s)
 {
+	if (!is_running) {
+		return_msg(EAR_BAD_ARGUMENT, "not initialized");
+	}
 	if (s             == NULL) return_msg(EAR_ERROR, "the suscription can't be NULL");
 	if (s->time_relax  < 100 ) return_msg(EAR_ERROR, "time can't be zero");
 	if (s->call_main  == NULL) return_msg(EAR_ERROR, "reading call is NULL");
@@ -320,9 +352,16 @@ state_t monitor_register(suscription_t *s)
 
 state_t monitor_unregister(suscription_t *s)
 {
+  debug("monitor_unregister %u", is_running);
+  if (!is_running) {
+    return_msg(EAR_BAD_ARGUMENT, "not initialized");
+  }
+
 	if (s     == NULL      ) return_msg(EAR_ERROR, "the suscription can't be NULL");
 	if (s->id  > queue_last) return_msg(EAR_ERROR, "incorrect suscription index");
 	if (s->id  < 0         ) return_msg(EAR_ERROR, "incorrect suscription index");
+
+  debug("unregisteing position %u", s->id);
 
 	while (pthread_mutex_trylock(&lock[s->id]));
 	memset(&queue[s->id], 0, sizeof(queue_t));
@@ -366,6 +405,13 @@ state_t monitor_relax(suscription_t *s)
 	return EAR_SUCCESS;
 }
 
+/* Assumes the generic lock is acquired */
+static void clean_suscriptions()
+{
+  int i = 0;
+  for (; i < N_QUEUE; ++i) { queue[i].delivered = 0;}
+  queue_last = 0;
+}
 suscription_t *suscription()
 {
 	int i = 0;

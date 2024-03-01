@@ -198,8 +198,9 @@ void read_signature_fd_binary(int fd, signature_t *sig)
 
 void adapt_signature_to_node(signature_t *dest, signature_t *src, float ratio_PPN)
 {
+    #if 0
     double new_TPI,new_DC_power;
-
+    #endif
     signature_copy(dest,src);
     #if 0
     verbose(3, " TPI %.3lf Power %.3lf ratio %.4f", src->TPI, src->DC_power, ratio_PPN);

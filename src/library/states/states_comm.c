@@ -31,6 +31,7 @@
 #include <common/config.h>
 #include <common/states.h>
 #include <common/output/verbose.h>
+#include <common/output/debug.h>
 #include <common/colors.h>
 #include <common/math_operations.h>
 #include <common/types/log.h>
@@ -40,12 +41,15 @@
 #include <library/metrics/metrics.h>
 #include <library/tracer/tracer.h>
 #include <library/common/verbose_lib.h>
+#include <daemon/local_api/eard_api.h>
 
 extern masters_info_t masters_info;
 extern float ratio_PPN;
 extern unsigned long long int total_mpi;
 extern uint using_verb_files;
 extern uint per_proc_verb_file;
+extern uint proc_ps_ok;
+extern uint   AID;
 
 #ifdef SHOW_DEBUGS
 static void debug_loop_signature(char *title, signature_t *loop);
@@ -133,6 +137,16 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
         } else {
             sprintf(io_info, "No IO data");
         }
+
+        // Proc OS statistics
+        char proc_data_str[2048];
+        if ((sigex != NULL) && (proc_ps_ok)) {
+        	proc_stat_t *proc_data = &sigex->proc_ps;
+        	proc_stat_data_to_str(proc_data, proc_data_str, sizeof(proc_data_str));
+				}else{
+					snprintf(proc_data_str, sizeof(proc_data_str), "No process OS statistics");
+				}
+
 
         // TODO: period or time ? time is the time per iteration. This metric is computed periodically by a thread.
         // If enabled each process computes it I/O bandwidth, otherwise the node I/O bandwidth is already computed
@@ -231,12 +245,12 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
 #endif
 
         debug("%swriting app info%s", COL_YLW, COL_CLR);
-        verbose(2, "EAR%s(%s) at %.2f in %s: LoopID=%lu, LoopSize=%lu-%lu, iterations=%d",
-                mode, aname, PFREQ, nname, sig->id.event, sig->id.size, sig->id.level, iterations); 
+        verbose(2, "EAR%s[%u](%s) at %.2f in %s: LoopID=%lu, LoopSize=%lu-%lu, iterations=%d",
+                mode, AID, aname, PFREQ, nname, sig->id.event, sig->id.size, sig->id.level, iterations); 
 
         debug("%swriting nname at elapsed%s", COL_YLW, COL_CLR)
-        verbosen(1, "EAR%s(%s) at %.3f in %s MR[%d] elapsed %lu sec.: ",
-                mode, aname, PFREQ, nname, master_rank, elapsed); 
+        verbosen(1, "EAR%s[%u](%s) at %.2f in %s MR[%d] elapsed %lu sec.: ",
+                mode, AID, aname, PFREQ, nname, master_rank, elapsed); 
         verbosen(1, "%s", COL_GRE);
 
 #if USE_GPUS
@@ -250,7 +264,7 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
         }
 
         debug("%swriting CPI GBS power...%s", COL_YLW, COL_CLR);
-        verbosen(1,"(CPI=%.3lf GBS=%.2lf Power=%.1lfW Time=%.3lfs\n\tAvgCPUF=%.2fGHz/AvgIMCF=%.2fGHz GFlop/s=%.2lf IO=%.2fMB/s %s) %s", CPI, GBS, POWER, TIME,  AVGF, imcf, FLOPS, IO_MBS, pmpi_txt, gpu_buff);
+        verbosen(1,"(CPI=%.3lf GBS=%.2lf Power=%s%.1lfW%s Time=%.3lfs\n\tAvgCPUF=%.2fGHz/AvgIMCF=%.2fGHz GFlop/s=%.2lf IO=%.2fMB/s %s) %s", CPI, GBS, COL_MGT,POWER, COL_GRE, TIME,  AVGF, imcf, FLOPS, IO_MBS, pmpi_txt, gpu_buff);
 
         if (new_freq > 0){ verbosen(1,"\n\t Next Frequency %.2f",NFREQ);}
 
@@ -270,6 +284,7 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
 
         verbosen(2," VPI %.2f Total MPI calls %llu",VPI, n_mpi_calls);
         verbosen(2,"\n\t IO DATA: %s ",io_info);
+				verbosen(2,"\n\t Proc OS DATA: %s", proc_data_str);
 
         verbose(1,"%s",COL_CLR);
     }
@@ -330,3 +345,52 @@ static void debug_loop_signature(char *title, signature_t *loop)
 }
 #endif
 
+
+void states_comm_configure_performance_accuracy(cluster_conf_t *cluster_conf, ulong *hw_perf_acc, uint *library_period)
+{
+	// Default: ear.conf
+	*hw_perf_acc = (ulong) cluster_conf->min_time_perf_acc;
+	debug("Default values for hw_perf_acc and library_period: %lu and %u", *hw_perf_acc, *library_period);
+
+	// Try to change LibraryPeriod by reading an environment variable
+	char *my_lib_period = ear_getenv("EARL_TIME_LOOP_SIGNATURE");
+	long my_lib_period_l = 0; 
+
+	if (my_lib_period)
+	{
+		my_lib_period_l = atol(my_lib_period);
+	}
+
+	if (my_lib_period_l > 0)
+	{
+		// *hw_perf_acc = (ulong) my_lib_period_l;
+		*library_period = (ulong) my_lib_period_l;
+		debug("library_period overwritten by environment variable: %u", *library_period);
+	}
+
+	// Hardware limit
+	ulong architecture_min_perf_accuracy_time = 0;
+	if (masters_info.my_master_rank >= 0 && eards_connected())
+	{
+		// eards_node_energy_frequency returns the granularity at which the energy
+		// plugin can read the power but we increment this period to minimize the
+		// error in the power read.
+		architecture_min_perf_accuracy_time = eards_node_energy_frequency() * 10;
+		if (architecture_min_perf_accuracy_time == (ulong) EAR_ERROR)
+		{
+			architecture_min_perf_accuracy_time = *hw_perf_acc;
+		}
+
+		debug("eard hw_perf_acc: %lu",
+				architecture_min_perf_accuracy_time);
+	}
+
+	// hw_perf_acc lower bounded by hardware
+	*hw_perf_acc = ear_max(*hw_perf_acc, architecture_min_perf_accuracy_time);
+	debug("hw_perf_acc bounded by energy plug-in: %lu", *hw_perf_acc);
+
+	// library_period is in seconds, hw_perf_acc is in microseconds
+	*library_period = ear_max(*library_period, *hw_perf_acc / 1000000);
+	*hw_perf_acc = *library_period * 1000000;
+	debug("library_period: %u | hw_perf_acc %lu", *library_period, *hw_perf_acc);
+}

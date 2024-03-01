@@ -27,6 +27,7 @@
 #include <library/common/library_shared_data.h>
 #include <metrics/common/apis.h>
 #include <metrics/io/io.h>
+#include <metrics/proc/stat.h>
 #include <library/api/clasify.h>
 #include <library/metrics/dcgmi_lib.h>
 
@@ -63,6 +64,7 @@ typedef struct sig_ext
 #if DLB
     dlb_node_metrics_t dlb_talp_node_metrics;
 #endif
+		proc_stat_t        proc_ps;
 } sig_ext_t;
 
 /** New metrics **/
@@ -107,6 +109,9 @@ void compute_per_process_and_job_metrics(signature_t *sig);
 
 /* Computes metrics per-iteration, very lightweight */
 state_t metrics_new_iteration(signature_t *sig);
+
+/* Resets metrics for new processes , after fork*/
+void metrics_lib_reset();
 
 #if MPI_OPTIMIZED
 void metrics_start_cpupower();

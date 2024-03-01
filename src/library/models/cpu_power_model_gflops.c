@@ -94,7 +94,11 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
     ullong inst[MAX_CPUS_SUPPORTED];
     memset(inst, 0, sizeof(ullong)*MAX_CPUS_SUPPORTED);
 
-    
+   if (node_mgr_earl_apps() > MAX_CPUS_SUPPORTED){
+    verbose(0,"EARL ERROR, more apps than CPUS--> return");
+    return EAR_ERROR;
+   }
+
 
     /* compute_total_node_fff compute the metrics only for the calling job. It is needed to iterate over the jobs to have per node */
     uint job_in_process[MAX_CPUS_SUPPORTED];
@@ -106,7 +110,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
 
     verbose(2, "CPU power model gflops ...............");
 
-    for (uint j = 0; j < MAX_CPUS_SUPPORTED; j ++) {
+    for (uint j = 0; j < node_mgr_earl_apps(); j ++) {
         /* Power condition is to do only in case the signature is ready */
         if (nmgr[j].creation_time && nmgr[j].libsh != NULL && nmgr[j].shsig != NULL && nmgr[j].libsh->node_signature.DC_power) {
 
@@ -114,13 +118,13 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
 
             for (uint lp = 0; lp < nmgr[j].libsh->num_processes; lp++) {
                 if (nmgr[j].shsig[lp].sig.DC_power > 0) {
-                    job_in_process[node_process] = j;
                     L3[node_process]             = nmgr[j].shsig[lp].sig.L3_misses;
                     inst[node_process]           = nmgr[j].shsig[lp].sig.instructions;
                     gflops[node_process]         = nmgr[j].shsig[lp].sig.Gflops;
                     total_gflops                += gflops[node_process];
                     node_L3                     += L3[node_process];
                 }
+                job_in_process[node_process] = j;
                 node_process++;
             }
         }
@@ -199,7 +203,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
 
     if (cpus_in_node == 0) return EAR_ERROR;
 
-    for (uint j = 0; j < MAX_CPUS_SUPPORTED; j ++) {
+    for (uint j = 0; j < node_mgr_earl_apps(); j ++) {
 
         /* If job is active we compute its power estimated */
         if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL)) {

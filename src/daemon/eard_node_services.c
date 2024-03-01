@@ -71,7 +71,7 @@ typedef struct local_connection{
 } local_connection_t;
 
 uint privileged_services[NUM_PRIVILEGED_SERVICES] =
-		{ 0, 0, 0, 0, 0, 0, 0, 0, WRITE_EVENT, WRITE_LOOP_SIGNATURE, 0 };
+		{ 0, 0, 0, 0, 0, 0, 0, WRITE_APP_SIGNATURE, WRITE_EVENT, WRITE_LOOP_SIGNATURE, 0 };
 
 void eard_exit(uint restart);
 
@@ -184,9 +184,7 @@ static int answer(int fd, int call, char *data, size_t size, state_t s, char *st
 int services_misc(eard_head_t *head, int req_fd, int ack_fd)
 {
     uint call = head->req_service;
-    application_t app;
-    eard_state_t es;
-    state_t s;
+    eard_state_t s ;
 
     verbose(VEARD_LAPI_DEBUG, "EARD misc");
     switch (call) {
@@ -197,74 +195,13 @@ int services_misc(eard_head_t *head, int req_fd, int ack_fd)
         eard_close_comm(req_fd,ack_fd);
     break;
     case RPC_GET_STATE:
-        es.pid = getpid();
-        es.gpus_supported_count = MAX_GPUS_SUPPORTED;
-        version_set(&es.version, VERSION_MAJOR, VERSION_MINOR);
-        return answer(ack_fd, call, (char *) &es, sizeof(eard_state_t), EAR_SUCCESS, NULL);
-    break;
-    case RPC_SET_APPLICATION:
-        // Initializing
-        memset(&app, 0, sizeof(application_t));
-        serial_reset(&wb, head->size);
-        // Receiving
-        if (state_fail(s = eard_rpc_read_pending(req_fd, serial_data(&wb), head->size, 0))) {
-            serror(Rpcerr.pending);
-        } else {
-            serial_params_unpack_auto(&wb, app.is_mpi);
-            serial_params_unpack_auto(&wb, app.is_learning);
-            serial_params_unpack_auto(&wb, app.node_id);
-            serial_params_unpack_auto(&wb, app.job.id);
-            serial_params_unpack_auto(&wb, app.job.step_id);
-            serial_params_unpack_auto(&wb, app.job.user_id);
-            serial_params_unpack_auto(&wb, app.job.group_id);
-            serial_params_unpack_auto(&wb, app.job.app_id);
-            serial_params_unpack_auto(&wb, app.job.user_acc);
-            serial_params_unpack_auto(&wb, app.job.energy_tag);
-            serial_params_unpack_auto(&wb, app.job.start_time);
-            serial_params_unpack_auto(&wb, app.job.end_time);
-            serial_params_unpack_auto(&wb, app.job.start_mpi_time);
-            serial_params_unpack_auto(&wb, app.job.end_mpi_time);
-            serial_params_unpack_auto(&wb, app.job.policy);
-            serial_params_unpack_auto(&wb, app.job.th);
-            serial_params_unpack_auto(&wb, app.job.procs);
-            serial_params_unpack_auto(&wb, app.job.type);
-            serial_params_unpack_auto(&wb, app.job.def_f);
-            serial_params_unpack_auto(&wb, app.power_sig.DC_power); //
-            serial_params_unpack_auto(&wb, app.power_sig.DRAM_power);
-            serial_params_unpack_auto(&wb, app.power_sig.PCK_power);
-            serial_params_unpack_auto(&wb, app.power_sig.EDP);
-            serial_params_unpack_auto(&wb, app.power_sig.max_DC_power);
-            serial_params_unpack_auto(&wb, app.power_sig.min_DC_power);
-            serial_params_unpack_auto(&wb, app.power_sig.time);
-            serial_params_unpack_auto(&wb, app.power_sig.avg_f);
-            serial_params_unpack_auto(&wb, app.power_sig.def_f);
-            serial_params_unpack_auto(&wb, app.signature.DC_power); //
-            serial_params_unpack_auto(&wb, app.signature.DRAM_power);
-            serial_params_unpack_auto(&wb, app.signature.PCK_power);
-            serial_params_unpack_auto(&wb, app.signature.EDP);
-            serial_params_unpack_auto(&wb, app.signature.GBS);
-            serial_params_unpack_auto(&wb, app.signature.IO_MBS);
-            serial_params_unpack_auto(&wb, app.signature.TPI);
-            serial_params_unpack_auto(&wb, app.signature.CPI);
-            serial_params_unpack_auto(&wb, app.signature.Gflops);
-            serial_params_unpack_auto(&wb, app.signature.time);
-            serial_params_unpack_auto(&wb, app.signature.FLOPS);
-            serial_params_unpack_auto(&wb, app.signature.L1_misses);
-            serial_params_unpack_auto(&wb, app.signature.L2_misses);
-            serial_params_unpack_auto(&wb, app.signature.L3_misses);
-            serial_params_unpack_auto(&wb, app.signature.instructions);
-            serial_params_unpack_auto(&wb, app.signature.cycles);
-            serial_params_unpack_auto(&wb, app.signature.avg_f);
-            serial_params_unpack_auto(&wb, app.signature.avg_imc_f);
-            serial_params_unpack_auto(&wb, app.signature.def_f);
-            serial_params_unpack_auto(&wb, app.signature.perc_MPI);
-            #if USE_GPUS
-            serial_params_unpack_auto(&wb, app.signature.gpu_sig.num_gpus); //
-            serial_params_unpack_auto(&wb, app.signature.gpu_sig.gpu_data);
-            #endif
-            //powermon_mpi_signature(&app);
-            application_print_channel(stderr, &app);
-        }
+        s.pid = getpid();
+        s.gpus_supported_count = MAX_GPUS_SUPPORTED;
+				s.cpus_supported_count = MAX_CPUS_SUPPORTED;
+				s.sock_supported_count = MAX_SOCKETS_SUPPORTED;
+    		s.gpus_support_enabled = USE_GPUS;
+        version_set(&s.version, VERSION_MAJOR, VERSION_MINOR);
+        return answer(ack_fd, call, (char *) &s, sizeof(eard_state_t), EAR_SUCCESS, NULL);
     break;
     default:
         return 0;
@@ -739,7 +676,7 @@ int services_met_bwidth(eard_head_t *head, int req_fd, int ack_fd)
     break;
     case RPC_MET_BWIDTH_READ:
         if(state_fail(s = bwidth_read(no_ctx, (bwidth_t *) ub.current_list))) {
-            serror("Could not get imc frequency");
+            serror("Could not get mem frequency");
         }
         data = (char *) ub.current_list;
         size = sizeof(bwidth_t) * ub.devs_count;
@@ -877,6 +814,7 @@ uint is_anonymous(ulong jid,ulong sid)
 int is_valid_sec_tag(ulong tag)
 {
 	#if 1
+	debug("received tag: %lu / SEC_KEY %lu", tag, SEC_KEY);
 	// You make define a constant at makefile time called SEC_KEY to use that option
 	return ((ulong) SEC_KEY == tag);
 	#endif
@@ -924,14 +862,24 @@ void connect_service(struct daemon_req *new_req)
   ulong lid = new_req->con_id.lid;
   int pid = create_ID(new_job->id, new_job->step_id);
 	uint ID = (uint)pid;
+#if WF_SUPPORT
+  uint AID = (uint)(new_job->local_id);
+#endif
+
   // Let's check if there is another application
   verbose(VEARD_LAPI, "request for connection at service (%lu,%lu)",new_job->id,new_job->step_id);
 
   /* Creates 1 pipe (per node),  jobid and step id to send acks. pid is a combination of jobid and stepid */
   verbose(VEARD_LAPI, "New local connection job_id=%lu step_id=%lu local_id %lu\n", new_job->id, new_job->step_id,new_req->con_id.lid);
   /* This pipe is to send data, 1 per connection */
+
+#if WF_SUPPORT
+  sprintf(ear_commack, "%s/%u/%u/.ear_comm.ack_0.%d.%lu", ear_tmp, ID, AID, pid,lid);
+  sprintf(ear_commreq, "%s/%u/%u/.ear_comm.req_0.%d.%lu", ear_tmp, ID, AID, pid,lid);
+#else
   sprintf(ear_commack, "%s/%u/.ear_comm.ack_0.%d.%lu", ear_tmp, ID, pid,lid);
   sprintf(ear_commreq, "%s/%u/.ear_comm.req_0.%d.%lu", ear_tmp, ID, pid,lid);
+#endif
   verbose(VEARD_LAPI,"Comm channels %s and %s",ear_commack,ear_commreq);
   /* We must create a new local connection, for now, 1 connection per job is allowed  */
   if ((newc = add_new_local_connection(eard_local_conn,new_job->id,new_job->step_id,new_req->con_id.lid)) <0){
@@ -1145,6 +1093,17 @@ int eard_system(eard_head_t *head,int req_fd,int ack_fd)
 	verbose(VEARD_LAPI_DEBUG,"EARD old system");
 
     switch (head->req_service) {
+    case WRITE_APP_SIGNATURE:
+        verbose(VEARD_LAPI,"App signature received: Anonymous %lu", eard_local_conn[con_id].anonymous);
+        if (!eard_local_conn[con_id].anonymous) {
+            powermon_mpi_signature(&req.req_data.app);
+        }
+        ack = EAR_COM_OK;
+        if (write(ack_fd, &ack, sizeof(ulong)) != sizeof(ulong)) {
+            error("ERROR while writing system service ack, closing connection...");
+            eard_close_comm(req_fd,ack_fd);
+        }
+        break;
     case WRITE_EVENT:
         ack = EAR_COM_OK;
         report_connection_status = report_events(&rid, &req.req_data.event, 1);
@@ -1157,7 +1116,7 @@ int eard_system(eard_head_t *head,int req_fd,int ack_fd)
             // Do something with the error
         }
         break;
-    case WRITE_LOOP_SIGNATURE:
+        case WRITE_LOOP_SIGNATURE:
         debug("WRITE_LOOP_SIGNATURE");
         ack = EAR_COM_OK;
         powermon_loop_signature(eard_local_conn[con_id].jid,eard_local_conn[con_id].sid,&req.req_data.loop);

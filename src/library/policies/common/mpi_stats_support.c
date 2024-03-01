@@ -78,7 +78,11 @@
 #define PER_MPI_CALL_STATS 1 // This macro enables the stats computation on each MPI call.
                              // You can disable it for overhead testing.
 
-static timestamp pol_time_init, start_no_mpi;
+#if MPI && PER_MPI_CALL_STATS
+static timestamp pol_time_init;
+#endif
+
+static timestamp start_no_mpi;
 
 static mpi_information_t mpi_stats;
 
@@ -97,7 +101,7 @@ static uint mpi_sampling_enabled = 1;
 
 #else
 static uint dynamic_monitor_state = MPI_SAMPLING_IDLE;
-static uint mpi_sampling_enabled = 0;
+// static uint mpi_sampling_enabled = 0;
 #endif
 static uint monitor_mpi     = 1;
 static uint verb            = 1;
@@ -680,13 +684,16 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
                     start_no_mpi.tv_sec, start_no_mpi.tv_nsec);
         }
 #endif // SHOW_DEBUGS
-    }
+    } else
+		{
+#if !MPI_OPTIMIZED
+			timestamp_getfast(&end);
+#endif
+		}
 
 #if MPI_OPTIMIZED
     timestamp_getprecise(&start_no_mpi);
 #else
-    // timestamp_getfast(&start_no_mpi);
-    // TODO: end can be uninitialized
     start_no_mpi = end;
 #endif
 
@@ -730,6 +737,9 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
     if (dynamic_monitor_state == MPI_SAMPLING_ENABLED)
     {
       curr_mpis_per_sample++;
+
+			mpis_per_sample = ear_max(mpis_per_sample, 1); // Ensure a value != 0
+
       if (((curr_mpis_per_sample/mpis_per_sample)%10) == 0)
       {
         if (!monitor_mpi) monitor_mpi_calls(ON);
@@ -795,11 +805,11 @@ static state_t mpi_call_read_diff(mpi_information_t *diff, mpi_information_t *la
             i, diff->mpi_time, current.mpi_time, last->mpi_time,
             diff->exec_time, current.exec_time, last->exec_time);
 
-    diff->perc_mpi = (double) diff->mpi_time * 100.0 / (double) diff->exec_time;
+    diff->perc_mpi = ((diff->exec_time > 0) ? (double) diff->mpi_time * 100.0 / (double) diff->exec_time: 0);
 
     // mpi_call_copy(last, &current);
     mpi_call_get_stats(last, &current, -1); // Copy from current to last
-    last->perc_mpi =  (double) last->mpi_time * 100.0 / (double) last->exec_time;
+    last->perc_mpi =  ((last->exec_time > 0) ? (double) last->mpi_time * 100.0 / (double) last->exec_time : 0);
 
     //  Check wether values are correctly bounded
     if (diff->perc_mpi < 0 || diff->perc_mpi > 100 || last->perc_mpi < 0 || last->perc_mpi > 100) {
@@ -845,18 +855,18 @@ state_t mpi_call_types_diff(mpi_calls_types_t * diff, mpi_calls_types_t *current
         mpi_calls_types_t *last)
 {
 
-    diff->mpi_call_cnt         = current->mpi_call_cnt - last->mpi_call_cnt;
-    diff->mpi_time             = current->mpi_time - last->mpi_time;
-    diff->exec_time            = current->exec_time - last->exec_time;
-    diff->mpi_sync_call_cnt    = current->mpi_sync_call_cnt - last->mpi_sync_call_cnt;
-    diff->mpi_collec_call_cnt  = current->mpi_collec_call_cnt - last->mpi_collec_call_cnt;
-    diff->mpi_block_call_cnt   = current->mpi_block_call_cnt - last->mpi_block_call_cnt;
-    diff->mpi_sync_call_time   = current->mpi_sync_call_time - last->mpi_sync_call_time;
-    diff->mpi_collec_call_time = current->mpi_collec_call_time - last->mpi_collec_call_time;
-    diff->mpi_block_call_time  = current->mpi_block_call_time - last->mpi_block_call_time;
-    diff->max_sync_block       = ear_max(current->max_sync_block , last->max_sync_block);
+	diff->mpi_call_cnt         = current->mpi_call_cnt - last->mpi_call_cnt;
+	diff->mpi_time             = current->mpi_time - last->mpi_time;
+	diff->exec_time            = current->exec_time - last->exec_time;
+	diff->mpi_sync_call_cnt    = current->mpi_sync_call_cnt - last->mpi_sync_call_cnt;
+	diff->mpi_collec_call_cnt  = current->mpi_collec_call_cnt - last->mpi_collec_call_cnt;
+	diff->mpi_block_call_cnt   = current->mpi_block_call_cnt - last->mpi_block_call_cnt;
+	diff->mpi_sync_call_time   = current->mpi_sync_call_time - last->mpi_sync_call_time;
+	diff->mpi_collec_call_time = current->mpi_collec_call_time - last->mpi_collec_call_time;
+	diff->mpi_block_call_time  = current->mpi_block_call_time - last->mpi_block_call_time;
+	diff->max_sync_block       = ear_max(current->max_sync_block , last->max_sync_block);
 
-    return EAR_SUCCESS;
+	return EAR_SUCCESS;
 }
 
 
@@ -1057,11 +1067,11 @@ state_t mpi_support_select_critical_path(uint *critical_path, double *percs_mpi,
 
     for (uint i=0; i < num_procs; i++) {
         /*  Decides whether process i is part of the critical path */
-        if (abs(percs_mpi[i] - percs_mpi[*min_mpi]) < (abs(percs_mpi[i] - *median) * critical_path_th)) {
+        if (fabs(percs_mpi[i] - percs_mpi[*min_mpi]) < (fabs(percs_mpi[i] - *median) * critical_path_th)) {
             verbose_master(LB_VERB_LVL, "Process %d selected as part of the critical path", i);
             critical_path[i] = 1;
             total_cp++;
-        } else if (abs(percs_mpi[i] - percs_mpi[*min_mpi]) < abs(percs_mpi[i] - mean)) {
+        } else if (fabs(percs_mpi[i] - percs_mpi[*min_mpi]) < fabs(percs_mpi[i] - mean)) {
             debug("%sWARNING%s Proc %d is closer to the minimum than the mean, but not selected as part of the critical path",
                     COL_RED, COL_CLR, i);
         }

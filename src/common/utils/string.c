@@ -126,38 +126,42 @@ void strtoa_free(char **list)
 
 void *strtoat(const char *string, char separator, void **list, uint *list_count, int id_type)
 {
-    char **alist = strtoa(string, separator, NULL, list_count);
+    char **alist = NULL;
     void *plist = NULL;
+    uint plist_count;
     int i;
 
-    if (alist == NULL) {
+    if ((alist = strtoa(string, separator, NULL, &plist_count)) == NULL) {
         return NULL;
     }
-    //
-    if (id_type == ID_INT) { plist = calloc(*list_count, sizeof(int)); }
-    if (id_type == ID_UINT) { plist = calloc(*list_count, sizeof(uint)); }
-    if (id_type == ID_LONG) { plist = calloc(*list_count, sizeof(long)); }
-    if (id_type == ID_ULONG) { plist = calloc(*list_count, sizeof(ulong)); }
-    if (id_type == ID_LLONG) { plist = calloc(*list_count, sizeof(llong)); }
-    if (id_type == ID_ULLONG) { plist = calloc(*list_count, sizeof(ullong)); }
-    if (id_type == ID_FLOAT) { plist = calloc(*list_count, sizeof(float)); }
-    if (id_type == ID_DOUBLE) { plist = calloc(*list_count, sizeof(double)); }
-    //
-    for (i = 0; i < *list_count; ++i) {
-        if (id_type == ID_INT) { ((int *) plist)[i] = (int) atoi(alist[i]); }
-        if (id_type == ID_UINT) { ((uint *) plist)[i] = (uint) atoi(alist[i]); }
-        if (id_type == ID_LONG) { ((long *) plist)[i] = (long) strtol(alist[i], NULL, 10); }
-        if (id_type == ID_ULONG) { ((ulong *) plist)[i] = (ulong) strtoul(alist[i], NULL, 10); }
-        if (id_type == ID_LLONG) { ((llong *) plist)[i] = (llong) strtoll(alist[i], NULL, 10); }
+    // We are adding
+    if (id_type == ID_INT)    { plist = calloc(plist_count, sizeof(int));    }
+    if (id_type == ID_UINT)   { plist = calloc(plist_count, sizeof(uint));   }
+    if (id_type == ID_LONG)   { plist = calloc(plist_count, sizeof(long));   }
+    if (id_type == ID_ULONG)  { plist = calloc(plist_count, sizeof(ulong));  }
+    if (id_type == ID_LLONG)  { plist = calloc(plist_count, sizeof(llong));  }
+    if (id_type == ID_ULLONG) { plist = calloc(plist_count, sizeof(ullong)); }
+    if (id_type == ID_FLOAT)  { plist = calloc(plist_count, sizeof(float));  }
+    if (id_type == ID_DOUBLE) { plist = calloc(plist_count, sizeof(double)); }
+    // Its a NULL terminated list
+    for (i = 0; alist[i] != NULL; ++i) {
+        if (id_type == ID_INT)    { ((int *)    plist)[i] = (int) atoi(alist[i]);                  }
+        if (id_type == ID_UINT)   { ((uint *)   plist)[i] = (uint) atoi(alist[i]);                 }
+        if (id_type == ID_LONG)   { ((long *)   plist)[i] = (long) strtol(alist[i], NULL, 10);     }
+        if (id_type == ID_ULONG)  { ((ulong *)  plist)[i] = (ulong) strtoul(alist[i], NULL, 10);   }
+        if (id_type == ID_LLONG)  { ((llong *)  plist)[i] = (llong) strtoll(alist[i], NULL, 10);   }
         if (id_type == ID_ULLONG) { ((ullong *) plist)[i] = (ullong) strtoull(alist[i], NULL, 10); }
-        if (id_type == ID_FLOAT) { ((float *) plist)[i] = (float) atof(alist[i]); }
-        if (id_type == ID_DOUBLE) { ((double *) plist)[i] = (double) atof(alist[i]); }
+        if (id_type == ID_FLOAT)  { ((float *)  plist)[i] = (float) atof(alist[i]);                }
+        if (id_type == ID_DOUBLE) { ((double *) plist)[i] = (double) atof(alist[i]);               }
     }
     // Freeing
     strtoa_free(alist);
 
     if (list != NULL) {
         list = plist;
+    }
+    if (list_count != NULL) {
+        *list_count = plist_count;
     }
 
     return plist;
@@ -182,10 +186,9 @@ void *envtoat(const char *var, void **list, uint *list_count, int id_type)
 int rantoa(char *string, uint *array, uint array_length)
 {
     uint list_count;
+    int a, b, i;
     char **list;
     char *c;
-    int i, j;
-    int a, b;
 
     if (string == NULL) {
         return 0;
