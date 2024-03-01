@@ -18,8 +18,9 @@
 #ifndef _EAR_TYPES_POWER_SIGNATURE
 #define _EAR_TYPES_POWER_SIGNATURE
 
-#include <common/types/generic.h>
 #include <common/config.h>
+#include <common/types/generic.h>
+#include <common/utils/serial_buffer.h>
 
 typedef struct power_signature
 {
@@ -63,5 +64,9 @@ uint are_equal_power_sig(power_signature_t *sig1,power_signature_t *sig2,double 
 void print_power_signature_fd(int fd, power_signature_t *sig);
 
 void clean_db_power_signature(power_signature_t *ps, double limit);
+
+void power_signature_serialize(serial_buffer_t *b, power_signature_t *power_sig);
+
+void power_signature_deserialize(serial_buffer_t *b, power_signature_t *power_sig);
 
 #endif

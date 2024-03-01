@@ -22,6 +22,7 @@
 #include <stdint.h>
 #include <common/config.h>
 #include <common/types/generic.h>
+#include <common/utils/serial_buffer.h>
 
 /* Proposal for new job
 typedef struct job

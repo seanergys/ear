@@ -23,6 +23,7 @@
 #include <common/config.h>
 #include <common/types/job.h>
 #include <common/types/signature.h>
+#include <common/utils/serial_buffer.h>
 #include <common/types/power_signature.h>
 
 typedef struct application

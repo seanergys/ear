@@ -20,6 +20,7 @@
 
 #include <common/config.h>
 #include <common/types/generic.h>
+#include <common/utils/serial_buffer.h>
 #include <metrics/io/io.h>
 #include <metrics/gpu/gpu.h>
 #include <metrics/flops/flops.h>

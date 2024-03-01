@@ -24,13 +24,12 @@
 #include <sys/types.h>
 #include <fcntl.h>
 // #define SHOW_DEBUGS 1
+#include <common/states.h>
 #include <common/config.h>
 #include <common/system/file.h>
-#include <common/states.h>
 #include <common/output/debug.h>
 #include <common/output/verbose.h>
 #include <common/types/application.h>
-#include <common/output/debug.h>
 
 void init_application(application_t *app)
 {
@@ -571,36 +570,20 @@ void mark_as_eard_disconnected(int jid,int sid,int pid)
 
 void application_serialize(serial_buffer_t *b, application_t *app)
 {
-    serial_params_pack_auto(&b, app->is_mpi);
-    serial_params_pack_auto(&b, app->is_learning);
-    serial_params_pack_auto(&b, app->node_id);
-    serial_params_pack_auto(&b, app->power_sig.DC_power); //
-    serial_params_pack_auto(&b, app->power_sig.DRAM_power);
-    serial_params_pack_auto(&b, app->power_sig.PCK_power);
-    serial_params_pack_auto(&b, app->power_sig.EDP);
-    serial_params_pack_auto(&b, app->power_sig.max_DC_power);
-    serial_params_pack_auto(&b, app->power_sig.min_DC_power);
-    serial_params_pack_auto(&b, app->power_sig.time);
-    serial_params_pack_auto(&b, app->power_sig.avg_f);
-    serial_params_pack_auto(&b, app->power_sig.def_f);
-    signature_serialize(b, &app->signature);
     job_serialize(b, &app->job);
+    serial_params_pack_auto(b, app->is_mpi);
+    serial_params_pack_auto(b, app->is_learning);
+    serial_params_pack_auto(b, app->node_id);
+    power_signature_serialize(b, &app->power_sig);
+    signature_serialize(b, &app->signature);
 }
 
 void application_deserialize(serial_buffer_t *b, application_t *app)
 {
-    serial_params_unpack_auto(&b, app->is_mpi);
-    serial_params_unpack_auto(&b, app->is_learning);
-    serial_params_unpack_auto(&b, app->node_id);
-    serial_params_unpack_auto(&b, app->power_sig.DC_power); //
-    serial_params_unpack_auto(&b, app->power_sig.DRAM_power);
-    serial_params_unpack_auto(&b, app->power_sig.PCK_power);
-    serial_params_unpack_auto(&b, app->power_sig.EDP);
-    serial_params_unpack_auto(&b, app->power_sig.max_DC_power);
-    serial_params_unpack_auto(&b, app->power_sig.min_DC_power);
-    serial_params_unpack_auto(&b, app->power_sig.time);
-    serial_params_unpack_auto(&b, app->power_sig.avg_f);
-    serial_params_unpack_auto(&b, app->power_sig.def_f);
-    signature_deserialize(b, &app->signature);
     job_deserialize(b, &app->job);
+    serial_params_unpack_auto(b, app->is_mpi);
+    serial_params_unpack_auto(b, app->is_learning);
+    serial_params_unpack_auto(b, app->node_id);
+    power_signature_deserialize(b, &app->power_sig);
+    signature_deserialize(b, &app->signature);
 }

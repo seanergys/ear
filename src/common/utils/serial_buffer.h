@@ -25,48 +25,48 @@
 //
 //	1) Serial buffer initialization
 //
-//		wide_buffer_t w;
+//		serial_buffer_t b;
 //		// Initializing 16KB of memory.
-//		serial_alloc(&w, 16384);
+//		serial_alloc(&b, 16384);
 //
 //	2) Example of packing data
 //
 //		// Cleans the buffer and metadata
-//		serial_clean(&w);
+//		serial_clean(&b);
 //		// Adding new elements
-//		serial_add_elem(&w, (char *) elem1, sizeof(elem1_t)*elem1_length);
-//		serial_add_elem(&w, (char *) elem2, sizeof(elem2_t)*elem2_length);
+//		serial_add_elem(&b, (char *) elem1, sizeof(elem1_t)*elem1_length);
+//		serial_add_elem(&b, (char *) elem2, sizeof(elem2_t)*elem2_length);
 //
 //	3) Example of sending data
 //
 //		char  *data = w.data;
-//		size_t size = serial_size(&w, 0);
+//		size_t size = serial_size(&b, 0);
 //		some_sending_function(fd, data, size)));
 //
 //	4) Example of receiving data
 //
-// 		wide_buffer_t w;
+// 		serial_buffer_t w;
 //		// Initializing 16KB of memory.
-//		serial_alloc(&w, 16384);
+//		serial_alloc(&b, 16384);
 //		// You can use this because the first parameter in the buffer
 //		// structure is the allocated space.
-//		some_receiving_function(call, (char **) &w);
+//		some_receiving_function(call, (char **) &b);
 //
 //	5) Example of unpacking data
 //
 //		// Rewind is necessary to set the internal pointer to the first
 //		// element again. The first time is not required.
-//		serial_rewind(&w);
-//		serial_copy_elem(&w, (char *) elem1, NULL);
-//		serial_copy_elem(&w, (char *) elem2, NULL);
+//		serial_rewind(&b);
+//		serial_copy_elem(&b, (char *) elem1, NULL);
+//		serial_copy_elem(&b, (char *) elem2, NULL);
 //
 
 typedef struct serial_buffer_t {
 	char *data;
-	size_t size;
+	size_t size; //Allocated size
 } serial_buffer_t;
 
-typedef serial_buffer_t wide_buffer_t;
+typedef serial_buffer_t wide_buffer_t; // Old name
 
 #define SIZE_1KB 1024
 #define SIZE_2KB 2048
@@ -114,15 +114,17 @@ size_t serial_size(serial_buffer_t *b);
 //     serial_params_pack_auto(&b, appR->job.id);
 //     serial_params_pack_auto(&b, appR->job.step_id);
 
-
 #define serial_params_pack_auto(sp, parameter) \
     serial_params_pack(sp, #parameter, (void *) &parameter, sizeof(parameter));
 
 #define serial_params_unpack_auto(sp, parameter) \
-    serial_params_unpack(sp, #parameter, (void *) &parameter, NULL);
+    serial_params_unpack(sp, #parameter, (void *) &parameter, sizeof(parameter));
 
 void serial_params_pack(serial_buffer_t *b, char *tag, void *param, size_t param_size);
 
-int serial_params_unpack(serial_buffer_t *b, char *tag, void *param, size_t *param_size);
+// This function pops parameters.
+int serial_params_unpack(serial_buffer_t *b, char *tag, void *param, size_t expected_size);
+
+void serial_params_print(serial_buffer_t *b);
 
 #endif
