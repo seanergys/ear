@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <errno.h>
 #include <ctype.h>
@@ -83,10 +83,13 @@ state_t proc_stat_load()
 	}
 	clk_per_second = sysconf(_SC_CLK_TCK);
 	if (clk_per_second < 0){
-		return_msg(EAR_ERROR, "CLock tics per seconf cannot be detected");
+		/* Using default value */
+		clk_per_second = 100;
+		// Should we return an error ?
+		// return_msg(EAR_ERROR, "CLock tics per seconf cannot be detected");
 	}
 
-	debug("Detected kernel version %u.%u.%u.%u", kernel, major, minor, patch, clk_per_second);
+	debug("Detected kernel version %u.%u.%u.%u clk_sec %ld", kernel, major, minor, patch, clk_per_second);
 	// 2.6.24
 	if ((kernel < 3) || (kernel == 3 && major < 3)) {
 		mode = 1;
@@ -284,9 +287,11 @@ state_t proc_stat_data_diff(proc_stat_t *ps2, proc_stat_t *ps1, proc_stat_t *psD
 	psD->cstime = ps2->cstime - ps1->cstime;
 
 	ullong elap = timestamp_diff(&ps2->ts, &ps1->ts, TIME_MSECS);
+	debug("Elapsed time %lld", elap);
 
 	if (elap){
 		psD->cpu_util = 100*(((psD->utime + psD->stime)*1000/clk_per_second)/elap);
+		debug("Utime %lu Stime %lu Util %u", psD->utime, psD->stime,  psD->cpu_util);
 	}else{
 		psD->cpu_util = 0;
 	}

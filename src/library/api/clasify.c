@@ -97,17 +97,34 @@ state_t classify_init(topology_t *tp_in)
         return EAR_SUCCESS;
       }
       /* Icelake */
-      if (tp_in->model >= MODEL_ICELAKE_X){
+      if ((tp_in->model >= MODEL_ICELAKE_X) && (tp_in->model < MODEL_SAPPHIRE_RAPIDS)){
         return EAR_SUCCESS;
       }
+			/* Sphire Rapids */
+			if (tp_in->model >= MODEL_SAPPHIRE_RAPIDS){
+				CPI_CPU_BOUND =       0.4;
+				GBS_CPU_BOUND =       180;
+				CPI_MEM_BOUND =				0.4;
+				GBS_MEM_BOUND =				250;
+				return EAR_SUCCESS;
+			}	
+
       break;
     case VENDOR_AMD:
       /* Zen2 = Rome */
       if (tp_in->family < FAMILY_ZEN3){
+				CPI_CPU_BOUND =       0.4;
+				GBS_CPU_BOUND =       180;
+				CPI_MEM_BOUND =       0.6;
+				GBS_MEM_BOUND =       250;
         return EAR_SUCCESS;
       }
       /* Zen3 = Milan */
       if (tp_in->family >= FAMILY_ZEN3){
+				CPI_CPU_BOUND =       0.4;
+				GBS_CPU_BOUND =       180;
+				CPI_MEM_BOUND =       0.6;
+				GBS_MEM_BOUND =       300;
         return EAR_SUCCESS;
       }
       break;

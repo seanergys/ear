@@ -2844,6 +2844,45 @@ static void metrics_static_dispose()
 {
 }
 
+/** Use this function to compute the total number of threads if neded  */
+#if 0
+#define VERB_NUMTH 3
+#define ESTIMATE_TH 1
+int ear_get_num_threads()
+{
+  verbose(VERB_NUMTH, "EARL: Testing new threads");
+  folder_t ltasks;
+  state_t  s;
+  char miproc[256];
+  char *my_th;
+  int num_th = 0; 
+
+
+	#if ESTIMATE_TH == 0
+	return 1;
+	#endif
+  snprintf(miproc,sizeof(miproc),"/proc/%d/task/",getpid());
+  verbose(VERB_NUMTH,"Testing %s folder", miproc);
+
+  /* Open task folder */
+  if (state_fail(folder_open(&ltasks, miproc))){
+    verbose(VERB_NUMTH,"Task folder open fail");
+    return 1;
+  }
+
+  /* Iterate */
+  while ((my_th = folder_getnextdir(&ltasks,NULL, NULL)))
+  {
+    // verbose(VERB_NUMTH, "Task[%d] th_id '%s'\n", getpid(), my_th);
+    num_th++;
+  }
+	verbose(VERB_NUMTH,"Task[%d] %d threads detected", getpid(), num_th);
+	return num_th;
+}
+#endif
+
+
+
 #if DLB
 state_t metrics_compute_talp_node_metrics(sig_ext_t *dst_sig, dlb_monitor_t *region_monitor)
 {

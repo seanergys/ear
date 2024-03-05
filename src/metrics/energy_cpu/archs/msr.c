@@ -127,11 +127,23 @@ state_t rapl_msr_init(ctx_t *c)
 	if ((s = msr_read(tp.cpus[0].id, &result, sizeof(result), *pu_addr))) {
 		return s;
 	}
-	// Take a look to Intel's RAPL test
-    es_pack_units = pow(0.5, (double) ((result >> 8) & 0x1f)) * 1e9;
-	debug("es_pack_units %lf", es_pack_units);
-	es_core_units = es_pack_units;
-	es_dram_units = pow(0.5, (double) 16) * 1e9;
+	if (tp.model >= MODEL_SAPPHIRE_RAPIDS){
+		es_pack_units = pow(0.5, (double) ((result >> 8) & 0x1f)) * 1e9;
+		es_core_units = es_pack_units;
+		es_dram_units = es_pack_units;
+		debug("eneregy units pck %lf", es_core_units);
+		debug("eneregy units dram %lf", es_dram_units);
+	}else{
+		// It's pending to double check in Intel doc if same algorithn can be applied in all Intel archs
+		// Take a look to Intel's RAPL test
+		es_pack_units = pow(0.5, (double) ((result >> 8) & 0x1f)) * 1e9;
+		debug("es_pack_units %lf", es_pack_units);
+		es_core_units = es_pack_units;
+		es_dram_units = pow(0.5, (double) 16) * 1e9;
+		debug("eneregy units pck %lf", es_core_units);
+		debug("eneregy units dram %lf", es_dram_units);
+	}
+
 	init = 1;
 	return EAR_SUCCESS;
 }
