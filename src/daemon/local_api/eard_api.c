@@ -71,6 +71,7 @@ static char *ear_tmp;
 static ulong rapl_size;
 
 extern pthread_mutex_t lock_rpc;
+static serial_buffer_t b;
 
 #define CLOSE_LOCAL_COMM()    \
   close(ear_fd_req_global); \
@@ -442,6 +443,10 @@ int eards_connect(application_t *my_app, ulong lid)
     AFD_SETT(ear_fd_ack, &eard_api_client_fd, NULL);
     eards_signal_catcher();
     debug("Connected");
+
+    // Initializing serial buffer with plenty space
+    serial_alloc(&b, SIZE_8KB);
+
     return EAR_SUCCESS;
 }
 
@@ -525,81 +530,26 @@ ulong sendack(char *send_buf, size_t send_size, char *ack_buf, size_t ack_size, 
 
 ulong eards_write_app_signature(application_t *app)
 {
-    serial_buffer_t b;
-    state_t s;
-
-    serial_params_pack_auto(&b, app->is_mpi);
-    serial_params_pack_auto(&b, app->is_learning);
-    serial_params_pack_auto(&b, app->node_id);
-    serial_params_pack_auto(&b, app->job.id);
-    serial_params_pack_auto(&b, app->job.step_id);
-    serial_params_pack_auto(&b, app->job.user_id);
-    serial_params_pack_auto(&b, app->job.group_id);
-    serial_params_pack_auto(&b, app->job.app_id);
-    serial_params_pack_auto(&b, app->job.user_acc);
-    serial_params_pack_auto(&b, app->job.energy_tag);
-    serial_params_pack_auto(&b, app->job.start_time);
-    serial_params_pack_auto(&b, app->job.end_time);
-    serial_params_pack_auto(&b, app->job.start_mpi_time);
-    serial_params_pack_auto(&b, app->job.end_mpi_time);
-    serial_params_pack_auto(&b, app->job.policy);
-    serial_params_pack_auto(&b, app->job.th);
-    serial_params_pack_auto(&b, app->job.procs);
-    serial_params_pack_auto(&b, app->job.type);
-    serial_params_pack_auto(&b, app->job.def_f);
-    serial_params_pack_auto(&b, app->power_sig.DC_power); //
-    serial_params_pack_auto(&b, app->power_sig.DRAM_power);
-    serial_params_pack_auto(&b, app->power_sig.PCK_power);
-    serial_params_pack_auto(&b, app->power_sig.EDP);
-    serial_params_pack_auto(&b, app->power_sig.max_DC_power);
-    serial_params_pack_auto(&b, app->power_sig.min_DC_power);
-    serial_params_pack_auto(&b, app->power_sig.time);
-    serial_params_pack_auto(&b, app->power_sig.avg_f);
-    serial_params_pack_auto(&b, app->power_sig.def_f);
-    serial_params_pack_auto(&b, app->signature.DC_power); //
-    serial_params_pack_auto(&b, app->signature.DRAM_power);
-    serial_params_pack_auto(&b, app->signature.PCK_power);
-    serial_params_pack_auto(&b, app->signature.EDP);
-    serial_params_pack_auto(&b, app->signature.GBS);
-    serial_params_pack_auto(&b, app->signature.IO_MBS);
-    serial_params_pack_auto(&b, app->signature.TPI);
-    serial_params_pack_auto(&b, app->signature.CPI);
-    serial_params_pack_auto(&b, app->signature.Gflops);
-    serial_params_pack_auto(&b, app->signature.time);
-    serial_params_pack_auto(&b, app->signature.FLOPS);
-    serial_params_pack_auto(&b, app->signature.L1_misses);
-    serial_params_pack_auto(&b, app->signature.L2_misses);
-    serial_params_pack_auto(&b, app->signature.L3_misses);
-    serial_params_pack_auto(&b, app->signature.instructions);
-    serial_params_pack_auto(&b, app->signature.cycles);
-    serial_params_pack_auto(&b, app->signature.avg_f);
-    serial_params_pack_auto(&b, app->signature.avg_imc_f);
-    serial_params_pack_auto(&b, app->signature.def_f);
-    serial_params_pack_auto(&b, app->signature.perc_MPI);
-    #if USE_GPUS
-    serial_params_pack_auto(&b, app->signature.gpu_sig.num_gpus); //
-    serial_params_pack_auto(&b, app->signature.gpu_sig.gpu_data);
-    #endif
-    // WRITE_APP_SIGNATURE
-    serial_alloc(&b, SIZE_8KB);
-    s = eard_rpc(RPC_SET_APPLICATION, serial_data(&b), serial_size(&b), NULL, 0);
-    serial_free(&b);
-
-    return s;
+    serial_clean(&b);
+    // Old WRITE_APP_SIGNATURE
+    application_serialize(&b, app);
+    return eard_rpc(RPC_WRITE_APPLICATION, serial_data(&b), serial_size(&b), NULL, 0);
 }
 
 ulong eards_write_event(ear_event_t *event)
 {
-    init_service(WRITE_EVENT);
-    memcpy(&req.req_data.event, event, sizeof(ear_event_t));
-    return sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ulong), "EVENT write", 0);
+    serial_clean(&b);
+    // Old WRITE_EVENT
+    event_serialize(&b, event);
+    return eard_rpc(RPC_WRITE_EVENT, serial_data(&b), serial_size(&b), NULL, 0);
 }
 
-ulong eards_write_loop_signature(loop_t *loop_signature)
+ulong eards_write_loop_signature(loop_t *loop)
 {
-    init_service(WRITE_LOOP_SIGNATURE);
-    memcpy(&req.req_data.loop, loop_signature, sizeof(loop_t));
-    return sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ulong), "LOOP signature", 0);
+    serial_clean(&b);
+    // Old WRITE_LOOP_SIGNATURE
+    loop_serialize(&b, loop);
+    return eard_rpc(RPC_WRITE_LOOP, serial_data(&b), serial_size(&b), NULL, 0);
 }
 
 ulong eards_get_data_size_rapl() // size in bytes
@@ -647,24 +597,21 @@ state_t eard_end_application(application_t *app)
 {
   return EAR_SUCCESS;
 }
+
 state_t eards_get_state(eard_state_t *state)
 {
     return eard_rpc(RPC_GET_STATE, NULL, 0, (char *) state, sizeof(eard_state_t));
 }
 
-
 static state_t create_base_path(char *base_path, size_t base_path_sz, char *tmp_path, uint job_step_id, uint app_local_id)
 {
 	int ret = snprintf(base_path, base_path_sz, "%s/%u/%u", tmp_path, job_step_id, app_local_id);
-	if (ret < base_path_sz && ret >= 0)
-	{
+	if (ret < base_path_sz && ret >= 0) {
 		return EAR_SUCCESS;
-	} else
-	{
+	} else {
 		return EAR_ERROR;
 	}
 }
-
 
 static state_t create_app_directory(char *path)
 {
@@ -679,4 +626,3 @@ static state_t create_app_directory(char *path)
 	}
 	return EAR_SUCCESS;
 }
-

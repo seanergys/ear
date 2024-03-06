@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <common/utils/args.h>
@@ -652,7 +652,9 @@ int plugin_manager_main(int argc, char *argv[])
     sus->suscribe(sus);
     // Monitoring metrics
     debug("Initializing monitor");
-    monitor_init();
+    if (state_fail(monitor_init())) {
+        verbose(0, "Monitor failed: %s", state_msg);
+    }
     #endif
 
     return 1;

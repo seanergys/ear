@@ -6,6 +6,7 @@ plug_BINS = \
     conf.so \
     dummy.so \
     eardcon.so \
+    eard_serialization.so \
     fast.so \
     keyboard.so \
     management.so \

@@ -185,6 +185,7 @@ void serial_add_elem(serial_buffer_t *b, char *data, size_t size)
 	serial_debug(b, "serial_add_elem");
 }
 
+// _point gets a pointer to, _copy copies the bytes
 static char *serial_point_next_elem(serial_buffer_t *b, size_t *size)
 {
     size_t *size_taken;
@@ -259,31 +260,16 @@ size_t serial_size(serial_buffer_t *b)
 	return *size_taken;
 }
 
-static char *name_clean(char *tag, int doit)
+void serial_params_pack(serial_buffer_t *b, char *tag, char *param, size_t param_size)
 {
-    int i = 0;
-    if (!doit) {
-        return tag;
-    }
-    while (tag[i] != '\0') {
-        if (tag[i] == '>') return &tag[i+1];
-        if (tag[i] == '.') return &tag[i+1];
-        ++i;
-    }
-    return tag;
-}
-
-void serial_params_pack(serial_buffer_t *b, char *tag, void *param, size_t param_size)
-{
-    char buffer_tag[64];
-    // String manipulation
-    memset(buffer_tag, 0, 64);
-    strcpy(buffer_tag, name_clean(tag, 0));
-    serial_add_elem(b, buffer_tag, 64);
+    char ext[4];
+    memset(ext, 0,  4);
+    serial_add_elem(b, tag, strlen(tag)+1);
+    serial_add_elem(b, ext, 4); // Extra space for future complementary data
     serial_add_elem(b, param, param_size);
 }
 
-int serial_params_unpack(serial_buffer_t *b, char *tag, void *param, size_t expected_size)
+int serial_params_unpack(serial_buffer_t *b, char *tag, char *param, size_t expected_size)
 {
     char *param_next;
     char *tag_next;
@@ -294,13 +280,15 @@ int serial_params_unpack(serial_buffer_t *b, char *tag, void *param, size_t expe
     // Tag iterations
     while ((tag_next = serial_point_next_elem(b, NULL)) != NULL) {
         if (strcmp(tag_next, tag) == 0) {
+            //printf("%s\n", tag_next);
             // Removing the TAG to avoid revisiting the same parameter. We are
             // doing this because it's possible to have a tag N times, and we
             // can't use next_elem variable to prevent revisiting it because a
             // small change in unpacking call order would escape other previous
             // parameters of being found.
-            sprintf(tag_next, "%s", "undefined");
+            sprintf(tag_next, "%s", "?");
 
+            serial_point_next_elem(b, NULL); //Extra space
             param_next = serial_point_next_elem(b, &size);
             memset(param, 0, expected_size);
 
@@ -311,6 +299,7 @@ int serial_params_unpack(serial_buffer_t *b, char *tag, void *param, size_t expe
             }
             return 1;
         }
+        serial_point_next_elem(b, NULL);
         serial_point_next_elem(b, NULL);
     }
     return 0;
@@ -323,6 +312,7 @@ void serial_params_print(serial_buffer_t *b)
     size_t size;
 
     while (serial_copy_elem(b, tag, &size) != NULL) {
+        serial_copy_elem(b, param, &size); // Extra space
         serial_copy_elem(b, param, &size);
         printf("%s: %lu\n", tag, size);
     }

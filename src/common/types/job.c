@@ -117,6 +117,9 @@ void job_serialize(serial_buffer_t *b, job_t *job)
 {
     serial_params_pack_auto(b, job->id);
     serial_params_pack_auto(b, job->step_id);
+#if WF_SUPPORT
+    serial_params_pack_auto(b, job->local_id);
+#endif
     serial_params_pack_auto(b, job->user_id);
     serial_params_pack_auto(b, job->group_id);
     serial_params_pack_auto(b, job->app_id);
@@ -137,6 +140,9 @@ void job_deserialize(serial_buffer_t *b, job_t *job)
 {
     serial_params_unpack_auto(b, job->id);
     serial_params_unpack_auto(b, job->step_id);
+#if WF_SUPPORT
+    serial_params_unpack_auto(b, job->local_id);
+#endif
     serial_params_unpack_auto(b, job->user_id);
     serial_params_unpack_auto(b, job->group_id);
     serial_params_unpack_auto(b, job->app_id);

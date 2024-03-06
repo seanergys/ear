@@ -120,10 +120,10 @@ size_t serial_size(serial_buffer_t *b);
 #define serial_params_unpack_auto(sp, parameter) \
     serial_params_unpack(sp, #parameter, (void *) &parameter, sizeof(parameter));
 
-void serial_params_pack(serial_buffer_t *b, char *tag, void *param, size_t param_size);
+void serial_params_pack(serial_buffer_t *b, char *tag, char *param, size_t param_size);
 
 // This function pops parameters.
-int serial_params_unpack(serial_buffer_t *b, char *tag, void *param, size_t expected_size);
+int serial_params_unpack(serial_buffer_t *b, char *tag, char *param, size_t expected_size);
 
 void serial_params_print(serial_buffer_t *b);
 
