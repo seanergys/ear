@@ -56,6 +56,7 @@
 #include <common/colors.h>
 #include <common/utils/overhead.h>
 #include <common/system/folder.h>
+#include <common/system/version.h>
 #include <common/environment.h>
 #include <library/common/verbose_lib.h>
 #include <common/types/application.h>
@@ -303,19 +304,30 @@ static void verbose_talp_node_metrics(int verb_lvl, dlb_node_metrics_t *node_met
 static state_t earl_periodic_actions_talp_finalize();
 #endif // DLB
 
-#define VERIFY_EARD_COMPAT 0
 static state_t check_eard_earl_compatibility(state_t eard_connect_state)
 {
 	state_t st = EAR_SUCCESS;
 	if (state_fail(eard_connect_state)) return EAR_ERROR;
-#if VERIFY_EARD_COMPAT
+
 	eard_state_t eard_conf;
-	if (state_ok(st = eards_get_state(&eard_conf))){
-		if ((eard_conf.gpus_supported_count != MAX_GPUS_SUPPORTED) || (eard_conf.cpus_supported_count != MAX_CPUS_SUPPORTED) 
-			|| (eard_conf.sock_supported_count != MAX_SOCKETS_SUPPORTED) || (eard_conf.gpus_support_enabled != USE_GPUS))
+
+	// If eards_get_state returns EAR_ERROR, means that the connected EARD does not have the RPC
+	// implemented, so we assume it is an old version and (by now) it should be compatible.
+	// This is why currently if the below call returns ERROR, we return EAR_SUCCESS
+	if (state_ok(st = eards_get_state(&eard_conf)))
+	{
+		if (eard_conf.version.major != VERSION_MAJOR)
+		{
+			verbose_warning_master("Major versions differ (EARD %u | EARL %u). Future versions shall consider this difference as an incompatibility.", eard_conf.version.major, VERSION_MAJOR);
+		}
+		if ((eard_conf.gpus_supported_count != MAX_GPUS_SUPPORTED) ||
+				(eard_conf.cpus_supported_count != MAX_CPUS_SUPPORTED) ||
+				(eard_conf.sock_supported_count != MAX_SOCKETS_SUPPORTED) ||
+				(eard_conf.gpus_support_enabled != USE_GPUS))
+		{
 			st = EAR_ERROR;
+		}
 	}
-#endif
 	return st;
 }
 
@@ -468,6 +480,9 @@ void clean_eid_folder()
   while (node_mgr_info_lock() != EAR_SUCCESS){};
   verbose(WF_SUPPORT_VERB,"EID folder (%s) renamed to %s", EID_application_path, EID_application_path_finish);
   folder_rename(EID_application_path, EID_application_path_finish);
+	/* Should we remove the folder ?*/
+	verbose(WF_SUPPORT_VERB,"EID folder (%s) deleted", EID_application_path_finish);
+	folder_remove(EID_application_path_finish);
   node_mgr_info_unlock();
   verbose(WF_SUPPORT_VERB,"EID folder released");
 }
@@ -535,7 +550,6 @@ uint is_already_connected(char *tmp, int jid,int sid,uint aid, int pid)
 void mark_as_eard_disconnected(char *tmp, int jid,int sid,uint aid, int pid)
 {
     char EID_path[MAX_PATH_SIZE];
-    int fd;
     char pid_str[128];
 
     snprintf(pid_str, sizeof(pid_str), "/.master.%d", pid);
@@ -556,7 +570,9 @@ void mark_as_eard_disconnected(char *tmp, int jid,int sid,uint aid, int pid)
 void create_shared_regions()
 {
 	char *tmp=get_ear_tmp();
+#if 0
 	int bfd=-1;
+#endif
   int total_elements = 1;
   int per_node_elements = 1;
 	uint current_jobs_in_node;
@@ -2208,7 +2224,7 @@ void ear_finalize(int exit_status)
                 
 								return;
 				}
-				verbose(WF_SUPPORT_VERB, "EARL[%d] node id %d: Finalizing", getpid(), my_node_id);
+				verbose(WF_SUPPORT_VERB+1, "EARL[%d] node id %d: Finalizing", getpid(), my_node_id);
 #if USE_LOCK_FILES
 				if (!my_id){
                 /* Releasing master lock file. Used to select the master */
@@ -2241,7 +2257,7 @@ void ear_finalize(int exit_status)
 				  monitor_dispose();
 				  debug("%d: monitor_disposed", my_node_id);
         }
-        verbose(WF_SUPPORT_VERB, "EARL[%d]  report dispose", getpid());
+        verbose(WF_SUPPORT_VERB+1, "EARL[%d]  report dispose", getpid());
 
         report_dispose(&rep_id);
 
@@ -2312,7 +2328,7 @@ void ear_finalize(int exit_status)
 				}
 				#endif
 
-        clean_eid_folder();
+        if (masters_info.my_master_rank >= 0) clean_eid_folder();
         //print_resource_usage();
 
         #if START_END_OVH
