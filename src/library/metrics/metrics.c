@@ -58,6 +58,7 @@
 #include <common/types/signature.h>
 #include <common/math_operations.h>
 #include <common/hardware/hardware_info.h>
+#include <common/system/folder.h>
 
 #include <library/api/clasify.h>
 #include <library/api/eard_dummy.h>
@@ -176,6 +177,7 @@ static io_data_t   metrics_io_end[4];
 static io_data_t   metrics_io_diff[5]; // Another position was added to store per-loop node
                                        // accumulated, to be used at the end if some read fails
 static ctx_t       ctx_io;
+int ear_get_num_threads();
 
 /* Per proc statistics using OS API */
 uint proc_ps_ok = 0; 
@@ -1554,6 +1556,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 	// instead the small time metrics for loops. 'sign_app_loop_idx' is just a
 	// signature index.
 	sig_ext_t *sig_ext;
+	uint num_th = ear_get_num_threads();
 
 	//verbose(0, "process %d - %sapp/loop(1/0) %u%s",
   //			my_node_id, COL_YLW, sign_app_loop_idx, COL_CLR);
@@ -1600,9 +1603,13 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 	flops_data_accum(&flops_diff[APP], NULL, &metrics->Gflops);
 	flops_help_toold(&flops_diff[APP], metrics->FLOPS);
 
+	/* num_th is 1 if perf supports accumulating per thread counters */
+	metrics->Gflops = metrics->Gflops * num_th;
+	for (uint i = 0; i < FLOPS_EVENTS; i++) metrics->FLOPS[i] = metrics->FLOPS[i] * num_th;
+
 	/* CPI */
-	metrics->cycles       = cpi_diff[sign_app_loop_idx].cycles;
-	metrics->instructions = ear_max(cpi_diff[sign_app_loop_idx].instructions, 1);
+	metrics->cycles       = cpi_diff[sign_app_loop_idx].cycles * num_th;;
+	metrics->instructions = ear_max(cpi_diff[sign_app_loop_idx].instructions, 1) * num_th;;
 	metrics->CPI          = cpi_avrg[sign_app_loop_idx];
 
 	/* TPI and Memory bandwith */
@@ -2845,9 +2852,7 @@ static void metrics_static_dispose()
 }
 
 /** Use this function to compute the total number of threads if neded  */
-#if 0
 #define VERB_NUMTH 3
-#define ESTIMATE_TH 1
 int ear_get_num_threads()
 {
   verbose(VERB_NUMTH, "EARL: Testing new threads");
@@ -2858,7 +2863,7 @@ int ear_get_num_threads()
   int num_th = 0; 
 
 
-	#if ESTIMATE_TH == 0
+	#if ESTIMATE_PERF == 0
 	return 1;
 	#endif
   snprintf(miproc,sizeof(miproc),"/proc/%d/task/",getpid());
@@ -2879,7 +2884,6 @@ int ear_get_num_threads()
 	verbose(VERB_NUMTH,"Task[%d] %d threads detected", getpid(), num_th);
 	return num_th;
 }
-#endif
 
 
 
