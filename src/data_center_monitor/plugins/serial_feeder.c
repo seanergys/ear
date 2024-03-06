@@ -44,10 +44,10 @@ declr_up_action_init(_serial_feeder)
     sig.FLOPS[0]   = 4.0;
 
     serial_alloc(&sp, SIZE_8KB);
-    serial_params_pack_auto(&sp, sig.DC_power);
-    serial_params_pack_auto(&sp, sig.DRAM_power);
-    serial_params_pack_auto(&sp, sig.PCK_power);
-    serial_params_pack_auto(&sp, sig.FLOPS);
+    serial_dictionary_push_auto(&sp, sig.DC_power);
+    serial_dictionary_push_auto(&sp, sig.DRAM_power);
+    serial_dictionary_push_auto(&sp, sig.PCK_power);
+    serial_dictionary_push_auto(&sp, sig.FLOPS);
 
     pthread_create(&thread, NULL, sockets_main, NULL);
     return "Created feeder thread";

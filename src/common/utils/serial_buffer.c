@@ -260,7 +260,7 @@ size_t serial_size(serial_buffer_t *b)
 	return *size_taken;
 }
 
-void serial_params_pack(serial_buffer_t *b, char *tag, char *param, size_t param_size)
+void serial_dictionary_push(serial_buffer_t *b, char *tag, char *param, size_t param_size)
 {
     char ext[4];
     memset(ext, 0,  4);
@@ -269,7 +269,7 @@ void serial_params_pack(serial_buffer_t *b, char *tag, char *param, size_t param
     serial_add_elem(b, param, param_size);
 }
 
-int serial_params_unpack(serial_buffer_t *b, char *tag, char *param, size_t expected_size)
+int serial_dictionary_pop(serial_buffer_t *b, char *tag, char *param, size_t expected_size)
 {
     char *param_next;
     char *tag_next;
@@ -305,7 +305,7 @@ int serial_params_unpack(serial_buffer_t *b, char *tag, char *param, size_t expe
     return 0;
 }
 
-void serial_params_print(serial_buffer_t *b)
+void serial_dictionary_print(serial_buffer_t *b)
 {
     char param[1024];
     char tag[1024];

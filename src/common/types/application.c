@@ -537,9 +537,9 @@ void report_mpi_application_data(int vl, application_t *app)
 void application_serialize(serial_buffer_t *b, application_t *app)
 {
     job_serialize(b, &app->job);
-    serial_params_pack_auto(b, app->is_mpi);
-    serial_params_pack_auto(b, app->is_learning);
-    serial_params_pack_auto(b, app->node_id);
+    serial_dictionary_push_auto(b, app->is_mpi);
+    serial_dictionary_push_auto(b, app->is_learning);
+    serial_dictionary_push_auto(b, app->node_id);
     power_signature_serialize(b, &app->power_sig);
     signature_serialize(b, &app->signature);
 }
@@ -547,9 +547,9 @@ void application_serialize(serial_buffer_t *b, application_t *app)
 void application_deserialize(serial_buffer_t *b, application_t *app)
 {
     job_deserialize(b, &app->job);
-    serial_params_unpack_auto(b, app->is_mpi);
-    serial_params_unpack_auto(b, app->is_learning);
-    serial_params_unpack_auto(b, app->node_id);
+    serial_dictionary_pop_auto(b, app->is_mpi);
+    serial_dictionary_pop_auto(b, app->is_learning);
+    serial_dictionary_pop_auto(b, app->node_id);
     power_signature_deserialize(b, &app->power_sig);
     signature_deserialize(b, &app->signature);
 }

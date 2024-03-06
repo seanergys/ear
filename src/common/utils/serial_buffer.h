@@ -101,30 +101,29 @@ char *serial_data(serial_buffer_t *b);
 /* Returns the size of the whole buffer or just the data (if 1). */
 size_t serial_size(serial_buffer_t *b);
 
-// Serial params is a small extension of serial buffer. It saves struct
-// parameters/fields/variables in a serial buffer, adding a tag to properly
-// identify each introduced parameter. Pack and unpack functions are self
-// describing. You can use the auto macros for code cleaning.
+// Serial dictionary is a small extension of serial buffer. It saves variables
+// in a serial buffer, adding a tag to properly identify each introduced
+// parameter. Push and pip functions are self describing. You can use the auto
+// macros for code cleaning.
 //
 // Sender example:
-//     serial_params_pack_auto(&b, appS->job.id);
-//     serial_params_pack_auto(&b, appS->job.step_id);
+//     serial_dictionary_push_auto(&b, appS->job.id);
+//     serial_dictionary_push_auto(&b, appS->job.step_id);
 //
 // Receiver example:
-//     serial_params_pack_auto(&b, appR->job.id);
-//     serial_params_pack_auto(&b, appR->job.step_id);
+//     serial_dictionary_push_auto(&b, appR->job.id);
+//     serial_dictionary_push_auto(&b, appR->job.step_id);
 
-#define serial_params_pack_auto(sp, parameter) \
-    serial_params_pack(sp, #parameter, (void *) &parameter, sizeof(parameter));
+#define serial_dictionary_push_auto(sp, parameter) \
+    serial_dictionary_push(sp, #parameter, (void *) &parameter, sizeof(parameter));
 
-#define serial_params_unpack_auto(sp, parameter) \
-    serial_params_unpack(sp, #parameter, (void *) &parameter, sizeof(parameter));
+#define serial_dictionary_pop_auto(sp, parameter) \
+    serial_dictionary_pop(sp, #parameter, (void *) &parameter, sizeof(parameter));
 
-void serial_params_pack(serial_buffer_t *b, char *tag, char *param, size_t param_size);
+void serial_dictionary_push(serial_buffer_t *b, char *tag, char *param, size_t param_size);
 
-// This function pops parameters.
-int serial_params_unpack(serial_buffer_t *b, char *tag, char *param, size_t expected_size);
+int serial_dictionary_pop(serial_buffer_t *b, char *tag, char *param, size_t expected_size);
 
-void serial_params_print(serial_buffer_t *b);
+void serial_dictionary_print(serial_buffer_t *b);
 
 #endif

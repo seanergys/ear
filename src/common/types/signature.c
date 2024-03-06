@@ -541,39 +541,39 @@ static void gpu_signature_serialize(serial_buffer_t *b, gpu_signature_t *gpu_sig
     gpu_app_t *gpu_data;
     int gpu;
 
-    serial_params_pack_auto(b, gpu_sig->num_gpus);
+    serial_dictionary_push_auto(b, gpu_sig->num_gpus);
     for (gpu = 0; gpu < gpu_sig->num_gpus; ++gpu) {
         gpu_data = &gpu_sig->gpu_data[gpu];
-        serial_params_pack_auto(b, gpu_data->GPU_power);
-        serial_params_pack_auto(b, gpu_data->GPU_freq);
-        serial_params_pack_auto(b, gpu_data->GPU_mem_freq);
-        serial_params_pack_auto(b, gpu_data->GPU_util);
-        serial_params_pack_auto(b, gpu_data->GPU_mem_util);
+        serial_dictionary_push_auto(b, gpu_data->GPU_power);
+        serial_dictionary_push_auto(b, gpu_data->GPU_freq);
+        serial_dictionary_push_auto(b, gpu_data->GPU_mem_freq);
+        serial_dictionary_push_auto(b, gpu_data->GPU_util);
+        serial_dictionary_push_auto(b, gpu_data->GPU_mem_util);
     }
 }
 
 void signature_serialize(serial_buffer_t *b, signature_t *sig)
 {
-    serial_params_pack_auto(b, sig->DC_power); //
-    serial_params_pack_auto(b, sig->DRAM_power);
-    serial_params_pack_auto(b, sig->PCK_power);
-    serial_params_pack_auto(b, sig->EDP);
-    serial_params_pack_auto(b, sig->GBS);
-    serial_params_pack_auto(b, sig->IO_MBS);
-    serial_params_pack_auto(b, sig->TPI);
-    serial_params_pack_auto(b, sig->CPI);
-    serial_params_pack_auto(b, sig->Gflops);
-    serial_params_pack_auto(b, sig->time);
-    serial_params_pack_auto(b, sig->FLOPS);
-    serial_params_pack_auto(b, sig->L1_misses);
-    serial_params_pack_auto(b, sig->L2_misses);
-    serial_params_pack_auto(b, sig->L3_misses);
-    serial_params_pack_auto(b, sig->instructions);
-    serial_params_pack_auto(b, sig->cycles);
-    serial_params_pack_auto(b, sig->avg_f);
-    serial_params_pack_auto(b, sig->avg_imc_f);
-    serial_params_pack_auto(b, sig->def_f);
-    serial_params_pack_auto(b, sig->perc_MPI);
+    serial_dictionary_push_auto(b, sig->DC_power); //
+    serial_dictionary_push_auto(b, sig->DRAM_power);
+    serial_dictionary_push_auto(b, sig->PCK_power);
+    serial_dictionary_push_auto(b, sig->EDP);
+    serial_dictionary_push_auto(b, sig->GBS);
+    serial_dictionary_push_auto(b, sig->IO_MBS);
+    serial_dictionary_push_auto(b, sig->TPI);
+    serial_dictionary_push_auto(b, sig->CPI);
+    serial_dictionary_push_auto(b, sig->Gflops);
+    serial_dictionary_push_auto(b, sig->time);
+    serial_dictionary_push_auto(b, sig->FLOPS);
+    serial_dictionary_push_auto(b, sig->L1_misses);
+    serial_dictionary_push_auto(b, sig->L2_misses);
+    serial_dictionary_push_auto(b, sig->L3_misses);
+    serial_dictionary_push_auto(b, sig->instructions);
+    serial_dictionary_push_auto(b, sig->cycles);
+    serial_dictionary_push_auto(b, sig->avg_f);
+    serial_dictionary_push_auto(b, sig->avg_imc_f);
+    serial_dictionary_push_auto(b, sig->def_f);
+    serial_dictionary_push_auto(b, sig->perc_MPI);
 #if USE_GPUS
     gpu_signature_serialize(b, &sig->gpu_sig);
 #endif
@@ -584,39 +584,39 @@ static void gpu_signature_deserialize(serial_buffer_t *b, gpu_signature_t *gpu_s
     gpu_app_t *gpu_data;
     int gpu;
 
-    serial_params_unpack_auto(b, gpu_sig->num_gpus);
+    serial_dictionary_pop_auto(b, gpu_sig->num_gpus);
     for (gpu = 0; gpu < gpu_sig->num_gpus; ++gpu) {
         gpu_data = &gpu_sig->gpu_data[gpu];
-        serial_params_unpack_auto(b, gpu_data->GPU_power);
-        serial_params_unpack_auto(b, gpu_data->GPU_freq);
-        serial_params_unpack_auto(b, gpu_data->GPU_mem_freq);
-        serial_params_unpack_auto(b, gpu_data->GPU_util);
-        serial_params_unpack_auto(b, gpu_data->GPU_mem_util);
+        serial_dictionary_pop_auto(b, gpu_data->GPU_power);
+        serial_dictionary_pop_auto(b, gpu_data->GPU_freq);
+        serial_dictionary_pop_auto(b, gpu_data->GPU_mem_freq);
+        serial_dictionary_pop_auto(b, gpu_data->GPU_util);
+        serial_dictionary_pop_auto(b, gpu_data->GPU_mem_util);
     }
 }
 
 void signature_deserialize(serial_buffer_t *b, signature_t *sig)
 {
-    serial_params_unpack_auto(b, sig->DC_power);
-    serial_params_unpack_auto(b, sig->DRAM_power);
-    serial_params_unpack_auto(b, sig->PCK_power);
-    serial_params_unpack_auto(b, sig->EDP);
-    serial_params_unpack_auto(b, sig->GBS);
-    serial_params_unpack_auto(b, sig->IO_MBS);
-    serial_params_unpack_auto(b, sig->TPI);
-    serial_params_unpack_auto(b, sig->CPI);
-    serial_params_unpack_auto(b, sig->Gflops);
-    serial_params_unpack_auto(b, sig->time);
-    serial_params_unpack_auto(b, sig->FLOPS);
-    serial_params_unpack_auto(b, sig->L1_misses);
-    serial_params_unpack_auto(b, sig->L2_misses);
-    serial_params_unpack_auto(b, sig->L3_misses);
-    serial_params_unpack_auto(b, sig->instructions);
-    serial_params_unpack_auto(b, sig->cycles);
-    serial_params_unpack_auto(b, sig->avg_f);
-    serial_params_unpack_auto(b, sig->avg_imc_f);
-    serial_params_unpack_auto(b, sig->def_f);
-    serial_params_unpack_auto(b, sig->perc_MPI);
+    serial_dictionary_pop_auto(b, sig->DC_power);
+    serial_dictionary_pop_auto(b, sig->DRAM_power);
+    serial_dictionary_pop_auto(b, sig->PCK_power);
+    serial_dictionary_pop_auto(b, sig->EDP);
+    serial_dictionary_pop_auto(b, sig->GBS);
+    serial_dictionary_pop_auto(b, sig->IO_MBS);
+    serial_dictionary_pop_auto(b, sig->TPI);
+    serial_dictionary_pop_auto(b, sig->CPI);
+    serial_dictionary_pop_auto(b, sig->Gflops);
+    serial_dictionary_pop_auto(b, sig->time);
+    serial_dictionary_pop_auto(b, sig->FLOPS);
+    serial_dictionary_pop_auto(b, sig->L1_misses);
+    serial_dictionary_pop_auto(b, sig->L2_misses);
+    serial_dictionary_pop_auto(b, sig->L3_misses);
+    serial_dictionary_pop_auto(b, sig->instructions);
+    serial_dictionary_pop_auto(b, sig->cycles);
+    serial_dictionary_pop_auto(b, sig->avg_f);
+    serial_dictionary_pop_auto(b, sig->avg_imc_f);
+    serial_dictionary_pop_auto(b, sig->def_f);
+    serial_dictionary_pop_auto(b, sig->perc_MPI);
 #if USE_GPUS
     gpu_signature_deserialize(b, &sig->gpu_sig);
 #endif

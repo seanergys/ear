@@ -115,46 +115,46 @@ void read_job_fd_binary(int fd, job_t *job)
 
 void job_serialize(serial_buffer_t *b, job_t *job)
 {
-    serial_params_pack_auto(b, job->id);
-    serial_params_pack_auto(b, job->step_id);
+    serial_dictionary_push_auto(b, job->id);
+    serial_dictionary_push_auto(b, job->step_id);
 #if WF_SUPPORT
-    serial_params_pack_auto(b, job->local_id);
+    serial_dictionary_push_auto(b, job->local_id);
 #endif
-    serial_params_pack_auto(b, job->user_id);
-    serial_params_pack_auto(b, job->group_id);
-    serial_params_pack_auto(b, job->app_id);
-    serial_params_pack_auto(b, job->user_acc);
-    serial_params_pack_auto(b, job->energy_tag);
-    serial_params_pack_auto(b, job->start_time);
-    serial_params_pack_auto(b, job->end_time);
-    serial_params_pack_auto(b, job->start_mpi_time);
-    serial_params_pack_auto(b, job->end_mpi_time);
-    serial_params_pack_auto(b, job->policy);
-    serial_params_pack_auto(b, job->th);
-    serial_params_pack_auto(b, job->procs);
-    serial_params_pack_auto(b, job->type);
-    serial_params_pack_auto(b, job->def_f);
+    serial_dictionary_push_auto(b, job->user_id);
+    serial_dictionary_push_auto(b, job->group_id);
+    serial_dictionary_push_auto(b, job->app_id);
+    serial_dictionary_push_auto(b, job->user_acc);
+    serial_dictionary_push_auto(b, job->energy_tag);
+    serial_dictionary_push_auto(b, job->start_time);
+    serial_dictionary_push_auto(b, job->end_time);
+    serial_dictionary_push_auto(b, job->start_mpi_time);
+    serial_dictionary_push_auto(b, job->end_mpi_time);
+    serial_dictionary_push_auto(b, job->policy);
+    serial_dictionary_push_auto(b, job->th);
+    serial_dictionary_push_auto(b, job->procs);
+    serial_dictionary_push_auto(b, job->type);
+    serial_dictionary_push_auto(b, job->def_f);
 }
 
 void job_deserialize(serial_buffer_t *b, job_t *job)
 {
-    serial_params_unpack_auto(b, job->id);
-    serial_params_unpack_auto(b, job->step_id);
+    serial_dictionary_pop_auto(b, job->id);
+    serial_dictionary_pop_auto(b, job->step_id);
 #if WF_SUPPORT
-    serial_params_unpack_auto(b, job->local_id);
+    serial_dictionary_pop_auto(b, job->local_id);
 #endif
-    serial_params_unpack_auto(b, job->user_id);
-    serial_params_unpack_auto(b, job->group_id);
-    serial_params_unpack_auto(b, job->app_id);
-    serial_params_unpack_auto(b, job->user_acc);
-    serial_params_unpack_auto(b, job->energy_tag);
-    serial_params_unpack_auto(b, job->start_time);
-    serial_params_unpack_auto(b, job->end_time);
-    serial_params_unpack_auto(b, job->start_mpi_time);
-    serial_params_unpack_auto(b, job->end_mpi_time);
-    serial_params_unpack_auto(b, job->policy);
-    serial_params_unpack_auto(b, job->th);
-    serial_params_unpack_auto(b, job->procs);
-    serial_params_unpack_auto(b, job->type);
-    serial_params_unpack_auto(b, job->def_f);
+    serial_dictionary_pop_auto(b, job->user_id);
+    serial_dictionary_pop_auto(b, job->group_id);
+    serial_dictionary_pop_auto(b, job->app_id);
+    serial_dictionary_pop_auto(b, job->user_acc);
+    serial_dictionary_pop_auto(b, job->energy_tag);
+    serial_dictionary_pop_auto(b, job->start_time);
+    serial_dictionary_pop_auto(b, job->end_time);
+    serial_dictionary_pop_auto(b, job->start_mpi_time);
+    serial_dictionary_pop_auto(b, job->end_mpi_time);
+    serial_dictionary_pop_auto(b, job->policy);
+    serial_dictionary_pop_auto(b, job->th);
+    serial_dictionary_pop_auto(b, job->procs);
+    serial_dictionary_pop_auto(b, job->type);
+    serial_dictionary_pop_auto(b, job->def_f);
 }

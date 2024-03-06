@@ -66,10 +66,10 @@ declr_up_fds_attend()
             if (state_fail(sockets_recv(fd_read, sp.data, data_size, 1))) {
                 return reterr("[X] while reading socket");
             }
-            serial_params_unpack_auto(&sp, sig.DC_power);
-            serial_params_unpack_auto(&sp, sig.DRAM_power);
-            serial_params_unpack_auto(&sp, sig.PCK_power);
-            serial_params_unpack_auto(&sp, sig.FLOPS);
+            serial_dictionary_pop_auto(&sp, sig.DC_power);
+            serial_dictionary_pop_auto(&sp, sig.DRAM_power);
+            serial_dictionary_pop_auto(&sp, sig.PCK_power);
+            serial_dictionary_pop_auto(&sp, sig.FLOPS);
             printf("sig.DC_power  : %lf\n", sig.DC_power);
             printf("sig.DRAM_power: %lf\n", sig.DRAM_power);
             printf("sig.PCK_power : %lf\n", sig.PCK_power);

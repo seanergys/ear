@@ -1108,18 +1108,7 @@ int eard_system(eard_head_t *head, int req_fd, int ack_fd)
             if (state_fail(s = eard_rpc_read_pending(req_fd, serial_data(&wb), head->size, 0))) {
                 serror(Rpcerr.pending);
             } else {
-                serial_params_print(&wb);
                 application_deserialize(&wb, &app);
-                printf("app.is_mpi: %d\n", app.is_mpi);
-                printf("app.is_learning: %d\n", app.is_learning);
-                printf("app.node_id: %s\n", app.node_id);
-                printf("app.signature.CPI: %f\n", app.signature.CPI);
-                printf("app.signature.DC_power: %f\n", app.signature.DC_power);
-                printf("app.signature.DRAM_power: %f\n", app.signature.DRAM_power);
-                printf("app.signature.instructions: %llu\n", app.signature.instructions);
-                printf("app.job.id: %ld\n", app.job.id);
-                printf("app.job.step_id: %ld\n", app.job.step_id);
-                printf("app.job.id: %s\n", app.job.user_id);
 
                 if (!eard_local_conn[con_id].anonymous) {
                     powermon_mpi_signature(&app);
@@ -1134,15 +1123,7 @@ int eard_system(eard_head_t *head, int req_fd, int ack_fd)
             if (state_fail(s = eard_rpc_read_pending(req_fd, serial_data(&wb), head->size, 0))) {
                 serror(Rpcerr.pending);
             } else {
-                serial_params_print(&wb);
                 loop_deserialize(&wb, &loop);
-                printf("loop.node_id: %s\n", loop.node_id);
-                printf("loop.signature.CPI: %f\n", loop.signature.CPI);
-                printf("loop.signature.DC_power: %f\n", loop.signature.DC_power);
-                printf("loop.signature.DRAM_power: %f\n", loop.signature.DRAM_power);
-                printf("loop.signature.instructions: %llu\n", loop.signature.instructions);
-                printf("loop.id.event: %ld\n", loop.id.event);
-                printf("loop.step_id: %ld\n", loop.step_id);
 
                 powermon_loop_signature(eard_local_conn[con_id].jid, eard_local_conn[con_id].sid, &loop);
                 // print_loop_fd(1,&req.req_data.loop);
@@ -1157,10 +1138,7 @@ int eard_system(eard_head_t *head, int req_fd, int ack_fd)
             if (state_fail(s = eard_rpc_read_pending(req_fd, serial_data(&wb), head->size, 0))) {
                 serror(Rpcerr.pending);
             } else {
-                serial_params_print(&wb);
                 event_deserialize(&wb, &event);
-                printf("event.node_id: %s\n", event.node_id);
-                printf("event.value: %ld\n", event.value);
 
                 s = report_events(&rid, &req.req_data.event, 1);
             }

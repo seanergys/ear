@@ -67,26 +67,26 @@ void clean_db_power_signature(power_signature_t *ps, double limit)
 
 void power_signature_serialize(serial_buffer_t *b, power_signature_t *power_sig)
 {
-    serial_params_pack_auto(b, power_sig->DC_power); //
-    serial_params_pack_auto(b, power_sig->DRAM_power);
-    serial_params_pack_auto(b, power_sig->PCK_power);
-    serial_params_pack_auto(b, power_sig->EDP);
-    serial_params_pack_auto(b, power_sig->max_DC_power);
-    serial_params_pack_auto(b, power_sig->min_DC_power);
-    serial_params_pack_auto(b, power_sig->time);
-    serial_params_pack_auto(b, power_sig->avg_f);
-    serial_params_pack_auto(b, power_sig->def_f);
+    serial_dictionary_push_auto(b, power_sig->DC_power); //
+    serial_dictionary_push_auto(b, power_sig->DRAM_power);
+    serial_dictionary_push_auto(b, power_sig->PCK_power);
+    serial_dictionary_push_auto(b, power_sig->EDP);
+    serial_dictionary_push_auto(b, power_sig->max_DC_power);
+    serial_dictionary_push_auto(b, power_sig->min_DC_power);
+    serial_dictionary_push_auto(b, power_sig->time);
+    serial_dictionary_push_auto(b, power_sig->avg_f);
+    serial_dictionary_push_auto(b, power_sig->def_f);
 }
 
 void power_signature_deserialize(serial_buffer_t *b, power_signature_t *power_sig)
 {
-    serial_params_unpack_auto(b, power_sig->DC_power); //
-    serial_params_unpack_auto(b, power_sig->DRAM_power);
-    serial_params_unpack_auto(b, power_sig->PCK_power);
-    serial_params_unpack_auto(b, power_sig->EDP);
-    serial_params_unpack_auto(b, power_sig->max_DC_power);
-    serial_params_unpack_auto(b, power_sig->min_DC_power);
-    serial_params_unpack_auto(b, power_sig->time);
-    serial_params_unpack_auto(b, power_sig->avg_f);
-    serial_params_unpack_auto(b, power_sig->def_f);
+    serial_dictionary_pop_auto(b, power_sig->DC_power); //
+    serial_dictionary_pop_auto(b, power_sig->DRAM_power);
+    serial_dictionary_pop_auto(b, power_sig->PCK_power);
+    serial_dictionary_pop_auto(b, power_sig->EDP);
+    serial_dictionary_pop_auto(b, power_sig->max_DC_power);
+    serial_dictionary_pop_auto(b, power_sig->min_DC_power);
+    serial_dictionary_pop_auto(b, power_sig->time);
+    serial_dictionary_pop_auto(b, power_sig->avg_f);
+    serial_dictionary_pop_auto(b, power_sig->def_f);
 }
