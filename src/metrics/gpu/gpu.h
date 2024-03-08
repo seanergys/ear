@@ -69,20 +69,20 @@ typedef struct gpu_s
 
 typedef struct gpu_ops_s
 {
-    void    (*get_api)     (uint *api);
-    state_t (*init)        (ctx_t *c);
-    state_t (*dispose)     (ctx_t *c);
-    state_t (*get_devices) (ctx_t *c, gpu_devs_t **devs, uint *devs_count);
+    void    (*get_info)      (apinfo_t *info);
+    state_t (*init)          (ctx_t *c);
+    state_t (*dispose)       (ctx_t *c);
+    state_t (*get_devices)   (ctx_t *c, gpu_devs_t **devs, uint *devs_count);
     state_t (*count_devices) (ctx_t *c, uint *devs_count);
-    state_t (*read)        (ctx_t *c, gpu_t *data);
-    state_t (*read_raw)    (ctx_t *c, gpu_t *data);
-    state_t (*get_info)    (apinfo_t *info);
+    state_t (*read)          (ctx_t *c, gpu_t *data);
+    state_t (*read_raw)      (ctx_t *c, gpu_t *data);
 } gpu_ops_t;
 
 // Discovers the low level API.
 void gpu_load(int force_api);
 
-void gpu_get_api(uint *api);
+// Returns all available static information (Work in progress)
+state_t gpu_get_info(apinfo_t *info);
 
 // Initializes the context.
 state_t gpu_init(ctx_t *c);
@@ -133,8 +133,5 @@ void gpu_data_print(gpu_t *data, int fd);
 char *gpu_data_tostr(gpu_t *data, char *buffer, int length);
 
 int gpu_is_supported();
-
-// Returns all available static information (Work in progress)
-state_t gpu_get_info(apinfo_t *info);
 
 #endif

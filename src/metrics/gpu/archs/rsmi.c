@@ -59,7 +59,7 @@ void gpu_rsmi_load(gpu_ops_t *ops, int force_api)
         debug("rsmi.devs_count failed");
         return;
     }
-    apis_set(ops->get_api,       gpu_rsmi_get_api);
+    apis_set(ops->get_info,      gpu_rsmi_get_info);
     apis_set(ops->init,          gpu_rsmi_init);
     apis_set(ops->dispose,       gpu_rsmi_dispose);
     apis_set(ops->get_devices,   gpu_rsmi_get_devices);
@@ -69,9 +69,10 @@ void gpu_rsmi_load(gpu_ops_t *ops, int force_api)
     debug("Loaded RSMI");
 }
 
-void gpu_rsmi_get_api(uint *api)
+void gpu_rsmi_get_info(apinfo_t *info)
 {
-    *api = API_RSMI;
+    info->api         = API_RSMI;
+    info->devs_count  = devs_count;
 }
 
 state_t gpu_rsmi_init(ctx_t *c)

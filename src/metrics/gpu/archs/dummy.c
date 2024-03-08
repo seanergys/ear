@@ -28,7 +28,7 @@
 
 void gpu_dummy_load(gpu_ops_t *ops)
 {
-    apis_put(ops->get_api,       gpu_dummy_get_api);
+    apis_put(ops->get_info,      gpu_dummy_get_info);
     apis_put(ops->init,          gpu_dummy_init);
     apis_put(ops->dispose,       gpu_dummy_dispose);
     apis_put(ops->get_devices,   gpu_dummy_get_devices);
@@ -37,12 +37,14 @@ void gpu_dummy_load(gpu_ops_t *ops)
     apis_put(ops->read_raw,      gpu_dummy_read_raw);
 }
 
-void gpu_dummy_get_api(uint *api)
+void gpu_dummy_get_info(apinfo_t *info)
 {
     #if FAKE_GPUS
-    *api = API_FAKE;
+    info->api        = API_FAKE;
+    info->devs_count = FAKE_N;
     #else
-    *api = API_DUMMY;
+    info->api        = API_DUMMY;
+    info->devs_count = 1;
     #endif
 }
 

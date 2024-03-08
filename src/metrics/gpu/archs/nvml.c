@@ -68,14 +68,13 @@ void gpu_nvml_load(gpu_ops_t *ops, int force_api)
         debug("nvml_get_devices failed: %s", state_msg);
         return;
     }
-    apis_set(ops->get_api,       gpu_nvml_get_api);
+    apis_set(ops->get_info,	     gpu_nvml_get_info);
     apis_set(ops->init,          gpu_nvml_init);
     apis_set(ops->dispose,       gpu_nvml_dispose);
     apis_set(ops->get_devices,   gpu_nvml_get_devices);
     apis_set(ops->count_devices, gpu_nvml_count_devices);
     apis_pin(ops->read,          gpu_nvml_read, ok_pool);
     apis_set(ops->read_raw,      gpu_nvml_read_raw);
-		apis_set(ops->get_info,			 gpu_nvml_get_info);
     debug("Loaded NVML");
 }
 
@@ -109,9 +108,14 @@ static state_t static_init()
 	return s;
 }
 
-void gpu_nvml_get_api(uint *api)
+void gpu_nvml_get_info(apinfo_t *info)
 {
-    *api = API_NVML;
+    info->api         = API_NVML;
+    info->devs_count  = devs_count;
+
+    if (nvml.GetArchitecture(devs[0], &info->dev_model) != NVML_SUCCESS) {
+        info->dev_model = NVML_DEVICE_ARCH_UNKNOWN;
+    }
 }
 
 state_t gpu_nvml_init(ctx_t *c)
@@ -282,30 +286,4 @@ state_t gpu_nvml_read_raw(ctx_t *c, gpu_t *data)
 		data[i].power_w /= 1000;
 	}
 	return EAR_SUCCESS;
-}
-
-
-state_t gpu_nvml_get_info(apinfo_t *info)
-{
-	if (info)
-	{
-		debug("Calling GetArch %p %d", nvml.GetArchitecture, devs[0]);
-		// Warning: We are assumming all devices have the same architecture
-		nvmlReturn_t ret = nvml.GetArchitecture(devs[0], &info->dev_model);
-
-		switch (ret)
-		{
-			case NVML_SUCCESS:
-				return EAR_SUCCESS;
-			case NVML_ERROR_UNINITIALIZED:
-				return_msg(EAR_ERROR, NVML_ERROR_UNINIT_MSG);
-			case NVML_ERROR_INVALID_ARGUMENT:
-				return_msg(EAR_ERROR, NVML_ERROR_INVALID_ARG_MSG);
-			default:
-				return_msg(EAR_ERROR, "Unknown error.");
-		}
-
-	} else {
-		return_msg(EAR_ERROR, Generr.input_null);
-	}
 }

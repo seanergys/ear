@@ -76,61 +76,8 @@ void metrics_init(metrics_info_t *m, topology_t *tp, char *nodepow_path, ullong 
         gpu_init(no_ctx);
 
     //
-    cache_get_info(&m->cch);
-    flops_get_info(&m->flp);
+    metrics_get_info(m);
 
-    m->cpu.layer = "CPUFREQ";
-    m->imc.layer = "IMCFREQ";
-    m->pow.layer = "CPUPOW";
-    m->ram.layer = "BANDWIDTH";
-    m->flp.layer = "FLOPS";
-    m->tmp.layer = "TEMPERATURE";
-    m->cpi.layer = "CPI";
-    m->gpu.layer = "GPU";
-
-    cpufreq_get_api(&m->cpu.api);
-    imcfreq_get_api(&m->imc.api);
-     cpupow(get_api,&m->pow.api);
-     bwidth_get_api(&m->ram.api);
-       temp_get_api(&m->tmp.api);
-        cpi_get_api(&m->cpi.api);
-        gpu_get_api(&m->gpu.api);
-
-    cpufreq_count_devices(no_ctx, &m->cpu.devs_count);
-    imcfreq_count_devices(no_ctx, &m->imc.devs_count);
-     cpupow(count_devices,no_ctx, &m->pow.devs_count);
-     bwidth_count_devices(no_ctx, &m->ram.devs_count);
-       temp_count_devices(no_ctx, &m->tmp.devs_count);
-        gpu_count_devices(no_ctx, &m->gpu.devs_count);
-
-    m->cpu.scope = SCOPE_NODE;
-    m->imc.scope = SCOPE_NODE;
-    m->pow.scope = SCOPE_NODE;
-    m->ram.scope = SCOPE_NODE;
-    m->flp.scope = SCOPE_PROCESS;
-    m->tmp.scope = SCOPE_NODE;
-    m->cpi.scope = SCOPE_PROCESS;
-    m->gpu.scope = SCOPE_NODE;
-
-    m->cpu.granularity = GRANULARITY_THREAD;
-    m->imc.granularity = GRANULARITY_SOCKET;
-    m->pow.granularity = GRANULARITY_SOCKET;
-    m->ram.granularity = GRANULARITY_IMC;
-    m->flp.granularity = GRANULARITY_PROCESS;
-    m->tmp.granularity = GRANULARITY_SOCKET;
-    m->cpi.granularity = GRANULARITY_PROCESS;
-    m->gpu.granularity = GRANULARITY_PERIPHERAL;
-
-    apinfo_tostr(&m->cpu);
-    apinfo_tostr(&m->imc);
-    apinfo_tostr(&m->pow);
-    apinfo_tostr(&m->ram);
-    apinfo_tostr(&m->cch);
-    apinfo_tostr(&m->flp);
-    apinfo_tostr(&m->tmp);
-    apinfo_tostr(&m->cpi);
-    apinfo_tostr(&m->gpu);
-    
     // Screen initialization 
     scprintf_init(&ss, 50, 180, -1, '#'); // 0 to 49, 0 to 179
     scprintf_divide(&ss, (int[]) {  1,   2}, (int[]) { 34,  39}, &id_cpu, "cpufreq"  );
@@ -162,6 +109,56 @@ void metrics_init(metrics_info_t *m, topology_t *tp, char *nodepow_path, ullong 
 
     scsprintf(&ss, id_log, 0, 0, special_ear_logo());
     scsprintf(&ss, id_api, 0, 0, buffer);
+}
+
+void metrics_get_info(metrics_info_t *m)
+{
+    bwidth_get_info(&m->ram);
+     cache_get_info(&m->cch);
+     flops_get_info(&m->flp);
+       gpu_get_info(&m->gpu);
+
+    m->cpu.layer = "CPUFREQ";
+    m->imc.layer = "IMCFREQ";
+    m->pow.layer = "CPUPOW";
+    m->tmp.layer = "TEMPERATURE";
+    m->cpi.layer = "CPI";
+
+    cpufreq_get_api(&m->cpu.api);
+    imcfreq_get_api(&m->imc.api);
+     cpupow(get_api,&m->pow.api);
+       temp_get_api(&m->tmp.api);
+        cpi_get_api(&m->cpi.api);
+        //gpu_get_api(&m->gpu.api);
+
+    cpufreq_count_devices(no_ctx, &m->cpu.devs_count);
+    imcfreq_count_devices(no_ctx, &m->imc.devs_count);
+     cpupow(count_devices,no_ctx, &m->pow.devs_count);
+     //bwidth_count_devices(no_ctx, &m->ram.devs_count);
+       temp_count_devices(no_ctx, &m->tmp.devs_count);
+        //gpu_count_devices(no_ctx, &m->gpu.devs_count);
+
+    m->cpu.scope = SCOPE_NODE;
+    m->imc.scope = SCOPE_NODE;
+    m->pow.scope = SCOPE_NODE;
+    m->tmp.scope = SCOPE_NODE;
+    m->cpi.scope = SCOPE_PROCESS;
+
+    m->cpu.granularity = GRANULARITY_THREAD;
+    m->imc.granularity = GRANULARITY_SOCKET;
+    m->pow.granularity = GRANULARITY_SOCKET;
+    m->tmp.granularity = GRANULARITY_SOCKET;
+    m->cpi.granularity = GRANULARITY_PROCESS;
+
+    apinfo_tostr(&m->cpu);
+    apinfo_tostr(&m->imc);
+    apinfo_tostr(&m->pow);
+    apinfo_tostr(&m->ram);
+    apinfo_tostr(&m->cch);
+    apinfo_tostr(&m->flp);
+    apinfo_tostr(&m->tmp);
+    apinfo_tostr(&m->cpi);
+    apinfo_tostr(&m->gpu);
 }
 
 // Auxiliars

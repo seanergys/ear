@@ -104,6 +104,8 @@ void metrics_init(metrics_info_t *m, topology_t *tp, char *nodepow_path, ullong 
 
 void metrics_read(metrics_read_t *mr);
 
+void metrics_get_info(metrics_info_t *m);
+
 void metrics_read_copy(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff_t *mrD);
 
 void metrics_data_alloc(metrics_read_t *mr1, metrics_read_t *mr2, metrics_diff_t *mrD);

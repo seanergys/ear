@@ -74,7 +74,11 @@ leave:
 
 void bwidth_get_info(apinfo_t *info)
 {
-    info->layer = "BANDWIDTH";
+    info->layer       = "BANDWIDTH";
+    info->api         = API_NONE;
+    info->devs_count  = 0;
+    info->scope       = SCOPE_NODE;
+    info->granularity = GRANULARITY_IMC;
     return ops.get_info(info);
 }
 

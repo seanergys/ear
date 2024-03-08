@@ -781,6 +781,7 @@ int main(int argc, char *argv[])
                     error("topology information can't be initialized (%d)", s);
                     _exit(1);
                 }
+                // Print
                 topology_print(&node_desc, verb_channel);
 
                 verbose(VEARD_INIT,"Topology detected: sockets %d, cores %d, threads %d",

@@ -62,6 +62,16 @@ void gpu_get_api(uint *api)
     }
 }
 
+state_t gpu_get_info(apinfo_t *info)
+{
+    info->layer       = "GPU";
+    info->api         = API_NONE;
+    info->devs_count  = 0;
+    info->scope       = SCOPE_NODE;
+    info->granularity = GRANULARITY_PERIPHERAL;
+    preturn(ops.get_info, info);
+}
+
 state_t gpu_init(ctx_t *c)
 {
     state_t s = EAR_ERROR;
@@ -277,16 +287,4 @@ char *gpu_data_tostr(gpu_t *data, char *buffer, int length)
 int gpu_is_supported()
 {
     return gpu_eard_is_supported();
-}
-
-state_t gpu_get_info(apinfo_t *info)
-{
-	if (info)
-	{
-		debug("Calling API class get info method");
-		preturn(ops.get_info, info);
-	} else
-	{
-		return_msg(EAR_ERROR, Generr.input_null);
-	}
 }
