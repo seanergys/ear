@@ -179,13 +179,16 @@ state_t report_create_id(report_id_t *id, int local_rank, int global_rank, int m
 
 #define define(NARGS, op, ...) \
     func_ ## NARGS (op, __VA_ARGS__) { \
+        state_t sret = EAR_ERROR; \
         int p; \
         for (p = 0; p < plugins_count; ++p) { \
             if (ops[p]. op != NULL) { \
-                call_ ## NARGS(op, __VA_ARGS__); \
+                if (state_ok(call_ ## NARGS(op, __VA_ARGS__))) { \
+                    sret = EAR_SUCCESS; \
+                } \
             } \
         } \
-        return EAR_SUCCESS; \
+        return sret; \
     }
 
 define(2, report_init, report_id_t *, id, cluster_conf_t *, cconf);
@@ -199,8 +202,8 @@ define(4, report_misc, report_id_t *, id, uint, type, const char *, data, uint, 
 #if TEST
 int main(int argc, char *argv[])
 {
-		cluster_conf_t cconf;
-		report_id_t id;
+    cluster_conf_t cconf;
+    report_id_t id;
     report_load(NULL, "plug_dummy.so:plug_dummy2.so");
     report_init(&id,&cconf);
     report_applications(&id,NULL, 0);
