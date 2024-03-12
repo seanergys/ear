@@ -31,6 +31,7 @@
 #include <common/system/poll.h>
 #include <common/system/monitor.h>
 #include <common/types/generic.h>
+#include <common/utils/strscreen.h>
 #include <common/types/pc_app_info.h>
 #include <common/utils/serial_buffer.h>
 #include <common/hardware/hardware_info.h>
@@ -124,7 +125,9 @@ static gpu_t           *eard_read_gpu;
 		error("when calling " #function); \
 	}
 
-void services_init(topology_t *tp, my_node_conf_t *conf)
+extern char **environ;
+
+void services_init(topology_t *tp)
 {
     state_t s;
 
@@ -165,6 +168,65 @@ void services_init(topology_t *tp, my_node_conf_t *conf)
 	serial_alloc(&wb, SIZE_8KB);
     // Resetting values
     set_default_management_init();
+}
+
+void services_print(topology_t *tp, cluster_conf_t *cluster_conf)
+{
+    static strscreen_t ss;
+    static int         id_conf;
+    static int         id_logo;
+    static int         id_metrics;
+    static int         id_manages;
+    static int         id_topology;
+    static char        buf_host[128];
+    static char        buffer[4096];
+
+    char *logo = ""
+                 "        ___           ___           ___           ___     \n"
+                 "       /\\  \\         /\\  \\         /\\  \\         /\\  \\    \n"
+                 "      /::\\  \\       /::\\  \\       /::\\  \\       /::\\  \\   \n"
+                 "     /:/\\:\\  \\     /:/\\:\\  \\     /:/\\:\\  \\     /:/\\:\\  \\  \n"
+                 "    /::\\~\\:\\  \\   /::\\~\\:\\  \\   /::\\~\\:\\  \\   /:/  \\:\\__\\ \n"
+                 "   /:/\\:\\ \\:\\__\\ /:/\\:\\ \\:\\__\\ /:/\\:\\ \\:\\__\\ /:/__/ \\:|__|\n"
+                 "   \\:\\~\\:\\ \\/__/ \\/__\\:\\/:/  / \\/_|::\\/:/  / \\:\\  \\ /:/  /\n"
+                 "    \\:\\ \\:\\__\\        \\::/  /     |:|::/  /   \\:\\  /:/  / \n"
+                 "     \\:\\ \\/__/        /:/  /      |:|\\/__/     \\:\\/:/  /  \n"
+                 "      \\:\\__\\         /:/  /       |:|  |        \\__/__/   \n"
+                 "       \\/__/         \\/__/         \\|__|                    ";
+
+    metrics_info_get(&met);
+    management_info_get(&man);
+
+    gethostname(buf_host, 128);
+    sprintf(buffer                 , "component    : EARD (EAR Daemon/Node Manager)\n");
+    sprintf(&buffer[strlen(buffer)], "version      : %u.%u\n", VERSION_MAJOR, VERSION_MINOR);
+    sprintf(&buffer[strlen(buffer)], "hostname     : %s\n", buf_host);
+    sprintf(&buffer[strlen(buffer)], "verbose level: %d\n", verb_level);
+    sprintf(&buffer[strlen(buffer)], "tmp dir      : %s\n", cluster_conf->install.dir_temp);
+    sprintf(&buffer[strlen(buffer)], "etc dir      : %s\n", cluster_conf->install.dir_conf);
+    sprintf(&buffer[strlen(buffer)], "install dir  : %s\n", cluster_conf->install.dir_inst);
+    sprintf(&buffer[strlen(buffer)], "db server IP : %s\n", cluster_conf->database.ip);
+    sprintf(&buffer[strlen(buffer)], "db mirror IP : %s\n", cluster_conf->database.sec_ip);
+    sprintf(&buffer[strlen(buffer)], "USE_GPUS     : %u\n", USE_GPUS);
+    sprintf(&buffer[strlen(buffer)], "MAX_CPUS     : %u\n", MAX_CPUS_SUPPORTED);
+    sprintf(&buffer[strlen(buffer)], "MAX_SOCKETS  : %u\n", MAX_SOCKETS_SUPPORTED);
+    sprintf(&buffer[strlen(buffer)], "MAX_GPUS     : %u\n", MAX_GPUS_SUPPORTED);
+
+    scprintf_init(&ss, 44, 140, -1, '#'); // 0 to 49, 0 to 179
+    scprintf_divide(&ss, (int[]) {  1,  1 }, (int[]) {  20,  74 }, &id_topology, "topology"      );
+    scprintf_divide(&ss, (int[]) {  1, 76 }, (int[]) {  12, 137 }, &id_logo,     "ear-logo"      );
+    scprintf_divide(&ss, (int[]) { 14, 76 }, (int[]) {  33, 137 }, &id_conf,     "configuration" );
+    scprintf_divide(&ss, (int[]) { 22,  1 }, (int[]) {  33,  74 }, &id_metrics,  "metrics"       );
+    scprintf_divide(&ss, (int[]) { 35,  1 }, (int[]) {  42,  74 }, &id_manages,  "management"    );
+
+    scsprintf(&ss, id_logo    , 0, 0, logo);
+    scsprintf(&ss, id_conf    , 0, 1, buffer);
+    scsprintf(&ss, id_topology, 0, 1, topology_tostr(tp, buffer, 1024));
+    scsprintf(&ss, id_metrics , 0, 1, metrics_info_tostr(&met, buffer));
+    scsprintf(&ss, id_manages , 0, 1, management_info_tostr(&man, buffer));
+
+    dprintf(verb_channel, "%s", scprintf(&ss));
+    dprintf(verb_channel, "# Log:                                                                                                                                    #\n");
 }
 
 void services_dispose()

@@ -104,7 +104,7 @@ void gpu_eard_get_info(apinfo_t *info)
 {
     info->api         = API_EARD;
     info->api_under   = eard_api;
-    info->devs_count  = devs_count;
+    info->devs_count  = user_devs_count;
 }
 
 state_t gpu_eard_init(ctx_t *c)

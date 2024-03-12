@@ -56,20 +56,21 @@ unlock_load:
 
 void gpu_get_api(uint *api)
 {
-    *api = API_NONE;
-    if (ops.get_api != NULL) {
-        return ops.get_api(api);
-    }
+    apinfo_t info;
+    gpu_get_info(&info);
+    *api = info.api;
 }
 
-state_t gpu_get_info(apinfo_t *info)
+void gpu_get_info(apinfo_t *info)
 {
     info->layer       = "GPU";
     info->api         = API_NONE;
     info->devs_count  = 0;
     info->scope       = SCOPE_NODE;
     info->granularity = GRANULARITY_PERIPHERAL;
-    preturn(ops.get_info, info);
+    if (ops.get_info != NULL) {
+        ops.get_info(info);
+    }
 }
 
 state_t gpu_init(ctx_t *c)

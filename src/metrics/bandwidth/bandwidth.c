@@ -79,7 +79,9 @@ void bwidth_get_info(apinfo_t *info)
     info->devs_count  = 0;
     info->scope       = SCOPE_NODE;
     info->granularity = GRANULARITY_IMC;
-    return ops.get_info(info);
+    if (ops.get_info != NULL) {
+        ops.get_info(info);
+    }
 }
 
 void bwidth_get_api(uint *api_in)

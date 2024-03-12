@@ -32,7 +32,9 @@ state_t eard_local_api();
 
 state_t service_close_by_id(ulong jid,ulong sid);
 
-void services_init(topology_t *tp, my_node_conf_t *conf);
+void services_init(topology_t *tp);
+
+void services_print(topology_t *tp, cluster_conf_t *cluster_conf);
 
 void services_dispose();
 

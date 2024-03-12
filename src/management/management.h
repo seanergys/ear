@@ -35,6 +35,12 @@ typedef struct manages_info_s {
 
 void management_init(manages_info_t *man, topology_t *tp, ullong force_api);
 
+void management_info_get(manages_info_t *m);
+
+char *management_info_tostr(manages_info_t *m, char *buffer);
+
+void management_info_print(manages_info_t *m, int fd);
+
 char *management_data_tostr();
 
 #endif //MANAGEMENT_H

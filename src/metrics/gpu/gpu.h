@@ -81,8 +81,11 @@ typedef struct gpu_ops_s
 // Discovers the low level API.
 void gpu_load(int force_api);
 
+// Deprecated, switch to gpu_get_info
+void gpu_get_api(uint *api);
+
 // Returns all available static information (Work in progress)
-state_t gpu_get_info(apinfo_t *info);
+void gpu_get_info(apinfo_t *info);
 
 // Initializes the context.
 state_t gpu_init(ctx_t *c);

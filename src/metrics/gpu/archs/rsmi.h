@@ -22,7 +22,7 @@
 
 void gpu_rsmi_load(gpu_ops_t *ops, int eard);
 
-void gpu_rsmi_get_api(uint *api);
+void gpu_rsmi_get_info(apinfo_t *info);
 
 state_t gpu_rsmi_init(ctx_t *c);
 

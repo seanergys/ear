@@ -22,7 +22,7 @@
 
 void gpu_dummy_load(gpu_ops_t *ops);
 
-void gpu_dummy_get_api(uint *api);
+void gpu_dummy_get_info(apinfo_t *info);
 
 state_t gpu_dummy_init(ctx_t *c);
 

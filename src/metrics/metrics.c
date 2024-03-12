@@ -50,7 +50,6 @@ static int             id_tpo;
 
 void metrics_init(metrics_info_t *m, topology_t *tp, char *nodepow_path, ullong mflags)
 {
-    static char buffer[16384];
     self_tp = tp;
 
     nodepow(load,nodepow_path);
@@ -76,9 +75,13 @@ void metrics_init(metrics_info_t *m, topology_t *tp, char *nodepow_path, ullong 
         gpu_init(no_ctx);
 
     //
-    metrics_get_info(m);
+    metrics_info_get(m);
+}
 
-    // Screen initialization 
+static void metrics_init_screen(metrics_info_t *m, topology_t *tp)
+{
+    static char buffer[16384];
+    // Screen initialization
     scprintf_init(&ss, 50, 180, -1, '#'); // 0 to 49, 0 to 179
     scprintf_divide(&ss, (int[]) {  1,   2}, (int[]) { 34,  39}, &id_cpu, "cpufreq"  );
     scprintf_divide(&ss, (int[]) { 36,   2}, (int[]) { 37,  39}, &id_imc, "imcfreq"  );
@@ -94,24 +97,11 @@ void metrics_init(metrics_info_t *m, topology_t *tp, char *nodepow_path, ullong 
     topology_tostr(tp, buffer, sizeof(buffer));
     scsprintf(&ss, id_tpo, 0, 0, buffer);
 
-    tprintf_init2(&st, fdout, STR_MODE_COL, "13 9 8 10 20");
-    tsprintf(buffer, &st, 0, "E.API||I.API||#Devs||Scope||Granularity");
-    tsprintf(buffer, &st, 1, "-----||-----||-----||-----||-----------");
-    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m->cpu.layer, m->cpu.api_str, m->cpu.devs_count, m->cpu.scope_str, m->cpu.granularity_str);
-    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m->imc.layer, m->imc.api_str, m->imc.devs_count, m->imc.scope_str, m->imc.granularity_str);
-    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m->ram.layer, m->ram.api_str, m->ram.devs_count, m->ram.scope_str, m->ram.granularity_str);
-    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m->cch.layer, m->cch.api_str, m->cch.devs_count, m->cch.scope_str, m->cch.granularity_str);
-    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m->flp.layer, m->flp.api_str, m->flp.devs_count, m->flp.scope_str, m->flp.granularity_str);
-    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m->tmp.layer, m->tmp.api_str, m->tmp.devs_count, m->tmp.scope_str, m->tmp.granularity_str);
-    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m->pow.layer, m->pow.api_str, m->pow.devs_count, m->pow.scope_str, m->pow.granularity_str);
-    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m->cpi.layer, m->cpi.api_str, m->cpi.devs_count, m->cpi.scope_str, m->cpi.granularity_str);
-    tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s", m->gpu.layer, m->gpu.api_str, m->gpu.devs_count, m->gpu.scope_str, m->gpu.granularity_str);
-
     scsprintf(&ss, id_log, 0, 0, special_ear_logo());
-    scsprintf(&ss, id_api, 0, 0, buffer);
+    scsprintf(&ss, id_api, 0, 0, metrics_info_tostr(m, buffer));
 }
 
-void metrics_get_info(metrics_info_t *m)
+void metrics_info_get(metrics_info_t *m)
 {
     bwidth_get_info(&m->ram);
      cache_get_info(&m->cch);
@@ -134,7 +124,6 @@ void metrics_get_info(metrics_info_t *m)
     cpufreq_count_devices(no_ctx, &m->cpu.devs_count);
     imcfreq_count_devices(no_ctx, &m->imc.devs_count);
      cpupow(count_devices,no_ctx, &m->pow.devs_count);
-     //bwidth_count_devices(no_ctx, &m->ram.devs_count);
        temp_count_devices(no_ctx, &m->tmp.devs_count);
         //gpu_count_devices(no_ctx, &m->gpu.devs_count);
 
@@ -159,6 +148,30 @@ void metrics_get_info(metrics_info_t *m)
     apinfo_tostr(&m->tmp);
     apinfo_tostr(&m->cpi);
     apinfo_tostr(&m->gpu);
+}
+
+char *metrics_info_tostr(metrics_info_t *m, char *buffer)
+{
+    static strtable_t sti;
+    tprintf_init2(&sti, fdout, STR_MODE_COL, "13 9 8 10 20");
+    tsprintf(buffer, &sti, 0, "E.API||I.API||#Devs||Scope||Granularity");
+    tsprintf(buffer, &sti, 1, "-----||-----||-----||-----||-----------");
+    tsprintf(buffer, &sti, 1, "%s||%s||%u||%s||%s", m->cpu.layer, m->cpu.api_str, m->cpu.devs_count, m->cpu.scope_str, m->cpu.granularity_str);
+    tsprintf(buffer, &sti, 1, "%s||%s||%u||%s||%s", m->imc.layer, m->imc.api_str, m->imc.devs_count, m->imc.scope_str, m->imc.granularity_str);
+    tsprintf(buffer, &sti, 1, "%s||%s||%u||%s||%s", m->ram.layer, m->ram.api_str, m->ram.devs_count, m->ram.scope_str, m->ram.granularity_str);
+    tsprintf(buffer, &sti, 1, "%s||%s||%u||%s||%s", m->cch.layer, m->cch.api_str, m->cch.devs_count, m->cch.scope_str, m->cch.granularity_str);
+    tsprintf(buffer, &sti, 1, "%s||%s||%u||%s||%s", m->flp.layer, m->flp.api_str, m->flp.devs_count, m->flp.scope_str, m->flp.granularity_str);
+    tsprintf(buffer, &sti, 1, "%s||%s||%u||%s||%s", m->tmp.layer, m->tmp.api_str, m->tmp.devs_count, m->tmp.scope_str, m->tmp.granularity_str);
+    tsprintf(buffer, &sti, 1, "%s||%s||%u||%s||%s", m->pow.layer, m->pow.api_str, m->pow.devs_count, m->pow.scope_str, m->pow.granularity_str);
+    tsprintf(buffer, &sti, 1, "%s||%s||%u||%s||%s", m->cpi.layer, m->cpi.api_str, m->cpi.devs_count, m->cpi.scope_str, m->cpi.granularity_str);
+    tsprintf(buffer, &sti, 1, "%s||%s||%u||%s||%s", m->gpu.layer, m->gpu.api_str, m->gpu.devs_count, m->gpu.scope_str, m->gpu.granularity_str);
+    return buffer;
+}
+
+void metrics_info_print(metrics_info_t *m, int fd)
+{
+    static char buffer[4096];
+    dprintf(fd, "%s", metrics_info_tostr(m, buffer));
 }
 
 // Auxiliars
@@ -360,6 +373,7 @@ static state_t metrics_apis_init(void *whatever)
 {
     topology_init(&tp);
     metrics_init(&m, &tp, NULL, EARD);
+    metrics_init_screen(&m, &tp);
     metrics_data_alloc(&mr1, &mr2, &mrD);
     metrics_read(&mr1);
     return EAR_SUCCESS;
