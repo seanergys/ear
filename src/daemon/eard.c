@@ -899,7 +899,7 @@ int main(int argc, char *argv[])
                     uint api_pstate_count = frequency_get_num_pstates();
                     if (eard_min_pstate >= api_pstate_count)
                     {
-                        eard_error("The minimum P-State (%d) must be less than the number of available P-States (%u)", api_pstate_count);
+                        eard_error("The minimum P-State (%d) must be less than the number of available P-States (%u)", eard_min_pstate, api_pstate_count);
                     }
                 }
 
