@@ -107,6 +107,7 @@
 #define MAX_POWER_CAP                       0
 #define POWER_CAP_DISABLED                  0
 #define POWER_CAP_UNLIMITED                 1
+#define TEMP_CAP_UNLIMITED                  1
 #define POWER_CAP_AUTO_CONFIG               -1
 #define DEF_POWER_CAP                       POWER_CAP_AUTO_CONFIG
 #define POWER_CAP_TYPE                      "node"

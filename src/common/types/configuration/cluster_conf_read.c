@@ -15,8 +15,11 @@
  * and COPYING.EPL files.
  */
 
+#define _GNU_SOURCE 
+
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <common/config.h>
 //#define SHOW_DEBUGS 1
 #include <common/output/verbose.h>
@@ -537,17 +540,29 @@ void parse_island(cluster_conf_t *conf, char *line)
         conf->num_islands++;
 }
 
-void get_cluster_config(FILE *conf_file, cluster_conf_t *conf)
+state_t EAR_include(char *token)
+{
+    if (strcasestr(token,"include") != NULL){
+      return EAR_SUCCESS;
+    }
+    return EAR_ERROR;
+}
+
+#define ADD_CONTENT 		0
+#define CREATE_CONTENT 	1
+void get_cluster_config(FILE *conf_file, cluster_conf_t *conf, uint action)
 {
     char line[512];
     char def_policy[128];
     char *token;
 
     //filling the default policies before starting
-    conf->num_policies=0;
-    conf->num_etags=0;
-    conf->power_policies = calloc(TOTAL_POLICIES, sizeof(policy_conf_t));
-    fill_policies(conf);
+    if (action != ADD_CONTENT){
+    	conf->num_policies=0;
+    	conf->num_etags=0;
+    	conf->power_policies = calloc(TOTAL_POLICIES, sizeof(policy_conf_t));
+    	fill_policies(conf);
+		}
     while (fgets(line, 512, conf_file) != NULL)
     {
         if (line[0] == '#') continue;
@@ -555,6 +570,14 @@ void get_cluster_config(FILE *conf_file, cluster_conf_t *conf)
         token = strtok(line, "=");
         strtoup(token);
 
+				if (EAR_include(token) == EAR_SUCCESS){
+					char *file_to_include = strtok(NULL, "=");
+					clean_newlines(file_to_include);
+					verbose(VCCONF, "Include file: '%s'", file_to_include);
+					FILE *fd_include = fopen(file_to_include, "r");
+					if (fd_include != NULL) get_cluster_config(fd_include, conf, ADD_CONTENT);
+					else verbose(VCCONF, "Include file cannot be open %s", strerror(errno));
+				}
 
         if (EARGM_token(token) == EAR_SUCCESS){
             if (EARGM_parse_token(&conf->eargm,token) == EAR_SUCCESS) continue;
@@ -721,7 +744,7 @@ int read_cluster_conf(char *conf_path,cluster_conf_t *my_conf)
     }
     memset(my_conf, 0, sizeof(cluster_conf_t));
     set_ear_conf_default(my_conf);
-    get_cluster_config(conf_file, my_conf);
+    get_cluster_config(conf_file, my_conf, CREATE_CONTENT);
     if ((my_conf->num_policies < 1) || (my_conf->num_islands < 1) || (my_conf->default_policy >TOTAL_POLICIES ))
     {
         error( "Error: ear.conf does not contain any island or policy definition or there is no default policy specified.\n");

@@ -465,8 +465,7 @@ static state_t set_init_fn(dcgmi_lib_init_fn *dst_fn_ptr)
 	if (dst_fn_ptr)
 	{
 		apinfo_t gpu_info;	
-		if (state_ok(gpu_get_info(&gpu_info)))
-		{
+		gpu_get_info(&gpu_info);
 			switch (gpu_info.dev_model)
 			{
 				case NVML_DEVICE_ARCH_TURING:
@@ -485,20 +484,6 @@ static state_t set_init_fn(dcgmi_lib_init_fn *dst_fn_ptr)
 					*dst_fn_ptr = NULL;
 					return_msg(EAR_ERROR, "Device unknown or not supported.");
 			}
-		} else
-		{
-			#define AMPERE 1
-			#if AMPERE == 1
-			*dst_fn_ptr = dcgmi_lib_ampere_init;
-			return EAR_SUCCESS;
-			#endif
-			#if HOPPER == 1
-			*dst_fn_ptr = dcgmi_lib_hopper_init;
-			return EAR_SUCCESS;
-			#endif
-			
-			return_msg(EAR_ERROR, state_msg);
-		}
 		return EAR_SUCCESS;
 	} else
 	{
