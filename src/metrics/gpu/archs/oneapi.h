@@ -22,7 +22,7 @@
 
 void gpu_oneapi_load(gpu_ops_t *ops, int force_api);
 
-void gpu_oneapi_get_api(uint *api);
+void gpu_oneapi_get_info(apinfo_t *info);
 
 state_t gpu_oneapi_init(ctx_t *c);
 

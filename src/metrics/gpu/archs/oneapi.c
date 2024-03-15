@@ -67,7 +67,7 @@ void gpu_oneapi_load(gpu_ops_t *ops, int force_api)
         debug("oneapi_get_devices failed: %s", state_msg);
         return;
     }
-    apis_set(ops->get_api,       gpu_oneapi_get_api);
+    apis_set(ops->get_info,      gpu_oneapi_get_info);
     apis_set(ops->init,          gpu_oneapi_init);
     apis_set(ops->dispose,       gpu_oneapi_dispose);
     apis_set(ops->get_devices,   gpu_oneapi_get_devices);
@@ -76,9 +76,10 @@ void gpu_oneapi_load(gpu_ops_t *ops, int force_api)
     apis_set(ops->read_raw,      gpu_oneapi_read_raw);
 }
 
-void gpu_oneapi_get_api(uint *api)
+void gpu_oneapi_get_info(apinfo_t *info)
 {
-    *api = API_ONEAPI;
+    info->api         = API_ONEAPI;
+    info->devs_count  = devs_count;
 }
 
 state_t gpu_oneapi_init(ctx_t *c)

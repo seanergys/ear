@@ -31,11 +31,11 @@ static uint        root_devs_count = 0;
 static uint        user_devs_count = 0;
 static gpu_devs_t *root_devs;
 static gpu_devs_t *user_devs;
+static uint        eard_api;
 
 void gpu_eard_load(gpu_ops_t *ops, int _eard)
 {
     wide_buffer_t b;
-	uint eard_api;
 	state_t s;
 
     eard = _eard;
@@ -91,8 +91,8 @@ void gpu_eard_load(gpu_ops_t *ops, int _eard)
     }
     #endif
     // If something already loaded
+    apis_put(ops->get_info,      gpu_eard_get_info);
     apis_put(ops->init,          gpu_eard_init);
-    apis_put(ops->get_api,       gpu_eard_get_api);
     apis_put(ops->dispose,       gpu_eard_dispose);
     apis_put(ops->count_devices, gpu_eard_count_devices);
     apis_set(ops->read,          gpu_eard_read);
@@ -100,9 +100,11 @@ void gpu_eard_load(gpu_ops_t *ops, int _eard)
     debug("Loaded metrics/gpu/EARD");
 }
 
-void gpu_eard_get_api(uint *api)
+void gpu_eard_get_info(apinfo_t *info)
 {
-    *api = API_EARD;
+    info->api         = API_EARD;
+    info->api_under   = eard_api;
+    info->devs_count  = user_devs_count;
 }
 
 state_t gpu_eard_init(ctx_t *c)

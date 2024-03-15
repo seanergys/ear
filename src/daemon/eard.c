@@ -704,29 +704,24 @@ static void print_basic_configuration(uint vl)
 
 int main(int argc, char *argv[]) 
 {
-	char my_name[1024];
-	unsigned long ear_node_freq;
-	int ret;
+	char    my_name[1024];
+	ulong   ear_node_freq;
+    int     node_size;
+    int     ret;
+    state_t s;
 
 	// Usage
-	if (argc > 2)
-	{
+	if (argc > 2) {
 		Usage(argv[0]);
 	}
-
 	// Check
-	if (argc == 2)
-	{
-		if (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)
-		{
+	if (argc == 2) {
+		if (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0) {
 			Usage(argv[0]);
 		}
-
 		// Verbose level was set instead of help message requested
 		verb_level = atoi(argv[1]);
-
-		if ((verb_level < 0) || (verb_level > 4))
-		{
+		if ((verb_level < 0) || (verb_level > 4)) {
 			Usage(argv[0]);
 		}
 	}
@@ -735,8 +730,7 @@ int main(int argc, char *argv[])
 	VERB_SET_LV(verb_level);
 
 #if RUN_AS_ROOT
-	if (getuid() != 0)
-	{
+	if (getuid() != 0) {
 		// error(EXIT_FAILURE, 0, "eard must be executed as root.");
 		eard_error("It must be executed as root.");
 	}
@@ -746,100 +740,82 @@ int main(int argc, char *argv[])
 	create_log("/tmp", "eard_journal", fd_my_log);
 
 	// We get nodename to create per_node files
-	if (gethostname(nodename, sizeof(nodename)) < 0)
-	{
+	if (gethostname(nodename, sizeof(nodename)) < 0) {
 		error("Error getting node name (%s)", strerror(errno));
 		_exit(EXIT_FAILURE);
 	}
 
 	strtok(nodename, ".");
-	verbose(VEARD_INIT,"%s running at %s", argv[0], nodename);
-
 	get_exec_name(my_name, sizeof(my_name));
-	verbose(VEARD_INIT, "My name is %s", my_name);
+	verbose(VEARD_INIT, "My name is %s and i'm running at %s", my_name, nodename);
 
-				/** CONFIGURATION **/
-				int node_size;
-				state_t s;
+    init_eard_rt_log();
+    log_report_eard_min_interval(MIN_INTERVAL_RT_ERROR);
 
-				init_eard_rt_log();
-				log_report_eard_min_interval(MIN_INTERVAL_RT_ERROR);
-				verbose(VEARD_INIT, "Reading hardware topology");
-
-                /** Change the open file limit */
-                struct rlimit rl;
-                getrlimit(RLIMIT_NOFILE, &rl);
-                debug("current limit %lu max %lu", rl.rlim_cur, rl.rlim_max);
-                rl.rlim_cur = rl.rlim_max;
-                setrlimit(RLIMIT_NOFILE, &rl);
+    /** Change the open file limit */
+    struct rlimit rl;
+    getrlimit(RLIMIT_NOFILE, &rl);
+    debug("current limit %lu max %lu", rl.rlim_cur, rl.rlim_max);
+    rl.rlim_cur = rl.rlim_max;
+    setrlimit(RLIMIT_NOFILE, &rl);
                 
-                /* We initialize topology */
-                s = topology_init(&node_desc);
-                node_size = node_desc.cpu_count;
+    /* We initialize topology */
+    s = topology_init(&node_desc);
+    node_size = node_desc.cpu_count;
 
-                if (state_fail(s) || node_size <= 0 || node_desc.socket_count <= 0) {
-                    error("topology information can't be initialized (%d)", s);
-                    _exit(1);
-                }
-                topology_print(&node_desc, verb_channel);
+    if (state_fail(s) || node_size <= 0 || node_desc.socket_count <= 0) {
+        error("topology information can't be initialized (%d)", s);
+        _exit(1);
+    }
 
-                verbose(VEARD_INIT,"Topology detected: sockets %d, cores %d, threads %d",
-                        node_desc.socket_count, node_desc.core_count, node_desc.cpu_count);
+    // Reading Cluster configuration
+    verbose(VEARD_INIT,"Reading ear.conf configuration");
+    if (get_ear_conf_path(my_ear_conf_path) == EAR_ERROR) {
+        error("Error opening ear.conf file, not available at regular paths ($EAR_ETC/ear/ear.conf)");
+        _exit(0);
+    }
+    if (read_cluster_conf(my_ear_conf_path, &my_cluster_conf) != EAR_SUCCESS) {
+        error(" Error reading cluster configuration\n");
+        _exit(1);
+    }
+    compute_default_pstates_per_policy(my_cluster_conf.num_policies, my_cluster_conf.power_policies);
 
-// TODO: Below code could be deleted, as APIs already test for msr
-								#ifndef __ARCH_ARM
-#if RUN_AS_ROOT
-                if (msr_test(&node_desc, MSR_WR) != EAR_SUCCESS){
-                    error("msr files are not available, please check the msr kernel module is loaded (modprobe msr)");
-                    _exit(1);
-                }
-#endif
-								#endif
+    // Services
+    services_init(&node_desc);
+    services_print(&node_desc, &my_cluster_conf);
 
-                //
-                verbose(VEARD_INIT,"Initializing frequency list");
-                /* We initialize frecuency */
-                if (frequency_init(0) < 0) {
-                    error("frequency information can't be initialized");
-                    verbose(VEARD_INIT, "frequency information can't be initialized");
-                    _exit(1);
-                }
-								print_basic_configuration(1);
-                verbose(VEARD_INIT,"Reading ear.conf configuration");
-                // We read the cluster configuration and sets default values in the shared memory
-                if (get_ear_conf_path(my_ear_conf_path) == EAR_ERROR) {
-                    error("Error opening ear.conf file, not available at regular paths ($EAR_ETC/ear/ear.conf)");
-                    _exit(0);
-                }
-                if (read_cluster_conf(my_ear_conf_path, &my_cluster_conf) != EAR_SUCCESS) {
-                    error(" Error reading cluster configuration\n");
-                    _exit(1);
+    // Depcrecated frequency service (cleaning pending)
+    if (frequency_init(0) < 0) {
+        verbose(VEARD_INIT, "frequency information can't be initialized");
+        _exit(1);
+    }
+
+    // Reading Node configuration
+    if ((my_node_conf = get_my_node_conf(&my_cluster_conf, nodename)) == NULL) {
+        error( " Node %s not found in ear.conf, exiting\n", nodename);
+        _exit(0);
+    }
+
+    // More Cluster and Node configuration
+    verbose(VEARD_INIT,"%d Nodes detected in ear.conf configuration",my_cluster_conf.cluster_num_nodes);
+    check_policy_values(my_node_conf->policies,my_node_conf->num_policies);
+    copy_my_node_conf(&my_original_node_conf, my_node_conf);
+    update_global_configuration_with_local_ssettings(&my_cluster_conf,my_node_conf);
+
+    print_basic_configuration(1);
+    print_cluster_conf(&my_cluster_conf);
+    print_my_node_conf(my_node_conf);
+
+    // Things to sort
+    if (argc < 2) {
+                    // If verbose level not given as program argument, we set the default.
+                    set_verbose_variables();
                 } else {
-                    verbose(VEARD_INIT,"%d Nodes detected in ear.conf configuration",my_cluster_conf.cluster_num_nodes);
-                    compute_default_pstates_per_policy(my_cluster_conf.num_policies, my_cluster_conf.power_policies);
-                    print_cluster_conf(&my_cluster_conf);
-                    my_node_conf = get_my_node_conf(&my_cluster_conf, nodename);
-                    if (my_node_conf == NULL) {
-                        error( " Node %s not found in ear.conf, exiting\n", nodename);
-                        _exit(0);
-                    }
-                    check_policy_values(my_node_conf->policies,my_node_conf->num_policies);
-                    print_my_node_conf(my_node_conf);
-                    copy_my_node_conf(&my_original_node_conf, my_node_conf);
-                    update_global_configuration_with_local_ssettings(&my_cluster_conf,my_node_conf);
+                    TIMESTAMP_SET_EN(my_cluster_conf.eard.use_log);
                 }
 
-								if (argc < 2)
-								{
-									// If verbose level not given as program argument, we set the default.
-									set_verbose_variables();
-								} else
-								{
-									TIMESTAMP_SET_EN(my_cluster_conf.eard.use_log);
-								}
-
-								verbose(VEARD_INIT,"Serializing cluster_conf");
-								serialize_cluster_conf(&my_cluster_conf, &ser_cluster_conf, &ser_cluster_conf_size);
+                verbose(VEARD_INIT,"Serializing cluster_conf");
+                serialize_cluster_conf(&my_cluster_conf, &ser_cluster_conf, &ser_cluster_conf_size);
                 verbose(VEARD_INIT,"Serialized cluster conf requires %lu bytes", ser_cluster_conf_size);
 
                 verbose(VEARD_INIT,"Initializing dynamic information and creating tmp");
@@ -917,17 +893,15 @@ int main(int argc, char *argv[])
 
                 state_assert(s, monitor_init(), _exit(0));
 
-                if (eard_min_pstate < 0)
-								{
-									eard_error("Minimum P-State (%u) must be greater or equal to 0.", eard_min_pstate);
-								} else
-								{
-									uint api_pstate_count = frequency_get_num_pstates();
-									if (eard_min_pstate >= api_pstate_count)
-									{
-										eard_error("The minimum P-State (%d) must be less than the number of available P-States (%u)", api_pstate_count);
-									}
-								}
+                if (eard_min_pstate < 0) {
+                    eard_error("Minimum P-State (%u) must be greater or equal to 0.", eard_min_pstate);
+                } else {
+                    uint api_pstate_count = frequency_get_num_pstates();
+                    if (eard_min_pstate >= api_pstate_count)
+                    {
+                        eard_error("The minimum P-State (%d) must be less than the number of available P-States (%u)", eard_min_pstate, api_pstate_count);
+                    }
+                }
 
                 ear_node_freq = frequency_pstate_to_freq(eard_min_pstate);
                 eard_max_freq = ear_node_freq;
@@ -937,8 +911,8 @@ int main(int argc, char *argv[])
                 imcfreq_load(&node_desc, NO_EARD);
                 state_assert(s, imcfreq_init(no_ctx), _exit(0));
 
-                // Services
-                services_init(&node_desc, my_node_conf);
+    // Services
+    //services_init(&node_desc, my_node_conf);
 
 #if EARD_LOCK
                 eard_lock(ear_tmp);

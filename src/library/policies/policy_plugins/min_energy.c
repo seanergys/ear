@@ -197,13 +197,11 @@ state_t policy_init(polctx_t *c)
         use_energy_models = 0;
       } else
       {
-#if 0
-        if (!energy_model_all_projections_available(cpu_energy_model))
+        if (!energy_model_any_projection_available(cpu_energy_model))
         {
 					error_lib("Not all projections available");
 					use_energy_models = 0;
 				}
-#endif
       }
     } else
     {

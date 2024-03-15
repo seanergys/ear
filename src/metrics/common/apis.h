@@ -74,6 +74,7 @@ typedef struct ctx_s {
 typedef struct apinfo_s {
     char *layer;
     uint  api;
+    uint  api_under;
     uint  ok;
     char *api_str;
     uint  devs_count;

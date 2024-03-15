@@ -22,7 +22,7 @@
 
 void gpu_eard_load(gpu_ops_t *ops, int eard);
 
-void gpu_eard_get_api(uint *api);
+void gpu_eard_get_info(apinfo_t *info);
 
 state_t gpu_eard_init(ctx_t *c);
 

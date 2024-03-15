@@ -290,7 +290,7 @@ static int basefreq_spec_valididity_test(cpufreq_base_t *base)
 {
     // Finally, if is under 5 GHz and over 1 GHz we assume that
     // the speculation could be valid.
-    if (base->frequency <= 5000000 || base->frequency >= 1000000) {
+    if (base->frequency <= 5000000 && base->frequency >= 1000000) {
         base->not_reliable = 1;
         return basefreq_found_set(1, 0);
     }

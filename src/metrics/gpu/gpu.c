@@ -56,9 +56,20 @@ unlock_load:
 
 void gpu_get_api(uint *api)
 {
-    *api = API_NONE;
-    if (ops.get_api != NULL) {
-        return ops.get_api(api);
+    apinfo_t info;
+    gpu_get_info(&info);
+    *api = info.api;
+}
+
+void gpu_get_info(apinfo_t *info)
+{
+    info->layer       = "GPU";
+    info->api         = API_NONE;
+    info->devs_count  = 0;
+    info->scope       = SCOPE_NODE;
+    info->granularity = GRANULARITY_PERIPHERAL;
+    if (ops.get_info != NULL) {
+        ops.get_info(info);
     }
 }
 
@@ -277,16 +288,4 @@ char *gpu_data_tostr(gpu_t *data, char *buffer, int length)
 int gpu_is_supported()
 {
     return gpu_eard_is_supported();
-}
-
-state_t gpu_get_info(apinfo_t *info)
-{
-	if (info)
-	{
-		debug("Calling API class get info method");
-		preturn(ops.get_info, info);
-	} else
-	{
-		return_msg(EAR_ERROR, Generr.input_null);
-	}
 }

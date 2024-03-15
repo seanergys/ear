@@ -48,8 +48,14 @@ out:
 
 void cache_get_info(apinfo_t *info)
 {
-    info->layer = "CACHE";
-    return ops.get_info(info);
+    info->layer       = "CACHE";
+    info->api         = API_NONE;
+    info->devs_count  = 0;
+    info->scope       = SCOPE_PROCESS;
+    info->granularity = GRANULARITY_PROCESS;
+    if (ops.get_info != NULL) {
+        ops.get_info(info);
+    }
 }
 
 state_t cache_init(ctx_t *c)

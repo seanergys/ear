@@ -183,13 +183,15 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 
 	/* Reporting plugin */
 	if (state_fail(report_load(conf_clus->install.dir_plug,conf_clus->db_manager.plugins))){
-		edb_error("Report plugin load failed");
-		report_create_id(&rid, -1, -1, -1);
-	}else{
-		report_create_id(&rid, 0, 0, 0);
+		edb_error("Report error during loading: %s", state_msg);
+        exit(EXIT_FAILURE);
 	}
+    // Creating a report id
+    report_create_id(&rid, 0, 0, 0);
+	// Initializing
 	if (state_fail(report_init(&rid, conf_clus))){
-		edb_error("Report plugin initialization failed");
+        edb_error("Report error during initialization: %s", state_msg);
+        exit(EXIT_FAILURE);
 	}
 	debug("dbcon info: '%s'    plugin", conf_clus->db_manager.plugins);
 	if (strcmp(conf_clus->db_manager.plugins,"mysql.so") == 0){
