@@ -55,6 +55,7 @@ extern uint   AID;
 static void debug_loop_signature(char *title, signature_t *loop);
 #endif
 
+
 void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname, char *nname,
         int iterations, ulong prevf, ulong new_freq, char *user_mode)
 {
@@ -66,9 +67,6 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
     ulong elapsed;
     timestamp end;
     char mode[32];
-#if 0
-    sig_ext_t *se = (sig_ext_t *)sig->signature.sig_ext;
-#endif
 
     if (VERB_GET_LV() == 0) return;
     sprintf(mode, "%s", "");
@@ -79,7 +77,7 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
     timestamp_getfast(&end);
     elapsed=timestamp_diff(&end, &ear_application_time_init, TIME_SECS);
 
-    float imcf;
+    float imcf, sel_mem_f;
     char gpu_buff[256];
 
     /* master_rank == 0: The master node rank (is who verboses if verb_level >= 1).
@@ -90,7 +88,7 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
     if (master_rank == 0 || show || using_verb_files) {
         
         // MPI info
-		sig_ext_t *sigex      = (sig_ext_t *) sig->signature.sig_ext;
+			sig_ext_t *sigex      = (sig_ext_t *) sig->signature.sig_ext;
         // Only the master shows that information as is who computed it
         // TODO: Does the shared signature have these metrics after the master computed it?
         float      max_mpi    = (master_rank >= 0) ? (sigex->max_mpi) : 0.0;
@@ -116,6 +114,7 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
 
         // IMC
         imcf = (per_proc_verb_file) ? (float) lib_shared_region->job_signature.avg_imc_f / 1000000.0 : (float) sig->signature.avg_imc_f / 1000000.0;
+				sel_mem_f = ((sigex == NULL)? imcf : (float)sigex->sel_mem_freq_khz / 1000000.0);
 
         // CPI
         // If enabled, each process reports its CPI
@@ -249,8 +248,8 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
                 mode, AID, aname, PFREQ, nname, sig->id.event, sig->id.size, sig->id.level, iterations); 
 
         debug("%swriting nname at elapsed%s", COL_YLW, COL_CLR)
-        verbosen(1, "EAR%s[%u](%s) at %.2f in %s MR[%d] elapsed %lu sec.: ",
-                mode, AID, aname, PFREQ, nname, master_rank, elapsed); 
+        verbosen(1, "EAR%s[%u](%s) at %.2f/%.2f in %s MR[%d] elapsed %lu sec.: ",
+                mode, AID, aname, PFREQ, sel_mem_f,nname, master_rank, elapsed); 
         verbosen(1, "%s", COL_GRE);
 
 #if USE_GPUS

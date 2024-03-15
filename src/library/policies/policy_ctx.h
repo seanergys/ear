@@ -102,6 +102,6 @@ typedef struct policy_symbols {
 	state_t (*restore_settings)   (polctx_t *c, signature_t *my_sig, node_freqs_t *freqs);
 } polsym_t;
 
-
+void compute_avg_sel_freq(ulong * avg_sel_mem_f, ulong *imcfreqs);
 
 #endif //EAR_POLICIES_H

@@ -84,21 +84,27 @@ char * phase_to_str(uint phase)
 }
 
 
+void classify_verbose(uint vl)
+{
+	verbose_master(vl, "CPU bound (CPI  < %.2lf GBS < %.2lf) MEM bound (CPI > %2.lf GBS > %.2lf)",
+		CPI_CPU_BOUND, GBS_CPU_BOUND, CPI_MEM_BOUND, GBS_MEM_BOUND);
+}
+
 state_t classify_init(topology_t *tp_in)
 {
   switch (tp_in->vendor){
     case VENDOR_INTEL:
       /* Before Sylake */
       if (tp_in->model <= MODEL_BROADWELL_X){
-        return EAR_SUCCESS;
+				goto report_classify;
       }
       /* Skylake */
       if (tp_in->model < MODEL_ICELAKE_X){
-        return EAR_SUCCESS;
+				goto report_classify;
       }
       /* Icelake */
       if ((tp_in->model >= MODEL_ICELAKE_X) && (tp_in->model < MODEL_SAPPHIRE_RAPIDS)){
-        return EAR_SUCCESS;
+				goto report_classify;
       }
 			/* Sphire Rapids */
 			if (tp_in->model >= MODEL_SAPPHIRE_RAPIDS){
@@ -106,7 +112,7 @@ state_t classify_init(topology_t *tp_in)
 				GBS_CPU_BOUND =       180;
 				CPI_MEM_BOUND =				0.4;
 				GBS_MEM_BOUND =				250;
-				return EAR_SUCCESS;
+				goto report_classify;
 			}	
 
       break;
@@ -117,7 +123,7 @@ state_t classify_init(topology_t *tp_in)
 				GBS_CPU_BOUND =       250;
 				CPI_MEM_BOUND =       0.9;
 				GBS_MEM_BOUND =       350;
-        return EAR_SUCCESS;
+				goto report_classify;
       }
       /* Zen3 = Milan */
       if (tp_in->family >= FAMILY_ZEN3){
@@ -125,11 +131,13 @@ state_t classify_init(topology_t *tp_in)
 				GBS_CPU_BOUND =       400;
 				CPI_MEM_BOUND =       0.9;
 				GBS_MEM_BOUND =       500;
-        return EAR_SUCCESS;
+				goto report_classify;
       }
       break;
     default:break;
   }
+report_classify:
+	classify_verbose(INFO_CLASSIFY);
   return EAR_SUCCESS;
 }
 

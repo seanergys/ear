@@ -256,6 +256,11 @@ void states_begin_job(int my_id, char *app_name)
 
 	overhead_suscribe("evaluate_sig",&id_ovh_ev_sig);
 	overhead_suscribe("sig_stable",&id_ovh_stable);
+
+	/* Allocating space for the sig_ext if needed , application sig ext is allocated in ear.c */
+	loop_signature.sig_ext = (void *)calloc(1, sizeof(sig_ext_t));
+	curr_loop.signature.sig_ext = (void *)calloc(1, sizeof(sig_ext_t));
+
 }
 
 
@@ -288,6 +293,16 @@ void states_begin_period(int my_id, ulong event, ulong size, ulong level)
 #endif
 
     policy_loop_init(&curr_loop.id);
+
+		/* At that time, sig_ext is supposed to be already allocated */
+    sig_ext_t * sigext = (sig_ext_t *)loop_signature.sig_ext;
+		/* Copy avg selected mem freq */
+		compute_avg_sel_freq(&sigext->sel_mem_freq_khz, node_freqs.imc_freq);
+
+		sigext = (sig_ext_t *)loop_signature.sig_ext;
+		/* Copy avg selected mem freq */
+		compute_avg_sel_freq(&sigext->sel_mem_freq_khz, node_freqs.imc_freq);
+
 
     // comp_N_begin = metrics_time();
     restart_period_time_init(&comp_N_begin);
@@ -599,6 +614,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             N_iter = iterations - begin_iter;
 
             /* We update periodically because some jobs change it at runtime. */
+						/* PENDING: Reduce the periodicity */
             if (masters_info.my_master_rank >= 0){
               if (state_fail(update_job_affinity_mask(lib_shared_region, sig_shared_region)))
              {
@@ -741,6 +757,15 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
             policy_get_current_freq(&node_freqs);
             lavg = node_freqs_avgcpufreq(node_freqs.cpu_freq);
+					
+						/* At that time, sig_ext is supposed to be already allocated */	
+						sig_ext_t * sigext = (sig_ext_t *)loop_signature.sig_ext;
+						/* Copy avg selected mem freq */
+						compute_avg_sel_freq(&sigext->sel_mem_freq_khz, node_freqs.imc_freq);
+
+						sigext = (sig_ext_t *)curr_loop.signature.sig_ext;
+						/* Copy avg selected mem freq */
+						compute_avg_sel_freq(&sigext->sel_mem_freq_khz, node_freqs.imc_freq);
 
             if (lavg > 0) {
                 loop_signature.def_f = lavg;

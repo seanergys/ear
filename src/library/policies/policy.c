@@ -1301,6 +1301,10 @@ state_t policy_get_default_freq(node_freqs_t *freq_set)
         freq_set->cpu_freq[i] = DEF_FREQ(my_pol_ctx.app->def_freq);
     }
 
+		sig_ext_t *sigext = (sig_ext_t *)application.signature.sig_ext;
+		/* Copy avg selected mem freq */
+		compute_avg_sel_freq(&sigext->sel_mem_freq_khz, freq_set->imc_freq);
+
     return EAR_SUCCESS;
 }
 
@@ -2125,6 +2129,7 @@ static state_t policy_mem_freq_selection(polctx_t *c, signature_t *my_sig, node_
             if (imc_up[sid] != ps_nothing) {
                 verbose_policy_info("Setting IMC freq (Upper/Lower) [SID=%d] to (%llu/%llu)",
                                     sid, imc_pstates[imc_low[sid]].khz, imc_pstates[imc_up[sid]].khz);
+
             } else {
                 verbose_policy_info("Setting IMC freq (Upper) [SID=%d] (%llu) and min",
                                     sid, imc_pstates[imc_low[sid]].khz);
@@ -2648,4 +2653,9 @@ static state_t policy_restore_cpus_governor()
     }
 
     return EAR_SUCCESS;
+}
+
+
+void compute_avg_sel_freq(ulong * avg_sel_mem_f, ulong *imcfreqs)
+{
 }

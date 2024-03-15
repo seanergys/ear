@@ -311,6 +311,9 @@ static state_t check_eard_earl_compatibility(state_t eard_connect_state)
 
 	eard_state_t eard_conf;
 
+	verbose_master(0, "Warning, EARD compatibility test not supported");
+	return EAR_SUCCESS;
+
 	// If eards_get_state returns EAR_ERROR, means that the connected EARD does not have the RPC
 	// implemented, so we assume it is an old version and (by now) it should be compatible.
 	// This is why currently if the below call returns ERROR, we return EAR_SUCCESS
@@ -327,7 +330,7 @@ static state_t check_eard_earl_compatibility(state_t eard_connect_state)
 		{
 			st = EAR_ERROR;
 		}
-	}
+	}else st = EAR_SUCCESS; /* If eards_get_state is not implemented, there is a possibility that it's not compatible */
 	return st;
 }
 

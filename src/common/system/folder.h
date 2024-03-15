@@ -33,6 +33,7 @@ state_t folder_open(folder_t *folder, char *path);
 state_t folder_close(folder_t *folder);
 
 char *folder_getnext(folder_t *folder, char *prefix, char *suffix);
+char *folder_getnextdir(folder_t *folder, char *prefix, char *suffix);
 
 /* Looks for files/folders for a given type. If type is DT_UNKNOWN all types are considered */
 char *folder_getnext_type(folder_t *folder, char *prefix, char *suffix, uint type);

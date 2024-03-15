@@ -140,6 +140,10 @@ char *folder_getnext_type(folder_t *folder, char *prefix, char *suffix, uint typ
 	return NULL;
 }
 
+char *folder_getnextdir(folder_t *folder, char *prefix, char *suffix)
+{
+	return folder_getnext_type(folder, prefix, suffix, DT_DIR);
+}
 
 state_t folder_remove(char *path)
 {

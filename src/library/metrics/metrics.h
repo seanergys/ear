@@ -65,6 +65,7 @@ typedef struct sig_ext
     dlb_node_metrics_t dlb_talp_node_metrics;
 #endif
 		proc_stat_t        proc_ps;
+		ulong              sel_mem_freq_khz;
 } sig_ext_t;
 
 /** New metrics **/
