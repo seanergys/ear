@@ -15,6 +15,8 @@
 * and COPYING.EPL files.
 */
 
+
+#include <common/config/config.h>
 void ear_constructor()
 {
 }

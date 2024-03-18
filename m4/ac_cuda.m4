@@ -67,7 +67,7 @@ AC_DEFUN([X_AC_CUDA],
 	fi
 
 	AC_SUBST(CUDA_DIR)
-    AC_SUBST(CUDA_CFLAGS)
+	AC_SUBST(CUDA_CFLAGS)
 
 	AM_CONDITIONAL(WITH_CUDA, test -n "$_cv_cuda_dir_root")
 ])

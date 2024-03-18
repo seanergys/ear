@@ -16,10 +16,12 @@ m4_include([m4/ac_rsmi.m4])
 m4_include([m4/ac_pbs.m4])
 m4_include([m4/ac_oar.m4])
 m4_include([m4/ac_gsl.m4])
+m4_include([m4/ac_dlb.m4])
 
 # INIT
 AC_PREREQ([2.69])
 AC_INIT([EAR], [4.3], [ear-support@bsc.es])
+AC_CONFIG_HEADERS([src/common/config/config.h])
 AC_LANG(C)
 
 # PROGRAMS TEST
@@ -54,6 +56,7 @@ X_AC_REDFISH
 X_AC_SLURM
 X_AC_OAR
 X_AC_PBS
+X_AC_DLB
 
 #################
 # POST-FEATURES #
@@ -90,11 +93,12 @@ AC_DEFUN([AC_FEATURE_CHECK],
     fi
 ])
 
-echo "---------------------------------------Checking summary --"
+AS_ECHO("---------------------------------------Checking summary --")
 AC_DEPENDANCY_CHECK($GSL_DIR, GSL dependancy found, 1)
 AC_DEPENDANCY_CHECK($SCHED_DIR, SLURM/PBS/OAR dependancy found ($SCHED_NAME), 0)
 AC_DEPENDANCY_CHECK($DB_DIR, Database dependancy found ($DB_NAME), 1)
-echo "----------------------------------------------------------"
+AS_ECHO("----------------------------------------------------------")
+
 
 #if test -z $COMPILABLE; then
 #	AC_MSG_ERROR(not compilable)

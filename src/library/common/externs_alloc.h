@@ -15,6 +15,10 @@
 * and COPYING.EPL files.
 */
 
+
+#ifndef _EARL_EXTERNS_ALLOC_H
+#define _EARL_EXTERNS_ALLOC_H
+
 #include <linux/limits.h>
 #include <common/types/application.h>
 #include <common/types/loop.h>
@@ -71,3 +75,5 @@ uint report_all_sig=0;
 
 uint earl_phase_classification = APP_COMP_BOUND;
 topology_t mtopo;
+
+#endif // _EARL_EXTERNS_ALLOC_H

@@ -16,6 +16,8 @@
 */
 
 
+#include <common/config/config.h>
+
 #include <library/models/energy_models/common.h>
 
 

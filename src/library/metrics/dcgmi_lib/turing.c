@@ -15,6 +15,8 @@
  */
 
 
+#include <common/config/config.h>
+
 #include <library/metrics/dcgmi_lib/turing.h>
 
 #include <stdlib.h>

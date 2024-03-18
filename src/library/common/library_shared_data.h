@@ -91,7 +91,7 @@ typedef struct lib_shared_data {
     uint        earl_on;
     int         num_processes;
     uint        num_signatures;
-    uint        num_cpus; // Number of CPUs used for the job. Computed from node_mask attribute.
+    uint        num_cpus;													/**< Number of CPUs used for the job. Computed from node_mask attribute. */
     float       total_cache_bwidth;
     ullong      cas_counters;
     signature_t node_signature;
@@ -99,79 +99,39 @@ typedef struct lib_shared_data {
     int         master_rank;
     uint        master_ready;
     uint        global_stop_ready;
-    cpu_set_t   node_mask;
-    ulong       avg_cpufreq[MAX_CPUS_SUPPORTED]; // Average CPU freq for each processor of the job
+    cpu_set_t   node_mask;											 /**< The CPU_SET mask of the job in the node. */
+    ulong       avg_cpufreq[MAX_CPUS_SUPPORTED]; /**< Average CPU freq for each processor of the job. */
     uint        node_mgr_index;
-	uint        reduced_in_barrier; // This variable is only used in an unstable/research policy.
+		uint        reduced_in_barrier;							 /**< This variable is only used in an unstable/research policy. */
 #if MPI_OPTIMIZED
-		uint    processes_in_barrier;
-#endif
-#if DLB
-        int     must_call_libdlb; // A control variable to rule processes to call DLB blocking calls.
-        int     max_libdlb_calls; // The maximum times DLB API was called.
+    uint    processes_in_barrier;
 #endif
 } lib_shared_data_t;
 
+
 /** Per-process application data. */
 typedef struct shsignature {
-    uint              master;
-    pid_t             pid;
-    uint              ready;
+	uint              master;
+	pid_t             pid;
+	uint              ready;
 	uint              exited;
-    uint              iterations;
-    mpi_information_t mpi_info;
-    mpi_calls_types_t mpi_types_info;
-    ssig_t            sig; // it was originally a signature_t
-    int               app_state;
-    ulong             new_freq;
+	uint              iterations;
+	mpi_information_t mpi_info;
+	mpi_calls_types_t mpi_types_info;
+	ssig_t            sig; // it was originally a signature_t
+	int               app_state;
+	ulong             new_freq;
 	uint              num_cpus;
-    cpu_set_t         cpu_mask;
-    uint              pstate_index; /*!< The P-STATE selected by master for the CPUs associated, after policy_apply. */
-    int               affinity;
-    uint              unbalanced;
-    float             perc_MPI;
+	cpu_set_t         cpu_mask;
+	uint              pstate_index; /*!< The P-STATE selected by master for the CPUs associated, after policy_apply. */
+	int               affinity;
+	uint              unbalanced;
+	float             perc_MPI;
 	double            period;
-    /* This field is used for mpi opt
-     * TODO: Put below declaration inside MPI_OPTIMIZED only + decide how to handle it at min_energy. */
-    ulong             mpi_freq;
-#if DLB
-    int               libdlb_calls_cnt; // Counter for DLB API's blocking functions calls.
-#endif
+	/* This field is used for mpi opt
+	 * TODO: Put below declaration inside MPI_OPTIMIZED only + decide how to handle it at min_energy. */
+	ulong             mpi_freq;
 } shsignature_t;
-/**@}*/
-
-typedef struct shsignature_mpi{
-  mpi_information_t mpi_info;
-  mpi_calls_types_t mpi_types_info;
-}shsignature_mpi_t;
-
-
-typedef struct sh_signatures_s
-{
-    uint              *master;
-    pid_t             *pid;
-    uint              *ready;
-	uint              *exited;
-    uint              *iterations;
-    mpi_information_t *mpi_info;
-    mpi_calls_types_t *mpi_types_info;
-    ssig_t            *sig;
-    int               *app_state;
-    ulong             *new_freq;
-	uint              *num_cpus;
-    cpu_set_t         *cpu_mask;
-    uint              *pstate_index;
-    int               *affinity;
-    uint              *unbalanced;
-    float             *perc_MPI;
-	double            *period;
-    /* This field is used for mpi opt
-     * TODO: Put below declaration inside MPI_OPTIMIZED only + decide how to handle it at min_energy. */
-    ulong             *mpi_freq;
-#if DLB
-    int               *libdlb_calls_cnt;
-#endif
-} sh_signatures_t;
 
 
 typedef struct node_mgr_sh_data {
@@ -185,6 +145,7 @@ typedef struct node_mgr_sh_data {
 	lib_shared_data_t *libsh;
 	shsignature_t     *shsig;
 } node_mgr_sh_data_t;
+/**@}*/
 
 void eid_folder(char *dst, int size, char *tmp, int jid, int sid, uint aid);
 

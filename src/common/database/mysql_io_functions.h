@@ -15,6 +15,10 @@
 * and COPYING.EPL files.
 */
 
+
+#ifndef _EAR_MYSQL_IO_FNCTS_H
+#define _EAR_MYSQL_IO_FNCTS_H
+
 #include <common/config.h>
 #include <common/database/db_io_common.h>
 
@@ -194,3 +198,4 @@ int mysql_retrieve_power_signatures(MYSQL *connection, char *query, power_signat
 /** Given a MYSQL connection and a query, retrieves the corresponding result and stores it in results*/
 int mysql_run_query_string_results(MYSQL *connection, char *query, char ****results, int *num_columns, int *num_rows);
 #endif
+#endif // _EAR_MYSQL_IO_FNCTS_H

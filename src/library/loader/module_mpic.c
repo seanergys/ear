@@ -14,11 +14,16 @@
 * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
 * and COPYING.EPL files.
 */
+
+
+#include <common/config/config.h>
+
 #include <stdlib.h>
 #include <unistd.h>
 #include <common/config.h>
 #include <library/loader/module_common.h>
 #include <library/loader/module_mpi.h>
+
 
 extern mpic_t ear_mpic;
 

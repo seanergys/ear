@@ -1,3 +1,6 @@
+#include <common/config/config.h>
+
+
 int module_affinity()
 {
 	char *s = NULL;

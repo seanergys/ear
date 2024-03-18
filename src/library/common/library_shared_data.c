@@ -15,8 +15,12 @@
 * and COPYING.EPL files.
 */
 
-// #define SHOW_DEBUGS 1
+
 #define _GNU_SOURCE
+
+
+#include <common/config/config.h>
+
 #include <sched.h>
 #include <fcntl.h>
 #include <errno.h>

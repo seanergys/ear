@@ -15,6 +15,8 @@
 * and COPYING.EPL files.
 */
 
+
+#include <common/config/config.h>
 #if MPI
 #include <mpi.h>
 #endif

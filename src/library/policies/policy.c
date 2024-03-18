@@ -15,7 +15,10 @@
 * and COPYING.EPL files.
 */
 
-// #define SHOW_DEBUGS 1
+
+#include <common/config/config.h>
+
+
 #define _GNU_SOURCE
 
 #include <sched.h>
@@ -396,27 +399,21 @@ state_t policy_load(char *obj_path, polsym_t *psyms)
 
 void fill_cpus_out_of_cgroup(uint exc)
 {
-    int cpu_cnt, cpu_idx;
-    if (exc == 0) return;
-    cpu_cnt = arch_desc.top.cpu_count;
-    #if DLB
-    verbosen_master(VEARL_INFO, "IDLE freq (%lu) cpus --> ",
-                    frequency_pstate_to_freq(frequency_get_num_pstates()-1));
-    #endif
+  if (exc == 0) return;
 
-    for (cpu_idx = 0; cpu_idx < cpu_cnt; cpu_idx++){
-        if (freq_per_core[cpu_idx] == 0){
-            debug("Reducing frequency of CPU %d", cpu_idx);
-            freq_per_core[cpu_idx] = frequency_pstate_to_freq(frequency_get_num_pstates()-1);
-            #if DLB
-            verbosen_master(VEARL_INFO, "%d ", cpu_idx);
-            #endif
-        }
+  verbosen_master(VEARL_DEBUG, "IDLE freq (%lu) cpus --> ",
+                  frequency_pstate_to_freq(frequency_get_num_pstates()-1));
+
+  int cpu_cnt = arch_desc.top.cpu_count;
+  for (int cpu_idx = 0; cpu_idx < cpu_cnt; cpu_idx++)
+  {
+    if (freq_per_core[cpu_idx] == 0)
+    {
+      freq_per_core[cpu_idx] = frequency_pstate_to_freq(frequency_get_num_pstates()-1);
+      verbosen_master(VEARL_DEBUG, "%d ", cpu_idx);
     }
-    #if DLB
-    verbosen_master(VEARL_INFO, "\n");
-    #endif
-
+  }
+  verbosen_master(VEARL_DEBUG, "\n");
 }
 
 #define DEBUG_CPUFREQ_COST 0

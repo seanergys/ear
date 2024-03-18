@@ -15,6 +15,8 @@
 * and COPYING.EPL files.
 */
 
+
+#include <common/config/config.h>
 #define _GNU_SOURCE         /* See feature_test_macros(7) */
 #include <errno.h>
 

@@ -9,9 +9,9 @@ export FEAT_DB_MYSQL
 export FEAT_DB_PSQL    
 export FEAT_EXAMON
 export FEAT_DB_CASSANDRA
-export FEAT_DLB
 export FEAT_DB_PROMETHEUS
 export FEAT_WF_SUPPORT   
+export FEAT_DLB
 export CC
 export CC_FLAGS
 export MPICC
@@ -45,7 +45,9 @@ export FREEIPMI_BASE
 export FREEIPMI_CFLAGS
 export FREEIPMI_LDFLAGS
 export COUNTDOWN_BASE
-export DLB_BASE
+export DLB_LIBS
+export DLB_CPPFLAGS
+export DLB_LDFLAGS
 export ROOTDIR
 export SRCDIR
 export DESTDIR

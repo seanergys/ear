@@ -41,12 +41,6 @@ else
 CFLAGS += -DDCGMI=0
 endif
 
-ifeq ($(FEAT_DLB), 1)
-CFLAGS += -DDLB=1 -I$(DLB_BASE)/include
-LDFLAGS += -L$(DLB_BASE)/lib -ldlb
-endif
-
-
 # export LIBCC
 # export LIBCC_FLAGS
 export LIB_CFLAGS
@@ -111,6 +105,10 @@ core_OBJS += \
 						 metrics/ampere.o
 endif
 
+ifeq ($(FEAT_DLB), 1)
+core_OBJS += metrics/dlb_talp_lib.o
+endif
+
 
 ifeq ($(FEAT_MPI_API), 1)
 mpix_OBJS = \
@@ -125,7 +123,7 @@ endif
 all: all.components $(libs_OBJS)
 
 %.so: $(mpix_OBJS) $(core_OBJS) $(comm_OBJS)
-	$(LIBCC) $(LIBCC_FLAGS) -o $*.$(ext) $^ $(LDFLAGS)
+	$(LIBCC) $(LIBCC_FLAGS) $(DLB_LDFLAGS) -o $*.$(ext) $^ $(LDFLAGS) $(DLB_LIBS)
 
 ######## OPTIONS
 
