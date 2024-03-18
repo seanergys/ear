@@ -15,7 +15,8 @@
 * and COPYING.EPL files.
 */
 
-// #define SHOW_DEBUGS 0
+
+#include <common/config/config.h>
 #include <stdio.h>
 #include <semaphore.h>
 
@@ -77,6 +78,7 @@ static uint check_ID(uint ID)
 state_t report_init(report_id_t *id, cluster_conf_t *cconf)
 {
     debug("eard report_init");
+    char nodename[128];
 		if (id->master_rank >= 0 ) must_report = 1;
 		if (!must_report) return EAR_SUCCESS;
     gethostname(nodename, sizeof(nodename));

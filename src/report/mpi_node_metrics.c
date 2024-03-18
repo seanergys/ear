@@ -15,15 +15,26 @@
 * and COPYING.EPL files.
 */
 
+
 // #define SHOW_DEBUGS 1
 
+#include <common/config/config.h>
+#include <common/output/debug.h>
 #include <common/includes.h>
 #include <common/config.h>
 
 #include <library/metrics/metrics.h>
 #include <library/common/library_shared_data.h>
+#ifdef DLB_SUPPORT
+#include <library/metrics/dlb_talp_lib.h>
+#endif
 
 #include <report/report.h>
+
+#ifndef DLB_SUPPORT
+#define DLB_SUPPORT 0
+#endif
+
 
 static char csv_log_file[64];
 static char jobid[32];
@@ -77,7 +88,6 @@ state_t report_misc(report_id_t *id, uint type, cchar *data, uint count)
 
 static state_t append_data(report_id_t *id, sig_ext_t *data, uint count)
 {
-
     debug("[%d] report mpi node metrics print", id->master_rank);
 
     if (!report_file_created)
@@ -87,13 +97,13 @@ static state_t append_data(report_id_t *id, sig_ext_t *data, uint count)
             return EAR_ERROR;
         }
 
-#if DLB
-        static char header[] = "time,node_id,total_useful_time,max_useful_time,"
-                               "load_balance,parallel_efficiency,max_mpi,min_mpi,avg_mpi,"
-                               "talp_load_balance,talp_parallel_efficiency";
+#if DLB_SUPPORT
+        char header[] = "time,node_id,total_useful_time,max_useful_time,"
+                        "load_balance,parallel_efficiency,max_mpi,min_mpi,avg_mpi"
+												"talp_timestamp,talp_load_balance,talp_parallel_efficiency";
 #else
-        static char header[] = "time,node_id,total_useful_time,max_useful_time,"
-                               "load_balance,parallel_efficiency,max_mpi,min_mpi,avg_mpi";
+        char header[] = "time,node_id,total_useful_time,max_useful_time,"
+                        "load_balance,parallel_efficiency,max_mpi,min_mpi,avg_mpi";
 #endif
 
         if (fprintf(stream, "%s", header) < 0) {
@@ -145,18 +155,20 @@ static state_t append_data(report_id_t *id, sig_ext_t *data, uint count)
 
     // MPI %
     double avg_mpi = avg_mpi_time / (double) max_exec_time;
-#if DLB
-    fprintf(stream, "\n%s,%d,%llu,%llu,%lf,%lf,%lf,%lf,%lf,%f,%f",
+
+#if DLB_SUPPORT
+			fprintf(stream, "\n%s,%d,%llu,%llu,%lf,%lf,%lf,%lf,%lf,%ld,%f,%f",
+							time_buff, id->master_rank, total_useful_time,
+							max_useful_time, load_balance, parallel_eff,
+							data->max_mpi, data->min_mpi, avg_mpi, data->earl_talp_data.timestamp.tv_sec,
+							data->earl_talp_data.load_balance, data->earl_talp_data.parallel_efficiency);
+
 #else
-    fprintf(stream, "\n%s,%d,%llu,%llu,%lf,%lf,%lf,%lf,%lf",
+			fprintf(stream, "\n%s,%d,%llu,%llu,%lf,%lf,%lf,%lf,%lf",
+							time_buff, id->master_rank, total_useful_time,
+							max_useful_time, load_balance, parallel_eff,
+							data->max_mpi, data->min_mpi, avg_mpi);
 #endif
-            time_buff, id->master_rank, total_useful_time,
-            max_useful_time, load_balance, parallel_eff,
-            data->max_mpi, data->min_mpi, avg_mpi
-#if DLB
-            , data->dlb_talp_node_metrics.load_balance, data->dlb_talp_node_metrics.parallel_efficiency
-#endif
-           );
 
     return EAR_SUCCESS;
 }

@@ -15,6 +15,8 @@
 * and COPYING.EPL files.
 */
 
+
+#include <common/config/config.h>
 #include <time.h>
 #include <errno.h>
 #include <fcntl.h>

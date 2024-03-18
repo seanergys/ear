@@ -16,6 +16,8 @@
 */
 
 
+#include <common/config/config.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 //#define SHOW_DEBUGS 1

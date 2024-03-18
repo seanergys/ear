@@ -15,6 +15,8 @@
 * and COPYING.EPL files.
 */
 
+
+#include <common/config/config.h>
 //#define SHOW_DEBUGS 1
 #include <common/states.h>
 #include <common/types/types.h>

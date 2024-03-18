@@ -1,3 +1,6 @@
+#include <common/config/config.h>
+
+
 static freq_cpu_t freq1;
 static freq_cpu_t freq2;
 static ulong freqs_average;
@@ -6,6 +9,7 @@ static ulong *freqs;
 static ulong cpu_count;
 static topology_t topo;
 static uint half;
+
 
 void freq_monitor_init()
 {

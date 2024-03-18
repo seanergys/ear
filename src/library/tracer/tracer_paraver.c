@@ -15,6 +15,8 @@
 * and COPYING.EPL files.
 */
 
+
+#include <common/config/config.h>
 #include <time.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -34,7 +36,6 @@
 #include <common/types/signature.h>
 #include <common/types/event_type.h>
 #include <common/system/lock.h>
-//#include <library/metrics/metrics.h>
 #include <library/tracer/tracer_paraver.h>
 
 #ifdef EAR_GUI

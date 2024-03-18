@@ -61,13 +61,6 @@ repo_BINS += \
 	dcgmi.so
 endif	
 
-ifeq ($(DLB), 1)
-CFLAGS += -DDLB=1 -Idlb_path/include
-LDFLAGS += -Ldlb_path/lib -ldlb
-endif
-
-
-
 ######## RULES
 
 all: $(repo_OBJS) $(repo_BINS)
@@ -107,6 +100,9 @@ cassandra.so: cassandra.c $(repo_DEPS)
 
 heroes.so: heroes.c $(repo_DEPS)
 	$(CC) $(CFLAGS)  -shared -o $@ $^ -L/usr/lib64 
+
+mpi_node_metrics.so: mpi_node_metrics.c $(SRCDIR)/library/metrics/dlb_talp_lib.h $(repo_DEPS)
+	$(CC) $(CFLAGS) -shared -o $@ mpi_node_metrics.c $(repo_DEPS)
 
 #$(CC) $(CFLAGS) $(DB_CFLAGS) -shared -o $@ $^ $(DB_LDFLAGS) -l:/home/xlalonso/downloads/cpp-driver/build/libcassandra.so
 ######## SUBFOLDERS

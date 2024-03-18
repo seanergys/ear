@@ -16,6 +16,9 @@
 */
 
 // #define SHOW_DEBUGS 1
+
+#include <common/config/config.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -54,7 +57,6 @@
 #include <library/policies/common/mpi_stats_support.h>
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
-#include <library/common/library_shared_data.h>
 #include <library/common/global_comm.h>
 #include <library/metrics/metrics.h>
 #include <library/tracer/tracer.h>

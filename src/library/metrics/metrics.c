@@ -16,31 +16,16 @@
 */
 
 
+#include <common/config/config.h>
+
+
 #define _GNU_SOURCE
-#define FAKE_POWER_READING  0
-#define FAKE_ENERGY_READING 0
-// #define SHOW_DEBUGS            1
-#define USE_PROC_PS            1
 
-
-#define INFO_METRICS           2
-#define IO_VERB                3
-#define VERB_PROCPS 					 2
-#define SET_DYN_UNC_BY_DEFAULT 1
-#define MPI_VERB               3
-#define GPU_VERB               2
-#define VERBOSE_CUPTI          2
-#define PHASES_SUMMARY_VERB    2
-#define CPUPRIO_VERB           2
-#define ERROR_VERB             2
-#define TPI_DEBUG              4
-#define ENERGY_EFF_VERB        2
-
-#define DEF_READ_CUPTI_METRICS 0
 
 #if !SHOW_DEBUGS
 #define NDEBUG // Disable asserts
 #endif
+
 
 #include <errno.h>
 #include <stdio.h>
@@ -99,6 +84,25 @@
 #include <common/utils/overhead.h>
 #endif
 
+#define FAKE_POWER_READING  0
+#define FAKE_ENERGY_READING 0
+
+#define USE_PROC_PS            1
+
+#define INFO_METRICS           2
+#define IO_VERB                3
+#define VERB_PROCPS 					 2
+#define SET_DYN_UNC_BY_DEFAULT 1
+#define MPI_VERB               3
+#define GPU_VERB               2
+#define VERBOSE_CUPTI          2
+#define PHASES_SUMMARY_VERB    2
+#define CPUPRIO_VERB           2
+#define ERROR_VERB             2
+#define TPI_DEBUG              4
+#define ENERGY_EFF_VERB        2
+
+#define DEF_READ_CUPTI_METRICS 0
 
 // Registers
 #define LOO         0 // loop
@@ -113,6 +117,11 @@
 #if USE_GPUS & USE_CUPTI
 #define EAR_USE_CUPTI "EAR_USE_CUPTI"
 #endif
+
+#ifndef DLB_SUPPORT
+#define DLB_SUPPORT 0
+#endif
+
 
 #if METRICS_OVH
 uint id_ovh_partial_stop;
@@ -372,6 +381,7 @@ uint metrics_CPU_phase_ok()
     if (!met_cpi.ok || !met_bwidth.ok || !met_flops.ok) return 0;
     return 1;
 }
+
 
 
 static void metrics_configuration(topology_t *tp)
@@ -1542,9 +1552,7 @@ static void estimate_metrics_not_available_by_node(uint sign_app_loop_idx, signa
 
 			}
 		}
-
 }
-
 
 
 /* This function computes the signature: per loop (global = LOO) or application ( global = APP)
@@ -1731,11 +1739,15 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		}
 
 		sig_ext->mpi_stats = metrics_mpi_info[sign_app_loop_idx];
-        // Commented as not used.
 #if MPI_CALL_TYPES
 		sig_ext->mpi_types = metrics_mpi_calls_types[sign_app_loop_idx];
 #else
 		sig_ext->mpi_types = NULL;
+#endif
+
+		/* TALP data */
+#if DLB_SUPPORT
+			earl_dlb_talp_read(&sig_ext->earl_talp_data);
 #endif
 
 		/* Power: Node, DRAM, PCK */
@@ -2851,6 +2863,7 @@ static void metrics_static_dispose()
 {
 }
 
+
 /** Use this function to compute the total number of threads if neded  */
 #define VERB_NUMTH 3
 int ear_get_num_threads()
@@ -2884,26 +2897,3 @@ int ear_get_num_threads()
 	verbose(VERB_NUMTH,"Task[%d] %d threads detected", getpid(), num_th);
 	return num_th;
 }
-
-
-
-#if DLB
-state_t metrics_compute_talp_node_metrics(sig_ext_t *dst_sig, dlb_monitor_t *region_monitor)
-{
-    if (dst_sig)
-    {
-        int ret = DLB_TALP_CollectNodeMetrics(region_monitor, &dst_sig->dlb_talp_node_metrics);
-
-        if (!ret)
-        {
-            return EAR_SUCCESS;
-        } else
-        {
-            return EAR_ERROR;
-        }
-    } else
-    {
-        return EAR_ERROR;
-    }
-}
-#endif // DLB

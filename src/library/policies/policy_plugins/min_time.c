@@ -15,6 +15,7 @@
  * and COPYING.EPL files.
  */
 
+#include <common/config/config.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -47,6 +48,8 @@
 #include <library/policies/common/generic.h>
 #include <library/models/energy_model.h>
 
+#define MASTER (masters_info.my_master_rank >= 0)
+#define MASTER_ID masters_info.my_master_rank
 
 #ifdef EARL_RESEARCH
 extern unsigned long ext_def_freq;
