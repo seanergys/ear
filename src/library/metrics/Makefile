@@ -1,7 +1,9 @@
 ########
 OBJS = \
     metrics.o \
-    energy_node_lib.o
+    energy_node_lib.o \
+		fine_grain_collect.o
+
 
 ifeq ($(DCGMI), 1)
 OBJS += \

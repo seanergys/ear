@@ -128,14 +128,16 @@ uint process_get_curr_mpi_pstate();
 uint process_get_num_pstates();
 void process_reset_steps();
 
+
 /* MPI Optimization functions */
 
-typedef struct mpi_opt_policy {
-  state_t (*init_mpi)   (polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id);
-  state_t (*end_mpi)    (node_freqs_t *freqs, int *process_id);
-  void    (*summary)   (int verb_lvl);
-  state_t (*periodic)    (uint *to_be_changed_pstate);
-}mpi_opt_policy_t;
+typedef struct mpi_opt_policy
+{
+  state_t (*init_mpi) (polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id);
+  state_t (*end_mpi)	(node_freqs_t *freqs, int *process_id);
+  void    (*summary)	(int verb_lvl);
+  state_t (*periodic)	(uint *to_be_changed_pstate);
+} mpi_opt_policy_t;
 
 state_t mpi_opt_load(mpi_opt_policy_t * mpi_opt_func);
 
