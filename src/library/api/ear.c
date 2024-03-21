@@ -115,6 +115,7 @@
 #include <common/external/ear_external.h>
 
 #include <library/metrics/dlb_talp_lib.h>
+#include <library/metrics/fine_grain_collect.h>
 
 #ifndef DLB_SUPPORT
 #define DLB_SUPPORT 0
@@ -159,11 +160,6 @@ static int num_nodes;
 static int ppnode;
 
 sem_t *lib_shared_lock_sem;
-#if MPI_OPTIMIZED
-uint ear_mpi_opt = 0;
-uint ear_mpi_opt_num_nodes = 1;
-mpi_opt_policy_t mpi_opt_symbols;
-#endif
 
 /* To be used by report plugins */
 report_id_t rep_id;
@@ -239,12 +235,6 @@ static dynais_call_t dynais;
 suscription_t *earl_monitor;
 state_t earl_periodic_actions(void *no_arg);
 state_t earl_periodic_actions_init(void *no_arg);
-
-#if MPI_OPTIMIZED
-suscription_t *earl_mpi_opt;
-state_t earl_periodic_actions_mpi_opt(void *no_arg);
-state_t earl_periodic_actions_mpi_opt_init(void *no_arg);
-#endif
 
 static ulong seconds = 0;
 
@@ -921,14 +911,6 @@ void fill_application_mgt_data(app_mgt_t *a)
 /* Connects the mpi process to a new communicator composed by masters, only processes with master=1 belongs to the new communicator */
 /****************************************************************************************************************************************************************/
 
-int sched_num_nodes()
-{
-    char *cn;
-    cn = ear_getenv(SCHED_STEP_NUM_NODES);
-    if (cn != NULL) return atoi(cn);
-    else return 1;
-}
-
 void attach_to_master_set(int master)
 {
 				int color;
@@ -945,19 +927,26 @@ void attach_to_master_set(int master)
 				if (master) masters_info.my_master_rank=0;
 				else masters_info.my_master_rank=-1;
 #if MPI
-				/* If OpenMPI, we will not synchronize if not all the processes answer the gather */
-				if (is_mpi_enabled() && is_openmpi()){
+				/* If OpenMPI, we don't synchronize unless all the processes answer the gather. */
+				if (is_mpi_enabled() && is_openmpi())
+				{
 								int n = openmpi_num_nodes();
-								if ((n > 0) && (n != sched_num_nodes())){ 
-									if ((is_erun == NULL) || ((is_erun != NULL) && (atoi(is_erun) == 0))) flag = 0;
+								int sched_num_nodes = utils_get_sched_num_nodes();
+								if ((n > 0) && (n != sched_num_nodes))
+								{
+									if (is_erun == NULL || ((is_erun != NULL) && atoi(is_erun) == 0)) flag = 0;
 								}
-								debug("OpenMPI num nodes detected %d - Sched num nodes detected %d",n, sched_num_nodes());
-								if (flag == 0){ 
+								debug("OpenMPI num nodes detected %d - Sched num nodes detected %d",n, sched_num_nodes);
+
+								if (flag == 0)
+								{ 
 												synchronize_masters = 0;
 								}
 				}
+
 				/* We must check all nodes have EAR loaded */
-				if (synchronize_masters){
+				if (synchronize_masters)
+				{
 								debug("Creating a new communicator");
 								if (PMPI_Comm_dup(MPI_COMM_WORLD,&masters_info.new_world_comm)!=MPI_SUCCESS){
 												error("Duplicating MPI_COMM_WORLD");
@@ -967,7 +956,8 @@ void attach_to_master_set(int master)
 
 								}
 								debug("New communicators created");
-				}else{
+				} else
+				{
 								debug("Some processes are not connecting, synchronization off");
 				}
 #endif
@@ -978,6 +968,7 @@ void attach_to_master_set(int master)
 												masters_info.my_master_size = 1;
 								}
 				}
+
 				// New for OpenMPI support
 				if ((masters_comm_created) && (!color)){
 #if MPI
@@ -991,6 +982,8 @@ void attach_to_master_set(int master)
 				}
 				debug("Attach to master set end");
 }
+
+
 /****************************************************************************************************************************************************************/
 /* returns the local id in the node, local id is 0 for the  master processes and 1 for the others  */
 /****************************************************************************************************************************************************************/
@@ -1449,9 +1442,6 @@ void ear_init()
 
 				/* All masters connect in a new MPI communicator */
 				attach_to_master_set(my_id==0);
-#if MPI_OPTIMIZED
-  ear_mpi_opt_num_nodes = sched_num_nodes();
-#endif
 
   /* This option is set to 0 when application is MPI and some processes are not running the  EARL , which is a mesh */
   if (synchronize_masters == 0){
@@ -2065,19 +2055,8 @@ void ear_init()
         }
 #endif
 
-        /* For code organization we have a separate subscription for MPI optimization */
 #if MPI_OPTIMIZED
-        if (is_mpi_enabled() && ear_mpi_opt)
-        {
-          earl_mpi_opt = suscription();
-          earl_mpi_opt->call_init = earl_periodic_actions_mpi_opt_init;
-          earl_mpi_opt->call_main = earl_periodic_actions_mpi_opt;
-          earl_mpi_opt->time_relax = 200;
-          earl_mpi_opt->time_burst = 200;
-          if (monitor_register(earl_mpi_opt) != EAR_SUCCESS) verbose_master(2,"Monitor for MPI opt register fails! %s",state_msg);
-          monitor_relax(earl_mpi_opt);
-          verbose_master(2,"Monitor for MPI opt created");
-        }
+				fine_grain_metrics_init();
 #endif
 
 				if (DLB_SUPPORT)
@@ -2730,11 +2709,6 @@ static timestamp_t periodic_time;
 static ulong last_check = 0;
 static uint first_exec_monitor = 1;
 
-#if MPI_OPTIMIZED
-/* 0 = init, 1 = end, 2= diff */
-static mpi_information_t my_mpi_stats[3];
-static mpi_calls_types_t my_mpi_types[3];
-#endif
 
 uint id_ovh_earl_monitor;
 
@@ -2765,9 +2739,6 @@ state_t earl_periodic_actions_init(void *no_arg)
 }
 
 extern timestamp_t time_last_signature;
-#if MPI_OPTIMIZED
-extern ulong local_max_sync_block;
-#endif
 
 state_t earl_periodic_actions(void *no_arg)
 {
@@ -2845,62 +2816,6 @@ state_t earl_periodic_actions(void *no_arg)
 	overhead_stop(id_ovh_earl_monitor);
 	return EAR_SUCCESS;
 }
-
-/* PERIODIC Actions for MPI optimization */
-state_t earl_periodic_actions_mpi_opt_init(void *no_arg)
-{
-#if MPI_OPTIMIZED
-    if (is_mpi_enabled() && ear_mpi_opt){
-        memset(my_mpi_stats, 0, sizeof(mpi_information_t)*3);
-        memset(my_mpi_types, 0, sizeof(mpi_calls_types_t)*3);
-        metrics_start_cpupower();
-    }
-#endif
-    return EAR_SUCCESS;
-
-}
-state_t earl_periodic_actions_mpi_opt(void *no_arg)
-{
-#if MPI_OPTIMIZED
-    if (is_mpi_enabled() && (ear_mpi_opt || traces_are_on())) {
-        /* Read */
-        mpi_call_get_stats(&my_mpi_stats[1], NULL, -1);
-        mpi_call_get_types(&my_mpi_types[1], NULL, -1);
-        /* Diff */
-        mpi_call_diff(     &my_mpi_stats[2], &my_mpi_stats[1], &my_mpi_stats[0]);
-        my_mpi_stats[2].perc_mpi = (double) my_mpi_stats[2].mpi_time * 100.0 / (double) my_mpi_stats[2].exec_time;
-        mpi_call_types_diff(&my_mpi_types[2], &my_mpi_types[1], &my_mpi_types[0]);
-        /* Copy */
-        memcpy(&my_mpi_stats[0], &my_mpi_stats[1], sizeof(mpi_information_t));
-        memcpy(&my_mpi_types[0], &my_mpi_types[1], sizeof(mpi_calls_types_t));
-
-        metrics_read_cpupower();
-        uint new_pstate;
-        if (mpi_opt_symbols.periodic != NULL)  mpi_opt_symbols.periodic(&new_pstate);
-        /* We change the CPU freq after processing , is that a problem, warning !*/
-        if (new_pstate)  policy_restore_to_mpi_pstate(new_pstate);
-
-#if SINGLE_CONNECTION
-        if ((MASTER_ID >= 0) && traces_are_on()) {
-#else
-        if (traces_are_on()) {
-#endif // SINGLE_CONNECTION
-                traces_generic_event(ear_my_rank, my_node_id , PERC_MPI, (ullong)my_mpi_stats[2].perc_mpi * 100);
-                traces_generic_event(ear_my_rank, my_node_id , MPI_CALLS, (ullong)my_mpi_types[2].mpi_call_cnt);
-                traces_generic_event(ear_my_rank, my_node_id , MPI_SYNC_CALLS, (ullong)my_mpi_types[2].mpi_sync_call_cnt);
-                traces_generic_event(ear_my_rank, my_node_id , MPI_BLOCK_CALLS, (ullong)my_mpi_types[2].mpi_block_call_cnt);
-                traces_generic_event(ear_my_rank, my_node_id , TIME_SYNC_CALLS, (ullong)my_mpi_types[2].mpi_sync_call_time);
-                traces_generic_event(ear_my_rank, my_node_id , TIME_BLOCK_CALLS, (ullong)my_mpi_types[2].mpi_block_call_time);
-                traces_generic_event(ear_my_rank, my_node_id , TIME_MAX_BLOCK, (ullong) local_max_sync_block);
-                local_max_sync_block = 0;
-        }
-     }
-#endif // MPI_OPTIMIZED
-      return EAR_SUCCESS;
-
-}
-
-
 
 
 /************** Constructor & Destructor for NOt MPI versions **************/

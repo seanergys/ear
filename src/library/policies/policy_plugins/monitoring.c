@@ -54,7 +54,6 @@ static void policy_end_summary(int verb_lvl);
 static state_t policy_mpi_init_optimize(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id);
 static state_t policy_mpi_end_optimize(node_freqs_t *freqs, int *process_id);
 extern mpi_opt_policy_t mpi_opt_symbols;
-
 #endif
 
 
@@ -78,7 +77,9 @@ state_t policy_init(polctx_t *c)
     }
     for (uint i = 0 ; i < lib_shared_region->num_processes; i++) {
       sig_shared_region[i].new_freq = DEF_FREQ(c->app->def_freq);
+#if MPI_OPTIMIZED
       sig_shared_region[i].mpi_freq = DEF_FREQ(c->app->def_freq);
+#endif
     }
 
 #if USE_GPUS
@@ -124,7 +125,9 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
 
     for (uint i = 0 ; i < lib_shared_region->num_processes; i++) {
       sig_shared_region[i].new_freq = new_freq[0];
+#if MPI_OPTIMIZED
       sig_shared_region[i].mpi_freq = new_freq[0];
+#endif
     }
 
     // TODO: Should the below code be inside USE_GPUS?
@@ -135,7 +138,6 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
 
     cpu_ready = EAR_POLICY_READY; // TODO: This variable is not used.
     *ready = EAR_POLICY_READY;
-
 
     return EAR_SUCCESS;
 }
@@ -219,7 +221,7 @@ state_t policy_mpi_end(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int
 
 static state_t policy_mpi_init_optimize(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id)
 {
-#if !SINGLE_CONNECTION && MPI_OPTIMIZED
+#if MPI_OPTIMIZED
     // You can implement optimization at MPI call entry here.
     /* CPUfreq mgt is not ok we will not optimize */
     if (!metrics_get(MGT_CPUFREQ)->ok) return EAR_SUCCESS;
@@ -235,7 +237,7 @@ static state_t policy_mpi_init_optimize(polctx_t *c, mpi_call call_type, node_fr
 static void policy_end_summary(int verb_lvl)
 {
     // You can show a summary of your optimization at MPI call level here.
-#if !SINGLE_CONNECTION && MPI_OPTIMIZED
+#if MPI_OPTIMIZED
   if (mpi_opt_symbols.summary != NULL) mpi_opt_symbols.summary(VERB_GET_LV());
 #endif
 }
@@ -243,14 +245,13 @@ static void policy_end_summary(int verb_lvl)
 
 static state_t policy_mpi_end_optimize(node_freqs_t *freqs, int *process_id)
 {
-#if !SINGLE_CONNECTION && MPI_OPTIMIZED
+#if MPI_OPTIMIZED
     // You can implement optimization at MPI call exit here.
     if  (mpi_opt_symbols.end_mpi != NULL){
      
       return mpi_opt_symbols.end_mpi(freqs, process_id);
     }
 #endif
-
     return EAR_SUCCESS;
 }
 

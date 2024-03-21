@@ -6,12 +6,12 @@ LDFLAGS = -shared -ldl -lm -lpthread -rdynamic -pthread
 ifeq ($(FEAT_MPI_API), 0)
 LIBCC       = $(CC)
 LIBCC_FLAGS = $(CC_FLAGS)
-LIB_CFLAGS  = -DMPI=0 -DNODE_LB=1 -DSINGLE_CONNECTION=0 -DMPI_OPTIMIZED=0
+LIB_CFLAGS  = -DMPI=0 -DNODE_LB=1 -DSINGLE_CONNECTION=0
 MPI_VERSION = gen
 else
 LIBCC       = $(MPICC)
 LIBCC_FLAGS = $(MPICC_FLAGS)
-LIB_CFLAGS  = $(MPI_CFLAGS) -DMPI=1 -DNODE_LB=1 -DSINGLE_CONNECTION=0 -DMPI_OPTIMIZED=0
+LIB_CFLAGS  = $(MPI_CFLAGS) -DMPI=1 -DNODE_LB=1 -DSINGLE_CONNECTION=0
 CFLAGS     += -DEAR_DEF_TIME_GUIDED=0 -DMPI_SAMPLING=1 -DMPI_STATS=1
 
 ## MPI_SAMPLING can be used to do an MPI statistic sampling
@@ -81,6 +81,7 @@ core_OBJS = \
 						common/utils.o \
 						metrics/metrics.o \
 						metrics/energy_node_lib.o \
+						metrics/fine_grain_collect.o \
 						models/cpu_power_model.o \
 						models/energy_model.o \
 						policies/policy.o \

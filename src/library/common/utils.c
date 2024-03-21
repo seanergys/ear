@@ -45,3 +45,12 @@ state_t utils_create_plugin_path(char *result_path, char *install_path, char *cu
 	state_t st = ret > 0 ? EAR_SUCCESS : EAR_ERROR;
 	return st;
 }
+
+
+int utils_get_sched_num_nodes()
+{
+    char *cn;
+    cn = ear_getenv(SCHED_STEP_NUM_NODES);
+    if (cn != NULL) return atoi(cn);
+    else return 1;
+}

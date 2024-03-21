@@ -33,6 +33,10 @@
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
 
+/* Experimental feature. Enables fine-grained metrics monitor and MPI Optimize
+   features. */
+#undef MPI_OPTIMIZED
+
 /* Define to the address where bug reports for this package should be sent. */
 #undef PACKAGE_BUGREPORT
 

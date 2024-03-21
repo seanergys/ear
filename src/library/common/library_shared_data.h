@@ -128,9 +128,9 @@ typedef struct shsignature {
 	uint              unbalanced;
 	float             perc_MPI;
 	double            period;
-	/* This field is used for mpi opt
-	 * TODO: Put below declaration inside MPI_OPTIMIZED only + decide how to handle it at min_energy. */
+#if MPI_OPTIMIZED
 	ulong             mpi_freq;
+#endif
 } shsignature_t;
 
 
@@ -146,6 +146,7 @@ typedef struct node_mgr_sh_data {
 	shsignature_t     *shsig;
 } node_mgr_sh_data_t;
 /**@}*/
+
 
 void eid_folder(char *dst, int size, char *tmp, int jid, int sid, uint aid);
 

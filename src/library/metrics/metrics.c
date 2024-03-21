@@ -2664,7 +2664,7 @@ static timestamp last_cpupower;
 void metrics_start_cpupower()
 {
   if (master && report_power_trace) {
-    char filename[256];
+    char filename[316];
     timestamp_getfast(&last_cpupower);
     energy_cpu_data_alloc(no_ctx, &metrics_rapl_fine_monitor_start, &rapl_size);
     energy_cpu_data_alloc(no_ctx, &metrics_rapl_fine_monitor_end, &rapl_size);
@@ -2687,7 +2687,7 @@ void metrics_read_cpupower()
 {
   if (master && report_power_trace) {
 
-    char buffer[64], csv_str[256];
+    char buffer[64], csv_str[512];
     double total = 0, curr ;
     timestamp currt;
     ullong elap;
@@ -2706,7 +2706,7 @@ void metrics_read_cpupower()
     //verbose_master(2, "CPUPOW[%s]: elapsed %llu (%s)", application.node_id, elap, check);
 
     if (!traces_are_on()){
-      sprintf(csv_str,"%s;%u;%lld;",application.node_id, report_power_id, timestamp_getconvert(TIME_USECS));
+      snprintf(csv_str, sizeof(csv_str), "%s;%u;%lld;",application.node_id, report_power_id, timestamp_getconvert(TIME_USECS));
     }
     report_power_id++;
 
@@ -2799,6 +2799,7 @@ static void read_metrics_options()
     if (cuse_cupti != NULL) read_cupti_metrics = atoi(cuse_cupti);
     verbose_master(VERBOSE_CUPTI, "CUPTI metrics: %s", (read_cupti_metrics ? "Enabled" : "Disabled"));
 #endif
+
 #if MPI_OPTIMIZED
     /* this is already read in policy.c but RAPL traces will be generated only if this option is ON */
     char *cear_mpi_opt          =  ear_getenv(FLAG_MPI_OPT);

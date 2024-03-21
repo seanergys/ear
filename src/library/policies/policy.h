@@ -29,7 +29,7 @@
 
 /** This is the entry function of the module. It basically loads the policy plug-in,
  * configures the context and reads and configure available P-States and max/min permitted.
- * Finally, it calls policy_init method. */
+ * Finally, it calls the policy_init method. */
 state_t init_power_policy(settings_conf_t *app_settings, resched_t *res);
 
 
@@ -66,7 +66,11 @@ state_t policy_domain_detail(int status, char *buff);
 state_t policy_show_domain(node_freq_domain_t *dom);
 
 state_t policy_force_global_frequency(ulong new_f);
+
+
+#if MPI_OPTIMIZED
 state_t policy_restore_to_mpi_pstate(uint index);
+#endif
 
 /**
  * \todo These two functions needs to be reconsidered. */
