@@ -15,6 +15,8 @@
 * and COPYING.EPL files.
 */
 
+
+#include <common/config/config.h>
 #include <cassandra.h>
 #include <report/report.h>
 #include <common/states.h>

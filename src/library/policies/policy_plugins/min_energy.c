@@ -15,6 +15,8 @@
  * and COPYING.EPL files.
  */
 
+
+#include <common/config/config.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -626,6 +628,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
             min_cpufreq_sel = ear_min(min_cpufreq_sel, new_freq[i]);
         }
 
+#if MPI_OPTIMIZED
         // You can fill here the mpi_freq field of the sig_shared_region if you are optimizing
         // the application at MPI call level.
         for (uint lp = 0; lp < num_processes; lp++){
@@ -634,9 +637,8 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
             f = new_freq[lp];
           }
           sig_shared_region[lp].mpi_freq = f;
-
         }
-
+#endif
 
         /* If we use the same CPU freq for all cores, we set for all processes */
         if (!freq_per_core) {
@@ -1289,7 +1291,7 @@ static uint policy_no_models_is_better_min_energy(signature_t * curr_sig, signat
 
 static state_t policy_mpi_init_optimize(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id)
 {
-#if !SINGLE_CONNECTION && MPI_OPTIMIZED
+#if MPI_OPTIMIZED
     // You can implement optimization at MPI call entry here.
 
     if (ear_mpi_opt &&
@@ -1303,7 +1305,7 @@ static state_t policy_mpi_init_optimize(polctx_t *c, mpi_call call_type, node_fr
 
 static void policy_end_summary(int verb_lvl)
 {
-#if !SINGLE_CONNECTION && MPI_OPTIMIZED
+#if MPI_OPTIMIZED
     // You can show a summary of your optimization at MPI call level here.
 #endif
 }
@@ -1311,7 +1313,7 @@ static void policy_end_summary(int verb_lvl)
 
 static state_t policy_mpi_end_optimize(node_freqs_t *freqs, int *process_id)
 {
-#if !SINGLE_CONNECTION && MPI_OPTIMIZED
+#if MPI_OPTIMIZED
     // You can implement optimization at MPI call exit here.
     if (ear_mpi_opt &&
       (lib_shared_region->num_processes > 1)){

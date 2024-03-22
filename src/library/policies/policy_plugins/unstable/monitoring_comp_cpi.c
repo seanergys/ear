@@ -16,6 +16,8 @@
  */
 
 
+#include <common/config/config.h>
+
 #include <common/types.h>
 
 

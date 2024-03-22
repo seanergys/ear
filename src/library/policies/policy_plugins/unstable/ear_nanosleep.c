@@ -15,6 +15,8 @@
  * and COPYING.EPL files.
  */
 
+
+#include <common/config/config.h>
 #include <library/policies/policy_ctx.h>
 #include <library/policies/common/mpi_stats_support.h>
 #include <library/common/externs.h>

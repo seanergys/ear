@@ -15,6 +15,8 @@
 * and COPYING.EPL files.
 */
 
+
+#include <common/config/config.h>
 #ifndef _EAR_TRACES_H_
 #define _EAR_TRACES_H_
 

@@ -16,31 +16,16 @@
 */
 
 
+#include <common/config/config.h>
+
+
 #define _GNU_SOURCE
-#define FAKE_POWER_READING  0
-#define FAKE_ENERGY_READING 0
-// #define SHOW_DEBUGS            1
-#define USE_PROC_PS            1
 
-
-#define INFO_METRICS           2
-#define IO_VERB                3
-#define VERB_PROCPS 					 2
-#define SET_DYN_UNC_BY_DEFAULT 1
-#define MPI_VERB               3
-#define GPU_VERB               2
-#define VERBOSE_CUPTI          2
-#define PHASES_SUMMARY_VERB    2
-#define CPUPRIO_VERB           2
-#define ERROR_VERB             2
-#define TPI_DEBUG              4
-#define ENERGY_EFF_VERB        2
-
-#define DEF_READ_CUPTI_METRICS 0
 
 #if !SHOW_DEBUGS
 #define NDEBUG // Disable asserts
 #endif
+
 
 #include <errno.h>
 #include <stdio.h>
@@ -99,6 +84,25 @@
 #include <common/utils/overhead.h>
 #endif
 
+#define FAKE_POWER_READING  0
+#define FAKE_ENERGY_READING 0
+
+#define USE_PROC_PS            1
+
+#define INFO_METRICS           2
+#define IO_VERB                3
+#define VERB_PROCPS 					 2
+#define SET_DYN_UNC_BY_DEFAULT 1
+#define MPI_VERB               3
+#define GPU_VERB               2
+#define VERBOSE_CUPTI          2
+#define PHASES_SUMMARY_VERB    2
+#define CPUPRIO_VERB           2
+#define ERROR_VERB             2
+#define TPI_DEBUG              4
+#define ENERGY_EFF_VERB        2
+
+#define DEF_READ_CUPTI_METRICS 0
 
 // Registers
 #define LOO         0 // loop
@@ -113,6 +117,11 @@
 #if USE_GPUS & USE_CUPTI
 #define EAR_USE_CUPTI "EAR_USE_CUPTI"
 #endif
+
+#ifndef DLB_SUPPORT
+#define DLB_SUPPORT 0
+#endif
+
 
 #if METRICS_OVH
 uint id_ovh_partial_stop;
@@ -372,6 +381,7 @@ uint metrics_CPU_phase_ok()
     if (!met_cpi.ok || !met_bwidth.ok || !met_flops.ok) return 0;
     return 1;
 }
+
 
 
 static void metrics_configuration(topology_t *tp)
@@ -1542,9 +1552,7 @@ static void estimate_metrics_not_available_by_node(uint sign_app_loop_idx, signa
 
 			}
 		}
-
 }
-
 
 
 /* This function computes the signature: per loop (global = LOO) or application ( global = APP)
@@ -1731,11 +1739,15 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		}
 
 		sig_ext->mpi_stats = metrics_mpi_info[sign_app_loop_idx];
-        // Commented as not used.
 #if MPI_CALL_TYPES
 		sig_ext->mpi_types = metrics_mpi_calls_types[sign_app_loop_idx];
 #else
 		sig_ext->mpi_types = NULL;
+#endif
+
+		/* TALP data */
+#if DLB_SUPPORT
+			earl_dlb_talp_read(&sig_ext->earl_talp_data);
 #endif
 
 		/* Power: Node, DRAM, PCK */
@@ -2652,7 +2664,7 @@ static timestamp last_cpupower;
 void metrics_start_cpupower()
 {
   if (master && report_power_trace) {
-    char filename[256];
+    char filename[316];
     timestamp_getfast(&last_cpupower);
     energy_cpu_data_alloc(no_ctx, &metrics_rapl_fine_monitor_start, &rapl_size);
     energy_cpu_data_alloc(no_ctx, &metrics_rapl_fine_monitor_end, &rapl_size);
@@ -2675,7 +2687,7 @@ void metrics_read_cpupower()
 {
   if (master && report_power_trace) {
 
-    char buffer[64], csv_str[256];
+    char buffer[64], csv_str[512];
     double total = 0, curr ;
     timestamp currt;
     ullong elap;
@@ -2694,7 +2706,7 @@ void metrics_read_cpupower()
     //verbose_master(2, "CPUPOW[%s]: elapsed %llu (%s)", application.node_id, elap, check);
 
     if (!traces_are_on()){
-      sprintf(csv_str,"%s;%u;%lld;",application.node_id, report_power_id, timestamp_getconvert(TIME_USECS));
+      snprintf(csv_str, sizeof(csv_str), "%s;%u;%lld;",application.node_id, report_power_id, timestamp_getconvert(TIME_USECS));
     }
     report_power_id++;
 
@@ -2787,6 +2799,7 @@ static void read_metrics_options()
     if (cuse_cupti != NULL) read_cupti_metrics = atoi(cuse_cupti);
     verbose_master(VERBOSE_CUPTI, "CUPTI metrics: %s", (read_cupti_metrics ? "Enabled" : "Disabled"));
 #endif
+
 #if MPI_OPTIMIZED
     /* this is already read in policy.c but RAPL traces will be generated only if this option is ON */
     char *cear_mpi_opt          =  ear_getenv(FLAG_MPI_OPT);
@@ -2851,6 +2864,7 @@ static void metrics_static_dispose()
 {
 }
 
+
 /** Use this function to compute the total number of threads if neded  */
 #define VERB_NUMTH 3
 int ear_get_num_threads()
@@ -2884,26 +2898,3 @@ int ear_get_num_threads()
 	verbose(VERB_NUMTH,"Task[%d] %d threads detected", getpid(), num_th);
 	return num_th;
 }
-
-
-
-#if DLB
-state_t metrics_compute_talp_node_metrics(sig_ext_t *dst_sig, dlb_monitor_t *region_monitor)
-{
-    if (dst_sig)
-    {
-        int ret = DLB_TALP_CollectNodeMetrics(region_monitor, &dst_sig->dlb_talp_node_metrics);
-
-        if (!ret)
-        {
-            return EAR_SUCCESS;
-        } else
-        {
-            return EAR_ERROR;
-        }
-    } else
-    {
-        return EAR_ERROR;
-    }
-}
-#endif // DLB

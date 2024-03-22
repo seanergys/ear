@@ -15,8 +15,8 @@
  * found in COPYING.BSD and COPYING.EPL files.
  */
 
-//#define SHOW_DEBUGS 1
 
+#include <common/config/config.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>

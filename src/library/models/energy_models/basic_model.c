@@ -16,6 +16,8 @@
 */
 
 
+#include <common/config/config.h>
+
 #include <stdlib.h>
 #include <common/states.h>
 #include <common/output/debug.h>

@@ -15,6 +15,8 @@
 * and COPYING.EPL files.
 */
 
+
+#include <common/config/config.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
