@@ -204,17 +204,24 @@ static void *monitor_main(void *p)
             //     - alignment: a number from 0 to 9
             // The upper for while, set sleeping time to 100 seconds (1000 units)
             goto_time(reg, &sleep_units, &sleep_reason, passed_units, alignment);
+            // Preparing sus-calls to avoid race conditions. Because someone can
+            // clear subscriptions between both ifs and the following calls.
+            suscall_f call_init = sus->call_init;
+            suscall_f call_main = sus->call_main;
+            void     *memm_init = sus->memm_init;
+            void     *memm_main = sus->memm_main;
+
             // Unlocking suscription i because time is calculated
             pthread_mutex_unlock(&locks[i]);
 
             if (reg->ok_init && is_running) {
                 //debug("S%d, called init", i);
-                sus->call_init(sus->memm_init);
+                call_init(memm_init);
                 reg->ok_init = 0;
             }
             if (reg->ok_main && is_running) {
                 //debug("S%d, called main", i);
-                sus->call_main(sus->memm_main);
+                call_main(memm_main);
                 reg->ok_main = 0;
             }
         }
