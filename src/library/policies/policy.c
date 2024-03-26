@@ -251,10 +251,8 @@ static uint total_mpi_optimized =  0;
 /* Governor management for exclusive mode */
 static uint *governor_list_before_init = NULL;
 
-#if MPI_OPTIMIZED
 /* MPI optimization */
 extern uint ear_mpi_opt;
-#endif
 
 void fill_common_event(ear_event_t *ev);
 void fill_event(ear_event_t *ev, uint event, llong value);
