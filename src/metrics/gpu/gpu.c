@@ -93,6 +93,13 @@ state_t gpu_dispose(ctx_t *c)
     preturn(ops.dispose, c);
 }
 
+void gpu_set_monitoring_mode(int mode)
+{
+    if (ops.set_monitoring_mode != NULL) {
+        ops.set_monitoring_mode(mode);
+    }
+}
+
 state_t gpu_get_devices(ctx_t *c, gpu_devs_t **devs, uint *devs_count)
 {
     preturn (ops.get_devices, c, devs, devs_count);

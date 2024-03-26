@@ -119,13 +119,11 @@ void metrics_info_get(metrics_info_t *m)
      cpupow(get_api,&m->pow.api);
        temp_get_api(&m->tmp.api);
         cpi_get_api(&m->cpi.api);
-        //gpu_get_api(&m->gpu.api);
 
     cpufreq_count_devices(no_ctx, &m->cpu.devs_count);
     imcfreq_count_devices(no_ctx, &m->imc.devs_count);
      cpupow(count_devices,no_ctx, &m->pow.devs_count);
        temp_count_devices(no_ctx, &m->tmp.devs_count);
-        //gpu_count_devices(no_ctx, &m->gpu.devs_count);
 
     m->cpu.scope = SCOPE_NODE;
     m->imc.scope = SCOPE_NODE;

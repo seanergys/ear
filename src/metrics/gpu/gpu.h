@@ -25,27 +25,6 @@
 #include <metrics/common/apis.h>
 #include <metrics/gpu/archs/dcgmi.h>
 
-// This is an API to monitorize the GPU devices of the node.
-//
-// Folders:
-//	- archs: different GPU controllers, such as Nvidia NMVL.
-//
-// Future work:
-// 	- Move CUDA_BASE from code to Makefile.
-//	- Remove the static data and save it inside contexts.
-//
-// Use example:
-//		gpu_load(empty, none, empty);
-//		gpu_init(&context);
-//		gpu_data_alloc(&data1);
-//		gpu_data_alloc(&data2);
-//		gpu_data_alloc(&data_diff);
-//		gpu_read(&context, data1);
-//		sleep(2);
-//		gpu_read(&context, data2);
-//		gpu_data_diff(data2, data1, data_diff);
-//		gpu_dispose(&context);
-
 typedef struct gpu_devs_s {
     ullong serial;
     uint index;
@@ -69,13 +48,14 @@ typedef struct gpu_s
 
 typedef struct gpu_ops_s
 {
-    void    (*get_info)      (apinfo_t *info);
-    state_t (*init)          (ctx_t *c);
-    state_t (*dispose)       (ctx_t *c);
-    state_t (*get_devices)   (ctx_t *c, gpu_devs_t **devs, uint *devs_count);
-    state_t (*count_devices) (ctx_t *c, uint *devs_count);
-    state_t (*read)          (ctx_t *c, gpu_t *data);
-    state_t (*read_raw)      (ctx_t *c, gpu_t *data);
+    void    (*get_info)            (apinfo_t *info);
+    void    (*set_monitoring_mode) (uint mode)
+    state_t (*init)                (ctx_t *c);
+    state_t (*dispose)             (ctx_t *c);
+    state_t (*get_devices)         (ctx_t *c, gpu_devs_t **devs, uint *devs_count);
+    state_t (*count_devices)       (ctx_t *c, uint *devs_count);
+    state_t (*read)                (ctx_t *c, gpu_t *data);
+    state_t (*read_raw)            (ctx_t *c, gpu_t *data);
 } gpu_ops_t;
 
 // Discovers the low level API.
@@ -97,6 +77,9 @@ state_t gpu_get_devices(ctx_t *c, gpu_devs_t **devs, uint *devs_count);
 
 // Counts the number of GPUs (devices) in the node.
 state_t gpu_count_devices(ctx_t *c, uint *dev_count);
+
+// You can use it to increase the monitoring rate.
+void gpu_set_monitoring_mode(int mode);
 
 // Reads the GPU device data and stores it in the gpu_t array data (1 per device).
 state_t gpu_read(ctx_t *c, gpu_t *data);
