@@ -402,9 +402,7 @@ state_t energy_init(void **c)
     if (gpu_sel_model == API_DUMMY) {
         gpu_num = 0;
     }else{
-        if (state_fail(s = gpu_count_devices(no_ctx, &gpu_num))) {
-            verbose(VGPU, "gpu_count returned %d (%s)", s, state_msg);
-        }
+        gpu_count_devices(no_ctx, &gpu_num);
 	}
 	verbose(VGPU, "GPU model %d DUMMY %d GPUS detected %d", gpu_sel_model, gpu_sel_model == API_DUMMY, gpu_num);
 	return EAR_SUCCESS;

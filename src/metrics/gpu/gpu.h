@@ -49,11 +49,10 @@ typedef struct gpu_s
 typedef struct gpu_ops_s
 {
     void    (*get_info)            (apinfo_t *info);
-    void    (*set_monitoring_mode) (uint mode)
+    void    (*get_devices)         (gpu_devs_t **devs, uint *devs_count);
     state_t (*init)                (ctx_t *c);
     state_t (*dispose)             (ctx_t *c);
-    state_t (*get_devices)         (ctx_t *c, gpu_devs_t **devs, uint *devs_count);
-    state_t (*count_devices)       (ctx_t *c, uint *devs_count);
+    void    (*set_monitoring_mode) (int mode);
     state_t (*read)                (ctx_t *c, gpu_t *data);
     state_t (*read_raw)            (ctx_t *c, gpu_t *data);
 } gpu_ops_t;
@@ -67,16 +66,17 @@ void gpu_get_api(uint *api);
 // Returns all available static information (Work in progress)
 void gpu_get_info(apinfo_t *info);
 
+// Count devices by calling get_devices
+#define gpu_count_devices(c, devs_count) \
+    gpu_get_devices(NULL, devs_count)
+
+// Information about devices
+void gpu_get_devices(gpu_devs_t **devs, uint *devs_count);
+
 // Initializes the context.
 state_t gpu_init(ctx_t *c);
 
 state_t gpu_dispose(ctx_t *c);
-
-// Information about devices
-state_t gpu_get_devices(ctx_t *c, gpu_devs_t **devs, uint *devs_count);
-
-// Counts the number of GPUs (devices) in the node.
-state_t gpu_count_devices(ctx_t *c, uint *dev_count);
 
 // You can use it to increase the monitoring rate.
 void gpu_set_monitoring_mode(int mode);
@@ -95,22 +95,22 @@ state_t gpu_read_copy(ctx_t *c, gpu_t *data2, gpu_t *data1, gpu_t *data_diff);
 
 /** Helpers */
 // Substracts the elements of the gpu_t array (data_diff = data2 - data1).
-state_t gpu_data_diff(gpu_t *data2, gpu_t *data1, gpu_t *data_diff);
+void gpu_data_diff(gpu_t *data2, gpu_t *data1, gpu_t *data_diff);
 
 // Makes an average of all the elements of the data_diff array.
-state_t gpu_data_merge(gpu_t *data_diff, gpu_t *data_merge);
+void gpu_data_merge(gpu_t *data_diff, gpu_t *data_merge);
 
 // Allocates an array of gpu_t (1 per device).
-state_t gpu_data_alloc(gpu_t **data);
+void gpu_data_alloc(gpu_t **data);
 
 // Frees an array of gpu_t.
-state_t gpu_data_free(gpu_t **data);
+void gpu_data_free(gpu_t **data);
 
 // Sets to 0 an array of gpu_t.
-state_t gpu_data_null(gpu_t *data);
+void gpu_data_null(gpu_t *data);
 
 // Copies an array of gpu_t.
-state_t gpu_data_copy(gpu_t *data_dst, gpu_t *data_src);
+void gpu_data_copy(gpu_t *data_dst, gpu_t *data_src);
 
 // Prints an array of gpu_t in the channel fd.
 void gpu_data_print(gpu_t *data, int fd);

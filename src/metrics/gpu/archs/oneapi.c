@@ -39,12 +39,19 @@ static uint            devs_count;
 static ze_handlers_t  *devs;
 static ze_t            ze;
 static int             mode;
+static uint            initialized;
 
 #define if_fail(function, action) \
     if ((z = function) != ZE_RESULT_SUCCESS) { \
         debug("Failed " #function ": %s (0x%x)", oneapi_strerror(z), z); \
         action; \
     }
+
+static void load_atfork()
+{
+    // Just lock control is enough
+    pthread_mutex_unlock(&lock);
+}
 
 void gpu_oneapi_load(gpu_ops_t *ops, int force_api)
 {
@@ -64,12 +71,16 @@ void gpu_oneapi_load(gpu_ops_t *ops, int force_api)
         debug("oneapi_get_devices failed: %s", state_msg);
         return;
     }
+    // Allocation
+    pool = calloc(devs_count, sizeof(gpu_t));
+    // Atfork control
+    pthread_atfork(NULL, NULL, load_atfork);
+
     apis_set(ops->get_info,            gpu_oneapi_get_info);
-    apis_set(ops->set_monitoring_mode, gpu_oneapi_set_monitoring_mode);
+    apis_set(ops->get_devices,         gpu_oneapi_get_devices);
     apis_set(ops->init,                gpu_oneapi_init);
     apis_set(ops->dispose,             gpu_oneapi_dispose);
-    apis_set(ops->get_devices,         gpu_oneapi_get_devices);
-    apis_set(ops->count_devices,       gpu_oneapi_count_devices);
+    apis_set(ops->set_monitoring_mode, gpu_oneapi_set_monitoring_mode);
     apis_pin(ops->read,                gpu_oneapi_read, ok_pool);
     apis_set(ops->read_raw,            gpu_oneapi_read_raw);
 }
@@ -80,15 +91,29 @@ void gpu_oneapi_get_info(apinfo_t *info)
     info->devs_count  = devs_count;
 }
 
+void gpu_oneapi_get_devices(gpu_devs_t **devs_in, uint *devs_count_in)
+{
+    int dv;
+    *devs_in = calloc(devs_count, sizeof(gpu_devs_t));
+    //
+    for (dv = 0; dv < devs_count; ++dv) {
+        (*devs_in)[dv].serial = devs[dv].uuid;
+        (*devs_in)[dv].index  = dv;
+    }
+    if (devs_count_in != NULL) {
+        *devs_count_in = devs_count;
+    }
+}
+
 state_t gpu_oneapi_init(ctx_t *c)
 {
+    state_t s = EAR_SUCCESS;
     timestamp_t time;
     int i;
 
-    if (pool != NULL) {
-        return EAR_SUCCESS;
+    if (initialized) {
+        return s;
     }
-    pool = calloc(devs_count, sizeof(gpu_t));
     // Initializing pool (pool at 0 is not incorrect)
     timestamp_getfast(&time);
     for (i = 0; i < devs_count; ++i) {
@@ -102,20 +127,18 @@ state_t gpu_oneapi_init(ctx_t *c)
 	sus->time_relax = 5000;
 	sus->time_burst = 3000;
 	// Initializing monitoring thread.
-	if (state_fail(sus->suscribe(sus))) {
-		debug("GPU monitor FAILS");
-        return gpu_oneapi_dispose(c);
+	if (state_ok(s = sus->suscribe(sus))) {
+        initialized = 1;
 	}
     } // ok_pool
-	return EAR_SUCCESS;
+	return s;
 }
 
 state_t gpu_oneapi_dispose(ctx_t *c)
 {
-    if (ok_pool && pool != NULL) {
+    if (initialized) {
         monitor_unregister(sus);
-        free(pool);
-        pool = NULL;
+        initialized = 0;
     }
 	return EAR_SUCCESS;
 }
@@ -130,27 +153,6 @@ void gpu_oneapi_set_monitoring_mode(int mode_in)
     if (mode == MONITORING_MODE_RUN && ok_pool) {
         monitor_burst(sus, 0);
     }
-}
-
-state_t gpu_oneapi_get_devices(ctx_t *c, gpu_devs_t **devs_in, uint *devs_count_in)
-{
-    int dv;
-    *devs_in = calloc(devs_count, sizeof(gpu_devs_t));
-    //
-    for (dv = 0; dv < devs_count; ++dv) {
-        (*devs_in)[dv].serial = devs[dv].uuid;
-        (*devs_in)[dv].index  = dv;
-    }
-    if (devs_count_in != NULL) {
-        *devs_count_in = devs_count;
-    }
-    return EAR_SUCCESS;
-}
-
-state_t gpu_oneapi_count_devices(ctx_t *c, uint *dev_count)
-{
-	*dev_count = devs_count;
-	return EAR_SUCCESS;
 }
 
 static state_t oneapi_read_power(int dv, gpu_t *data)
