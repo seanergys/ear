@@ -15,7 +15,6 @@
 * and COPYING.EPL files.
 */
 
-
 #include <stdlib.h>
 #include <pthread.h>
 #include <common/output/debug.h>
@@ -23,7 +22,6 @@
 #include <metrics/gpu/archs/eard.h>
 #include <metrics/gpu/archs/nvml.h>
 #include <metrics/gpu/archs/dummy.h>
-#include <metrics/gpu/archs/cupti.h>
 #include <metrics/gpu/archs/oneapi.h>
 #include <metrics/gpu/archs/rsmi.h>
 
