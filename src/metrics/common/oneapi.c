@@ -260,8 +260,11 @@ static state_t static_sysman_init()
     int                    dv;
     int                    dp;
 
+    // Its weird to enable SYSMAN when you are initializing SYSMAN, but it seems
+    // a requirement to initialize.
+    setenv("ZES_ENABLE_SYSMAN", "1", 1);
+    setenv("ZES_ENABLE_SYSMAN_LOW_POWER", "1", 1);
     // Each forked process must call this function.
-    //if_fail(ze.sInit(0), reterr);
     if_fail(ze.sInit(0), reterr);
     // Discovering all drivers
     if_fail(ze.sDriverGet(&drivers_count, NULL), reterr);
@@ -369,7 +372,6 @@ static state_t static_init(ze_t *ze_in, int sysman)
         if (!sysman) s = static_core_init();
         if ( sysman) s = static_sysman_init();
     }
-    fini:
     pthread_mutex_unlock(&lock);
     if (ze_in != NULL) {
         memcpy(ze_in, &ze, sizeof(ze_t));
