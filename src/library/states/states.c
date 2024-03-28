@@ -470,6 +470,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
     }
 
     /* Based on the EAR internal state... */
+		sig_ext_t * sigext;
     switch (EAR_STATE)
     {
         /* This is a new state to minimize overhead, we just
@@ -761,7 +762,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             lavg = node_freqs_avgcpufreq(node_freqs.cpu_freq);
 					
 						/* At that time, sig_ext is supposed to be already allocated */	
-						sig_ext_t * sigext = (sig_ext_t *)loop_signature.sig_ext;
+						sigext = (sig_ext_t *)loop_signature.sig_ext;
 						/* Copy avg selected mem freq */
 						compute_avg_sel_freq(&sigext->sel_mem_freq_khz, node_freqs.imc_freq);
 

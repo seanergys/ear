@@ -113,6 +113,7 @@ AC_CONFIG_FILES([Makefile
                  etc/systemd/eard.service
                  etc/systemd/eardbd.service
                  etc/systemd/eargmd.service
+                 etc/systemd/edcmon.service
                  src/common/config/config_install.h
                  etc/conf/ear.conf.full.template
                  etc/conf/ear.conf.template

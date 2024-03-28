@@ -276,7 +276,7 @@ static void init_atfork()
     if (is_running) {
         if (state_fail(s = init_thread())) {
             is_running = 0;
-            return_msg(, strerror(m_errno));
+						return;
         }
     }
     return;

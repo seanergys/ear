@@ -163,12 +163,12 @@ char *management_info_tostr(manages_info_t *m, char *buffer)
     tsprintf(buffer, &st, 1, "-----||-----||-----||-----||-----------||-------");
     if (m->cpu.api >  API_DUMMY) tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s||%0.2lf to %0.2lf GHz", m->cpu.layer, m->cpu.api_str, m->cpu.devs_count, m->cpu.scope_str, m->cpu.granularity_str, cpu0ps0, cpu0psM);
     if (m->cpu.api <= API_DUMMY) tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s||                    ", m->cpu.layer, m->cpu.api_str, m->cpu.devs_count, m->cpu.scope_str, m->cpu.granularity_str);
-    if (m->pri.api >= API_NONE ) tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s||                    ", m->pri.layer, m->pri.api_str, m->pri.devs_count, m->pri.scope_str, m->pri.granularity_str);
+    if (m->pri.api == API_NONE ) tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s||                    ", m->pri.layer, m->pri.api_str, m->pri.devs_count, m->pri.scope_str, m->pri.granularity_str);
     if (m->pow.api >  API_DUMMY) tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s||%u W (TDP)          ", m->pow.layer, m->pow.api_str, m->pow.devs_count, m->pow.scope_str, m->pow.granularity_str, cpu0tdp);
     if (m->pow.api <= API_DUMMY) tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s||                    ", m->pow.layer, m->pow.api_str, m->pow.devs_count, m->pow.scope_str, m->pow.granularity_str);
     if (m->imc.api >  API_DUMMY) tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s||%0.2lf to %0.2lf GHz", m->imc.layer, m->imc.api_str, m->imc.devs_count, m->imc.scope_str, m->imc.granularity_str, imc0ps0, imc0psM);
     if (m->imc.api <= API_DUMMY) tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s||                    ", m->imc.layer, m->imc.api_str, m->imc.devs_count, m->imc.scope_str, m->imc.granularity_str);
-    if (m->gpu.api >= API_NONE ) tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s||                    ", m->gpu.layer, m->gpu.api_str, m->gpu.devs_count, m->gpu.scope_str, m->gpu.granularity_str);
+    if (m->gpu.api == API_NONE ) tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s||                    ", m->gpu.layer, m->gpu.api_str, m->gpu.devs_count, m->gpu.scope_str, m->gpu.granularity_str);
 
     return buffer;
 }
