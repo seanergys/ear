@@ -23,9 +23,6 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <common/output/debug.h>
 #include <metrics/common/popen.h>
 
@@ -86,7 +83,7 @@ static int static_read(popen_t *p, char *buffer)
 
     if (p->one_shot) {
         do {
-            // If one shot, we are reading one by one and spaces ' ' are compressed
+            // If one shot, we are reading one by one and spaces ' ' will be compressed
             buffer[len_acum] = (char) getc(p->file);
             len_acum = len_acum + 1;
             if (len_acum > 1) {
@@ -117,7 +114,7 @@ static int static_read(popen_t *p, char *buffer)
     return 1;
 }
 
-static void static_parse(popen_t *p, char *buffer)
+static void static_parse(popen_t *p, char *buffer, char separator)
 {
     int char_count = 0;
     int word_count = 0;
@@ -129,7 +126,7 @@ static void static_parse(popen_t *p, char *buffer)
     // Cleaning table
     memset(p->table, 0, sizeof(p->table));
     for (c = 0; c < strlen(buffer)+1; ++c) {
-        if (buffer[c] == ' ' || buffer[c] == '\t' || buffer[c] == '\n' || buffer[c] == '\0') {
+        if (buffer[c] == separator || buffer[c] == '\t' || buffer[c] == '\n' || buffer[c] == '\0') {
             word_count += (char_count > 0);
             char_count = 0;
         } else {
@@ -190,7 +187,7 @@ int popen_read(popen_t *p, const char* f, ...)
         if (!popen_eof(p)) {
             // Then read and parse
             if ((static_read(p, buffer))) {
-                static_parse(p, buffer);
+                static_parse(p, buffer, ' ');
             }
         }
     }
@@ -204,6 +201,7 @@ int popen_read(popen_t *p, const char* f, ...)
     r = p->rows_index;
     c = 0;
 
+    // Variadic part
     va_start(args, f);
     while (*f != '\0')
     {
@@ -226,6 +224,20 @@ int popen_read(popen_t *p, const char* f, ...)
             } else {
                 *i = 0;
             }
+        }
+        // If signed integer vector
+        if (*f == 'I') {
+            int *I = va_arg(args, int *);
+            while(c < p->cols_count) {
+                if (was_pending) {
+                    *I = atoi(p->table[r][c]);
+                } else {
+                    *I = 0;
+                }
+                ++I;
+                ++c;
+            }
+            break;
         }
         // If double
         if (*f == 'd') {
@@ -262,7 +274,52 @@ int popen_read(popen_t *p, const char* f, ...)
             p->eof = 1;
         }
     }
+    return was_pending;
+}
 
+int popen_read2(popen_t *p, char separator, char **elems, uint *elems_count)
+{
+    int was_pending;
+    int c, r;
+
+    // This is the same popen_read() function. Take that into the account if you
+    // introduce or rewrite some lineas in one of both functions.
+    if (!p->opened) {
+        return 0;
+    }
+    // If there is no pending data to return
+    if (!popen_pending(p)) {
+        // If not end of file
+        if (!popen_eof(p)) {
+            // Then read and parse
+            if ((static_read(p, buffer))) {
+                static_parse(p, buffer, separator);
+            }
+        }
+    }
+    // Disabling end of file in next
+    if (popen_eof(p)) {
+        p->eof = 0;
+    }
+    // Checking again if there is new pending data
+    was_pending = popen_pending(p);
+    // Indexes
+    r = p->rows_index;
+    c = 0;
+
+    // Non-variadic part
+    for (; c < p->cols_count; ++c) {
+        elems[c] = (char *) &p->table[r][c];
+    }
+    *elems_count = p->cols_count;
+
+    if (was_pending) {
+        p->rows_index++;
+        // Next time return o to indicate EOF (until next read)
+        if (!popen_pending(p)) {
+            p->eof = 1;
+        }
+    }
     return was_pending;
 }
 

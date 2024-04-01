@@ -37,12 +37,6 @@
 //  - i: return integer
 //  - d: return double
 //  - D: return double vector
-//
-//  Open options:
-//  - escape_lines: avoids parsing and returning the first N typical header lines.
-//  - one_shot: used when the popen process is closed after the reading and not
-//              kept in the background. Under the hood blocks the read call,
-//              ensuring you have something to read.
 
 typedef struct popen_s {
     char  table[512][16][128];
@@ -60,17 +54,41 @@ typedef struct popen_s {
 // Tests if a executable (binary or script) exists, before popen_open.
 state_t popen_test(char *exec);
 
+// Opens a process given a command.
+//     @param escape_lines: avoids reading the first N lines. It can be useful
+//         to escape the typical header returned by the command.
+//     @param one_shot: used when the command process prints something and
+//         immediately closes and is not kept in the background. Under the hood
+//         blocks both read functions ensuring you have something to read.
 state_t popen_open(char *command, int escape_lines, int one_shot, popen_t *p);
 
 void popen_close(popen_t *p);
 
-// Return 1 if there are elements pending to read.
+// Return 1 if there are lines pending to read.
+
+// Reads a single line of the command output. It is a variadic function which
+// converts the white spaced separated line of string format into a set of
+// variables of different type.
+//     @param fmt: it is the format and admits the following letters:
+//         - a: avoid (pass to next read argument)
+//         - s: return string
+//         - i: return integer
+//         - I: return integer vector
+//         - d: return double
+//         - D: return double vector
+//         Take into the account that vector letters are used as last letters
+//         in format because the function doesn't know in advance how many
+//         elements the caller wants to read.
 int popen_read(popen_t *p, const char* fmt, ...);
 
-// Counts the number of current elements kept in the buffer from last reading.
+// This function is the same than popen_read() but returns the elements in
+// string format given a separator.
+int popen_read2(popen_t *p, char separator, char **elems, uint *elems_count);
+
+// Counts the number of current lines kept in the buffer from last reading.
 uint popen_count_read(popen_t *p);
 
-// Count the number of elements pending.
+// Count the number of lines pending.
 uint popen_count_pending(popen_t *p);
 
 #endif //METRICS_COMMON_POPEN_H
