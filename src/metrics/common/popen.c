@@ -172,7 +172,7 @@ static int popen_eof(popen_t *p)
     return p->eof;
 }
 
-int popen_read(popen_t *p, const char* f, ...)
+int popen_read2(popen_t *p, char separator, const char* f, ...)
 {
     va_list args;
     int was_pending;
@@ -187,7 +187,7 @@ int popen_read(popen_t *p, const char* f, ...)
         if (!popen_eof(p)) {
             // Then read and parse
             if ((static_read(p, buffer))) {
-                static_parse(p, buffer, ' ');
+                static_parse(p, buffer, separator);
             }
         }
     }
@@ -211,9 +211,21 @@ int popen_read(popen_t *p, const char* f, ...)
         // If string
         if (*f == 's') {
             char **s = va_arg(args, char **);
-            *s = &no_string;
+            s[0] = &no_string;
             if (was_pending) {
-                *s = p->table[r][c];
+                s[0] = p->table[r][c];
+            }
+        }
+        // If string vector
+        if (*f == 'S') {
+            char **S = va_arg(args, char **);
+            while(c < p->cols_count) {
+                *S = &no_string;
+                if (was_pending) {
+                    *S = p->table[r][c];
+                }
+                ++S;
+                ++c;
             }
         }
         // If signed integer
@@ -277,52 +289,6 @@ int popen_read(popen_t *p, const char* f, ...)
     return was_pending;
 }
 
-int popen_read2(popen_t *p, char separator, char **elems, uint *elems_count)
-{
-    int was_pending;
-    int c, r;
-
-    // This is the same popen_read() function. Take that into the account if you
-    // introduce or rewrite some lineas in one of both functions.
-    if (!p->opened) {
-        return 0;
-    }
-    // If there is no pending data to return
-    if (!popen_pending(p)) {
-        // If not end of file
-        if (!popen_eof(p)) {
-            // Then read and parse
-            if ((static_read(p, buffer))) {
-                static_parse(p, buffer, separator);
-            }
-        }
-    }
-    // Disabling end of file in next
-    if (popen_eof(p)) {
-        p->eof = 0;
-    }
-    // Checking again if there is new pending data
-    was_pending = popen_pending(p);
-    // Indexes
-    r = p->rows_index;
-    c = 0;
-
-    // Non-variadic part
-    for (; c < p->cols_count; ++c) {
-        elems[c] = (char *) &p->table[r][c];
-    }
-    *elems_count = p->cols_count;
-
-    if (was_pending) {
-        p->rows_index++;
-        // Next time return o to indicate EOF (until next read)
-        if (!popen_pending(p)) {
-            p->eof = 1;
-        }
-    }
-    return was_pending;
-}
-
 uint popen_count_read(popen_t *p)
 {
     return (uint) p->rows_count;
@@ -333,20 +299,38 @@ uint popen_count_pending(popen_t *p)
     return (uint) (p->rows_count - p->rows_index);
 }
 
-#if TEST
+#if TEST1 || TEST2
 int main(int argc, char *argv[])
 {
-    float f1, f2;
     popen_t p;
+    #if TEST1
+    double f1, f2;
+    char *s1;
     int gpu;
 
-    popen_open("for i in {1..100}; do echo GPU $i 10.0 20.0 && sleep 1; done", 0, 0, &p);
+    popen_open("for i in 0 1 2 3; do echo GPU $i 10.0 20.0 some_text && sleep 1; done", 0, 0, &p);
     while (1) {
-        while(popen_read(&p, "aiff", &gpu, &f1, &f2)) {
-            printf("RETURNED: %d %f %f\n", gpu, f1, f2);
+        while(popen_read2(&p, ' ', "aidds", &gpu, &f1, &f2, &s1)) {
+            printf("%d %f %f %s\n", gpu, f1, f2, s1);
+            if (gpu == 3) {
+                return 0;
+            }
         }
-        sleep(2);
     }
+    #else
+    char *s1[3];
+    int i1;
+
+    popen_open("for i in 0 1 2 3; do echo $i text1 text2 text3 && sleep 1; done", 0, 0, &p);
+    while (1) {
+        while(popen_read2(&p, ' ', "iS", &i1, s1)) {
+            printf("%d %s %s %s\n", i1, s1[0], s1[1], s1[2]);
+            if (i1 == 3) {
+                return 0;
+            }
+        }
+    }
+    #endif
     return 0;
 }
 #endif
