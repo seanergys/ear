@@ -33,10 +33,10 @@
 //
 //  Format options:
 //  - a: avoid (pass to next read argument)
-//  - s: return integer
+//  - s: return string
 //  - i: return integer
 //  - d: return double
-//  - D: return double vector
+//  - D: return double vector (length?)
 //
 //  Open options:
 //  - escape_lines: avoids parsing and returning the first N typical header lines.
