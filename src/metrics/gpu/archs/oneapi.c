@@ -348,19 +348,23 @@ static void read_single(int dv, gpu_t *gpu)
 
 state_t gpu_oneapi_pool(void *p)
 {
+    timestamp_t time;
+    double time_diff;
 	gpu_t current;
 	int dv;
 
 	// Locking
 	while (pthread_mutex_trylock(&lock));
-	// Getting current time
-	timestamp_getfast(&pool_time2);
+    // Time operations
+    timestamp_getfast(&time);
+    time_diff = (double) timestamp_diff(&time, &pool[0].time, TIME_USECS);
+    time_diff = time_diff / 1000000.0;
 	// Adding to the pool
 	for (dv = 0; dv < devs_count; ++dv)
 	{
 		read_single(dv, &current);
 
-		pool[dv].time      = pool_time2;
+		pool[dv].time      = time;
 		pool[dv].samples  += 1;
 		pool[dv].freq_mem += current.freq_mem;
 		pool[dv].freq_gpu += current.freq_gpu;
@@ -368,8 +372,8 @@ state_t gpu_oneapi_pool(void *p)
 		pool[dv].util_gpu += current.util_gpu;
 		pool[dv].temp_gpu += current.temp_gpu;
 		pool[dv].temp_mem += current.temp_mem;
+        pool[dv].power_w  += ((current.energy_j - pool[dv].energy_j) / time_diff);
 		pool[dv].energy_j  = current.energy_j;
-		pool[dv].power_w  += 0.0;
 		pool[dv].working   = current.working;
 		pool[dv].correct   = 1;
 		

@@ -188,7 +188,6 @@ static state_t static_core_init()
     ze_result_t            z;
     int                    dr;
     int                    dv;
-    int                    dp;
 
     // Note: The documentation says that now it is not needed.
     //setenv("ZES_ENABLE_SYSMAN", "1", 1);
