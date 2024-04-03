@@ -20,30 +20,6 @@
 
 #include <common/states.h>
 
-// Use example:
-//  float f1, f2;
-//  popen_t p;
-//  int gpu;
-//
-//  popen_open("for i in {1..100}; do echo GPU $i 10.0 20.0 && sleep 1; done", 0, &p);
-//  while(popen_read(&p, "aiff", &gpu, &f1, &f2)) {
-//      printf("RETURNED: %d %f %f\n", gpu, f1, f2);
-//  }
-//  popen_close(&p); // You can close, or wait and try again to read
-//
-//  Format options:
-//  - a: avoid (pass to next read argument)
-//  - s: return string
-//  - i: return integer
-//  - d: return double
-//  - D: return double vector (length?)
-//
-//  Open options:
-//  - escape_lines: avoids parsing and returning the first N typical header lines.
-//  - one_shot: used when the popen process is closed after the reading and not
-//              kept in the background. Under the hood blocks the read call,
-//              ensuring you have something to read.
-
 typedef struct popen_s {
     char  table[512][16][128];
     int   rows_escape;
@@ -57,20 +33,44 @@ typedef struct popen_s {
     int   fd;
 } popen_t;
 
-// Tests if a executable (binary or script) exists, before popen_open.
+// Tests if an executable (binary or script) exists, before call popen_open.
 state_t popen_test(char *exec);
 
+// Opens a process given a command.
+//     @param escape_lines: avoids reading the first N lines. It can be useful
+//         to escape the typical header returned by the command.
+//     @param one_shot: used when the command process prints something and
+//         immediately closes and is not kept in the background. Under the hood
+//         blocks both read functions ensuring you have something to read.
 state_t popen_open(char *command, int escape_lines, int one_shot, popen_t *p);
 
 void popen_close(popen_t *p);
 
-// Return 1 if there are elements pending to read.
-int popen_read(popen_t *p, const char* fmt, ...);
+// Reads a single line of the command output. It is a variadic function which
+// converts the white spaced separated line of string format into a set of
+// variables of different type.
+//     @param fmt: it is the format and admits the following letters:
+//         - a: avoid (pass to next read argument)
+//         - s: returns a string
+//         - S: returns a string vector
+//         - i: returns an integer
+//         - I: returns an integer vector
+//         - d: returns a double
+//         - D: returns a double vector
+//         Take into the account that vector letters are used as last letters
+//         in format because the function doesn't know in advance how many
+//         elements the caller wants to read. You can see the example in the
+//         test function of the source file.
+//     @returns if there are lines pending to read.
+#define popen_read(p, fmt, ...) popen_read2(p, ' ', fmt, __VA_ARGS__)
 
-// Counts the number of current elements kept in the buffer from last reading.
+// The same than popen_read() macro but using a separator instead white space.
+int popen_read2(popen_t *p, char separator, const char* fmt, ...);
+
+// Counts the number of current lines kept in the buffer from last reading.
 uint popen_count_read(popen_t *p);
 
-// Count the number of elements pending.
+// Count the number of lines pending.
 uint popen_count_pending(popen_t *p);
 
 #endif //METRICS_COMMON_POPEN_H

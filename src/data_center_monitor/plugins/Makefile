@@ -13,7 +13,8 @@ plug_BINS = \
     metrics_viewer.so \
     periodic_metrics.so \
     test_cpufreq.so \
-    test_gpu.so
+    test_gpu.so \
+    nodesensors.so
 
 ifdef CUDA_BASE 
 ifdef KERNELS
@@ -44,6 +45,9 @@ periodic_metrics.so: periodic_metrics.c
 
 dummy.so: dummy.c
 	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^
+
+nodesensors.so: nodesensors.c
+	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^ $(SRCDIR)/common/libcommon.a $(SRCDIR)/metrics/libmetrics.a -lm $(SRCDIR)/report/report.o
 
 kernel_cuda.so: kernel_cuda.c kernel_cuda_ptx.cu
 	$(CUDA_BASE)/bin/nvcc -I $(SRCDIR) --compiler-options '-fPIC' -shared -o $@ $^
