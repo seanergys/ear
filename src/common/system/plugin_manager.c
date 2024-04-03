@@ -306,7 +306,7 @@ static int plugins_open()
         }
         // Enabling if all the dependenciesare opened.
         plug->is_enabled = plug->is_opened && (j == p.count);
-        verbose(4, "[Summary] %s %s: called every %04llu ms with priority %u%s",
+        verbose(4, "[Summary] %s %s: called every %06llu ms with priority %u%s",
                 (plug->is_opened)? "Opened": "Not opened", plug->file_name, plug->time_lapse,
                 plug->priority, (plug->is_enabled)? "": ", but disabled");
         enabled_count += plug->is_enabled;

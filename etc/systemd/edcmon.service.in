@@ -9,7 +9,7 @@ Description=EDCMON - EAR Data Center Monitor service
 Type=simple
 Environment="EAR_ETC=@sysconfdir@"
 Environment="EAR_INSTALL_PATH=@prefix@"
-ExecStart=@prefix@/sbin/edcmon --plugins=nodesensors.so:30000  --monitor=1000 --relax=1000
+ExecStart=@prefix@/sbin/edcmon --monitor=1000 --relax=1000 --plugins=nodesensors.so:30000+nodesensors_report.so+nodesensors_alerts.so --verbose
 ExecStop=/bin/kill -TERM $MAINPID
 KillMode=process
 Restart=on-failure

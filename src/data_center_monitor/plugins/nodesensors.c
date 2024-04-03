@@ -18,13 +18,12 @@
 //#define SHOW_DEBUGS 1
 
 #include <string.h>
-#include <report/report.h>
+#include <stdlib.h>
 #include <common/output/debug.h>
 #include <common/system/plugin_manager.h>
 #include <common/config.h>
 #include <metrics/common/popen.h>
 #include <data_center_monitor/plugins/nodesensors.h>
-#include <data_center_monitor/plugins/conf.h>
 
 // Separator character used by nodesensors command
 static char sep=',';
@@ -40,10 +39,6 @@ static char *nodelist="p01r01a1pdu,p01r01b1pdu,p01r01e1pdu,p01r01f1pdu";
 static popen_t nodesensor_p;
 static char query[4096];
 
-// Report
-static conf_t                   *conf;
-static report_id_t               rid;
-
 
 
 // Hardcoded for testing in four PDUs
@@ -55,7 +50,7 @@ static cluster_sensors_t edcmon_info;
 declr_up_get_tag ()
 {
     *tag = "nodesensors";
-    *tags_deps = "conf";
+    *tags_deps = NULL;
 }
 
 static void static_init()
@@ -67,7 +62,7 @@ static void static_init()
 
 declr_up_action_init(_nodesensors)
 {
-    // We expose thisi information
+    // We expose this information
     *data_alloc = &edcmon_info;
 
     debug("nodesensors init");
@@ -75,25 +70,6 @@ declr_up_action_init(_nodesensors)
     return rsprintf("nodesensors action init(_nodesensors): received tag %s", tag);
 }
 
-declr_up_action_init(_conf)
-{
-	conf = (conf_t *) data;
-    	// Loading report manager (is using the same report plugins than EARDBD, by now)
-
-	debug("Initializing nodesensors report plugin");
-    	if (state_ok(report_load(conf->cluster.install.dir_plug,"nodesensor_log.so" ))){
-        	report_create_id(&rid, 0, 0, 0);
-        	// Initializing report manager
-        	if (state_fail(report_init(&rid, &conf->cluster))){
-			return rsprintf("[D] Nodesensors report plugin cannot be loaded");
-		}
-    	}else{
-		return rsprintf("[D] Nodesensors report plugin cannot be loaded");
-	}
-
-
-    return rsprintf("nodesensors action init(_conf): received tag %s", tag);
-}
 
 static void convert_double(double *info, char *data_in)
 {
@@ -146,15 +122,9 @@ declr_up_action_periodic(_nodesensors)
     	static_read_power(&edcmon_info.num_items, NUM_PDUs);
     	debug("%u items detected", edcmon_info.num_items);
 
-    	// Report metrics: Should this report action be implemented as a separated plugin?
-	report_misc(&rid, NODESENSORS_TYPE, (const char *)edcmon_info.edcmon_data, edcmon_info.num_items);
     	return rsprintf("nodesensors action periodic(_nodesensors): received tag %s", tag);
 }
 
-declr_up_post_data()
-{
-    return rsprintf("nodesensors post data: received msg %s", msg);
-}
 
 #if TEST
 void main(int argc, char *argv[])

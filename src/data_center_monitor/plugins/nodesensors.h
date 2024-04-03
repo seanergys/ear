@@ -18,6 +18,9 @@
 #ifndef _NODESENSORS_H_
 #define _NODESENSORS_H_
 
+#include <time.h>
+#include <sys/types.h>
+
 #define NODESENSORS_TYPE 0
 
 typedef enum {
@@ -36,10 +39,10 @@ typedef struct nodesesor{
         double    power;
 	double    humidity;
 	double    temperature;
-}nodesesor_t;
+}nodesensor_t;
 
 typedef struct cluster_sensors{
-	nodesesor_t     edcmon_data[MAX_SOURCES];
+	nodesensor_t    edcmon_data[MAX_SOURCES];
 	uint 		num_items;
 }cluster_sensors_t;
 

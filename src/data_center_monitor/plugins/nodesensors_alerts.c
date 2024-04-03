@@ -18,138 +18,80 @@
 //#define SHOW_DEBUGS 1
 
 #include <string.h>
-#include <report/report.h>
-#include <common/output/debug.h>
-#include <common/system/plugin_manager.h>
+
 #include <common/config.h>
-#include <metrics/common/popen.h>
+#include <common/output/verbose.h>
+#include <common/output/debug.h>
+#include <common/utils/string.h>
+#include <common/system/plugin_manager.h>
 #include <data_center_monitor/plugins/nodesensors.h>
-#include <data_center_monitor/plugins/conf.h>
-
-// Report
-static conf_t                   *conf;
 
 
-// MAX_SOURCES must be the maximum number of PDUs, IPs etc. 
-#define MAX_SOURCES 128
+static cluster_sensors_t *edcmon_info;
+static ullong zero = 0LLU;
 
-// Hardcoded for testing in four PDUs
-#define NUM_PDUs    4
+// This plugin checks nodesensors values and execute actions, all is hardcoded for now
 
-
-nodesesor_t edcmon_data[MAX_SOURCES];
+#define POWER_LIMIT       2000.0
+#define TEMPERATURE_LIMIT 93.0
+#define HUMIDITY_LIMIT    16.0
 
 declr_up_get_tag ()
 {
-    *tag = "nodesensors";
-    *tags_deps = "conf";
+    *tag = "nodesensors_alerts";
+    // To be executed with the same period than nodesensors
+    *tags_deps = "<!nodesensors";
 }
 
-static void static_init()
+
+// Is it neded ?
+declr_up_action_init(_nodesensors_alerts)
 {
-    // Create command query
-    snprintf(query,sizeof(query),"%s %s %s", command, nodelist, sensor_name);
-    debug("Command to be executed: \'%s\'", query);
+    *data_alloc = &zero;
+    return rsprintf("nodesensors_alerts action init(): received tag %s", tag);
 }
+
 
 declr_up_action_init(_nodesensors)
 {
-    // Why ??
-    *data_alloc = &edcmon_data;
+    edcmon_info = (cluster_sensors_t *)data;
 
-    debug("nodesensors init");
-    static_init();
-    return rsprintf("nodesensors action init(_nodesensors): received tag %s", tag);
+    return rsprintf("nodesensors_alert action init(_nodesensors): received tag %s", tag);
 }
 
-declr_up_action_init(_conf)
+static uint sensor_warning(nodesensor_t *info)
 {
-	conf = (conf_t *) data;
-    	// Loading report manager (is using the same report plugins than EARDBD, by now)
-
-	debug("Initializing nodesensors report plugin");
-    	if (state_ok(report_load(conf->cluster.install.dir_plug,"nodesensor_log.so" ))){
-        	report_create_id(&rid, 0, 0, 0);
-        	// Initializing report manager
-        	if (state_fail(report_init(&rid, &conf->cluster))){
-			return rsprintf("[D] Nodesensors report plugin cannot be loaded");
-		}
-    	}else{
-		return rsprintf("[D] Nodesensors report plugin cannot be loaded");
-	}
-
-
-    return rsprintf("nodesensors action init(_conf): received tag %s", tag);
+	if ((info->power > POWER_LIMIT) || (info->temperature > TEMPERATURE_LIMIT) || 
+	   (info->humidity > HUMIDITY_LIMIT)) return 1;
+	return 0;
 }
 
-static void convert_double(double *info, char *data_in)
+static void execute_action(nodesensor_t *info)
 {
-	if (strcmp(data_in, "N/A") == 0){
-		// 0 means not available. Should we use another value? Can be the same for all the sensors? 
-		*info = 0;
-	}else{
-		*info = strtod(data_in, NULL);
-	}
+	verbose(0,"WARNING: node %s power %lf temperature %lf humidity %lf",
+			info->nodename, info->power, info->temperature, info->humidity);
 }
 
-static state_t static_read_power(uint *num_rows, uint expected_items)
-{
-	// Execute the query
-    char *node;
-    char *power, *temperature, *humidity;
-    uint i = 0;
-    if (popen_open(query, 1, 0, &nodesensor_p) != EAR_SUCCESS){
-       debug("popen failed\n");
-       return EAR_ERROR;
-    }
-    // Parse data: An external loop is needed since popen returns if there is no data, then
-    // in case the command has not reported yet the information, the inner loop will finish with
-    // no data. It is a busy waiting loop assuming the command will not last for too much time
-    while(i < expected_items){
-    while(popen_read2(&nodesensor_p, sep,  "ssss", &node,&humidity,&temperature, &power)) {
-            debug("RETURNED: node %s humidity %s temperature %s power %s\n", node, humidity, temperature,power);
-	    strncpy(edcmon_data[i].nodename, node, sizeof(edcmon_data[i].nodename));
-
-	    // Sensors units are still hardcoded. We could implement a discovery method
-	    convert_double(&edcmon_data[i].humidity, humidity);
-	    convert_double(&edcmon_data[i].temperature, temperature);
-	    convert_double(&edcmon_data[i].power, power);
-	    edcmon_data[i].timestamp  = time(NULL);
-	    debug("nodesensors[%u] time %u node %s power %lf W, temperature %lf F , humidity %lf \%", i, (uint)edcmon_data[i].timestamp, edcmon_data[i].nodename, edcmon_data[i].power, edcmon_data[i].temperature, edcmon_data[i].humidity);
-	    i++;
-    }
-    }
-    *num_rows = i;
-    // Close
-    popen_close(&nodesensor_p);
-
-}
-
+#define VERBOSE_DATA 0
 declr_up_action_periodic(_nodesensors)
 {
-    	debug("nodesensors action");
-    	uint num_items;
-
-    	// Get instanteneous power
-    	static_read_power(&num_items, NUM_PDUs);
-    	debug("%u items detected", num_items);
-
-    	// Report metrics: Should this report action be implemented as a separated plugin?
-	report_misc(&rid, NODESENSORS_TYPE, (const char *)edcmon_data, num_items);
-    	return rsprintf("nodesensors action periodic(_nodesensors): received tag %s", tag);
-}
-
-declr_up_post_data()
-{
-    return rsprintf("nodesensors post data: received msg %s", msg);
-}
-
-#if TEST
-void main(int argc, char *argv[])
-{
-	uint num_items;
-	static_init();
-	static_read_power(&num_items, NUM_PDUs);
-	printf("%u items detected", num_items);
-}
+	// Can data change and then needs to be updated here? Or must be initializd init (as it is)?
+    	debug("nodesensors_alert action tag %s", tag);
+	
+	verbose(0, "Nodesensors_alerts: %u items received", edcmon_info->num_items);
+	for (uint items = 0; items < edcmon_info->num_items; items++){
+		if (sensor_warning(&edcmon_info->edcmon_data[items])){
+			execute_action(&edcmon_info->edcmon_data[items]);
+		}
+#if VERBOSE_DATA
+		verbose(0,"WARNING EDCMON[%u] node %s power %lf temperature %lf humidity %lf", items,
+		edcmon_info->edcmon_data[items].nodename,
+		edcmon_info->edcmon_data[items].power,
+		edcmon_info->edcmon_data[items].temperature,
+		edcmon_info->edcmon_data[items].humidity);
 #endif
+
+	}
+    	return rsprintf("nodesensors_alerts action periodic(_nodesensors): received tag %s", tag);
+}
+

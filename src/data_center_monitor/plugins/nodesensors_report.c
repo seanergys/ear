@@ -1,0 +1,100 @@
+/*
+*
+* This program is part of the EAR software.
+*
+* EAR provides a dynamic, transparent and ligth-weigth solution for
+* Energy management. It has been developed in the context of the
+* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
+*
+* Copyright © 2017-present BSC-Lenovo
+* BSC Contact   mailto:ear-support@bsc.es
+* Lenovo contact  mailto:hpchelp@lenovo.com
+*
+* EAR is an open source software, and it is licensed under both the BSD-3 license
+* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
+* and COPYING.EPL files.
+*/
+
+//#define SHOW_DEBUGS 1
+
+#include <string.h>
+
+#include <common/config.h>
+#include <common/output/verbose.h>
+#include <common/output/debug.h>
+#include <common/utils/string.h>
+#include <common/system/plugin_manager.h>
+#include <report/report.h>
+#include <data_center_monitor/plugins/conf.h>
+#include <data_center_monitor/plugins/nodesensors.h>
+
+
+static cluster_sensors_t *edcmon_info;
+// Report
+static conf_t                   *conf;
+static report_id_t               rid;
+
+static ullong zero = 0LLU;
+
+
+
+declr_up_get_tag ()
+{
+    *tag = "nodesensors_report";
+    // To be executed with the same period than nodesensors
+    *tags_deps = "!conf+<!nodesensors";
+}
+
+declr_up_action_init(_nodesensors_report)
+{
+	*data_alloc = &zero;
+	return rsprintf("nodesensors_report action init(): received tag %s", tag);
+}
+
+declr_up_action_init(_conf)
+{
+        conf = (conf_t *) data;
+        // Loading report manager (is using the same report plugins than EARDBD, by now)
+
+        debug("Initializing nodesensors report plugin");
+        if (state_ok(report_load(conf->cluster.install.dir_plug,"nodesensor_log.so" ))){
+                report_create_id(&rid, 0, 0, 0);
+                // Initializing report manager
+                if (state_fail(report_init(&rid, &conf->cluster))){
+                        return rsprintf("[D] Nodesensors_report plugin cannot be loaded");
+                }
+        }else{
+                return rsprintf("[D] Nodesensors_report plugin cannot be loaded");
+        }
+	verbose(0,"nodesensors_report report plugin loaded");
+    	return rsprintf("nodesensors_report action init(_nodesensors): received tag %s", tag);
+}
+
+declr_up_action_init(_nodesensors)
+{
+    edcmon_info = (cluster_sensors_t *)data;
+
+    return rsprintf("nodesensors_report action init(_nodesensors): received tag %s", tag);
+}
+
+
+#define VERBOSE_DATA 0
+declr_up_action_periodic(_nodesensors)
+{
+	// Can data change and then needs to be updated here? Or must be initializd init (as it is)?
+    	debug("nodesensors_report action tag %s", tag);
+	
+	verbose(0, "Nodesensors_alters: %u items received", edcmon_info->num_items);
+#if VERBOSE_DATA
+	for (uint items = 0; items < edcmon_info->num_items; items++){
+			verbose(0,"WARNING EDCMON[%u] node %s power %lf temperature %lf humidity %lf", items,
+			edcmon_info->edcmon_data[items].nodename,
+			edcmon_info->edcmon_data[items].power,
+			edcmon_info->edcmon_data[items].temperature,
+			edcmon_info->edcmon_data[items].humidity);
+	}
+#endif
+	report_misc(&rid, NODESENSORS_TYPE, (const char *)edcmon_info->edcmon_data, edcmon_info->num_items);
+    	return rsprintf("nodesensors_reports action periodic(_nodesensors): received tag %s", tag);
+}
+

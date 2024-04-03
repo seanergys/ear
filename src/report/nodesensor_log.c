@@ -82,7 +82,7 @@ state_t report_misc(report_id_t *id,uint type, const char *data_in, uint count)
 {
 	if (!must_report) return EAR_SUCCESS;
 
-	nodesesor_t *data = (nodesesor_t *)data_in;
+	nodesensor_t *data = (nodesensor_t *)data_in;
 
 	for (uint i = 0; i < count; i ++){
 	switch (type){
