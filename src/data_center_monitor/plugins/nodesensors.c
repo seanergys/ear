@@ -87,7 +87,10 @@ static state_t static_read_power(uint *num_rows, uint expected_items)
     char *node;
     char *power, *temperature, *humidity;
     uint i = 0;
-    if (popen_open(query, 1, 0, &nodesensor_p) != EAR_SUCCESS){
+
+    uint no_header = 1;
+    uint one_shot  = 0;
+    if (popen_open(query, no_header, one_shot, &nodesensor_p) != EAR_SUCCESS){
        debug("popen failed\n");
        return EAR_ERROR;
     }

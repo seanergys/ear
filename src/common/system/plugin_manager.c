@@ -597,8 +597,8 @@ int plugin_manager_main(int argc, char *argv[])
     suscription_t *sus = suscription();
     sus->call_init     = plugins_init;
     sus->call_main     = plugins_main;
-    sus->time_relax    = monitor_period;
-    sus->time_burst    = relax_period;
+    sus->time_relax    = relax_period;
+    sus->time_burst    = monitor_period;
     sus->suscribe(sus);
     // Monitoring metrics
     verbose(0, "Initializing UPM monitor with burst = %lu and relax = %lu", monitor_period, relax_period);

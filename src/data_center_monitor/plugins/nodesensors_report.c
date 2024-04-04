@@ -35,6 +35,7 @@ static conf_t                   *conf;
 static report_id_t               rid;
 
 static ullong zero = 0LLU;
+static char my_conf[1024];
 
 
 
@@ -47,17 +48,16 @@ declr_up_get_tag ()
 
 declr_up_action_init(_nodesensors_report)
 {
+	// Is this needed? 
 	*data_alloc = &zero;
-	return rsprintf("nodesensors_report action init(): received tag %s", tag);
-}
-
-declr_up_action_init(_conf)
-{
-        conf = (conf_t *) data;
-        // Loading report manager (is using the same report plugins than EARDBD, by now)
-
-        debug("Initializing nodesensors report plugin");
-        if (state_ok(report_load(conf->cluster.install.dir_plug,"nodesensor_log.so" ))){
+	// data is the list of arguments for this plugin. It is received in the format of argv (null terminated)
+	// In this case is the specific report plugin
+	char **args = (char **) data;
+	verbose(0,"Initializing nodesensors report plugini argc received %s", args[0]);
+	strcpy(my_conf, args[0]);
+	strcat(my_conf,".so");
+	verbose(0,"Using %s report plugin", my_conf);
+        if (state_ok(report_load(conf->cluster.install.dir_plug,my_conf ))){
                 report_create_id(&rid, 0, 0, 0);
                 // Initializing report manager
                 if (state_fail(report_init(&rid, &conf->cluster))){
@@ -66,7 +66,15 @@ declr_up_action_init(_conf)
         }else{
                 return rsprintf("[D] Nodesensors_report plugin cannot be loaded");
         }
-	verbose(0,"nodesensors_report report plugin loaded");
+        verbose(0,"nodesensors_report report plugin loaded");
+
+	return rsprintf("nodesensors_report action init(): received tag %s ", tag);
+}
+
+declr_up_action_init(_conf)
+{
+        conf = (conf_t *) data;
+
     	return rsprintf("nodesensors_report action init(_nodesensors): received tag %s", tag);
 }
 
@@ -79,6 +87,7 @@ declr_up_action_init(_nodesensors)
 
 
 #define VERBOSE_DATA 0
+// This action will be executed after nodesensors action
 declr_up_action_periodic(_nodesensors)
 {
 	// Can data change and then needs to be updated here? Or must be initializd init (as it is)?
