@@ -30,6 +30,12 @@
 static cluster_sensors_t *edcmon_info;
 static ullong zero = 0LLU;
 
+static char alert_action[128];
+
+#define NO_ACTION 	0
+#define LOG 		1
+static uint warning_action = NO_ACTION;
+
 // This plugin checks nodesensors values and execute actions, all is hardcoded for now
 
 #define POWER_LIMIT       2000.0
@@ -47,8 +53,19 @@ declr_up_get_tag ()
 // Is it neded ?
 declr_up_action_init(_nodesensors_alerts)
 {
-    *data_alloc = &zero;
-    return rsprintf("nodesensors_alerts action init(): received tag %s", tag);
+    // In this case is the specific report plugin
+    char **args = (char **) data;
+    if (args[0] != NULL){
+    	strcpy(alert_action, args[0]);
+    }else strcpy(alert_action,"log");
+
+    if (strcmp(alert_action,"log") == 0){
+	    warning_action = LOG;
+    }else{
+	    warning_action = NO_ACTION;
+    }
+
+    return rsprintf("nodesensors_alerts action init(): received tag %s action %s", tag, alert_action);
 }
 
 
@@ -68,8 +85,14 @@ static uint sensor_warning(nodesensor_t *info)
 
 static void execute_action(nodesensor_t *info)
 {
-	verbose(0,"WARNING: node %s power %lf temperature %lf humidity %lf",
+	switch (warning_action){
+		case LOG:
+		verbose(0,"WARNING: node %s power %lf temperature %lf humidity %lf",
 			info->nodename, info->power, info->temperature, info->humidity);
+		break;
+		case NO_ACTION:
+		break;
+	}
 }
 
 #define VERBOSE_DATA 0

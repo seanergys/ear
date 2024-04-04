@@ -35,7 +35,7 @@ static conf_t                   *conf;
 static report_id_t               rid;
 
 static ullong zero = 0LLU;
-static char my_conf[1024];
+static char my_report_plugin[128];
 
 
 
@@ -48,16 +48,18 @@ declr_up_get_tag ()
 
 declr_up_action_init(_nodesensors_report)
 {
-	// Is this needed? 
-	*data_alloc = &zero;
 	// data is the list of arguments for this plugin. It is received in the format of argv (null terminated)
 	// In this case is the specific report plugin
 	char **args = (char **) data;
 	verbose(0,"Initializing nodesensors report plugini argc received %s", args[0]);
-	strcpy(my_conf, args[0]);
-	strcat(my_conf,".so");
-	verbose(0,"Using %s report plugin", my_conf);
-        if (state_ok(report_load(conf->cluster.install.dir_plug,my_conf ))){
+
+	if (args[0] != NULL){
+		strcpy(my_report_plugin, args[0]);
+		strcat(my_report_plugin,".so");
+	}else strcpy(my_report_plugin,"nodesensor_log.so");
+
+	verbose(0,"Using %s report plugin", my_report_plugin);
+        if (state_ok(report_load(conf->cluster.install.dir_plug,my_report_plugin ))){
                 report_create_id(&rid, 0, 0, 0);
                 // Initializing report manager
                 if (state_fail(report_init(&rid, &conf->cluster))){
