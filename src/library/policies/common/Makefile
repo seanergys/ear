@@ -19,7 +19,7 @@ supp_OBJS = \
 all: $(supp_OBJS)
  
 %.o: %.c 
-	$(CC) $(CC_FLAGS) $(CFLAGS) $(LIB_CFLAGS) $(GPU_OPT_FLAG) $(DEFS) -c $<
+	$(CC) $(CC_FLAGS) $(CFLAGS) $(LIB_CFLAGS) $(GPU_OPT_FLAG) -c $<
 
 ######## OPTIONS 
 

@@ -58,4 +58,3 @@ export CHOWN_USR
 export CHOWN_GRP
 export CONSTANTS
 export REPLACE
-export DEFS

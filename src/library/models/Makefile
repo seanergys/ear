@@ -25,10 +25,10 @@ enermodl_DEPS = energy_models/common.o
 all: $(modl_OBJS) $(modl_BINS)
 
 %.o: %.c %.h
-	$(CC) $(CC_FLAGS) $(CFLAGS) $(LIB_CFLAGS) $(DEFS) -o $@ -c $<
+	$(CC) $(CC_FLAGS) $(CFLAGS) $(LIB_CFLAGS) -o $@ -c $<
 
 %.o: %.c
-	$(CC) $(CC_FLAGS) $(CFLAGS) $(LIB_CFLAGS) $(DEFS) -o $@ -c $<
+	$(CC) $(CC_FLAGS) $(CFLAGS) $(LIB_CFLAGS) -o $@ -c $<
 
 # Implicit rule for energy model plug-ins
 %_model.so: %_model.o $(enermodl_DEPS) $(modl_DEPS)

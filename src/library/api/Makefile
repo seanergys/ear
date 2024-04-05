@@ -20,13 +20,12 @@ oths_BINS = earld.h
 oths_PATH = $(DESTDIR)/include
 oths_PERM = 0664
 
-
 ######## RULES
 
 all: $(OBJS) $(BINS)
 
 %.o: %.c %.h
-	$(CC) $(CC_FLAGS) $(LIB_CFLAGS) $(CFLAGS) $(DEFS) -c $<
+	$(CC) $(CC_FLAGS) $(LIB_CFLAGS) $(CFLAGS) -c $<
 
 libear_seq.so: ear_seq.o
 	$(CC) $(CC_FLAGS) -shared -o $@ $^ -ldl

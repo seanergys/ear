@@ -1,7 +1,5 @@
 CFLAGS  = -fPIC -I$(SRCDIR) -DCOUNTDOWN_BASE=\"$(COUNTDOWN_BASE)\" $(CONSTANTS)
 LDFLAGS = -ldl
-
-
 LOAD_CFLAGS = $(CFLAGS)
 
 ######## FILES
@@ -27,7 +25,7 @@ load_PERM = 0775
 all: $(load_BINS)
 
 %.o: %.c %.h
-	$(CC) $(MPI_CFLAGS) $(CC_FLAGS) $(LOAD_CFLAGS) $(DEFS) -c $<
+	$(CC) $(MPI_CFLAGS) $(CC_FLAGS) $(LOAD_CFLAGS) -c $<
 
 
 libearld.so: $(load_OBJS) $(load_DEPS)
