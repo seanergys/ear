@@ -7,9 +7,9 @@ Description=EDCMON - EAR Data Center Monitor service
 
 [Service]
 Type=simple
-Environment="EAR_ETC=/home/julitac/ear4.3.1-intel.dev/etc"
+Environment="EAR_ETC=/home/jordi/Documents/opt/openmpi/etc"
 Environment="EDCMON_PLUGINS=metrics.so:30000+periodic_metrics.so:30000"
-ExecStart=/home/julitac/ear4.3.1-intel.dev/sbin/edcmon --plugins=$EDCMON_PLUGINS
+ExecStart=/home/jordi/Documents/opt/openmpi/sbin/edcmon --plugins=$EDCMON_PLUGINS
 ExecStop=/bin/kill -TERM $MAINPID
 KillMode=process
 Restart=on-failure

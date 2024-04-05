@@ -45,7 +45,7 @@ void management_init(manages_info_t *m, topology_t *tp, ullong mflags)
     management_info_get(m);
 }
 
-static void management_init_screen(manages_info_t *m, topology_t *tp)
+__attribute__((unused)) static void management_init_screen(manages_info_t *m, topology_t *tp)
 {
     static char        buffer[16384];
     static strscreen_t ss;

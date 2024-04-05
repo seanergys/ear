@@ -35,8 +35,8 @@
 static ehandler_t      e_ctx;
 static topology_t     *self_tp;
 // Screen
-static strtable_t      st;
-static strscreen_t     ss;
+static strtable_t      st __attribute__ ((unused));
+static strscreen_t     ss __attribute__ ((unused));
 static int             id_cpu;
 static int             id_imc;
 static int             id_ram;
@@ -78,7 +78,7 @@ void metrics_init(metrics_info_t *m, topology_t *tp, char *nodepow_path, ullong 
     metrics_info_get(m);
 }
 
-static void metrics_init_screen(metrics_info_t *m, topology_t *tp)
+__attribute__((unused)) static void metrics_init_screen(metrics_info_t *m, topology_t *tp)
 {
     static char buffer[16384];
     // Screen initialization

@@ -105,17 +105,31 @@ static int plugins_dependencies_read(cchar *string, ullong father_time_lapse, ui
         priority_plus = 0;
         time_inherit  = 0;
         mandatory     = 0;
-        // Configuration = file:path:conf1:conf2
+        // Configuration = file:time:conf1:conf2
         if (strtoa(list1[l], ':', &list2, &list2_count) != NULL) {
-            if (list2_count > 1) {
-                p.plugins[p.count].time_lapse = (ullong) atoi(list2[1]);
-                p.plugins[p.count].time_param = 1;
+            for (j = 1; list2[j] != NULL; ++j) {
+                adebug("[Debug] %s: arg[%d] %s", list2[0], j, list2[j]);
             }
-            // Configuration exists
-            if (list2_count > 2) {
-                //strncpy(p.plugins[p.count].conf, list2[2], sizeof(p.plugins[p.count].conf));
-                //p.plugins[p.count].data_conf = (void *) p.plugins[p.count].conf;
-                p.plugins[p.count].data_conf = (void *) &list2[2];
+            // If time is valid
+            if (list2_count > 1 && strlen(list2[1]) > 0 && strisnum(list2[1])) {
+                p.plugins[p.count].time_lapse = (ullong) atoi(list2[1]);
+                p.plugins[p.count].time_param = p.plugins[p.count].time_lapse > 0;
+                // If configuration exists
+                if (list2_count > 2) {
+                    //strncpy(p.plugins[p.count].conf, list2[2], sizeof(p.plugins[p.count].conf));
+                    //p.plugins[p.count].data_conf = (void *) p.plugins[p.count].conf;
+                    p.plugins[p.count].data_conf = (void *) &list2[2];
+                }
+            } else {
+                // Ok, time is not valid, so this is configuration then
+                if (list2_count > 1 && strlen(list2[1]) > 0) {
+                    p.plugins[p.count].data_conf = (void *) &list2[1];
+                } else {
+                    // Or maybe not, if list2[1] is empty then the configuration is this
+                    if (list2_count > 2) {
+                        p.plugins[p.count].data_conf = (void *) &list2[2];
+                    }
+                }
             }
             c = list2[0];
         } else {
@@ -143,9 +157,10 @@ static int plugins_dependencies_read(cchar *string, ullong father_time_lapse, ui
         } else {
             sprintf(p.plugins[p.count].path, "%s", c);
         }
-        if (list2 != NULL) {
-            strtoa_free(list2);
-        }
+        // If you free this list, the plugin can't get the configuration
+        //if (list2 != NULL) {
+            //strtoa_free(list2);
+        //}
         // Getting the plugin file_name for printing and compare purposes
         for (j = strlen(p.plugins[p.count].path)-2; j >= 0; --j) {
             p.plugins[p.count].file_name = &p.plugins[p.count].path[j];
@@ -198,6 +213,7 @@ static int plugins_dependencies_read(cchar *string, ullong father_time_lapse, ui
         p.count += 1;
     }
     strtoa_free(list1);
+
     return 1;
 }
 
@@ -210,8 +226,9 @@ static void plugins_open_sort(uint priority, uint index)
     }
     for (i = 0; i < p.count; ++i) {
         if (priority == p.plugins[i].priority) {
-            debug("[DEBUG] %19s: time lapse '%4llu', priority '%u'",
-                    p.plugins[i].path, p.plugins[i].time_lapse, p.plugins[i].priority);
+            adebug("[Debug] %s: time lapse '%4llu', time_param %u, priority '%u'",
+                    p.plugins[i].path, p.plugins[i].time_lapse, p.plugins[i].time_param,
+                    p.plugins[i].priority);
             p.plugins_sorted[index++] = &p.plugins[i];
         }
     }
@@ -347,7 +364,7 @@ static int output_print(int i, int d, char *prefix, char *output)
         ++output;
     }
     if (strlen(output) > 0) {
-        verbose(0, "[ %s, %19s ] %s%s", date, p.plugins_sorted[i]->file_name, prefix, output);
+        verbose(0, "[ %s, %21s ] %s%s", date, p.plugins_sorted[i]->file_name, prefix, output);
     }
     return 1;
 }
@@ -563,6 +580,9 @@ static int plugin_manager_configure(int argc, char *argv[])
     }
     if (args_get(argc, argv, "silence", NULL)) {
         VERB_SET_EN(0);
+    }
+    if (args_get(argc, argv, "debug", NULL)) {
+        ADEBUG_SET_EN(1);
     }
     p.plugins = calloc(MAX_PLUGINS, sizeof(plugin_t));
     p.plugins_sorted = calloc(MAX_PLUGINS, sizeof(plugin_t *));
