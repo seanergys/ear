@@ -16,9 +16,6 @@
 */
 
 
-#ifdef HAVE_CONFIG_H
-#include <common/config/config.h>
-#endif
 #include <library/loader/module_mpi.h>
 
 extern mpif_t ear_mpif;

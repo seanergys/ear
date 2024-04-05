@@ -1,6 +1,3 @@
-#ifdef HAVE_CONFIG_H
-#include <common/config/config.h>
-#endif
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>

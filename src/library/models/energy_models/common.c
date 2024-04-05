@@ -16,9 +16,6 @@
 */
 
 
-#ifdef HAVE_CONFIG_H
-#include <common/config/config.h>
-#endif
 
 #include <library/models/energy_models/common.h>
 

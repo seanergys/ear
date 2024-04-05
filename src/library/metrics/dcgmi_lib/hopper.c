@@ -15,9 +15,6 @@
  */
 
 
-#ifdef HAVE_CONFIG_H
-#include <common/config/config.h>
-#endif
 
 #include <library/metrics/dcgmi_lib/hopper.h>
 

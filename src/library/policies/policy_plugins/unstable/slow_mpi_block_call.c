@@ -16,9 +16,6 @@
  */
 
 
-#ifdef HAVE_CONFIG_H
-#include <common/config/config.h>
-#endif
 #include <library/policies/policy_ctx.h>
 #include <library/policies/common/mpi_stats_support.h>
 #include <library/policies/common/imc_policy_support.h>

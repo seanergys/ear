@@ -16,9 +16,6 @@
  */
 
 
-#ifdef HAVE_CONFIG_H
-#include <common/config/config.h>
-#endif
 #include <common/states.h>
 #include <common/types/types.h>
 #include <common/output/verbose.h>
