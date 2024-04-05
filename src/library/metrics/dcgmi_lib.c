@@ -16,7 +16,9 @@
 
 #define SHOW_DEBUGS 1
 
+#ifdef HAVE_CONFIG_H
 #include <common/config/config.h>
+#endif
 
 #include <library/metrics/dcgmi_lib.h>
 

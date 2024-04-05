@@ -15,10 +15,13 @@
  * and COPYING.EPL files.
  */
 
+
 #ifndef COMMON_CONFIG_DEF_H
 #define COMMON_CONFIG_DEF_H
 
+
 #include <common/config/config_install.h>
+
 
 /** @name Paths
  * EAR paths and names. */
@@ -27,6 +30,7 @@
 #define REL_NAME_LIBR "libear"
 #define REL_PATH_LOAD "lib/libearld.so"
 /**@}*/
+
 
 /** @name Suffixes
  * Loader definitions. */
@@ -45,17 +49,22 @@
 /** @name Database
  * These definitions affects DB configuration. */
 /**@{*/
+
 /** When set to 1, loops signatures are not reported to the DB to save space. */
 #define LARGE_CLUSTER       0
+
 /* When set to 1, some fields are neither created not reported to the DB to save space. */
 #define DB_SIMPLE           0
+
 /* Maximum number of simultaneous DB connection for mysql user commands. */
 #define MAX_DB_CONNECTIONS  20
+
 /**@}*/
 
 
 /** @name Daemon */
 /**@{*/
+
 /** When set to 1, verbose, debug, and error output is sent to eard.log file stored at EAR_TMP. */
 #define EARD_FILE_LOG               1
 /** Set minimum CPU frequency on idle phases. */
@@ -71,10 +80,13 @@
 
 /** @name EAR Global Manager */
 /**@{*/
+
 /** When set to 1, verbose,debug, and error output is sent to eargmd.log file stored at EAR_TMP. */
 #define EARGMD_FILE_LOG                     1
+
 /** Cluster soft powercap with homogeneous powercap. */
 #define EARGM_POWERCAP_SOFTPC_HOMOGENEOUS   0
+
 /**@}*/
 
 /** Forces EARD and EARGM to be executed as root. */
@@ -86,9 +98,8 @@
 /** Maximum number of tries when doing non-blocking communications. */
 #define MAX_SOCKET_COMM_TRIES               100000000
 //
+
 /* These flags configures EARL */
-/* When set to 1, turbo is allowed */
-#define USE_TURBO                           0
 
 /* Forces the intel pstate to create the cpufreq list using turbo freq. Used in cases where the turbo
  * is on/off dynamically. It just works when using intel_pstate CPUFreq driver. */
@@ -199,23 +210,35 @@
 /** @name Library
  * EARL defaults. */
 /**@{*/
+
 /** Enable IMC management. */
 #define  EAR_eUFS         1
+
 /** IMC controller threshold. */
 #define  EAR_IMC_TH       0.02
+
 /** Enable EARL phase detection. */
 #define  EAR_USE_PHASES   1
+
 /** Enable EARL load balance. */
 #define  EAR_USE_LB       1
 #define  EAR_LB_TH        0.8
+
 /** Set turbo for critical path processes. */
 #define  EAR_USE_TURBO_CP 1
+
 /** Enable DCGMI monitoring. */
 #define DCGMI_DEFAULT     0
+
 /** Enable EARL loop reporting. */
 #define EARL_REPORT_LOOPS 1
+
 /** Validates CPU busy waiting behavior. */
 #define EARL_CPUBUSYWAIT_VALIDATE 1
+
+/** When set to 1, turbo is allowed */
+#define USE_TURBO 0
+
 /**@}*/
 
 

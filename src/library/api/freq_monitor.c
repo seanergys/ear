@@ -1,4 +1,6 @@
+#ifdef HAVE_CONFIG_H
 #include <common/config/config.h>
+#endif
 
 
 static freq_cpu_t freq1;

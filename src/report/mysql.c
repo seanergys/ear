@@ -16,7 +16,9 @@
  */
 
 
+#ifdef HAVE_CONFIG_H
 #include <common/config/config.h>
+#endif
 //#define SHOW_DEBUGS 1
 #include <stdio.h>
 #include <report/report.h>

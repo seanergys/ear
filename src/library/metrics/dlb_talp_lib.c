@@ -16,7 +16,9 @@
  */
 
 
+#ifdef HAVE_CONFIG_H
 #include <common/config/config.h>
+#endif
 
 #include <library/metrics/dlb_talp_lib.h>
 

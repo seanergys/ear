@@ -16,7 +16,9 @@
 */
 
 
+#ifdef HAVE_CONFIG_H
 #include <common/config/config.h>
+#endif
 #include <cassandra.h>
 #include <report/report.h>
 #include <common/states.h>

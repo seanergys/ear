@@ -10,7 +10,7 @@ all: $(OBJS)
 
 %.o: %.c %.h
 	# DYNAIS_CUTOFF enables the dynamic DynAIS turning off.
-	$(CC) $(CC_FLAGS) $(LIB_CFLAGS) $(CFLAGS) -DDYNAIS_CUTOFF=1 -c $<
+	$(CC) $(CC_FLAGS) $(LIB_CFLAGS) $(CFLAGS) $(DEFS) -DDYNAIS_CUTOFF=1 -c $<
 
 ######## OPTIONS 
 

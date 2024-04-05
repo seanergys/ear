@@ -16,7 +16,7 @@ eard_DEPS = $(SRCDIR)/common/libcommon.a
 all: $(eard_BINS)
  
 %.o: %.c 
-	$(CC) $(CC_FLAGS) $(CFLAGS) $(LIB_CFLAGS) -c $<
+	$(CC) $(CC_FLAGS) $(CFLAGS) $(LIB_CFLAGS) $(DEFS) -c $<
 
 %_eard.so: %_eard.o $(eard_DEPS)
 	$(CC) $(CC_FLAGS) -shared -fPIC -o $@ $^

@@ -67,6 +67,7 @@ DLB_CPPFLAGS			 = @DLB_CPPFLAGS@
 DLB_LDFLAGS				 = @DLB_LDFLAGS@
 CPPFLAGS 					 = @CPPFLAGS@
 LDFLAGS						 = @LDFLAGS@
+DEFS							 = @DEFS@
 # Installation directories and options
 ROOTDIR            = $(shell pwd)
 SRCDIR             = $(ROOTDIR)/src

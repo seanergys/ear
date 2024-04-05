@@ -24,16 +24,16 @@ endif
 all: $(OBJS)
 
 dcgmi_lib/common.o: dcgmi_lib/common.c dcgmi_lib/common.h
-	$(CC) $(CC_FLAGS) $(LIB_CFLAGS) $(CFLAGS) -c dcgmi_lib/common.c
+	$(CC) $(CC_FLAGS) $(LIB_CFLAGS) $(CFLAGS) $(DEFS) -c dcgmi_lib/common.c
 
 dcgmi_lib/%.o: %.c %.h $(dcgmilib_DEPS)
-	$(CC) $(CC_FLAGS) $(LIB_CFLAGS) $(CFLAGS) -c $<
+	$(CC) $(CC_FLAGS) $(LIB_CFLAGS) $(CFLAGS) $(DEFS) -c $<
 
 dlb_talp_lib.o: dlb_talp_lib.c dlb_talp_lib.h
-	$(CC) $(CC_FLAGS) $(LIB_CFLAGS) $(DLB_CPPFLAGS) $(CFLAGS) -c dlb_talp_lib.c
+	$(CC) $(CC_FLAGS) $(LIB_CFLAGS) $(DLB_CPPFLAGS) $(CFLAGS) $(DEFS) -c dlb_talp_lib.c
 
 %.o: %.c %.h
-	$(CC) $(CC_FLAGS) $(LIB_CFLAGS) $(CFLAGS) -c $<
+	$(CC) $(CC_FLAGS) $(LIB_CFLAGS) $(CFLAGS) $(DEFS) -c $<
 
 ######## OPTIONS 
 

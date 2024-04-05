@@ -16,7 +16,9 @@
 */
 
 
+#ifdef HAVE_CONFIG_H
 #include <common/config/config.h>
+#endif
 #include <time.h>
 #include <errno.h>
 #include <fcntl.h>
