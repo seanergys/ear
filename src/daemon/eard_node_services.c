@@ -156,13 +156,13 @@ void services_init(topology_t *tp)
     sf(imcfreq_count_devices(no_ctx, &ui.devs_count));
         bwidth_count_devices(no_ctx, &ub.devs_count);
     #if USE_GPUS
-    sf(      gpu_get_devices(no_ctx, (gpu_devs_t **) &ug.avail_list, &ug.devs_count));
+    gpu_get_devices((gpu_devs_t **) &ug.avail_list, &ug.devs_count);
     #endif
     sf(cpufreq_data_alloc((cpufreq_t **) &uc.current_list, empty));
     sf(imcfreq_data_alloc((imcfreq_t **) &ui.current_list, empty));
         bwidth_data_alloc((bwidth_t  **) &ub.current_list);
     #if USE_GPUS
-	sf(    gpu_data_alloc(&eard_read_gpu));
+	       gpu_data_alloc(&eard_read_gpu);
     #endif
 
 	serial_alloc(&wb, SIZE_8KB);
