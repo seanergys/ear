@@ -34,7 +34,7 @@ poli_DEPS = \
 all: $(poli_BINS)
 
 %.o: %.c 
-	$(CC) $(CC_FLAGS) $(CFLAGS) $(LIB_CFLAGS) $(GPU_OPT_FLAG) -c $<
+	$(CC) $(CC_FLAGS) $(CFLAGS) $(LIB_CFLAGS) $(GPU_OPT_FLAG) $(DEFS) -c $<
 
 %.so: %.o $(poli_DEPS)
 	$(CC) $(CC_FLAGS) -shared -fPIC -pthread -o $@ $^ 

@@ -26,7 +26,7 @@ oths_PERM = 0664
 all: $(OBJS) $(BINS)
 
 %.o: %.c %.h
-	$(CC) $(CC_FLAGS) $(LIB_CFLAGS) $(CFLAGS) -c $<
+	$(CC) $(CC_FLAGS) $(LIB_CFLAGS) $(CFLAGS) $(DEFS) -c $<
 
 libear_seq.so: ear_seq.o
 	$(CC) $(CC_FLAGS) -shared -o $@ $^ -ldl

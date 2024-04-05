@@ -16,7 +16,9 @@
 */
 
 
+#ifdef HAVE_CONFIG_H
 #include <common/config/config.h>
+#endif
 #define _GNU_SOURCE
 #include <sched.h>
 //#define SHOW_DEBUGS 1

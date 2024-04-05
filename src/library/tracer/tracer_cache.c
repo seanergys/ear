@@ -16,7 +16,9 @@
 */
 
 
+#ifdef HAVE_CONFIG_H
 #include <common/config/config.h>
+#endif
 #ifndef _EAR_TRACES_H_
 #define _EAR_TRACES_H_
 

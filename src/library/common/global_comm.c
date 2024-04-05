@@ -16,7 +16,9 @@
 */
 
 
+#ifdef HAVE_CONFIG_H
 #include <common/config/config.h>
+#endif
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
