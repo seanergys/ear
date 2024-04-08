@@ -34,6 +34,9 @@ typedef char *(action_init_f)     (cchar *tag, void **data_alloc, void *data);
 typedef char *(action_periodic_f) (cchar *tag, void *data);
 typedef char *(post_data_f)       (cchar *msg, void *data);
 
+static ulong monitor_period = 100;
+static ulong relax_period = 100;
+
 // Example of dependency table:
 // plugin0 [0] [1] [0]: It means that for plugin0, the plugin1 is mandatory
 // plugin1 [0] [0] [1]: It means that for plugin1, the plugin2 is mandatory
@@ -242,6 +245,7 @@ static state_t plugins_open_so(char *path, void **handler)
     }
     // Lazy binding allows to load plugins thar require symbols of other plugins
     // that haven't been loaded yet.
+    debug("Loding %s", path);
     if ((*handler = dlopen(path, RTLD_LAZY | RTLD_GLOBAL)) == NULL) {
         return_msg(EAR_ERROR, dlerror());
     }
@@ -319,7 +323,7 @@ static int plugins_open()
         }
         // Enabling if all the dependenciesare opened.
         plug->is_enabled = plug->is_opened && (j == p.count);
-        verbose(4, "[Summary] %s %s: called every %04llu ms with priority %u%s",
+        verbose(4, "[Summary] %s %s: called every %06llu ms with priority %u%s",
                 (plug->is_opened)? "Opened": "Not opened", plug->file_name, plug->time_lapse,
                 plug->priority, (plug->is_enabled)? "": ", but disabled");
         enabled_count += plug->is_enabled;
@@ -554,6 +558,7 @@ static state_t plugins_init(void *whatever)
 static int plugin_manager_configure(int argc, char *argv[])
 {
     char buffer[8192];
+    char params[128];
 
     if (argc == 1 || args_get(argc, argv, "help", buffer)) {
         verbose(0, "Usage: %s [OPTIONS]\n", argv[0]);
@@ -562,6 +567,8 @@ static int plugin_manager_configure(int argc, char *argv[])
         verbose(0, "    --paths      List of colon separated priority paths to search plugins.");
         verbose(0, "    --verbose    Show how the things are going internally.");
         verbose(0, "    --silence    Hide messages returned by plugins.");
+        verbose(0, "    --monitor    Period at which the plugin wake ups for monitoring. Def=100 ms  ");
+        verbose(0, "    --relax      Period to be used during low monitoring periods. Def=100 ms  ");
         verbose(0, "    --help       If you see it you already typed --help.");
         return 0;
     }
@@ -581,6 +588,15 @@ static int plugin_manager_configure(int argc, char *argv[])
     if (args_get(argc, argv, "silence", NULL)) {
         VERB_SET_EN(0);
     }
+    // Buffer cannot be used becasue it has to be parsed later
+    if (args_get(argc, argv, "monitor", params)) {
+	    monitor_period = strtoul(params, NULL, 10);
+    }
+    // Buffer cannot be used becasue it has to be parsed later
+    if (args_get(argc, argv, "relax", params)) {
+	    relax_period = strtoul(params, NULL, 10);
+    }
+    verbose(0,"UPM configuration: plugins \'%s\' verbose %u monitor periods[burst %lu, relax %lu]", buffer, VERB_GET_LV(), monitor_period, relax_period);
     if (args_get(argc, argv, "debug", NULL)) {
         ADEBUG_SET_EN(1);
     }
@@ -601,11 +617,11 @@ int plugin_manager_main(int argc, char *argv[])
     suscription_t *sus = suscription();
     sus->call_init     = plugins_init;
     sus->call_main     = plugins_main;
-    sus->time_relax    = 100;
-    sus->time_burst    = 100;
+    sus->time_relax    = relax_period;
+    sus->time_burst    = monitor_period;
     sus->suscribe(sus);
     // Monitoring metrics
-    debug("Initializing monitor");
+    verbose(0, "Initializing UPM monitor with burst = %lu and relax = %lu", monitor_period, relax_period);
     monitor_init();
 
     return 1;
@@ -623,6 +639,8 @@ int plugin_manager_init(char *plugins, char *paths)
     sprintf(p0, "./bin");
     sprintf(p1, "--plugins=%s", plugins);
     sprintf(p2, "--paths=%s", paths);
+
+    verbose(0,"UPM main: plugin list \'%s\' paths \'%s\'", plugins, paths);
     return plugin_manager_main((paths != NULL) ? 3 : 2, argv);
 }
 

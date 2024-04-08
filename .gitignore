@@ -26,7 +26,7 @@ etc/rpms/specs/ear.spec
 /configure
 /configure~
 src/common/config/config.h.in~
-src/common/config/config.h.in
+src/common/config/config.h
 
 # IDE
 cmake*

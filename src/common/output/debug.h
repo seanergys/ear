@@ -25,6 +25,9 @@
 int  debug_channel	       __attribute__((weak)) = 2;
 int adebug_enabled         __attribute__((weak)) = 0;
 
+#define ENABLE_DEBUG     1
+#define DEBUG_SET_FD(fd) debug_channel = fd;
+
 // Set
 #define  DEBUG_SET_FD(fd)  debug_channel = fd;
 #define ADEBUG_SET_EN(en) adebug_enabled = en;
