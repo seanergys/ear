@@ -42,9 +42,9 @@ typedef struct mpi_ctx {
 #endif
 
 typedef struct node_freqs {
-	ulong *cpu_freq;
-	ulong *imc_freq;
-	ulong *gpu_freq;
+	ulong *cpu_freq; 			// Freq in KHz
+	ulong *imc_freq;     	// Pstates , no frequency
+	ulong *gpu_freq;      // Freq in KHz (?)
 	ulong *gpu_mem_freq;
 } node_freqs_t;
 

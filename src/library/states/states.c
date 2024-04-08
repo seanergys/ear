@@ -261,7 +261,6 @@ void states_begin_job(int my_id, char *app_name)
 
 	/* Allocating space for the sig_ext if needed , application sig ext is allocated in ear.c */
 	loop_signature.sig_ext = (void *)calloc(1, sizeof(sig_ext_t));
-	curr_loop.signature.sig_ext = (void *)calloc(1, sizeof(sig_ext_t));
 
 }
 
@@ -295,15 +294,6 @@ void states_begin_period(int my_id, ulong event, ulong size, ulong level)
 #endif
 
     policy_loop_init(&curr_loop.id);
-
-		/* At that time, sig_ext is supposed to be already allocated */
-    sig_ext_t * sigext = (sig_ext_t *)loop_signature.sig_ext;
-		/* Copy avg selected mem freq */
-		compute_avg_sel_freq(&sigext->sel_mem_freq_khz, node_freqs.imc_freq);
-
-		sigext = (sig_ext_t *)loop_signature.sig_ext;
-		/* Copy avg selected mem freq */
-		compute_avg_sel_freq(&sigext->sel_mem_freq_khz, node_freqs.imc_freq);
 
 
     // comp_N_begin = metrics_time();
@@ -632,6 +622,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             result = metrics_compute_signature_finish(&loop_signature, N_iter,
                                                       perf_accuracy_min_time, total_threads_cnt, &passed_time);
 
+						
 			      /* At this point, signatures for all processes in the node are ready.
              * lib_shared_region->job_signature includes the master signature. */
             if (result == EAR_NOT_READY)
@@ -704,6 +695,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
             /* This function takes into account if we are using or not the whole node. */
             signature_t norm_signature;
+            signature_init(&norm_signature);
             adapt_signature_to_node(&norm_signature, &lib_shared_region->job_signature, ratio_PPN);
             /* At this point curr_loop and job_signature signatures are the JOB signature
              * with accumulated per process and global (node) metrics (e.g., DC power). */
@@ -761,14 +753,17 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             policy_get_current_freq(&node_freqs);
             lavg = node_freqs_avgcpufreq(node_freqs.cpu_freq);
 					
-						/* At that time, sig_ext is supposed to be already allocated */	
-						sigext = (sig_ext_t *)loop_signature.sig_ext;
-						/* Copy avg selected mem freq */
-						compute_avg_sel_freq(&sigext->sel_mem_freq_khz, node_freqs.imc_freq);
 
-						sigext = (sig_ext_t *)curr_loop.signature.sig_ext;
-						/* Copy avg selected mem freq */
-						compute_avg_sel_freq(&sigext->sel_mem_freq_khz, node_freqs.imc_freq);
+						// curr_loop sig_ext can only be used in the master. If we sent this data
+						// to the DB in the future these lines have to be moved before the DB report (report_loop_signature)
+						if (master){
+							/* At that time, sig_ext is supposed to be already allocated */	
+							sigext = (sig_ext_t *)loop_signature.sig_ext;
+							/* Copy avg selected mem freq */
+							compute_avg_sel_freq(&sigext->sel_mem_freq_khz, node_freqs.imc_freq);
+							sig_ext_t *sigext_loop = (sig_ext_t *)curr_loop.signature.sig_ext;
+							sigext_loop->sel_mem_freq_khz = sigext->sel_mem_freq_khz;
+						}
 
             if (lavg > 0) {
                 loop_signature.def_f = lavg;

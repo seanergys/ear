@@ -2639,6 +2639,18 @@ static state_t policy_restore_cpus_governor()
 
 void compute_avg_sel_freq(ulong * avg_sel_mem_f, ulong *imcfreqs)
 {
+	// verbose(0,"compute_avg_sel_freq..........: %p", avg_sel_mem_f);
+	ulong avg = 0;
+	ulong low;
+	ulong f;
+	for (uint sock_id=0;sock_id<arch_desc.top.socket_count;sock_id++){
+		low = imcfreqs[sock_id * IMC_VAL + IMC_MAX];
+		f = imc_pstates[low].khz;
+		verbose_master(2,"Computing avg mem freq : Socket %u max freq %lu", sock_id, f);
+		avg += f;
+	}
+	avg = avg / arch_desc.top.socket_count;
+	*avg_sel_mem_f = avg;
 }
 
 
