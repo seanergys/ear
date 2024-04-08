@@ -27,7 +27,7 @@ static ullong zero = 0LLU;
 declr_up_get_tag ()
 {
     *tag = "dummy";
-    *tags_deps = "conf";
+    *tags_deps = NULL;
 }
 
 declr_up_action_init(_dummy)

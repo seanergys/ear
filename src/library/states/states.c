@@ -16,7 +16,6 @@
 */
 
 
-#include <common/config/config.h>
 #if MPI
 #include <mpi.h>
 #endif
@@ -27,7 +26,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #if !SHOW_DEBUGS
 #define NDEBUG // Activate assert calls only in the debug mode.
 #endif
@@ -298,12 +297,16 @@ void states_begin_period(int my_id, ulong event, ulong size, ulong level)
 
 		/* At that time, sig_ext is supposed to be already allocated */
     sig_ext_t * sigext = (sig_ext_t *)loop_signature.sig_ext;
+
 		/* Copy avg selected mem freq */
+		debug("compute_avg_sel_freq");
 		compute_avg_sel_freq(&sigext->sel_mem_freq_khz, node_freqs.imc_freq);
 
+		/*
 		sigext = (sig_ext_t *)loop_signature.sig_ext;
-		/* Copy avg selected mem freq */
+		* Copy avg selected mem freq *
 		compute_avg_sel_freq(&sigext->sel_mem_freq_khz, node_freqs.imc_freq);
+		*/
 
 
     // comp_N_begin = metrics_time();
@@ -764,11 +767,14 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 						/* At that time, sig_ext is supposed to be already allocated */	
 						sigext = (sig_ext_t *)loop_signature.sig_ext;
 						/* Copy avg selected mem freq */
+						debug("compute_avg_sel_freq at evaluating local signature");
 						compute_avg_sel_freq(&sigext->sel_mem_freq_khz, node_freqs.imc_freq);
 
+						/*
 						sigext = (sig_ext_t *)curr_loop.signature.sig_ext;
-						/* Copy avg selected mem freq */
+						* Copy avg selected mem freq *
 						compute_avg_sel_freq(&sigext->sel_mem_freq_khz, node_freqs.imc_freq);
+						*/
 
             if (lavg > 0) {
                 loop_signature.def_f = lavg;

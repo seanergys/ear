@@ -1,4 +1,3 @@
-#include <common/config/config.h>
 
 
 static freq_cpu_t freq1;

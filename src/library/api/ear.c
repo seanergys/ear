@@ -16,7 +16,6 @@
 */
 
 
-#include <common/config/config.h>
 
 
 #define _GNU_SOURCE
@@ -117,9 +116,6 @@
 #include <library/metrics/dlb_talp_lib.h>
 #include <library/metrics/fine_grain_collect.h>
 
-#ifndef DLB_SUPPORT
-#define DLB_SUPPORT 0
-#endif
 
 char shexternal_region_path[GENERIC_NAME];
 ear_mgt_t *external_mgt;
@@ -147,10 +143,6 @@ int dispose=0;
 #include <common/system/file.h>
 static char master_lock_filename[MAX_PATH_SIZE];
 static int fd_master_lock;
-#endif
-
-#ifndef DLB_SUPPORT
-#define DLB_SUPPORT 0
 #endif
 
 // Process information

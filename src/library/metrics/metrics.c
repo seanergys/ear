@@ -16,7 +16,6 @@
 */
 
 
-#include <common/config/config.h>
 
 
 #define _GNU_SOURCE
@@ -80,8 +79,13 @@
 #include <library/metrics/dcgmi_lib.h>
 #endif
 #endif // USE_GPUS
+
 #if METRICS_OVH
 #include <common/utils/overhead.h>
+#endif
+
+#if DLB_SUPPORT
+#include <library/metrics/dlb_talp_lib.h>
 #endif
 
 #define FAKE_POWER_READING  0
@@ -116,10 +120,6 @@
 
 #if USE_GPUS & USE_CUPTI
 #define EAR_USE_CUPTI "EAR_USE_CUPTI"
-#endif
-
-#ifndef DLB_SUPPORT
-#define DLB_SUPPORT 0
 #endif
 
 
@@ -843,24 +843,19 @@ static void metrics_global_start()
 		}
 
 #if USE_GPUS
-        if (state_ok(gpu_data_null(gpu_metrics_read1[APP]))) {
+        gpu_data_null(gpu_metrics_read1[APP]);
+        if (state_ok(gpu_read(no_ctx, gpu_metrics_read1[APP]))) {
 
-            if (state_ok(gpu_read(no_ctx, gpu_metrics_read1[APP]))) {
+            // We set here the starting sample for partial start/stop flow
+            gpu_data_copy(gpu_metrics_read2[LOO], gpu_metrics_read1[APP]);
 
-                // We set here the starting sample for partial start/stop flow
-                gpu_data_copy(gpu_metrics_read2[LOO], gpu_metrics_read1[APP]);
-
-                if (VERB_ON(GPU_VERB + 1)) {
-                    gpu_data_tostr(gpu_metrics_read1[APP], gpu_str, sizeof(gpu_str));
-                    verbose(GPU_VERB + 1, "Initial global GPU data\n-----------------------\n%s", gpu_str);
-                }
-
-            } else {
-                verbose_error("Reading GPU metrics at application start");
+            if (VERB_ON(GPU_VERB + 1)) {
+                gpu_data_tostr(gpu_metrics_read1[APP], gpu_str, sizeof(gpu_str));
+                verbose(GPU_VERB + 1, "Initial global GPU data\n-----------------------\n%s", gpu_str);
             }
 
         } else {
-            verbose_error("GPU metrics could not be read at application start: %s", state_msg);
+            verbose_error("Reading GPU metrics at application start");
         }
 #endif // USE_GPUS
 
@@ -1141,10 +1136,7 @@ static void metrics_partial_start()
         /*  Avoidable since at global start: gpu_metrics_read2[LOO] <- gpu_metrics_read1[APP]
             if (gpu_loop_stopped) {
             */
-        if (state_fail(gpu_data_copy(gpu_metrics_read1[LOO], gpu_metrics_read2[LOO])))
-        {
-            verbose_warning("GPU data could not be copied: %s", state_msg);
-        }
+        gpu_data_copy(gpu_metrics_read1[LOO], gpu_metrics_read2[LOO]);
         /*
            } else {
            gpu_data_copy(gpu_metrics_read1[LOO], gpu_metrics_read1[APP]);

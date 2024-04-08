@@ -71,5 +71,7 @@ void *envtoat(const char *var, void **list, uint *list_count, int id_type);
 int rantoa(char *string, uint *array, uint array_length);
 // Converts a string to ullong. Is base 10 or base 16 if starts with '0x'.
 ullong atoull(const char *str);
+//
+int strisnum(char *string);
 
 #endif

@@ -16,7 +16,6 @@ mets_OBJS = \
     $(SRCDIR)/metrics/common/omsr.o \
     $(SRCDIR)/metrics/common/oneapi.o \
     $(SRCDIR)/metrics/common/perf.o \
-    $(SRCDIR)/metrics/common/popen.o \
     $(SRCDIR)/metrics/common/pstate.o \
     $(SRCDIR)/metrics/common/rsmi.o \
     $(SRCDIR)/metrics/common/redfish.o \

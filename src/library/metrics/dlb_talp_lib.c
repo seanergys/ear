@@ -16,11 +16,10 @@
  */
 
 
-#include <common/config/config.h>
-
+#include <common/config.h>
 #include <library/metrics/dlb_talp_lib.h>
 
-#ifdef HAVE_DLB_TALP_H
+#if HAVE_DLB_TALP_H
 #include <dlb_talp.h>
 #else
 #include <stdint.h>
@@ -63,8 +62,7 @@
 		master_unlink(name);\
 	} while (0);
 
-#ifndef HAVE_DLB_TALP_H
-#define HAVE_DLB_TALP_H 0
+#if !HAVE_DLB_TALP_H
 
 #define DLB_MonitoringRegionRegister(...) NULL;
 #define DLB_TALP_CollectPOPNodeMetrics(...) -1;

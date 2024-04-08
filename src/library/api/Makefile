@@ -20,7 +20,6 @@ oths_BINS = earld.h
 oths_PATH = $(DESTDIR)/include
 oths_PERM = 0664
 
-
 ######## RULES
 
 all: $(OBJS) $(BINS)

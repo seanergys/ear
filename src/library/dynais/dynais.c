@@ -16,7 +16,6 @@
 */
 
 
-#include <common/config/config.h>
 /*
  * Usage:
  * Just call dynais() passing the sample and the size of

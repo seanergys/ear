@@ -16,7 +16,6 @@
 */
 
 
-#include <common/config/config.h>
 
 #define _GNU_SOURCE
 #include <sched.h>

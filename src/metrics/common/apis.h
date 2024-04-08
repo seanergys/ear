@@ -63,6 +63,9 @@
 #define SCOPE_DUMMY            1
 #define SCOPE_PROCESS          2
 #define SCOPE_NODE             3
+#define MONITORING_MODE_STOP  -1
+#define MONITORING_MODE_IDLE   0
+#define MONITORING_MODE_RUN    1
 
 #define API_IS(flag, api) \
     (flag == api)
