@@ -26,6 +26,7 @@ etc/rpms/specs/ear.spec
 /configure
 /configure~
 src/common/config/config.h.in~
+src/common/config/config.h
 
 # IDE
 cmake*
@@ -70,8 +71,9 @@ etc/slurm/ear.plugstack.conf
 etc/systemd/eard.service
 etc/systemd/eardbd.service
 etc/systemd/eargmd.service
+etc/systemd/edcmon.service
 src/common/config/config_install.h
-src/common/config/config.h
+src/common/config/config.h.in
 
 # Build Libraries
 *libear.so

@@ -16,7 +16,6 @@
 */
 
 
-#include <common/config/config.h>
 
 #include <common/config/config_def.h>
 #include <common/states.h>

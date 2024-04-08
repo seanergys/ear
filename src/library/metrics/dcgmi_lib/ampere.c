@@ -15,7 +15,6 @@
  */
 
 
-#include <common/config/config.h>
 
 #include <library/metrics/dcgmi_lib/ampere.h>
 

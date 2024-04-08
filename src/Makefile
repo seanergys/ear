@@ -1,46 +1,46 @@
 ######## FILES
 
 COMPONENTS = \
-						 common \
-						 report \
-						 metrics \
-						 management\
-						 daemon \
-						 library \
-						 global_manager \
-						 tools \
-						 slurm_plugin \
-						 pbs_hook \
-						 database_cache \
-						 commands \
-						 data_center_monitor
+     common \
+     report \
+     metrics \
+     management\
+     daemon \
+     library \
+     global_manager \
+     tools \
+     slurm_plugin \
+     pbs_hook \
+     database_cache \
+     commands \
+     data_center_monitor
 
 ifdef FEAT_ONLY_EAR_CORE
 COMPONENT_DISABLE = \
-										commands \
-										tools \
-										database_cache
+    commands \
+    tools \
+    database_cache
 endif
 
 ifdef FEAT_EARL_LITE
 COMPONENT_DISABLE = \
-										commands \
-										pbs_hook \
-										tools \
-										database_cache
+    commands \
+    pbs_hook \
+    tools \
+    database_cache
 endif
 
 ifeq ($(FEAT_WF_SUPPORT), 1)  
-CC_FLAGS += -DWF_SUPPORT=1
+CC_FLAGS   += -DWF_SUPPORT=1
 MPI_CFLAGS += -DWF_SUPPORT=1
 else
-CC_FLAGS += -DWF_SUPPORT=0
+CC_FLAGS   += -DWF_SUPPORT=0
 MPI_CFLAGS += -DWF_SUPPORT=0
-COMPONENT_DISABLE += \
-										 commands\
-										 tools 
-endif
 
+COMPONENT_DISABLE += \
+     commands\
+     tools
+endif
 
 ######## RULES
 
@@ -84,19 +84,18 @@ pbshook.install: pbs_hook.install;
 ######## SUBFOLDERS
 
 %.components:
-	@ for i in $(COMPONENTS); do                        \
-					if ([ -z "${COMPONENT_ENABLE}"  ] && printf %s\\n "${COMPONENT_DISABLE}" | grep -qFv "$$i") || \
-					([ -z "${COMPONENT_DISABLE}" ] && printf %s\\n "${COMPONENT_ENABLE}"  | grep -qF  "$$i"); then \
-					echo "====================================";    \
-					echo "= Compiling $$i";                         \
-					echo "====================================";    \
-					$(MAKE) -C $${i} $* || exit;                    \
-					fi                                              \
-					done
+	@ for i in $(COMPONENTS); do                            \
+		if ([ -z "${COMPONENT_ENABLE}"  ] && printf %s\\n "${COMPONENT_DISABLE}" | grep -qFv "$$i") || \
+           ([ -z "${COMPONENT_DISABLE}" ] && printf %s\\n "${COMPONENT_ENABLE}"  | grep -qF  "$$i"); then \
+        	echo "====================================";    \
+        	echo "= Compiling $$i";                         \
+        	echo "====================================";    \
+        	$(MAKE) -C $${i} $* || exit;                    \
+        fi                                                  \
+    done
 
 ######## DEPENDENCIES
 
 depend: depend.components
 
 depend-clean: depend-clean.components
-

@@ -16,7 +16,6 @@
 */
 
 
-#include <common/config/config.h>
 
 #include <stdio.h>
 #include <fcntl.h>

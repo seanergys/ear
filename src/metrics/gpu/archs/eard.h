@@ -24,11 +24,11 @@ void gpu_eard_load(gpu_ops_t *ops, int eard);
 
 void gpu_eard_get_info(apinfo_t *info);
 
+void gpu_eard_get_devices(gpu_devs_t **devs, uint *devs_count);
+
 state_t gpu_eard_init(ctx_t *c);
 
 state_t gpu_eard_dispose(ctx_t *c);
-
-state_t gpu_eard_count_devices(ctx_t *c, uint *dev_count);
 
 state_t gpu_eard_read(ctx_t *c, gpu_t *data);
 

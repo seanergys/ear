@@ -22,10 +22,10 @@
 #include <string.h>
 #include <pthread.h>
 #include <common/output/debug.h>
+#include <common/system/popen.h>
 #include <common/string_enhanced.h>
 #include <common/math_operations.h>
 #include <metrics/common/nvml.h>
-#include <metrics/common/popen.h>
 #include <metrics/gpu/archs/gpuprof_dcgmi.h>
 
 // DCGMI limits all GPUs to monitor the same events. Because under the hood we

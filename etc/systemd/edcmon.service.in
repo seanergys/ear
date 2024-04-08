@@ -8,8 +8,9 @@ Description=EDCMON - EAR Data Center Monitor service
 [Service]
 Type=simple
 Environment="EAR_ETC=@sysconfdir@"
-Environment="EDCMON_PLUGINS=metrics.so:30000+periodic_metrics.so:30000"
-ExecStart=@prefix@/sbin/edcmon --plugins=$EDCMON_PLUGINS
+Environment="EAR_INSTALL_PATH=@prefix@"
+# nodesensors_report period is not used but the API requires it. The nodesensor_log is the argument showing which report plugin to use
+ExecStart=@prefix@/sbin/edcmon --monitor=1000 --relax=1000 --plugins=nodesensors.so:30000+nodesensors_report.so:30000:nodesensor_log+nodesensors_alerts.so:30000:log --verbose
 ExecStop=/bin/kill -TERM $MAINPID
 KillMode=process
 Restart=on-failure

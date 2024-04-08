@@ -16,7 +16,6 @@
 */
 
 
-#include <common/config/config.h>
 #if MPI
 #include <mpi.h>
 #endif
@@ -27,7 +26,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #if !SHOW_DEBUGS
 #define NDEBUG // Activate assert calls only in the debug mode.
 #endif
@@ -295,6 +294,22 @@ void states_begin_period(int my_id, ulong event, ulong size, ulong level)
 
     policy_loop_init(&curr_loop.id);
 
+<<<<<<< HEAD
+=======
+		/* At that time, sig_ext is supposed to be already allocated */
+    sig_ext_t * sigext = (sig_ext_t *)loop_signature.sig_ext;
+
+		/* Copy avg selected mem freq */
+		debug("compute_avg_sel_freq");
+		compute_avg_sel_freq(&sigext->sel_mem_freq_khz, node_freqs.imc_freq);
+
+		/*
+		sigext = (sig_ext_t *)loop_signature.sig_ext;
+		* Copy avg selected mem freq *
+		compute_avg_sel_freq(&sigext->sel_mem_freq_khz, node_freqs.imc_freq);
+		*/
+
+>>>>>>> 309620c028d6cadbdf3212471c9f951e80b409dc
 
     // comp_N_begin = metrics_time();
     restart_period_time_init(&comp_N_begin);

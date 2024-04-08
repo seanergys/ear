@@ -2,16 +2,16 @@
 OBJS = \
     metrics.o \
     energy_node_lib.o \
-		fine_grain_collect.o
+    fine_grain_collect.o
 
 
 ifeq ($(DCGMI), 1)
 OBJS += \
-				dcgmi_lib.o \
-				dcgmi_lib/turing.o \
-				dcgmi_lib/hopper.o \
-				dcgmi_lib/ampere.o \
-				dcgmi_lib/common.o
+    dcgmi_lib.o \
+    dcgmi_lib/turing.o \
+    dcgmi_lib/hopper.o \
+    dcgmi_lib/ampere.o \
+    dcgmi_lib/common.o
 
 dcgmilib_DEPS = dcgmi_lib/common.h
 endif
@@ -19,7 +19,6 @@ endif
 ifeq ($(FEAT_DLB), 1)
 OBJS += dlb_talp_lib.o
 endif
-
 
 all: $(OBJS)
 

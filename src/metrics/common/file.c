@@ -120,19 +120,23 @@ int filemagic_word_read(int fd, char *word, int reset_position)
     return 1;
 }
 
-int filemagic_word_write(int fd, char *word, int s, int line_break)
+int filemagic_word_write(int fd, char *word, int len, int line_break)
 {
     int i, r, p;
     // Adding a line break
     if (line_break) {
-        s += 1;
-        word[s-1] = '\n';
-        word[s] = '\0';
+        len += 1;
+        word[len-1] = '\n';
+        word[len  ] = '\0';
     }
-    for (i = 0, r = 1, p = s; i < s && r > 0;) {
+    for (i = 0, r = 1, p = len; i < len && r > 0;) {
         r = pwrite(fd, (void *) &word[i], p, i);
-        i = i + r;
-        p = s - i;
+        i = i   + r;
+        p = len - i;
+    }
+    // Recovering from line break
+    if (line_break) {
+        word[len-1] = '\0';
     }
     if (r == -1) {
         return_print(0, "while writing '%s' in cpufreq file (%s)", word, strerror(errno));
@@ -149,7 +153,7 @@ int filemagic_word_mwrite(int *fds, int fds_count, char *word, int line_break)
     // Adding a line break
     if (line_break) {
         word[len]   = '\n';
-        word[len+1] = '0';
+        word[len+1] = '\0';
         len++;
     }
     for (i = 0; i < fds_count; ++i) {
@@ -157,6 +161,10 @@ int filemagic_word_mwrite(int *fds, int fds_count, char *word, int line_break)
         if (!filemagic_word_write(fds[i], word, len, 0)) {
             s = 0;
         }
+    }
+    // Recovering from line break
+    if (line_break) {
+        word[len-1] = '\0';
     }
     return s;
 }
