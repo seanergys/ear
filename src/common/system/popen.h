@@ -40,8 +40,9 @@ state_t popen_test(char *exec);
 //     @param escape_lines: avoids reading the first N lines. It can be useful
 //         to escape the typical header returned by the command.
 //     @param one_shot: used when the command process prints something and
-//         immediately closes and is not kept in the background. Under the hood
-//         blocks both read functions ensuring you have something to read.
+//         immediately closes and is not kept in the background writing output
+//         intermittently. Under the hood blocks ead functions ensuring you have
+//         something to read and compress the data allowing very large outputs.
 state_t popen_open(char *command, int escape_lines, int one_shot, popen_t *p);
 
 void popen_close(popen_t *p);
@@ -51,16 +52,17 @@ void popen_close(popen_t *p);
 // variables of different type.
 //     @param fmt: it is the format and admits the following letters:
 //         - a: avoid (pass to next read argument)
-//         - s: returns a string
-//         - S: returns a string vector
-//         - i: returns an integer
-//         - I: returns an integer vector
-//         - d: returns a double
-//         - D: returns a double vector
+//         - s: returns a string (char **, a pointer to an empty char pointer)
+//         - S: returns a string vector (char **, a pointer to an empty char pointer vector)
+//         - i: returns an integer (int *, a pointer to int)
+//         - I: returns an integer vector (int *, a pointer to int vector)
+//         - d: returns a double (double *, a pointer to double)
+//         - D: returns a double vector (double *, a pointer to double vector)
 //         Take into the account that vector letters are used as last letters
 //         in format because the function doesn't know in advance how many
 //         elements the caller wants to read. You can see the example in the
-//         test function of the source file.
+//         test function of the source file. For more information look at TEST1
+//         and TEST2 tests in the C source file.
 //     @returns if there are lines pending to read.
 #define popen_read(p, fmt, ...) popen_read2(p, ' ', fmt, __VA_ARGS__)
 

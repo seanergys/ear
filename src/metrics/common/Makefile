@@ -17,7 +17,6 @@ comm_OBJS = \
     oneapi.o \
     pci.o \
     perf.o \
-    popen.o \
     pstate.o \
     redfish.o \
     rsmi.o
