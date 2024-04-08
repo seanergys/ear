@@ -16,18 +16,24 @@ m4_include([m4/ac_rsmi.m4])
 m4_include([m4/ac_pbs.m4])
 m4_include([m4/ac_oar.m4])
 m4_include([m4/ac_gsl.m4])
-m4_include([m4/ac_dlb.m4])
+# m4_include([m4/ac_dlb.m4])
 
 # INIT
 AC_PREREQ([2.69])
-AC_INIT([EAR], [4.3], [ear-support@bsc.es])
-AC_CONFIG_HEADERS([src/common/config/config.h])
+AC_INIT([EAR], [4.3], [ear-support@bsc.es], [ear-4.3], [https://gitlab.bsc.es/ear_team/ear_private])
+
+AC_COPYRIGHT([Copyright © 2017-present BSC-Lenovo])
+
+AC_CONFIG_SRCDIR([src/library/api/ear.c])
+# AC_CONFIG_HEADERS([src/common/config/config.h])
+
 AC_LANG(C)
 
 # PROGRAMS TEST
 AC_PROG_CC
 AC_PROG_AWK
 AC_PROG_GREP
+AC_PROG_MAKE_SET
 
 #################
 # FIRST SCRIPTS #
@@ -56,7 +62,7 @@ X_AC_REDFISH
 X_AC_SLURM
 X_AC_OAR
 X_AC_PBS
-X_AC_DLB
+# X_AC_DLB
 
 #################
 # POST-FEATURES #

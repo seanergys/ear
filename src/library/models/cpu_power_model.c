@@ -16,9 +16,6 @@
  */
 
 
-#ifdef HAVE_CONFIG_H
-#include <common/config/config.h>
-#endif
 //#define SHOW_DEBUGS 1
 
 #include <errno.h>

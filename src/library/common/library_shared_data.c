@@ -19,9 +19,6 @@
 #define _GNU_SOURCE
 
 
-#ifdef HAVE_CONFIG_H
-#include <common/config/config.h>
-#endif
 
 #include <sched.h>
 #include <fcntl.h>

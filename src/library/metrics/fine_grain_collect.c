@@ -16,9 +16,6 @@
 */
 
 
-#ifdef HAVE_CONFIG_H
-#include <common/config/config.h>
-#endif
 #include <library/metrics/fine_grain_collect.h>
 
 #include <common/types.h>

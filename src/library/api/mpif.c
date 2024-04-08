@@ -16,9 +16,6 @@
 */
 
 
-#ifdef HAVE_CONFIG_H
-#include <common/config/config.h>
-#endif
 #include <common/output/debug.h>
 #include <library/api/mpif.h>
 #include <library/api/ear_mpi.h>

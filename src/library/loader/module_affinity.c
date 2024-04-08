@@ -1,6 +1,3 @@
-#ifdef HAVE_CONFIG_H
-#include <common/config/config.h>
-#endif
 
 
 int module_affinity()

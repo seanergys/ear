@@ -16,9 +16,6 @@
 */
 
 
-#ifdef HAVE_CONFIG_H
-#include <common/config/config.h>
-#endif
 
 
 #define _GNU_SOURCE
@@ -82,8 +79,13 @@
 #include <library/metrics/dcgmi_lib.h>
 #endif
 #endif // USE_GPUS
+
 #if METRICS_OVH
 #include <common/utils/overhead.h>
+#endif
+
+#if DLB_SUPPORT
+#include <library/metrics/dlb_talp_lib.h>
 #endif
 
 #define FAKE_POWER_READING  0
@@ -118,10 +120,6 @@
 
 #if USE_GPUS & USE_CUPTI
 #define EAR_USE_CUPTI "EAR_USE_CUPTI"
-#endif
-
-#ifndef DLB_SUPPORT
-#define DLB_SUPPORT 0
 #endif
 
 

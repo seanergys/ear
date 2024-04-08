@@ -1,4 +1,5 @@
-########################################################################################################
+###########################################################################################
+# @configure_input@
 # Flags information:
 #
 # ARCH_X86 and ARCH_ARM define the compiling architecture and are mutually exclusive
@@ -9,7 +10,7 @@
 # FEAT_AMD_OSCPUFREQ disables the utilization of virtual PSTATES in AMD and selects OS CPUFreq.
 # FEAT_DB_MYSQL and FEAT_DB_PSQL defines the database (MySQL or PostgreSQL) and are mutually exclusive.
 # REPLACE also replaces the current installation permissions by the user's current values.
-########################################################################################################
+###########################################################################################
 
 # Architectures
 ARCH               = @ARCH@
@@ -26,7 +27,7 @@ FEAT_DB_PSQL       = @FEAT_DB_PGSQL@
 FEAT_EXAMON        = 0
 FEAT_DB_CASSANDRA  = 0
 FEAT_WF_SUPPORT    = 0
-FEAT_DLB           = @FEAT_DLB@
+FEAT_DLB           = 0
 # Compilers
 CC                 = @CC@
 CC_FLAGS           = @CC_FLAGS@
@@ -62,15 +63,16 @@ FREEIPMI_BASE      = @FREEIPMI_DIR@
 FREEIPMI_CFLAGS    = @FREEIPMI_CFLAGS@
 FREEIPMI_LDFLAGS   = @FREEIPMI_LDFLAGS@
 COUNTDOWN_BASE     =
-DLB_LIBS           = @DLB_LIBS@
-DLB_CPPFLAGS       = @DLB_CPPFLAGS@
-DLB_LDFLAGS        = @DLB_LDFLAGS@
+DLB_LIBS           =
+DLB_CPPFLAGS       =
+DLB_LDFLAGS        =
 # Installation directories and options
 ROOTDIR            = $(shell pwd)
 SRCDIR             = $(ROOTDIR)/src
 DESTDIR            = @prefix@
 ETCDIR             = @sysconfdir@
 TMPDIR             = @localstatedir@
+datarootdir 			 = @datarootdir@
 DOCDIR             = @docdir@
 CHOWN_USR          = @USER@
 CHOWN_GRP          = @GROUP@
@@ -84,6 +86,8 @@ include ./Makefile.exports
 ######## RULES
 
 .PHONY: check functionals
+
+@SET_MAKE@
 
 all:
 	@ $(MAKE) -C 'src' all || exit

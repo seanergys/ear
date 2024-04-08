@@ -16,9 +16,6 @@
  */
 
 
-#ifdef HAVE_CONFIG_H
-#include <common/config/config.h>
-#endif
 #if !SHOW_DEBUGS
 #define NDEBUG
 #endif
