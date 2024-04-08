@@ -19,7 +19,6 @@
 #define _GNU_SOURCE
 
 
-#include <common/config/config.h>
 
 #include <sched.h>
 #include <fcntl.h>

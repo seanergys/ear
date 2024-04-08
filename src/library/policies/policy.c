@@ -16,7 +16,6 @@
 */
 
 
-#include <common/config/config.h>
 
 
 #define _GNU_SOURCE
@@ -251,8 +250,10 @@ static uint total_mpi_optimized =  0;
 /* Governor management for exclusive mode */
 static uint *governor_list_before_init = NULL;
 
+#if MPI_OPTIMIZED
 /* MPI optimization */
 extern uint ear_mpi_opt;
+#endif
 
 void fill_common_event(ear_event_t *ev);
 void fill_event(ear_event_t *ev, uint event, llong value);
@@ -574,17 +575,16 @@ state_t policy_init()
 
     verbose_policy_info("GPU optimization during GPU comp: %s", gpu_optimize ? "Enabled" : "Disabled");
 
-	if (MPI_OPTIMIZED)
-	{
-    char *cear_mpi_opt          = (system_conf->user_type == AUTHORIZED) ? ear_getenv(FLAG_MPI_OPT)           : NULL; // MPI optimizattion
+#if MPI_OPTIMIZED
+		char *cear_mpi_opt		= (system_conf->user_type == AUTHORIZED) ? ear_getenv(FLAG_MPI_OPT)           : NULL; // MPI optimizattion
 
-    if (cear_mpi_opt != NULL) ear_mpi_opt = atoi(cear_mpi_opt);
+		if (cear_mpi_opt != NULL) ear_mpi_opt = atoi(cear_mpi_opt);
 
-    if (ear_mpi_opt)
+		if (ear_mpi_opt)
 		{
-      verbose_policy_info("MPI optimization enabled.");
-    }
-	}
+			verbose_policy_info("MPI optimization enabled.");
+		}
+#endif
 
     state_t retg = EAR_SUCCESS, ret = EAR_SUCCESS;
 
@@ -1479,11 +1479,13 @@ state_t policy_end()
     polctx_t *c = &my_pol_ctx;
 
     verbose_master(2, "Total number of MPI calls %llu", total_mpi);
-
-    if (MPI_OPTIMIZED && ear_mpi_opt)
-		{
-        verbose(1, "[%d] Total number of MPI calls with optimization: %u", my_node_id, total_mpi_optimized);
-    }
+	
+#if MPI_OPTIMIZED
+	if (ear_mpi_opt)
+	{
+		verbose(1, "[%d] Total number of MPI calls with optimization: %u", my_node_id, total_mpi_optimized);
+	}
+#endif
 
 #if DEBUG_CPUFREQ_COST
     verbose_master(1, "Overhead of cpufreq setting %lu us: Total calls %lu: Cost per call %f",

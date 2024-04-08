@@ -18,22 +18,17 @@
 
 // #define SHOW_DEBUGS 1
 
-#include <common/config/config.h>
 #include <common/output/debug.h>
 #include <common/includes.h>
 #include <common/config.h>
 
 #include <library/metrics/metrics.h>
 #include <library/common/library_shared_data.h>
-#ifdef DLB_SUPPORT
+#if DLB_SUPPORT
 #include <library/metrics/dlb_talp_lib.h>
 #endif
 
 #include <report/report.h>
-
-#ifndef DLB_SUPPORT
-#define DLB_SUPPORT 0
-#endif
 
 
 static char csv_log_file[64];

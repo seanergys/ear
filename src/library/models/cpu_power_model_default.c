@@ -17,7 +17,6 @@
 
 //#define SHOW_DEBUGS 1
 
-#include <common/config/config.h>
 
 #include <errno.h>
 #include <fcntl.h>

@@ -16,7 +16,6 @@
  */
 
 
-#include <common/config/config.h>
 #include <common/states.h>
 #include <common/types/types.h>
 #include <common/output/verbose.h>

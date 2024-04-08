@@ -16,7 +16,6 @@
 */
 
 
-#include <common/config/config.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>

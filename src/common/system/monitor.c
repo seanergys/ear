@@ -261,8 +261,6 @@ static state_t init_thread()
 
 static void init_atfork()
 {
-    int m_errno;
-    state_t s;
     int i;
     // Atfork enters before fork() exits
     pthread_mutex_unlock(&lock_gen);
@@ -274,9 +272,8 @@ static void init_atfork()
     }
     // If is already running, we start the monitor again
     if (is_running) {
-        if (state_fail(s = init_thread())) {
+        if (state_fail(init_thread())) {
             is_running = 0;
-						return;
         }
     }
     return;

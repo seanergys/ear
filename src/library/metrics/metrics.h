@@ -19,7 +19,7 @@
 #ifndef EAR_EAR_METRICS_H
 #define EAR_EAR_METRICS_H
 
-
+#include <common/config.h>
 #include <common/hardware/topology.h>
 #include <metrics/common/apis.h>
 #include <metrics/io/io.h>
@@ -27,7 +27,7 @@
 #include <metrics/proc/stat.h>
 #include <library/api/clasify.h>
 #include <library/metrics/dcgmi_lib.h>
-#ifdef DLB_SUPPORT
+#if DLB_SUPPORT
 #include <library/metrics/dlb_talp_lib.h>
 #endif
 
@@ -63,7 +63,7 @@ typedef struct sig_ext
     float              tpenalty;
     phase_info_t       earl_phase[EARL_MAX_PHASES];
     dcgmi_sig_t        dcgmis;
-#ifdef DLB_SUPPORT
+#if DLB_SUPPORT
 		earl_talp_t				 earl_talp_data;
 #endif
 		proc_stat_t        proc_ps;

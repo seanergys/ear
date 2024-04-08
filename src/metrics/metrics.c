@@ -35,8 +35,8 @@
 static ehandler_t      e_ctx;
 static topology_t     *self_tp;
 // Screen
-static strtable_t      st;
-static strscreen_t     ss;
+static strtable_t      st __attribute__ ((unused));
+static strscreen_t     ss __attribute__ ((unused));
 static int             id_cpu;
 static int             id_imc;
 static int             id_ram;
@@ -78,7 +78,7 @@ void metrics_init(metrics_info_t *m, topology_t *tp, char *nodepow_path, ullong 
     metrics_info_get(m);
 }
 
-static void metrics_init_screen(metrics_info_t *m, topology_t *tp)
+__attribute__((unused)) static void metrics_init_screen(metrics_info_t *m, topology_t *tp)
 {
     static char buffer[16384];
     // Screen initialization
@@ -119,13 +119,11 @@ void metrics_info_get(metrics_info_t *m)
      cpupow(get_api,&m->pow.api);
        temp_get_api(&m->tmp.api);
         cpi_get_api(&m->cpi.api);
-        //gpu_get_api(&m->gpu.api);
 
     cpufreq_count_devices(no_ctx, &m->cpu.devs_count);
     imcfreq_count_devices(no_ctx, &m->imc.devs_count);
      cpupow(count_devices,no_ctx, &m->pow.devs_count);
        temp_count_devices(no_ctx, &m->tmp.devs_count);
-        //gpu_count_devices(no_ctx, &m->gpu.devs_count);
 
     m->cpu.scope = SCOPE_NODE;
     m->imc.scope = SCOPE_NODE;

@@ -21,8 +21,7 @@
 
 static int ids_count;
 
-#define adebug(...) \
-    cdebug(AFD_DEBUG, __VA_ARGS__);
+#define afdebug(...)
 
 void afd_init(afd_set_t *set)
 {
@@ -85,7 +84,7 @@ int afd_isset(int fd, afd_set_t *set, int flag)
 {
     int retset = (set->fds[fd].revents & flag);
     int rethup = afd_ishup(fd, set); 
-    adebug("AFD_ISSET(%d, set%d): ret %d, hup %d (revents %d), tag %s",
+    afdebug("AFD_ISSET(%d, set%d): ret %d, hup %d (revents %d), tag %s",
         fd, set->id, retset, rethup, set->fds[fd].revents, set->tags[fd]);
     if (!retset && rethup) {
         retset = rethup;
@@ -101,7 +100,7 @@ void afd_clear(int fd, afd_set_t *set)
         return;
     }
     if (set->fds[fd].fd == -1) {
-        adebug("AFD_CLR is trying to clear invalid fd %d", fd);
+        afdebug("AFD_CLR is trying to clear invalid fd %d", fd);
         return;
     }
     set->fds[fd].fd      = -1;
@@ -145,7 +144,7 @@ int afd_stat(int fd, struct stat *s)
 
 void afd_debug(int fd, afd_set_t *set, const char *prefix)
 {
-    adebug("%s(%d, set%d) [%d,%d], fds_count %u, fds_rank %d, tag %s", prefix, fd,
+    afdebug("%s(%d, set%d) [%d,%d], fds_count %u, fds_rank %d, tag %s", prefix, fd,
         set->id, set->fd_min, set->fd_max, set->fds_count, (int) set->fds_rank, set->tags[fd]);
 }
 
@@ -170,7 +169,7 @@ int aselect(afd_set_t *set, ullong timeout, ullong *time_left)
     timestamp_get(&ts);
     r = poll(&set->fds[set->fd_min], set->fds_rank, (int) timeout);
     time_passed = timestamp_diffnow(&ts, TIME_MSECS);
-    adebug("%d = poll(set%d, fds_count: %u, fds_rank: %lu, timeout: %d, time_passed: %llu)",
+    afdebug("%d = poll(set%d, fds_count: %u, fds_rank: %lu, timeout: %d, time_passed: %llu)",
         r, set->id, set->fds_count, set->fds_rank, (int) timeout, time_passed);
     // Calculating the lefting time
     if (time_left != NULL) {

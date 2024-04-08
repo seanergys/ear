@@ -16,7 +16,6 @@
 */
 
 
-#include <common/config/config.h>
 #include <library/metrics/fine_grain_collect.h>
 
 #include <common/types.h>
