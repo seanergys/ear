@@ -648,12 +648,14 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
             // Both loop_signature and lib_shared_region->job_signature have the same data:
             compute_per_process_and_job_metrics(&loop_signature);
+			/* The below code block does nothing since verbose call is commented.
             if (VERB_ON(VERB_SIGN_TRACK) && master) {
                 char sig_to_vrb[128];
                 signature_to_str(&loop_signature, sig_to_vrb, sizeof(sig_to_vrb));
 
                 //verbose(0, "Signature after CPU power model projection: %s", sig_to_vrb);
             }
+			*/
 
             /* Included for dynais test */
 #if SHOW_DEBUGS
@@ -702,6 +704,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             /* This function executes the energy policy.
              * norm_signature is the local process signature,
              * the policy will compute the average if needed. */
+			/* Below code block can be commented because the verbosity is also commented.
             if (VERB_ON(VERB_SIGN_TRACK) && master) {
 
                 char sig_to_vrb[128];
@@ -709,6 +712,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
                 //verbose(0, "Signature %s will be passed to the policy.", sig_to_vrb);
             }
+			*/
 
             policy_node_apply(&norm_signature, &policy_cpufreq_khz, &ready);
 
