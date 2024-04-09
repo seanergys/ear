@@ -36,14 +36,14 @@ AC_DEFUN([X_AC_DLB],
 [
 	AC_ARG_WITH([dlb],
 		[AS_HELP_STRING([--with-dlb=<PATH>],
-										[Specify a valid DLB root path to provide support for colleting MPI node metrics by using DLB TALP API (disabled by default).])
-		],
+										[Specify a valid DLB root path to provide support for colleting MPI node metrics by using DLB TALP API (disabled by default).])],
 		[],
 		[with_dlb=no]
 	)
 
 	# AC_ARG_VAR([DLB_ROOT], [Specify the root path of DLB. If set, '--with-dlb' flag must also be set.])
 	FEAT_DLB=0
+	HAVE_DLB_TALP_H=0
 	AS_IF([test "x$with_dlb" != xno],
 				[
 
@@ -67,9 +67,12 @@ AC_DEFUN([X_AC_DLB],
 
 												 AC_CHECK_HEADERS([dlb_talp.h],
 																					[
+																					HAVE_DLB_TALP_H=1
+
 																					AC_SUBST([DLB_CPPFLAGS], ["-I$with_dlb/include"])
+
 																					FEAT_DLB=1
-																					AC_DEFINE([DLB_SUPPORT], [1], [Defined to 1 if EAR is compiled with DLB support.]) 
+																					# AC_DEFINE([DLB_SUPPORT], [1], [Defined to 1 if EAR is compiled with DLB support.])
 																					# After the test, remove the appended value
 																					POP_FROM_ENV_VAR([CPPFLAGS], ["-I$with_dlb/include"])
 																					# AS_ECHO(["CPPFLAGS after removing: $CPPFLAGS"])
@@ -79,4 +82,5 @@ AC_DEFUN([X_AC_DLB],
 				 ])
 
 	AC_SUBST([FEAT_DLB])
+	AC_SUBST([HAVE_DLB_TALP_H])
 ])

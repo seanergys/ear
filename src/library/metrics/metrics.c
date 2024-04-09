@@ -2489,9 +2489,6 @@ void metrics_job_signature(const signature_t *master, signature_t *dst)
 
 	signature_copy(dst, master);
 
-	sig_ext_t *se = (sig_ext_t *) master->sig_ext;
-	if ((se != NULL) && (dst->sig_ext != NULL)) memcpy(dst->sig_ext, se, sizeof(sig_ext_t));
-
 	/* If some job node computation fails, we use the CPI data we had from \p master */
 	if (state_fail(compute_job_node_instructions(sig_shared_region, lib_shared_region->num_processes, &inst))) {
 		verbose_warning("Error on computing job's node instructions: %s", state_msg);
