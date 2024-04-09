@@ -27,7 +27,7 @@ FEAT_DB_PSQL       = @FEAT_DB_PGSQL@
 FEAT_EXAMON        = 0
 FEAT_DB_CASSANDRA  = 0
 FEAT_WF_SUPPORT    = 0
-FEAT_DLB           = 0
+FEAT_DLB           = @FEAT_DLB@
 # Compilers
 CC                 = @CC@
 CC_FLAGS           = @CC_FLAGS@
@@ -62,10 +62,9 @@ REDFISH_CFLAGS     = @REDFISH_CFLAGS@
 FREEIPMI_BASE      = @FREEIPMI_DIR@
 FREEIPMI_CFLAGS    = @FREEIPMI_CFLAGS@
 FREEIPMI_LDFLAGS   = @FREEIPMI_LDFLAGS@
-COUNTDOWN_BASE     =
-DLB_LIBS           =
-DLB_CPPFLAGS       =
-DLB_LDFLAGS        =
+DLB_LIBS           = @DLB_LIBS@
+DLB_CPPFLAGS       = @DLB_CPPFLAGS@
+DLB_LDFLAGS        = @DLB_LDFLAGS@
 # Installation directories and options
 ROOTDIR            = $(shell pwd)
 SRCDIR             = $(ROOTDIR)/src
@@ -76,7 +75,7 @@ datarootdir 			 = @datarootdir@
 DOCDIR             = @docdir@
 CHOWN_USR          = @USER@
 CHOWN_GRP          = @GROUP@
-CONSTANTS          = -DSEC_KEY=10001 -DREPORT_TIMESTAMP=1 -DSYNC_SET_RPC=1 -DUSE_CNTD=0 -DMIX_RPC=1 -DESTIMATE_PERF=0
+CONSTANTS          = -DSEC_KEY=10001 -DREPORT_TIMESTAMP=1 -DSYNC_SET_RPC=1 -DMIX_RPC=1 -DESTIMATE_PERF=0
 REPLACE            =
 
 ######## EXPORTS

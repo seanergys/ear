@@ -239,11 +239,8 @@
 /** When set to 1, turbo is allowed */
 #define USE_TURBO 0
 
-/* Defined to 1 if EAR is compiled with DLB support. */
-#define DLB_SUPPORT 0
-
-/* Define to 1 if you have the <dlb_talp.h> header file. */
-#define HAVE_DLB_TALP_H 0
+/** Experimental feature. Enables fine-grained metrics monitor and MPI Optimize features. */
+#define MPI_OPTIMIZED 0
 
 /**@}*/
 

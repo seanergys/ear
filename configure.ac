@@ -16,7 +16,8 @@ m4_include([m4/ac_rsmi.m4])
 m4_include([m4/ac_pbs.m4])
 m4_include([m4/ac_oar.m4])
 m4_include([m4/ac_gsl.m4])
-# m4_include([m4/ac_dlb.m4])
+m4_include([m4/ac_dlb.m4])
+m4_include([m4/ac_countdown.m4])
 
 # INIT
 AC_PREREQ([2.69])
@@ -25,7 +26,6 @@ AC_INIT([EAR], [4.3], [ear-support@bsc.es], [ear-4.3], [https://gitlab.bsc.es/ea
 AC_COPYRIGHT([Copyright © 2017-present BSC-Lenovo])
 
 AC_CONFIG_SRCDIR([src/library/api/ear.c])
-# AC_CONFIG_HEADERS([src/common/config/config.h])
 
 AC_LANG(C)
 
@@ -62,7 +62,8 @@ X_AC_REDFISH
 X_AC_SLURM
 X_AC_OAR
 X_AC_PBS
-# X_AC_DLB
+X_AC_DLB
+X_AC_COUNTDOWN
 
 #################
 # POST-FEATURES #
@@ -111,6 +112,7 @@ AS_ECHO("----------------------------------------------------------")
 #fi
 
 AC_CONFIG_FILES([Makefile
+								 src/common/config/config_install.h
                  etc/module/ear
                  etc/module/ear-lite
                  etc/module/ear-sing
@@ -120,7 +122,6 @@ AC_CONFIG_FILES([Makefile
                  etc/systemd/eardbd.service
                  etc/systemd/eargmd.service
                  etc/systemd/edcmon.service
-                 src/common/config/config_install.h
                  etc/conf/ear.conf.full.template
                  etc/conf/ear.conf.template
                  etc/rpms/specs/ear.spec])
