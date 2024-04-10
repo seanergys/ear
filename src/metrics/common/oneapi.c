@@ -82,6 +82,7 @@ static const char *ze_names[] = {
 static pthread_mutex_t      lock = PTHREAD_MUTEX_INITIALIZER;
 static ze_handlers_t       *hs;
 static uint                 hs_count;
+static uint                 initialized;
 static ze_t                 ze;
 
 static state_t static_open()
@@ -367,10 +368,15 @@ static state_t static_init(ze_t *ze_in, int sysman)
     return EAR_ERROR;
     #endif
     while (pthread_mutex_trylock(&lock));
+    if (initialized) {
+        goto leave;
+    }
     if (state_ok(s = static_open())) {
         if (!sysman) s = static_core_init();
         if ( sysman) s = static_sysman_init();
     }
+    initialized = 1;
+leave:
     pthread_mutex_unlock(&lock);
     if (ze_in != NULL) {
         memcpy(ze_in, &ze, sizeof(ze_t));
