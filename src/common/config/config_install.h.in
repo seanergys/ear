@@ -51,4 +51,14 @@
 #define EAR_INSTALL_PATH    "@prefix@"
 #define MPI_C_LIB_PATH      "lib/libear"
 
-#endif //CONFIG_INSTALLATION_H
+// DLB support
+/* Defined to 1 if EAR is compiled with DLB support. */
+#define DLB_SUPPORT		@FEAT_DLB@
+/* Defined to 1 if the <dlb_talp.h> header file is available to be included. */
+#define HAVE_DLB_TALP_H @HAVE_DLB_TALP_H@
+
+// Countdown support
+/* Defined to the path of libcntd.so. Defined to 0 if EAR not configured with Countdown support. */
+#define COUNTDOWN_BASE @LIBCOUNTDOWN_BASE@
+
+#endif // CONFIG_INSTALLATION_H
