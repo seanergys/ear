@@ -52,13 +52,13 @@ extern unsigned long ext_def_freq;
 
 #define FLAG_GPU_METRIC_TO_OPTIMIZE   "EAR_GPU_METRIC_TO_OPTIMIZE"
 
-#define metric_is(x)    (x == SYS_FLOPS_W?"SYS_FLOPS_W":(x == GPU_FLOPS_W?"GPU_FLOPS_W":(x == EDP?"EDP":"UNDEF")))
+#define metric_is(x)    (x == SYS_GFLOPS_W?"SYS_GFLOPS_W":(x == GPU_GFLOPS_W?"GPU_GFLOPS_W":(x == EDP?"EDP":"UNDEF")))
 
 
 /* Configuration */
 typedef enum {
-	GPU_FLOPS_W = 0,
-	SYS_FLOPS_W,
+	GPU_GFLOPS_W = 0,
+	SYS_GFLOPS_W,
 	EDP
 } gpu_opt_metric_t;
 
@@ -84,7 +84,7 @@ static energy_model_t gpu_energy_model;
 
 static double **power_projections;
 
-static gpu_opt_metric_t metric_to_optimize = GPU_FLOPS_W;
+static gpu_opt_metric_t metric_to_optimize = GPU_GFLOPS_W;
 static gpu_opt_type_t   metric_strategy    = max_value;
 static char optimize_criteria[1024];
 
@@ -359,8 +359,8 @@ static void update_optimize_options(char *metric)
 {
 	if (metric != NULL)
 	{
-		if (strcmp(metric, "SYS_FLOPS_W") == 0)  metric_to_optimize = SYS_FLOPS_W;
-		if (strcmp(metric, "GPU_FLOPS_W") == 0)  metric_to_optimize = GPU_FLOPS_W;
+		if (strcmp(metric, "SYS_GFLOPS_W") == 0)  metric_to_optimize = SYS_GFLOPS_W;
+		if (strcmp(metric, "GPU_GFLOPS_W") == 0)  metric_to_optimize = GPU_GFLOPS_W;
 		if (strcmp(metric, "EDP") == 0)
     {
       metric_to_optimize = EDP;
@@ -375,30 +375,36 @@ static void GPU_get_metric(uint gpu_idx, signature_t *signature, float *curr)
 {
   float gpu_freq;
   float gpu_power;
+  float fp_act;
+  float elapsed;
+  
+  // TODO in CPU_GFLOPS_W use total gpu_power (from all used GPUs) ?
   *curr = 0;
   switch(metric_to_optimize)
   {
 #if DCGMI
-    case GPU_FLOPS_W:
+    case GPU_GFLOPS_W:
     {
+      fp_act = get_fp_activities(signature, gpu_idx); // it's devided by signature time
       gpu_freq = (float)(signature->gpu_sig.gpu_data[gpu_idx].GPU_freq/1000000.0);
       gpu_power = (float) signature->gpu_sig.gpu_data[gpu_idx].GPU_power;
+      
       *curr = gpu_freq/gpu_power;
       break;
     } 
-    case SYS_FLOPS_W: 
+    case SYS_GFLOPS_W: 
     {
-      float fp_act = get_fp_activities(signature, gpu_idx);
-		  float cpu_gflops = (float) signature->Gflops;    
-      // TODO use Hz instead of GHz 
+      fp_act = get_fp_activities(signature, gpu_idx);
       gpu_freq = (float)(signature->gpu_sig.gpu_data[gpu_idx].GPU_freq/1000000.0);
-      // TODO in CPU_FLOPS_W use total gpu_power (from all used GPUs)
       gpu_power = (float) signature->gpu_sig.gpu_data[gpu_idx].GPU_power;
-      debug("GPU_FREQ %f CPU_FLOPS_W %f GPU_FLOPS_W %f",gpu_freq, cpu_gflops/(signature->DC_power - gpu_power), (fp_act*gpu_freq)/gpu_power); 
+		  float cpu_gflops = (float) signature->Gflops;    
+      debug(">>> GPU_FREQ %f CPU_GFLOPS %f GPU_GFLOPS %f", gpu_freq, cpu_gflops, fp_act*gpu_freq); 
+      debug(">>> CPU_GFLOPS_W %f GPU_GFLOPS_W %f", cpu_gflops/(signature->DC_power - gpu_power), (fp_act*gpu_freq)/gpu_power); 
+      
       *curr = cpu_gflops/(signature->DC_power - gpu_power) + (fp_act*gpu_freq)/gpu_power; 
       break;
     }
-    // TODO EDP and ED2P once the time model is ready
+    // TODO EDP and/or ED2P once the time model is ready
 #endif
     default: *curr = (float) 0;
   }
@@ -409,8 +415,8 @@ static uint GPU_metric_ready(signature_t *sig, uint gpu_idx)
 	switch(metric_to_optimize)
 	{
 		case EDP :return 1;
-		case SYS_FLOPS_W :
-		case GPU_FLOPS_W :
+		case SYS_GFLOPS_W :
+		case GPU_GFLOPS_W :
 		{
 #if DCGMI
       sig_ext_t *sigex;
@@ -441,8 +447,8 @@ static void GPU_metric_ready_update(signature_t *signature)
 {
   switch(metric_to_optimize){
 	  case EDP         : return ;
-	  case SYS_FLOPS_W :
-	  case GPU_FLOPS_W :
+	  case SYS_GFLOPS_W :
+	  case GPU_GFLOPS_W :
     {
 #if DCGMI
       sig_ext_t *sigex;
@@ -473,7 +479,7 @@ static uint GPU_ok(uint gpu_idx, signature_t *signature, float curr, float last)
 	return 0;
 }
 
-
+// Return FP activies by second for each GPU
 static float get_fp_activities(signature_t *signature, uint gpu_idx)
 {
 	if (signature == NULL) return 0;
@@ -502,12 +508,21 @@ static float get_fp_activities(signature_t *signature, uint gpu_idx)
 	dcgmi_t *dcgmis_data_ten = dcgmis->dcgmi_metrics[tensor_info[event_info_set]];
 
   verbose_master(2, "GPU[%u] computing CPU gflops...", gpu_idx);
-  float fp16 = (float)(dcgmis_data_16[gpu_idx].values[fp16_info[event_info_pos]]*16);
-  float fp32 = (float)(dcgmis_data_32[gpu_idx].values[fp32_info[event_info_pos]]*32);
-  float fp64 = (float)(dcgmis_data_64[gpu_idx].values[fp64_info[event_info_pos]]*64);
-  float tensor = (float)(dcgmis_data_ten[gpu_idx].values[tensor_info[event_info_pos]]*128);
+  float fp16 = (float)(dcgmis_data_16[gpu_idx].values[fp16_info[event_info_pos]]);
+  float fp32 = (float)(dcgmis_data_32[gpu_idx].values[fp32_info[event_info_pos]]);
+  float fp64 = (float)(dcgmis_data_64[gpu_idx].values[fp64_info[event_info_pos]]);
+  float tensor = (float)(dcgmis_data_ten[gpu_idx].values[tensor_info[event_info_pos]]);
+  float elapsed = sigex->elapsed;
 
-  return fp16 + fp32 + fp64 + tensor;
+  // TODO automatize
+  // NVIDIA A100: 5120
+  // NVIDIA H100: 16384
+  int FP_WEIGHT = 5120;
+
+	verbose_master(2, "GPU[%u] data for optimization: fp64 %f fp32 %f fp16 %f tensor %f elapsed %f", gpu_idx, fp64, fp32, fp16, tensor, elapsed);
+
+  
+  return FP_WEIGHT*(fp64 + 2*fp32 + 4*fp16 + 2*tensor)/elapsed;
 #else
 	return 0;
 #endif
