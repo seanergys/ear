@@ -653,20 +653,18 @@ void compute_per_node_avg_sig_info(lib_shared_data_t *data, shsignature_t *sig, 
 
 void load_app_mgr_env()
 {
-	char *cshow_sig=ear_getenv(FLAG_SHOW_SIGNATURES);
 	char *csh_sig_per_process=ear_getenv(FLAG_SHARE_INFO_PPROC);
 	char *csh_sig_per_node=ear_getenv(FLAG_SHARE_INFO_PNODE);
 	char *creport_node_sig=ear_getenv(FLAG_REPORT_NODE_SIGNATURES);
 	char *creport_all_sig=ear_getenv(FLAG_REPORT_ALL_SIGNATURES);
 
-	if (cshow_sig != NULL) show_signatures = atoi(cshow_sig);
 	if (csh_sig_per_process != NULL) sh_sig_per_proces = atoi(csh_sig_per_process);
 	if (csh_sig_per_node != NULL) sh_sig_per_node = atoi(csh_sig_per_node);
 	if (creport_node_sig != NULL) report_node_sig = atoi(creport_node_sig);	
 	if (creport_all_sig != NULL) report_all_sig = atoi(creport_all_sig);
 
-	verbose_master(2,"Show_signatures %u share_sig_per_process %u share_sig_per_node %u report_node_sig %u report_all_sig %u",
-	show_signatures,sh_sig_per_proces,sh_sig_per_node,report_node_sig,report_all_sig);
+	verbose_master(2, "share_sig_per_process %u share_sig_per_node %u report_node_sig %u report_all_sig %u",
+								 sh_sig_per_proces, sh_sig_per_node, report_node_sig, report_all_sig);
 }
 
 void* mpi_info_get_perc_mpi(void* mpi_inf){
