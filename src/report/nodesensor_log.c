@@ -16,12 +16,11 @@
 */
 
 
-#include <common/config/config.h>
 #define _GNU_SOURCE         /* See feature_test_macros(7) */
+#include <stdio.h>
 #include <errno.h>
 #include <sys/stat.h>
 #include <fcntl.h>           /* Definition of AT_* constants */
-#include <sys/stat.h>
 
 
 extern char *program_invocation_name;
@@ -29,7 +28,7 @@ extern char *program_invocation_short_name;
 
 // #define SHOW_DEBUGS 1
 
-#include <stdio.h>
+#include <common/config.h>
 #include <common/states.h>
 #include <common/types/types.h>
 #include <common/types/configuration/cluster_conf.h>

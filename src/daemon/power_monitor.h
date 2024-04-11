@@ -220,4 +220,9 @@ void powermon_report_event(uint event_type, llong value);
 
 /** \todo Add a description. */
 uint is_job_in_node(job_id id, job_context_t **jc);
+
+
+/** Checks all the job in eard internal data structures and cleans not valid data 
+ */
+ void powermon_purge_old_jobs();
 #endif

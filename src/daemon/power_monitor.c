@@ -588,6 +588,29 @@ int select_last_context() {
 }
 
 
+/** This function iterates over the eard data and cleans not valid job metrics */
+void powermon_purge_old_jobs()
+{
+	powermon_app_t *pmapp;
+  for (uint cc = 1; cc <= max_context_created; cc++) {
+
+  	if (current_ear_app[cc] != NULL) {
+    	pmapp = current_ear_app[cc];
+
+			state_t lock_st;
+     	if ((lock_st = ear_trylock(&pmapp->powermon_app_mutex)) != EAR_SUCCESS) {
+     		error("Locking context %lu/%lu for updating its mask: %s",
+                      pmapp->app.job.id, pmapp->app.job.step_id, state_msg);
+       	return;
+     	}
+			/* test application */
+			
+			ear_unlock(&pmapp->powermon_app_mutex);
+		}
+	}
+}
+
+
 /* TODO: Thread-save here?: It's not possible because mutex is inside the context that will be created. */
 int new_context(job_id id, job_id sid, int *cc)
 {
