@@ -20,6 +20,10 @@ ifeq ($(FEAT_DLB), 1)
 OBJS += dlb_talp_lib.o
 endif
 
+# Variables for dcgmi_lib_test target
+dcgmi_lib_test_LDFLAGS = -L$(SRCDIR)/library -L$(SRCDIR)/library/loader
+dcgmi_lib_test_LIBS = -lear -learld -lpthread
+
 all: $(OBJS)
 
 dcgmi_lib/common.o: dcgmi_lib/common.c dcgmi_lib/common.h
@@ -33,6 +37,11 @@ dlb_talp_lib.o: dlb_talp_lib.c dlb_talp_lib.h
 
 %.o: %.c %.h
 	$(CC) $(CC_FLAGS) $(LIB_CFLAGS) $(CFLAGS) -c $<
+
+post: dcgmi_lib_test
+
+dcgmi_lib_test: test/dcgmi_lib_test.c $(SRCDIR)/common/libcommon.a dcgmi_lib.h
+	$(CC) $(CC_FLAGS) $(CFLAGS) -o $@ test/dcgmi_lib_test.c $(SRCDIR)/common/libcommon.a $(SRCDIR)/metrics/libmetrics.a $(dcgmi_lib_test_LDFLAGS) $(LDFLAGS) $(dcgmi_lib_test_LIBS) $(LIBS)
 
 ######## OPTIONS 
 

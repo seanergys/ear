@@ -25,6 +25,7 @@ extern char *program_invocation_short_name;
 // #define SHOW_DEBUGS 1
 
 #include <stdio.h>
+#include <sys/stat.h>
 #include <common/states.h>
 #include <common/types/types.h>
 #include <common/types/configuration/cluster_conf.h>

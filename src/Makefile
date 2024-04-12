@@ -51,6 +51,7 @@ all: all.components
 post:
 	@ $(MAKE) -C 'metrics'    $@ || exit
 	@ $(MAKE) -C 'management' $@ || exit
+	@ $(MAKE) -C 'library' $@ || exit
 
 install: install.components
 
