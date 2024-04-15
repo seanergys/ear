@@ -16,13 +16,22 @@ Current supported GPU architectures are **Turing**, **Hopper** and **Ampere**.
 ### Testing
 
 Target `post` from the source root directory, i.e., `make post` and `dcgmi_lib_test` tool will be ready to use.
+The binary is located at `src/library/metrics`.
 You need to export `libear.so` and `libearld.so` libraries paths to run this test.
+You may also need to enable EARL's DCGM feature.
 
 ```
+export EAR_GPU_DCGMI_ENABLED=1
 export LD_LIBRARY_PATH=/path/to/libearld_so:/path/to/libear_so:$LD_LIBRARY_PATH
 ./dcgmi_lib_test
 ```
 
+On the same system where you are going to test, run a GPU workload.
+As this test targets systems which have NVIDIA DCGM installed, you can run [CUDA Test Generator (dcgmproftester)](https://docs.nvidia.com/datacenter/dcgm/latest/user-guide/feature-overview.html#cuda-test-generator-dcgmproftester).
+
+```
+dcgmproftester11 --no-dcgm-validation -t 1004,1005
+```
 
 ## Fine grained metrics
 
