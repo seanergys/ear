@@ -14,6 +14,7 @@
  * and COPYING.EPL files.
  */
 
+
 #define SHOW_DEBUGS 1
 
 
@@ -40,7 +41,7 @@
 
 
 #define DCGMI_INIT_LVL		1
-#define DCGMI_MET_LVL			1
+#define DCGMI_MET_LVL			2
 
 #define DCGMI_LIB_SAMPLING_PERIOD 2
 
