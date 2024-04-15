@@ -134,6 +134,10 @@ install: install.components libs.ginstall;
 
 clean: clean.components rclean;
 
+post:
+	@ $(MAKE) -C 'metrics' $@ || exit
+
+
 ######## SUBFOLDERS
 
 %.components:

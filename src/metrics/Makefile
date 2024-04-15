@@ -62,6 +62,7 @@ mets_OBJS = \
     $(SRCDIR)/metrics/proc/stat.o \
     $(SRCDIR)/metrics/gpu/gpu.o \
     $(SRCDIR)/metrics/gpu/gpuproc.o \
+    $(SRCDIR)/metrics/gpu/gpuprof.o \
     $(SRCDIR)/metrics/gpu/archs/cupti.o \
     $(SRCDIR)/metrics/gpu/archs/dcgmi.o \
     $(SRCDIR)/metrics/gpu/archs/dummy.o \
@@ -69,11 +70,15 @@ mets_OBJS = \
     $(SRCDIR)/metrics/gpu/archs/nvml.o \
     $(SRCDIR)/metrics/gpu/archs/oneapi.o \
     $(SRCDIR)/metrics/gpu/archs/rsmi.o \
+    $(SRCDIR)/metrics/gpu/archs/gpuprof_nvml.o \
+    $(SRCDIR)/metrics/gpu/archs/gpuprof_dcgmi.o \
+    $(SRCDIR)/metrics/gpu/archs/gpuprof_dummy.o \
     $(SRCDIR)/metrics/temperature/temperature.o \
     $(SRCDIR)/metrics/temperature/archs/amd17.o \
     $(SRCDIR)/metrics/temperature/archs/intel63.o \
     $(SRCDIR)/metrics/temperature/archs/dummy.o \
     $(SRCDIR)/metrics/io/io.o
+
 
 ######## RULES
 

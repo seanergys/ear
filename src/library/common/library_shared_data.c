@@ -653,20 +653,18 @@ void compute_per_node_avg_sig_info(lib_shared_data_t *data, shsignature_t *sig, 
 
 void load_app_mgr_env()
 {
-	char *cshow_sig=ear_getenv(FLAG_SHOW_SIGNATURES);
 	char *csh_sig_per_process=ear_getenv(FLAG_SHARE_INFO_PPROC);
 	char *csh_sig_per_node=ear_getenv(FLAG_SHARE_INFO_PNODE);
 	char *creport_node_sig=ear_getenv(FLAG_REPORT_NODE_SIGNATURES);
 	char *creport_all_sig=ear_getenv(FLAG_REPORT_ALL_SIGNATURES);
 
-	if (cshow_sig != NULL) show_signatures = atoi(cshow_sig);
 	if (csh_sig_per_process != NULL) sh_sig_per_proces = atoi(csh_sig_per_process);
 	if (csh_sig_per_node != NULL) sh_sig_per_node = atoi(csh_sig_per_node);
 	if (creport_node_sig != NULL) report_node_sig = atoi(creport_node_sig);	
 	if (creport_all_sig != NULL) report_all_sig = atoi(creport_all_sig);
 
-	verbose_master(2,"Show_signatures %u share_sig_per_process %u share_sig_per_node %u report_node_sig %u report_all_sig %u",
-	show_signatures,sh_sig_per_proces,sh_sig_per_node,report_node_sig,report_all_sig);
+	verbose_master(2, "share_sig_per_process %u share_sig_per_node %u report_node_sig %u report_all_sig %u",
+								 sh_sig_per_proces, sh_sig_per_node, report_node_sig, report_all_sig);
 }
 
 void* mpi_info_get_perc_mpi(void* mpi_inf){
@@ -788,41 +786,79 @@ void  init_earl_node_mgr_info()
   node_mgr_info_unlock();
   verbose_master(WF_SUPPORT_VERB,"init_earl_node_mgr_info done: Total apps computed %d , based on folders %d", total_num_earl_apps, curr_app);
 #else
-	node_mgr_job_info = calloc(MAX_CPUS_SUPPORTED,sizeof(node_mgr_sh_data_t));
+	node_mgr_job_info = calloc(MAX_CPUS_SUPPORTED, sizeof(node_mgr_sh_data_t));
 
-	for (uint j = 0;j < MAX_CPUS_SUPPORTED; j++){
+  char *tmp = get_ear_tmp();
+
+	for (uint j = 0;j < MAX_CPUS_SUPPORTED; j++)
+	{
     uint ID;
-    job_id id,sid;
-    
-    char *tmp = get_ear_tmp();
+    job_id id, sid;
+
     id = node_mgr_data[j].jid;
     sid = node_mgr_data[j].sid;
-    if ((id != -1) && (sid != -1)){
+
+    if ((id != -1) && (sid != -1))
+		{
       /* Double validation */
-      if (node_mgr_info_lock() == EAR_SUCCESS){
+      if (node_mgr_info_lock() == EAR_SUCCESS)
+			{
         id = node_mgr_data[j].jid;
         sid = node_mgr_data[j].sid;
+
         node_mgr_job_info[j].creation_time = node_mgr_data[j].creation_time;
+
         node_mgr_info_unlock();
       }
-      if ((id != -1) && (sid != -1) && (j != node_mgr_index) ){
-        verbose_master(2,"Job %lu.%lu is sharing the node", id,sid);
+
+      if ((id != -1) && (sid != -1) && (j != node_mgr_index))
+			{
+        verbose_info_master("Job %lu.%lu is sharing the node.", id, sid);
+
         ID = create_ID(id, sid);
-        if (get_lib_shared_data_path(tmp,ID,0, lib_shared_region_path_jobs) == EAR_SUCCESS){
-          node_mgr_job_info[j].libsh = attach_lib_shared_data_area(lib_shared_region_path_jobs, &node_mgr_job_info[j].fd_lib);
-        }else{
+				
+				state_t ret_st = get_lib_shared_data_path(tmp, ID, 0, lib_shared_region_path_jobs);
+        if (state_ok(ret_st))
+				{
+          node_mgr_job_info[j].libsh = attach_lib_shared_data_area(lib_shared_region_path_jobs,
+																																	 &node_mgr_job_info[j].fd_lib);
+					if (node_mgr_job_info[j].libsh == NULL)
+					{
+						node_mgr_job_info[j].creation_time = 0;
+						verbose_warning_master("Library shared data is NULL: ingoring job %lu.%lu.", id, sid);
+						continue;
+					}
+        } else
+				{
           node_mgr_job_info[j].creation_time = 0;
+					continue;
         }
-        if (get_shared_signatures_path(tmp,ID,0, sig_shared_region_path_jobs) == EAR_SUCCESS){
-          node_mgr_job_info[j].shsig = attach_shared_signatures_area(sig_shared_region_path_jobs, node_mgr_job_info[j].libsh->num_processes, &node_mgr_job_info[j].fd_sig);
-        }
-      }else if (j == node_mgr_index){ 
+
+				ret_st = get_shared_signatures_path(tmp,ID,0, sig_shared_region_path_jobs);
+        if (state_ok(ret_st))
+				{
+          node_mgr_job_info[j].shsig = attach_shared_signatures_area(sig_shared_region_path_jobs,
+																																		 node_mgr_job_info[j].libsh->num_processes,
+																																		 &node_mgr_job_info[j].fd_sig);
+					if (node_mgr_job_info[j].shsig == NULL)
+					{
+						node_mgr_job_info[j].libsh = NULL;
+						node_mgr_job_info[j].creation_time = 0;
+						verbose_warning_master("Shared signatures data is NULL: ingoring job %lu.%lu.", id, sid);
+						continue;
+					}
+        } else
+				{
+          node_mgr_job_info[j].creation_time = 0;
+				}
+      } else if (j == node_mgr_index)
+			{
         node_mgr_job_info[j].libsh =  lib_shared_region;
         node_mgr_job_info[j].shsig =  sig_shared_region;
+				node_mgr_job_info[j].creation_time = node_mgr_data[j].creation_time;
       }
     }
   }
-
   #endif
 }
 
@@ -867,90 +903,155 @@ uint node_mgr_earl_apps()
 
 void update_earl_node_mgr_info()
 {
-    uint release = 0;
+
+	verbose_info2_master("Updating EARL node manager info...");
+
+	uint current_jobs_in_node = 0;
 
 #if WF_SUPPORT
+	uint release = 0;
 
-    verbose_master(WF_SUPPORT_VERB,"%supdate_earl_node_mgr_info..................%s", COL_RED,COL_CLR);
+	for (uint j = 0; j < total_num_earl_apps; j++)
+	{
+		job_id jid = node_mgr_job_info[j].jid;
+		job_id sid = node_mgr_job_info[j].sid;
 
-    for (uint j = 0; j < total_num_earl_apps; j++) {
-        job_id jid = node_mgr_job_info[j].jid;
-        job_id sid = node_mgr_job_info[j].sid;
-        time_t mt = node_mgr_job_info[j].modification_time;
+		time_t mt = node_mgr_job_info[j].modification_time;
 
-        /* For each app we compare the data */
-        if (node_manager_job_changed(jid, sid, mt)){
-          //verbose(WF_SUPPORT_VERB,"Job %lu/%lu has changed", jid, sid);
-          release = 1;
-          break;
-        }
-    }
+		/* For each app we compare the data */
+		if (node_manager_job_changed(jid, sid, mt))
+		{
+			// verbose(WF_SUPPORT_VERB,"Job %lu/%lu has changed", jid, sid);
+			release = 1;
+			break;
+		}
+	}
 
-    /* if something has changed, we re-map */
-    if (release){
-      release_earl_node_mgr_info();
-      init_earl_node_mgr_info();
-    }
+	/* if something has changed, we re-map */
+	if (release)
+	{
+		release_earl_node_mgr_info();
+		init_earl_node_mgr_info();
+	}
 
+	// TODO: I'm not sure about the correctness of this method. But I don't know how to manage with
+	// Workflows version.
+	nodemgr_get_num_jobs_attached(&current_jobs_in_node);
 #else
-    char *tmp = get_ear_tmp();
+	char *tmp = get_ear_tmp();
 
-    for (uint j = 0; j < MAX_CPUS_SUPPORTED; j++) {
-        job_id jid = node_mgr_data[j].jid;
-        job_id sid = node_mgr_data[j].sid;
+	for (uint j = 0; j < MAX_CPUS_SUPPORTED; j++)
+	{
+		time_t ct = node_mgr_data[j].creation_time;
 
-        time_t ct = node_mgr_data[j].creation_time;
+		// Detect whether j-th job is myself
+		if (j == node_mgr_index)
+		{
+			node_mgr_job_info[j].libsh =  lib_shared_region;
+			node_mgr_job_info[j].shsig =  sig_shared_region;
+			node_mgr_job_info[j].creation_time = ct;
 
-        if (ct != node_mgr_job_info[j].creation_time) {
-            while (node_mgr_info_lock() != EAR_SUCCESS);
+			current_jobs_in_node++;
 
-            jid = node_mgr_data[j].jid;
-            sid = node_mgr_data[j].sid;
-            ct  = node_mgr_data[j].creation_time;
+			continue;
+		}
 
-            node_mgr_info_unlock();
+		job_id jid = node_mgr_data[j].jid;
+		job_id sid = node_mgr_data[j].sid;
 
-            /* Double validation after getting the lock */
-            if (ct != node_mgr_job_info[j].creation_time) {
-                if (ct == 0) {
-                    dettach_lib_shared_data_area(node_mgr_job_info[j].fd_lib);
-                    dettach_shared_signatures_area(node_mgr_job_info[j].fd_sig);
-                    node_mgr_job_info[j].creation_time = 0;
-                } else {
+		if (ct != node_mgr_job_info[j].creation_time)
+		{
+			while (node_mgr_info_lock() != EAR_SUCCESS);
 
-                    uint ID = create_ID(jid, sid);
+			jid = node_mgr_data[j].jid;
+			sid = node_mgr_data[j].sid;
+			ct  = node_mgr_data[j].creation_time;
 
-                    get_lib_shared_data_path(tmp, ID, 0, lib_shared_region_path_jobs);
-                    node_mgr_job_info[j].libsh = attach_lib_shared_data_area(lib_shared_region_path_jobs,
-                            &node_mgr_job_info[j].fd_lib);
+			node_mgr_info_unlock();
 
-                    get_shared_signatures_path(tmp, ID, 0, sig_shared_region_path_jobs);
-                    node_mgr_job_info[j].shsig = attach_shared_signatures_area(sig_shared_region_path_jobs,
-                            node_mgr_job_info[j].libsh->num_processes,
-                            &node_mgr_job_info[j].fd_sig);
+			/* Double validation after getting the lock */
+			if (ct != node_mgr_job_info[j].creation_time)
+			{
+				if (ct == 0)
+				{
+					dettach_lib_shared_data_area(node_mgr_job_info[j].fd_lib);
+					dettach_shared_signatures_area(node_mgr_job_info[j].fd_sig);
 
-                    node_mgr_job_info[j].creation_time = ct;
-                }
-            }
-        }
-    }
+					node_mgr_job_info[j].creation_time = 0;
+					node_mgr_job_info[j].libsh = NULL;
+					node_mgr_job_info[j].shsig = NULL;
+				} else {
+					uint ID = create_ID(jid, sid);
 
+					// Get the Library shared data path
+					state_t ret_st = get_lib_shared_data_path(tmp, ID, 0, lib_shared_region_path_jobs);
+					if (state_fail(ret_st))
+					{
+						// Library shared area path got with error.
+						node_mgr_job_info[j].creation_time = 0;
+						verbose_error_master("Getting library shared data path.");
+						continue;
+					}
 
+					// Library shared data path got without error.
+					// Attach to the shared data.
+					node_mgr_job_info[j].libsh = attach_lib_shared_data_area(lib_shared_region_path_jobs, &node_mgr_job_info[j].fd_lib);
+
+					// Attach error
+					if (node_mgr_job_info[j].libsh == NULL)
+					{
+						node_mgr_job_info[j].creation_time = 0;
+						verbose_warning_master("Library shared data is NULL: ingoring job %lu.%lu.", jid, sid);
+						continue;
+					}
+
+					// Get the shared signatures path
+					ret_st = get_shared_signatures_path(tmp, ID, 0, sig_shared_region_path_jobs);
+
+					if (state_fail(ret_st))
+					{
+						// Shared signatures path got with error.
+						verbose_error_master("Getting shared signatures path.");
+
+						node_mgr_job_info[j].creation_time = 0;
+						node_mgr_job_info[j].libsh = NULL;
+
+						continue;
+					}
+
+					// Shared signatures path got without error.
+					// Attach to the shared data.
+					node_mgr_job_info[j].shsig = attach_shared_signatures_area(sig_shared_region_path_jobs, node_mgr_job_info[j].libsh->num_processes, &node_mgr_job_info[j].fd_sig);
+
+					node_mgr_job_info[j].creation_time = ct;
+
+					// Attach error
+					if (node_mgr_job_info[j].shsig == NULL)
+					{
+						node_mgr_job_info[j].libsh = NULL;
+						node_mgr_job_info[j].creation_time = 0;
+
+						verbose_warning_master("Shared signatures data is NULL: ingoring job %lu.%lu.", jid, sid);
+						continue;
+					}
+				}
+			}
+		}
+		// If creation time is not zero, it is a valid job.
+		if (node_mgr_job_info[j].creation_time) current_jobs_in_node++;
+	}
 #endif
-
-    uint current_jobs_in_node = 0;
-    nodemgr_get_num_jobs_attached(&current_jobs_in_node);
-    exclusive = exclusive && (current_jobs_in_node == 1);
-    if (fake_force_shared_node) exclusive = 0;
+	exclusive = exclusive && (current_jobs_in_node == 1);
+	if (fake_force_shared_node) exclusive = 0;
 }
 
 void verbose_jobs_in_node(int vl, ear_njob_t *nmgr_eard, node_mgr_sh_data_t *nmgr_earl)
 {
-    while (node_mgr_info_lock() != EAR_SUCCESS);
-    if (VERB_GET_LV() >= vl) {
-        if ((nmgr_eard == NULL) || (nmgr_earl == NULL)){
-          node_mgr_info_unlock();
-          return;
+	while (node_mgr_info_lock() != EAR_SUCCESS);
+	if (VERB_GET_LV() >= vl) {
+		if ((nmgr_eard == NULL) || (nmgr_earl == NULL)){
+			node_mgr_info_unlock();
+			return;
         }
         verbose_master(vl, "%s--- Jobs in node list ---", COL_BLU);
         char sig_buff[1024];

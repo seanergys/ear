@@ -57,7 +57,7 @@ static void debug_loop_signature(char *title, signature_t *loop);
 #endif
 
 
-void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname, char *nname,
+void state_verbose_signature(loop_t *sig, int master_rank, char *aname, char *nname,
         int iterations, ulong prevf, ulong new_freq, char *user_mode)
 {
     double CPI, GBS, POWER, TIME, VPI, FLOPS;
@@ -82,11 +82,10 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
     char gpu_buff[256];
 
     /* master_rank == 0: The master node rank (is who verboses if verb_level >= 1).
-     * show: FLAG_VERBOSE_SIGNATURE (?)
      * using_verb_files: FLAG_EARL_VERBOSE_PATH
      * per_proc_verb_file: HACK_PROCS_VERB_FILES (per_proc_verb_file == 1 => using_verb_files == 1)
      */
-    if (master_rank == 0 || show || using_verb_files) {
+    if (master_rank == 0 || using_verb_files) {
         
         // MPI info
 			sig_ext_t *sigex      = (sig_ext_t *) sig->signature.sig_ext;
@@ -115,7 +114,8 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
 
         // IMC
         imcf = (per_proc_verb_file) ? (float) lib_shared_region->job_signature.avg_imc_f / 1000000.0 : (float) sig->signature.avg_imc_f / 1000000.0;
-				sel_mem_f = ((sigex == NULL)? imcf : (float)sigex->sel_mem_freq_khz / 1000000.0);
+				// Slaves can't use their extended signature
+				sel_mem_f = (sigex == NULL || master_rank < 0) ? imcf : ((float) sigex->sel_mem_freq_khz / 1000000.0);
 
         // CPI
         // If enabled, each process reports its CPI
@@ -129,7 +129,7 @@ void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname
         io_data_t *io_data = (per_proc_verb_file) ? &sig_shared_region[my_node_id].sig.iod : &se->iod;
 #endif
         // If enabled, each process has its own I/O data
-        io_data_t *io_data = (per_proc_verb_file) ? &sig_shared_region[my_node_id].sig.iod : &sigex->iod;
+        io_data_t *io_data = (per_proc_verb_file || master_rank < 0) ? &sig_shared_region[my_node_id].sig.iod : &sigex->iod;
 
         char io_info[256];
         if (sigex != NULL) {

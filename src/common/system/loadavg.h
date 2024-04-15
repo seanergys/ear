@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 #ifndef _LOADAVG_H_
-#define _LOADAVG_H
+#define _LOADAVG_H_
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

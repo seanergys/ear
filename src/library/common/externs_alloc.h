@@ -69,7 +69,6 @@ int my_node_id;
 
 uint sh_sig_per_node=1;
 uint sh_sig_per_proces=0;
-uint show_signatures=0;
 uint report_node_sig=0;
 uint report_all_sig=0;
 
