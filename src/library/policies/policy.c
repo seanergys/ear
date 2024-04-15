@@ -2572,10 +2572,7 @@ static state_t policy_set_cpus_governor(uint exclusive)
     if (mgt_cpufreq_governor_is_available(no_ctx, Governor.userspace))
     {
         // Allocate the governor list
-        if (state_fail(mgt_cpufreq_data_alloc(NULL, &governor_list_before_init)))
-        {
-            return_msg(EAR_ERROR, "Allocating governor list.");
-        }
+        mgt_cpufreq_data_alloc(NULL, &governor_list_before_init);
 
         // Retrieve the current governor list
         check(mgt_cpufreq_governor_get_list(no_ctx, governor_list_before_init),

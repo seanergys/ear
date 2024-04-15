@@ -34,17 +34,19 @@
 #define PATH_SMF   "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_max_freq" // line break
 #define PATH_SGV   "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_governor" // line break
 #define PATH_SMF0  "/sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq"  // Test write
+#define PATH_SNF0  "/sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq"  // Test write
 #define PATH_CMF0  "/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq"  // Test read
+#define PATH_CNF0  "/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_min_freq"  // Test read
 
 static uint    cpu_count;
 static ullong *current_list;
 static uint    avail_list_count;
 static ullong  avail_list[128]; // From 10 GHz to 1 GHz there are 90 items, enough
 static cfb_t   bf;
+static ullong  freq_ps0; // KHz
 static ullong  freq_max; // KHz
 static ullong  freq_max0; // Initial max freq
-static ullong  freq_ps0; // KHz
-static char    freq_max_file[64];
+static ullong  freq_min0; // Initial min freq
 static uint    governor0;
 static uint    governor_last = 0;
 static int    *fds_smf; // FD scaling max freq
@@ -52,26 +54,31 @@ static int    *fds_sgv;
 
 void mgt_intel_pstate_load(topology_t *tp, mgt_ps_driver_ops_t *ops)
 {
-    char buffer[SZ_PATH];
+    char freq_max_string[64];
+    char freq_min_string[64];
     int set_frequency = 1;
     int set_governor  = 1;
-    int fd_cmf = -1;
 
     // Check if other driver is already loaded
     if (apis_loaded(ops)) return;
     // This is a scaling_max_freq file driver (based on intel_pstate model).
     if (!filemagic_exists(PATH_SMF0)) return;
-    // If we can't read cpuinfo_max_freq, something is not good with the driver.
-    if (!filemagic_can_read (PATH_CMF0, &fd_cmf) || !filemagic_word_read(fd_cmf, buffer, 0)) {
-        // Reading from SMF as B plan, but maintaining cmf file descriptor
-        if (!filemagic_can_read (PATH_SMF0, &fd_cmf) || !filemagic_word_read(fd_cmf, buffer, 0)) {
-            return;
+    // Checking max/min frequency
+    if (!mgt_intel_pstate_read_cpuinfo(1, &freq_max0)) {
+        if (!keeper_load_uint64("AcpiCpufreqMaxFrequency", &freq_max0)) {
+            if (!mgt_intel_pstate_read_scaling(1, &freq_max0)) {}
         }
-        strcpy(freq_max_file, "scaling_max_freq");
-    } else {
-        strcpy(freq_max_file, "cpuinfo_max_freq");
     }
-    close(fd_cmf);
+    if (!mgt_intel_pstate_read_cpuinfo(0, &freq_min0)) {
+        if (!keeper_load_uint64("AcpiCpufreqMinFrequency", &freq_min0)) {
+            if (!mgt_intel_pstate_read_scaling(0, &freq_min0)) {}
+        }
+    }
+    // It worked so we can save the value for next loads
+    if (freq_max0 != 0LLU) keeper_save_uint64("AcpiCpufreqMaxFrequency", freq_max0);
+    if (freq_min0 != 0LLU) keeper_save_uint64("AcpiCpufreqMinFrequency", freq_min0);
+    if (freq_max0 == 0LLU) freq_max0 = avail_list[0];
+    if (freq_min0 == 0LLU) freq_min0 = avail_list[avail_list_count-1];
     // Set check
     set_frequency = filemagic_can_mwrite(PATH_SMF, tp->cpu_count, &fds_smf);
     set_governor  = filemagic_can_mwrite(PATH_SGV, tp->cpu_count, &fds_sgv);
@@ -81,25 +88,23 @@ void mgt_intel_pstate_load(topology_t *tp, mgt_ps_driver_ops_t *ops)
     cpufreq_base_init(tp, &bf);
     // Saving some required data
     cpu_count     = tp->cpu_count;
-    freq_max      = (ullong) atoi(buffer); // Based on cpuinfo_max_freq
-    freq_max0     = freq_max;
+    freq_max0     = (ullong) atoi(freq_max_string);
+    freq_min0     = (ullong) atoi(freq_min_string);
+    freq_max      = freq_max0;
     current_list  = calloc(cpu_count, sizeof(ullong));
     //
     mgt_intel_pstate_governor_get(&governor0);
-    // Saved initial values
     keeper_macro(uint32, "IntelPstateDefaultGovernor", governor0);
-    keeper_macro(uint64, "IntelPstateDefaultMaxFrequency", freq_max0);
-    if (!keeper_load_text("IntelPstateDefaultMaxFrequencyFile", (char *) freq_max_file)) {
-        keeper_save_text("IntelPstateDefaultMaxFrequencyFile", (char *) freq_max_file);
-    }
+    // Debugging
     debug("IntelPstateDefaultGovernor: %u", governor0);
-    debug("IntelPstateDefaultMaxFrequency: %llu", freq_max0);
-    debug("IntelPstateDefaultMaxFrequencyFile: %s", freq_max_file);
-    debug("IntelPstateDefaultBaseFrequency: %llu", bf.frequency);
+    debug("IntelPstateMaxFrequency   : %llu", freq_max0);
+    debug("IntelPstateMinFrequency   : %llu", freq_min0);
+    debug("IntelPstateBaseFrequency  : %llu", bf.frequency);
     // Driver references
     apis_put(ops->init                 , mgt_intel_pstate_init                                );
     apis_put(ops->dispose              , mgt_intel_pstate_dispose                             );
     apis_put(ops->reset                , mgt_intel_pstate_reset                               );
+    apis_put(ops->get_freq_details     , mgt_intel_pstate_get_freq_details                    );
     apis_put(ops->get_available_list   , mgt_intel_pstate_get_available_list                  );
     apis_put(ops->get_current_list     , mgt_intel_pstate_get_current_list                    );
     apis_put(ops->get_boost            , mgt_intel_pstate_get_boost                           );
@@ -149,6 +154,13 @@ state_t mgt_intel_pstate_dispose()
 state_t mgt_intel_pstate_reset()
 {
     return EAR_SUCCESS;
+}
+
+void mgt_intel_pstate_get_freq_details(freq_details_t *details)
+{
+    details->freq_base = bf.frequency;
+    details->freq_max  = freq_max0;
+    details->freq_min  = freq_min0;
 }
 
 /* Getters */
@@ -364,6 +376,34 @@ int mgt_intel_pstate_governor_is_available(uint governor)
         return 1;
     }
     return 0;
+}
+
+int mgt_intel_pstate_read_cpuinfo(int max, ullong *khz)
+{
+    char *path_cpuinfo = (max) ? PATH_CMF0 : PATH_CNF0;
+    char buffer[64];
+    int fd = -1;
+
+    if (!filemagic_can_read (path_cpuinfo, &fd) || !filemagic_word_read(fd, buffer, 0)) {
+        return 0;
+    }
+    *khz = 0LLU | (ullong) atoi(buffer);
+    close(fd);
+    return 1;
+}
+
+int mgt_intel_pstate_read_scaling(int max, ullong *khz)
+{
+    char *path_scaling = (max) ? PATH_SMF0 : PATH_SNF0;
+    char buffer[64];
+    int fd = -1;
+
+    if (!filemagic_can_read (path_scaling, &fd) || !filemagic_word_read(fd, buffer, 0)) {
+        return 0;
+    }
+    *khz = 0LLU | (ullong) atoi(buffer);
+    close(fd);
+    return 1;
 }
 
 #if TEST

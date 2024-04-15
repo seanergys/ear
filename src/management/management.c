@@ -37,7 +37,7 @@ void management_init(manages_info_t *m, topology_t *tp, ullong mflags)
         mgt_gpu_load(    MFLAG_UNZIP(mflags, MET_GPU    )      );
 
     mgt_cpufreq_init(no_ctx);
-    mgt_cpuprio_init(no_ctx);
+    mgt_cpuprio_init(      );
     mgt_imcfreq_init(no_ctx);
      mgt_cpupow_init(      );
         mgt_gpu_init(no_ctx);
