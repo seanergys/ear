@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-// #define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #define _GNU_SOURCE
 #include <sched.h>
@@ -34,16 +34,19 @@
 #define PATH_SMF   "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_max_freq" // line break
 #define PATH_SGV   "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_governor" // line break
 #define PATH_SMF0  "/sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq"  // Test write
+#define PATH_SNF0  "/sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq"  // Test write
 #define PATH_CMF0  "/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq"  // Test read
+#define PATH_CNF0  "/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_min_freq"  // Test read
 
 static uint    cpu_count;
 static ullong *current_list;
 static uint    avail_list_count;
 static ullong  avail_list[128]; // From 10 GHz to 1 GHz there are 90 items, enough
 static cfb_t   bf;
+static ullong  freq_ps0; // KHz
 static ullong  freq_max; // KHz
 static ullong  freq_max0; // Initial max freq
-static ullong  freq_ps0; // KHz
+static ullong  freq_min0; // Initial min freq
 static uint    governor0;
 static uint    governor_last = 0;
 static int    *fds_smf; // FD scaling max freq
@@ -51,18 +54,31 @@ static int    *fds_sgv;
 
 void mgt_intel_pstate_load(topology_t *tp, mgt_ps_driver_ops_t *ops)
 {
-    char buffer[SZ_PATH];
+    char freq_max_string[64];
+    char freq_min_string[64];
     int set_frequency = 1;
     int set_governor  = 1;
-    int fd_cmf = -1;
 
     // Check if other driver is already loaded
     if (apis_loaded(ops)) return;
     // This is a scaling_max_freq file driver (based on intel_pstate model).
     if (!filemagic_exists(PATH_SMF0)) return;
-    // If we can't read cpuinfo_max_freq, something is not good with the driver.
-    if (!filemagic_can_read (PATH_CMF0, &fd_cmf) || !filemagic_word_read(fd_cmf, buffer, 0)) return;
-    close(fd_cmf);
+    // Checking max/min frequency
+    if (!mgt_intel_pstate_read_cpuinfo(1, &freq_max0)) {
+        if (!keeper_load_uint64("AcpiCpufreqMaxFrequency", &freq_max0)) {
+            if (!mgt_intel_pstate_read_scaling(1, &freq_max0)) {}
+        }
+    }
+    if (!mgt_intel_pstate_read_cpuinfo(0, &freq_min0)) {
+        if (!keeper_load_uint64("AcpiCpufreqMinFrequency", &freq_min0)) {
+            if (!mgt_intel_pstate_read_scaling(0, &freq_min0)) {}
+        }
+    }
+    // It worked so we can save the value for next loads
+    if (freq_max0 != 0LLU) keeper_save_uint64("AcpiCpufreqMaxFrequency", freq_max0);
+    if (freq_min0 != 0LLU) keeper_save_uint64("AcpiCpufreqMinFrequency", freq_min0);
+    if (freq_max0 == 0LLU) freq_max0 = avail_list[0];
+    if (freq_min0 == 0LLU) freq_min0 = avail_list[avail_list_count-1];
     // Set check
     set_frequency = filemagic_can_mwrite(PATH_SMF, tp->cpu_count, &fds_smf);
     set_governor  = filemagic_can_mwrite(PATH_SGV, tp->cpu_count, &fds_sgv);
@@ -72,20 +88,23 @@ void mgt_intel_pstate_load(topology_t *tp, mgt_ps_driver_ops_t *ops)
     cpufreq_base_init(tp, &bf);
     // Saving some required data
     cpu_count     = tp->cpu_count;
-    freq_max      = (ullong) atoi(buffer); // Based on cpuinfo_max_freq
-    freq_max0     = freq_max;
+    freq_max0     = (ullong) atoi(freq_max_string);
+    freq_min0     = (ullong) atoi(freq_min_string);
+    freq_max      = freq_max0;
     current_list  = calloc(cpu_count, sizeof(ullong));
-
-		verbose(1, "Intel pstate: Max CPU freq detected when cpufreq mgt loaded %llu", freq_max0);
     //
     mgt_intel_pstate_governor_get(&governor0);
-    // Saved initial values
     keeper_macro(uint32, "IntelPstateDefaultGovernor", governor0);
+    // Debugging
     debug("IntelPstateDefaultGovernor: %u", governor0);
+    debug("IntelPstateMaxFrequency   : %llu", freq_max0);
+    debug("IntelPstateMinFrequency   : %llu", freq_min0);
+    debug("IntelPstateBaseFrequency  : %llu", bf.frequency);
     // Driver references
     apis_put(ops->init                 , mgt_intel_pstate_init                                );
     apis_put(ops->dispose              , mgt_intel_pstate_dispose                             );
     apis_put(ops->reset                , mgt_intel_pstate_reset                               );
+    apis_put(ops->get_freq_details     , mgt_intel_pstate_get_freq_details                    );
     apis_put(ops->get_available_list   , mgt_intel_pstate_get_available_list                  );
     apis_put(ops->get_current_list     , mgt_intel_pstate_get_current_list                    );
     apis_put(ops->get_boost            , mgt_intel_pstate_get_boost                           );
@@ -105,17 +124,10 @@ state_t mgt_intel_pstate_init()
     ullong m = 0;
     uint i = 0;
 
-    debug("freq_max     : %llu", freq_max);
-    debug("freq_base    : %llu", bf.frequency);
-    debug("boost_enabled: %u  ", bf.boost_enabled);
-		
-		verbose(1, "Intel pstate: Boost cfg when cpufreq mgt was loaded %s",
-						(bf.boost_enabled) ? "enabled" : "disabled");
 #if DYNAMIC_BOOST_MGT
-		bf.boost_enabled = 1;
-		verbose(1, "'Boost enabled' forced.");
+    bf.boost_enabled = 1;
+    debug("'Boost enabled' forced.");
 #endif
-
     // Discovering if boost is enabled
     if (bf.boost_enabled) {
         // Boost is marked as base clock + 1MHz
@@ -142,6 +154,13 @@ state_t mgt_intel_pstate_dispose()
 state_t mgt_intel_pstate_reset()
 {
     return EAR_SUCCESS;
+}
+
+void mgt_intel_pstate_get_freq_details(freq_details_t *details)
+{
+    details->freq_base = bf.frequency;
+    details->freq_max  = freq_max0;
+    details->freq_min  = freq_min0;
 }
 
 /* Getters */
@@ -234,10 +253,10 @@ state_t mgt_intel_pstate_set_current_list(uint *freqs_index)
 static state_t static_get_governor(int cpu, uint *governor)
 {
     char buffer[64];
-    debug("reading governor for CPU%d", cpu);
     if (!filemagic_word_read(fds_sgv[cpu], buffer, 1)) {
         buffer[0] = '\0';
     }
+    debug("CPU%d %s", cpu, buffer);
     return mgt_governor_toint(buffer, governor);
 }
 
@@ -260,7 +279,8 @@ state_t mgt_intel_pstate_governor_get_list(uint *governors)
 
 state_t mgt_intel_pstate_governor_set(uint governor)
 {
-    char buffer[64];
+    char buffer_govr[64];
+    char buffer_freq[64];
     uint current;
     state_t s;
 
@@ -277,10 +297,31 @@ state_t mgt_intel_pstate_governor_set(uint governor)
     if (!mgt_intel_pstate_governor_is_available(governor)) {
         return_msg(EAR_ERROR, "Governor not available");
     }
-    if (state_fail(s = mgt_governor_tostr(governor, buffer))) {
+    if (state_fail(s = mgt_governor_tostr(governor, buffer_govr))) {
         return s;
     }
-    return (filemagic_word_mwrite(fds_sgv, cpu_count, buffer, 1) ? EAR_SUCCESS:EAR_ERROR);
+    // Restoring max frequency
+    sprintf(buffer_freq, "%llu", freq_max0);
+    debug("CPU-1: restoring to %s KHz and setting governor '%s'", buffer_freq, buffer_govr);
+    if (!filemagic_word_mwrite(fds_smf, cpu_count, buffer_freq, 1)) {
+        // If fails, nothing by now
+    }
+    return (filemagic_word_mwrite(fds_sgv, cpu_count, buffer_govr, 1) ? EAR_SUCCESS:EAR_ERROR);
+}
+
+static state_t set_governor_single(int cpu, char *governor)
+{
+    char buffer[64];
+    // Restoring max frequency
+    sprintf(buffer, "%llu", freq_max0);
+    debug("CPU%d: restoring to %s KHz and setting governor '%s'", cpu, buffer, governor);
+    if (!filemagic_word_write(fds_smf[cpu], buffer, strlen(buffer), 1)) {
+        // If fails, nothing by now
+    }
+    if (!filemagic_word_write(fds_sgv[cpu], governor, strlen(governor), 1)) {
+        return EAR_ERROR;
+    }
+    return EAR_SUCCESS;
 }
 
 state_t mgt_intel_pstate_governor_set_mask(uint governor, cpu_set_t mask)
@@ -295,12 +336,10 @@ state_t mgt_intel_pstate_governor_set_mask(uint governor, cpu_set_t mask)
     if (state_fail(s = mgt_governor_tostr(governor, buffer))) {
         return s;
     }
-    strcat(buffer, "\n");
+    // Adding a \n is not required because write functions are fixed
     for (i = 0; i < cpu_count; ++i) {
         if (CPU_ISSET(i, &mask)) {
-            if (!filemagic_word_write(fds_sgv[i], buffer, strlen(buffer), 0)) {
-                s = EAR_ERROR;
-            }
+            s = set_governor_single(i, buffer);
         }
     }
     return s;
@@ -319,9 +358,9 @@ state_t mgt_intel_pstate_governor_set_list(uint *governors)
         if (state_fail(s = mgt_governor_tostr(governors[i], buffer))) {
             return s;
         }
-        strcat(buffer, "\n");
-        if (!filemagic_word_write(fds_sgv[i], buffer, strlen(buffer), 0)) {
-            return EAR_ERROR;
+        // Adding a \n is not required because write functions are fixed
+        if (state_fail(s = set_governor_single(i, buffer))) {
+            return s;
         }
     }
     return EAR_SUCCESS;
@@ -339,21 +378,47 @@ int mgt_intel_pstate_governor_is_available(uint governor)
     return 0;
 }
 
+int mgt_intel_pstate_read_cpuinfo(int max, ullong *khz)
+{
+    char *path_cpuinfo = (max) ? PATH_CMF0 : PATH_CNF0;
+    char buffer[64];
+    int fd = -1;
+
+    if (!filemagic_can_read (path_cpuinfo, &fd) || !filemagic_word_read(fd, buffer, 0)) {
+        return 0;
+    }
+    *khz = 0LLU | (ullong) atoi(buffer);
+    close(fd);
+    return 1;
+}
+
+int mgt_intel_pstate_read_scaling(int max, ullong *khz)
+{
+    char *path_scaling = (max) ? PATH_SMF0 : PATH_SNF0;
+    char buffer[64];
+    int fd = -1;
+
+    if (!filemagic_can_read (path_scaling, &fd) || !filemagic_word_read(fd, buffer, 0)) {
+        return 0;
+    }
+    *khz = 0LLU | (ullong) atoi(buffer);
+    close(fd);
+    return 1;
+}
+
 #if TEST
-static const ullong *frequencies;
-static uint governors[1024];
-static char buffer[128];
+static const ullong       *frequencies;
+static uint                 governors[1024];
+static char                 buffer[128];
+static mgt_ps_driver_ops_t  ops;
+static topology_t           tp;
 
 int main(int argc, char *argv[])
 {
-    mgt_ps_driver_ops_t ops;
-    topology_t tp;
-
     // Topology
     topology_init(&tp);
     // Management
     mgt_intel_pstate_load(&tp, &ops);
-
     mgt_intel_pstate_init();
 
     if (argc == 1) {
@@ -361,7 +426,7 @@ int main(int argc, char *argv[])
     }
     if (atoi(argv[1]) == 1) {
         if (state_fail(mgt_intel_pstate_governor_set(Governor.performance))) {
-            debug("mgt_intel_pstate_governor_set: %s", state_msg);
+            debug("mgt_intel_pstate_governor_set error: %s", state_msg);
         }
     }
     if (atoi(argv[1]) == 2) {
@@ -393,7 +458,7 @@ int main(int argc, char *argv[])
     }
     if (atoi(argv[1]) == 12) {
         if (state_fail(mgt_intel_pstate_get_current_list(&frequencies))) {
-            debug("mgt_intel_pstate_governor_set: %s", state_msg);
+            debug("mgt_intel_pstate_governor_set failed: %s", state_msg);
         }
     }
     return 0;

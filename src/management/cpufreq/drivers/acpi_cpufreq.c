@@ -48,6 +48,39 @@ static int    *fds_sgv;
 static int    *fds_sss;
 static uint    governor_last;
 static uint    governor0;
+static ullong  freq_max0;
+static ullong  freq_min0;
+
+static state_t build_frequencies_list()
+{
+    char buffer[PATH_MAX];
+    int fd_saf0 = -1;
+    ullong m    =  0;
+    uint i      =  0;
+    // Building frequency list
+    if (filemagic_can_read(PATH_SAF0, &fd_saf0)) {
+        while (filemagic_word_read(fd_saf0, buffer, 0)) {
+            avail_list[i] = (ullong) atoll(buffer);
+            debug("avail_list%u: %llu", i, avail_list[i]);
+            ++i;
+        }
+        close(fd_saf0);
+    } else {
+        avail_list[0] = bf.frequency;
+        if (bf.boost_enabled) {
+            avail_list[0] = bf.frequency + 1000LLU;
+            debug("avail_list%u: %llu", i, avail_list[i]);
+            i = 1;
+        }
+        while((avail_list[i] = bf.frequency - (100000LLU*m)) >= 1000000LLU) { // 1GHz
+            debug("avail_list%u: %llu", i, avail_list[i]);
+            ++m;
+            ++i;
+        }
+    }
+    avail_list_count = i;
+    return EAR_SUCCESS;
+}
 
 void mgt_acpi_cpufreq_load(topology_t *tp, mgt_ps_driver_ops_t *ops)
 {
@@ -79,6 +112,26 @@ void mgt_acpi_cpufreq_load(topology_t *tp, mgt_ps_driver_ops_t *ops)
     // Allocating space for current list
     cpu_count     = tp->cpu_count;
     current_list  = calloc(cpu_count, sizeof(ullong));
+    // Building list of frequencies
+    if (state_fail(build_frequencies_list())) {
+        return;
+    }
+    // Checking max/min frequency
+    if (!mgt_intel_pstate_read_cpuinfo(1, &freq_max0)) {
+        if (!keeper_load_uint64("AcpiCpufreqMaxFrequency", &freq_max0)) {
+            if (!mgt_intel_pstate_read_scaling(1, &freq_max0)) {}
+        }
+    }
+    if (!mgt_intel_pstate_read_cpuinfo(0, &freq_min0)) {
+        if (!keeper_load_uint64("AcpiCpufreqMinFrequency", &freq_min0)) {
+            if (!mgt_intel_pstate_read_scaling(0, &freq_min0)) {}
+        }
+    }
+    // It worked so we can save the value for next loads
+    if (freq_max0 != 0LLU) keeper_save_uint64("AcpiCpufreqMaxFrequency", freq_max0);
+    if (freq_min0 != 0LLU) keeper_save_uint64("AcpiCpufreqMinFrequency", freq_min0);
+    if (freq_max0 == 0LLU) freq_max0 = avail_list[0];
+    if (freq_min0 == 0LLU) freq_min0 = avail_list[avail_list_count-1];
     // Saving initial governor
     mgt_acpi_cpufreq_governor_get(&governor0);
     // Saved initial values
@@ -88,6 +141,7 @@ void mgt_acpi_cpufreq_load(topology_t *tp, mgt_ps_driver_ops_t *ops)
     apis_put(ops->init                 , mgt_acpi_cpufreq_init                                );
     apis_put(ops->dispose              , mgt_acpi_cpufreq_dispose                             );
     apis_put(ops->reset                , mgt_acpi_cpufreq_reset                               );
+    apis_put(ops->get_freq_details     , mgt_acpi_cpufreq_get_freq_details                    );
     apis_put(ops->get_available_list   , mgt_acpi_cpufreq_get_available_list                  );
     apis_put(ops->get_current_list     , mgt_acpi_cpufreq_get_current_list                    );
     apis_put(ops->get_boost            , mgt_acpi_cpufreq_get_boost                           );
@@ -104,32 +158,6 @@ void mgt_acpi_cpufreq_load(topology_t *tp, mgt_ps_driver_ops_t *ops)
 
 state_t mgt_acpi_cpufreq_init()
 {
-    char buffer[PATH_MAX];
-    int fd_saf0 = -1;
-    ullong m    =  0;
-    uint i      =  0;
-    // Building frequency list
-    if (filemagic_can_read(PATH_SAF0, &fd_saf0)) {
-        while (filemagic_word_read(fd_saf0, buffer, 0)) {
-            avail_list[i] = (ullong) atoll(buffer);
-            debug("avail_list%u: %llu", i, avail_list[i]);
-            ++i;
-        }
-        close(fd_saf0);
-    } else {
-        avail_list[0] = bf.frequency;
-        if (bf.boost_enabled) {
-            avail_list[0] = bf.frequency + 1000LLU;
-            debug("avail_list%u: %llu", i, avail_list[i]);
-            i = 1;
-        }
-        while((avail_list[i] = bf.frequency - (100000LLU*m)) >= 1000000LLU) { // 1GHz
-            debug("avail_list%u: %llu", i, avail_list[i]);
-            ++m;
-            ++i;
-        }
-    }
-    avail_list_count = i;
     return EAR_SUCCESS;
 }
 
@@ -141,6 +169,13 @@ state_t mgt_acpi_cpufreq_dispose()
 state_t mgt_acpi_cpufreq_reset()
 {
     return EAR_SUCCESS;
+}
+
+void mgt_acpi_cpufreq_get_freq_details(freq_details_t *details)
+{
+    details->freq_base = bf.frequency;
+    details->freq_max  = avail_list[0];
+    details->freq_min  = avail_list[avail_list_count-1];
 }
 
 /* Getters */

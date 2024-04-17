@@ -22,6 +22,7 @@ core_OBJS = \
     $(SRCDIR)/common/system/poll.o \
     $(SRCDIR)/common/system/monitor.o \
     $(SRCDIR)/common/system/plugin_manager.o \
+    $(SRCDIR)/common/system/popen.o \
     $(SRCDIR)/common/system/process.o \
     $(SRCDIR)/common/system/random.o \
     $(SRCDIR)/common/system/shared_areas.o \

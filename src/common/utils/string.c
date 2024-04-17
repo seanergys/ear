@@ -229,3 +229,22 @@ ullong atoull(const char *str)
     }
     return 0LLU;
 }
+
+int strisnum(char *string)
+{
+    while (*string != '\0') {
+             if (*string == '0') {}
+        else if (*string == '1') {}
+        else if (*string == '2') {}
+        else if (*string == '3') {}
+        else if (*string == '4') {}
+        else if (*string == '5') {}
+        else if (*string == '6') {}
+        else if (*string == '7') {}
+        else if (*string == '8') {}
+        else if (*string == '9') {}
+        else return 0;
+        ++string;
+    }
+    return 1;
+}

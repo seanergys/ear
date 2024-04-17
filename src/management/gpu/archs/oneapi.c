@@ -54,11 +54,10 @@ static state_t get_available_watts()
     uint                        dm;
     uint                        de;
     ze_result_t                 z;
-
     #if SHOW_DEBUGS
-    char                       *sources[4];
-    char                       *levels[6];
-    char                       *units[4];
+    char                       *sources[4] __attribute__ ((unused));
+    char                       *levels[6]  __attribute__ ((unused));
+    char                       *units[4]   __attribute__ ((unused));
     // For debugging
     levels[ZES_POWER_LEVEL_UNKNOWN]        = "UNKNOWN";
     levels[ZES_POWER_LEVEL_SUSTAINED]      = "SUSTAINED";
@@ -169,11 +168,11 @@ static state_t get_available_frequencies()
 
 void mgt_gpu_oneapi_load(mgt_gpu_ops_t *ops)
 {
-    if (state_fail(oneapi_open(&ze))) {
-        debug("oneapi_open failed: %s", state_msg);
+    if (state_fail(oneapi_open_sysman(&ze))) {
+        debug("oneapi_open_sysman failed: %s", state_msg);
         return;
     }
-    if (state_fail(oneapi_get_devices(&devs, &devs_count))) {
+    if (state_fail(oneapi_get_handlers(&devs, &devs_count))) {
         debug("oneapi_get_devices failed: %s", state_msg);
         return;
     }

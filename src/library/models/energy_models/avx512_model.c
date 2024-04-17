@@ -16,6 +16,7 @@
 */
 
 
+
 #include <stdlib.h>
 #include <common/states.h>
 #include <common/output/debug.h>
@@ -263,20 +264,17 @@ uint energy_model_projection_available(ulong from_ps, ulong to_ps)
 }
 
 
-uint energy_model_all_projections_available()
+uint energy_model_any_projection_available()
 {
-	uint not_avail = 0;
-
-	debug("Checking availability for %u p-states", num_pstates);
-	for (uint ps = 0; ps < num_pstates && !not_avail; ps++)
+	for (uint ps = 0; ps < num_pstates; ps++)
 	{
-		for (uint pt = 0; pt < num_pstates && !not_avail; pt++)
+		for (uint pt = 0; pt < num_pstates; pt++)
 		{
-			if (ps != pt && !projection_available(ps, pt)) not_avail = 1;	
+			if (ps != pt && projection_available(ps, pt)) return 1;	
 		}
 	}
 
-	return 1 - not_avail;
+	return 0;
 }
 
 

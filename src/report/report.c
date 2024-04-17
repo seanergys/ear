@@ -15,6 +15,7 @@
 * and COPYING.EPL files.
 */
 
+
 // #define SHOW_DEBUGS 1
 
 #include <stdlib.h>
@@ -49,14 +50,22 @@ static uint init;
 static void append(report_ops_t *aux)
 {
     int f, s;
+
+    // Sets the function 'F' from 'aux' OPs, to the first free position of 'ops'
+    // array.
     ullong *aux1 = (ullong *) aux;
+    // From function 0 (init) to function 6 (misc)
     for (s = 0; s < S_NUM; ++s) {
         if (aux1[s] == 0LLU) {
             continue;
         }
+        // From plugin 0 to plugin 8 (P_NUM)
         for (f = 0; f < P_NUM; ++f) {
+            // Getting plugin F
             ullong *aux2 = (ullong *) &ops[f];
+            // Getting function S
             ullong *aux3 = &aux2[s];
+            // If function S from plugin F is free, set the OP function here
             if (*aux3 == 0LLU) {
                 *aux3 = aux1[s];
                 break;
@@ -117,16 +126,22 @@ next:
 
 state_t report_load(const char *install_path, const char *libs)
 {
+    state_t s = EAR_SUCCESS;
     while (pthread_mutex_trylock(&lock));
     if (init != 0) {
         goto leave;
     }
     static_load(install_path, libs);
     static_load(install_path, ear_getenv(FLAG_REPORT_ADD));
-    init = 1;
+    if (plugins_count > 0) {
+        init = 1;
+    } else {
+        state_msg = "No plugins loaded";
+        s = EAR_ERROR;
+    }
 leave:
     pthread_mutex_unlock(&lock);
-    return EAR_SUCCESS;
+    return_msg(s, state_msg);
 }
 
 state_t report_create_id(report_id_t *id, int local_rank, int global_rank, int master_rank){
@@ -165,13 +180,16 @@ state_t report_create_id(report_id_t *id, int local_rank, int global_rank, int m
 
 #define define(NARGS, op, ...) \
     func_ ## NARGS (op, __VA_ARGS__) { \
+        state_t sret = EAR_ERROR; \
         int p; \
         for (p = 0; p < plugins_count; ++p) { \
             if (ops[p]. op != NULL) { \
-                call_ ## NARGS(op, __VA_ARGS__); \
+                if (state_ok(call_ ## NARGS(op, __VA_ARGS__))) { \
+                    sret = EAR_SUCCESS; \
+                } \
             } \
         } \
-        return EAR_SUCCESS; \
+        return sret; \
     }
 
 define(2, report_init, report_id_t *, id, cluster_conf_t *, cconf);
@@ -185,8 +203,8 @@ define(4, report_misc, report_id_t *, id, uint, type, const char *, data, uint, 
 #if TEST
 int main(int argc, char *argv[])
 {
-		cluster_conf_t cconf;
-		report_id_t id;
+    cluster_conf_t cconf;
+    report_id_t id;
     report_load(NULL, "plug_dummy.so:plug_dummy2.so");
     report_init(&id,&cconf);
     report_applications(&id,NULL, 0);

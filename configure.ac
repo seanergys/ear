@@ -16,16 +16,24 @@ m4_include([m4/ac_rsmi.m4])
 m4_include([m4/ac_pbs.m4])
 m4_include([m4/ac_oar.m4])
 m4_include([m4/ac_gsl.m4])
+m4_include([m4/ac_dlb.m4])
+m4_include([m4/ac_countdown.m4])
 
 # INIT
 AC_PREREQ([2.69])
-AC_INIT([EAR], [4.3], [ear-support@bsc.es])
+AC_INIT([EAR], [4.3], [ear-support@bsc.es], [ear-4.3], [https://gitlab.bsc.es/ear_team/ear_private])
+
+AC_COPYRIGHT([Copyright © 2017-present BSC-Lenovo])
+
+AC_CONFIG_SRCDIR([src/library/api/ear.c])
+
 AC_LANG(C)
 
 # PROGRAMS TEST
 AC_PROG_CC
 AC_PROG_AWK
 AC_PROG_GREP
+AC_PROG_MAKE_SET
 
 #################
 # FIRST SCRIPTS #
@@ -54,6 +62,8 @@ X_AC_REDFISH
 X_AC_SLURM
 X_AC_OAR
 X_AC_PBS
+X_AC_DLB
+X_AC_COUNTDOWN
 
 #################
 # POST-FEATURES #
@@ -90,17 +100,19 @@ AC_DEFUN([AC_FEATURE_CHECK],
     fi
 ])
 
-echo "---------------------------------------Checking summary --"
+AS_ECHO("---------------------------------------Checking summary --")
 AC_DEPENDANCY_CHECK($GSL_DIR, GSL dependancy found, 1)
 AC_DEPENDANCY_CHECK($SCHED_DIR, SLURM/PBS/OAR dependancy found ($SCHED_NAME), 0)
 AC_DEPENDANCY_CHECK($DB_DIR, Database dependancy found ($DB_NAME), 1)
-echo "----------------------------------------------------------"
+AS_ECHO("----------------------------------------------------------")
+
 
 #if test -z $COMPILABLE; then
 #	AC_MSG_ERROR(not compilable)
 #fi
 
 AC_CONFIG_FILES([Makefile
+								 src/common/config/config_install.h
                  etc/module/ear
                  etc/module/ear-lite
                  etc/module/ear-sing
@@ -109,7 +121,7 @@ AC_CONFIG_FILES([Makefile
                  etc/systemd/eard.service
                  etc/systemd/eardbd.service
                  etc/systemd/eargmd.service
-                 src/common/config/config_install.h
+                 etc/systemd/edcmon.service
                  etc/conf/ear.conf.full.template
                  etc/conf/ear.conf.template
                  etc/rpms/specs/ear.spec])

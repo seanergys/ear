@@ -15,6 +15,7 @@
 * and COPYING.EPL files.
 */
 
+
 #include <stdio.h>
 void ear_init()
 {

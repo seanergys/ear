@@ -84,7 +84,7 @@ state_t perf_open_ext(perf_t *perf, perf_t *group, pid_t pid, uint type, ulong e
 //	perf->attr.config1        = 0x200000;
 	perf->attr.exclusive      = options;
 	perf->attr.disabled       = 1;
-	#if USE_INHERIT
+	#if ESTIMATE_PERF == 0
 	perf->attr.inherit        = 1;
 	#endif
 	perf->attr.exclude_kernel = 1;

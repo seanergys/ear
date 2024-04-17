@@ -15,6 +15,7 @@
 * and COPYING.EPL files.
 */
 
+
 #if MPI
 #include <mpi.h>
 #endif
@@ -25,7 +26,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #if !SHOW_DEBUGS
 #define NDEBUG // Activate assert calls only in the debug mode.
 #endif
@@ -256,6 +257,10 @@ void states_begin_job(int my_id, char *app_name)
 
 	overhead_suscribe("evaluate_sig",&id_ovh_ev_sig);
 	overhead_suscribe("sig_stable",&id_ovh_stable);
+
+	/* Allocating space for the sig_ext if needed , application sig ext is allocated in ear.c */
+	loop_signature.sig_ext = (void *)calloc(1, sizeof(sig_ext_t));
+
 }
 
 
@@ -288,6 +293,7 @@ void states_begin_period(int my_id, ulong event, ulong size, ulong level)
 #endif
 
     policy_loop_init(&curr_loop.id);
+
 
     // comp_N_begin = metrics_time();
     restart_period_time_init(&comp_N_begin);
@@ -453,6 +459,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
     }
 
     /* Based on the EAR internal state... */
+		sig_ext_t * sigext;
     switch (EAR_STATE)
     {
         /* This is a new state to minimize overhead, we just
@@ -599,6 +606,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             N_iter = iterations - begin_iter;
 
             /* We update periodically because some jobs change it at runtime. */
+						/* PENDING: Reduce the periodicity */
             if (masters_info.my_master_rank >= 0){
               if (state_fail(update_job_affinity_mask(lib_shared_region, sig_shared_region)))
              {
@@ -613,6 +621,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             result = metrics_compute_signature_finish(&loop_signature, N_iter,
                                                       perf_accuracy_min_time, total_threads_cnt, &passed_time);
 
+						
 			      /* At this point, signatures for all processes in the node are ready.
              * lib_shared_region->job_signature includes the master signature. */
             if (result == EAR_NOT_READY)
@@ -639,12 +648,14 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
             // Both loop_signature and lib_shared_region->job_signature have the same data:
             compute_per_process_and_job_metrics(&loop_signature);
+			/* The below code block does nothing since verbose call is commented.
             if (VERB_ON(VERB_SIGN_TRACK) && master) {
                 char sig_to_vrb[128];
                 signature_to_str(&loop_signature, sig_to_vrb, sizeof(sig_to_vrb));
 
                 //verbose(0, "Signature after CPU power model projection: %s", sig_to_vrb);
             }
+			*/
 
             /* Included for dynais test */
 #if SHOW_DEBUGS
@@ -685,6 +696,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
             /* This function takes into account if we are using or not the whole node. */
             signature_t norm_signature;
+            signature_init(&norm_signature);
             adapt_signature_to_node(&norm_signature, &lib_shared_region->job_signature, ratio_PPN);
             /* At this point curr_loop and job_signature signatures are the JOB signature
              * with accumulated per process and global (node) metrics (e.g., DC power). */
@@ -692,6 +704,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             /* This function executes the energy policy.
              * norm_signature is the local process signature,
              * the policy will compute the average if needed. */
+			/* Below code block can be commented because the verbosity is also commented.
             if (VERB_ON(VERB_SIGN_TRACK) && master) {
 
                 char sig_to_vrb[128];
@@ -699,6 +712,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
                 //verbose(0, "Signature %s will be passed to the policy.", sig_to_vrb);
             }
+			*/
 
             policy_node_apply(&norm_signature, &policy_cpufreq_khz, &ready);
 
@@ -741,6 +755,18 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
             policy_get_current_freq(&node_freqs);
             lavg = node_freqs_avgcpufreq(node_freqs.cpu_freq);
+					
+
+						// curr_loop sig_ext can only be used in the master. If we sent this data
+						// to the DB in the future these lines have to be moved before the DB report (report_loop_signature)
+						if (master){
+							/* At that time, sig_ext is supposed to be already allocated */	
+							sigext = (sig_ext_t *)loop_signature.sig_ext;
+							/* Copy avg selected mem freq */
+							compute_avg_sel_freq(&sigext->sel_mem_freq_khz, node_freqs.imc_freq);
+							sig_ext_t *sigext_loop = (sig_ext_t *)curr_loop.signature.sig_ext;
+							sigext_loop->sel_mem_freq_khz = sigext->sel_mem_freq_khz;
+						}
 
             if (lavg > 0) {
                 loop_signature.def_f = lavg;
@@ -766,9 +792,9 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             }
 
             // Verbose loop signature
-            state_verbose_signature(&curr_loop, masters_info.my_master_rank, show_signatures,
-                                    ear_app_name, application.node_id, iterations,
-                                    prev_cpufreq_khz, policy_cpufreq_khz, use_case);
+            state_verbose_signature(&curr_loop, masters_info.my_master_rank, ear_app_name,
+																		application.node_id, iterations, prev_cpufreq_khz,
+																		policy_cpufreq_khz, use_case);
 
             overhead_stop(id_ovh_ev_sig);
             break; // EVALUATING_LOCAL_SIGNATURE
@@ -880,7 +906,9 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             } else {
                 sprintf(use_case, "+P.%s-Stable",((ear_guided == TIME_GUIDED)?"T":"D"));
             }
-            state_verbose_signature(&curr_loop, masters_info.my_master_rank, show_signatures, ear_app_name, application.node_id, iterations, prev_cpufreq_khz,0,use_case);
+            state_verbose_signature(&curr_loop, masters_info.my_master_rank, ear_app_name,
+																		application.node_id, iterations, prev_cpufreq_khz,
+																		0, use_case);
             /* END VERBOSE */
 
             begin_iter = iterations;
@@ -1045,8 +1073,9 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                 //state_report_traces(masters_info.my_master_rank, ear_my_rank, my_id,
                  //       &curr_loop, prev_cpufreq_khz,EAR_STATE);
 
-                state_verbose_signature(&curr_loop, masters_info.my_master_rank, show_signatures,
-                        ear_app_name, application.node_id, iterations, prev_cpufreq_khz, 0, "D-PE");
+                state_verbose_signature(&curr_loop, masters_info.my_master_rank, ear_app_name,
+																				application.node_id, iterations, prev_cpufreq_khz,
+																				0, "D-PE");
             }
 
             /* We run here at default freq */

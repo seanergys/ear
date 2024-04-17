@@ -174,14 +174,8 @@ static int pm_connect(ehandler_t *my_eh, topology_t *tp)
 		error("gpu_init returned %d (%s)", s, state_msg);
 		gpu_error = 1;
 	}
-	if (state_fail(s = gpu_count_devices(no_ctx, &gpu_num))) {
-		error("gpu_count returned %d (%s)", s, state_msg);
-		gpu_error = 1;
-	}
-	if (state_fail(s = gpu_data_alloc(&gpu_diff))) {
-		error("gpu_data_alloc returned %d (%s)", s, state_msg);
-		gpu_error = 1;
-	}
+	gpu_count_devices(no_ctx, &gpu_num);
+	gpu_data_alloc(&gpu_diff);
 	if (gpu_error) {
 		gpu_num = 0;
 	}
@@ -492,10 +486,7 @@ void alloc_energy_data(energy_data_t *e)
 	e->DRAM_energy = (rapl_data_t *) calloc(num_packs, sizeof(rapl_data_t));
 	e->CPU_energy  = (rapl_data_t *) calloc(num_packs, sizeof(rapl_data_t));
 	#if USE_GPUS
-	state_t s;
-	if (xtate_fail(s, gpu_data_alloc(&e->gpu_data))) {
-		error("gpu_data_alloc returned %d (%s)", s, state_msg);
-	}
+	gpu_data_alloc(&e->gpu_data);
 	#endif
 }
 
@@ -507,10 +498,7 @@ void free_energy_data(energy_data_t *e)
 	free(e->DRAM_energy);
 	free(e->CPU_energy);
 	#if USE_GPUS
-	state_t s;
-	if (xtate_fail(s, gpu_data_free(&e->gpu_data))) {
-		error("gpu_data_free returned %d (%s)", s, state_msg);
-	}
+	gpu_data_free(&e->gpu_data);
 	#endif
 }
 
@@ -524,10 +512,7 @@ void copy_energy_data(energy_data_t *dest, energy_data_t *src)
 	memcpy(dest->DRAM_energy, src->DRAM_energy, num_packs * sizeof(rapl_data_t));
 	memcpy(dest->CPU_energy , src->CPU_energy , num_packs * sizeof(rapl_data_t));
 	#if USE_GPUS
-	state_t s;
-	if (xtate_fail(s, gpu_data_copy(dest->gpu_data, src->gpu_data))) {
-		error("gpu_data_copy returned %d (%s)", s, state_msg);
-	}
+	gpu_data_copy(dest->gpu_data, src->gpu_data);
 	#endif
 }
 
@@ -541,10 +526,7 @@ void null_energy_data(energy_data_t *acc_energy)
 	memset(acc_energy->DRAM_energy, 0, num_packs * sizeof(rapl_data_t));
 	memset(acc_energy->CPU_energy , 0, num_packs * sizeof(rapl_data_t));
 	#if USE_GPUS
-	state_t s;
-	if (xtate_fail(s, gpu_data_null(acc_energy->gpu_data))) {
-		error("gpu_data_null returned %d (%s)", s, state_msg);
-	}
+	gpu_data_null(acc_energy->gpu_data);
 	#endif
 }
 

@@ -15,7 +15,9 @@
 * and COPYING.EPL files.
 */
 
-// #define SHOW_DEBUGS 1
+
+
+
 #define _GNU_SOURCE
 
 #include <sched.h>
@@ -105,8 +107,8 @@ extern sem_t *lib_shared_lock_sem;
 // TODO: Can below macro be defined in a more coherent file?
 #define GHZ_TO_KHZ 1000000.0
 
-#define POLICY_MPI_OPT 1 // Enables doing stuff at MPI call level.
-                         // Useful for fast overhead testing.
+#define POLICY_MPI_CALL_ENABLED 1 // Enables doing stuff at MPI call level.
+																	// Useful for fast overhead testing.
 
 #ifdef EARL_RESEARCH
 extern unsigned long ext_def_freq;
@@ -159,10 +161,6 @@ static ullong min_cpufreq  = 0; // CPu freq. selection works with khz
 static ullong min_imcfreq  = 0;
 uint   max_policy_imcfreq_ps = ps_nothing; // IMC freq. selection works with pstates
 
-#if MPI_OPTIMIZED
-/* MPI optimization */
-extern uint ear_mpi_opt;
-#endif
 uint gpu_optimize = 0;
 
 static pstate_t *cpu_pstate_lst; /*!< The list of available CPU pstates in the current system.*/
@@ -195,9 +193,7 @@ node_freqs_t nf;     /*!< Nominal frequency */
 node_freqs_t avg_nf;
 node_freqs_t last_nf;
 
-#if POLICY_MPI_OPT
 static node_freqs_t per_process_node_freq;
-#endif
 
 static ulong max_freq_per_socket[MAX_SOCKETS_SUPPORTED];
 static uint  cpu_must_be_normalized[MAX_CPUS_SUPPORTED];
@@ -253,6 +249,11 @@ static uint total_mpi_optimized =  0;
 
 /* Governor management for exclusive mode */
 static uint *governor_list_before_init = NULL;
+
+#if MPI_OPTIMIZED
+/* MPI optimization */
+extern uint ear_mpi_opt;
+#endif
 
 void fill_common_event(ear_event_t *ev);
 void fill_event(ear_event_t *ev, uint event, llong value);
@@ -396,27 +397,21 @@ state_t policy_load(char *obj_path, polsym_t *psyms)
 
 void fill_cpus_out_of_cgroup(uint exc)
 {
-    int cpu_cnt, cpu_idx;
-    if (exc == 0) return;
-    cpu_cnt = arch_desc.top.cpu_count;
-    #if DLB
-    verbosen_master(VEARL_INFO, "IDLE freq (%lu) cpus --> ",
-                    frequency_pstate_to_freq(frequency_get_num_pstates()-1));
-    #endif
+  if (exc == 0) return;
 
-    for (cpu_idx = 0; cpu_idx < cpu_cnt; cpu_idx++){
-        if (freq_per_core[cpu_idx] == 0){
-            debug("Reducing frequency of CPU %d", cpu_idx);
-            freq_per_core[cpu_idx] = frequency_pstate_to_freq(frequency_get_num_pstates()-1);
-            #if DLB
-            verbosen_master(VEARL_INFO, "%d ", cpu_idx);
-            #endif
-        }
+  verbosen_master(VEARL_DEBUG, "IDLE freq (%lu) cpus --> ",
+                  frequency_pstate_to_freq(frequency_get_num_pstates()-1));
+
+  int cpu_cnt = arch_desc.top.cpu_count;
+  for (int cpu_idx = 0; cpu_idx < cpu_cnt; cpu_idx++)
+  {
+    if (freq_per_core[cpu_idx] == 0)
+    {
+      freq_per_core[cpu_idx] = frequency_pstate_to_freq(frequency_get_num_pstates()-1);
+      verbosen_master(VEARL_DEBUG, "%d ", cpu_idx);
     }
-    #if DLB
-    verbosen_master(VEARL_INFO, "\n");
-    #endif
-
+  }
+  verbosen_master(VEARL_DEBUG, "\n");
 }
 
 #define DEBUG_CPUFREQ_COST 0
@@ -573,18 +568,23 @@ state_t policy_init()
     char *cmin_cpufreq          = (system_conf->user_type == AUTHORIZED) ? ear_getenv(FLAG_MIN_CPUFREQ)       : NULL; // Minimum CPU freq.
     char *cfake_io_phase        = (system_conf->user_type == AUTHORIZED) ? ear_getenv(FLAG_IO_FAKE_PHASE)     : NULL;
     char *cfake_bw_phase        = (system_conf->user_type == AUTHORIZED) ? ear_getenv(FLAG_BW_FAKE_PHASE)     : NULL;
-#if MPI_OPTIMIZED
-    char *cear_mpi_opt          = (system_conf->user_type == AUTHORIZED) ? ear_getenv(FLAG_MPI_OPT)           : NULL; // MPI optimizattion
-#endif
     char *cignore_affinity_mask = ear_getenv(FLAG_NO_AFFINITY_MASK);
 
     char *cgpu_optimize = ear_getenv(GPU_ENABLE_OPT);
     if (cgpu_optimize != NULL) gpu_optimize = atoi(cgpu_optimize);
 
-    // verbose_master(POLICY_INFO, "%sPOLICY%s GPU optimization during GPU comp %s",
-    //                COL_BLU, COL_CLR, (gpu_optimize ? "Enabled":"Disabled"));
+    verbose_policy_info("GPU optimization during GPU comp: %s", gpu_optimize ? "Enabled" : "Disabled");
 
-    verbose_policy_info("GPU optimization during GPU comp: %s", gpu_optimize ? "Enabled":"Disabled");
+#if MPI_OPTIMIZED
+		char *cear_mpi_opt		= (system_conf->user_type == AUTHORIZED) ? ear_getenv(FLAG_MPI_OPT)           : NULL; // MPI optimizattion
+
+		if (cear_mpi_opt != NULL) ear_mpi_opt = atoi(cear_mpi_opt);
+
+		if (ear_mpi_opt)
+		{
+			verbose_policy_info("MPI optimization enabled.");
+		}
+#endif
 
     state_t retg = EAR_SUCCESS, ret = EAR_SUCCESS;
 
@@ -621,14 +621,6 @@ state_t policy_init()
         conf_dyn_unc = atoi(cdyn_unc);
     }
     dyn_unc = (metrics_get(MGT_IMCFREQ)->ok) ? conf_dyn_unc : 0;
-
-#if MPI_OPTIMIZED
-    if (cear_mpi_opt != NULL) ear_mpi_opt = atoi(cear_mpi_opt);
-
-    if (ear_mpi_opt) {
-      verbose_policy_info("MPI optimization enabled.");
-    }
-#endif
 
     if (cimc_extra_th != NULL) {
         imc_extra_th = atof(cimc_extra_th);
@@ -674,10 +666,13 @@ state_t policy_init()
     node_freqs_alloc(&nf);
     node_freqs_alloc(&avg_nf);
     node_freqs_alloc(&last_nf);
-#if POLICY_MPI_OPT
-    /* This is to be used in mpi_calls */
-    node_freqs_alloc(&per_process_node_freq);
-#endif
+
+		if (POLICY_MPI_CALL_ENABLED)
+		{
+			/* This is to be used in mpi_calls */
+			node_freqs_alloc(&per_process_node_freq);
+		}
+
     freq_per_core = calloc(MAX_CPUS_SUPPORTED, sizeof(ulong));
     signature_init(&policy_last_local_signature);
     signature_init(&policy_last_global_signature);
@@ -1301,6 +1296,10 @@ state_t policy_get_default_freq(node_freqs_t *freq_set)
         freq_set->cpu_freq[i] = DEF_FREQ(my_pol_ctx.app->def_freq);
     }
 
+		sig_ext_t *sigext = (sig_ext_t *)application.signature.sig_ext;
+		/* Copy avg selected mem freq */
+		compute_avg_sel_freq(&sigext->sel_mem_freq_khz, freq_set->imc_freq);
+
     return EAR_SUCCESS;
 }
 
@@ -1480,11 +1479,12 @@ state_t policy_end()
     polctx_t *c = &my_pol_ctx;
 
     verbose_master(2, "Total number of MPI calls %llu", total_mpi);
-
+	
 #if MPI_OPTIMIZED
-    if (ear_mpi_opt) {
-        verbose(1, "[%d] Total number of MPI calls with optimization: %u", my_node_id,  total_mpi_optimized);
-    }
+	if (ear_mpi_opt)
+	{
+		verbose(1, "[%d] Total number of MPI calls with optimization: %u", my_node_id, total_mpi_optimized);
+	}
 #endif
 
 #if DEBUG_CPUFREQ_COST
@@ -1589,63 +1589,42 @@ static node_freq_domain_t per_process_dom = {
 
 state_t policy_mpi_init(mpi_call call_type)
 {
-#if POLICY_MPI_OPT
-    int process_id = NO_PROCESS;
+	if (POLICY_MPI_CALL_ENABLED)
+	{
+		int process_id = NO_PROCESS;
 
-    polctx_t *c = &my_pol_ctx;
+		polctx_t *c = &my_pol_ctx;
 
-    total_mpi++;
+		total_mpi++;
 
-    if (polsyms_fun.mpi_init != NULL) {
+		if (polsyms_fun.mpi_init != NULL) {
 
-        if (state_ok(polsyms_fun.mpi_init(c, call_type, &per_process_node_freq, &process_id))) {
+			if (state_ok(polsyms_fun.mpi_init(c, call_type, &per_process_node_freq, &process_id))) {
 
-            if (process_id != NO_PROCESS) {
+				if (process_id != NO_PROCESS) {
 
-                total_mpi_optimized++;
+					total_mpi_optimized++;
 
-                if (state_fail(policy_freq_selection(c, &aux_per_process,
-                               &per_process_node_freq,  &per_process_dom, NULL, process_id))) {
+					if (state_fail(policy_freq_selection(c, &aux_per_process,
+									&per_process_node_freq,  &per_process_dom, NULL, process_id))) {
 
-                    verbose_error("CPU freq. selection failure at MPI call init.");
+						verbose_error("CPU freq. selection failure at MPI call init.");
 
-                    return EAR_ERROR;
+						return EAR_ERROR;
 
-                }
-            }
-        } else {
-            verbose_error("At MPI call init: %s", state_msg);
-        }
-    } else {
-        return EAR_SUCCESS;
-    }
-#endif
-    return EAR_SUCCESS;
-}
+					}
+				}
+			} else
+			{
+				verbose_error("At MPI call init: %s", state_msg);
+				return EAR_ERROR;
+			}
+		} else {
+			return EAR_SUCCESS;
+		}
+	}
 
-state_t policy_restore_to_mpi_pstate(uint index)
-{
-#if !SINGLE_CONNECTION && MPI_OPTIMIZED
-  polctx_t *c = &my_pol_ctx;
-  ulong f = sig_shared_region[my_node_id].mpi_freq;
-  if (index != process_get_target_pstate()){
-    pstate_t *sel_pstate, *pstate_list;
-    pstate_list = metrics_get(MGT_CPUFREQ)->avail_list;
-    sel_pstate = &pstate_list[index];
-    f = sel_pstate->khz;
-  }
-  if (traces_are_on()){
-    traces_generic_event(ear_my_rank, my_node_id , TRA_CPUF_RAMP_UP, f);
-  }
-  verbose(2, "restore CPU freq in process %d to %lu", my_node_id, f);
-  per_process_node_freq.cpu_freq[my_node_id] = f;
-  if (state_fail(policy_freq_selection(c, &aux_per_process,
-      &per_process_node_freq,  &per_process_dom, NULL, my_node_id))) {
-      verbose_error("CPU freq. restore in MPI opt.");
-      return EAR_ERROR;
-  }
-#endif
-  return EAR_SUCCESS;
+	return EAR_SUCCESS;
 }
 
 
@@ -1653,33 +1632,41 @@ state_t policy_restore_to_mpi_pstate(uint index)
  * Warning! it could introduce a lot of overhead. */
 state_t policy_mpi_end(mpi_call call_type)
 {
-#if POLICY_MPI_OPT
-    int process_id = NO_PROCESS;
+	if (POLICY_MPI_CALL_ENABLED)
+	{
+		int process_id = NO_PROCESS;
 
-    state_t st;
+		state_t st = EAR_SUCCESS;
 
-    polctx_t *c = &my_pol_ctx;
-    if (polsyms_fun.mpi_end != NULL) {
+		polctx_t *c = &my_pol_ctx;
+		if (polsyms_fun.mpi_end != NULL)
+		{
+			st = polsyms_fun.mpi_end(c,call_type, &per_process_node_freq, &process_id);
+			if (state_fail(st))
+			{
+				verbose_error("At policy MPI call end: %s", state_msg);
+				return st;
+			}
 
-        st = polsyms_fun.mpi_end(c,call_type, &per_process_node_freq, &process_id);
-        if (state_fail(st)) {
-            verbose_error("At policy MPI call end: %s", state_msg);
-        }
+			if (process_id != NO_PROCESS)
+			{
+				st = policy_freq_selection(c, &aux_per_process, &per_process_node_freq, &per_process_dom, NULL, process_id);
+				if (state_fail(st))
+				{
+					verbose_error("CPU freq selection failure at policy_mpi_end.");
+					return st;
+				}
+			}
 
-        if (process_id != NO_PROCESS) {
-            if (state_fail(policy_freq_selection(c, &aux_per_process, 
-                            &per_process_node_freq, &per_process_dom, NULL, process_id))){
+			return st;
 
-                verbose_error("CPU freq selection failure at policy_mpi_end.");
-            }
-        }
-
-        return st;
-    } else return EAR_SUCCESS;
-#else
-    return EAR_SUCCESS;
-#endif
+		} else return EAR_SUCCESS;
+	} else
+	{
+		return EAR_SUCCESS;
+	}
 }
+
 
 /** GLOBAL EVENTS */
 
@@ -2125,6 +2112,7 @@ static state_t policy_mem_freq_selection(polctx_t *c, signature_t *my_sig, node_
             if (imc_up[sid] != ps_nothing) {
                 verbose_policy_info("Setting IMC freq (Upper/Lower) [SID=%d] to (%llu/%llu)",
                                     sid, imc_pstates[imc_low[sid]].khz, imc_pstates[imc_up[sid]].khz);
+
             } else {
                 verbose_policy_info("Setting IMC freq (Upper) [SID=%d] (%llu) and min",
                                     sid, imc_pstates[imc_low[sid]].khz);
@@ -2584,10 +2572,7 @@ static state_t policy_set_cpus_governor(uint exclusive)
     if (mgt_cpufreq_governor_is_available(no_ctx, Governor.userspace))
     {
         // Allocate the governor list
-        if (state_fail(mgt_cpufreq_data_alloc(NULL, &governor_list_before_init)))
-        {
-            return_msg(EAR_ERROR, "Allocating governor list.");
-        }
+        mgt_cpufreq_data_alloc(NULL, &governor_list_before_init);
 
         // Retrieve the current governor list
         check(mgt_cpufreq_governor_get_list(no_ctx, governor_list_before_init),
@@ -2649,3 +2634,60 @@ static state_t policy_restore_cpus_governor()
 
     return EAR_SUCCESS;
 }
+
+
+void compute_avg_sel_freq(ulong * avg_sel_mem_f, ulong *imcfreqs)
+{
+	// verbose(0,"compute_avg_sel_freq..........: %p", avg_sel_mem_f);
+	ulong avg = 0;
+	ulong low;
+	ulong f;
+	for (uint sock_id=0;sock_id<arch_desc.top.socket_count;sock_id++){
+		low = imcfreqs[sock_id * IMC_VAL + IMC_MAX];
+		f = imc_pstates[low].khz;
+		verbose_master(2,"Computing avg mem freq : Socket %u max freq %lu", sock_id, f);
+		avg += f;
+	}
+	avg = avg / arch_desc.top.socket_count;
+	*avg_sel_mem_f = avg;
+}
+
+
+#if MPI_OPTIMIZED
+state_t policy_restore_to_mpi_pstate(uint index)
+{
+  polctx_t *c = &my_pol_ctx;
+  ulong f = sig_shared_region[my_node_id].mpi_freq;
+
+  if (index != process_get_target_pstate())
+	{
+    pstate_t *sel_pstate, *pstate_list;
+    pstate_list = metrics_get(MGT_CPUFREQ)->avail_list;
+    sel_pstate = &pstate_list[index];
+    f = sel_pstate->khz;
+  }
+
+  if (traces_are_on())
+	{
+    traces_generic_event(ear_my_rank, my_node_id , TRA_CPUF_RAMP_UP, f);
+  }
+
+  verbose(2, "restore CPU freq in process %d to %lu", my_node_id, f);
+
+	state_t st = EAR_ERROR;
+
+	if (POLICY_MPI_CALL_ENABLED)
+	{
+		per_process_node_freq.cpu_freq[my_node_id] = f;
+
+		st = policy_freq_selection(c, &aux_per_process, &per_process_node_freq,  &per_process_dom, NULL, my_node_id);
+	}
+
+  if (state_fail(st))
+	{
+      verbose_error("CPU freq. restore in MPI opt.");
+      return EAR_ERROR;
+  }
+  return EAR_SUCCESS;
+}
+#endif

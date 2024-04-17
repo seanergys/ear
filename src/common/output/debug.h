@@ -21,20 +21,24 @@
 #include <stdio.h>
 #include <string.h>
 
-// You can use _debug to avoid SHOW_DEBUGS definition.
-// Try to avoid including debug in header files.
+#define DEBUG_ENABLED      0
+int  debug_channel	       __attribute__((weak)) = 2;
+int adebug_enabled         __attribute__((weak)) = 0;
 
 #define ENABLE_DEBUG     1
 #define DEBUG_SET_FD(fd) debug_channel = fd;
-int debug_channel	     __attribute__((weak)) = 2;
+
+// Set
+#define  DEBUG_SET_FD(fd)  debug_channel = fd;
+#define ADEBUG_SET_EN(en) adebug_enabled = en;
 
 // Long format
 #if 1
 #define _debug(...) \
-    do {\
-      dprintf(debug_channel, "%s:%s:%d: ", __FILE__, __FUNCTION__, __LINE__);\
-      dprintf(debug_channel, __VA_ARGS__);\
-      dprintf(debug_channel, "\n");\
+    do { \
+      dprintf(debug_channel, "%s:%s:%d: ", __FILE__, __FUNCTION__, __LINE__); \
+      dprintf(debug_channel, __VA_ARGS__); \
+      dprintf(debug_channel, "\n"); \
     } while(0);
 #else
 // Short format
@@ -44,7 +48,7 @@ int debug_channel	     __attribute__((weak)) = 2;
 #endif
 
 // Traditional debug
-#if SHOW_DEBUGS && ENABLE_DEBUG
+#if SHOW_DEBUGS && DEBUG_ENABLED
 #define debug(...) \
 { \
     _debug(__VA_ARGS__); \
@@ -53,11 +57,12 @@ int debug_channel	     __attribute__((weak)) = 2;
 #define debug(...)
 #endif
 
-// Conditional debug
-#define cdebug(condition, ...) \
+// Active debug
+#define adebug(...) \
 { \
-    if (condition) { \
-        _debug(__VA_ARGS__); \
+    if (adebug_enabled) { \
+        dprintf(debug_channel, __VA_ARGS__); \
+        dprintf(debug_channel, "\n"); \
     } \
 }
 

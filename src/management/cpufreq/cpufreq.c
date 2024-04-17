@@ -83,10 +83,31 @@ state_t mgt_cpufreq_load(topology_t *tp, int eard)
     return EAR_SUCCESS;
 }
 
-state_t mgt_cpufreq_get_api(uint *api_in)
+void mgt_cpufreq_get_api(uint *api)
 {
-	*api_in = api;
-	return EAR_SUCCESS;
+    apinfo_t info;
+    mgt_cpufreq_get_info(&info);
+    *api = info.api;
+}
+
+void mgt_cpufreq_get_info(apinfo_t *info)
+{
+    info->layer       = "CPUFREQ";
+    info->api         = API_NONE;
+    info->devs_count  = 0;
+    info->scope       = SCOPE_NODE;
+    info->granularity = GRANULARITY_THREAD;
+
+    if (ops.get_info != NULL) {
+        ops.get_info(info);
+    }
+}
+
+void mgt_cpufreq_count_devices(ctx_t *c, uint *devs_count)
+{
+    apinfo_t info;
+    mgt_cpufreq_get_info(&info);
+    *devs_count = info.devs_count;
 }
 
 state_t mgt_cpufreq_init(ctx_t *c)
@@ -107,11 +128,11 @@ state_t mgt_cpufreq_dispose(ctx_t *c)
     return mgt_cpufreq_prio_dispose();
 }
 
-/** Data */
-state_t mgt_cpufreq_count_devices(ctx_t *c, uint *dev_count)
+void mgt_cpufreq_get_freq_details(freq_details_t *details)
 {
-	*dev_count = cpu_count;
-	return EAR_SUCCESS;
+    if (ops.get_freq_details != NULL) {
+        ops.get_freq_details(details);
+    }
 }
 
 state_t mgt_cpufreq_get_available_list(ctx_t *c, const pstate_t **pstate_list, uint *pstate_count)
@@ -198,7 +219,7 @@ int mgt_cpufreq_governor_is_available(ctx_t *c, uint governor)
 
 
 /** Data */
-state_t mgt_cpufreq_data_alloc(pstate_t **pstate_list, uint **index_list)
+void mgt_cpufreq_data_alloc(pstate_t **pstate_list, uint **index_list)
 {
 	if (pstate_list) {
 		*pstate_list = calloc(cpu_count, sizeof(pstate_t));
@@ -206,7 +227,6 @@ state_t mgt_cpufreq_data_alloc(pstate_t **pstate_list, uint **index_list)
 	if (index_list) {
 		*index_list = calloc(cpu_count, sizeof(uint));
 	}
-	return EAR_SUCCESS;
 }
 
 void mgt_cpufreq_data_print(pstate_t *ps_list, uint ps_count, int fd)

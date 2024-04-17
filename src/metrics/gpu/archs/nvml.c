@@ -18,13 +18,10 @@
 
 #include <dlfcn.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <pthread.h>
-#include <common/types.h>
 #include <common/output/debug.h>
 #include <common/system/monitor.h>
 #include <common/system/symplug.h>
-#include <common/config/config_env.h>
 #include <metrics/common/nvml.h>
 #include <metrics/gpu/archs/nvml.h>
 
@@ -36,27 +33,21 @@ static suscription_t *sus;
 static uint           devs_count;
 static gpu_t         *pool;
 static uint           ok_pool;
+static uint           initialized;
+
+static void load_atfork()
+{
+    // Just lock control is enough
+    pthread_mutex_unlock(&lock);
+}
 
 void gpu_nvml_load(gpu_ops_t *ops, int force_api)
 {
-    // If EARD is demanded we do not want pooling.
-    // If EARD is not demanded but NVML is unprivileged
-    // means that this function is called by the library.
-    // EARD = 0 and !root --> NO POOL
-    // EARD = 0 and root --> POOL
-    // EARD = 1 --> NO POOL
-    // EARD = 2 --> POOL (NEW)
     debug("Received API %d", force_api);
-    if (API_IS(force_api, API_EARD)) {
-        ok_pool = 0;
-    } else if (API_IS(force_api, API_NVML)) {
+    if (API_IS(force_api, API_NVML)) {
         ok_pool = 1;
-    } else {
-        if (nvml_is_privileged()) {
-            ok_pool = 1;
-        } else {
-            ok_pool = 0;
-        }
+    } else if (API_IS(force_api, API_FREE)) {
+        ok_pool = nvml_is_privileged();
     }
     debug("Pooling %d", ok_pool);
     // The locking and duplicate control is at higher level
@@ -68,26 +59,61 @@ void gpu_nvml_load(gpu_ops_t *ops, int force_api)
         debug("nvml_get_devices failed: %s", state_msg);
         return;
     }
-    apis_set(ops->get_api,       gpu_nvml_get_api);
+    // Allocation
+    pool = calloc(devs_count, sizeof(gpu_t));
+    // Atfork control
+    pthread_atfork(NULL, NULL, load_atfork);
+    apis_set(ops->get_info,	     gpu_nvml_get_info);
+    apis_set(ops->get_devices,   gpu_nvml_get_devices);
     apis_set(ops->init,          gpu_nvml_init);
     apis_set(ops->dispose,       gpu_nvml_dispose);
-    apis_set(ops->get_devices,   gpu_nvml_get_devices);
-    apis_set(ops->count_devices, gpu_nvml_count_devices);
     apis_pin(ops->read,          gpu_nvml_read, ok_pool);
     apis_set(ops->read_raw,      gpu_nvml_read_raw);
-		apis_set(ops->get_info,			 gpu_nvml_get_info);
     debug("Loaded NVML");
 }
 
-static state_t static_init()
+void gpu_nvml_get_info(apinfo_t *info)
+{
+    info->api         = API_NVML;
+    info->devs_count  = devs_count;
+
+    if (nvml.GetArchitecture(devs[0], &info->dev_model) != NVML_SUCCESS) {
+        info->dev_model = NVML_DEVICE_ARCH_UNKNOWN;
+    }
+}
+
+void gpu_nvml_get_devices(gpu_devs_t **devs_in, uint *devs_count_in)
+{
+    char serial[32];
+    nvmlReturn_t r;
+    int i;
+
+    if (devs_in != NULL) {
+        *devs_in = calloc(devs_count, sizeof(gpu_devs_t));
+        //
+        for (i = 0; i < devs_count; ++i) {
+            if ((r = nvml.GetSerial(devs[i], serial, 32)) != NVML_SUCCESS) {
+                return_msg(, nvml.ErrorString(r));
+            }
+            (*devs_in)[i].serial = (ullong) atoll(serial);
+            (*devs_in)[i].index  = i;
+        }
+    }
+    if (devs_count_in != NULL) {
+        *devs_count_in = devs_count;
+    }
+}
+
+state_t gpu_nvml_init(ctx_t *c)
 {
 	state_t s = EAR_SUCCESS;
 	timestamp_t time;
     int i;
 
-	// Allocation
-	pool = calloc(devs_count, sizeof(gpu_t));
-    // Initializing pool (pool at 0 is not incorrect)
+    if (initialized) {
+        return s;
+    }
+    // Initializing pool
 	timestamp_getfast(&time);
 	for (i = 0; i < devs_count; ++i) {
 		pool[i].time    = time;
@@ -100,58 +126,19 @@ static state_t static_init()
 	sus->time_relax = 2000;
 	sus->time_burst = 1000;
 	// Initializing monitoring thread.
-	if (state_fail(s = sus->suscribe(sus))) {
-		debug("GPU monitor FAILS");
-		monitor_unregister(sus);
-		free(pool);
+	if (state_ok(s = sus->suscribe(sus))) {
+		initialized = 1;
 	}
     } // ok_pool
 	return s;
 }
 
-void gpu_nvml_get_api(uint *api)
-{
-    *api = API_NVML;
-}
-
-state_t gpu_nvml_init(ctx_t *c)
-{
-    debug("Initializing NVML");
-    return static_init();
-}
-
 state_t gpu_nvml_dispose(ctx_t *c)
 {
-	return EAR_SUCCESS;
-}
-
-state_t gpu_nvml_get_devices(ctx_t *c, gpu_devs_t **devs_in, uint *devs_count_in)
-{
-    char serial[32];
-    nvmlReturn_t r;
-    int i;
-
-    *devs_in = calloc(devs_count, sizeof(gpu_devs_t));
-    //
-    for (i = 0; i < devs_count; ++i) {
-        if ((r = nvml.GetSerial(devs[i], serial, 32)) != NVML_SUCCESS) {
-            return_msg(EAR_ERROR, nvml.ErrorString(r));
-        }
-        (*devs_in)[i].serial = (ullong) atoll(serial);
-        (*devs_in)[i].index  = i;
+    if (initialized) {
+        monitor_unregister(sus);
+        initialized = 0;
     }
-    if (devs_count_in != NULL) {
-        *devs_count_in = devs_count;
-    }
-
-    return EAR_SUCCESS;
-}
-
-state_t gpu_nvml_count_devices(ctx_t *c, uint *devs_count_in)
-{
-	if (devs_count_in != NULL) {
-		*devs_count_in = devs_count;
-	}
 	return EAR_SUCCESS;
 }
 
@@ -247,7 +234,7 @@ state_t gpu_nvml_pool(void *p)
 	// Lock
 	pthread_mutex_unlock(&lock);
 	
-    #if 0	
+    #if 0
 	if (working  > 0 && !monitor_is_bursting(sus)) {
 		debug("bursting");
 		monitor_burst(sus, 0);
@@ -282,30 +269,4 @@ state_t gpu_nvml_read_raw(ctx_t *c, gpu_t *data)
 		data[i].power_w /= 1000;
 	}
 	return EAR_SUCCESS;
-}
-
-
-state_t gpu_nvml_get_info(apinfo_t *info)
-{
-	if (info)
-	{
-		debug("Calling GetArch %p %d", nvml.GetArchitecture, devs[0]);
-		// Warning: We are assumming all devices have the same architecture
-		nvmlReturn_t ret = nvml.GetArchitecture(devs[0], &info->dev_model);
-
-		switch (ret)
-		{
-			case NVML_SUCCESS:
-				return EAR_SUCCESS;
-			case NVML_ERROR_UNINITIALIZED:
-				return_msg(EAR_ERROR, NVML_ERROR_UNINIT_MSG);
-			case NVML_ERROR_INVALID_ARGUMENT:
-				return_msg(EAR_ERROR, NVML_ERROR_INVALID_ARG_MSG);
-			default:
-				return_msg(EAR_ERROR, "Unknown error.");
-		}
-
-	} else {
-		return_msg(EAR_ERROR, Generr.input_null);
-	}
 }

@@ -50,6 +50,16 @@
 #define ZES_ENGINE_GROUP_COPY_ALL                 0
 #define ZES_ENGINE_GROUP_COPY_SINGLE              0
 #define ZES_POWER_LEVEL_SUSTAINED                 0
+#define ZES_POWER_LEVEL_UNKNOWN                   0
+#define ZES_POWER_LEVEL_BURST                     0
+#define ZES_POWER_LEVEL_PEAK                      0
+#define ZES_POWER_LEVEL_INSTANTANEOUS             0
+#define ZES_LIMIT_UNIT_UNKNOWN                    0
+#define ZES_LIMIT_UNIT_CURRENT                    0
+#define ZES_LIMIT_UNIT_POWER                      0
+#define ZES_POWER_SOURCE_ANY                      0
+#define ZES_POWER_SOURCE_MAINS                    0
+#define ZES_POWER_SOURCE_BATTERY                  0
 
 typedef struct ze_info_s {
     char  *name;
@@ -76,12 +86,14 @@ typedef struct ze_info_s {
     ulong  activeTime;
     ulong  timestamp;
     ulong  energy;
-    int    actual;
+    double actual;
     uint   powerDC;
     uint   powerAC;
     uint   power;
     double max;
     double min;
+    double tdp;
+    double efficient;
     int    enabled;
     int    canControl;
     uint   interval;
@@ -93,9 +105,15 @@ typedef struct ze_info_s {
     uint   enabledStateLocked;
     uint   level;
     double limit;
-		struct {
-			uint type;
-		} core;
+    struct {
+        uint type;
+    } core;
+    struct {
+        uint domain;
+        uint bus;
+        uint device;
+        uint function;
+    } address;
 } ze_info_t;
 
 // Core
@@ -108,12 +126,13 @@ typedef ze_info_t ze_driver_extension_properties_t;
 typedef int       ze_device_handle_t;
 typedef ze_info_t ze_device_properties_t;
 typedef ze_info_t ze_device_memory_properties_t;
-typedef int				ze_device_type_t;
+typedef int       ze_device_type_t;
 // Sysman
 typedef int       zes_init_flags_t;
 typedef int       zes_driver_handle_t;
 typedef int       zes_device_handle_t; // Cast from ze_device_handle_t directly
 typedef ze_info_t zes_device_properties_t;
+typedef ze_info_t zes_pci_properties_t;
 typedef ze_info_t zes_process_state_t;
 typedef int       zes_pwr_handle_t;
 typedef ze_info_t zes_power_properties_t;
@@ -140,8 +159,10 @@ typedef struct ze_handlers_s {
     ze_device_handle_t       device; //core handle
     ze_device_properties_t   device_props;
     ullong                   uuid; //auxiliar
+    zes_driver_handle_t      sdriver;
     zes_device_handle_t      sdevice; //sysman handle
     zes_device_properties_t  sdevice_props;
+    zes_pci_properties_t     spci_props;
     zes_pwr_handle_t        *spowers;
     zes_power_properties_t  *spowers_props;
     uint                     spowers_count;
@@ -173,10 +194,11 @@ typedef struct ze_s {
     ze_result_t (*DeviceGetMemoryProperties) (ze_device_handle_t h, uint *count, ze_device_memory_properties_t *p);
     ze_result_t (*StrError)                (ze_driver_handle_t h, const char **p);
     // Sysman
-		ze_result_t (*sInit)									 (zes_init_flags_t flags);
-		ze_result_t (*sDriverGet)							 (uint *n, zes_driver_handle_t *ph);
-		ze_result_t (*sDeviceGet)							 (zes_driver_handle_t h, uint *n, zes_device_handle_t *ph);
+    ze_result_t (*sInit)                   (zes_init_flags_t flags);
+    ze_result_t (*sDriverGet)              (uint *n, zes_driver_handle_t *ph);
+    ze_result_t (*sDeviceGet)              (zes_driver_handle_t h, uint *n, zes_device_handle_t *ph);
     ze_result_t (*sDeviceGetProperties)    (zes_device_handle_t h, zes_device_properties_t *p);
+    ze_result_t (*sDevicePciGetProperties) (zes_device_handle_t h, zes_pci_properties_t *p);
     ze_result_t (*sDeviceProcessesGetState) (zes_device_handle_t h, uint32_t *count, zes_process_state_t *p); // Get if is working
     ze_result_t (*sDeviceEnumPowerDomains) (zes_device_handle_t h, uint *n, zes_pwr_handle_t *ph);
     ze_result_t (*sDeviceGetCardPowerDomain) (zes_device_handle_t h, zes_pwr_handle_t *ph);
@@ -202,14 +224,14 @@ typedef struct ze_s {
     ze_result_t (*sPsuGetState)            (zes_psu_handle_t h, zes_psu_state_t *p);
 } ze_t;
 
-state_t oneapi_open(ze_t *ze);
+state_t oneapi_open_core(ze_t *ze);
 
-state_t oneapi_close();
+state_t oneapi_open_sysman(ze_t *ze);
 
-state_t oneapi_get_devices(ze_handlers_t **devs, uint *devs_count);
-
-int oneapi_is_privileged();
+state_t oneapi_get_handlers(ze_handlers_t **handlers, uint *devs_count);
 
 char *oneapi_strerror(ze_result_t z);
+
+int oneapi_is_privileged();
 
 #endif //METRICS_COMMON_ONEAPI_H

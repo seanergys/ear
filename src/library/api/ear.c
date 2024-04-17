@@ -15,6 +15,7 @@
 * and COPYING.EPL files.
 */
 
+
 #define _GNU_SOURCE
 // #define SHOW_DEBUGS 1
 
@@ -27,7 +28,6 @@
 /* 1 means master error, 2 means no master error at ear_finalize i. 0 no fake (default)*/
 #define FAKE_PROCESS_ERRROR "FAKE_PROCESS_ERRROR"
 
-#include <inttypes.h>
 #include <sched.h>
 #include <pthread.h>
 #include <time.h>
@@ -56,6 +56,7 @@
 #include <common/colors.h>
 #include <common/utils/overhead.h>
 #include <common/system/folder.h>
+#include <common/system/version.h>
 #include <common/environment.h>
 #include <library/common/verbose_lib.h>
 #include <common/types/application.h>
@@ -109,24 +110,13 @@
 #include <library/policies/common/mpi_stats_support.h>
 
 #include <common/external/ear_external.h>
+
+#include <library/metrics/dlb_talp_lib.h>
+#include <library/metrics/fine_grain_collect.h>
+
+
 char shexternal_region_path[GENERIC_NAME];
 ear_mgt_t *external_mgt;
-
-#if DLB
-#include <dlb_talp.h>
-
-#define TALP_INFO  0 // TALP management verbose level
-
-static suscription_t* earl_talp;
-static FILE *talp_report = NULL;
-
-static dlb_monitor_t *dlb_loop_monitor = NULL;
-static dlb_monitor_t *dlb_app_monitor = NULL;
-
-static uint talp_monitor = 1;
-
-#endif // DLB
-
 
 void ear_finalize(int exit_status);
 static uint cancelled = 0;
@@ -141,7 +131,6 @@ uint   AID;
 #define WF_SUPPORT_VERB 2
 
 // Statics
-#define BUFFSIZE 			128
 #define JOB_ID_OFFSET		100
 #define USE_LOCK_FILES 		1
 pthread_t earl_periodic_th;
@@ -150,7 +139,7 @@ int dispose=0;
 
 #if USE_LOCK_FILES
 #include <common/system/file.h>
-static char master_lock_filename[BUFFSIZE];
+static char master_lock_filename[MAX_PATH_SIZE];
 static int fd_master_lock;
 #endif
 
@@ -161,11 +150,6 @@ static int num_nodes;
 static int ppnode;
 
 sem_t *lib_shared_lock_sem;
-#if MPI_OPTIMIZED
-uint ear_mpi_opt = 0;
-uint ear_mpi_opt_num_nodes = 1;
-mpi_opt_policy_t mpi_opt_symbols;
-#endif
 
 /* To be used by report plugins */
 report_id_t rep_id;
@@ -242,12 +226,6 @@ suscription_t *earl_monitor;
 state_t earl_periodic_actions(void *no_arg);
 state_t earl_periodic_actions_init(void *no_arg);
 
-#if MPI_OPTIMIZED
-suscription_t *earl_mpi_opt;
-state_t earl_periodic_actions_mpi_opt(void *no_arg);
-state_t earl_periodic_actions_mpi_opt_init(void *no_arg);
-#endif
-
 static ulong seconds = 0;
 
 #if EAR_DEF_TIME_GUIDED
@@ -278,44 +256,33 @@ uint limit_exceeded = 0;
 
 extern ulong perf_accuracy_min_time;
 
-#if DLB
-/** Creates a subscription to the EARL periodic monitor. Burst and relax timing is the same (10 seconds).
- * Init subscription function is earl_periodic_actions_talp_init, and the main rutine is earl_periodic_actions_talp.
- * If an error occurred, state_msg can be used to report the cause of error.
- *
- * \param[out] sus The address of the created subscription.
- *
- * \return EAR_ERROR if an error ocurred registering the subscription.
- * \return EAR_SUCCESS otherwise. */
-static state_t earl_create_talp_monitor(suscription_t *sus);
-
-static state_t earl_periodic_actions_talp(void *p);
-static state_t earl_periodic_actions_talp_init(void *p);
-
-/** Verboses DLB's TALP API node collected metrics.
- * Just the master process prints something.
- *
- * \param verb_lvl Set the minimum verbose level for printing (still not used).
- * \param node_metrics The address where target data is stored. */
-static void verbose_talp_node_metrics(int verb_lvl, dlb_node_metrics_t *node_metrics);
-
-
-static state_t earl_periodic_actions_talp_finalize();
-#endif // DLB
-
-#define VERIFY_EARD_COMPAT 0
 static state_t check_eard_earl_compatibility(state_t eard_connect_state)
 {
 	state_t st = EAR_SUCCESS;
 	if (state_fail(eard_connect_state)) return EAR_ERROR;
-#if VERIFY_EARD_COMPAT
+
 	eard_state_t eard_conf;
-	if (state_ok(st = eards_get_state(&eard_conf))){
-		if ((eard_conf.gpus_supported_count != MAX_GPUS_SUPPORTED) || (eard_conf.cpus_supported_count != MAX_CPUS_SUPPORTED) 
-			|| (eard_conf.sock_supported_count != MAX_SOCKETS_SUPPORTED) || (eard_conf.gpus_support_enabled != USE_GPUS))
+
+	verbose_master(0, "Warning, EARD compatibility test not supported");
+	return EAR_SUCCESS;
+
+	// If eards_get_state returns EAR_ERROR, means that the connected EARD does not have the RPC
+	// implemented, so we assume it is an old version and (by now) it should be compatible.
+	// This is why currently if the below call returns ERROR, we return EAR_SUCCESS
+	if (state_ok(st = eards_get_state(&eard_conf)))
+	{
+		if (eard_conf.version.major != VERSION_MAJOR)
+		{
+			verbose_warning_master("Major versions differ (EARD %u | EARL %u). Future versions shall consider this difference as an incompatibility.", eard_conf.version.major, VERSION_MAJOR);
+		}
+		if ((eard_conf.gpus_supported_count != MAX_GPUS_SUPPORTED) ||
+				(eard_conf.cpus_supported_count != MAX_CPUS_SUPPORTED) ||
+				(eard_conf.sock_supported_count != MAX_SOCKETS_SUPPORTED) ||
+				(eard_conf.gpus_support_enabled != USE_GPUS))
+		{
 			st = EAR_ERROR;
-	}
-#endif
+		}
+	}else st = EAR_SUCCESS; /* If eards_get_state is not implemented, there is a possibility that it's not compatible */
 	return st;
 }
 
@@ -468,6 +435,9 @@ void clean_eid_folder()
   while (node_mgr_info_lock() != EAR_SUCCESS){};
   verbose(WF_SUPPORT_VERB,"EID folder (%s) renamed to %s", EID_application_path, EID_application_path_finish);
   folder_rename(EID_application_path, EID_application_path_finish);
+	/* Should we remove the folder ?*/
+	verbose(WF_SUPPORT_VERB,"EID folder (%s) deleted", EID_application_path_finish);
+	folder_remove(EID_application_path_finish);
   node_mgr_info_unlock();
   verbose(WF_SUPPORT_VERB,"EID folder released");
 }
@@ -535,7 +505,6 @@ uint is_already_connected(char *tmp, int jid,int sid,uint aid, int pid)
 void mark_as_eard_disconnected(char *tmp, int jid,int sid,uint aid, int pid)
 {
     char EID_path[MAX_PATH_SIZE];
-    int fd;
     char pid_str[128];
 
     snprintf(pid_str, sizeof(pid_str), "/.master.%d", pid);
@@ -556,14 +525,15 @@ void mark_as_eard_disconnected(char *tmp, int jid,int sid,uint aid, int pid)
 void create_shared_regions()
 {
 	char *tmp=get_ear_tmp();
+#if 0
 	int bfd=-1;
+#endif
   int total_elements = 1;
   int per_node_elements = 1;
-	uint current_jobs_in_node;
-	#if SHOW_DEBUGS
-	int total_size;
-	#endif
-
+  uint current_jobs_in_node;
+#if SHOW_DEBUGS
+  int total_size;
+#endif
   uint ID = create_ID(application.job.id, application.job.step_id);
 
   #if 0
@@ -576,7 +546,7 @@ void create_shared_regions()
   if ((lib_shared_lock_fd = file_lock_create(block_file))<0){
   	error("Creating lock file for lib_shared_region hared memory:%s (%s)", block_file, strerror(errno));
   }
-  #endif
+	#endif
 
   /* Semaphore based on AID and node */
   xsnprintf(sem_file, sizeof(sem_file), "ear_semaphore_%u_%s", AID, node_name);
@@ -621,35 +591,32 @@ void create_shared_regions()
 		lib_shared_region->master_rank = masters_info.my_master_rank;
 		lib_shared_region->node_signature.sig_ext = (void *) calloc(1, sizeof(sig_ext_t));
 		lib_shared_region->job_signature.sig_ext  = (void *) calloc(1, sizeof(sig_ext_t));
-#if DLB
-    lib_shared_region->must_call_libdlb = 1;
-#endif
   }
 	debug("create_shared_regions and eard=%d",eard_ok);
 	debug("Node connected %u",my_node_id);
 #if ONLY_MASTER == 0
 #if MPI
-				/* This barrier notifies the others the shared memory region is ready */
-				if (PMPI_Barrier(MPI_COMM_WORLD)!=MPI_SUCCESS){
-								error("MPI_Barrier");
-								return;
-				}
-				if (!eard_ok && !EARL_LIGHT) return;
-				if (PMPI_Barrier(MPI_COMM_WORLD)!=MPI_SUCCESS){
-								error("MPI_Barrier");
-								return;
-				}
+  /* This barrier notifies the others the shared memory region is ready */
+  if (PMPI_Barrier(MPI_COMM_WORLD)!=MPI_SUCCESS){
+    error("MPI_Barrier");
+    return;
+  }
+  if (!eard_ok && !EARL_LIGHT) return;
+  if (PMPI_Barrier(MPI_COMM_WORLD)!=MPI_SUCCESS){
+    error("MPI_Barrier");
+    return;
+  }
 #endif
 #endif
 
-	/* This region is for processes in the same node */
+  /* This region is for processes in the same node */
 
   /************************************************/
   /* Attaching/Create to shared_signatures region */
   /************************************************/
 	if (get_shared_signatures_path(tmp,ID, AID, shsignature_region_path)!=EAR_SUCCESS) {
     error("Getting the shsignature_region_path");
-	} else {
+  } else {
 
 		debug("Master node creating the signatures with %d processes", lib_shared_region->num_processes);
 
@@ -671,71 +638,71 @@ void create_shared_regions()
 
 #if ONLY_MASTER == 0
 #if MPI
-				if (PMPI_Barrier(MPI_COMM_WORLD)!=MPI_SUCCESS){
-								error("MPI_Barrier");
-								return;
-				}
+  if (PMPI_Barrier(MPI_COMM_WORLD)!=MPI_SUCCESS){
+    error("MPI_Barrier");
+    return;
+  }
 #endif
 #endif
-				/* This part allocates memory for sharing data between nodes */
-				masters_info.ppn = malloc(masters_info.my_master_size*sizeof(int));
-				/* The node master, shares with other masters the number of processes in the node */
+  /* This part allocates memory for sharing data between nodes */
+  masters_info.ppn = malloc(masters_info.my_master_size*sizeof(int));
+  /* The node master, shares with other masters the number of processes in the node */
 #if MPI
-				if (share_global_info(masters_info.masters_comm,(char *)&lib_shared_region->num_processes,sizeof(int),(char*)masters_info.ppn,sizeof(int))!=EAR_SUCCESS){
-								error("Sharing the number of processes per node");
-				}
+  if (share_global_info(masters_info.masters_comm,(char *)&lib_shared_region->num_processes,sizeof(int),(char*)masters_info.ppn,sizeof(int))!=EAR_SUCCESS){
+    error("Sharing the number of processes per node");
+  }
 #else
-				masters_info.ppn[0] = 1;
+  masters_info.ppn[0] = 1;
 #endif
-				int i;
-				masters_info.max_ppn = masters_info.ppn[0];
-				for (i=1;i<masters_info.my_master_size;i++){ 
-								if (masters_info.ppn[i] > masters_info.max_ppn) masters_info.max_ppn=masters_info.ppn[i];
-								if (masters_info.my_master_rank == 0) verbose_master(2,"Processes in node %d = %d",i,masters_info.ppn[i]);
-				}
+  int i;
+  masters_info.max_ppn = masters_info.ppn[0];
+  for (i=1;i<masters_info.my_master_size;i++){ 
+    if (masters_info.ppn[i] > masters_info.max_ppn) masters_info.max_ppn=masters_info.ppn[i];
+    if (masters_info.my_master_rank == 0) verbose_master(2,"Processes in node %d = %d",i,masters_info.ppn[i]);
+  }
 
-				verbose_master(2,"max number of ppn is %d", masters_info.max_ppn);
-				/* For scalability concerns, we can compile the system sharing all the processes information (SHARE_INFO_PER_PROCESS) or only 1 per node (SHARE_INFO_PER_NODE)*/
-				if (sh_sig_per_node && sh_sig_per_proces){
-								error("Signatures can only be shared with node OR process granularity,not both, default node");
-								sh_sig_per_node = 1;
-								sh_sig_per_proces = 0;
-				}
-				if (sh_sig_per_proces){
+  verbose_master(2,"max number of ppn is %d", masters_info.max_ppn);
+  /* For scalability concerns, we can compile the system sharing all the processes information (SHARE_INFO_PER_PROCESS) or only 1 per node (SHARE_INFO_PER_NODE)*/
+  if (sh_sig_per_node && sh_sig_per_proces){
+    error("Signatures can only be shared with node OR process granularity,not both, default node");
+    sh_sig_per_node = 1;
+    sh_sig_per_proces = 0;
+  }
+  if (sh_sig_per_proces){
 #if SHOW_DEBUGS
-								debug("Sharing info at process level, reporting N per node");
-								total_size = masters_info.max_ppn*masters_info.my_master_size*sizeof(shsignature_t);
+    debug("Sharing info at process level, reporting N per node");
+    total_size = masters_info.max_ppn*masters_info.my_master_size*sizeof(shsignature_t);
 #endif
-								total_elements = masters_info.max_ppn*masters_info.my_master_size;
-								per_node_elements = masters_info.max_ppn;
-				}
-				if (sh_sig_per_node){
+    total_elements = masters_info.max_ppn*masters_info.my_master_size;
+    per_node_elements = masters_info.max_ppn;
+  }
+  if (sh_sig_per_node){
 #if SHOW_DEBUGS
-								debug("Sharing info at node level, reporting 1 per node");
-								total_size = masters_info.my_master_size*sizeof(shsignature_t);
+    debug("Sharing info at node level, reporting 1 per node");
+    total_size = masters_info.my_master_size*sizeof(shsignature_t);
 #endif
-								total_elements = masters_info.my_master_size;
-								per_node_elements = 1;
-				}
-				ratio_PPN = (float)lib_shared_region->num_processes/(float)masters_info.max_ppn;
-        verbose_master(2,"ratio_PPN %f = procs node %f max %f", ratio_PPN, (float)lib_shared_region->num_processes, (float)masters_info.max_ppn);
-				masters_info.nodes_info = (shsignature_t *)calloc(total_elements,sizeof(shsignature_t));
-				if (masters_info.nodes_info == NULL){ 
-								error("Allocating memory for node_info");
-				}else{ 
-								debug("%d Bytes (%d x %lu)  allocated for masters_info node_info",total_size,total_elements,sizeof(shsignature_t));
-				}
-				masters_info.my_mpi_info = (shsignature_t *)calloc(per_node_elements,sizeof(shsignature_t));
-				if (masters_info.my_mpi_info == NULL){
-								error("Allocating memory for my_mpi_info");
-				}else{
-								debug("%lu Bytes allocated for masters_info my_mpi_info",per_node_elements*sizeof(shsignature_t));
-				}
+    total_elements = masters_info.my_master_size;
+    per_node_elements = 1;
+  }
+  ratio_PPN = (float)lib_shared_region->num_processes/(float)masters_info.max_ppn;
+  verbose_master(2,"ratio_PPN %f = procs node %f max %f", ratio_PPN, (float)lib_shared_region->num_processes, (float)masters_info.max_ppn);
+  masters_info.nodes_info = (shsignature_t *)calloc(total_elements,sizeof(shsignature_t));
+  if (masters_info.nodes_info == NULL){ 
+    error("Allocating memory for node_info");
+  }else{ 
+    debug("%d Bytes (%d x %lu)  allocated for masters_info node_info",total_size,total_elements,sizeof(shsignature_t));
+  }
+  masters_info.my_mpi_info = (shsignature_t *)calloc(per_node_elements,sizeof(shsignature_t));
+  if (masters_info.my_mpi_info == NULL){
+    error("Allocating memory for my_mpi_info");
+  }else{
+    debug("%lu Bytes allocated for masters_info my_mpi_info",per_node_elements*sizeof(shsignature_t));
+  }
 #if SHARED_MPI_SUMMARY
-				masters_info.nodes_mpi_summary = (mpi_summary_t *) calloc(masters_info.my_master_size,sizeof(mpi_summary_t));
-				if (masters_info.nodes_mpi_summary == NULL) {
-                    error("Allocating memory for MPI summary shared info");
-				}
+  masters_info.nodes_mpi_summary = (mpi_summary_t *) calloc(masters_info.my_master_size,sizeof(mpi_summary_t));
+  if (masters_info.nodes_mpi_summary == NULL) {
+    error("Allocating memory for MPI summary shared info");
+  }
 #endif
 				/********************************/
 				/* Attaching to node_mgr region */
@@ -934,14 +901,6 @@ void fill_application_mgt_data(app_mgt_t *a)
 /* Connects the mpi process to a new communicator composed by masters, only processes with master=1 belongs to the new communicator */
 /****************************************************************************************************************************************************************/
 
-int sched_num_nodes()
-{
-    char *cn;
-    cn = ear_getenv(SCHED_STEP_NUM_NODES);
-    if (cn != NULL) return atoi(cn);
-    else return 1;
-}
-
 void attach_to_master_set(int master)
 {
 				int color;
@@ -958,19 +917,26 @@ void attach_to_master_set(int master)
 				if (master) masters_info.my_master_rank=0;
 				else masters_info.my_master_rank=-1;
 #if MPI
-				/* If OpenMPI, we will not synchronize if not all the processes answer the gather */
-				if (is_mpi_enabled() && is_openmpi()){
+				/* If OpenMPI, we don't synchronize unless all the processes answer the gather. */
+				if (is_mpi_enabled() && is_openmpi())
+				{
 								int n = openmpi_num_nodes();
-								if ((n > 0) && (n != sched_num_nodes())){ 
-									if ((is_erun == NULL) || ((is_erun != NULL) && (atoi(is_erun) == 0))) flag = 0;
+								int sched_num_nodes = utils_get_sched_num_nodes();
+								if ((n > 0) && (n != sched_num_nodes))
+								{
+									if (is_erun == NULL || ((is_erun != NULL) && atoi(is_erun) == 0)) flag = 0;
 								}
-								debug("OpenMPI num nodes detected %d - Sched num nodes detected %d",n, sched_num_nodes());
-								if (flag == 0){ 
+								debug("OpenMPI num nodes detected %d - Sched num nodes detected %d",n, sched_num_nodes);
+
+								if (flag == 0)
+								{ 
 												synchronize_masters = 0;
 								}
 				}
+
 				/* We must check all nodes have EAR loaded */
-				if (synchronize_masters){
+				if (synchronize_masters)
+				{
 								debug("Creating a new communicator");
 								if (PMPI_Comm_dup(MPI_COMM_WORLD,&masters_info.new_world_comm)!=MPI_SUCCESS){
 												error("Duplicating MPI_COMM_WORLD");
@@ -980,7 +946,8 @@ void attach_to_master_set(int master)
 
 								}
 								debug("New communicators created");
-				}else{
+				} else
+				{
 								debug("Some processes are not connecting, synchronization off");
 				}
 #endif
@@ -991,6 +958,7 @@ void attach_to_master_set(int master)
 												masters_info.my_master_size = 1;
 								}
 				}
+
 				// New for OpenMPI support
 				if ((masters_comm_created) && (!color)){
 #if MPI
@@ -1004,6 +972,8 @@ void attach_to_master_set(int master)
 				}
 				debug("Attach to master set end");
 }
+
+
 /****************************************************************************************************************************************************************/
 /* returns the local id in the node, local id is 0 for the  master processes and 1 for the others  */
 /****************************************************************************************************************************************************************/
@@ -1017,7 +987,7 @@ static int get_local_id(char *node_name)
 
 #if USE_LOCK_FILES
         /* This lock file is used to select the master */
-				sprintf(master_lock_filename, "%s/.master_lock",EID_folder );
+				snprintf(master_lock_filename, sizeof(master_lock_filename), "%s/.master_lock", EID_folder);
         //verbose(WF_SUPPORT_VERB, "Using EID lock path %s", master_lock_filename);
 				debug("Using lock file %s",master_lock_filename);
 				if ((fd_master_lock = file_lock_master(master_lock_filename)) < 0) {
@@ -1260,17 +1230,17 @@ static int get_ear_application_id()
 static struct sigaction term_action, int_action, segv_action;
 static void configure_sigactions()
 {
-  // SIGTERM action for job cancellation
-  sigemptyset(&term_action.sa_mask);
-  term_action.sa_handler = ear_lib_sig_handler;
-  term_action.sa_flags = 0;
-  sigaction(SIGTERM, &term_action, NULL);
+	// SIGTERM action for job cancellation
+	sigemptyset(&term_action.sa_mask);
+	term_action.sa_handler = ear_lib_sig_handler;
+	term_action.sa_flags = 0;
+	sigaction(SIGTERM, &term_action, NULL);
 
-  // SIGINT
-  sigemptyset(&int_action.sa_mask);
-  int_action.sa_handler = ear_lib_sig_handler;
-  int_action.sa_flags = 0;
-  sigaction(SIGINT, &int_action, NULL);
+	// SIGINT
+	sigemptyset(&int_action.sa_mask);
+	int_action.sa_handler = ear_lib_sig_handler;
+	int_action.sa_flags = 0;
+	sigaction(SIGINT, &int_action, NULL);
 
   sigaction(SIGCHLD, &int_action, NULL);
   sigaction(SIGPIPE, &int_action, NULL);
@@ -1289,7 +1259,6 @@ static void configure_sigactions()
 }
 
 
-
 /*****************************************************************************************************************************************************/
 /*****************************************************************************************************************************************************/
 /*****************************************************************************************************************************************************/
@@ -1304,77 +1273,75 @@ static void configure_sigactions()
 uint fake_force_shared_node = 0;
 void ear_init()
 {
-				char *summary_pathname;
-				char *tmp;
-				state_t st;
-				char *ext_def_freq_str=ear_getenv(HACK_DEF_FREQ);
-				int fd_dummy = -1;
-	      topology_t earl_topo;
+  char *summary_pathname;
+  char *tmp;
+  state_t st;
+  char *ext_def_freq_str=ear_getenv(HACK_DEF_FREQ);
+  int fd_dummy = -1;
+  topology_t earl_topo;
 
-         #if EAR_OFF
-         return;
-         #endif
+#if EAR_OFF
+  return;
+#endif
+
+  uint fake_eard_error = 0;
+  char *cfake_eard_error = ear_getenv(FAKE_EARD_ERROR);
+  char *cfake_force_shared_node = ear_getenv(FLAG_FORCE_SHARED_NODE);
+  if (cfake_eard_error != NULL) fake_eard_error = atoi(cfake_eard_error);
+  if (cfake_force_shared_node != NULL) fake_force_shared_node = atoi(cfake_force_shared_node);
+
+	set_no_files_limit(ULONG_MAX);
+	set_stack_size_limit(ULONG_MAX);
+
+#if START_END_OVH
+  ullong elap_eard_init;
+  timestamp start_eard_init, end_eard_init;
+  timestamp_getfast(&start_eard_init);
+#endif
+
+  topology_init(&earl_topo);
 
 
-				uint fake_eard_error = 0;
-				char *cfake_eard_error = ear_getenv(FAKE_EARD_ERROR);
-        char *cfake_force_shared_node = ear_getenv(FLAG_FORCE_SHARED_NODE);
-				if (cfake_eard_error != NULL) fake_eard_error = atoi(cfake_eard_error);
-        if (cfake_force_shared_node != NULL) fake_force_shared_node = atoi(cfake_force_shared_node);
-
-				set_no_files_limit(ULONG_MAX);
-				set_stack_size_limit(ULONG_MAX);
-
-        #if START_END_OVH
-        ullong elap_eard_init;
-        timestamp start_eard_init, end_eard_init;
-        timestamp_getfast(&start_eard_init);
-        #endif
-
-				topology_init(&earl_topo);
-
-
-        main_pid = syscall(SYS_gettid);
+  main_pid = syscall(SYS_gettid);
 
         verbose(2, "%s EAR [%d] init .......................................%s", COL_BLU, main_pid, COL_CLR);
 
+  if (ear_lib_initialized){
+    verbose_master(1,"EAR library already initialized");
+    return;
+  }
+  ear_lib_initialized = 1;
+  VERB_SET_LV(0);
 
-				if (ear_lib_initialized){
-								verbose_master(1,"EAR library already initialized");
-								return;
-				}
-        ear_lib_initialized = 1;
-				VERB_SET_LV(0);
+  timestamp_getfast(&ear_application_time_init);
 
-				timestamp_getfast(&ear_application_time_init);
-
-				// MPI
+  // MPI
 #if MPI
-				PMPI_Comm_rank(MPI_COMM_WORLD, &ear_my_rank);
-				PMPI_Comm_size(MPI_COMM_WORLD, &my_size);
+  PMPI_Comm_rank(MPI_COMM_WORLD, &ear_my_rank);
+  PMPI_Comm_size(MPI_COMM_WORLD, &my_size);
 #else
-				ear_my_rank=0;
-				my_size=1;
+  ear_my_rank=0;
+  my_size=1;
 #endif
       /* This is new. It is a collective operation to get the PID of rank 0 */
         AID = get_ear_application_id();
 
-				load_app_mgr_env();
+  load_app_mgr_env();
 
-				//debug("Reading the environment");
+  //debug("Reading the environment");
 
-				// Environment initialization
-				ear_lib_environment();
+  // Environment initialization
+  ear_lib_environment();
 
-				gethostname(node_name, sizeof(node_name));
-				strtok(node_name, ".");
+  gethostname(node_name, sizeof(node_name));
+  strtok(node_name, ".");
 
-				read_hack_env();
+  read_hack_env();
 
-				// Fundamental data
+  // Fundamental data
 
-       pid_t my_pid = getpid();
-				debug("Running in %s process = %d", node_name, my_pid);
+  pid_t my_pid = getpid();
+  debug("Running in %s process = %d", node_name, my_pid);
 
         // Test ear tmp folder exists
 				tmp = get_ear_tmp();
@@ -1387,13 +1354,13 @@ void ear_init()
 				}
 
 
-       // TODO: We could update the default freq an avoid the macro DEF_FREQ on each policy.
-       if (ext_def_freq_str) {
-                    ext_def_freq = (ulong) atol(ext_def_freq_str);
-                    verbose_master(VEAR_INIT, "%sWARNING%s Externally defined default freq (kHz): %lu", COL_YLW, COL_CLR, ext_def_freq);
-       }
+  // TODO: We could update the default freq an avoid the macro DEF_FREQ on each policy.
+  if (ext_def_freq_str) {
+    ext_def_freq = (ulong) atol(ext_def_freq_str);
+    verbose_master(VEAR_INIT, "%sWARNING%s Externally defined default freq (kHz): %lu", COL_YLW, COL_CLR, ext_def_freq);
+  }
 
-			 debug("[%s] Using tmp %s ", node_name, get_ear_tmp());
+  debug("[%s] Using tmp %s ", node_name, get_ear_tmp());
 
 				verb_level = get_ear_verbose();
 				verb_channel=2;
@@ -1403,27 +1370,27 @@ void ear_init()
 								VERB_SET_LV(verb_level);
 				}
 
-        // We print here the topology in order to do it only at verbose 2
-        if (VERB_ON(2))
-        {
-                    if (ear_my_rank == 0)
-                    {
-                        topology_print(&earl_topo, 1);
-                    }
-        }
+  // We print here the topology in order to do it only at verbose 2
+  if (VERB_ON(2))
+  {
+    if (ear_my_rank == 0)
+    {
+      topology_print(&earl_topo, 1);
+    }
+  }
 
-				set_ear_total_processes(my_size);
-        #if FAKE_LEARNING
-        ear_whole_app = 1;
-        #else
-				ear_whole_app = get_ear_learning_phase();
-        #endif
-#if MPI
-				num_nodes = get_ear_num_nodes();
-				ppnode = my_size / num_nodes;
+  set_ear_total_processes(my_size);
+#if FAKE_LEARNING
+  ear_whole_app = 1;
 #else
-				num_nodes=1;
-				ppnode=1;
+  ear_whole_app = get_ear_learning_phase();
+#endif
+#if MPI
+  num_nodes = get_ear_num_nodes();
+  ppnode = my_size / num_nodes;
+#else
+  num_nodes=1;
+  ppnode=1;
 #endif
 
 				get_job_identification();
@@ -1465,24 +1432,21 @@ void ear_init()
 
 				/* All masters connect in a new MPI communicator */
 				attach_to_master_set(my_id==0);
-#if MPI_OPTIMIZED
-        ear_mpi_opt_num_nodes = sched_num_nodes();
-#endif
 
-				/* This option is set to 0 when application is MPI and some processes are not running the  EARL , which is a mesh */
-				if (synchronize_masters == 0){
-								debug("EARL initialization aborted");
-								return;
-				}
+  /* This option is set to 0 when application is MPI and some processes are not running the  EARL , which is a mesh */
+  if (synchronize_masters == 0){
+    debug("EARL initialization aborted");
+    return;
+  }
 
-				// if we are not the master, we return
+  // if we are not the master, we return
 #if ONLY_MASTER
-				if (my_id != 0) {
-								return;
-				}
+  if (my_id != 0) {
+    return;
+  }
 #endif
 
-				debug("Executing EAR library IDs(%d,%d)", ear_my_rank, my_id);
+  debug("Executing EAR library IDs(%d,%d)", ear_my_rank, my_id);
 
 				/* At this point we haven't connected yet with EARD, but, it these regions doesn't exist, we can not connect */
 				/* Three potential reasons: 1) EARD is not running, 2) there is some version mistmatch between the earl-earplug-eard,
@@ -1503,34 +1467,34 @@ void ear_init()
 					resched_conf = attach_resched_shared_area(resched_conf_path);
 
 #if FAKE_EAR_NOT_INSTALLED
-					if (first_dummy){
-            system_conf  = NULL;
-            resched_conf = NULL;
-            verbose_master(0, "FAKE_EAR_NOT_INSTALLED in shared areas");
-            first_dummy = 0;
-          }
+    if (first_dummy){
+      system_conf  = NULL;
+      resched_conf = NULL;
+      verbose_master(0, "FAKE_EAR_NOT_INSTALLED in shared areas");
+      first_dummy = 0;
+    }
 #endif
 
-					/* If I'm the master, I will create the dummy regions */
-					create_dummy_path_lock(get_ear_tmp(), ID, dummy_areas_path, GENERIC_NAME);
+    /* If I'm the master, I will create the dummy regions */
+    create_dummy_path_lock(get_ear_tmp(), ID, dummy_areas_path, GENERIC_NAME);
 
-					if ((system_conf == NULL) && (resched_conf == NULL) && !my_id)
-					{
-							verbose(2, "[%s] Shared memory not present, creating dummy areas", node_name);
-							create_eard_dummy_shared_regions(get_ear_tmp(), create_ID(my_job_id,my_step_id));
-							fd_dummy = file_lock_create(dummy_areas_path);
-					} else if ((system_conf == NULL) && (resched_conf == NULL) && my_id)
-					{
-							/* If I'm not the master, I will wait */
-							while(!file_is_regular(dummy_areas_path));
-					}
-				} while((system_conf == NULL) || (resched_conf == NULL));
+    if ((system_conf == NULL) && (resched_conf == NULL) && !my_id)
+    {
+      verbose(2, "[%s] Shared memory not present, creating dummy areas", node_name);
+      create_eard_dummy_shared_regions(get_ear_tmp(), create_ID(my_job_id,my_step_id));
+      fd_dummy = file_lock_create(dummy_areas_path);
+    } else if ((system_conf == NULL) && (resched_conf == NULL) && my_id)
+    {
+      /* If I'm not the master, I will wait */
+      while(!file_is_regular(dummy_areas_path));
+    }
+  } while((system_conf == NULL) || (resched_conf == NULL));
 
-				debug("[%s.%d] system_conf  = %p", node_name, ear_my_rank, system_conf);
-				debug("resched_conf = %p", resched_conf);
-				if (system_conf != NULL) debug("system_conf->id = %u", system_conf->id);
-				debug("create_ID() = %u", create_ID(my_job_id,my_step_id)); // id*100+sid
-				if (fake_eard_error) verbose_master(0, "Warning, executing fake eard errors: %u", fake_eard_error);
+  debug("[%s.%d] system_conf  = %p", node_name, ear_my_rank, system_conf);
+  debug("resched_conf = %p", resched_conf);
+  if (system_conf != NULL) debug("system_conf->id = %u", system_conf->id);
+  debug("create_ID() = %u", create_ID(my_job_id,my_step_id)); // id*100+sid
+  if (fake_eard_error) verbose_master(0, "Warning, executing fake eard errors: %u", fake_eard_error);
 
 				uint valid_ID;
 				if ((system_conf != NULL) && (resched_conf != NULL)){
@@ -1560,16 +1524,16 @@ void ear_init()
 												file_unlock_master(fd_master_lock,master_lock_filename);
 								}
 #endif
-								/* Only the node master will notify the problem to the other masters */
-								if (!my_id) notify_eard_connection(0);
-				}	
-				/* my_id is 0 for the master (for each node) and 1 for the others */
-				/* eard_ok reflects the eard connection status, if eard_ok is 0, earl is disabled */
+    /* Only the node master will notify the problem to the other masters */
+    if (!my_id) notify_eard_connection(0);
+  }	
+  /* my_id is 0 for the master (for each node) and 1 for the others */
+  /* eard_ok reflects the eard connection status, if eard_ok is 0, earl is disabled */
 
 #if ONLY_MASTER
-				if (my_id != 0) {
-								return;
-				}
+  if (my_id != 0) {
+    return;
+  }
 #endif
 
 				// Application static data and metrics
@@ -2081,32 +2045,22 @@ void ear_init()
         }
 #endif
 
-        /* For code organization we have a separate subscription for MPI optimization */
 #if MPI_OPTIMIZED
-        if (is_mpi_enabled() && ear_mpi_opt)
-        {
-          earl_mpi_opt = suscription();
-          earl_mpi_opt->call_init = earl_periodic_actions_mpi_opt_init;
-          earl_mpi_opt->call_main = earl_periodic_actions_mpi_opt;
-          earl_mpi_opt->time_relax = 200;
-          earl_mpi_opt->time_burst = 200;
-          if (monitor_register(earl_mpi_opt) != EAR_SUCCESS) verbose_master(2,"Monitor for MPI opt register fails! %s",state_msg);
-          monitor_relax(earl_mpi_opt);
-          verbose_master(2,"Monitor for MPI opt created");
-        }
+				fine_grain_metrics_init();
 #endif
 
-#if DLB
-        if (state_fail(earl_create_talp_monitor(earl_talp)))
-        {
-            char *err_msg = "Error creating TALP monitor:";
-            verbose(TALP_INFO, "[%d] %s %s", my_node_id, err_msg, state_msg);
-        }
-#endif // DLB
+				if (DLB_SUPPORT)
+				{
+					// TODO: Add support for environment variable
+					if (state_fail(earl_dlb_talp_init()))
+					{
+						verbose_error("EAR DLB TALP module init: %s", state_msg);
+					}
+				}
 #endif // !EAR_OFF
 
 #if START_END_OVH
-        timestamp_getfast(&end_eard_init);
+  timestamp_getfast(&end_eard_init);
         elap_eard_init = timestamp_diff(&end_eard_init, &start_eard_init, TIME_USECS);
         verbose_master(EARL_GUIDED_LVL,"Initialization cost: %llu usec dynais_guided %u ", elap_eard_init, ear_guided != TIME_GUIDED);
 #endif
@@ -2208,7 +2162,7 @@ void ear_finalize(int exit_status)
                 
 								return;
 				}
-				verbose(WF_SUPPORT_VERB, "EARL[%d] node id %d: Finalizing", getpid(), my_node_id);
+				verbose(WF_SUPPORT_VERB+1, "EARL[%d] node id %d: Finalizing", getpid(), my_node_id);
 #if USE_LOCK_FILES
 				if (!my_id){
                 /* Releasing master lock file. Used to select the master */
@@ -2232,16 +2186,19 @@ void ear_finalize(int exit_status)
         traces_end(ear_my_rank, my_node_id, 0);
         traces_mpi_end();
 #endif
-#if DLB
-        earl_periodic_actions_talp_finalize();
-#endif
+
+				if (DLB_SUPPORT)
+				{
+					earl_dlb_talp_dispose();
+				}
+
         if (ear_guided == TIME_GUIDED){
           verbose(WF_SUPPORT_VERB, "EARL[%d]  stopping  EARL monitor", getpid());
           monitor_unregister(earl_monitor);
 				  monitor_dispose();
 				  debug("%d: monitor_disposed", my_node_id);
         }
-        verbose(WF_SUPPORT_VERB, "EARL[%d]  report dispose", getpid());
+        verbose(WF_SUPPORT_VERB+1, "EARL[%d]  report dispose", getpid());
 
         report_dispose(&rep_id);
 
@@ -2312,7 +2269,7 @@ void ear_finalize(int exit_status)
 				}
 				#endif
 
-        clean_eid_folder();
+        if (masters_info.my_master_rank >= 0) clean_eid_folder();
         //print_resource_usage();
 
         #if START_END_OVH
@@ -2742,11 +2699,6 @@ static timestamp_t periodic_time;
 static ulong last_check = 0;
 static uint first_exec_monitor = 1;
 
-#if MPI_OPTIMIZED
-/* 0 = init, 1 = end, 2= diff */
-static mpi_information_t my_mpi_stats[3];
-static mpi_calls_types_t my_mpi_types[3];
-#endif
 
 uint id_ovh_earl_monitor;
 
@@ -2777,9 +2729,6 @@ state_t earl_periodic_actions_init(void *no_arg)
 }
 
 extern timestamp_t time_last_signature;
-#if MPI_OPTIMIZED
-extern ulong local_max_sync_block;
-#endif
 
 state_t earl_periodic_actions(void *no_arg)
 {
@@ -2858,62 +2807,6 @@ state_t earl_periodic_actions(void *no_arg)
 	return EAR_SUCCESS;
 }
 
-/* PERIODIC Actions for MPI optimization */
-state_t earl_periodic_actions_mpi_opt_init(void *no_arg)
-{
-#if MPI_OPTIMIZED
-    if (is_mpi_enabled() && ear_mpi_opt){
-        memset(my_mpi_stats, 0, sizeof(mpi_information_t)*3);
-        memset(my_mpi_types, 0, sizeof(mpi_calls_types_t)*3);
-        metrics_start_cpupower();
-    }
-#endif
-    return EAR_SUCCESS;
-
-}
-state_t earl_periodic_actions_mpi_opt(void *no_arg)
-{
-#if MPI_OPTIMIZED
-    if (is_mpi_enabled() && (ear_mpi_opt || traces_are_on())) {
-        /* Read */
-        mpi_call_get_stats(&my_mpi_stats[1], NULL, -1);
-        mpi_call_get_types(&my_mpi_types[1], NULL, -1);
-        /* Diff */
-        mpi_call_diff(     &my_mpi_stats[2], &my_mpi_stats[1], &my_mpi_stats[0]);
-        my_mpi_stats[2].perc_mpi = (double) my_mpi_stats[2].mpi_time * 100.0 / (double) my_mpi_stats[2].exec_time;
-        mpi_call_types_diff(&my_mpi_types[2], &my_mpi_types[1], &my_mpi_types[0]);
-        /* Copy */
-        memcpy(&my_mpi_stats[0], &my_mpi_stats[1], sizeof(mpi_information_t));
-        memcpy(&my_mpi_types[0], &my_mpi_types[1], sizeof(mpi_calls_types_t));
-
-        metrics_read_cpupower();
-        uint new_pstate;
-        if (mpi_opt_symbols.periodic != NULL)  mpi_opt_symbols.periodic(&new_pstate);
-        /* We change the CPU freq after processing , is that a problem, warning !*/
-        if (new_pstate)  policy_restore_to_mpi_pstate(new_pstate);
-
-#if SINGLE_CONNECTION
-        if ((MASTER_ID >= 0) && traces_are_on()) {
-#else
-        if (traces_are_on()) {
-#endif // SINGLE_CONNECTION
-                traces_generic_event(ear_my_rank, my_node_id , PERC_MPI, (ullong)my_mpi_stats[2].perc_mpi * 100);
-                traces_generic_event(ear_my_rank, my_node_id , MPI_CALLS, (ullong)my_mpi_types[2].mpi_call_cnt);
-                traces_generic_event(ear_my_rank, my_node_id , MPI_SYNC_CALLS, (ullong)my_mpi_types[2].mpi_sync_call_cnt);
-                traces_generic_event(ear_my_rank, my_node_id , MPI_BLOCK_CALLS, (ullong)my_mpi_types[2].mpi_block_call_cnt);
-                traces_generic_event(ear_my_rank, my_node_id , TIME_SYNC_CALLS, (ullong)my_mpi_types[2].mpi_sync_call_time);
-                traces_generic_event(ear_my_rank, my_node_id , TIME_BLOCK_CALLS, (ullong)my_mpi_types[2].mpi_block_call_time);
-                traces_generic_event(ear_my_rank, my_node_id , TIME_MAX_BLOCK, (ullong) local_max_sync_block);
-                local_max_sync_block = 0;
-        }
-     }
-#endif // MPI_OPTIMIZED
-      return EAR_SUCCESS;
-
-}
-
-
-
 
 /************** Constructor & Destructor for NOt MPI versions **************/
 #if !MPI 
@@ -2969,292 +2862,3 @@ void ear_destructor()
 {
 }
 #endif
-
-#if DLB
-static state_t earl_create_talp_monitor(suscription_t *sus)
-{
-    if (is_mpi_enabled())
-    {
-        sus = suscription();
-
-        sus->call_init = earl_periodic_actions_talp_init;
-        sus->call_main = earl_periodic_actions_talp;
-
-        sus->time_relax = 10000;
-        sus->time_burst = 10000;
-
-        if (state_fail(monitor_register(sus)))
-        {
-            char ret_msg[128];
-
-            int ret = snprintf(ret_msg, sizeof ret_msg, "Registering subscription (%s)", state_msg);
-            if (ret < sizeof ret_msg)
-            {
-                return_msg(EAR_ERROR, ret_msg);
-            } else
-            {
-                return_msg(EAR_ERROR, state_msg);
-            }
-        }
-
-        monitor_relax(sus);
-        verbose(TALP_INFO, "DLB-TALP subscription created.");
-    }
-
-    return EAR_SUCCESS;
-}
-
-
-static state_t earl_periodic_actions_talp_init(void *p)
-{
-    dlb_app_monitor = DLB_MonitoringRegionRegister("app");
-    dlb_loop_monitor = DLB_MonitoringRegionRegister("loop");
-
-    if (dlb_app_monitor && dlb_loop_monitor)
-    {
-        DLB_MonitoringRegionStart(dlb_app_monitor);
-        DLB_MonitoringRegionStart(dlb_loop_monitor);
-
-        verbose_master(TALP_INFO, "DLB-TALP Init done");
-    } else
-    {
-        dlb_app_monitor = dlb_loop_monitor = NULL;
-        talp_monitor = 0;
-
-        sem_wait(lib_shared_lock_sem);
-        lib_shared_region->must_call_libdlb = 0;
-        sem_post(lib_shared_lock_sem);
-
-        verbose(TALP_INFO, "%sERROR%s [%d] registering regions.",
-                COL_RED, COL_CLR, my_node_id);
-    }
-
-    return (talp_monitor ? EAR_SUCCESS : EAR_ERROR);
-}
-
-
-static state_t earl_periodic_actions_talp(void *p)
-{
-  if (!talp_monitor)
-  {
-    return EAR_SUCCESS;
-  }
-
-  int must_call_libdlb = 0;
-  verbose(TALP_INFO + 1, "DLB-TALP Periodic action");
-
-  int sem_ret_val = sem_wait(lib_shared_lock_sem);
-  if (sem_ret_val < 0)
-  {
-    verbose(TALP_INFO, "%sWARNING%s Locking semaphor for DLB API status checking failed: %s",
-        COL_YLW, COL_CLR, strerror(errno));
-  }
-
-  if (lib_shared_region->must_call_libdlb)
-  {
-    sig_shared_region[my_node_id].libdlb_calls_cnt++;
-    debug("proc %d libdlb_cnt %d libflb_max %d",
-        my_node_id, sig_shared_region[my_node_id].libdlb_calls_cnt, lib_shared_region->max_libdlb_calls);
-
-    must_call_libdlb = 1;
-
-    if (sig_shared_region[my_node_id].libdlb_calls_cnt > lib_shared_region->max_libdlb_calls)
-    {
-      lib_shared_region->max_libdlb_calls = sig_shared_region[my_node_id].libdlb_calls_cnt;
-
-      if (msync(lib_shared_region, sizeof(lib_shared_data_t), MS_SYNC) < 0)
-      {
-        verbose(TALP_INFO, "%sError%s Memory sync. for lib shared region failed: %s",
-            COL_RED, COL_CLR, strerror(errno));
-      }
-    }
-  }
-
-  if (sem_post(lib_shared_lock_sem) < 0)
-  {
-    verbose(TALP_INFO, "%sWARNING%s Unlocking semaphor for DLB API status checking failed: %s",
-        COL_YLW, COL_CLR, strerror(errno));
-  }
-
-  if (must_call_libdlb)
-  {
-    // TODO: This code is replicated on earl_periodic_actions_talp_finalize
-    sig_ext_t sig_ext_tmp;
-    if (state_ok(metrics_compute_talp_node_metrics(&sig_ext_tmp, dlb_loop_monitor)))
-    {
-      if (MASTER_ID >= 0)
-      {
-        sig_ext_t *node_sig_ext = (sig_ext_t *) lib_shared_region->node_signature.sig_ext;
-        node_sig_ext->dlb_talp_node_metrics = sig_ext_tmp.dlb_talp_node_metrics;
-        // TODO: Move in the outer condition scope
-        // verbose_talp_node_metrics(TALP_INFO, &node_sig_ext->dlb_talp_node_metrics);
-      }
-    }
-
-    if (dlb_loop_monitor)
-    {
-      DLB_MonitoringRegionReset(dlb_loop_monitor);
-      DLB_MonitoringRegionStart(dlb_loop_monitor);
-    }
-  }
-  return EAR_SUCCESS;
-}
-
-
-static void verbose_talp_node_metrics(int verb_lvl, dlb_node_metrics_t *node_metrics)
-{
-  if (VERB_ON(verb_lvl))
-  {
-    if (is_mpi_enabled())
-    {
-      if (MASTER_ID >= 0 && !talp_report)
-      {
-        char buff[GENERIC_NAME];
-        int ret = snprintf(buff, sizeof buff, "%d-%d-%d-talp.csv",
-            my_job_id, my_step_id, MASTER_ID);
-
-        if (ret < sizeof buff)
-        {
-          talp_report = fopen(buff, "a");
-          if (talp_report)
-          {
-            char talp_report_header[] = "time,node_id,total_useful_time,"
-              "total_mpi_time,max_useful_time,"
-              "max_mpi_time,load_balance,parallel_efficiency";
-
-            size_t header_len = strlen(talp_report_header);
-
-            size_t fwrite_ret = fwrite((const void *) talp_report_header,
-                sizeof(char), header_len,
-                talp_report);
-
-            if (fwrite_ret != header_len)
-            {
-              verbose(TALP_INFO, "%sWARNING%s Writing TALP report header: %d", COL_YLW, COL_CLR, errno)
-            }
-          } else
-          {
-            verbose(TALP_INFO, "%sERROR%s Creating and openning TALP report file: %d", COL_RED, COL_CLR, errno);
-          }
-        } else
-        {
-          verbose(TALP_INFO, "%sERROR%s TALP report file name did not created: increase the buffer size.", COL_RED, COL_CLR);
-        }
-      }
-
-      if (MASTER_ID >= 0 && talp_report)
-      {
-        // Get the current time
-        time_t curr_time = time(NULL);
-
-        struct tm *loctime = localtime (&curr_time);
-
-        char time_buff[32];
-        strftime(time_buff, sizeof time_buff, "%c", loctime);
-
-        char talp_node_metrics_sum[512];
-
-        int ret = snprintf(talp_node_metrics_sum, sizeof talp_node_metrics_sum,
-            "\n%s,%d,%"PRId64",%"PRId64",%"PRId64",%"PRId64",%f,%f",
-            time_buff, node_metrics->node_id, node_metrics->total_useful_time,
-            node_metrics->total_mpi_time, node_metrics->max_useful_time,
-            node_metrics->max_mpi_time, node_metrics->load_balance,
-            node_metrics->parallel_efficiency);
-
-        if (ret < sizeof talp_node_metrics_sum)
-        {
-          size_t char_count = strlen(talp_node_metrics_sum);
-          size_t fwrite_ret = fwrite((const void *) talp_node_metrics_sum, sizeof(char), char_count, talp_report);
-
-          if (fwrite_ret != char_count)
-          {
-            verbose(TALP_INFO, "%sERROR%s Writing TALP info: %d", errno);
-          }
-        } else
-        {
-          verbose(TALP_INFO, "%sERROR%s Writing the node metrics line. Increase the buffer size", COL_RED, COL_CLR);
-        }
-      } else if (MASTER_ID >= 0)
-      {
-        verbose(TALP_INFO, "%sWARNING%s TALP report file not created.", COL_YLW, COL_CLR);
-      }
-    }
-  }
-}
-
-
-static state_t earl_periodic_actions_talp_finalize()
-{
-    if (!talp_monitor)
-    {
-        return EAR_SUCCESS;
-    }
-    int must_call_libdlb = 0;
-    
-    int sem_ret_val = sem_wait(lib_shared_lock_sem);
-    if (sem_ret_val < 0)
-    {
-        verbose(TALP_INFO, "%sWARNING%s Locking semaphor for DLB API status checking failed: %s",
-                COL_YLW, COL_CLR, strerror(errno));
-    }
-    debug("TALP monitor finalize");
-
-    lib_shared_region->must_call_libdlb = 0;
-
-    if (msync(lib_shared_region, sizeof(lib_shared_data_t), MS_SYNC) < 0)
-    {
-        verbose(TALP_INFO, "%sError%s Memory sync. for lib shared region failed: %s",
-                COL_RED, COL_CLR, strerror(errno));
-    }
-
-    debug("libdlb_cnt %d max %d", sig_shared_region[my_node_id].libdlb_calls_cnt, lib_shared_region->max_libdlb_calls);
-    if (sig_shared_region[my_node_id].libdlb_calls_cnt < lib_shared_region->max_libdlb_calls)
-    {
-        must_call_libdlb = 1;
-        sig_shared_region[my_node_id].libdlb_calls_cnt++;
-    }
-
-    debug("unlocking semaphore");
-    if (sem_post(lib_shared_lock_sem) < 0)
-    {
-        verbose(TALP_INFO, "%sWARNING%s Unlocking semaphor for DLB API status checking failed: %s",
-                COL_YLW, COL_CLR, strerror(errno));
-    }
-    debug("semaphore unlocked");
-
-    if (must_call_libdlb)
-    {
-        // TODO: This code is replicated on earl_periodic_actions_talp
-        sig_ext_t sig_ext_tmp;
-        if (state_ok(metrics_compute_talp_node_metrics(&sig_ext_tmp, dlb_loop_monitor)))
-        {
-            if (MASTER_ID >= 0)
-            {
-                sig_ext_t *node_sig_ext = (sig_ext_t *) lib_shared_region->node_signature.sig_ext;
-                node_sig_ext->dlb_talp_node_metrics = sig_ext_tmp.dlb_talp_node_metrics;
-                // TODO: Move in the outer condition scope
-                // verbose_talp_node_metrics(TALP_INFO, &node_sig_ext->dlb_talp_node_metrics);
-            }
-        }
-    }
-
-    if (MASTER_ID >= 0 && talp_report)
-    {
-        if (fclose(talp_report) == EOF)
-        {
-            verbose(TALP_INFO, "%sERROR%s Closing TALP report file: %d", COL_RED, COL_CLR, errno);
-        }
-    }
-
-    if (dlb_app_monitor)
-    {
-        DLB_MonitoringRegionStop(dlb_app_monitor);
-        // DLB_MonitoringRegionReport(dlb_app_monitor);
-    }
-
-    debug("TALP monitor unregistering");
-    monitor_unregister(earl_talp);
-
-    return EAR_SUCCESS;
-}
-#endif // DLB

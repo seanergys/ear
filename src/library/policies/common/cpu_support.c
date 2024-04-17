@@ -15,6 +15,7 @@
 * and COPYING.EPL files.
 */
 
+
 #define _GNU_SOURCE
 #include <sched.h>
 
@@ -356,9 +357,12 @@ void verbose_node_freqs(int vl, node_freqs_t *freqs)
 
 void node_freqs_alloc(node_freqs_t *node_freq)
 {
+		// Frequency in KHz
     node_freq->cpu_freq = calloc(MAX_CPUS_SUPPORTED,sizeof(ulong));
+		// Pstates
     node_freq->imc_freq = calloc(MAX_SOCKETS_SUPPORTED*IMC_VAL,sizeof(ulong));
 #if USE_GPUS
+		// Frequency in KHz (to be verified)
     node_freq->gpu_freq = calloc(MAX_GPUS_SUPPORTED,sizeof(ulong));
     node_freq->gpu_mem_freq = calloc(MAX_GPUS_SUPPORTED,sizeof(ulong));
 #endif

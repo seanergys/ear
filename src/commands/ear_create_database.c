@@ -969,8 +969,6 @@ int main(int argc,char *argv[])
     if (!print_out && PQstatus(connection) != CONNECTION_OK)
     {
         fprintf(stderr, "ERROR connecting to the database after its creation: %s\n", PQerrorMessage(connection));
-        free(keys);
-        free(values);
         PQfinish(connection);
         free_cluster_conf(&my_cluster);
         exit(1);

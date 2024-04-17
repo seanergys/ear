@@ -15,16 +15,16 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
-#include <stdlib.h>
+// #define SHOW_DEBUGS 1
+#include <fcntl.h>
 #include <stdio.h>
-#include <sys/types.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
-#include <fcntl.h>
-
-#include <metrics/common/popen.h>
+#include <sys/types.h>
+#include <common/output/debug.h>
+#include <common/system/popen.h>
 #include <metrics/gpu/archs/dcgmi.h>
 
 static char command[1024];

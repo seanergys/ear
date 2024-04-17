@@ -15,6 +15,7 @@
  * and COPYING.EPL files.
  */
 
+
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -197,13 +198,11 @@ state_t policy_init(polctx_t *c)
         use_energy_models = 0;
       } else
       {
-#if 0
-        if (!energy_model_all_projections_available(cpu_energy_model))
+        if (!energy_model_any_projection_available(cpu_energy_model))
         {
 					error_lib("Not all projections available");
 					use_energy_models = 0;
 				}
-#endif
       }
     } else
     {
@@ -554,8 +553,9 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
 							/* 1.2.2: Se select the maximum CPU freq or the maximum avg CPU freq (avx512 case) */
                             new_freq[i] = ear_min(eff_p_cpuf, frequency_pstate_to_freq(1));
                         }
-                        verbose_master(2, "CPU freq for CP process %d is %lu (!MBOUND use_turbo %u MIN_MPI %u)",
-                                       i, new_freq[i], use_turbo_for_cp, percs_mpi[i] == percs_mpi[min_mpi]);
+												verbose_master(2, "%sCPU freq for CP process %d is %lu (!MBOUND use_turbo %u MIN_MPI %u)%s",
+																COL_RED,i, new_freq[i], use_turbo_for_cp, percs_mpi[i] == percs_mpi[min_mpi],COL_CLR);
+
                         continue;
                     } else {
 						/* The process if part of the critical path BUT is memory bound. We increase the penalty supported */
@@ -576,7 +576,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
                 curr_pstate = def_pstate;
                 compute_reference(my_app, cpu_energy_model, &curr_freq, &def_freq, &best_freq, &time_ref, &power_ref);
                 verbose_master(3, "Time ref %lf Power ref %lf Freq ref %lu", time_ref, power_ref, best_freq);
-								verbose_master(3, "Min energy: cur pstate %u min pstate %u max pstate %u", curr_pstate, min_pstate, c->num_pstates);
+								//verbose_master(3, "Min energy: cur pstate %u min pstate %u max pstate %u", curr_pstate, min_pstate, c->num_pstates);
                 compute_cpu_freq_min_energy(my_app, cpu_energy_model, best_freq, time_ref, power_ref, local_penalty, curr_pstate, min_pstate, c->num_pstates, &new_freq[i]);
                 if (freq_per_core){
                   verbose_master(2, "PROC[%u][%u] CPI %.2f TPI %.2f GFlops %.2f Power %.2f PMPI %.2f penalty %.2lf", MASTER_ID, i,
@@ -627,6 +627,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
             min_cpufreq_sel = ear_min(min_cpufreq_sel, new_freq[i]);
         }
 
+#if MPI_OPTIMIZED
         // You can fill here the mpi_freq field of the sig_shared_region if you are optimizing
         // the application at MPI call level.
         for (uint lp = 0; lp < num_processes; lp++){
@@ -635,9 +636,8 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
             f = new_freq[lp];
           }
           sig_shared_region[lp].mpi_freq = f;
-
         }
-
+#endif
 
         /* If we use the same CPU freq for all cores, we set for all processes */
         if (!freq_per_core) {
@@ -1290,7 +1290,7 @@ static uint policy_no_models_is_better_min_energy(signature_t * curr_sig, signat
 
 static state_t policy_mpi_init_optimize(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id)
 {
-#if !SINGLE_CONNECTION && MPI_OPTIMIZED
+#if MPI_OPTIMIZED
     // You can implement optimization at MPI call entry here.
 
     if (ear_mpi_opt &&
@@ -1304,7 +1304,7 @@ static state_t policy_mpi_init_optimize(polctx_t *c, mpi_call call_type, node_fr
 
 static void policy_end_summary(int verb_lvl)
 {
-#if !SINGLE_CONNECTION && MPI_OPTIMIZED
+#if MPI_OPTIMIZED
     // You can show a summary of your optimization at MPI call level here.
 #endif
 }
@@ -1312,7 +1312,7 @@ static void policy_end_summary(int verb_lvl)
 
 static state_t policy_mpi_end_optimize(node_freqs_t *freqs, int *process_id)
 {
-#if !SINGLE_CONNECTION && MPI_OPTIMIZED
+#if MPI_OPTIMIZED
     // You can implement optimization at MPI call exit here.
     if (ear_mpi_opt &&
       (lib_shared_region->num_processes > 1)){

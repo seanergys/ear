@@ -40,7 +40,6 @@
 #define PC_DVFS     50
 #define PC_POWER    51
 
-#define PC_UNLIMITED 0
 
 
 #define PC_MODE_LIMIT   200

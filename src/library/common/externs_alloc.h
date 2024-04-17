@@ -15,6 +15,10 @@
 * and COPYING.EPL files.
 */
 
+
+#ifndef _EARL_EXTERNS_ALLOC_H
+#define _EARL_EXTERNS_ALLOC_H
+
 #include <linux/limits.h>
 #include <common/types/application.h>
 #include <common/types/loop.h>
@@ -65,9 +69,10 @@ int my_node_id;
 
 uint sh_sig_per_node=1;
 uint sh_sig_per_proces=0;
-uint show_signatures=0;
 uint report_node_sig=0;
 uint report_all_sig=0;
 
 uint earl_phase_classification = APP_COMP_BOUND;
 topology_t mtopo;
+
+#endif // _EARL_EXTERNS_ALLOC_H

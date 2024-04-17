@@ -34,8 +34,10 @@ state_t mgt_cpufreq_dummy_load(topology_t *tp_in, mgt_ps_ops_t *ops)
 	//
 	apis_put(ops->init,               mgt_cpufreq_dummy_init);
 	apis_put(ops->dispose,            mgt_cpufreq_dummy_dispose);
-	apis_put(ops->count_available,    mgt_cpufreq_dummy_count_available);
-	apis_put(ops->get_available_list, mgt_cpufreq_dummy_get_available_list);
+    apis_put(ops->get_info,           mgt_cpufreq_dummy_get_info);
+    apis_put(ops->get_freq_details,   mgt_cpufreq_dummy_get_freq_details);
+    apis_put(ops->count_available,    mgt_cpufreq_dummy_count_available);
+    apis_put(ops->get_available_list, mgt_cpufreq_dummy_get_available_list);
 	apis_put(ops->get_current_list,   mgt_cpufreq_dummy_get_current_list);
 	apis_put(ops->get_nominal,        mgt_cpufreq_dummy_get_nominal);
 	apis_put(ops->get_index,          mgt_cpufreq_dummy_get_index);
@@ -60,10 +62,23 @@ state_t mgt_cpufreq_dummy_dispose(ctx_t *c)
 	return EAR_SUCCESS;
 }
 
+void mgt_cpufreq_dummy_get_info(apinfo_t *info)
+{
+    info->api = API_DUMMY;
+    info->devs_count = 1;
+}
+
+void mgt_cpufreq_dummy_get_freq_details(freq_details_t *details)
+{
+    details->freq_base = bf.frequency;
+    details->freq_max  = bf.frequency;
+    details->freq_min  = bf.frequency;
+}
+
 state_t mgt_cpufreq_dummy_count_available(ctx_t *c, uint *pstate_count)
 {
-	*pstate_count = 1;
-	return EAR_SUCCESS;
+    *pstate_count = 1;
+    return EAR_SUCCESS;
 }
 
 state_t mgt_cpufreq_dummy_get_available_list(ctx_t *c, pstate_t *pstate_list)
@@ -78,8 +93,8 @@ state_t mgt_cpufreq_dummy_get_current_list(ctx_t *c, pstate_t *pstate_list)
 	debug("mgt_cpufreq_dummy_get_current_list");
 	int i;
 	for (i = 0; i < cpu_count; ++i) {
-		pstate_list[i].idx = i;
-		pstate_list[i].idx = bf.frequency;
+		pstate_list[i].idx = 0;
+		pstate_list[i].khz = bf.frequency;
 	}
 	return EAR_SUCCESS;
 }

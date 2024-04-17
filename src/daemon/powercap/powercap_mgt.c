@@ -335,9 +335,7 @@ static state_t util_detect_init(void *p)
     last_dom_util[DOMAIN_CPU] = min;
     last_dom_util[DOMAIN_DRAM] = pc_topology_info.socket_count;
     last_dom_util[DOMAIN_GPU]=0;
-    if (gpu_data_alloc(&gpu_detection_raw_data)!=EAR_SUCCESS){
-        error("Initializing GPU data in powercap");
-    }
+    gpu_data_alloc(&gpu_detection_raw_data);
     return EAR_SUCCESS;
 }
 #endif
@@ -371,9 +369,7 @@ state_t pmgt_init()
     if (gpu_init(no_ctx)!=EAR_SUCCESS){
         error("Initializing GPU in powercap");
     }
-    if (gpu_count_devices(no_ctx, &gpu_pc_num_gpus)!=EAR_SUCCESS){
-        error("Getting num gpus");
-    }
+    gpu_count_devices(no_ctx, &gpu_pc_num_gpus);
     if (gpu_pc_model == API_DUMMY) {
         memcpy(pdomains_def,pdomains_def_dummy,sizeof(pdomains_def));
         memcpy(pdomains,pdomains_def_dummy,sizeof(pdomains_def));
