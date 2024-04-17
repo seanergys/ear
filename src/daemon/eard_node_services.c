@@ -1089,7 +1089,6 @@ int eard_system(eard_head_t *head, int req_fd, int ack_fd)
     application_t  app;
     ear_event_t    event;
     loop_t         loop;
-    unsigned long  ack;
     int            con_id;
     state_t        s;
     char          *data = NULL;
@@ -1109,6 +1108,7 @@ int eard_system(eard_head_t *head, int req_fd, int ack_fd)
                 serror(Rpcerr.pending);
             } else {
                 application_deserialize(&wb, &app);
+                application_print_channel(stderr, &app);
 
                 if (!eard_local_conn[con_id].anonymous) {
                     powermon_mpi_signature(&app);
@@ -1151,53 +1151,6 @@ int eard_system(eard_head_t *head, int req_fd, int ack_fd)
         return 0;
     }
     return 1;
-
-#if 0
-    switch (head->req_service) {
-    case WRITE_APP_SIGNATURE:
-        verbose(VEARD_LAPI,"App signature received: Anonymous %lu", eard_local_conn[con_id].anonymous);
-        if (!eard_local_conn[con_id].anonymous) {
-            powermon_mpi_signature(&req.req_data.app);
-        }
-        ack = EAR_COM_OK;
-        if (write(ack_fd, &ack, sizeof(ulong)) != sizeof(ulong)) {
-            error("ERROR while writing system service ack, closing connection...");
-            eard_close_comm(req_fd,ack_fd);
-        }
-        break;
-    case WRITE_EVENT:
-        ack = EAR_COM_OK;
-        report_connection_status = report_events(&rid, &req.req_data.event, 1);
-        if (report_connection_status == EAR_SUCCESS) {
-            ack = EAR_COM_OK;
-        } else {
-            ack = EAR_COM_ERROR;
-        }
-        if (write(ack_fd, &ack, sizeof(ulong)) != sizeof(ulong)){
-            // Do something with the error
-        }
-        break;
-    case WRITE_LOOP_SIGNATURE:
-        debug("WRITE_LOOP_SIGNATURE");
-        ack = EAR_COM_OK;
-        powermon_loop_signature(eard_local_conn[con_id].jid,eard_local_conn[con_id].sid,&req.req_data.loop);
-        // print_loop_fd(1,&req.req_data.loop);
-        report_connection_status = report_loops(&rid, &req.req_data.loop, 1);
-
-        if (report_connection_status == EAR_SUCCESS) {
-            ack = EAR_COM_OK;
-        } else {
-            ack = EAR_COM_ERROR;
-        }
-        if (write(ack_fd, &ack, sizeof(ulong)) != sizeof(ulong)) {
-            // Do something with the error
-        }
-        break;
-    default:
-        return 0;
-  }
-  return 1;
-#endif
 }
 
 int eard_rapl(eard_head_t *head,int req_fd,int ack_fd)

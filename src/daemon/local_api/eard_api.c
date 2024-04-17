@@ -530,26 +530,41 @@ ulong sendack(char *send_buf, size_t send_size, char *ack_buf, size_t ack_size, 
 
 ulong eards_write_app_signature(application_t *app)
 {
+    #if !BACKWARDS_COMPATIBLE
     serial_clean(&b);
-    // Old WRITE_APP_SIGNATURE
     application_serialize(&b, app);
     return eard_rpc(RPC_WRITE_APPLICATION, serial_data(&b), serial_size(&b), NULL, 0);
+    #else
+    init_service(WRITE_APP_SIGNATURE);
+    memcpy(&req.req_data.app, app, sizeof(application_t));
+    return sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ulong), "APP signature", 0);
+    #endif
 }
 
 ulong eards_write_event(ear_event_t *event)
 {
+    #if !BACKWARDS_COMPATIBLE
     serial_clean(&b);
-    // Old WRITE_EVENT
     event_serialize(&b, event);
     return eard_rpc(RPC_WRITE_EVENT, serial_data(&b), serial_size(&b), NULL, 0);
+    #else
+    init_service(WRITE_EVENT);
+    memcpy(&req.req_data.event, event, sizeof(ear_event_t));
+    return sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ulong), "EVENT write", 0);
+    #endif
 }
 
 ulong eards_write_loop_signature(loop_t *loop)
 {
+    #if !BACKWARDS_COMPATIBLE
     serial_clean(&b);
-    // Old WRITE_LOOP_SIGNATURE
     loop_serialize(&b, loop);
     return eard_rpc(RPC_WRITE_LOOP, serial_data(&b), serial_size(&b), NULL, 0);
+    #else
+    init_service(WRITE_LOOP_SIGNATURE);
+    memcpy(&req.req_data.loop, loop, sizeof(loop_t));
+    return sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ulong), "LOOP signature", 0);
+    #endif
 }
 
 ulong eards_get_data_size_rapl() // size in bytes
