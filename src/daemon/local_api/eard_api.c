@@ -530,7 +530,7 @@ ulong sendack(char *send_buf, size_t send_size, char *ack_buf, size_t ack_size, 
 
 ulong eards_write_app_signature(application_t *app)
 {
-    #if !BACKWARDS_COMPATIBLE
+    #if WF_SUPPORT
     serial_clean(&b);
     application_serialize(&b, app);
     return eard_rpc(RPC_WRITE_APPLICATION, serial_data(&b), serial_size(&b), NULL, 0);
@@ -543,7 +543,7 @@ ulong eards_write_app_signature(application_t *app)
 
 ulong eards_write_event(ear_event_t *event)
 {
-    #if !BACKWARDS_COMPATIBLE
+    #if WF_SUPPORT
     serial_clean(&b);
     event_serialize(&b, event);
     return eard_rpc(RPC_WRITE_EVENT, serial_data(&b), serial_size(&b), NULL, 0);
@@ -556,7 +556,7 @@ ulong eards_write_event(ear_event_t *event)
 
 ulong eards_write_loop_signature(loop_t *loop)
 {
-    #if !BACKWARDS_COMPATIBLE
+    #if WF_SUPPORT
     serial_clean(&b);
     loop_serialize(&b, loop);
     return eard_rpc(RPC_WRITE_LOOP, serial_data(&b), serial_size(&b), NULL, 0);

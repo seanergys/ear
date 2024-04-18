@@ -26,6 +26,10 @@
 #include <common/utils/serial_buffer.h>
 #include <common/types/power_signature.h>
 
+
+// WARNING! This type is serialized through functions application_serialize and
+// application_deserialize. If you want to add new types, make sure to update
+// these functions too.
 typedef struct application
 {
 	job_t job;	
@@ -35,7 +39,6 @@ typedef struct application
 	power_signature_t power_sig; // power_sig are power metrics related to the whole job, not only the mpi part
 	signature_t	signature; 		 // signature refers to the mpi part, it includes power metrics and performance metrics
 } application_t;
-
 
 /** Resets the memory region pointed by \p app. */
 void init_application(application_t *app);

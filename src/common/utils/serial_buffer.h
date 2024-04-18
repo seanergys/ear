@@ -103,8 +103,8 @@ size_t serial_size(serial_buffer_t *b);
 
 // Serial dictionary is a small extension of serial buffer. It saves variables
 // in a serial buffer, adding a tag to properly identify each introduced
-// parameter. Push and pip functions are self describing. You can use the auto
-// macros for code cleaning.
+// parameter. Push and pop functions are self describing. You can use the auto
+// macros to keep a cleaned code.
 //
 // Sender example:
 //     serial_dictionary_push_auto(&b, appS->job.id);

@@ -80,7 +80,9 @@ typedef struct mini_sig
   double valid_time;
 } ssig_t;
 
-
+// WARNING! This type is serialized through functions signature_serialize and
+// signature_deserialize. If you want to add new types, make sure to update
+// these functions too.
 typedef struct signature
 {
   double DC_power;

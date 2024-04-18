@@ -7,15 +7,12 @@ plug_BINS = \
     dummy.so \
     eardcon.so \
     eard_serialization.so \
-    fast.so \
     keyboard.so \
     management.so \
     management_viewer.so \
     metrics.so \
     metrics_viewer.so \
     periodic_metrics.so \
-    serial_eater.so \
-    serial_feeder.so \
     test_cpufreq.so \
     test_gpu.so \
     nodesensors.so \

@@ -572,6 +572,7 @@ void signature_serialize(serial_buffer_t *b, signature_t *sig)
     serial_dictionary_push_auto(b, sig->cycles);
     serial_dictionary_push_auto(b, sig->avg_f);
     serial_dictionary_push_auto(b, sig->avg_imc_f);
+    serial_dictionary_push_auto(b, sig->def_imc_f);
     serial_dictionary_push_auto(b, sig->def_f);
     serial_dictionary_push_auto(b, sig->perc_MPI);
 #if USE_GPUS

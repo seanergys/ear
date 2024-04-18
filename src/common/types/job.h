@@ -24,7 +24,9 @@
 #include <common/types/generic.h>
 #include <common/utils/serial_buffer.h>
 
-
+// WARNING! This type is serialized through functions job_serialize and
+// job_deserialize. If you want to add new types, make sure to update these
+// functions too.
 typedef struct job
 {
 	job_id 	 id; //ulong

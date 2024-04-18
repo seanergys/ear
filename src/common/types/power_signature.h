@@ -22,6 +22,9 @@
 #include <common/types/generic.h>
 #include <common/utils/serial_buffer.h>
 
+// WARNING! This type is serialized through functions pwoer_signature_serialize
+// and power_signature_deserialize. If you want to add new types, make sure to
+// update these functions too.
 typedef struct power_signature
 {
     double DC_power;
@@ -34,7 +37,6 @@ typedef struct power_signature
     ulong avg_f;
     ulong def_f;
 } power_signature_t;
-
 
 typedef struct accum_power_sig{
 	ulong DC_energy;

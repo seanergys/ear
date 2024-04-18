@@ -1170,7 +1170,6 @@ int eard_system(eard_head_t *head, int req_fd, int ack_fd)
                 serror(Rpcerr.pending);
             } else {
                 application_deserialize(&wb, &app);
-                application_print_channel(stderr, &app);
 
                 if (!eard_local_conn[con_id].anonymous) {
                     powermon_mpi_signature(&app);
