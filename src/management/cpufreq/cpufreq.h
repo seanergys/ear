@@ -63,8 +63,8 @@ typedef struct mgt_ps_driver_ops_s
 typedef struct mgt_ps_ops_s
 {
     void    (*get_info)             (apinfo_t *info);
-	state_t (*init)                 ();
-	state_t (*dispose)              ();
+	state_t (*init)                 (ctx_t *c);
+	state_t (*dispose)              (ctx_t *c);
     void    (*get_freq_details)     (freq_details_t *details);
     state_t (*count_available)      (ctx_t *c, uint *pstate_count);
     state_t (*get_available_list)   (ctx_t *c, pstate_t *pstate_list);

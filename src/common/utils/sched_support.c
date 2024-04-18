@@ -70,6 +70,9 @@ uint is_job_step_valid(job_id jid, job_id sid)
 
 }
 
+#if 0
+
+// These functions were used by EARD , not longer used
 static int is_running(char *status_text)
 {
   if (strlen(status_text) == 0) return 0;
@@ -114,4 +117,4 @@ static int is_job_running(char *tmp, int jobid)
   return is_running(status);
 }
 
-
+#endif

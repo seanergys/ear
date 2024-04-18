@@ -85,12 +85,12 @@ static struct ipmi_rs *sendcmd(struct ipmi_intf *intf, struct ipmi_rq *req)
 	struct ipmi_recv recv;
 	struct ipmi_addr addr;
 	struct ipmi_system_interface_addr bmc_addr = {
-			addr_type:    IPMI_SYSTEM_INTERFACE_ADDR_TYPE,
-			channel:    (short)bmc_channel,
+			.addr_type =    IPMI_SYSTEM_INTERFACE_ADDR_TYPE,
+			.channel =    (short)bmc_channel,
 	};
 	struct ipmi_ipmb_addr ipmb_addr = {
-			addr_type:    IPMI_IPMB_ADDR_TYPE,
-			channel:    intf->channel & 0x0f,
+			.addr_type =    IPMI_IPMB_ADDR_TYPE,
+			.channel =    intf->channel & 0x0f,
 	};
 	static struct ipmi_rs rsp;
 	uint8_t *data = NULL;

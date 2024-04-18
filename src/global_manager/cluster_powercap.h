@@ -46,7 +46,7 @@ uint powercap_reallocation(cluster_powercap_status_t *cluster_status,powercap_op
 void send_powercap_options_to_cluster(powercap_opt_t *cluster_options);
 void print_cluster_power_status(cluster_powercap_status_t *my_cluster_power_status);
 uint cluster_get_min_power(cluster_conf_t *conf, char type);
-void cluster_powercap_init();
+void cluster_powercap_init(cluster_conf_t *cc);
 int cluster_power_limited();
 void cluster_check_powercap();
 void cluster_power_monitor();

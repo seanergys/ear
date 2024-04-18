@@ -65,6 +65,7 @@
 #include <management/cpufreq/frequency.h>
 #include <common/hardware/hardware_info.h>
 #include <common/system/monitor.h>
+#include <common/system/execute.h>
 
 #include <library/common/externs_alloc.h>
 #include <library/common/externs.h>

@@ -194,7 +194,6 @@ state_t report_applications(report_id_t *id,application_t *apps, uint count)
           sigex = (sig_ext_t *)apps[i].signature.sig_ext;
           dcgmis = (dcgmi_sig_t *)&sigex->dcgmis;
           if (dcgmis->dcgmi_sets && num_gpus){
-            char dcgmi_metrics[128];
             sprintf(extra_metrics,"%u;", dcgmis->dcgmi_sets*dcgmis->dcgmi_num_ev);
             for (uint set = 0; set < dcgmis->dcgmi_sets; set++){
               for (uint ev = 0; ev < dcgmis->dcgmi_num_ev; ev++){
@@ -287,7 +286,6 @@ state_t report_loops(report_id_t *id,loop_t *loops, uint count)
         sigex = (sig_ext_t *)loops[i].signature.sig_ext;
         dcgmis = (dcgmi_sig_t *)&sigex->dcgmis;
         if (dcgmis->dcgmi_sets && num_gpus){
-          char dcgmi_metrics[128];
           sprintf(extra_metrics,"%u;", dcgmis->dcgmi_sets*dcgmis->dcgmi_num_ev);
           for (uint set = 0; set < dcgmis->dcgmi_sets; set++){
             for (uint ev = 0; ev < dcgmis->dcgmi_num_ev; ev++){

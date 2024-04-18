@@ -114,7 +114,7 @@ static state_t static_read_power(uint *num_rows, uint expected_items)
     *num_rows = i;
     // Close
     popen_close(&nodesensor_p);
-
+		return EAR_SUCCESS;
 }
 
 declr_up_action_periodic(_nodesensors)
