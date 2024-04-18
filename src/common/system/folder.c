@@ -22,6 +22,7 @@
 #include <common/types/generic.h>
 #include <common/system/folder.h>
 #include <common/output/debug.h>
+#include <common/system/file.h>
 
 state_t folder_open(folder_t *folder, char *path)
 {
@@ -159,16 +160,21 @@ state_t folder_remove(char *path)
     debug("Error opening job path %s",job_path);
     return EAR_ERROR;
   }
-  verbose(0,"Cleaning job_path: %s", job_path);
+  debug("Cleaning job_path: %s", job_path);
 
-  while ((file = folder_getnext(&job_folder, NULL, NULL)))
+  while ((file = folder_getnext_type(&job_folder, NULL, NULL, DT_UNKNOWN)))
   {
+	if (strcmp(file, ".") == 0) continue;
+	if (strcmp(file, "..") == 0) continue;
     xsnprintf(file_path,sizeof(file_path),"%s/%s",job_path,file);
-    verbose(0,"Deleting: %s",file_path);
-    unlink(file_path);
+    debug("Deleting: %s",file_path);
+    if (file_is_directory(file_path)){
+	debug("file '%s' is a directory, removing", file_path);
+	folder_remove(file_path);
+    }else unlink(file_path);
   }
   //folder_close(&job_folder);
-  verbose(0,"Deleting folder %s", job_path);
+  debug("Deleting folder %s", job_path);
   rmdir(job_path);
 	return EAR_SUCCESS;
 

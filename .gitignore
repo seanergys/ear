@@ -175,4 +175,4 @@ src/tools/ear_conf
 src/tools/metrics_show
 src/commands/ear-info
 deployment.sh
-
+src/tools/node_manager_info

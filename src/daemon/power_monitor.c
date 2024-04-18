@@ -49,6 +49,7 @@
 #include <common/types/application.h>
 #include <common/types/periodic_metric.h>
 #include <common/types/configuration/cluster_conf.h>
+#include <common/utils/sched_support.h>
 #include <metrics/cpufreq/cpufreq.h>
 #include <management/imcfreq/imcfreq.h>
 #include <common/hardware/hardware_info.h>
@@ -64,6 +65,7 @@
 #if USE_GPUS
 #include <daemon/gpu/gpu_mgt.h>
 #endif
+#include <daemon/shared_pmon.h>
 
 #if SYSLOG_MSG
 #include <syslog.h>
@@ -167,51 +169,6 @@ static state_t restore_global_cpu_settings(powermon_app_t *powermon_app);
 #endif // NAIVE_SETTINGS_SAVE
 
 
-/***************** Job verification ***********************/
-static int is_running(char *status_text)
-{
-  if (strlen(status_text) == 0) return 0;
-  if (strstr(status_text, "COMPLETED") != NULL) return 0;
-  if (strstr(status_text, "FAILED")    != NULL) return 0;
-  if (strstr(status_text, "EXITED")    != NULL) return 0;
-  if (strstr(status_text, "TIMEOUT")   != NULL) return 0;
-  if (strstr(status_text, "CANCELLED") != NULL) return 0;
-  return 1;
-}
-
-
-static int read_word(int fd, char * buff, int limit)
-{
-  int t = 0, r = 0;
-  while(((r = read(fd, &buff[t], (limit-t))) > 0) && (t < limit)){
-    t += r;
-  }
-  return t;
-}
-
-
-static int is_job_running(char *tmp, int jobid)
-{
-  /* sacct -j 1512221.4294967291 -o state -n*/
-  char path_file[GENERIC_NAME], pid_str[128], status[128];
-  int fd, size;
-
-  sprintf(path_file,"%s/jobid_status_file", tmp);
-  fd = open(path_file, O_RDWR|O_CREAT|O_TRUNC,S_IWUSR|S_IRUSR);
-  pid_t status_pid = fork();
-  if (status_pid == 0 ){
-    dup2(fd,1);
-    sprintf(pid_str,"%d.batch", jobid);
-    debug("job id: %d", jobid);
-    if (execlp("sacct", "sacct", "-j", pid_str,"-o","state", "-n", NULL) < 0) error( "Error execlp (%s)", strerror(errno)); // perror ("error execlp");
-    exit(1);
-  }
-  if (waitpid(status_pid,  NULL, 0) < 0 ) error("Error waitpid (%s)", strerror(errno));
-  if (lseek(fd, 0 , SEEK_SET) < 0 ) error("Error lseek (%s)", strerror(errno));
-  size = read_word(fd, status, 128);
-  status[size] = '\0';
-  return is_running(status);
-}
 
 
 /* This function is called to validate the jobs in the list that are still alive.
@@ -318,6 +275,19 @@ void verbose_jobs_in_node(uint vl)
 
 
 powermon_app_t *current_ear_app[MAX_NESTED_LEVELS];
+
+/**** Shared data ****/
+
+/* This vector is a list with the IDs . It's 1 single vector */
+static uint eard_joblist[MAX_NESTED_LEVELS];
+static int fd_joblist;
+static uint *shared_eard_joblist;
+static char joblist_path[MAX_PATH_SIZE];
+
+/* This is 1 region per pmon , this string is re-used, only to create the paths */
+static char jobpmon_path[MAX_PATH_SIZE];
+/***** End shared data ****/
+
 int max_context_created = 0;
 int num_contexts = 0;
 
@@ -326,6 +296,20 @@ void init_contexts() {
   int i;
   for (i = 0; i < MAX_NESTED_LEVELS; i++) current_ear_app[i] = NULL;
     init_jobs_in_node();
+
+   /* Creating shared region with job list */
+   if (get_joblist_path(ear_tmp, joblist_path) != EAR_SUCCESS){
+                verbose(0, "Error creating shared region for job list");
+   }
+   verbose(VJOBPMON, "Shared region for jobs created '%s'", joblist_path);
+   memset(eard_joblist,0, sizeof(int)*MAX_NESTED_LEVELS);
+   shared_eard_joblist = create_joblist_shared_area(joblist_path, &fd_joblist, eard_joblist, MAX_NESTED_LEVELS);
+   if (shared_eard_joblist == NULL){
+                verbose(0, "Error creating shared region for job list in path '%s', NULL address returned", joblist_path);
+   }
+
+   verbose(VJOBPMON, "Shared region with joblist initialized");
+
 }
 
 
@@ -339,6 +323,8 @@ int find_empty_context() {
       pos = i;
     } else i++;
   }
+
+	
   return pos;
 }
 
@@ -492,6 +478,14 @@ void end_context(int cc)
             ID = create_ID(current_ear_app[cc]->app.job.id,
                            current_ear_app[cc]->app.job.step_id);
 
+						/* 0 means no context or Idle context */
+						shared_eard_joblist[cc] = 0;
+						if (get_jobmon_path(ear_tmp, ID, jobpmon_path) != EAR_SUCCESS){
+							error("Creating job pmon path in end_context");
+						}
+						/* Releasing self shared area */
+						jobmon_shared_area_dispose(jobpmon_path, NULL, current_ear_app[cc]->fd_shared_areas[SELF]);
+
             del_job_in_node(current_ear_app[cc]->app.job.id);
 
             get_settings_conf_path(ear_tmp, ID, shmem_path);
@@ -518,8 +512,15 @@ void end_context(int cc)
             ear_unlock(&current_ear_app[cc]->powermon_app_mutex);
 
             pthread_mutex_destroy(&current_ear_app[cc]->powermon_app_mutex);
+#if USE_PMON_SHARED_AREA
+		/* Releasing self shared area */
+		jobmon_shared_area_dispose(jobpmon_path, current_ear_app[cc], current_ear_app[cc]->fd_shared_areas[SELF]);
+#else
+	     jobmon_shared_area_dispose(jobpmon_path, (powermon_app_t *)current_ear_app[cc]->sh_self, current_ear_app[cc]->fd_shared_areas[SELF]);
+             free(current_ear_app[cc]);
+#endif
 
-            free(current_ear_app[cc]);
+
             current_ear_app[cc] = NULL;
 
             if (cc == max_context_created) {
@@ -588,6 +589,29 @@ int select_last_context() {
 }
 
 
+/** This function iterates over the eard data and cleans not valid job metrics */
+void powermon_purge_old_jobs()
+{
+	powermon_app_t *pmapp;
+  for (uint cc = 1; cc <= max_context_created; cc++) {
+
+  	if (current_ear_app[cc] != NULL) {
+    	pmapp = current_ear_app[cc];
+
+			state_t lock_st;
+     	if ((lock_st = ear_trylock(&pmapp->powermon_app_mutex)) != EAR_SUCCESS) {
+     		error("Locking context %lu/%lu for updating its mask: %s",
+                      pmapp->app.job.id, pmapp->app.job.step_id, state_msg);
+       	return;
+     	}
+			/* test application */
+			
+			ear_unlock(&pmapp->powermon_app_mutex);
+		}
+	}
+}
+
+
 /* TODO: Thread-save here?: It's not possible because mutex is inside the context that will be created. */
 int new_context(job_id id, job_id sid, int *cc)
 {
@@ -648,6 +672,33 @@ int new_context(job_id id, job_id sid, int *cc)
 
     /* We must create per jobid, stepid shared memory regions. */
     ID = create_ID(id, sid);
+    /* Shared vector with joblist */
+    shared_eard_joblist[ccontext] = ID;
+
+		/* Start: Mapping my own data in a shared file */
+		if (get_jobmon_path(ear_tmp, ID, jobpmon_path) != EAR_SUCCESS){
+			error("Error creating jobpmon path");
+			ear_unlock(&current_ear_app[ccontext]->powermon_app_mutex);
+			return EAR_ERROR;
+		}
+		// We use the new shared area rather than the allocated area
+		powermon_app_t *aux1 , *aux2;
+		aux1 = current_ear_app[ccontext];
+		if ((aux2 = create_jobmon_shared_area(jobpmon_path, current_ear_app[ccontext], &current_ear_app[ccontext]->fd_shared_areas[SELF])) == NULL){
+			error("Error creating shared memory for pmon for ((%lu,%lu)", id,sid);
+			ear_unlock(&current_ear_app[ccontext]->powermon_app_mutex);
+			return EAR_ERROR;
+		}
+		current_ear_app[ccontext]->sh_self = (void *)aux2;
+#if USE_PMON_SHARED_AREA
+		// This option forces eard to use the shared pmapp region , otherwise it is not updated dynamically
+		// it could be used to see the list of jobs but not to update job state etc
+		current_ear_app[ccontext] = aux2;
+		free(aux1);
+#endif
+		verbose(VJOBPMON,"Self context in path '%s' for (%lu/%lu)", jobpmon_path, id, sid);
+		/* End of Pmon mapping */
+
     get_settings_conf_path(ear_tmp, ID, shmem_path);
     debug("Settings for new context placed at %s", shmem_path);
 
@@ -933,6 +984,21 @@ state_t powermon_create_idle_context()
   cpufreq_count_devices(no_ctx, &freq_count);
 
   ID = create_ID(jid,sid);
+
+	/* Shared vector with joblist */
+	shared_eard_joblist[0] = ID;
+	/* Start: Mapping my own data in a shared file */
+	if (get_jobmon_path(ear_tmp, ID, jobpmon_path) != EAR_SUCCESS){
+		error("Error creating jobpmon path");
+		return EAR_ERROR;
+	}
+	verbose(VJOBPMON,"Self context in path '%s'", jobpmon_path);
+	if (create_jobmon_shared_area(jobpmon_path, current_ear_app[0], &current_ear_app[0]->fd_shared_areas[SELF]) == NULL){
+		return EAR_ERROR;
+	}
+	/* End of Pmon mapping */
+
+
   /* Shared memory regions for default context */
   get_settings_conf_path(ear_tmp, ID, shmem_path);
   verbose(VJOBPMON,"Settings for new context placed at %s",shmem_path);
@@ -1686,7 +1752,7 @@ void powermon_new_job(powermon_app_t *pmapp, ehandler_t *eh, application_t *appI
 
     energy_tag_t *my_tag;
 
-    if (!powermon_is_idle()) check_status_of_jobs(appID->job.id);
+    if (!powermon_is_idle() && is_job) check_status_of_jobs(appID->job.id);
 
     verbose(VJOBPMON, "%s--- powermon_new_job (%lu,%lu) ---%s",
             COL_BLU,appID->job.id, appID->job.step_id,COL_CLR);
@@ -2616,6 +2682,9 @@ void *eard_power_monitoring(void *noinfo)
     pthread_barrier_wait(&setup_barrier);
 
     while (!eard_must_exit) {
+	// TEST	
+        // finish_pending_contexts(&my_eh_pm);	
+
         verbose(VNODEPMON, "\n%s------------------- NEW PERIOD -------------------%s", COL_BLU,COL_CLR);
         // Wait for N secs
         sleep(f_monitoring);
@@ -3058,7 +3127,6 @@ static state_t store_current_task_governor(powermon_app_t *powermon_app, cpu_set
  * Only usable in SLURM systems. */
 static void check_status_of_jobs(job_id current)
 {
-    return; // We deactivate this function because it was designed to make hard testing.
     powermon_app_t *pmapp; 
     for (uint cc = 1; cc <= max_context_created; cc++)
     {
@@ -3069,9 +3137,11 @@ static void check_status_of_jobs(job_id current)
             /* No need to check the new one :) */
             if (pmapp->app.job.id != current)
             {
-                if (is_job_running(ear_tmp, pmapp->app.job.id) == 0)
+                // if (is_job_running(ear_tmp, pmapp->app.job.id) == 0)
+								if (is_job_step_valid(pmapp->app.job.id, pmapp->app.job.step_id) == 0)
                 {
                     verbose(VJOBPMON_BASIC, "Warning, we must clean  job %lu", pmapp->app.job.id);
+										pmapp->state = APP_FINISHED;
                 }
             }
         }
