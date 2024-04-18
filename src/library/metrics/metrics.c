@@ -1613,7 +1613,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 	sig_ext = metrics->sig_ext;
 
 #if USE_GPUS & DCGMI
-	if (master && dcgmi_lib_is_enabled() && (sig_ext->dcgmis.dcgmi_sets == 0))
+	if (master && dcgmi_lib_is_enabled() && (sig_ext->dcgmis.set_cnt == 0))
 	{
 		dcgmi_lib_dcgmi_sig_init(&sig_ext->dcgmis);
     }
@@ -1715,10 +1715,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 				}
 			} else // App signature
 			{
-				if (state_ok(dcgmi_lib_get_global_metrics(&sig_ext->dcgmis)))
-				{
-					dcgmi_lib_report_total_metrics();
-				} else
+				if (state_fail(dcgmi_lib_get_global_metrics(&sig_ext->dcgmis)))
 				{
 					error_lib("Getting global DCGMI metrics: %s", state_msg);
 				}

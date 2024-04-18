@@ -78,7 +78,7 @@ static uint *GPU_policy_state;
 static uint   *last_GPU_pstate;
 static signature_t prev_gpu_sig;
 static float *curr_value, *last_value;
-static uint dcgmi_instances = 0;
+static uint set_instances_cnt = 0;
 static uint dcgmi_ref_set;
 
 /* Configuration */
@@ -185,7 +185,7 @@ static void GPU_get_metric(uint g, signature_t *my_sig, float *curr)
 			if (sigex == NULL)  return;
       dcgmis = (dcgmi_sig_t *)&sigex->dcgmis;
       if (dcgmis == NULL) return;
-			dcgmi_t *dcgmis_data_sm = dcgmis->dcgmi_metrics[SM_SET];
+			gpuprof_t *dcgmis_data_sm = dcgmis->event_metrics_sets[SM_SET];
 			float sm_occ = (float)(dcgmis_data_sm[g].values[SM_EV]);
 			*curr = sm_occ * gpuf_list[g][last_GPU_pstate[g]]/(float)my_sig->DC_power;
 			#endif
@@ -202,9 +202,9 @@ static void GPU_get_metric(uint g, signature_t *my_sig, float *curr)
       float cpu_gflops = 0;
       float f64,f32,f16;
       ullong cpu_flops = 0;
-      dcgmi_t *dcgmis_data_64 = dcgmis->dcgmi_metrics[FP64_SET];
-      dcgmi_t *dcgmis_data_32 = dcgmis->dcgmi_metrics[FP32_SET];
-      dcgmi_t *dcgmis_data_16 = dcgmis->dcgmi_metrics[FP16_SET];
+      gpuprof_t *dcgmis_data_64 = dcgmis->event_metrics_sets[FP64_SET];
+      gpuprof_t *dcgmis_data_32 = dcgmis->event_metrics_sets[FP32_SET];
+      gpuprof_t *dcgmis_data_16 = dcgmis->event_metrics_sets[FP16_SET];
       verbose_master(2, "GPU[%u] computing CPU gflops ", g);
 			if (metric_to_optimize == FLOPS_W){
       //	for (uint fe = 0; fe < FLOPS_EVENTS; fe++) cpu_flops += my_sig->FLOPS[fe];
@@ -243,7 +243,7 @@ static uint GPU_metric_ready(signature_t *sig, uint g)
     if (sigex == NULL)  return 0;
     dcgmis = (dcgmi_sig_t *)&sigex->dcgmis;
     if (dcgmis == NULL) return 0;
-    if ( dcgmis->dcgmi_instances[dcgmi_ref_set] > dcgmi_instances)  return 1;
+    if ( dcgmis->set_instances_cnt[dcgmi_ref_set] > set_instances_cnt)  return 1;
     else                    return 0;
   #endif
   }
@@ -267,8 +267,8 @@ static void GPU_metric_ready_update(signature_t *my_sig)
     if (sigex == NULL)  return ;
     dcgmis = (dcgmi_sig_t *)&sigex->dcgmis;
     if (dcgmis == NULL) return ;
-    verbose_master(2,"Updating DCGMI number of instances to %d", dcgmis->dcgmi_instances[dcgmi_ref_set]);
-    dcgmi_instances = dcgmis->dcgmi_instances[dcgmi_ref_set];
+    verbose_master(2,"Updating DCGMI number of instances to %d", dcgmis->set_instances_cnt[dcgmi_ref_set]);
+    set_instances_cnt = dcgmis->set_instances_cnt[dcgmi_ref_set];
   #endif
   }
   }
@@ -317,7 +317,7 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
               new_freq[i] = gfreqs[i];
             }else{
                if (GPU_metric_ready(my_sig,i)){
-                verbose_master(2, "GPU[%d] optimize metric ready instances %d", i, dcgmi_instances);
+                verbose_master(2, "GPU[%d] optimize metric ready instances %d", i, set_instances_cnt);
                 metric_ready = 1;
                 /* GPU data ready */
                 if (GPU_policy_state[i] == FIRST_SELECTION){
