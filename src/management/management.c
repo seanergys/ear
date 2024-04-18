@@ -168,7 +168,8 @@ char *management_info_tostr(manages_info_t *m, char *buffer)
     if (m->pow.api <= API_DUMMY) tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s||                    ", m->pow.layer, m->pow.api_str, m->pow.devs_count, m->pow.scope_str, m->pow.granularity_str);
     if (m->imc.api >  API_DUMMY) tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s||%0.2lf to %0.2lf GHz", m->imc.layer, m->imc.api_str, m->imc.devs_count, m->imc.scope_str, m->imc.granularity_str, imc0ps0, imc0psM);
     if (m->imc.api <= API_DUMMY) tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s||                    ", m->imc.layer, m->imc.api_str, m->imc.devs_count, m->imc.scope_str, m->imc.granularity_str);
-    if (m->gpu.api == API_NONE ) tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s||                    ", m->gpu.layer, m->gpu.api_str, m->gpu.devs_count, m->gpu.scope_str, m->gpu.granularity_str);
+    if (m->gpu.api > API_DUMMY ) tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s||                    ", m->gpu.layer, m->gpu.api_str, m->gpu.devs_count, m->gpu.scope_str, m->gpu.granularity_str);
+    //if (m->gpu.api == API_NONE ) tsprintf(buffer, &st, 1, "%s||%s||%u||%s||%s||                    ", m->gpu.layer, m->gpu.api_str, m->gpu.devs_count, m->gpu.scope_str, m->gpu.granularity_str);
 
     return buffer;
 }

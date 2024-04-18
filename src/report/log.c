@@ -18,6 +18,7 @@
 
 #define _GNU_SOURCE         /* See feature_test_macros(7) */
 #include <errno.h>
+#include <sys/stat.h>
 
 extern char *program_invocation_name;
 extern char *program_invocation_short_name;

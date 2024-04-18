@@ -38,12 +38,6 @@
 #include <common/types/pc_app_info.h>
 
 
-#define PER_JOB_SHARED_REGIONS	4
-#define SETTINGS_AREA						0
-#define RESCHED_AREA						1
-#define APP_MGT_AREA						2
-#define PC_APP_AREA							3
-
 
 typedef struct services_conf
 {

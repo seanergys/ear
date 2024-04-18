@@ -56,5 +56,7 @@ state_t energy_to_str(ehandler_t *eh,char *str,edata_t e);
 
 state_t energy_set_power_limit(ehandler_t *eh,ulong limit,ulong target);
 
+state_t energy_not_privileged_init();
+
 #endif //EAR_ENERGY_H
 
