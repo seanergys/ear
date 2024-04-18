@@ -6,6 +6,7 @@ plug_BINS = \
     conf.so \
     dummy.so \
     eardcon.so \
+    eard_serialization.so \
     keyboard.so \
     management.so \
     management_viewer.so \
@@ -31,7 +32,7 @@ endif
 all: $(plug_BINS) dummy.so
 
 %.so: %.c
-	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^
+	$(CC) -g -I $(SRCDIR) -fPIC -shared -o $@ $^
 
 eardcon.so: eardcon.c $(SRCDIR)/daemon/local_api/libeard.a
 	$(CC) -I $(SRCDIR) -fPIC -shared -o $@ $^

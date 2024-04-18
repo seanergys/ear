@@ -56,9 +56,8 @@ int afd_set(int fd, afd_set_t *set, int flags)
         afd_init(set);
     }
     if (fd >= AFD_MAX || fd < 0 || set->fds[fd].fd != -1) {
-        return 0;
+        return_msg(0, "FD is less than 0 or greater than maximum allowed value");
     }
-
     set->fds[fd].fd      = fd;
     set->fds[fd].events  = flags;
     set->fds[fd].revents = 0;
@@ -159,7 +158,7 @@ int aselect(afd_set_t *set, ullong timeout, ullong *time_left)
     //
     // poll()
     // On success, a positive number is returned; this is the number of structures which have
-    // nonzero revents fields (in other words, those descriptors with events or errors reported). A
+    // nonzero events fields (in other words, those descriptors with events or errors reported). A
     // value of 0 indicates that the call timed out and no file descriptors were ready. On error, -1
     // is returned, and errno is set appropriately.
     ullong time_passed;

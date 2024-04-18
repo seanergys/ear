@@ -15,22 +15,19 @@
 * and COPYING.EPL files.
 */
 
+//#define SHOW_DEBUGS 1
+
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <math.h>
-//#define SHOW_DEBUGS 1
-#if !SHOW_DEBUGS
-#define NDEBUG
-#endif
 #include <assert.h>
-
 #include <common/config.h>
-#include <metrics/flops/flops.h>
+#include <common/output/debug.h>
 #include <common/types/signature.h>
 #include <common/math_operations.h>
-#include <common/output/debug.h>
+#include <metrics/flops/flops.h>
 
 static double compute_vpi(const ullong *FLOPS, ullong instructions);
 
@@ -537,4 +534,90 @@ static double compute_vpi(const ullong *FLOPS, ullong instructions) {
     }
 
     return (double) vins / (double) instructions;
+}
+
+static void gpu_signature_serialize(serial_buffer_t *b, gpu_signature_t *gpu_sig)
+{
+    gpu_app_t *gpu_data;
+    int gpu;
+
+    serial_dictionary_push_auto(b, gpu_sig->num_gpus);
+    for (gpu = 0; gpu < gpu_sig->num_gpus; ++gpu) {
+        gpu_data = &gpu_sig->gpu_data[gpu];
+        serial_dictionary_push_auto(b, gpu_data->GPU_power);
+        serial_dictionary_push_auto(b, gpu_data->GPU_freq);
+        serial_dictionary_push_auto(b, gpu_data->GPU_mem_freq);
+        serial_dictionary_push_auto(b, gpu_data->GPU_util);
+        serial_dictionary_push_auto(b, gpu_data->GPU_mem_util);
+    }
+}
+
+void signature_serialize(serial_buffer_t *b, signature_t *sig)
+{
+    serial_dictionary_push_auto(b, sig->DC_power); //
+    serial_dictionary_push_auto(b, sig->DRAM_power);
+    serial_dictionary_push_auto(b, sig->PCK_power);
+    serial_dictionary_push_auto(b, sig->EDP);
+    serial_dictionary_push_auto(b, sig->GBS);
+    serial_dictionary_push_auto(b, sig->IO_MBS);
+    serial_dictionary_push_auto(b, sig->TPI);
+    serial_dictionary_push_auto(b, sig->CPI);
+    serial_dictionary_push_auto(b, sig->Gflops);
+    serial_dictionary_push_auto(b, sig->time);
+    serial_dictionary_push_auto(b, sig->FLOPS);
+    serial_dictionary_push_auto(b, sig->L1_misses);
+    serial_dictionary_push_auto(b, sig->L2_misses);
+    serial_dictionary_push_auto(b, sig->L3_misses);
+    serial_dictionary_push_auto(b, sig->instructions);
+    serial_dictionary_push_auto(b, sig->cycles);
+    serial_dictionary_push_auto(b, sig->avg_f);
+    serial_dictionary_push_auto(b, sig->avg_imc_f);
+    serial_dictionary_push_auto(b, sig->def_f);
+    serial_dictionary_push_auto(b, sig->perc_MPI);
+#if USE_GPUS
+    gpu_signature_serialize(b, &sig->gpu_sig);
+#endif
+}
+
+static void gpu_signature_deserialize(serial_buffer_t *b, gpu_signature_t *gpu_sig)
+{
+    gpu_app_t *gpu_data;
+    int gpu;
+
+    serial_dictionary_pop_auto(b, gpu_sig->num_gpus);
+    for (gpu = 0; gpu < gpu_sig->num_gpus; ++gpu) {
+        gpu_data = &gpu_sig->gpu_data[gpu];
+        serial_dictionary_pop_auto(b, gpu_data->GPU_power);
+        serial_dictionary_pop_auto(b, gpu_data->GPU_freq);
+        serial_dictionary_pop_auto(b, gpu_data->GPU_mem_freq);
+        serial_dictionary_pop_auto(b, gpu_data->GPU_util);
+        serial_dictionary_pop_auto(b, gpu_data->GPU_mem_util);
+    }
+}
+
+void signature_deserialize(serial_buffer_t *b, signature_t *sig)
+{
+    serial_dictionary_pop_auto(b, sig->DC_power);
+    serial_dictionary_pop_auto(b, sig->DRAM_power);
+    serial_dictionary_pop_auto(b, sig->PCK_power);
+    serial_dictionary_pop_auto(b, sig->EDP);
+    serial_dictionary_pop_auto(b, sig->GBS);
+    serial_dictionary_pop_auto(b, sig->IO_MBS);
+    serial_dictionary_pop_auto(b, sig->TPI);
+    serial_dictionary_pop_auto(b, sig->CPI);
+    serial_dictionary_pop_auto(b, sig->Gflops);
+    serial_dictionary_pop_auto(b, sig->time);
+    serial_dictionary_pop_auto(b, sig->FLOPS);
+    serial_dictionary_pop_auto(b, sig->L1_misses);
+    serial_dictionary_pop_auto(b, sig->L2_misses);
+    serial_dictionary_pop_auto(b, sig->L3_misses);
+    serial_dictionary_pop_auto(b, sig->instructions);
+    serial_dictionary_pop_auto(b, sig->cycles);
+    serial_dictionary_pop_auto(b, sig->avg_f);
+    serial_dictionary_pop_auto(b, sig->avg_imc_f);
+    serial_dictionary_pop_auto(b, sig->def_f);
+    serial_dictionary_pop_auto(b, sig->perc_MPI);
+#if USE_GPUS
+    gpu_signature_deserialize(b, &sig->gpu_sig);
+#endif
 }

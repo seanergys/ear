@@ -301,3 +301,33 @@ static int append_loop_text_file_no_job_int(char *path, loop_t *loop,int ts, ull
 
     return EAR_SUCCESS;
 }
+
+void loop_serialize(serial_buffer_t *b, loop_t *loop)
+{
+    serial_dictionary_push_auto(b, loop->id.event);
+    serial_dictionary_push_auto(b, loop->id.size);
+    serial_dictionary_push_auto(b, loop->id.level);
+    serial_dictionary_push_auto(b, loop->jid);
+    serial_dictionary_push_auto(b, loop->step_id);
+#if WF_SUPPORT
+    serial_dictionary_push_auto(b, loop->local_id);
+#endif
+    serial_dictionary_push_auto(b, loop->node_id);
+    serial_dictionary_push_auto(b, loop->total_iterations);
+    signature_serialize(b, &loop->signature);
+}
+
+void loop_deserialize(serial_buffer_t *b, loop_t *loop)
+{
+    serial_dictionary_pop_auto(b, loop->id.event);
+    serial_dictionary_pop_auto(b, loop->id.size);
+    serial_dictionary_pop_auto(b, loop->id.level);
+    serial_dictionary_pop_auto(b, loop->jid);
+    serial_dictionary_pop_auto(b, loop->step_id);
+#if WF_SUPPORT
+    serial_dictionary_pop_auto(b, loop->local_id);
+#endif
+    serial_dictionary_pop_auto(b, loop->node_id);
+    serial_dictionary_pop_auto(b, loop->total_iterations);
+    signature_deserialize(b, &loop->signature);
+}

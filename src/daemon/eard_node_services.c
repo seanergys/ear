@@ -259,9 +259,9 @@ int services_misc(eard_head_t *head, int req_fd, int ack_fd)
     case RPC_GET_STATE:
         s.pid = getpid();
         s.gpus_supported_count = MAX_GPUS_SUPPORTED;
-				s.cpus_supported_count = MAX_CPUS_SUPPORTED;
-				s.sock_supported_count = MAX_SOCKETS_SUPPORTED;
-    		s.gpus_support_enabled = USE_GPUS;
+        s.cpus_supported_count = MAX_CPUS_SUPPORTED;
+        s.sock_supported_count = MAX_SOCKETS_SUPPORTED;
+        s.gpus_support_enabled = USE_GPUS;
         version_set(&s.version, VERSION_MAJOR, VERSION_MINOR);
         return answer(ack_fd, call, (char *) &s, sizeof(eard_state_t), EAR_SUCCESS, NULL);
     break;
@@ -1146,58 +1146,72 @@ int eard_node_energy(eard_head_t *head,int req_fd,int ack_fd)
     return 1;
 }
 
-int eard_system(eard_head_t *head,int req_fd,int ack_fd)
+int eard_system(eard_head_t *head, int req_fd, int ack_fd)
 {
-    unsigned long ack;
-    int con_id;
+    application_t  app;
+    ear_event_t    event;
+    loop_t         loop;
+    int            con_id;
+    state_t        s;
+    char          *data = NULL;
+    size_t         size = 0;
+    uint           call = head->req_service;
 
     con_id = get_local_connection_by_fd(eard_local_conn,req_fd,ack_fd);
 	verbose(VEARD_LAPI_DEBUG,"EARD old system");
 
     switch (head->req_service) {
-    case WRITE_APP_SIGNATURE:
-        verbose(VEARD_LAPI,"App signature received: Anonymous %lu", eard_local_conn[con_id].anonymous);
-        if (!eard_local_conn[con_id].anonymous) {
-            powermon_mpi_signature(&req.req_data.app);
-        }
-        ack = EAR_COM_OK;
-        if (write(ack_fd, &ack, sizeof(ulong)) != sizeof(ulong)) {
-            error("ERROR while writing system service ack, closing connection...");
-            eard_close_comm(req_fd,ack_fd);
-        }
-        break;
-    case WRITE_EVENT:
-        ack = EAR_COM_OK;
-        report_connection_status = report_events(&rid, &req.req_data.event, 1);
-        if (report_connection_status == EAR_SUCCESS) {
-            ack = EAR_COM_OK;
-        } else {
-            ack = EAR_COM_ERROR;
-        }
-        if (write(ack_fd, &ack, sizeof(ulong)) != sizeof(ulong)){
-            // Do something with the error
-        }
-        break;
-        case WRITE_LOOP_SIGNATURE:
-        debug("WRITE_LOOP_SIGNATURE");
-        ack = EAR_COM_OK;
-        powermon_loop_signature(eard_local_conn[con_id].jid,eard_local_conn[con_id].sid,&req.req_data.loop);
-        // print_loop_fd(1,&req.req_data.loop);
-        report_connection_status = report_loops(&rid, &req.req_data.loop, 1);
+        case RPC_WRITE_APPLICATION:
+            // Initializing
+            memset(&app, 0, sizeof(application_t));
+            serial_reset(&wb, head->size);
+            // Receiving
+            if (state_fail(s = eard_rpc_read_pending(req_fd, serial_data(&wb), head->size, 0))) {
+                serror(Rpcerr.pending);
+            } else {
+                application_deserialize(&wb, &app);
 
-        if (report_connection_status == EAR_SUCCESS) {
-            ack = EAR_COM_OK;
-        } else {
-            ack = EAR_COM_ERROR;
-        }
-        if (write(ack_fd, &ack, sizeof(ulong)) != sizeof(ulong)) {
-            // Do something with the error
-        }
-        break;
-    default:
+                if (!eard_local_conn[con_id].anonymous) {
+                    powermon_mpi_signature(&app);
+                }
+            }
+            break;
+        case RPC_WRITE_LOOP:
+            // Initializing
+            memset(&loop, 0, sizeof(loop_t));
+            serial_reset(&wb, head->size);
+            // Receiving
+            if (state_fail(s = eard_rpc_read_pending(req_fd, serial_data(&wb), head->size, 0))) {
+                serror(Rpcerr.pending);
+            } else {
+                loop_deserialize(&wb, &loop);
+
+                powermon_loop_signature(eard_local_conn[con_id].jid, eard_local_conn[con_id].sid, &loop);
+                // print_loop_fd(1,&req.req_data.loop);
+                s = report_loops(&rid, &req.req_data.loop, 1);
+            }
+            break;
+        case RPC_WRITE_EVENT:
+            // Initializing
+            memset(&event, 0, sizeof(ear_event_t));
+            serial_reset(&wb, head->size);
+            // Receiving
+            if (state_fail(s = eard_rpc_read_pending(req_fd, serial_data(&wb), head->size, 0))) {
+                serror(Rpcerr.pending);
+            } else {
+                event_deserialize(&wb, &event);
+
+                s = report_events(&rid, &req.req_data.event, 1);
+            }
+            break;
+        default:
+            return 0;
+    }
+    // Always answering
+    if (state_fail(eard_rpc_answer(ack_fd, call, s, data, size, state_msg)) ){
         return 0;
-  }
-  return 1;
+    }
+    return 1;
 }
 
 int eard_rapl(eard_head_t *head,int req_fd,int ack_fd)
