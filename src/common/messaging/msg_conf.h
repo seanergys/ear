@@ -213,6 +213,7 @@ typedef struct power_check {
 #define EAR_RC_STATUS               600
 #define EAR_RC_APP_NODE_STATUS      601
 #define EAR_RC_APP_MASTER_STATUS    602
+#define EAR_RC_NODE_PURGE           603
 
 /* New functions for power limits */
 #define EAR_RC_RED_POWER            700

@@ -82,7 +82,7 @@ mets_OBJS = \
 
 ######## RULES
 
-all: all.components metrics.o libmetrics.a
+all: all.components metrics.o libmetrics.a 
 
 post: test
 	@ $(MAKE) -C 'gpu' post || exit
@@ -118,13 +118,14 @@ clean: clean.components rclean
 	@ $(MAKE) -C 'gpu'          $* || exit
 	@ $(MAKE) -C 'cpi'          $* || exit
 	@ $(MAKE) -C 'cpufreq'      $* || exit
-	@ $(MAKE) -C 'energy'       $* || exit
 	@ $(MAKE) -C 'flops'        $* || exit
 	@ $(MAKE) -C 'imcfreq'      $* || exit
 	@ $(MAKE) -C 'io'           $* || exit
 	@ $(MAKE) -C 'proc'         $* || exit
 	@ $(MAKE) -C 'temperature'  $* || exit
 	@ $(MAKE) -C 'energy_cpu'   $* || exit
+	@ $(MAKE) -C 'energy'       $* || exit
+
 
 ######## DEPENDENCIES
 

@@ -205,6 +205,7 @@
  * set to 0, all remote messages will be accepted. Components compiled with 
  * different values of this constant will NOT be compatible */
 #define USE_SEC_KEY_RC                      0
+#define USE_PMON_SHARED_AREA		    1
 
 
 /** @name Library

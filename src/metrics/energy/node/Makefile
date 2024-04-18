@@ -10,6 +10,7 @@ ener_OBJS = \
     energy_inm_power.o \
     energy_SD650N_V2.o \
     energy_dummy.o \
+    energy_cpu_gpu.o \
 	  energy_sd650_power.o
 
 ifdef FREEIPMI_BASE
@@ -29,6 +30,7 @@ ener_BINS = \
     energy_sd650.so \
     energy_inm_power.so \
     energy_SD650N_V2.so \
+    energy_cpu_gpu.so \
     energy_dummy.so \
 	  energy_sd650_power.so
 
@@ -65,6 +67,9 @@ energy_inm_power_freeipmi.so:energy_inm_power_freeipmi.o
 
 energy_redfish.so: energy_redfish.o $(ener_DEPS) $(redfish_DEPS)
 	$(CC) $(CC_FLAGS) $(CFLAGS) -shared $< -o $@ $(redfish_DEPS) $(ener_DEPS)
+
+energy_cpu_gpu.so:energy_cpu_gpu.o $(ener_DEPS)
+	$(CC) $(CC_FLAGS) $(CFLAGS) -shared $< -o $@ $(ener_DEPS) -lm 
 
 %.o: %.c
 	$(CC) $(CFLAGS) -pthread -c $<

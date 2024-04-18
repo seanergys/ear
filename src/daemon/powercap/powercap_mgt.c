@@ -37,8 +37,8 @@
 #include <common/hardware/hardware_info.h>
 #include <common/types/configuration/cluster_conf.h>
 
-#include <daemon/shared_configuration.h>
 #include <daemon/power_monitor.h>
+#include <daemon/shared_configuration.h>
 #include <daemon/powercap/powercap_mgt.h>
 #include <daemon/powercap/powercap_status.h>
 #if USE_GPUS

@@ -24,6 +24,8 @@
 #ifndef _POWER_MONITORING_H_
 #define _POWER_MONITORING_H_
 
+#define MAX_NESTED_LEVELS 16384
+#if 0
 #include <linux/version.h>
 #include <common/types/application.h>
 #include <common/messaging/msg_conf.h>
@@ -33,7 +35,6 @@
 #include <daemon/node_metrics.h>
 #include <daemon/shared_configuration.h>
 
-#define MAX_NESTED_LEVELS 16384
 
 #define APP_DEFAULT  0
 #define APP_FINISHED 1
@@ -67,6 +68,9 @@ typedef struct powermon_app {
     pthread_mutex_t   powermon_app_mutex;
     int								fd_shared_areas[PER_JOB_SHARED_REGIONS]; 
 } powermon_app_t;
+
+#endif
+#include <daemon/power_monitor_app.h>
 
 
 typedef struct job_context {
@@ -220,4 +224,9 @@ void powermon_report_event(uint event_type, llong value);
 
 /** \todo Add a description. */
 uint is_job_in_node(job_id id, job_context_t **jc);
+
+
+/** Checks all the job in eard internal data structures and cleans not valid data 
+ */
+ void powermon_purge_old_jobs();
 #endif

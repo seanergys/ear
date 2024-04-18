@@ -38,8 +38,7 @@ CC_FLAGS   += -DWF_SUPPORT=0
 MPI_CFLAGS += -DWF_SUPPORT=0
 
 COMPONENT_DISABLE += \
-     commands\
-     tools
+     commands
 endif
 
 ######## RULES
@@ -86,6 +85,7 @@ pbshook.install: pbs_hook.install;
 
 %.components:
 	@ for i in $(COMPONENTS); do                            \
+    echo "================ Processing $$i =================="; \
 		if ([ -z "${COMPONENT_ENABLE}"  ] && printf %s\\n "${COMPONENT_DISABLE}" | grep -qFv "$$i") || \
            ([ -z "${COMPONENT_DISABLE}" ] && printf %s\\n "${COMPONENT_ENABLE}"  | grep -qF  "$$i"); then \
         	echo "====================================";    \
