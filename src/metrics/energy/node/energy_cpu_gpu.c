@@ -58,8 +58,7 @@ static uint             cpu_energy_loaded = 0, gpu_energy_loaded = 0;
 state_t energy_init(void **c)
 {
 	topology_t tp;
-	state_t st,s;
-	int ret;
+	state_t s;
 
 	if (c == NULL) {
 		return EAR_ERROR;
@@ -123,7 +122,6 @@ state_t energy_frequency(ulong *freq_us) {
 }
 
 state_t energy_dc_read(void *c, edata_t energy_mj) {
-	state_t st;
 	verbose(VCPU_GPU,"CPU-GPU plugin: READ");
 	cpu_gpu_t *penergy_mj = (cpu_gpu_t *)energy_mj;
 
@@ -132,7 +130,6 @@ state_t energy_dc_read(void *c, edata_t energy_mj) {
 	debug("energy_dc_read\n");
 
 	if (penergy_mj == NULL) return EAR_ERROR;
-	if (penergy_mj->cpu_energy == NULL || penergy_mj->gpu_energy == NULL) return EAR_ERROR;
 
 	/* CPU */
 	energy_cpu_read(no_ctx, energy_cpu_data);
