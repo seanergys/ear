@@ -15,16 +15,12 @@
 * and COPYING.EPL files.
 */
 
-
 #define _GNU_SOURCE
 #include <dlfcn.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <common/config.h>
 #include <common/output/verbose.h>
-#include <common/system/file.h>
-#include <common/system/symplug.h>
-#include <common/string_enhanced.h>
 
 int module_file_exists(char *path)
 {

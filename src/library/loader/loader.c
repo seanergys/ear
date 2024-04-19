@@ -15,26 +15,23 @@
 * and COPYING.EPL files.
 */
 
-
-// #define SHOW_DEBUGS 1
 #define _GNU_SOURCE
-
 #include <stdio.h>
 #include <sched.h>
 #include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <sys/types.h>
+// #define SHOW_DEBUGS 1
+#include <common/output/debug.h>
+#include <common/string_enhanced.h>
+#include <common/config/config_env.h>
 #include <library/loader/loader.h>
-#include <library/loader/module_common.h>
 #include <library/loader/module_mpi.h>
 #include <library/loader/module_cuda.h>
+#include <library/loader/module_common.h>
 #include <library/loader/module_openmp.h>
 #include <library/loader/module_oneapi.h>
 #include <library/loader/module_default.h>
-#include <common/config/config_env.h>
-#include <common/output/debug.h>
-#include <common/string_enhanced.h>
 
 static int _loaded;
 

@@ -1,5 +1,5 @@
-CFLAGS  = -fPIC -I$(SRCDIR) $(CONSTANTS)
-LDFLAGS = -ldl
+CFLAGS      = -fPIC -I$(SRCDIR) $(CONSTANTS)
+LDFLAGS     = -ldl
 LOAD_CFLAGS = $(CFLAGS)
 
 ######## FILES
@@ -26,7 +26,6 @@ all: $(load_BINS)
 
 %.o: %.c %.h
 	$(CC) $(MPI_CFLAGS) $(CC_FLAGS) $(LOAD_CFLAGS) -c $<
-
 
 libearld.so: $(load_OBJS) $(load_DEPS)
 	$(CC) $(CC_FLAGS) -shared -o $@ $^ $(LDFLAGS)

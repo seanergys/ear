@@ -72,38 +72,38 @@ comm_OBJS = \
 
 
 core_OBJS = \
-						api/ear.o \
-						api/clasify.o \
-						api/mpi_support.o \
-						api/cupti.o \
-						api/eard_dummy.o \
-						common/library_shared_data.o \
-						common/utils.o \
-						metrics/metrics.o \
-						metrics/energy_node_lib.o \
-						metrics/fine_grain_collect.o \
-						models/cpu_power_model.o \
-						models/energy_model.o \
-						policies/policy.o \
-						policies/common/pc_support.o \
-						policies/common/gpu_support.o \
-						policies/common/cpu_support.o \
-						policies/common/mpi_stats_support.o \
-						policies/common/imc_policy_support.o \
-						policies/common/generic.o \
-						states/states_comm.o \
-						states/states.o \
-						tracer/tracer.o \
-						dynais/dynais.a
+    api/ear.o \
+    api/clasify.o \
+    api/mpi_support.o \
+    api/cupti.o \
+    api/eard_dummy.o \
+    common/library_shared_data.o \
+    common/utils.o \
+    metrics/metrics.o \
+    metrics/energy_node_lib.o \
+    metrics/fine_grain_collect.o \
+    models/cpu_power_model.o \
+    models/energy_model.o \
+    policies/policy.o \
+    policies/common/pc_support.o \
+    policies/common/gpu_support.o \
+    policies/common/cpu_support.o \
+    policies/common/mpi_stats_support.o \
+    policies/common/imc_policy_support.o \
+    policies/common/generic.o \
+    states/states_comm.o \
+    states/states.o \
+    tracer/tracer.o \
+    dynais/dynais.a
 
 
 ifeq ($(DCGMI), 1)
 core_OBJS += \
-						 metrics/common.o \
-						 metrics/dcgmi_lib.o \
-						 metrics/turing.o \
-						 metrics/hopper.o \
-						 metrics/ampere.o
+    metrics/common.o \
+    metrics/dcgmi_lib.o \
+    metrics/turing.o \
+    metrics/hopper.o \
+    metrics/ampere.o
 endif
 
 ifeq ($(FEAT_DLB), 1)
@@ -141,6 +141,7 @@ post:
 ######## SUBFOLDERS
 
 %.components:
+	@ $(MAKE) -C 'loader'     $* || exit
 	@ $(MAKE) -C 'api'        $* || exit
 	@ $(MAKE) -C 'common'     $* || exit
 	@ $(MAKE) -C 'dynais'     $* || exit
@@ -149,7 +150,6 @@ post:
 	@ $(MAKE) -C 'policies'   $* || exit
 	@ $(MAKE) -C 'states'     $* || exit
 	@ $(MAKE) -C 'tracer'     $* || exit
-	@ $(MAKE) -C 'loader'     $* || exit
 
 ######## DEPENDENCIES
 

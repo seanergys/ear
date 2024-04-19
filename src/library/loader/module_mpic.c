@@ -15,14 +15,11 @@
 * and COPYING.EPL files.
 */
 
-
-
 #include <stdlib.h>
 #include <unistd.h>
 #include <common/config.h>
-#include <library/loader/module_common.h>
 #include <library/loader/module_mpi.h>
-
+#include <library/loader/module_common.h>
 
 extern mpic_t ear_mpic;
 

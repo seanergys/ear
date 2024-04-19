@@ -1,4 +1,4 @@
-/*
+ a/*
 *
 * This program is part of the EAR software.
 *
@@ -194,9 +194,9 @@ typedef enum
     Not_implemented
 } mpi_call;
 
-
 int is_mpi_enabled();
 int is_intelmpi();
 int is_openmpi();
 int openmpi_num_nodes();
+
 #endif

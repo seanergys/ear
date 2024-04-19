@@ -15,13 +15,10 @@
 * and COPYING.EPL files.
 */
 
-
 #define _GNU_SOURCE
 #include <dlfcn.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <common/config.h>
-#include <common/system/file.h>
 #include <common/system/symplug.h>
 #include <common/string_enhanced.h>
 #include <library/loader/loader.h>
@@ -365,4 +362,3 @@ void module_mpi_destructor()
   	}
 	}
 }
-
