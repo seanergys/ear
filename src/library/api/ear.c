@@ -1571,6 +1571,7 @@ void ear_init()
 				debug("Starting job");
 				// sets the job start_time
 				start_job(&application.job);
+				start_mpi(&application.job);
 				debug("Job time initialized");
 
 				verbose_master(0,"EARD connection section EARD=%d",eard_ok);
@@ -2225,6 +2226,8 @@ void ear_finalize(int exit_status)
 #if USE_GPUS
 								verbose_master(2, " Application with %d GPUS", application.signature.gpu_sig.num_gpus);
 #endif
+								end_job(&application.job);
+								end_mpi(&application.job);
 								if (report_applications(&rep_id,&application,1) != EAR_SUCCESS){
 												verbose_master(1,"Error reporting application");
 								}
