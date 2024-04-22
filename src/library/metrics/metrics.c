@@ -91,7 +91,7 @@
 #define FAKE_POWER_READING  0
 #define FAKE_ENERGY_READING 0
 
-#define USE_PROC_PS            0
+#define USE_PROC_PS            1
 
 #define INFO_METRICS           2
 #define IO_VERB                3
