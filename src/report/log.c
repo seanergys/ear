@@ -26,6 +26,7 @@ extern char *program_invocation_short_name;
 // #define SHOW_DEBUGS 1
 
 #include <stdio.h>
+#include <sys/stat.h>
 #include <common/states.h>
 #include <common/types/types.h>
 #include <common/types/configuration/cluster_conf.h>
@@ -106,7 +107,7 @@ static void log_signature(int fd, signature_t * sig)
 {
 	char sig_str[1024];
 	signature_to_str(sig, sig_str, sizeof(sig_str));
-	dprintf(fd, sig_str);
+	dprintf(fd, "%s", sig_str);
 }
 
 state_t report_applications(report_id_t *id,application_t *apps, uint count)

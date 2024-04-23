@@ -36,7 +36,7 @@ typedef struct psctx_s {
 	int fd;
 } psctx_t;
 
-static uint mode;
+static uint mode = 0;
 
 state_t kernel_version(uint *kernel, uint *major, uint *minor, uint *patch)
 {
@@ -45,6 +45,7 @@ state_t kernel_version(uint *kernel, uint *major, uint *minor, uint *patch)
 	char *p;
 	int i;
 
+	debug("testing kernel_version");
 	if (uname(&buffer) != 0) {
 		return_msg(EAR_ERROR, strerror(errno));
 	}
@@ -75,12 +76,15 @@ state_t proc_stat_load()
 	uint patch;
 	state_t s;
 
+	debug("proc_stat_load mode %u", mode);
+
 	if (mode > 0) {
 		return EAR_SUCCESS;
 	}
 	if (state_fail(s = kernel_version(&kernel, &major, &minor, &patch))) {
 		return s;
 	}
+	debug("Kernel %u major %u minor %u ", kernel, major, minor);
 	clk_per_second = sysconf(_SC_CLK_TCK);
 	if (clk_per_second < 0){
 		/* Using default value */

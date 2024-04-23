@@ -45,8 +45,8 @@
  * \param[in] new_freq The next frequency applied.
  * \param[in] mode TODO.
  */
-void state_verbose_signature(loop_t *sig, int master_rank, int show, char *aname,
-        char *nname, int iterations, ulong prevf, ulong new_freq, char *mode);
+void state_verbose_signature(loop_t *sig, int master_rank, char *aname, char *nname,
+														 int iterations, ulong prevf, ulong new_freq, char *mode);
 
 void state_report_traces(int master_rank, int my_rank, int lid, loop_t *lsig, ulong freq, ulong status);
 void state_report_traces_state(int master_rank, int my_rank,int lid, ulong status);

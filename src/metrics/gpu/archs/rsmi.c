@@ -210,12 +210,11 @@ state_t gpu_rsmi_pool(void *p)
     timestamp_t time;
     double time_diff;
     gpu_t metric;
-    int working;
     int i;
 
     debug("Pooling");
     //
-    working = 0;
+    uint working = 0;
     // Lock
     while (pthread_mutex_trylock(&lock));
     // Time operations

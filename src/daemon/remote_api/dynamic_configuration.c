@@ -735,7 +735,7 @@ void dyncon_set_risk(int fd, request_t *command)
                     if (new_max_freq != dyn_conf->max_freq){
                         dyn_conf->max_freq = new_max_freq;
                         resched_conf->force_rescheduling = 1;
-                        if (node_max < new_max_freq) node_max = node_max;
+                        if (node_max < new_max_freq) node_max = new_max_freq;
                     }
                 }
             }

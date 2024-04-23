@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <common/utils/args.h>
@@ -33,6 +33,7 @@ typedef void  (get_tag_f)         (cchar **tag, cchar **tags_deps);
 typedef char *(action_init_f)     (cchar *tag, void **data_alloc, void *data);
 typedef char *(action_periodic_f) (cchar *tag, void *data);
 typedef char *(post_data_f)       (cchar *msg, void *data);
+typedef char *(fds_set_f)         (afd_set_t *set);
 
 static ulong monitor_period = 100;
 static ulong relax_period = 100;
@@ -52,6 +53,8 @@ typedef struct plugin_s {
     uint               deps_table[MAX_PLUGINS]; // Not sorted, table of dependecy modes
     action_init_f     *action_init[MAX_PLUGINS];
     action_periodic_f *action_periodic[MAX_PLUGINS];
+    fds_set_f         *fds_register;
+    fds_set_f         *fds_attend;
     post_data_f       *post_data;
     void              *data;
     void              *data_conf;
@@ -78,6 +81,10 @@ static plugins_t   p;
 static char      **priority_paths;
 static char        date[128];
 static uint        exit_called;
+static int         fds_status;
+static afd_set_t   fds_active;
+static ullong      timeout;
+static ullong      timeout_remaining;
 
 static int plugins_dependencies_read(cchar *string, ullong father_time_lapse, uint priority, uint *father_deps_table)
 {
@@ -210,7 +217,7 @@ static int plugins_dependencies_read(cchar *string, ullong father_time_lapse, ui
         }
         // If not found, update the father dependency table
         if (father_deps_table != NULL) {
-            father_deps_table[p.count] = (uint) mandatory;
+            father_deps_table[p.count] = mandatory;
         }
         // Not found, so this is a new plugin
         p.count += 1;
@@ -360,7 +367,6 @@ static int output_print(int i, int d, char *prefix, char *output)
             output += 3;
         } else if (strstr(output, "[X]") != NULL) {
             exit_called = 1;
-            return 0;
         }
     }
     // Cleaning spaces
@@ -369,6 +375,9 @@ static int output_print(int i, int d, char *prefix, char *output)
     }
     if (strlen(output) > 0) {
         verbose(0, "[ %s, %21s ] %s%s", date, p.plugins_sorted[i]->file_name, prefix, output);
+    }
+    if (exit_called) {
+        return 0;
     }
     return 1;
 }
@@ -449,6 +458,27 @@ next_ap:
     // before means that data is required to perform the dependent main function,
     // which makes sense.
     plugins_action_periodic(i+1, time_now, time_passed);
+}
+
+static void plugins_fds_attend(int i)
+{
+    char *sout;
+    // Base case
+    if (i == p.count) {
+        return;
+    }
+    if (p.plugins_sorted[i]->fds_attend == (void *) UINT64_MAX) {
+        goto next_fa;
+    }
+    p.plugins_sorted[i]->fds_attend = dlsym(p.plugins_sorted[i]->handler, "up_fds_attend");
+    if (p.plugins_sorted[i]->fds_attend != NULL) {
+        sout = p.plugins_sorted[i]->fds_attend(&fds_active);
+        output_print(i, i, "FDs attend status: ", sout);
+    } else {
+        p.plugins_sorted[i]->fds_attend = (void *) UINT64_MAX;
+    }
+next_fa:
+    plugins_fds_attend(i+1);
 }
 
 static state_t plugins_main(void *whatever)
@@ -542,12 +572,28 @@ next_ai:
     plugins_action_init(i+1);
 }
 
+static void plugins_fds_register(int i)
+{
+    char *sout;
+    // Base case
+    if (i == p.count) {
+        return;
+    }
+    p.plugins_sorted[i]->fds_register = dlsym(p.plugins_sorted[i]->handler, "up_fds_register");
+    if (p.plugins_sorted[i]->fds_register != NULL) {
+        sout = p.plugins_sorted[i]->fds_register(&fds_active);
+        output_print(i, i, "FDs register status: ", sout);
+    }
+    plugins_fds_register(i+1);
+}
+
 static state_t plugins_init(void *whatever)
 {
     int enabled = 0;
     if ((enabled = plugins_open())) {
         plugins_open_sort(p.max_priority, 0);
         plugins_action_init(0);
+        plugins_fds_register(0);
     }
     if (!enabled) {
         monitor_dispose();
@@ -613,6 +659,25 @@ int plugin_manager_main(int argc, char *argv[])
         verbose(0, "[ERROR] No plugins to load.")
         return 0;
     }
+    #if 0
+    afd_init(&fds_active);
+    plugins_init(NULL);
+    // 100 milliseconds
+    timeout = 100LLU;
+    while (!exit_called) {
+        if ((fds_status = aselect(&fds_active, timeout, &timeout_remaining)) != -1) {
+            if (fds_status > 0) {
+                printf("fds_status > 0\n");
+                plugins_fds_attend(0);
+                timeout = timeout_remaining;
+            } else if (fds_status == 0) {
+                printf("fds_status == 0\n");
+                plugins_main(NULL);
+                timeout = 100LLU;
+            }
+        }
+    }
+    #else
     // Suscriptions
     suscription_t *sus = suscription();
     sus->call_init     = plugins_init;
@@ -621,8 +686,11 @@ int plugin_manager_main(int argc, char *argv[])
     sus->time_burst    = monitor_period;
     sus->suscribe(sus);
     // Monitoring metrics
-    verbose(0, "Initializing UPM monitor with burst = %lu and relax = %lu", monitor_period, relax_period);
-    monitor_init();
+    debug("Initializing monitor");
+    if (state_fail(monitor_init())) {
+        verbose(0, "Monitor failed: %s", state_msg);
+    }
+    #endif
 
     return 1;
 }

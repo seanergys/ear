@@ -84,6 +84,10 @@ void gpu_set_monitoring_mode(int mode);
 // Reads the GPU device data and stores it in the gpu_t array data (1 per device).
 state_t gpu_read(ctx_t *c, gpu_t *data);
 
+state_t gpu_metrics_set();
+
+state_t gpu_metrics_read();
+
 // Reads the GPU device data directly from the hardware (not pooled).
 state_t gpu_read_raw(ctx_t *c, gpu_t *data);
 

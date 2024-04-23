@@ -138,8 +138,7 @@ static int exenv_remote(spank_t sp, char *var)
 
 	serrno = spank_getenv (sp, var, buffer, SZ_PATH);
 
-	return (serrno == ESPANK_SUCCESS || serrno == ESPANK_NOSPACE) &&
-		   (buffer != NULL) && (strlen(buffer)) > 0;
+	return (serrno == ESPANK_SUCCESS || serrno == ESPANK_NOSPACE) && (strlen(buffer) > 0);
 }
 
 static int repenv_local(char *var_old, char *var_new)

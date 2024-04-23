@@ -115,7 +115,7 @@ void flops_perf_get_info(apinfo_t *info)
     info->bits        = 64;
 }
 
-state_t flops_perf_init(ctx_t *c)
+state_t flops_perf_init()
 {
 	uint i;
 	if (!started) {
@@ -129,7 +129,7 @@ state_t flops_perf_init(ctx_t *c)
 	return EAR_SUCCESS;
 }
 
-state_t flops_perf_dispose(ctx_t *c)
+state_t flops_perf_dispose()
 {
   uint i;
   if (started){

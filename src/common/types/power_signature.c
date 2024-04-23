@@ -18,9 +18,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
-#include <common/types/power_signature.h>
-#include <common/math_operations.h>
 #include <common/config.h>
+#include <common/math_operations.h>
+#include <common/types/power_signature.h>
+
 
 void copy_power_signature(power_signature_t *destiny, power_signature_t *source)
 {
@@ -62,4 +63,30 @@ void clean_db_power_signature(power_signature_t *ps, double limit)
 		if (ps->DC_power > limit)				ps->DC_power = limit;
 		if (ps->DRAM_power > limit)			ps->DRAM_power = 0;
 		if (ps->PCK_power > limit)			ps->PCK_power = 0;
+}
+
+void power_signature_serialize(serial_buffer_t *b, power_signature_t *power_sig)
+{
+    serial_dictionary_push_auto(b, power_sig->DC_power); //
+    serial_dictionary_push_auto(b, power_sig->DRAM_power);
+    serial_dictionary_push_auto(b, power_sig->PCK_power);
+    serial_dictionary_push_auto(b, power_sig->EDP);
+    serial_dictionary_push_auto(b, power_sig->max_DC_power);
+    serial_dictionary_push_auto(b, power_sig->min_DC_power);
+    serial_dictionary_push_auto(b, power_sig->time);
+    serial_dictionary_push_auto(b, power_sig->avg_f);
+    serial_dictionary_push_auto(b, power_sig->def_f);
+}
+
+void power_signature_deserialize(serial_buffer_t *b, power_signature_t *power_sig)
+{
+    serial_dictionary_pop_auto(b, power_sig->DC_power); //
+    serial_dictionary_pop_auto(b, power_sig->DRAM_power);
+    serial_dictionary_pop_auto(b, power_sig->PCK_power);
+    serial_dictionary_pop_auto(b, power_sig->EDP);
+    serial_dictionary_pop_auto(b, power_sig->max_DC_power);
+    serial_dictionary_pop_auto(b, power_sig->min_DC_power);
+    serial_dictionary_pop_auto(b, power_sig->time);
+    serial_dictionary_pop_auto(b, power_sig->avg_f);
+    serial_dictionary_pop_auto(b, power_sig->def_f);
 }

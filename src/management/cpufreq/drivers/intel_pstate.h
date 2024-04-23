@@ -30,6 +30,8 @@ state_t mgt_intel_pstate_dispose();
 // Resets to initial configuration (keeper maintained)
 state_t mgt_intel_pstate_reset();
 
+void mgt_intel_pstate_get_freq_details(freq_details_t *details);
+
 state_t mgt_intel_pstate_get_available_list(const ullong **freq_list, uint *freq_count);
 
 state_t mgt_intel_pstate_get_current_list(const ullong **freq_list);
@@ -50,6 +52,11 @@ state_t mgt_intel_pstate_governor_set_mask(uint governor, cpu_set_t mask);
 
 state_t mgt_intel_pstate_governor_set_list(uint *governors);
 
+// Helper functions that can be shared
 int mgt_intel_pstate_governor_is_available(uint governor);
+
+int mgt_intel_pstate_read_cpuinfo(int max, ullong *khz);
+
+int mgt_intel_pstate_read_scaling(int max, ullong *khz);
 
 #endif //MANAGEMENT_DRIVERS_INTEL_PSTATE_H

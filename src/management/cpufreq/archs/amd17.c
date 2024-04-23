@@ -396,7 +396,21 @@ state_t mgt_cpufreq_amd17_init(ctx_t *c)
 	return EAR_SUCCESS;
 }
 
-/** Getters */
+void mgt_cpufreq_amd17_get_info(apinfo_t *info)
+{
+    info->api = API_AMD17;
+    info->devs_count = tp.cpu_count;
+}
+
+void mgt_cpufreq_amd17_get_freq_details(freq_details_t *details)
+{
+    // Driver is always present since is required for the load. But frequency
+    // details are not guaranteed.
+    if (driver->get_freq_details != NULL) {
+        driver->get_freq_details(details);
+    }
+}
+
 state_t mgt_cpufreq_amd17_count_available(ctx_t *c, uint *pstate_count)
 {
 	*pstate_count = pss_count;

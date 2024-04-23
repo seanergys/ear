@@ -468,6 +468,7 @@ void print_powercap_opt(powercap_opt_t *opt)
 
 void powercap_set_opt(powercap_opt_t *opt, int id)
 {
+		uint report_ev = 0;
     print_powercap_opt(opt);
     if (!is_powercap_on(&my_pc_opt)) return;    
     if (is_powercap_unlimited()) return;
@@ -494,6 +495,7 @@ void powercap_set_opt(powercap_opt_t *opt, int id)
                         value = -opt->extra_power[id];
                     }
 
+										report_ev = 1;
                     set_powercap_value(DOMAIN_NODE,my_pc_opt.last_t1_allocated);
                 }
                 break;
@@ -509,6 +511,7 @@ void powercap_set_opt(powercap_opt_t *opt, int id)
                     event = RED_POWERCAP;
                     value = -opt->extra_power[id];
                 }
+								report_ev = 1;
                 my_pc_opt.last_t1_allocated=my_pc_opt.last_t1_allocated+opt->extra_power[id];
                 set_powercap_value(DOMAIN_NODE,my_pc_opt.last_t1_allocated);
                 my_pc_opt.powercap_status=PC_STATUS_OK;
@@ -527,10 +530,11 @@ void powercap_set_opt(powercap_opt_t *opt, int id)
             set_powercap_value(DOMAIN_NODE,my_pc_opt.def_powercap);            
             event = SET_ASK_DEF;
             value = 0;
+						report_ev = 1;
         }
     }
     pthread_mutex_unlock(&my_pc_opt.lock);
-    powermon_report_event(event, value);
+    if (report_ev) powermon_report_event(event, value);
 
 }
 

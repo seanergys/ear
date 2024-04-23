@@ -16,7 +16,7 @@
 */
 
 //#define SHOW_DEBUGS 1
-#define VGPU 2
+#define VCPU_GPU 3
 
 #include <stdio.h>
 #include <string.h>
@@ -29,17 +29,20 @@
 #include <common/states.h> //clean
 #include <metrics/energy/node/energy_nm.h>
 #include <metrics/energy/node/energy_node.h>
-#include <metrics/energy/node/energy_cpu_hpu.h>
+#include <metrics/energy/node/energy_cpu_gpu.h>
 
-static uint    gpu_num;
-static const uint NUM_DOMAINS = 2; /* CPU and MEM */
+static uint    gpu_num = 0;
+static uint    gpu_num_no_priv = 0;
+#define NUM_DOMAINS_CPU_GPU 2 /* CPU and MEM */
 
 typedef struct cpu_gpu{
 	ulong ac_energy;
-	ullong cpu_energy[MAX_SOCKET_SUPPORTED*NUM_DOMAINS];
+	ullong cpu_energy[MAX_SOCKETS_SUPPORTED*NUM_DOMAINS_CPU_GPU];
 	gpu_t  gpu_energy[MAX_GPUS_SUPPORTED];
 	uint  gpu_num;
 }cpu_gpu_t;
+
+#define plugin_exit_action return EAR_ERROR
 
 
 
@@ -47,39 +50,45 @@ typedef struct cpu_gpu{
  * MAIN FUNCTIONS
  */
 static ullong          *energy_cpu_data = NULL;
+static ullong          *energy_cpu_diff = NULL;
 static uint             energy_cpu_count = 0;
 static gpu_t           *gpu_data = NULL;
 static uint             cpu_energy_loaded = 0, gpu_energy_loaded = 0;
 
 state_t energy_init(void **c)
 {
-	state_t st,s;
-	int ret;
+	topology_t tp;
+	state_t s;
 
 	if (c == NULL) {
 		return EAR_ERROR;
 	}
 
 	/* CPU load */
+	verbose(VCPU_GPU, "CPU-GPU plugin: loaded");
 	if (!cpu_energy_loaded){
-		verbose(VCPU_GPU,"Energy CPU");
+		verbose(VCPU_GPU,"CPU-GPU plugin: loading CPU");
 		state_assert(s, topology_init(&tp), plugin_exit_action);
 		state_assert(s, energy_cpu_load(&tp, NO_EARD), plugin_exit_action);
 		state_assert(s, energy_cpu_init(no_ctx), plugin_exit_action);
+		state_assert(s, energy_cpu_data_alloc(no_ctx, &energy_cpu_diff, &energy_cpu_count), plugin_exit_action);
 		state_assert(s, energy_cpu_data_alloc(no_ctx, &energy_cpu_data, &energy_cpu_count), plugin_exit_action);
 		cpu_energy_loaded = 1;
+		verbose(VCPU_GPU,"CPU-GPU plugin: CPU load ok");
 	}
 
-	verbose(VGPU,"GPU part");
 
 	if (!gpu_energy_loaded){
+		verbose(VCPU_GPU,"CPU-GPU plugin: loading GPU");
   		// Loading GPU
- 		state_assert(s, gpu_load(NO_EARD), plugin_exit_action);
+ 		gpu_load(NO_EARD);
 		state_assert(s, gpu_init(no_ctx),  plugin_exit_action);
 		gpu_data_alloc(&gpu_data);
 		gpu_count_devices(no_ctx, &gpu_num);
 		gpu_energy_loaded = 1;
+		verbose(VCPU_GPU,"CPU-GPU plugin: GPU load ok %u GPUs", gpu_num);
 	}
+	verbose(VCPU_GPU,"CPU-GPU plugin: PLUGIN loaded");
 	return EAR_SUCCESS;
 }
 
@@ -101,18 +110,19 @@ state_t energy_dispose(void **c) {
 }
 state_t energy_datasize(size_t *size)
 {
-	debug("energy_datasize %lu\n",sizeof(unsigned long));
+	verbose(VCPU_GPU,"CPU-GPU plugin:data size %lu", sizeof(cpu_gpu_t));
 	*size = sizeof(cpu_gpu_t);
 	return EAR_SUCCESS;
 }
 
 state_t energy_frequency(ulong *freq_us) {
+	verbose(VCPU_GPU,"CPU-GPU plugin: freq");
 	*freq_us = 1000000;
 	return EAR_SUCCESS;
 }
 
 state_t energy_dc_read(void *c, edata_t energy_mj) {
-	state_t st;
+	verbose(VCPU_GPU,"CPU-GPU plugin: READ");
 	cpu_gpu_t *penergy_mj = (cpu_gpu_t *)energy_mj;
 
 	if (!cpu_energy_loaded || !gpu_energy_loaded) return EAR_ERROR;
@@ -120,7 +130,6 @@ state_t energy_dc_read(void *c, edata_t energy_mj) {
 	debug("energy_dc_read\n");
 
 	if (penergy_mj == NULL) return EAR_ERROR;
-	if (penergy_mj->cpu_energy == NULL || penergy_mj->gpu_energy == NULL) return EAR_ERROR;
 
 	/* CPU */
 	energy_cpu_read(no_ctx, energy_cpu_data);
@@ -142,8 +151,10 @@ state_t energy_dc_read(void *c, edata_t energy_mj) {
 
 state_t energy_dc_time_read(void *c, edata_t energy_mj, ulong *time_ms) 
 {
+	verbose(VCPU_GPU,"CPU-GPU plugin: TIME ENERGY READ");
 	if (!cpu_energy_loaded || !gpu_energy_loaded) return EAR_ERROR;
 	/* Time */
+	struct timeval t;
 	*time_ms = 0;
 	gettimeofday(&t, NULL);
 	*time_ms = t.tv_sec * 1000 + t.tv_usec / 1000;
@@ -164,61 +175,101 @@ state_t energy_ac_read(void *c, edata_t energy_mj) {
 }
 
 state_t energy_units(uint *units) {
+	verbose(VCPU_GPU,"CPU-GPU plugin: Units");
 	*units = 1000;
 	return EAR_SUCCESS;
 }
 
 state_t energy_accumulated(unsigned long *e, edata_t init, edata_t end) {
+	verbose(VCPU_GPU,"CPU-GPU plugin: energy_accumulated");
 	cpu_gpu_t *pinit = (cpu_gpu_t *) init;
 	cpu_gpu_t *pend  = (cpu_gpu_t *) end;
 	gpu_t gpu_diff[MAX_GPUS_SUPPORTED];
 	ulong total_gpu_energy = 0;
-	ulong total_cpu_energy = 0;
+	ullong total_cpu_energy = 0;
 
 	if (e == NULL || pinit == NULL || pend == NULL) return EAR_ERROR;
-	if (!cpu_energy_loaded || !gpu_energy_loaded) return EAR_ERROR;
 
+	verbose(VCPU_GPU,"CPU-GPU plugin: CPU energy");
 	/* CPU energy */
-	energy_cpu_data_diff(no_ctx, pinit->cpu_energy, pend->cpu_energy, &total_cpu_energy);
+	energy_cpu_data_diff(no_ctx, pinit->cpu_energy, pend->cpu_energy, energy_cpu_diff);
+	for (uint i = 0; i < MAX_SOCKETS_SUPPORTED; i++){
+		verbose(VCPU_GPU,"CPU-GPU: CPU energy %llu ", energy_cpu_diff[i]);
+		total_cpu_energy += energy_cpu_diff[i];
+	}
+	verbose(VCPU_GPU,"CPU-GPU: CPU energy %llu", total_cpu_energy);
 
+	verbose(VCPU_GPU,"CPU-GPU plugin: GPU energy");
 	/* GPU energy */
 	if (pinit->gpu_num) {
-			verbose(VGPU, "Computing energy per GPU");
+			verbose(VCPU_GPU, "Computing energy per GPU (%u GPUs)", pinit->gpu_num);
+      //gpu_system_data_diff(pend->gpu_energy, pinit->gpu_energy, gpu_diff);
       gpu_data_diff(pend->gpu_energy, pinit->gpu_energy, gpu_diff);
 			for (uint i = 0; i < pinit->gpu_num; i++){ 
-				verbose(0, "GPU[%d]=%lu acum %lu", i, (unsigned long)gpu_diff[i].energy_j, total_gpu);
+				verbose(VCPU_GPU,"CPU-GPU: GPU[%d]=%lu acum %lu", i, (unsigned long)gpu_diff[i].energy_j, total_gpu_energy);
 				total_gpu_energy += (unsigned long)gpu_diff[i].energy_j;
 			}
 	}
 
-	/* Acuumulated */
-	*e = (total_cpu_energy + total_gpu_energy)*1000;
+	/* Accumulated */
+	total_cpu_energy = total_cpu_energy / 1000000;
+	total_gpu_energy = total_gpu_energy * 1000;
+	*e = (ulong)(total_cpu_energy + total_gpu_energy);
 	return EAR_SUCCESS;
 }
 static char cpu_buff[1024];
 static char gpu_buff[1024];
 
 state_t energy_to_str(char *str, edata_t e) {
+	verbose(VCPU_GPU,"CPU-GPU:  to str");
         cpu_gpu_t *pe = (cpu_gpu_t *) e;
 
 				if (pe == NULL) return EAR_ERROR;
-				if (!cpu_energy_loaded || !gpu_energy_loaded) return EAR_ERROR;
 
 				energy_cpu_to_str(no_ctx, cpu_buff, pe->cpu_energy);
 				gpu_data_tostr(pe->gpu_energy, gpu_buff, sizeof(gpu_buff));
 
 				sprintf(str,"CPU data (%s) GPU (%s)", cpu_buff, gpu_buff);
 
-				verbose(VGPU,"energy_to_str:%s" , str);
+				verbose(VCPU_GPU,"energy_to_str:%s" , str);
         return EAR_SUCCESS;
 }
 
 uint energy_data_is_null(edata_t e)  
 {
+	verbose(VCPU_GPU,"CPU-GPU: energy_data_is_null");
   cpu_gpu_t *pe=(cpu_gpu_t *)e;
 
   if (pe == NULL) return 1;
-  return (pe->cpu_energy[0] == 0 && pe->gpus_energy[0].power_w == 0);
+  return (pe->cpu_energy[0] == 0 && pe->gpu_energy[0].power_w == 0);
 
 }
 
+state_t energy_not_privileged_init()
+{
+	state_t s;
+	topology_t tp;
+
+	/* We must initialize data */
+	if (!cpu_energy_loaded){
+  	verbose(VCPU_GPU,"CPU-GPU plugin: loading CPU not privileged");
+	state_assert(s, topology_init(&tp), plugin_exit_action);
+  	state_assert(s, energy_cpu_load(&tp, EARD), plugin_exit_action);
+  	state_assert(s, energy_cpu_init(no_ctx), plugin_exit_action);
+  	state_assert(s, energy_cpu_data_alloc(no_ctx, &energy_cpu_diff, &energy_cpu_count), plugin_exit_action);
+  	cpu_energy_loaded = 1;
+	}
+	/* GPU */
+	if (!gpu_energy_loaded){
+  	verbose(VCPU_GPU,"CPU-GPU plugin: loading GPU not privileged");
+  	// Loading GPU
+  	gpu_load(EARD);
+  	state_assert(s, gpu_init(no_ctx),  plugin_exit_action);
+  	//gpu_count_system_devices(no_ctx, &gpu_num_no_priv);
+  	gpu_count_devices(no_ctx, &gpu_num_no_priv);
+	verbose(VCPU_GPU,"CPU-GPU plugin:  detected %u GPUs\n", gpu_num_no_priv);
+  	gpu_energy_loaded = 1;
+	}
+
+	return EAR_SUCCESS;
+}

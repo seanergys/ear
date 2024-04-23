@@ -50,6 +50,16 @@
 #define ZES_ENGINE_GROUP_COPY_ALL                 0
 #define ZES_ENGINE_GROUP_COPY_SINGLE              0
 #define ZES_POWER_LEVEL_SUSTAINED                 0
+#define ZES_POWER_LEVEL_UNKNOWN                   0
+#define ZES_POWER_LEVEL_BURST                     0
+#define ZES_POWER_LEVEL_PEAK                      0
+#define ZES_POWER_LEVEL_INSTANTANEOUS             0
+#define ZES_LIMIT_UNIT_UNKNOWN                    0
+#define ZES_LIMIT_UNIT_CURRENT                    0
+#define ZES_LIMIT_UNIT_POWER                      0
+#define ZES_POWER_SOURCE_ANY                      0
+#define ZES_POWER_SOURCE_MAINS                    0
+#define ZES_POWER_SOURCE_BATTERY                  0
 
 typedef struct ze_info_s {
     char  *name;
@@ -76,12 +86,14 @@ typedef struct ze_info_s {
     ulong  activeTime;
     ulong  timestamp;
     ulong  energy;
-    int    actual;
+    double actual;
     uint   powerDC;
     uint   powerAC;
     uint   power;
     double max;
     double min;
+    double tdp;
+    double efficient;
     int    enabled;
     int    canControl;
     uint   interval;

@@ -22,7 +22,7 @@
 #include <common/output/debug.h>
 #include <common/system/plugin_manager.h>
 #include <common/config.h>
-#include <metrics/common/popen.h>
+#include <common/system/popen.h>
 #include <data_center_monitor/plugins/nodesensors.h>
 
 // Separator character used by nodesensors command
@@ -107,14 +107,14 @@ static state_t static_read_power(uint *num_rows, uint expected_items)
 	    convert_double(&edcmon_info.edcmon_data[i].temperature, temperature);
 	    convert_double(&edcmon_info.edcmon_data[i].power, power);
 	    edcmon_info.edcmon_data[i].timestamp  = time(NULL);
-	    debug("nodesensors[%u] time %u node %s power %lf W, temperature %lf F , humidity %lf \%", i, (uint)edcmon_info.edcmon_data[i].timestamp, edcmon_info.edcmon_data[i].nodename, edcmon_info.edcmon_data[i].power, edcmon_info.edcmon_data[i].temperature, edcmon_info.edcmon_data[i].humidity);
+	    debug("nodesensors[%u] time %u node %s power %lf W, temperature %lf F , humidity %lf ", i, (uint)edcmon_info.edcmon_data[i].timestamp, edcmon_info.edcmon_data[i].nodename, edcmon_info.edcmon_data[i].power, edcmon_info.edcmon_data[i].temperature, edcmon_info.edcmon_data[i].humidity);
 	    i++;
     }
     }
     *num_rows = i;
     // Close
     popen_close(&nodesensor_p);
-
+		return EAR_SUCCESS;
 }
 
 declr_up_action_periodic(_nodesensors)

@@ -154,7 +154,7 @@ int print_application_fd(int fd, application_t *app, int new_line, char is_exten
 
 int create_app_header(char * header, char *path, uint num_gpus, char is_extended, int single_column)
 {
-    char *HEADER_BASE = "NODENAME;JOBID;STEPID;APPID;USERID;GROUPID;JOBNAME;USER_ACC;ENERGY_TAG;POLICY;POLICY_TH;"\
+    char *HEADER_BASE = "NODENAME;JOBID;STEPID;APPID;USERID;GROUPID;JOBNAME;USER_ACC;ENERGY_TAG;POLICY;POLICY_TH;START_TIME;END_TIME;"\
                         "AVG_CPUFREQ_KHZ;AVG_IMCFREQ_KHZ;DEF_FREQ_KHZ;TIME_SEC;CPI;TPI;MEM_GBS;IO_MBS;PERC_MPI;DC_NODE_POWER_W;DRAM_POWER_W;"\
                         "PCK_POWER_W;CYCLES;INSTRUCTIONS;CPU-GFLOPS";
 		char HEADER[4096];
@@ -534,3 +534,22 @@ void report_mpi_application_data(int vl, application_t *app)
     free(app_summ_ftr_dec);
 }
 
+void application_serialize(serial_buffer_t *b, application_t *app)
+{
+    job_serialize(b, &app->job);
+    serial_dictionary_push_auto(b, app->is_mpi);
+    serial_dictionary_push_auto(b, app->is_learning);
+    serial_dictionary_push_auto(b, app->node_id);
+    power_signature_serialize(b, &app->power_sig);
+    signature_serialize(b, &app->signature);
+}
+
+void application_deserialize(serial_buffer_t *b, application_t *app)
+{
+    job_deserialize(b, &app->job);
+    serial_dictionary_pop_auto(b, app->is_mpi);
+    serial_dictionary_pop_auto(b, app->is_learning);
+    serial_dictionary_pop_auto(b, app->node_id);
+    power_signature_deserialize(b, &app->power_sig);
+    signature_deserialize(b, &app->signature);
+}

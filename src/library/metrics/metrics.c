@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-
+#define SHOW_DEBUGS 1
 
 
 #define _GNU_SOURCE
@@ -468,18 +468,35 @@ static void metrics_static_init(topology_t *tp)
     master = (masters_info.my_master_rank >= 0);
     eard   = ((master) ? API_EARD : NO_EARD);
     // Load
+    debug("mgt_cpufreq_load");
 #if SINGLE_CONNECTION
     sa(mgt_cpufreq_load(tp, eard));
 #else
     sa(mgt_cpufreq_load(tp, API_EARD));
 #endif
+
+    debug("mgt_imcfreq_load");
     sa(mgt_imcfreq_load(tp, eard, NULL));
+
+    debug("energy_cpu_load");
     sa( energy_cpu_load(tp, eard));
+
+    debug("cpufreq_load");
     sa(    cpufreq_load(tp, eard));
+
+    debug("imcfreq_load");
     sa(    imcfreq_load(tp, eard));
+
+    debug("bwidth_load");
     sa(     bwidth_load(tp, eard));
+
+    debug("flops_load");
     sa(      flops_load(tp, eard));
+
+    debug("cache_load");
     sa(      cache_load(tp, eard));
+
+    debug("cpi_load");
     sa(        cpi_load(tp, eard));
     sa(mgt_cpuprio_load(tp, eard));
 
@@ -494,6 +511,7 @@ static void metrics_static_init(topology_t *tp)
 						gpu_load(API_FREE);
 			}
 		}
+    debug("mgt_gpu_load");
     mgt_gpu_load(eard);
 #if USE_CUPTI
     if (read_cupti_metrics) {
@@ -501,6 +519,7 @@ static void metrics_static_init(topology_t *tp)
     }
 #endif
 
+    debug("proc_stat_load");
 #if USE_PROC_PS
     if (state_fail(proc_stat_load())){
       verbose_master(2, "proc_stat API failed");
@@ -510,6 +529,8 @@ static void metrics_static_init(topology_t *tp)
       proc_ps_ok = 1;
     }
 #endif 
+
+    debug("proc_stat_init");
     metric_cond(proc_ps_ok, proc_stat_init(&proc_ctx, getpid()), VERB_PROCPS, "EARL proc_stat_init failed");
 
 
@@ -522,6 +543,7 @@ static void metrics_static_init(topology_t *tp)
     frequency_init(1);
 #endif
 
+    debug("Asking for APIS");
     // Get API
     sa(mgt_cpufreq_get_api(&mgt_cpufreq.api));
     sa(mgt_imcfreq_get_api(&mgt_imcfreq.api));
@@ -589,6 +611,7 @@ static void metrics_static_init(topology_t *tp)
 
   debug("metrics_api ready");
 
+  debug("Metrics initialization phase 2");
     // Init
     sa(mgt_cpufreq_init(no_ctx));
     sa(mgt_imcfreq_init(no_ctx));

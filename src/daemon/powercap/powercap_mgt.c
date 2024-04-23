@@ -37,8 +37,8 @@
 #include <common/hardware/hardware_info.h>
 #include <common/types/configuration/cluster_conf.h>
 
-#include <daemon/shared_configuration.h>
 #include <daemon/power_monitor.h>
+#include <daemon/shared_configuration.h>
 #include <daemon/powercap/powercap_mgt.h>
 #include <daemon/powercap/powercap_status.h>
 #if USE_GPUS
@@ -147,6 +147,9 @@ const char     *pcsyms_names[] ={
     "plugin_get_settings",
 };
 
+
+static uint pmgt_powercap_status_per_domain(uint action);
+
 #ifndef SYN_TEST
 #define UTIL_BURST_PERIOD 1000
 #else
@@ -251,7 +254,7 @@ uint pmgt_utilization_changed()
             }
         }
 #if USE_GPUS
-        else if ((i == DOMAIN_GPU )){
+        else if (i == DOMAIN_GPU ){
             uint g;
             for (g=0;g<gpu_pc_num_gpus;g++){
                 //debug("Comparing utilization for GPU %d : %lu vs %lu",g,current_util[DOMAIN_GPU][g],prev_util[DOMAIN_GPU][g]);
@@ -938,7 +941,7 @@ void pmgt_get_status(pmgt_status_t *status)
 
 }
 
-uint pmgt_powercap_status_per_domain(uint action)
+static uint pmgt_powercap_status_per_domain(uint action)
 {
 #if USE_GPUS
     int i;

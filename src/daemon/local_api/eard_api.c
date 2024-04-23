@@ -38,6 +38,7 @@
 #include <common/types/generic.h>
 #include <common/output/verbose.h>
 #include <common/types/application.h>
+#include <common/utils/serial_buffer.h>
 #include <daemon/local_api/eard_api.h>
 #include <metrics/gpu/gpu.h>
 #include <metrics/common/apis.h>
@@ -70,6 +71,7 @@ static char *ear_tmp;
 static ulong rapl_size;
 
 extern pthread_mutex_t lock_rpc;
+static serial_buffer_t b;
 
 #define CLOSE_LOCAL_COMM()    \
   close(ear_fd_req_global); \
@@ -441,6 +443,10 @@ int eards_connect(application_t *my_app, ulong lid)
     AFD_SETT(ear_fd_ack, &eard_api_client_fd, NULL);
     eards_signal_catcher();
     debug("Connected");
+
+    // Initializing serial buffer with plenty space
+    serial_alloc(&b, SIZE_8KB);
+
     return EAR_SUCCESS;
 }
 
@@ -522,25 +528,43 @@ ulong sendack(char *send_buf, size_t send_size, char *ack_buf, size_t ack_size, 
     req.sec=create_sec_tag();               \
     memset(&req.req_data, 0, sizeof(union daemon_req_opt));
 
-ulong eards_write_app_signature(application_t *app_signature)
+ulong eards_write_app_signature(application_t *app)
 {
+    #if WF_SUPPORT
+    serial_clean(&b);
+    application_serialize(&b, app);
+    return eard_rpc(RPC_WRITE_APPLICATION, serial_data(&b), serial_size(&b), NULL, 0);
+    #else
     init_service(WRITE_APP_SIGNATURE);
-    memcpy(&req.req_data.app, app_signature, sizeof(application_t));
+    memcpy(&req.req_data.app, app, sizeof(application_t));
     return sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ulong), "APP signature", 0);
+    #endif
 }
 
 ulong eards_write_event(ear_event_t *event)
 {
+    #if WF_SUPPORT
+    serial_clean(&b);
+    event_serialize(&b, event);
+    return eard_rpc(RPC_WRITE_EVENT, serial_data(&b), serial_size(&b), NULL, 0);
+    #else
     init_service(WRITE_EVENT);
     memcpy(&req.req_data.event, event, sizeof(ear_event_t));
     return sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ulong), "EVENT write", 0);
+    #endif
 }
 
-ulong eards_write_loop_signature(loop_t *loop_signature)
+ulong eards_write_loop_signature(loop_t *loop)
 {
+    #if WF_SUPPORT
+    serial_clean(&b);
+    loop_serialize(&b, loop);
+    return eard_rpc(RPC_WRITE_LOOP, serial_data(&b), serial_size(&b), NULL, 0);
+    #else
     init_service(WRITE_LOOP_SIGNATURE);
-    memcpy(&req.req_data.loop, loop_signature, sizeof(loop_t));
+    memcpy(&req.req_data.loop, loop, sizeof(loop_t));
     return sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ulong), "LOOP signature", 0);
+    #endif
 }
 
 ulong eards_get_data_size_rapl() // size in bytes
@@ -588,24 +612,21 @@ state_t eard_end_application(application_t *app)
 {
   return EAR_SUCCESS;
 }
+
 state_t eards_get_state(eard_state_t *state)
 {
     return eard_rpc(RPC_GET_STATE, NULL, 0, (char *) state, sizeof(eard_state_t));
 }
 
-
 static state_t create_base_path(char *base_path, size_t base_path_sz, char *tmp_path, uint job_step_id, uint app_local_id)
 {
 	int ret = snprintf(base_path, base_path_sz, "%s/%u/%u", tmp_path, job_step_id, app_local_id);
-	if (ret < base_path_sz && ret >= 0)
-	{
+	if (ret < base_path_sz && ret >= 0) {
 		return EAR_SUCCESS;
-	} else
-	{
+	} else {
 		return EAR_ERROR;
 	}
 }
-
 
 static state_t create_app_directory(char *path)
 {
@@ -620,4 +641,3 @@ static state_t create_app_directory(char *path)
 	}
 	return EAR_SUCCESS;
 }
-

@@ -16,6 +16,7 @@
 */
 
 
+#include <common/config.h>
 #define _GNU_SOURCE         /* See feature_test_macros(7) */
 #include <stdio.h>
 #include <errno.h>
@@ -86,7 +87,7 @@ state_t report_misc(report_id_t *id,uint type, const char *data_in, uint count)
 	for (uint i = 0; i < count; i ++){
 	switch (type){
 		case NODESENSORS_TYPE:
-		dprintf(fd_sensors,"time[%s] node %s power %.1lf W Temperature %lf F Humidity %lf \%\n",
+		dprintf(fd_sensors,"time[%s] node %s power %.1lf W Temperature %lf F Humidity %lf \n",
                date_str(data[i].timestamp), data[i].nodename, data[i].power,
 	       data[i].temperature, data[i].humidity);
 		break;

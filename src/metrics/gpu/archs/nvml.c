@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-
+#define SHOW_DEBUGS 1
 #include <dlfcn.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -198,12 +198,11 @@ state_t gpu_nvml_pool(void *p)
 	timestamp_t time;
     double time_diff;
 	gpu_t metric;
-	int working;
 	int i;
 
     debug("Pooling");
 	//
-	working = 0;
+	uint working = 0;
 	// Lock
 	while (pthread_mutex_trylock(&lock));
     // Time operations

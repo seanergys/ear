@@ -21,8 +21,8 @@
 #include <string.h>
 #include <assert.h>
 #include <common/types/job.h>
-#include <common/output/verbose.h>
 #include <common/system/time.h>
+#include <common/output/verbose.h>
 
 
 void init_job(job_t *job, ulong def_f, char *policy, double th, ulong procs)
@@ -67,6 +67,9 @@ void copy_job(job_t *destiny, job_t *source)
 void print_job_fd(int fd, job_t *job)
 {
 	char job_buff[4096];
+  struct tm *ts;
+  char       buf_start[80], buf_end[80];
+
 	assert(job!=NULL);
 	if (!strlen(job->user_id) || !strlen(job->app_id) || !strlen(job->policy)){
 		verbose(VTYPE,"print_job_fd some of the args are null\n");
@@ -76,12 +79,18 @@ void print_job_fd(int fd, job_t *job)
     if (strlen(job->group_id) < 1) strcpy(job->group_id, " ");
     if (strlen(job->energy_tag) < 1) strcpy(job->energy_tag, " ");
     if (strlen(job->user_acc) < 1) strcpy(job->user_acc, " ");
+		
+		ts = localtime(&job->start_mpi_time);
+		strftime(buf_start, sizeof(buf_start), "%Y-%m-%d %H:%M:%S", ts);
+
+		ts = localtime(&job->end_mpi_time);
+		strftime(buf_end, sizeof(buf_end), "%Y-%m-%d %H:%M:%S", ts);	
 #if WF_SUPPORT
-    sprintf(job_buff, "%lu;%lu;%lu;%s;%s;%s;%s;%s;%s;%lf", job->id, job->step_id, job->local_id, job->user_id, job->group_id, job->app_id,
-                                                          job->user_acc, job->energy_tag, job->policy, job->th);
+    sprintf(job_buff, "%lu;%lu;%lu;%s;%s;%s;%s;%s;%s;%lf;%s;%s", job->id, job->step_id, job->local_id, job->user_id, job->group_id, job->app_id,
+                                                          job->user_acc, job->energy_tag, job->policy, job->th, buf_start, buf_end);
 #else
-    sprintf(job_buff, "%lu;%lu;%s;%s;%s;%s;%s;%s;%lf", job->id, job->step_id, job->user_id, job->group_id, job->app_id,
-                                                          job->user_acc, job->energy_tag, job->policy, job->th);
+    sprintf(job_buff, "%lu;%lu;%s;%s;%s;%s;%s;%s;%lf;%s;%s", job->id, job->step_id, job->user_id, job->group_id, job->app_id,
+                                                          job->user_acc, job->energy_tag, job->policy, job->th, buf_start, buf_end);
 #endif
 	write(fd,job_buff,strlen(job_buff));
 }
@@ -113,3 +122,48 @@ void read_job_fd_binary(int fd, job_t *job)
 }
 
 
+void job_serialize(serial_buffer_t *b, job_t *job)
+{
+    serial_dictionary_push_auto(b, job->id);
+    serial_dictionary_push_auto(b, job->step_id);
+#if WF_SUPPORT
+    serial_dictionary_push_auto(b, job->local_id);
+#endif
+    serial_dictionary_push_auto(b, job->user_id);
+    serial_dictionary_push_auto(b, job->group_id);
+    serial_dictionary_push_auto(b, job->app_id);
+    serial_dictionary_push_auto(b, job->user_acc);
+    serial_dictionary_push_auto(b, job->energy_tag);
+    serial_dictionary_push_auto(b, job->start_time);
+    serial_dictionary_push_auto(b, job->end_time);
+    serial_dictionary_push_auto(b, job->start_mpi_time);
+    serial_dictionary_push_auto(b, job->end_mpi_time);
+    serial_dictionary_push_auto(b, job->policy);
+    serial_dictionary_push_auto(b, job->th);
+    serial_dictionary_push_auto(b, job->procs);
+    serial_dictionary_push_auto(b, job->type);
+    serial_dictionary_push_auto(b, job->def_f);
+}
+
+void job_deserialize(serial_buffer_t *b, job_t *job)
+{
+    serial_dictionary_pop_auto(b, job->id);
+    serial_dictionary_pop_auto(b, job->step_id);
+#if WF_SUPPORT
+    serial_dictionary_pop_auto(b, job->local_id);
+#endif
+    serial_dictionary_pop_auto(b, job->user_id);
+    serial_dictionary_pop_auto(b, job->group_id);
+    serial_dictionary_pop_auto(b, job->app_id);
+    serial_dictionary_pop_auto(b, job->user_acc);
+    serial_dictionary_pop_auto(b, job->energy_tag);
+    serial_dictionary_pop_auto(b, job->start_time);
+    serial_dictionary_pop_auto(b, job->end_time);
+    serial_dictionary_pop_auto(b, job->start_mpi_time);
+    serial_dictionary_pop_auto(b, job->end_mpi_time);
+    serial_dictionary_pop_auto(b, job->policy);
+    serial_dictionary_pop_auto(b, job->th);
+    serial_dictionary_pop_auto(b, job->procs);
+    serial_dictionary_pop_auto(b, job->type);
+    serial_dictionary_pop_auto(b, job->def_f);
+}

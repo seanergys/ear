@@ -16,6 +16,7 @@ tool_BINS = \
     node_manager_info \
 		list_folders
 
+ifeq ($(FEAT_WF_SUPPORT), 1)
 ifdef DB_BASE
 tool_BINS += \
     learning_show \
@@ -26,6 +27,7 @@ endif
 ifdef GSL_BASE
 tool_BINS += \
 	coeffs_compute
+endif
 endif
 tool_PATH = $(DESTDIR)/bin/tools
 tool_PERM = 0770
@@ -94,7 +96,7 @@ list_folders: list_folders.c $(comm_OBJS)
 	$(CCC) -I$(SRCDIR) -o $@ $< $(comm_OBJS)
 
 node_manager_info: node_manager_info.c $(comm_OBJS)
-	$(CCC) -o $@ $<  $(SRCDIR)/daemon/local_api/libeard.a $(SRCDIR)/daemon/shared_configuration.o $(comm_OBJS)
+	$(CCC) -o $@ $<  $(SRCDIR)/daemon/local_api/libeard.a $(SRCDIR)/daemon/shared_configuration.o $(SRCDIR)/daemon/shared_pmon.o $(comm_OBJS)
 
 
 ######## OPTIONS

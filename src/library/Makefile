@@ -1,5 +1,5 @@
 # If USER_TEST is set to 1, any user can execute the hacks with the library.
-CFLAGS  = -fPIC  -I$(SRCDIR) -DUSER_TEST=0 $(CONSTANTS) -g
+CFLAGS  = -fPIC  -I$(SRCDIR) -DUSER_TEST=0 $(CONSTANTS) 
 LDFLAGS = -shared -ldl -lm -lpthread -rdynamic -pthread
 
 
@@ -133,6 +133,10 @@ install: install.components libs.ginstall;
 %.install: ;
 
 clean: clean.components rclean;
+
+post:
+	@ $(MAKE) -C 'metrics' $@ || exit
+
 
 ######## SUBFOLDERS
 

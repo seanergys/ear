@@ -262,9 +262,6 @@ static state_t oneapi_read_utilization(int dv, gpu_t *data)
     int                       prio_set = NO_PRIO;
     int                       prio;
     ze_result_t               z;
-    #if SHOW_DEBUGS
-	ze_result_t               z;
-    #endif
 
 	for (d = 0; d < devs[dv].sengines_count; ++d) {
         if_fail(ze.sEngineGetActivity(devs[dv].sengines[d], &info), continue);

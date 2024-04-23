@@ -792,9 +792,9 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             }
 
             // Verbose loop signature
-            state_verbose_signature(&curr_loop, masters_info.my_master_rank, show_signatures,
-                                    ear_app_name, application.node_id, iterations,
-                                    prev_cpufreq_khz, policy_cpufreq_khz, use_case);
+            state_verbose_signature(&curr_loop, masters_info.my_master_rank, ear_app_name,
+																		application.node_id, iterations, prev_cpufreq_khz,
+																		policy_cpufreq_khz, use_case);
 
             overhead_stop(id_ovh_ev_sig);
             break; // EVALUATING_LOCAL_SIGNATURE
@@ -906,7 +906,9 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             } else {
                 sprintf(use_case, "+P.%s-Stable",((ear_guided == TIME_GUIDED)?"T":"D"));
             }
-            state_verbose_signature(&curr_loop, masters_info.my_master_rank, show_signatures, ear_app_name, application.node_id, iterations, prev_cpufreq_khz,0,use_case);
+            state_verbose_signature(&curr_loop, masters_info.my_master_rank, ear_app_name,
+																		application.node_id, iterations, prev_cpufreq_khz,
+																		0, use_case);
             /* END VERBOSE */
 
             begin_iter = iterations;
@@ -1071,8 +1073,9 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                 //state_report_traces(masters_info.my_master_rank, ear_my_rank, my_id,
                  //       &curr_loop, prev_cpufreq_khz,EAR_STATE);
 
-                state_verbose_signature(&curr_loop, masters_info.my_master_rank, show_signatures,
-                        ear_app_name, application.node_id, iterations, prev_cpufreq_khz, 0, "D-PE");
+                state_verbose_signature(&curr_loop, masters_info.my_master_rank, ear_app_name,
+																				application.node_id, iterations, prev_cpufreq_khz,
+																				0, "D-PE");
             }
 
             /* We run here at default freq */

@@ -206,7 +206,7 @@ int getenv_ear_reset_freq()
 unsigned long getenv_ear_p_state()
 {
 	char *my_pstate = ear_getenv(ENV_FLAG_PSTATE);
-	int max_p_state;
+	int max_p_state = 0 ;
 
 	// p_state depends on policy it must be called before getenv_ear_p_state, but we check it
 	if (conf_ear_power_policy < 0) getenv_ear_power_policy();
