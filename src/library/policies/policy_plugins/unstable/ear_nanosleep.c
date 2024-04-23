@@ -34,7 +34,7 @@ state_t policy_init(polctx_t *c)
 {
     if (c != NULL && !policy_loaded) {
 
-        if (is_mpi_enabled()) {
+        if (module_mpi_is_enabled()) {
 
             mpi_app_init(c);
 

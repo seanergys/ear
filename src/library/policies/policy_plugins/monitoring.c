@@ -41,6 +41,7 @@
 #include <library/policies/common/cpu_support.h>
 #include <library/policies/common/gpu_support.h>
 #include <library/policies/common/mpi_stats_support.h>
+#include <library/loader/module_mpi.h>
 
 #define MON_ERROR_LVL 2
 #define MON_INFO_LVL  3
@@ -68,7 +69,7 @@ static state_t policy_mpi_end_optimize(node_freqs_t *freqs, int *process_id);
 
 state_t policy_init(polctx_t *c)
 {
-    if (is_mpi_enabled()) {
+    if (module_mpi_is_enabled()) {
 #if MPI_OPTIMIZED
         mpi_opt_load(&mpi_opt_symbols);
 #endif

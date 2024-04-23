@@ -23,6 +23,7 @@
 #include <common/system/monitor.h>
 
 #include <library/api/mpi_support.h>
+#include <library/loader/module_mpi.h>
 #include <library/common/utils.h>
 #include <library/common/verbose_lib.h>
 #include <library/metrics/metrics.h>
@@ -57,7 +58,7 @@ state_t fine_grain_metrics_init()
 #if MPI_OPTIMIZED
   ear_mpi_opt_num_nodes = utils_get_sched_num_nodes();
 
-	if (is_mpi_enabled() && ear_mpi_opt)
+	if (module_mpi_is_enabled() && ear_mpi_opt)
 	{
 		earl_mpi_opt = suscription();
 		earl_mpi_opt->call_init = earl_periodic_actions_mpi_opt_init;
@@ -81,7 +82,7 @@ state_t fine_grain_metrics_init()
 static state_t earl_periodic_actions_mpi_opt_init(void *no_arg)
 {
 #if MPI_OPTIMIZED
-    if (is_mpi_enabled() && ear_mpi_opt)
+    if (module_mpi_is_enabled() && ear_mpi_opt)
 		{
         memset(my_mpi_stats, 0, sizeof(mpi_information_t)*3);
         memset(my_mpi_types, 0, sizeof(mpi_calls_types_t)*3);
@@ -95,7 +96,7 @@ static state_t earl_periodic_actions_mpi_opt_init(void *no_arg)
 static state_t earl_periodic_actions_mpi_opt(void *no_arg)
 {
 #if MPI_OPTIMIZED
-	if (is_mpi_enabled() && (ear_mpi_opt || traces_are_on()))
+	if (module_mpi_is_enabled() && (ear_mpi_opt || traces_are_on()))
 	{
 		/* Read */
 		mpi_call_get_stats(&my_mpi_stats[1], NULL, -1);

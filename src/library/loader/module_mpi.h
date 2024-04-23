@@ -18,13 +18,22 @@
 #ifndef LIBRARY_LOADER_MPI_H
 #define LIBRARY_LOADER_MPI_H
 
-#include <library/api/mpic.h>
-#include <library/api/mpif.h>
-#include <library/loader/module_mpic.h>
-#include <library/loader/module_mpif.h>
-
-int module_mpi(char *path_lib_so, char *libhack);
-
+#if MPICC_FLAGS
+int  module_mpi(char *path_lib_so, char *libhack);
 void module_mpi_destructor();
+int  module_mpi_is_enabled();
+int  module_mpi_is_intel();
+int  module_mpi_is_open();
+int  module_mpi_is_detected();
+void module_mpi_set_forced();
+#else
+#define module_mpi(p, l)         0
+#define module_mpi_destructor()
+#define module_mpi_is_enabled()  0
+#define module_mpi_is_intel()    0
+#define module_mpi_is_open()     0
+#define module_mpi_is_detected() 0
+#define module_mpi_set_forced()
+#endif
 
 #endif //LIBRARY_LOADER_MPI_H

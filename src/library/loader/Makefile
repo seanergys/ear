@@ -1,6 +1,4 @@
-CFLAGS      = -fPIC -I$(SRCDIR) $(CONSTANTS)
-LDFLAGS     = -ldl
-LOAD_CFLAGS = $(CFLAGS)
+CFLAGS      = -fPIC -I$(SRCDIR) $(CC_FLAGS) $(MPI_CFLAGS)
 
 ######## FILES
 
@@ -11,9 +9,13 @@ load_OBJS = \
     module_openmp.o \
     module_oneapi.o \
     module_default.o \
+
+ifeq ($(MPI_CFLAGS),)
+load_OBJS += \
     module_mpi.o \
     module_mpic.o \
     module_mpif.o
+endif
 
 load_BINS = libearld.so
 load_DEPS = $(SRCDIR)/common/libcommon.a
@@ -25,10 +27,10 @@ load_PERM = 0775
 all: $(load_BINS)
 
 %.o: %.c %.h
-	$(CC) $(MPI_CFLAGS) $(CC_FLAGS) $(LOAD_CFLAGS) -c $<
+	$(CC) $(CFLAGS) -c $<
 
 libearld.so: $(load_OBJS) $(load_DEPS)
-	$(CC) $(CC_FLAGS) -shared -o $@ $^ $(LDFLAGS)
+	$(CC) $(CC_FLAGS) -shared -o $@ $^ -ldl
 
 ######## OPTIONS 
 

@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#include <library/loader/module_mpi.h>
+#include <library/loader/module_mpif.h>
 
 extern mpif_t ear_mpif;
 

@@ -30,10 +30,9 @@
 #include <library/dynais/dynais.h>
 #include <library/api/clasify.h>
 #include <library/states/states_comm.h>
+#include <library/loader/module_mpi.h>
 #include <library/loader/module_cuda.h>
-#include <library/api/mpi_support.h>
 #include <library/policies/common/mpi_stats_support.h>
-
 
 #define WARN_CLASSIFY  1
 #define INFO_CLASSIFY  2
@@ -179,7 +178,7 @@ static uint first_warning_mpi_th = 1;
 state_t must_switch_to_time_guide(ulong last_sig_elapsed, uint *ear_guided)
 { 
     /* Changed to force the EARL to use dynais as much as possible */
-    if (!is_mpi_enabled()){
+    if (!module_mpi_is_enabled()){
       *ear_guided = TIME_GUIDED;
       return EAR_SUCCESS;
     }

@@ -46,6 +46,7 @@
 
 #include <library/api/clasify.h>
 #include <library/api/eard_dummy.h>
+#include <library/loader/module_mpi.h>
 #include <library/loader/module_cuda.h>
 #include <library/common/utils.h>
 #include <library/common/externs.h>
@@ -976,7 +977,7 @@ static void metrics_global_stop()
 	if (master) {
 
 		/* MPI statistics */
-		if (is_mpi_enabled()) {
+		if (module_mpi_is_enabled()) {
 			read_diff_node_mpi_info(lib_shared_region, sig_shared_region,
 					metrics_mpi_info[APP], metrics_last_mpi_info[APP]);
 #if MPI_CALL_TYPES
@@ -1358,7 +1359,7 @@ static int metrics_partial_stop(uint where)
 	// Daemon metrics
 	if (master) {
 		/* MPI statistics */
-		if (is_mpi_enabled()) {
+		if (module_mpi_is_enabled()) {
 			read_diff_node_mpi_info(lib_shared_region, sig_shared_region,
 					metrics_mpi_info[LOO], metrics_last_mpi_info[LOO]);
 #if MPI_CALL_TYPES
@@ -1725,7 +1726,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 #endif  // DCGMI & USE_GPUS
 
 		/* MPI statistics */
-		if (is_mpi_enabled()) {
+		if (module_mpi_is_enabled()) {
 			double mpi_time_perc = 0.0;
 			for (int i = 0; i < lib_shared_region->num_processes; i++) {
 
