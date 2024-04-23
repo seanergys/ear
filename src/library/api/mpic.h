@@ -116,7 +116,7 @@ int ear_mpic_Iscatter(MPI3_CONST void *sendbuf, int sendcount, MPI_Datatype send
 int ear_mpic_Iscatterv(MPI3_CONST void *sendbuf, MPI3_CONST int sendcounts[], MPI3_CONST int displs[], MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, int root, MPI_Comm comm, MPI_Request *request);
 //#endif
 
-const char *ear_mpic_names[] attr2(attr_weak, attr_hidden) =
+const char *ear_mpic_names[] __attribute__((weak, visibility("hidden"))) =
 {
 	"ear_mpic_Allgather",
 	"ear_mpic_Allgatherv",

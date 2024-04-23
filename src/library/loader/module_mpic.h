@@ -20,7 +20,7 @@
 
 #define MPIC_N 93
 
-const char *mpic_names[] attr2(attr_weak, attr_hidden) =
+const char *mpic_names[] __attribute__((weak, visibility("hidden"))) =
 {
     "MPI_Allgather",
     "MPI_Allgatherv",

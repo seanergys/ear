@@ -3,7 +3,7 @@ CFLAGS  = -fPIC  -I$(SRCDIR) -DUSER_TEST=0 $(CONSTANTS)
 LDFLAGS = -shared -ldl -lm -lpthread -rdynamic -pthread
 
 
-ifeq ($(FEAT_MPI_API), 0)
+ifeq ($(FEAT_MPI_LIBRARY), 0)
 LIBCC       = $(CC)
 LIBCC_FLAGS = $(CC_FLAGS)
 LIB_CFLAGS  = -DMPI=0 -DNODE_LB=1 -DSINGLE_CONNECTION=0
@@ -111,7 +111,7 @@ core_OBJS += metrics/dlb_talp_lib.o
 endif
 
 
-ifeq ($(FEAT_MPI_API), 1)
+ifeq ($(FEAT_MPI_LIBRARY), 1)
 mpix_OBJS = \
     api/ear_mpi.o \
     api/mpic.o \

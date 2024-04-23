@@ -22,14 +22,28 @@
 #include <common/config.h>
 #include <common/system/symplug.h>
 #include <common/string_enhanced.h>
-#include <library/api/mpic.h>
-#include <library/api/mpif.h>
 #include <library/loader/loader.h>
 #include <library/loader/module_mpi.h>
 #include <library/loader/module_mpic.h>
 #include <library/loader/module_mpif.h>
 #include <library/loader/module_cuda.h>
 #include <library/loader/module_common.h>
+#if FEAT_MPI_LOADER
+#include <library/api/mpic.h>
+#include <library/api/mpif.h>
+#endif
+
+#if !FEAT_MPI_LOADER
+typedef struct mpic_s {
+    void *Init;
+    void *init;
+} mpic_t;
+
+typedef mpic_t mpif_t;
+
+const char **ear_mpic_names;
+const char **ear_mpif_names;
+#endif
 
 static mpic_t next_mpic;
 static mpif_t next_mpif;
@@ -82,9 +96,8 @@ static void module_mpi_get_libear(char *path_lib_so, char *libhack, char *path_s
     *lang_c = 0;
     *lang_f = 0;
 
-    if (path_lib_so != NULL) { verbose(2, "LOADER path_lib_so %s", path_lib_so); }
-    if (libhack != NULL)     { verbose(2, "LOADER  using HACK %s", libhack); }
-
+    if (path_lib_so != NULL) { verbose(2, "LOADER: path_lib_so %s", path_lib_so); }
+    if (libhack     != NULL) { verbose(2, "LOADER: using HACK %s", libhack); }
     // Getting the library version
     if (func_version_detected) func_version(buffer, &len);
     else if (version_env != NULL) {
@@ -234,7 +247,6 @@ static int module_mpi_dlsym(char *path_so, int lang_c, int lang_f)
 
     if (libear != NULL && lang_c) plug_join(libear, (void **) &ear_mpic, ear_mpic_names, MPIC_N);
     if (libear != NULL && lang_f) plug_join(libear, (void **) &ear_mpif, ear_mpif_names, MPIF_N);
-
     //
     for (i = 0; i < MPIC_N; ++i) {
         if (ear_mpic_v[i] == NULL) {
@@ -246,7 +258,6 @@ static int module_mpi_dlsym(char *path_so, int lang_c, int lang_f)
             ear_mpif_v[i] = next_mpif_v[i];
         }
     }
-
     // Setting MPI next symbols
     if (!lang_c && !lang_f) {
         return 0;
@@ -305,15 +316,17 @@ int module_mpi(char *path_lib_so, char *libhack)
     int lang_f;
     int is_mpi;
 
+    #if !FEAT_MPI_LOADER
+    return 0;
+    #endif
     verbose(3, "LOADER: loading module MPI");
-    is_mpi = module_mpi_is();
-
-    if (!is_mpi) {
-        verbose(2, "LOADER: no MPI detected");
+    if (!(is_mpi = module_mpi_is())) {
         return 0;
     }
-    /* If we have not detected the symbol and the load is not force, we just return 1 to mark is an mpi application */
-    /* forced_load is set to 1 in the MPI_Init or MPI_Init_thread function since we cannot postpone the load there */
+    // If we have not detected the symbol and the load is not forced, we just
+    // return 1 to mark is an mpi application. forced_load is set to 1 in the
+    // MPI_Init or MPI_Init_thread function since we cannot postpone the load
+    // there.
     if (is_mpi && !func_version_detected && !forced_load) {
         return 1;
     }
@@ -324,10 +337,11 @@ int module_mpi(char *path_lib_so, char *libhack)
         return is_mpi;
     }
     set_mpi_enabled();
-    /* Once EARl is loaded we can  check if the application uses CUDA and then mark as a CUDA app */
-#if USE_GPUS
+    #if USE_GPUS
+    // Once EARl is loaded we can check if the application uses CUDA and then
+    // mark as a CUDA app.
     if (module_cuda_is()) ear_cuda_enabled();
-#endif
+    #endif
     if (atexit(module_mpi_destructor) != 0) {
         verbose(2, "LOADER: cannot set exit function");
     }

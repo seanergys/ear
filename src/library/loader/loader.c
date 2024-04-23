@@ -16,6 +16,7 @@
 */
 
 #define _GNU_SOURCE
+
 #include <stdio.h>
 #include <sched.h>
 #include <errno.h>
@@ -35,8 +36,7 @@
 
 static int _loaded;
 
-static int init()
-{
+static int init() {
     char *verb;
     char *task;
     pid_t pid1 = 1;
@@ -60,23 +60,21 @@ static int init()
         verbose(4, "LOADER: loader pid: %d", pid1);
     }
 
-    return 1;	
+    return 1;
     // return pid1 == pid2;
 }
 
-int must_load()
-{
+int must_load() {
     if ((strstr(program_invocation_name, "bash") == NULL) &&
-            (strstr(program_invocation_name, "hydra") == NULL)){
-        verbose(2,"LOADER: Program %s loaded with EAR",program_invocation_name);
+        (strstr(program_invocation_name, "hydra") == NULL)) {
+        verbose(2, "LOADER: Program %s loaded with EAR", program_invocation_name);
         return 1;
     }
-    verbose(2,"LOADER: Program %s loaded without EAR",program_invocation_name);
+    verbose(2, "LOADER: Program %s loaded without EAR", program_invocation_name);
     return 0;
 }
 
-int load_no_official()
-{
+int load_no_official() {
     char *app_to_load = ear_getenv(FLAG_LOADER_APPLICATION);
     if (app_to_load == NULL) {
         // TODO: This check is for the transition to the new environment variables.
@@ -84,7 +82,7 @@ int load_no_official()
         app_to_load = ear_getenv(SCHED_LOADER_LOAD_NO_MPI_LIB);
         if (app_to_load != NULL) {
             verbose(1, "LOADER: %sWARNING%s %s will be removed on the next EAR release. "
-                    "Please, change it by %s in your submission scripts.",
+                       "Please, change it by %s in your submission scripts.",
                     COL_RED, COL_CLR, SCHED_LOADER_LOAD_NO_MPI_LIB, FLAG_LOADER_APPLICATION);
         } else {
             return 0;
@@ -92,25 +90,22 @@ int load_no_official()
     }
     if (app_to_load == NULL) return 0;
     verbose(2, "LOADER: Using %s = %s as special cases", FLAG_LOADER_APPLICATION, app_to_load);
-    if (strinlist(app_to_load, ",", program_invocation_name)){
-      verbose(1,"LOADER: %s found in list ", program_invocation_name);
-      return 1;
+    if (strinlist(app_to_load, ",", program_invocation_name)) {
+        verbose(1, "LOADER: %s found in list ", program_invocation_name);
+        return 1;
     }
 
     return 0;
 }
 
-int load_no_parallel()
-{
-		if (strstr(program_invocation_name,"python") != NULL) return 1;
-		return 0;
+int load_no_parallel() {
+    if (strstr(program_invocation_name, "python") != NULL) return 1;
+    return 0;
 }
 
-void  __attribute__ ((constructor)) loader()
-{
+void __attribute__ ((constructor)) loader() {
     char *path_lib_so;
     char *libhack;
-
 
     // Initialization
     if (!init()) {
@@ -119,42 +114,34 @@ void  __attribute__ ((constructor)) loader()
     }
     verbose(2, "LOADER[%d]: loading for application '%s'", getpid(), program_invocation_name);
 
-    if (must_load()){
-        module_get_path_libear(&path_lib_so,&libhack);
-        if ((path_lib_so == NULL) && (libhack == NULL)){
-            verbose(1,"LOADER EAR path and EAR debug HACKS are NULL");
-            return ;
+    if (must_load()) {
+        module_get_path_libear(&path_lib_so, &libhack);
+        if ((path_lib_so == NULL) && (libhack == NULL)) {
+            verbose(1, "LOADER: EAR path and EAR debug HACKS are NULL");
+            return;
         }
 
         // Module MPI
-        verbose(2,"Tring MPI module");
+        verbose(2, "LOADER: Trying MPI module");
         _loaded = module_mpi(path_lib_so, libhack);
-
         if (_loaded) return;
-        
-				verbose(2,"Tring openmp/mkl module");
-
-        _loaded = module_constructor_openmp(path_lib_so,libhack);
+        verbose(2, "LOADER: Trying openmp/mkl module");
+        _loaded = module_constructor_openmp(path_lib_so, libhack);
         if (_loaded) return;
-
-        _loaded = module_constructor_cuda(path_lib_so,libhack);
+        _loaded = module_constructor_cuda(path_lib_so, libhack);
         if (_loaded) return;
-
-	_loaded = module_constructor_oneapi(path_lib_so,libhack);
-	if (_loaded) return;
-
+        _loaded = module_constructor_oneapi(path_lib_so, libhack);
+        if (_loaded) return;
         // Module default
         if (load_no_parallel()) {
-					verbose(2,"Tring default module because app name is %s", program_invocation_name);
-					_loaded = module_constructor(path_lib_so,libhack);
-				}
+            verbose(2, "LOADER: Trying default module because app name is %s", program_invocation_name);
+            _loaded = module_constructor(path_lib_so, libhack);
+        }
         if (_loaded) return;
-
         if (load_no_official()) {
-            verbose(2, "Tring default module");
-            _loaded = module_constructor(path_lib_so,libhack);
+            verbose(2, "LOADER: Tring default module");
+            _loaded = module_constructor(path_lib_so, libhack);
         }
     }
-
     return;
 }

@@ -20,7 +20,7 @@
 
 #define MPIF_N 93
 
-const char *mpif_names[] attr2(attr_weak, attr_hidden) =
+const char *mpif_names[] __attribute__((weak, visibility("hidden"))) =
 {
     "mpi_allgather",
     "mpi_allgatherv",
@@ -120,7 +120,7 @@ const char *mpif_names[] attr2(attr_weak, attr_hidden) =
     //#endif
 };
 
-const char *mpif_names_[] attr2(attr_weak, attr_hidden) =
+const char *mpif_names_[] __attribute__((weak, visibility("hidden"))) =
 {
     "mpi_allgather_",
     "mpi_allgatherv_",

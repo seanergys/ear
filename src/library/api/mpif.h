@@ -116,7 +116,7 @@ void ear_mpif_Iscatter_enter(MPI3_CONST void *sendbuf, MPI_Fint *sendcount, MPI_
 void ear_mpif_Iscatterv_enter(MPI3_CONST void *sendbuf, MPI3_CONST MPI_Fint *sendcounts, MPI3_CONST MPI_Fint *displs, MPI_Fint *sendtype, void *recvbuf, MPI_Fint *recvcount, MPI_Fint *recvtype, MPI_Fint *root, MPI_Fint *comm, MPI_Fint *request, MPI_Fint *ierror);
 //#endif
 
-const char *ear_mpif_names[] attr2(attr_weak, attr_hidden) =
+const char *ear_mpif_names[] __attribute__((weak, visibility("hidden"))) =
 {
 	"ear_mpif_Allgather",
 	"ear_mpif_Allgatherv",

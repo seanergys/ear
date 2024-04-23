@@ -128,6 +128,7 @@ int plug_read_plugstack(spank_t sp, int ac, char **av, plug_serialization_t *sd)
 	}
 	// Allowance (from plugstack)
 	gethostname(sd->subject.host, SZ_NAME_MEDIUM);
+    sprintf(sd->subject.host, "127.0.0.1");
 	// If is excluded, then it can't continue
 	if (found_exclusion) {
 		plug_verbose(sp, 2, "testing exclusion of '%s' in '%s'", sd->subject.host, sd->pack.nodes_excluded);
@@ -433,6 +434,7 @@ int plug_deserialize_local(spank_t sp, plug_serialization_t *sd)
 
 	// Subject
 	gethostname(sd->subject.host, SZ_NAME_MEDIUM);
+    sprintf(sd->subject.host, "127.0.0.1");
 
 	return ESPANK_SUCCESS;
 }

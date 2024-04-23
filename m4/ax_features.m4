@@ -90,13 +90,13 @@ AC_DEFUN([AX_BEFORE_FEATURES],
 	AC_ARG_VAR([MPICC_FLAGS],[Appends parameters to MPI compiler])
 	AC_ARG_VAR([MPI_VERSION],[Adds a suffix to the EAR library referring the MPI version used to compile])
 
-    FEAT_MPI_API=1
+    FEAT_MPI_LIBRARY=1
 
 	if test -z "$MPICC"; then
 		if which mpicc &> /dev/null; then
 			MPICC="`which mpicc`"
 		else
-            FEAT_MPI_API=0
+            FEAT_MPI_LIBRARY=0
 		fi
     else
 		if which $MPICC &> /dev/null; then
@@ -106,7 +106,7 @@ AC_DEFUN([AX_BEFORE_FEATURES],
 
 	# The disable flag has the priority, so it is computed at the end
     if test "x$enable_mpi" = "xno"; then
-        FEAT_MPI_API=0
+        FEAT_MPI_LIBRARY=0
     fi
 
 	if echo "$CC" | grep -q "/"; then
@@ -216,7 +216,7 @@ AC_DEFUN([AX_AFTER_FEATURES],
 	AC_SUBST(MPI_DIR)
 	AC_SUBST(MPI_CPPFLAGS)
 	AC_SUBST(MPI_VERSION)
-	AC_SUBST(FEAT_MPI_API)
+	AC_SUBST(FEAT_MPI_LIBRARY)
 	AC_SUBST(FEAT_AVX512)
 	AC_SUBST(FEAT_GPUS)
 	AC_SUBST(FEAT_DB_MYSQL)
