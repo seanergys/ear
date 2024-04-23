@@ -125,7 +125,7 @@ void set_default_eardbd_conf(eardb_conf_t *eardbdc)
     eardbdc->sync_tcp_port  = DEF_DBD_SYNCHR_PORT;
     eardbdc->mem_size       = DEF_DBD_ALLOC_MBS;
     eardbdc->use_log        = DEF_DBD_FILE_LOG;
-    strcpy(eardbdc->plugins, "");
+    strcpy(eardbdc->plugins, "mysql.so");
 }
 
 void print_db_manager(eardb_conf_t *conf)

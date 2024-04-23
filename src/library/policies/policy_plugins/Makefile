@@ -1,28 +1,28 @@
-ifeq ($(FEAT_GPU_OPT), 1)
-GPU_OPT_FLAG = -DGPU_OPT=1
-endif
-
 ######## FILES
 
 poli_BINS = \
     min_energy.so \
     min_time.so  \
-		optimize.so \
+    optimize.so \
     monitoring.so \
-		min_time_energy.so
+    min_time_energy.so
 
-ifdef CUDA_BASE
+GPU_OPT_FLAG = -DGPU_OPT=0
+
+ifeq ($(FEAT_GPUS), 1)
+poli_BINS += gpu_monitoring.so
+ifeq ($(FEAT_GPU_OPT), 1)
 poli_BINS += \
-	gpu_monitoring.so
-ifeq ($(FEAT_GPU_OPT),1)
-poli_BINS += \
-						 gpu_min_energy.so \
-						 gpu_min_time.so \
-						 gpu_min_time_energy.so \
-						 gpu_optimize.so \
-						 gpu_optimize_models.so
+    gpu_min_energy.so \
+    gpu_min_time.so \
+    gpu_min_time_energy.so \
+    gpu_optimize.so \
+    gpu_optimize_models.so
+
+GPU_OPT_FLAG = -DGPU_OPT=1
 endif
 endif
+
 
 poli_PERM = 0775
 poli_PATH = $(DESTDIR)/lib/plugins/policies
@@ -35,7 +35,7 @@ poli_DEPS = \
 .PRECIOUS: %.o
 
 all: $(poli_BINS)
- 
+
 %.o: %.c 
 	$(CC) $(CC_FLAGS) $(CFLAGS) $(LIB_CFLAGS) $(GPU_OPT_FLAG) -c $<
 

@@ -492,6 +492,8 @@ int eardbd_status_all(cluster_conf_t *conf, eardbd_table_t **edbstatus)
 	}
 	*edbstatus = aux_t;
 
+        free(aux_t);
+
 	return count;
 }
 
@@ -503,11 +505,11 @@ void process_eargm_status(int num_status, eargm_status_t *status, char **hosts, 
 	eargm_status_t *egm;
 	int num_inactive = 0;
 
-	inactive = calloc(sizeof(char *), my_cluster_conf.eargm.num_eargms); //prepare for inactive nodes
 	if (num_status < 1) {
 		printf("No EARGMs active\n");
 		return;
 	}
+	inactive = calloc(sizeof(char *), my_cluster_conf.eargm.num_eargms); //prepare for inactive nodes
 	printf("%3s %10s %6s %10s %10s %10s %10s\n", 
 				"ID", "NODE", "Status", "Cur. Power", "Powercap", "Req. Power", "Extra Pow.");
 	
@@ -545,6 +547,8 @@ void process_eargm_status(int num_status, eargm_status_t *status, char **hosts, 
 	for (i = 0; i < num_inactive; i++) {
 		printf("\t%s\n", inactive[i]);
 	}
+
+        free(inactive);
 
 }
 

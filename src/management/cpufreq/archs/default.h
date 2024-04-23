@@ -31,7 +31,10 @@ state_t mgt_cpufreq_default_init(ctx_t *c);
 
 state_t mgt_cpufreq_default_dispose(ctx_t *c);
 
-// Data
+void mgt_cpufreq_default_get_info(apinfo_t *info);
+
+void mgt_cpufreq_default_get_freq_details(freq_details_t *details);
+
 state_t mgt_cpufreq_default_count_available(ctx_t *c, uint *pstate_count);
 
 state_t mgt_cpufreq_default_get_available_list(ctx_t *c, pstate_t *pstate_list);

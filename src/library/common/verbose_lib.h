@@ -28,7 +28,8 @@
 #define VEARL_ERROR 1
 #define VEARL_WARN  2
 #define VEARL_INFO  1
-#define VEARL_INFO2  2
+#define VEARL_INFO2 2
+#define VEARL_DEBUG 3
 
 #define verbose_master(...) if (masters_info.my_master_rank >= 0) verbose(__VA_ARGS__)
 #define verbosen_master(...) if (masters_info.my_master_rank >= 0) verbosen(__VA_ARGS__)
@@ -46,8 +47,14 @@
 } while (0);
 
 
+#define verbose_info2(msg, ...) do { \
+	verbose(VEARL_INFO2, COL_BLU "[%s][%d][INFO2] " COL_CLR msg, \
+					node_name, my_node_id, ##__VA_ARGS__); \
+} while (0);
+
+
 #define verbose_error(msg, ...) do { \
-    verbose(VEARL_ERROR, COL_BLU "[%s][%d][INFO] " COL_CLR msg, \
+    verbose(VEARL_ERROR, COL_RED "[%s][%d][ERROR] " COL_CLR msg, \
 						node_name, my_node_id, ##__VA_ARGS__); \
 } while (0);
 

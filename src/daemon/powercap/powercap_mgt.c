@@ -37,8 +37,8 @@
 #include <common/hardware/hardware_info.h>
 #include <common/types/configuration/cluster_conf.h>
 
-#include <daemon/shared_configuration.h>
 #include <daemon/power_monitor.h>
+#include <daemon/shared_configuration.h>
 #include <daemon/powercap/powercap_mgt.h>
 #include <daemon/powercap/powercap_status.h>
 #if USE_GPUS
@@ -147,6 +147,9 @@ const char     *pcsyms_names[] ={
     "plugin_get_settings",
 };
 
+
+static uint pmgt_powercap_status_per_domain(uint action);
+
 #ifndef SYN_TEST
 #define UTIL_BURST_PERIOD 1000
 #else
@@ -251,7 +254,7 @@ uint pmgt_utilization_changed()
             }
         }
 #if USE_GPUS
-        else if ((i == DOMAIN_GPU )){
+        else if (i == DOMAIN_GPU ){
             uint g;
             for (g=0;g<gpu_pc_num_gpus;g++){
                 //debug("Comparing utilization for GPU %d : %lu vs %lu",g,current_util[DOMAIN_GPU][g],prev_util[DOMAIN_GPU][g]);
@@ -335,9 +338,7 @@ static state_t util_detect_init(void *p)
     last_dom_util[DOMAIN_CPU] = min;
     last_dom_util[DOMAIN_DRAM] = pc_topology_info.socket_count;
     last_dom_util[DOMAIN_GPU]=0;
-    if (gpu_data_alloc(&gpu_detection_raw_data)!=EAR_SUCCESS){
-        error("Initializing GPU data in powercap");
-    }
+    gpu_data_alloc(&gpu_detection_raw_data);
     return EAR_SUCCESS;
 }
 #endif
@@ -371,9 +372,7 @@ state_t pmgt_init()
     if (gpu_init(no_ctx)!=EAR_SUCCESS){
         error("Initializing GPU in powercap");
     }
-    if (gpu_count_devices(no_ctx, &gpu_pc_num_gpus)!=EAR_SUCCESS){
-        error("Getting num gpus");
-    }
+    gpu_count_devices(no_ctx, &gpu_pc_num_gpus);
     if (gpu_pc_model == API_DUMMY) {
         memcpy(pdomains_def,pdomains_def_dummy,sizeof(pdomains_def));
         memcpy(pdomains,pdomains_def_dummy,sizeof(pdomains_def));
@@ -942,7 +941,7 @@ void pmgt_get_status(pmgt_status_t *status)
 
 }
 
-uint pmgt_powercap_status_per_domain(uint action)
+static uint pmgt_powercap_status_per_domain(uint action)
 {
 #if USE_GPUS
     int i;

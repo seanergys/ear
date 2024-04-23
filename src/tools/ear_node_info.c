@@ -142,12 +142,12 @@ void show_cpu_info()
     printf("EAR CPU info load\n");
     check(mgt_cpufreq_load(&tp, EARD),"mgt_cpufreq_load");
     check(mgt_cpufreq_init(no_ctx), "mgt_cpufreq_init");
-    check(mgt_cpufreq_get_api(&api), "mgt_cpufreq_get_api");
+    mgt_cpufreq_get_api(&api);
     apis_tostr(api, buffer, sizeof(buffer));
     printf("EAR CPU info API: %s\n", buffer);
 
     uint cpuf_num_dev;
-    check(mgt_cpufreq_count_devices(no_ctx, &cpuf_num_dev), "mgt_cpufreq_count_devices");
+    mgt_cpufreq_count_devices(no_ctx, &cpuf_num_dev);
     printf("EAR CPU info num devices:%u\n", cpuf_num_dev);
 
     pstate_t *cpu_pstate_list;
@@ -173,7 +173,7 @@ void show_cpu_info()
     /* Asking for the current CPU freq requires data allocation */
     pstate_t *curr_cpu_pstate;
     uint     *index;
-    check(mgt_cpufreq_data_alloc(&curr_cpu_pstate, &index),"mgt_cpufreq_data_alloc");
+    mgt_cpufreq_data_alloc(&curr_cpu_pstate, &index);
     check(mgt_cpufreq_get_current_list(no_ctx, curr_cpu_pstate),"mgt_cpufreq_get_current_list");
     for (uint ccpu = 0; ccpu < cpuf_num_dev; ccpu++){
         printf("EAR CPU info curr CPUF[%u] = %llu\n", ccpu, curr_cpu_pstate[ccpu].khz);

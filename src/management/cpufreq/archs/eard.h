@@ -26,6 +26,10 @@ state_t mgt_cpufreq_eard_init(ctx_t *c);
 
 state_t mgt_cpufreq_eard_dispose(ctx_t *c);
 
+void mgt_cpufreq_eard_get_info(apinfo_t *info);
+
+void mgt_cpufreq_eard_get_freq_details(freq_details_t *details);
+
 state_t mgt_cpufreq_eard_count_available(ctx_t *c, uint *pstate_count);
 
 state_t mgt_cpufreq_eard_get_available_list(ctx_t *c, pstate_t *pstate_list);

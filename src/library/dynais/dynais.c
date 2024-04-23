@@ -15,6 +15,7 @@
 * and COPYING.EPL files.
 */
 
+
 /*
  * Usage:
  * Just call dynais() passing the sample and the size of

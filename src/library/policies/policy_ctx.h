@@ -42,9 +42,9 @@ typedef struct mpi_ctx {
 #endif
 
 typedef struct node_freqs {
-	ulong *cpu_freq;
-	ulong *imc_freq;
-	ulong *gpu_freq;
+	ulong *cpu_freq; 			// Freq in KHz
+	ulong *imc_freq;     	// Pstates , no frequency
+	ulong *gpu_freq;      // Freq in KHz (?)
 	ulong *gpu_mem_freq;
 } node_freqs_t;
 
@@ -102,6 +102,6 @@ typedef struct policy_symbols {
 	state_t (*restore_settings)   (polctx_t *c, signature_t *my_sig, node_freqs_t *freqs);
 } polsym_t;
 
-
+void compute_avg_sel_freq(ulong * avg_sel_mem_f, ulong *imcfreqs);
 
 #endif //EAR_POLICIES_H

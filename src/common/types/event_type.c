@@ -85,3 +85,23 @@ void event_value_to_str(ear_event_t *ev, char *str, size_t max)
         snprintf(str, max,  "%lu", ev->value);
     }
 }
+
+void event_serialize(serial_buffer_t *b, ear_event_t *event)
+{
+    serial_dictionary_push_auto(b, event->jid);
+    serial_dictionary_push_auto(b, event->step_id);
+    serial_dictionary_push_auto(b, event->node_id);
+    serial_dictionary_push_auto(b, event->event);
+    serial_dictionary_push_auto(b, event->value);
+    serial_dictionary_push_auto(b, event->timestamp);
+}
+
+void event_deserialize(serial_buffer_t *b, ear_event_t *event)
+{
+    serial_dictionary_pop_auto(b, event->jid);
+    serial_dictionary_pop_auto(b, event->step_id);
+    serial_dictionary_pop_auto(b, event->node_id);
+    serial_dictionary_pop_auto(b, event->event);
+    serial_dictionary_pop_auto(b, event->value);
+    serial_dictionary_pop_auto(b, event->timestamp);
+}

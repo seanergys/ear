@@ -15,6 +15,7 @@
 * and COPYING.EPL files.
 */
 
+
 // #define SHOW_DEBUGS 1
 
 #include <unistd.h>
@@ -23,6 +24,7 @@
 #include <common/includes.h>
 
 #include <common/output/verbose.h>
+#include <common/output/debug.h>
 
 #include <common/system/lock.h>
 #include <common/system/symplug.h>
@@ -43,13 +45,14 @@ static struct energy_op
     state_t (*data_alloc)    (edata_t *data);
     uint    (*is_null)       (edata_t end);
     state_t (*data_copy)     (edata_t dest, edata_t src);
+    state_t   (*no_privilege_init) ();
 } energy_ops;
 
 static int  energy_loaded  = 0;
 
 static size_t my_energy_data_size = 0;
 
-static const int   energy_nops    = 9;
+static const int   energy_nops    = 10;
 static const char *energy_names[] = {
 	"energy_datasize",
 	"energy_frequency",
@@ -59,7 +62,8 @@ static const char *energy_names[] = {
 	"energy_dc_read",
 	"energy_data_alloc",
 	"energy_data_is_null",
-	"energy_data_copy"
+	"energy_data_copy",
+	"energy_not_privileged_init"
 };
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
@@ -107,6 +111,13 @@ state_t energy_node_load(char *path, int eard)
 		    ear_unlock(&lock);
         return_msg(ret, "Energy plugin symbols can not be opened.");
     }
+
+    if (energy_ops.no_privilege_init)
+    {
+        debug("The loaded plugin requires a non-priviledged init...");
+        energy_ops.no_privilege_init();
+    }
+
     
     energy_loaded = 1;
 

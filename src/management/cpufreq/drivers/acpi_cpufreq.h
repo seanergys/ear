@@ -37,6 +37,8 @@ state_t mgt_acpi_cpufreq_dispose();
 
 state_t mgt_acpi_cpufreq_reset();
 
+void mgt_acpi_cpufreq_get_freq_details(freq_details_t *details);
+
 state_t mgt_acpi_cpufreq_get_available_list(const ullong **freq_list, uint *freq_count);
 
 state_t mgt_acpi_cpufreq_get_current_list(const ullong **freq_list);

@@ -18,9 +18,13 @@
 #ifndef _EAR_TYPES_POWER_SIGNATURE
 #define _EAR_TYPES_POWER_SIGNATURE
 
-#include <common/types/generic.h>
 #include <common/config.h>
+#include <common/types/generic.h>
+#include <common/utils/serial_buffer.h>
 
+// WARNING! This type is serialized through functions pwoer_signature_serialize
+// and power_signature_deserialize. If you want to add new types, make sure to
+// update these functions too.
 typedef struct power_signature
 {
     double DC_power;
@@ -33,7 +37,6 @@ typedef struct power_signature
     ulong avg_f;
     ulong def_f;
 } power_signature_t;
-
 
 typedef struct accum_power_sig{
 	ulong DC_energy;
@@ -63,5 +66,9 @@ uint are_equal_power_sig(power_signature_t *sig1,power_signature_t *sig2,double 
 void print_power_signature_fd(int fd, power_signature_t *sig);
 
 void clean_db_power_signature(power_signature_t *ps, double limit);
+
+void power_signature_serialize(serial_buffer_t *b, power_signature_t *power_sig);
+
+void power_signature_deserialize(serial_buffer_t *b, power_signature_t *power_sig);
 
 #endif

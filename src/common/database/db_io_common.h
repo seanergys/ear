@@ -26,9 +26,9 @@
 #define PERIODIC_AGGREGATION_ARGS   4
 #define EAR_EVENTS_ARGS             6
 #define POWER_SIGNATURE_ARGS        9
-#define APPLICATION_ARGS            5
-#define LOOP_ARGS                   8
-#define JOB_ARGS                    16
+#define APPLICATION_ARGS            6
+#define LOOP_ARGS                   9
+#define JOB_ARGS                    17
 
 
 

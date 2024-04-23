@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <common/utils/args.h>
@@ -33,6 +33,10 @@ typedef void  (get_tag_f)         (cchar **tag, cchar **tags_deps);
 typedef char *(action_init_f)     (cchar *tag, void **data_alloc, void *data);
 typedef char *(action_periodic_f) (cchar *tag, void *data);
 typedef char *(post_data_f)       (cchar *msg, void *data);
+typedef char *(fds_set_f)         (afd_set_t *set);
+
+static ulong monitor_period = 100;
+static ulong relax_period = 100;
 
 // Example of dependency table:
 // plugin0 [0] [1] [0]: It means that for plugin0, the plugin1 is mandatory
@@ -49,6 +53,8 @@ typedef struct plugin_s {
     uint               deps_table[MAX_PLUGINS]; // Not sorted, table of dependecy modes
     action_init_f     *action_init[MAX_PLUGINS];
     action_periodic_f *action_periodic[MAX_PLUGINS];
+    fds_set_f         *fds_register;
+    fds_set_f         *fds_attend;
     post_data_f       *post_data;
     void              *data;
     void              *data_conf;
@@ -75,6 +81,10 @@ static plugins_t   p;
 static char      **priority_paths;
 static char        date[128];
 static uint        exit_called;
+static int         fds_status;
+static afd_set_t   fds_active;
+static ullong      timeout;
+static ullong      timeout_remaining;
 
 static int plugins_dependencies_read(cchar *string, ullong father_time_lapse, uint priority, uint *father_deps_table)
 {
@@ -105,17 +115,31 @@ static int plugins_dependencies_read(cchar *string, ullong father_time_lapse, ui
         priority_plus = 0;
         time_inherit  = 0;
         mandatory     = 0;
-        // Configuration = file:path:conf1:conf2
+        // Configuration = file:time:conf1:conf2
         if (strtoa(list1[l], ':', &list2, &list2_count) != NULL) {
-            if (list2_count > 1) {
-                p.plugins[p.count].time_lapse = (ullong) atoi(list2[1]);
-                p.plugins[p.count].time_param = 1;
+            for (j = 1; list2[j] != NULL; ++j) {
+                adebug("[Debug] %s: arg[%d] %s", list2[0], j, list2[j]);
             }
-            // Configuration exists
-            if (list2_count > 2) {
-                //strncpy(p.plugins[p.count].conf, list2[2], sizeof(p.plugins[p.count].conf));
-                //p.plugins[p.count].data_conf = (void *) p.plugins[p.count].conf;
-                p.plugins[p.count].data_conf = (void *) &list2[2];
+            // If time is valid
+            if (list2_count > 1 && strlen(list2[1]) > 0 && strisnum(list2[1])) {
+                p.plugins[p.count].time_lapse = (ullong) atoi(list2[1]);
+                p.plugins[p.count].time_param = p.plugins[p.count].time_lapse > 0;
+                // If configuration exists
+                if (list2_count > 2) {
+                    //strncpy(p.plugins[p.count].conf, list2[2], sizeof(p.plugins[p.count].conf));
+                    //p.plugins[p.count].data_conf = (void *) p.plugins[p.count].conf;
+                    p.plugins[p.count].data_conf = (void *) &list2[2];
+                }
+            } else {
+                // Ok, time is not valid, so this is configuration then
+                if (list2_count > 1 && strlen(list2[1]) > 0) {
+                    p.plugins[p.count].data_conf = (void *) &list2[1];
+                } else {
+                    // Or maybe not, if list2[1] is empty then the configuration is this
+                    if (list2_count > 2) {
+                        p.plugins[p.count].data_conf = (void *) &list2[2];
+                    }
+                }
             }
             c = list2[0];
         } else {
@@ -143,9 +167,10 @@ static int plugins_dependencies_read(cchar *string, ullong father_time_lapse, ui
         } else {
             sprintf(p.plugins[p.count].path, "%s", c);
         }
-        if (list2 != NULL) {
-            strtoa_free(list2);
-        }
+        // If you free this list, the plugin can't get the configuration
+        //if (list2 != NULL) {
+            //strtoa_free(list2);
+        //}
         // Getting the plugin file_name for printing and compare purposes
         for (j = strlen(p.plugins[p.count].path)-2; j >= 0; --j) {
             p.plugins[p.count].file_name = &p.plugins[p.count].path[j];
@@ -192,12 +217,13 @@ static int plugins_dependencies_read(cchar *string, ullong father_time_lapse, ui
         }
         // If not found, update the father dependency table
         if (father_deps_table != NULL) {
-            father_deps_table[p.count] = (uint) mandatory;
+            father_deps_table[p.count] = mandatory;
         }
         // Not found, so this is a new plugin
         p.count += 1;
     }
     strtoa_free(list1);
+
     return 1;
 }
 
@@ -210,8 +236,9 @@ static void plugins_open_sort(uint priority, uint index)
     }
     for (i = 0; i < p.count; ++i) {
         if (priority == p.plugins[i].priority) {
-            debug("[DEBUG] %19s: time lapse '%4llu', priority '%u'",
-                    p.plugins[i].path, p.plugins[i].time_lapse, p.plugins[i].priority);
+            adebug("[Debug] %s: time lapse '%4llu', time_param %u, priority '%u'",
+                    p.plugins[i].path, p.plugins[i].time_lapse, p.plugins[i].time_param,
+                    p.plugins[i].priority);
             p.plugins_sorted[index++] = &p.plugins[i];
         }
     }
@@ -225,6 +252,7 @@ static state_t plugins_open_so(char *path, void **handler)
     }
     // Lazy binding allows to load plugins thar require symbols of other plugins
     // that haven't been loaded yet.
+    debug("Loding %s", path);
     if ((*handler = dlopen(path, RTLD_LAZY | RTLD_GLOBAL)) == NULL) {
         return_msg(EAR_ERROR, dlerror());
     }
@@ -302,7 +330,7 @@ static int plugins_open()
         }
         // Enabling if all the dependenciesare opened.
         plug->is_enabled = plug->is_opened && (j == p.count);
-        verbose(4, "[Summary] %s %s: called every %04llu ms with priority %u%s",
+        verbose(4, "[Summary] %s %s: called every %06llu ms with priority %u%s",
                 (plug->is_opened)? "Opened": "Not opened", plug->file_name, plug->time_lapse,
                 plug->priority, (plug->is_enabled)? "": ", but disabled");
         enabled_count += plug->is_enabled;
@@ -339,7 +367,6 @@ static int output_print(int i, int d, char *prefix, char *output)
             output += 3;
         } else if (strstr(output, "[X]") != NULL) {
             exit_called = 1;
-            return 0;
         }
     }
     // Cleaning spaces
@@ -347,7 +374,10 @@ static int output_print(int i, int d, char *prefix, char *output)
         ++output;
     }
     if (strlen(output) > 0) {
-        verbose(0, "[ %s, %19s ] %s%s", date, p.plugins_sorted[i]->file_name, prefix, output);
+        verbose(0, "[ %s, %21s ] %s%s", date, p.plugins_sorted[i]->file_name, prefix, output);
+    }
+    if (exit_called) {
+        return 0;
     }
     return 1;
 }
@@ -428,6 +458,27 @@ next_ap:
     // before means that data is required to perform the dependent main function,
     // which makes sense.
     plugins_action_periodic(i+1, time_now, time_passed);
+}
+
+static void plugins_fds_attend(int i)
+{
+    char *sout;
+    // Base case
+    if (i == p.count) {
+        return;
+    }
+    if (p.plugins_sorted[i]->fds_attend == (void *) UINT64_MAX) {
+        goto next_fa;
+    }
+    p.plugins_sorted[i]->fds_attend = dlsym(p.plugins_sorted[i]->handler, "up_fds_attend");
+    if (p.plugins_sorted[i]->fds_attend != NULL) {
+        sout = p.plugins_sorted[i]->fds_attend(&fds_active);
+        output_print(i, i, "FDs attend status: ", sout);
+    } else {
+        p.plugins_sorted[i]->fds_attend = (void *) UINT64_MAX;
+    }
+next_fa:
+    plugins_fds_attend(i+1);
 }
 
 static state_t plugins_main(void *whatever)
@@ -521,12 +572,29 @@ next_ai:
     plugins_action_init(i+1);
 }
 
+static void plugins_fds_register(int i)
+{
+    char *sout;
+    // Base case
+    if (i == p.count) {
+        return;
+    }
+    p.plugins_sorted[i]->fds_register = dlsym(p.plugins_sorted[i]->handler, "up_fds_register");
+    if (p.plugins_sorted[i]->fds_register != NULL) {
+        sout = p.plugins_sorted[i]->fds_register(&fds_active);
+        output_print(i, i, "FDs register status: ", sout);
+    }
+next_fr:
+    plugins_fds_register(i+1);
+}
+
 static state_t plugins_init(void *whatever)
 {
     int enabled = 0;
     if ((enabled = plugins_open())) {
         plugins_open_sort(p.max_priority, 0);
         plugins_action_init(0);
+        plugins_fds_register(0);
     }
     if (!enabled) {
         monitor_dispose();
@@ -537,6 +605,7 @@ static state_t plugins_init(void *whatever)
 static int plugin_manager_configure(int argc, char *argv[])
 {
     char buffer[8192];
+    char params[128];
 
     if (argc == 1 || args_get(argc, argv, "help", buffer)) {
         verbose(0, "Usage: %s [OPTIONS]\n", argv[0]);
@@ -545,6 +614,8 @@ static int plugin_manager_configure(int argc, char *argv[])
         verbose(0, "    --paths      List of colon separated priority paths to search plugins.");
         verbose(0, "    --verbose    Show how the things are going internally.");
         verbose(0, "    --silence    Hide messages returned by plugins.");
+        verbose(0, "    --monitor    Period at which the plugin wake ups for monitoring. Def=100 ms  ");
+        verbose(0, "    --relax      Period to be used during low monitoring periods. Def=100 ms  ");
         verbose(0, "    --help       If you see it you already typed --help.");
         return 0;
     }
@@ -564,6 +635,18 @@ static int plugin_manager_configure(int argc, char *argv[])
     if (args_get(argc, argv, "silence", NULL)) {
         VERB_SET_EN(0);
     }
+    // Buffer cannot be used becasue it has to be parsed later
+    if (args_get(argc, argv, "monitor", params)) {
+	    monitor_period = strtoul(params, NULL, 10);
+    }
+    // Buffer cannot be used becasue it has to be parsed later
+    if (args_get(argc, argv, "relax", params)) {
+	    relax_period = strtoul(params, NULL, 10);
+    }
+    verbose(0,"UPM configuration: plugins \'%s\' verbose %u monitor periods[burst %lu, relax %lu]", buffer, VERB_GET_LV(), monitor_period, relax_period);
+    if (args_get(argc, argv, "debug", NULL)) {
+        ADEBUG_SET_EN(1);
+    }
     p.plugins = calloc(MAX_PLUGINS, sizeof(plugin_t));
     p.plugins_sorted = calloc(MAX_PLUGINS, sizeof(plugin_t *));
     return plugins_dependencies_read(buffer, 0LLU, 0, NULL);
@@ -577,16 +660,38 @@ int plugin_manager_main(int argc, char *argv[])
         verbose(0, "[ERROR] No plugins to load.")
         return 0;
     }
+    #if 0
+    afd_init(&fds_active);
+    plugins_init(NULL);
+    // 100 milliseconds
+    timeout = 100LLU;
+    while (!exit_called) {
+        if ((fds_status = aselect(&fds_active, timeout, &timeout_remaining)) != -1) {
+            if (fds_status > 0) {
+                printf("fds_status > 0\n");
+                plugins_fds_attend(0);
+                timeout = timeout_remaining;
+            } else if (fds_status == 0) {
+                printf("fds_status == 0\n");
+                plugins_main(NULL);
+                timeout = 100LLU;
+            }
+        }
+    }
+    #else
     // Suscriptions
     suscription_t *sus = suscription();
     sus->call_init     = plugins_init;
     sus->call_main     = plugins_main;
-    sus->time_relax    = 100;
-    sus->time_burst    = 100;
+    sus->time_relax    = relax_period;
+    sus->time_burst    = monitor_period;
     sus->suscribe(sus);
     // Monitoring metrics
     debug("Initializing monitor");
-    monitor_init();
+    if (state_fail(monitor_init())) {
+        verbose(0, "Monitor failed: %s", state_msg);
+    }
+    #endif
 
     return 1;
 }
@@ -603,6 +708,8 @@ int plugin_manager_init(char *plugins, char *paths)
     sprintf(p0, "./bin");
     sprintf(p1, "--plugins=%s", plugins);
     sprintf(p2, "--paths=%s", paths);
+
+    verbose(0,"UPM main: plugin list \'%s\' paths \'%s\'", plugins, paths);
     return plugin_manager_main((paths != NULL) ? 3 : 2, argv);
 }
 

@@ -735,7 +735,7 @@ void dyncon_set_risk(int fd, request_t *command)
                     if (new_max_freq != dyn_conf->max_freq){
                         dyn_conf->max_freq = new_max_freq;
                         resched_conf->force_rescheduling = 1;
-                        if (node_max < new_max_freq) node_max = node_max;
+                        if (node_max < new_max_freq) node_max = new_max_freq;
                     }
                 }
             }
@@ -762,7 +762,7 @@ void adap_new_job_req_to_app(application_t *req_app,new_job_req_t *new_job)
 
 static int is_new_command(request_t *comm)
 {
-    if (comm->req == EAR_RC_NEW_JOB || comm->req == EAR_RC_END_JOB || comm->req == EAR_RC_NEW_TASK || comm->req == EAR_RC_STATUS) return 1;
+    if (comm->req == EAR_RC_NEW_JOB || comm->req == EAR_RC_END_JOB || comm->req == EAR_RC_NEW_TASK || comm->req == EAR_RC_STATUS || comm->req == EAR_RC_NODE_PURGE) return 1;
     // if ((comm->req == last_command) && (comm->time_code == last_command_time)) return 0;
     for (uint i=0; i < MAX_HISTORIC_COMM ; i++){
         //    if ((list_last_commands[i].req == comm->req ) && (list_last_commands[i].time_code == comm->time_code)) return 0;
@@ -942,6 +942,9 @@ state_t process_remote_requests(int clientfd) {
         case EAR_RC_GET_POWER:
             dyncon_get_power(clientfd, &command);
             return EAR_SUCCESS;
+        case EAR_RC_NODE_PURGE:
+						powermon_purge_old_jobs();
+						return EAR_SUCCESS;
         default:
             error("Invalid remote command %d\n",req);
             req = NO_COMMAND;

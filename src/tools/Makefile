@@ -12,8 +12,11 @@ tool_BINS = \
 		cluster_ping \
     ear_conf \
     insert_test \
-		enode_info
+		enode_info \
+    node_manager_info \
+		list_folders
 
+ifeq ($(FEAT_WF_SUPPORT), 1)
 ifdef DB_BASE
 tool_BINS += \
     learning_show \
@@ -24,6 +27,7 @@ endif
 ifdef GSL_BASE
 tool_BINS += \
 	coeffs_compute
+endif
 endif
 tool_PATH = $(DESTDIR)/bin/tools
 tool_PERM = 0770
@@ -87,6 +91,13 @@ enode_info: ear_node_info.c $(comm_OBJS) $(SRCDIR)/daemon/local_api/libeard.a $(
 
 cluster_ping: cluster_ping.c $(comm_OBJS) $(rapi_OBJS)
 	$(CCC) -o $@ $< $(rapi_OBJS) $(comm_OBJS) -lm
+
+list_folders: list_folders.c $(comm_OBJS)
+	$(CCC) -I$(SRCDIR) -o $@ $< $(comm_OBJS)
+
+node_manager_info: node_manager_info.c $(comm_OBJS)
+	$(CCC) -o $@ $<  $(SRCDIR)/daemon/local_api/libeard.a $(SRCDIR)/daemon/shared_configuration.o $(SRCDIR)/daemon/shared_pmon.o $(comm_OBJS)
+
 
 ######## OPTIONS
 

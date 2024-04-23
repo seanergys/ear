@@ -16,6 +16,9 @@ OBJS += \
 endif
 
 BINS = libear_seq.so
+oths_BINS = earld.h
+oths_PATH = $(DESTDIR)/include
+oths_PERM = 0664
 
 ######## RULES
 
@@ -29,7 +32,7 @@ libear_seq.so: ear_seq.o
 
 ######## OPTIONS 
 
-install: ;
+install: oths.ginstall;
 
 clean: rclean;
 

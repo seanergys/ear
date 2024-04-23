@@ -44,12 +44,15 @@ energy_model_t energy_model_load_cpu_model(uint user_type, conf_install_t *data,
  * \param[in] user_type
  * \param[in] data
  * \param[in] arch_desc
+ *
+ * \return A NULL pointer on error.
  */
 energy_model_t energy_model_load_gpu_model(uint user_type, conf_install_t *data, architecture_t *arch_desc);
 
 
 /** Deallocates the memory used by the energy model handler given as input argument.
  * On error, it fills the global string \ref state_msg with the cause of the error.
+ *
  * \return EAR_ERROR The input argument is null.
  * \return EAR_SUCCESS Otherwise. */
 state_t energy_model_dispose(energy_model_t energy_model);
@@ -90,7 +93,7 @@ uint energy_model_projection_available(energy_model_t energy_model, ulong from_p
 
 /** Checks whether the loaded model has all projections.
  * Model's implementation dependant. */
-uint energy_model_all_projections_available(energy_model_t energy_model);
+uint energy_model_any_projection_available(energy_model_t energy_model);
 
 
 #endif // _EAR_ENERGY_MODEL_H_

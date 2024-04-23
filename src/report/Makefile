@@ -1,7 +1,7 @@
-CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC $(CONSTANTS) $(DB_CFLAGS)
+CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC $(CONSTANTS) $(DB_CFLAGS) $(DEFS)
 
-DB_MYSQL_LDFLAGS = $(DB_LDFLAGS) $(SRCDIR)/common/libcommon.a
-DB_PSQL_LDFLAGS  = $(DB_LDFLAGS) -lpq $(SRCDIR)/common/libcommon.a
+DB_MYSQL_LDFLAGS = $(DB_LDFLAGS) $(SRCDIR)/common/libcommon.a $(SRCDIR)/common/libdb.a
+DB_PSQL_LDFLAGS  = $(DB_LDFLAGS) -lpq $(SRCDIR)/common/libcommon.a $(SRCDIR)/common/libdb.a
 
 
 # Examon requirements
@@ -28,14 +28,18 @@ repo_BINS = \
 		dcdb.so \
 		sysfs.so \
     mpitrace.so \
+    log.so \
+    nodesensor_log.so \
 	mpi_node_metrics.so
 ifeq ($(FEAT_DB_PSQL),1)
 repo_BINS += \
 	psql.so 
 endif
 ifeq ($(FEAT_DB_MYSQL),1)
+ifeq ($(FEAT_WF_SUPPORT), 1)
 repo_BINS += \
 	mysql.so 
+endif
 endif
 ifeq ($(FEAT_DB_CASSANDRA),1)
 repo_BINS += \
@@ -58,13 +62,6 @@ CFLAGS += \
 repo_BINS += \
 	dcgmi.so
 endif	
-
-ifeq ($(DLB), 1)
-CFLAGS += -DDLB=1 -Idlb_path/include
-LDFLAGS += -Ldlb_path/lib -ldlb
-endif
-
-
 
 ######## RULES
 
@@ -89,10 +86,10 @@ prometheus.so: prometheus.c $(repo_DEPS)
 	$(CC) $(CFLAGS) -shared -o prometheus.so prometheus.c -lmicrohttpd 
 
 mysql.so: mysql.c $(repo_DEPS)
-	$(CC) $(CFLAGS) -shared -o $@ $^ $(DB_LDFLAGS) $(SRCDIR)/common/libcommon.a
+	$(CC) $(CFLAGS) $(DB_CFLAGS) -shared -o $@ $^ $(DB_MYSQL_LDFLAGS)
 
 psql.so: psql.c $(repo_DEPS)
-	$(CC) $(CFLAGS) $(DB_CFLAGS) -shared -o $@ $^ $(DB_LDFLAGS) $(SRCDIR)/common/libcommon.a
+	$(CC) $(CFLAGS) $(DB_CFLAGS) -shared -o $@ $^ $(DB_PSQL_LDFLAGS)
 
 ifeq ($(FEAT_EXAMON),1)
 examon.so: examon.c
@@ -105,6 +102,9 @@ cassandra.so: cassandra.c $(repo_DEPS)
 
 heroes.so: heroes.c $(repo_DEPS)
 	$(CC) $(CFLAGS)  -shared -o $@ $^ -L/usr/lib64 
+
+mpi_node_metrics.so: mpi_node_metrics.c $(SRCDIR)/library/metrics/dlb_talp_lib.h $(repo_DEPS)
+	$(CC) $(CFLAGS) -shared -o $@ mpi_node_metrics.c $(repo_DEPS)
 
 #$(CC) $(CFLAGS) $(DB_CFLAGS) -shared -o $@ $^ $(DB_LDFLAGS) -l:/home/xlalonso/downloads/cpp-driver/build/libcassandra.so
 ######## SUBFOLDERS

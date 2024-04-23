@@ -118,6 +118,18 @@ state_t TAG_parse_token(tag_t **tags_i, unsigned int *num_tags_i, char *line)
         {
             tags[idx].error_power = atol(value);
         }
+				else if (!strcmp(key, "MAX_TEMP"))
+				{ 
+						tags[idx].max_temp = atol(value);
+				}
+				else if (!strcmp(key, "CPU_TEMP_CAP"))
+				{ 
+						tags[idx].cpu_temp_cap = atol(value);
+				}
+				else if (!strcmp(key, "GPU_TEMP_CAP"))
+				{ 
+						tags[idx].gpu_temp_cap = atol(value);
+				}
         else if (!strcmp(key, "POWERCAP"))
         {
             tags[idx].powercap = atol(value);
@@ -240,5 +252,13 @@ void print_tags_conf(tag_t *tag)
     verbosen(VCCONF,"\t\t powercap %s\n",buffer);
     power2str(tag->max_powercap, buffer);
     verbosen(VCCONF,"\t\t max_powercap %s\n",buffer);
+		if ((tag->cpu_temp_cap == TEMP_CAP_UNLIMITED) && (tag->gpu_temp_cap == TEMP_CAP_UNLIMITED)){
+			verbosen(VCCONF,"\t\tTemperature cap disabled\n");
+		}else{
+			char cpu_tcap[64], gpu_tcap[64];
+			snprintf(cpu_tcap,sizeof(cpu_tcap),"%lu", tag->cpu_temp_cap);
+			snprintf(gpu_tcap,sizeof(gpu_tcap),"%lu", tag->gpu_temp_cap);
+			verbosen(VCCONF,"\t\tTemperature cap enabled: CPU %s / GPU %s\n", (tag->cpu_temp_cap == TEMP_CAP_UNLIMITED)?"ulimited":cpu_tcap, (tag->gpu_temp_cap == TEMP_CAP_UNLIMITED)?"unlimited":gpu_tcap);
+		}
 }
 

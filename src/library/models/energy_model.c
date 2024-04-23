@@ -18,6 +18,7 @@
 
 //#define SHOW_DEBUGS 1
 
+
 #include <library/models/energy_model.h>
 #include <library/common/verbose_lib.h>
 #include <common/system/symplug.h>
@@ -45,7 +46,7 @@ struct energy_model_s
 	state_t (*model_project_time) (signature_t *signature, ulong from_ps, ulong to_ps, double *proj_time); 
 	state_t (*model_project_power) (signature_t *signature, ulong from_ps, ulong to_ps, double *proj_power);
 	uint (*model_projection_available) (ulong from_ps, ulong to_ps);
-	uint (*model_all_projections_available) ();
+	uint (*model_any_projection_available) ();
 };
 
 
@@ -61,7 +62,7 @@ static const char *energy_model_sym_names[] = {
 	"energy_model_project_time",
 	"energy_model_project_power",
 	"energy_model_projection_available",
-	"energy_model_all_projections_available"
+	"energy_model_any_projection_available"
 };
 
 
@@ -122,12 +123,12 @@ uint energy_model_projection_available(energy_model_t energy_model, ulong from_p
 }
 
 
-uint energy_model_all_projections_available(energy_model_t energy_model)
+uint energy_model_any_projection_available(energy_model_t energy_model)
 {
 	if (energy_model)
 	{
 		// In the case where the loaded plug-in does not implement this method, a 0 is returned.
-		freturn(energy_model->model_all_projections_available);
+		freturn(energy_model->model_any_projection_available);
 	} else
 	{
 		return 0;

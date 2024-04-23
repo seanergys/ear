@@ -416,18 +416,15 @@ state_t topology_close(topology_t *topo)
     topo->sve, \
     topo->sve_bits);
 
-state_t topology_print(topology_t *topo, int fd)
+void topology_print(topology_t *topo, int fd)
 {
 	f_print(dprintf, fd);
-
-	return EAR_SUCCESS;
 }
 
-state_t topology_tostr(topology_t *topo, char *buffer, size_t n)
+char *topology_tostr(topology_t *topo, char *buffer, size_t n)
 {
 	f_print(snprintf, buffer, n);
-
-	return EAR_SUCCESS;
+	return buffer;
 }
 
 #if TEST

@@ -19,6 +19,7 @@
 #define METRICS_PROC_STAT_H
 
 #include <common/types.h>
+#include <common/system/time.h>
 #include <common/states.h>
 #include <common/plugins.h>
 
@@ -75,6 +76,8 @@ typedef struct proc_stat_s {
 	ulong env_start;
 	ulong env_end;
 	int exit_code;
+	uint cpu_util;
+	timestamp_t ts;
 } proc_stat_t;
 
 state_t proc_stat_load();

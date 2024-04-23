@@ -15,6 +15,8 @@
  * and COPYING.EPL files.
  */
 
+
+
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -55,8 +57,6 @@ extern unsigned long ext_def_freq;
 #define FREQ_DEF(f) f
 #endif
 
-#define MASTER (masters_info.my_master_rank >= 0)
-#define MASTER_ID masters_info.my_master_rank
 
 extern uint cpu_ready, gpu_ready;
 // extern gpu_state_t curr_gpu_state;
@@ -362,10 +362,12 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
     }
     verbose_master(2, "Optimize end: Freq selected %lu state %s ", freqs->cpu_freq[0], (optimize_state == FIRST?"FIRST":"SEARCHING"));
     /* Turbo is pending*/
+#if MPI_OPTIMIZED
     /* For MPI optn */
     for (uint lp = 0; lp < num_processes; lp++){
       sig_shared_region[lp].mpi_freq = freqs->cpu_freq[0];
     }
+#endif
 
     /* If we use the same CPU freq for all cores, we set for all processes, not really needed because domain in NODE */
     set_all_cores(freqs->cpu_freq, num_processes, freqs->cpu_freq[0]);

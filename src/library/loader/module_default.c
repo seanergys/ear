@@ -15,6 +15,7 @@
 * and COPYING.EPL files.
 */
 
+
 #define _GNU_SOURCE
 #include <dlfcn.h>
 #include <stdlib.h>
@@ -100,7 +101,7 @@ int module_constructor(char *path_lib_so,char *libhack)
 
 void module_destructor()
 {
-	verbose(3, "LOADER: loading module default (destructor)");
+	verbose(0, "LOADER: loading module default (destructor)");
 
 	if (func_des != NULL) {
 		func_des();

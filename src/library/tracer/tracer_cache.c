@@ -15,6 +15,7 @@
 * and COPYING.EPL files.
 */
 
+
 #ifndef _EAR_TRACES_H_
 #define _EAR_TRACES_H_
 

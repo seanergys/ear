@@ -63,6 +63,8 @@ state_t cpi_init(ctx_t *c)
 
 state_t cpi_dispose(ctx_t *c)
 {
+  api  = API_NONE;
+  init = 0;
 	return ops.dispose(c);
 }
 

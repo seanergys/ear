@@ -25,4 +25,7 @@
  * \return EAR_ERROR An input argument is NULL.
  * \return EAR_SUCCESS Otherwise. */
 state_t utils_create_plugin_path(char *result_path, char *install_path, char *custom_path, int authorized_user);
+
+/** Returns the maximum value between the batch scheduler provided number of nodes of the active job (SLURM tested) and 1. It formally calls SCHED_STEP_NUM_NODES env var.*/
+int utils_get_sched_num_nodes();
 #endif

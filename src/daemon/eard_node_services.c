@@ -31,6 +31,7 @@
 #include <common/system/poll.h>
 #include <common/system/monitor.h>
 #include <common/types/generic.h>
+#include <common/utils/strscreen.h>
 #include <common/types/pc_app_info.h>
 #include <common/utils/serial_buffer.h>
 #include <common/hardware/hardware_info.h>
@@ -124,7 +125,9 @@ static gpu_t           *eard_read_gpu;
 		error("when calling " #function); \
 	}
 
-void services_init(topology_t *tp, my_node_conf_t *conf)
+extern char **environ;
+
+void services_init(topology_t *tp)
 {
     state_t s;
 
@@ -153,18 +156,77 @@ void services_init(topology_t *tp, my_node_conf_t *conf)
     sf(imcfreq_count_devices(no_ctx, &ui.devs_count));
         bwidth_count_devices(no_ctx, &ub.devs_count);
     #if USE_GPUS
-    sf(      gpu_get_devices(no_ctx, (gpu_devs_t **) &ug.avail_list, &ug.devs_count));
+    gpu_get_devices((gpu_devs_t **) &ug.avail_list, &ug.devs_count);
     #endif
     sf(cpufreq_data_alloc((cpufreq_t **) &uc.current_list, empty));
     sf(imcfreq_data_alloc((imcfreq_t **) &ui.current_list, empty));
         bwidth_data_alloc((bwidth_t  **) &ub.current_list);
     #if USE_GPUS
-	sf(    gpu_data_alloc(&eard_read_gpu));
+	       gpu_data_alloc(&eard_read_gpu);
     #endif
 
 	serial_alloc(&wb, SIZE_8KB);
     // Resetting values
     set_default_management_init();
+}
+
+void services_print(topology_t *tp, cluster_conf_t *cluster_conf)
+{
+    static strscreen_t ss;
+    static int         id_conf;
+    static int         id_logo;
+    static int         id_metrics;
+    static int         id_manages;
+    static int         id_topology;
+    static char        buf_host[128];
+    static char        buffer[4096];
+
+    char *logo = ""
+                 "        ___           ___           ___           ___     \n"
+                 "       /\\  \\         /\\  \\         /\\  \\         /\\  \\    \n"
+                 "      /::\\  \\       /::\\  \\       /::\\  \\       /::\\  \\   \n"
+                 "     /:/\\:\\  \\     /:/\\:\\  \\     /:/\\:\\  \\     /:/\\:\\  \\  \n"
+                 "    /::\\~\\:\\  \\   /::\\~\\:\\  \\   /::\\~\\:\\  \\   /:/  \\:\\__\\ \n"
+                 "   /:/\\:\\ \\:\\__\\ /:/\\:\\ \\:\\__\\ /:/\\:\\ \\:\\__\\ /:/__/ \\:|__|\n"
+                 "   \\:\\~\\:\\ \\/__/ \\/__\\:\\/:/  / \\/_|::\\/:/  / \\:\\  \\ /:/  /\n"
+                 "    \\:\\ \\:\\__\\        \\::/  /     |:|::/  /   \\:\\  /:/  / \n"
+                 "     \\:\\ \\/__/        /:/  /      |:|\\/__/     \\:\\/:/  /  \n"
+                 "      \\:\\__\\         /:/  /       |:|  |        \\__/__/   \n"
+                 "       \\/__/         \\/__/         \\|__|                    ";
+
+    metrics_info_get(&met);
+    management_info_get(&man);
+
+    gethostname(buf_host, 128);
+    sprintf(buffer                 , "component    : EARD (EAR Daemon/Node Manager)\n");
+    sprintf(&buffer[strlen(buffer)], "version      : %u.%u\n", VERSION_MAJOR, VERSION_MINOR);
+    sprintf(&buffer[strlen(buffer)], "hostname     : %s\n", buf_host);
+    sprintf(&buffer[strlen(buffer)], "verbose level: %d\n", verb_level);
+    sprintf(&buffer[strlen(buffer)], "tmp dir      : %s\n", cluster_conf->install.dir_temp);
+    sprintf(&buffer[strlen(buffer)], "etc dir      : %s\n", cluster_conf->install.dir_conf);
+    sprintf(&buffer[strlen(buffer)], "install dir  : %s\n", cluster_conf->install.dir_inst);
+    sprintf(&buffer[strlen(buffer)], "db server IP : %s\n", cluster_conf->database.ip);
+    sprintf(&buffer[strlen(buffer)], "db mirror IP : %s\n", cluster_conf->database.sec_ip);
+    sprintf(&buffer[strlen(buffer)], "USE_GPUS     : %u\n", USE_GPUS);
+    sprintf(&buffer[strlen(buffer)], "MAX_CPUS     : %u\n", MAX_CPUS_SUPPORTED);
+    sprintf(&buffer[strlen(buffer)], "MAX_SOCKETS  : %u\n", MAX_SOCKETS_SUPPORTED);
+    sprintf(&buffer[strlen(buffer)], "MAX_GPUS     : %u\n", MAX_GPUS_SUPPORTED);
+
+    scprintf_init(&ss, 44, 140, -1, '#'); // 0 to 49, 0 to 179
+    scprintf_divide(&ss, (int[]) {  1,  1 }, (int[]) {  20,  74 }, &id_topology, "topology"      );
+    scprintf_divide(&ss, (int[]) {  1, 76 }, (int[]) {  12, 137 }, &id_logo,     "ear-logo"      );
+    scprintf_divide(&ss, (int[]) { 14, 76 }, (int[]) {  33, 137 }, &id_conf,     "configuration" );
+    scprintf_divide(&ss, (int[]) { 22,  1 }, (int[]) {  33,  74 }, &id_metrics,  "metrics"       );
+    scprintf_divide(&ss, (int[]) { 35,  1 }, (int[]) {  42,  74 }, &id_manages,  "management"    );
+
+    scsprintf(&ss, id_logo    , 0, 0, logo);
+    scsprintf(&ss, id_conf    , 0, 1, buffer);
+    scsprintf(&ss, id_topology, 0, 1, topology_tostr(tp, buffer, 1024));
+    scsprintf(&ss, id_metrics , 0, 1, metrics_info_tostr(&met, buffer));
+    scsprintf(&ss, id_manages , 0, 1, management_info_tostr(&man, buffer));
+
+    dprintf(verb_channel, "%s", scprintf(&ss));
+    dprintf(verb_channel, "# Log:                                                                                                                                    #\n");
 }
 
 void services_dispose()
@@ -197,9 +259,9 @@ int services_misc(eard_head_t *head, int req_fd, int ack_fd)
     case RPC_GET_STATE:
         s.pid = getpid();
         s.gpus_supported_count = MAX_GPUS_SUPPORTED;
-				s.cpus_supported_count = MAX_CPUS_SUPPORTED;
-				s.sock_supported_count = MAX_SOCKETS_SUPPORTED;
-    		s.gpus_support_enabled = USE_GPUS;
+        s.cpus_supported_count = MAX_CPUS_SUPPORTED;
+        s.sock_supported_count = MAX_SOCKETS_SUPPORTED;
+        s.gpus_support_enabled = USE_GPUS;
         version_set(&s.version, VERSION_MAJOR, VERSION_MINOR);
         return answer(ack_fd, call, (char *) &s, sizeof(eard_state_t), EAR_SUCCESS, NULL);
     break;
@@ -676,7 +738,7 @@ int services_met_bwidth(eard_head_t *head, int req_fd, int ack_fd)
     break;
     case RPC_MET_BWIDTH_READ:
         if(state_fail(s = bwidth_read(no_ctx, (bwidth_t *) ub.current_list))) {
-            serror("Could not get imc frequency");
+            serror("Could not get mem frequency");
         }
         data = (char *) ub.current_list;
         size = sizeof(bwidth_t) * ub.devs_count;
@@ -814,6 +876,7 @@ uint is_anonymous(ulong jid,ulong sid)
 int is_valid_sec_tag(ulong tag)
 {
 	#if 1
+	debug("received tag: %lu / SEC_KEY %lu", tag, SEC_KEY);
 	// You make define a constant at makefile time called SEC_KEY to use that option
 	return ((ulong) SEC_KEY == tag);
 	#endif
@@ -861,14 +924,24 @@ void connect_service(struct daemon_req *new_req)
   ulong lid = new_req->con_id.lid;
   int pid = create_ID(new_job->id, new_job->step_id);
 	uint ID = (uint)pid;
+#if WF_SUPPORT
+  uint AID = (uint)(new_job->local_id);
+#endif
+
   // Let's check if there is another application
   verbose(VEARD_LAPI, "request for connection at service (%lu,%lu)",new_job->id,new_job->step_id);
 
   /* Creates 1 pipe (per node),  jobid and step id to send acks. pid is a combination of jobid and stepid */
   verbose(VEARD_LAPI, "New local connection job_id=%lu step_id=%lu local_id %lu\n", new_job->id, new_job->step_id,new_req->con_id.lid);
   /* This pipe is to send data, 1 per connection */
+
+#if WF_SUPPORT
+  sprintf(ear_commack, "%s/%u/%u/.ear_comm.ack_0.%d.%lu", ear_tmp, ID, AID, pid,lid);
+  sprintf(ear_commreq, "%s/%u/%u/.ear_comm.req_0.%d.%lu", ear_tmp, ID, AID, pid,lid);
+#else
   sprintf(ear_commack, "%s/%u/.ear_comm.ack_0.%d.%lu", ear_tmp, ID, pid,lid);
   sprintf(ear_commreq, "%s/%u/.ear_comm.req_0.%d.%lu", ear_tmp, ID, pid,lid);
+#endif
   verbose(VEARD_LAPI,"Comm channels %s and %s",ear_commack,ear_commreq);
   /* We must create a new local connection, for now, 1 connection per job is allowed  */
   if ((newc = add_new_local_connection(eard_local_conn,new_job->id,new_job->step_id,new_req->con_id.lid)) <0){
@@ -1073,58 +1146,72 @@ int eard_node_energy(eard_head_t *head,int req_fd,int ack_fd)
     return 1;
 }
 
-int eard_system(eard_head_t *head,int req_fd,int ack_fd)
+int eard_system(eard_head_t *head, int req_fd, int ack_fd)
 {
-    unsigned long ack;
-    int con_id;
+    application_t  app;
+    ear_event_t    event;
+    loop_t         loop;
+    int            con_id;
+    state_t        s;
+    char          *data = NULL;
+    size_t         size = 0;
+    uint           call = head->req_service;
 
     con_id = get_local_connection_by_fd(eard_local_conn,req_fd,ack_fd);
 	verbose(VEARD_LAPI_DEBUG,"EARD old system");
 
     switch (head->req_service) {
-    case WRITE_APP_SIGNATURE:
-        verbose(VEARD_LAPI,"App signature received: Anonymous %lu", eard_local_conn[con_id].anonymous);
-        if (!eard_local_conn[con_id].anonymous) {
-            powermon_mpi_signature(&req.req_data.app);
-        }
-        ack = EAR_COM_OK;
-        if (write(ack_fd, &ack, sizeof(ulong)) != sizeof(ulong)) {
-            error("ERROR while writing system service ack, closing connection...");
-            eard_close_comm(req_fd,ack_fd);
-        }
-        break;
-    case WRITE_EVENT:
-        ack = EAR_COM_OK;
-        report_connection_status = report_events(&rid, &req.req_data.event, 1);
-        if (report_connection_status == EAR_SUCCESS) {
-            ack = EAR_COM_OK;
-        } else {
-            ack = EAR_COM_ERROR;
-        }
-        if (write(ack_fd, &ack, sizeof(ulong)) != sizeof(ulong)){
-            // Do something with the error
-        }
-        break;
-        case WRITE_LOOP_SIGNATURE:
-        debug("WRITE_LOOP_SIGNATURE");
-        ack = EAR_COM_OK;
-        powermon_loop_signature(eard_local_conn[con_id].jid,eard_local_conn[con_id].sid,&req.req_data.loop);
-        // print_loop_fd(1,&req.req_data.loop);
-        report_connection_status = report_loops(&rid, &req.req_data.loop, 1);
+        case RPC_WRITE_APPLICATION:
+            // Initializing
+            memset(&app, 0, sizeof(application_t));
+            serial_reset(&wb, head->size);
+            // Receiving
+            if (state_fail(s = eard_rpc_read_pending(req_fd, serial_data(&wb), head->size, 0))) {
+                serror(Rpcerr.pending);
+            } else {
+                application_deserialize(&wb, &app);
 
-        if (report_connection_status == EAR_SUCCESS) {
-            ack = EAR_COM_OK;
-        } else {
-            ack = EAR_COM_ERROR;
-        }
-        if (write(ack_fd, &ack, sizeof(ulong)) != sizeof(ulong)) {
-            // Do something with the error
-        }
-        break;
-    default:
+                if (!eard_local_conn[con_id].anonymous) {
+                    powermon_mpi_signature(&app);
+                }
+            }
+            break;
+        case RPC_WRITE_LOOP:
+            // Initializing
+            memset(&loop, 0, sizeof(loop_t));
+            serial_reset(&wb, head->size);
+            // Receiving
+            if (state_fail(s = eard_rpc_read_pending(req_fd, serial_data(&wb), head->size, 0))) {
+                serror(Rpcerr.pending);
+            } else {
+                loop_deserialize(&wb, &loop);
+
+                powermon_loop_signature(eard_local_conn[con_id].jid, eard_local_conn[con_id].sid, &loop);
+                // print_loop_fd(1,&req.req_data.loop);
+                s = report_loops(&rid, &req.req_data.loop, 1);
+            }
+            break;
+        case RPC_WRITE_EVENT:
+            // Initializing
+            memset(&event, 0, sizeof(ear_event_t));
+            serial_reset(&wb, head->size);
+            // Receiving
+            if (state_fail(s = eard_rpc_read_pending(req_fd, serial_data(&wb), head->size, 0))) {
+                serror(Rpcerr.pending);
+            } else {
+                event_deserialize(&wb, &event);
+
+                s = report_events(&rid, &req.req_data.event, 1);
+            }
+            break;
+        default:
+            return 0;
+    }
+    // Always answering
+    if (state_fail(eard_rpc_answer(ack_fd, call, s, data, size, state_msg)) ){
         return 0;
-  }
-  return 1;
+    }
+    return 1;
 }
 
 int eard_rapl(eard_head_t *head,int req_fd,int ack_fd)

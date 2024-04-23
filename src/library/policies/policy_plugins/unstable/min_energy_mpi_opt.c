@@ -15,6 +15,7 @@
  * and COPYING.EPL files.
  */
 
+
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -56,8 +57,6 @@ extern unsigned long ext_def_freq;
 #define FREQ_DEF(f) f
 #endif
 
-#define MASTER (masters_info.my_master_rank >= 0)
-#define MASTER_ID masters_info.my_master_rank
 
 #define SELECT_CPUFREQ 		100
 #define SELECT_IMCFREQ 		101
