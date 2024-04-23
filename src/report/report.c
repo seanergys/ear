@@ -178,9 +178,9 @@ state_t report_create_id(report_id_t *id, int local_rank, int global_rank, int m
     state_t op (type1 var1, type2 var2, type3 var3, type4 var4)
 
 
-#define define(NARGS, op, ...) \
+#define define(NARGS, st, op, ...) \
     func_ ## NARGS (op, __VA_ARGS__) { \
-        state_t sret = EAR_ERROR; \
+        state_t sret = st; \
         int p; \
         for (p = 0; p < plugins_count; ++p) { \
             if (ops[p]. op != NULL) { \
@@ -192,13 +192,13 @@ state_t report_create_id(report_id_t *id, int local_rank, int global_rank, int m
         return sret; \
     }
 
-define(2, report_init, report_id_t *, id, cluster_conf_t *, cconf);
-define(1, report_dispose, report_id_t *, id);
-define(3, report_applications, report_id_t *, id, application_t *, apps, uint, count);
-define(3, report_loops, report_id_t *, id, loop_t *, loops, uint, count);
-define(3, report_events, report_id_t *, id, ear_event_t *, eves, uint, count);
-define(3, report_periodic_metrics,report_id_t *, id, periodic_metric_t *, mets, uint, count);
-define(4, report_misc, report_id_t *, id, uint, type, const char *, data, uint, count);
+define(2, EAR_ERROR,   report_init, report_id_t *, id, cluster_conf_t *, cconf);
+define(1, EAR_SUCCESS, report_dispose, report_id_t *, id);
+define(3, EAR_SUCCESS, report_applications, report_id_t *, id, application_t *, apps, uint, count);
+define(3, EAR_SUCCESS, report_loops, report_id_t *, id, loop_t *, loops, uint, count);
+define(3, EAR_SUCCESS, report_events, report_id_t *, id, ear_event_t *, eves, uint, count);
+define(3, EAR_SUCCESS, report_periodic_metrics,report_id_t *, id, periodic_metric_t *, mets, uint, count);
+define(4, EAR_SUCCESS, report_misc, report_id_t *, id, uint, type, const char *, data, uint, count);
 
 #if TEST
 int main(int argc, char *argv[])

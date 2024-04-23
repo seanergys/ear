@@ -29,6 +29,7 @@
 #include <metrics/common/file.h>
 #include <management/cpufreq/cpufreq_base.h>
 #include <management/cpufreq/drivers/acpi_cpufreq.h>
+#include <management/cpufreq/drivers/intel_pstate.h>
 
 #define N_FREQS 128
 

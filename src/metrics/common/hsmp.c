@@ -188,7 +188,6 @@ state_t hsmp_send(int socket, uint function, uint *args, uint *reps)
 	mailopt_t arg;
 	uint response;
 	uint timeout;
-	uint intents;
 	state_t s;
 	int a;
 
@@ -197,7 +196,7 @@ state_t hsmp_send(int socket, uint function, uint *args, uint *reps)
 	arg.name = mail->arg0.name;
 	response = HSMP_NOT_READY;
 	timeout  = 500;
-	intents  = 0;
+	uint intents  = 0;
 	// Locking
 	while (pthread_mutex_trylock(&lock));
 	//

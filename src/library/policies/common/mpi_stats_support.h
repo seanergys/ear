@@ -21,6 +21,7 @@
 #include <library/api/mpi_support.h>
 #include <library/policies/policy_ctx.h>
 #include <library/common/library_shared_data.h>
+#include <common/system/execute.h>
 
 #if MPI_OPTIMIZED
 #include <common/system/lock.h>
@@ -90,8 +91,6 @@ state_t mpi_stats_evaluate_similarity(double *current_perc_mpi, double *last_per
 state_t must_be_optimized(mpi_call call_type, p2i buf, p2i dest, ulong *elapsed);
 #endif
 state_t already_optimized(mpi_call call_type, p2i buf, p2i dest);
-void *get_stack(int lv);
-void print_stack();
 
 /** Copies MPI metrics from \p src to \p dst.
  * If `src` is a NULL pointer, `dst` is filled with the MPI metrics of the `i`-th process

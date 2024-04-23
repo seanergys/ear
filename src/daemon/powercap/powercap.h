@@ -31,14 +31,11 @@ void powercap_end();
 void powercap_get_status(powercap_status_t *my_status, pmgt_status_t *status, int release_power);
 void powercap_set_opt(powercap_opt_t *opt, int id);
 uint powercap_get_value();
-int is_powercap_set();
 void print_powercap_opt(powercap_opt_t *opt);
 int powercap_idle_to_run();
 int powercap_run_to_idle();
 int powercap_init();
 int powercap_set_power_per_domain(dom_power_t *pdomain,uint use_earl,ulong eff_f);
-int is_powercap_set();
-int is_powercap_on();
 
 void set_powercapstatus_mode(uint mode);
 

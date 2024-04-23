@@ -1,3 +1,5 @@
+CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC -shared
+
 ######## RULES
 
 edcmon_BINS = edcmon
@@ -8,7 +10,7 @@ edcmon_PERM = 0770
 all: all.components $(edcmon_BINS)
 
 edcmon: edcmon.c
-	$(CC) -I$(SRCDIR) -fPIC -rdynamic -o $@ $^ $(call whole,$(SRCDIR)/common/libcommon.a) -lm -lpthread -ldl
+	$(CC) $(CFLAGS) -rdynamic -o $@ $^ $(call whole,$(SRCDIR)/common/libcommon.a) -lm -lpthread -ldl
 
 ######## OPTIONS
 

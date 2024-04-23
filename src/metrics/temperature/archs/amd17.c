@@ -35,7 +35,7 @@ typedef struct hwfds_s {
 
 state_t temp_amd17_status(topology_t *topo)
 {
-	state_t s;
+	state_t s = EAR_SUCCESS;
 	debug("asking for status");
 	if (topo->vendor != VENDOR_AMD || topo->family < FAMILY_ZEN) {
 		return EAR_ERROR;
