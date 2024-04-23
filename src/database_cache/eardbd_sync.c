@@ -47,7 +47,7 @@ extern sync_answer_t data_answer;
 extern struct sockaddr_storage addr_new;
 extern afd_set_t fds_active;
 // Descriptors storage
-extern long fd_hosts[FD_SETSIZE];
+extern long fd_hosts[EDB_MAX_CONNECTIONS + 48];
 //
 extern struct timeval timeout_insr;
 extern struct timeval timeout_aggr;

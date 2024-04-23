@@ -16,6 +16,7 @@
 */
 
 
+
 #include <stdlib.h>
 #include <common/states.h>
 #include <common/output/debug.h>
@@ -25,6 +26,8 @@
 #include <management/cpufreq/frequency.h>
 #include <daemon/shared_configuration.h>
 #include <library/models/energy_models/common.h>
+#include <library/common/verbose_lib.h>
+
 
 
 static coefficient_t **coefficients;
@@ -144,6 +147,7 @@ state_t energy_model_init(char *ear_etc_path, char *ear_tmp_path, architecture_t
           i=frequency_closest_pstate(coefficients_sm[ccoeff].pstate);
           if (frequency_is_valid_pstate(ref) && frequency_is_valid_pstate(i)){
               memcpy(&coefficients[ref][i],&coefficients_sm[ccoeff],sizeof(coefficient_t));
+							//verbose_master(3,"initializing coeffs for ref: %d i: %d\n", ref, i);
           }
       }
   }
@@ -260,20 +264,17 @@ uint energy_model_projection_available(ulong from_ps, ulong to_ps)
 }
 
 
-uint energy_model_all_projections_available()
+uint energy_model_any_projection_available()
 {
-	uint not_avail = 0;
-
-	debug("Checking availability for %u p-states", num_pstates);
-	for (uint ps = 0; ps < num_pstates && !not_avail; ps++)
+	for (uint ps = 0; ps < num_pstates; ps++)
 	{
-		for (uint pt = 0; pt < num_pstates && !not_avail; pt++)
+		for (uint pt = 0; pt < num_pstates; pt++)
 		{
-			if (ps != pt && !projection_available(ps, pt)) not_avail = 1;	
+			if (ps != pt && projection_available(ps, pt)) return 1;	
 		}
 	}
 
-	return 1 - not_avail;
+	return 0;
 }
 
 
@@ -307,12 +308,10 @@ static double project_power(coefficient_t *coeff,signature_t *signature)
 
 static uint projection_available(ulong from_ps, ulong to_ps)
 {
+	//verbose_master(2, "projection_available test: from %lu to %lu aval %lu", from_ps, to_ps, coefficients[from_ps][to_ps].available);
 	if (valid_range(from_ps, to_ps))
 	{
-		if (coefficients[from_ps][to_ps].available)
-		{
-			return 1;
-		}
+		return coefficients[from_ps][to_ps].available;
 	}
 
 	return 0;

@@ -33,6 +33,8 @@ typedef struct tags
     ulong max_power;
     ulong min_power;
     ulong max_temp;
+		ulong cpu_temp_cap;
+		ulong gpu_temp_cap;
     ulong error_power;
     ulong gpu_def_freq;
     int   cpu_max_pstate; /* Used as lower limit for policies */

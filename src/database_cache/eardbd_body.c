@@ -223,7 +223,7 @@ static void manage_sockets()
 							verb_who("disconnecting from host '%s' (maximum connections reached)",
 								extra_buffer);
 						}
-						sync_fd_disconnect(fd_old);
+						sync_fd_disconnect(fd_new);
 					} else {
 						sync_fd_add(fd_new, ip);
 						if (verbosity) {

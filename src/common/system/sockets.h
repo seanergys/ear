@@ -53,7 +53,7 @@
 //		sockets_send(socket.fd, type, data, data_size, 0LLU);
 //
 
-#define BACKLOG             10
+#define BACKLOG             2048
 #define TCP                 SOCK_STREAM
 #define UDP                 SOCK_DGRAM
 #define NON_BLOCK_TRYS      10000

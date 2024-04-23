@@ -108,7 +108,9 @@ typedef union req_data{
 typedef struct request{
     uint32_t        req;
     uint32_t        node_dist;
+#if USE_SEC_KEY_RC
     uint32_t        sec_key;
+#endif
     int32_t         time_code;
     int32_t         num_nodes;
     int32_t         *nodes;
@@ -118,7 +120,9 @@ typedef struct request{
 typedef struct internal_request {
     uint32_t    req;
     uint32_t    node_dist;
+#if USE_SEC_KEY_RC
     uint32_t    sec_key;
+#endif
     int32_t     time_code; 
     int32_t     num_nodes;
     int32_t     *nodes;
@@ -214,6 +218,7 @@ typedef struct power_check {
 #define EAR_RC_APP_NODE_STATUS      601
 #define EAR_RC_APP_MASTER_STATUS    602
 #define EAR_RC_POLICY_STATUS        603
+#define EAR_RC_NODE_PURGE           604
 
 /* New functions for power limits */
 #define EAR_RC_RED_POWER            700

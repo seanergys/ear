@@ -248,9 +248,18 @@ void print_ips(ip_table_t *ips, int num_ips, char mode)
 			}
 			else {
 				if (!ips[i].counter) {
-					printf("%10s\t%10s\n", ips[i].name, ips[i].ip);
+                    int rc;
+                    if ((rc = remote_connect(ips[i].ip, my_cluster_conf.eard.port)) < 0) {
+					    printf("%10s\t%10s -> connection fails\n", ips[i].name, ips[i].ip);
+                    } else {
+                        if (!ear_node_ping()) {
+					        printf("%10s\t%10s -> connected, but ping fails\n", ips[i].name, ips[i].ip);
+                        } else {
+					        printf("%10s\t%10s -> node is responding, but data is not present\n", ips[i].name, ips[i].ip);
+                        }
+                    }
 				} else if (!ips[i].power || ips[i].power > ips[i].max_power) {
-					printf("%10s\t%10s\t->power error (reported %dW)\n", ips[i].name, ips[i].ip, ips[i].power);
+					printf("%10s\t%10s\t->connected, but power error (reported %dW)\n", ips[i].name, ips[i].ip, ips[i].power);
 				}
 			}
 		}
@@ -539,6 +548,8 @@ int eardbd_status_all(cluster_conf_t *conf, eardbd_table_t **edbstatus)
 	}
 	*edbstatus = aux_t;
 
+        free(aux_t);
+
 	return count;
 }
 
@@ -550,11 +561,11 @@ void process_eargm_status(int num_status, eargm_status_t *status, char **hosts, 
 	eargm_status_t *egm;
 	int num_inactive = 0;
 
-	inactive = calloc(sizeof(char *), my_cluster_conf.eargm.num_eargms); //prepare for inactive nodes
 	if (num_status < 1) {
 		printf("No EARGMs active\n");
 		return;
 	}
+	inactive = calloc(sizeof(char *), my_cluster_conf.eargm.num_eargms); //prepare for inactive nodes
 	printf("%3s %10s %6s %10s %10s %10s %10s\n", 
 			"ID", "NODE", "Status", "Cur. Power", "Powercap", "Req. Power", "Extra Pow.");
 
@@ -592,6 +603,8 @@ void process_eargm_status(int num_status, eargm_status_t *status, char **hosts, 
 	for (i = 0; i < num_inactive; i++) {
 		printf("\t%s\n", inactive[i]);
 	}
+
+        free(inactive);
 
 }
 

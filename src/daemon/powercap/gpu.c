@@ -214,9 +214,7 @@ state_t enable(suscription_t *sus)
     if (gpu_init(no_ctx)!=EAR_SUCCESS){
         error("Initializing GPU in GPU powercap plugin");
     }
-    if (gpu_data_alloc(&gpu_pc_power_data)!=EAR_SUCCESS){
-        error("Initializing GPU data in powercap");
-    }
+    gpu_data_alloc(&gpu_pc_power_data);
     gpu_data_alloc(&values_gpu_init);
     gpu_data_alloc(&values_gpu_end);
     gpu_data_alloc(&values_gpu_diff);

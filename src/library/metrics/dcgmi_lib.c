@@ -15,6 +15,9 @@
  */
 
 
+#define SHOW_DEBUGS 1
+
+
 #include <library/metrics/dcgmi_lib.h>
 
 #include <stdlib.h>
@@ -38,7 +41,7 @@
 
 
 #define DCGMI_INIT_LVL		1
-#define DCGMI_MET_LVL			1
+#define DCGMI_MET_LVL			2
 
 #define DCGMI_LIB_SAMPLING_PERIOD 2
 
@@ -464,8 +467,7 @@ static state_t set_init_fn(dcgmi_lib_init_fn *dst_fn_ptr)
 	if (dst_fn_ptr)
 	{
 		apinfo_t gpu_info;	
-		if (state_ok(gpu_get_info(&gpu_info)))
-		{
+		gpu_get_info(&gpu_info);
 			switch (gpu_info.dev_model)
 			{
 				case NVML_DEVICE_ARCH_TURING:
@@ -484,10 +486,6 @@ static state_t set_init_fn(dcgmi_lib_init_fn *dst_fn_ptr)
 					*dst_fn_ptr = NULL;
 					return_msg(EAR_ERROR, "Device unknown or not supported.");
 			}
-		} else
-		{
-			return_msg(EAR_ERROR, state_msg);
-		}
 		return EAR_SUCCESS;
 	} else
 	{

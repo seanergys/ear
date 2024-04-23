@@ -124,12 +124,20 @@ char *getenv_ear_coeff_db_pathname()
 char *getenv_ear_app_name()
 {
 	char *my_name;
-	my_name=ear_getenv(ENV_APP_NAME);
+	my_name=ear_getenv("JOB_NAME");
 	if (my_name!=NULL){
 		if (strcmp(my_name,"")==0) return NULL;
 		conf_ear_app_name=malloc(strlen(my_name)+1);
 		strcpy(conf_ear_app_name,my_name);	
 	}
+  else{
+    if ((my_name = ear_getenv(ENV_APP_NAME)) != NULL){
+      if (strcmp(my_name,"")==0) return NULL;
+        conf_ear_app_name=malloc(strlen(my_name)+1);
+        strcpy(conf_ear_app_name,my_name);
+      
+    }else return NULL;
+  }
 	return conf_ear_app_name;
 }
 void set_ear_app_name(char *name)
@@ -198,7 +206,7 @@ int getenv_ear_reset_freq()
 unsigned long getenv_ear_p_state()
 {
 	char *my_pstate = ear_getenv(ENV_FLAG_PSTATE);
-	int max_p_state;
+	int max_p_state = 0 ;
 
 	// p_state depends on policy it must be called before getenv_ear_p_state, but we check it
 	if (conf_ear_power_policy < 0) getenv_ear_power_policy();

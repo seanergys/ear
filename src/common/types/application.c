@@ -44,8 +44,13 @@ void copy_application(application_t *destiny, application_t *source)
 
 void application_print_channel(FILE *file, application_t *app)
 {
+#if WF_SUPPORT
+    fprintf(file, "application_t: id '%s', job id '%lu.%lu.%lu', node id '%s'\n",
+            app->job.app_id, app->job.id, app->job.step_id, app->job.local_id, app->node_id);
+#else
     fprintf(file, "application_t: id '%s', job id '%lu.%lu', node id '%s'\n",
             app->job.app_id, app->job.id, app->job.step_id, app->node_id);
+#endif
     fprintf(file, "application_t: learning '%d', time '%lf', avg freq '%lu'\n",
             app->is_learning, app->signature.time, app->signature.avg_f);
     fprintf(file, "application_t: pow dc '%lf', pow ram '%lf', pow pack '%lf'\n",
@@ -149,7 +154,7 @@ int print_application_fd(int fd, application_t *app, int new_line, char is_exten
 
 int create_app_header(char * header, char *path, uint num_gpus, char is_extended, int single_column)
 {
-    char *HEADER_BASE = "NODENAME;JOBID;STEPID;USERID;GROUPID;JOBNAME;USER_ACC;ENERGY_TAG;POLICY;POLICY_TH;"\
+    char *HEADER_BASE = "NODENAME;JOBID;STEPID;APPID;USERID;GROUPID;JOBNAME;USER_ACC;ENERGY_TAG;POLICY;POLICY_TH;START_TIME;END_TIME;"\
                         "AVG_CPUFREQ_KHZ;AVG_IMCFREQ_KHZ;DEF_FREQ_KHZ;TIME_SEC;CPI;TPI;MEM_GBS;IO_MBS;PERC_MPI;DC_NODE_POWER_W;DRAM_POWER_W;"\
                         "PCK_POWER_W;CYCLES;INSTRUCTIONS;CPU-GFLOPS";
 		char HEADER[4096];
@@ -325,14 +330,22 @@ void verbose_application_data(uint vl, application_t *app)
 
     char job_info_txt[1024]; // app / user / account / job.step
     int ret = snprintf(job_info_txt, sizeof(job_info_txt),
-                       "--- App id: %s / user id: %s / account: %s / job.step: %lu.%lu ---\n\n"
+#if WF_SUPPORT
+                       "--- App id: %s / user id: %s / account: %s / job.step.appid: %lu.%lu.%lu ---\n\n"
+#else
+                       "--- App id: %s / user id: %s / account: %s / job.step.appid: %lu.%lu ---\n\n"
+#endif
                        "Processes: %lu\n"
                        "Start time: %s End time: %s\n"
                        "Start MPI : %s End MPI :  %s\n\n"
                        "(Power sign.) Wall time: %0.3lf s, nominal freq.: %0.2f GHz, avg. freq: %0.2f GHz\n"
                        "              DC/DRAM/PCK power: %0.3lf/%0.3lf/%0.3lf (W)\n"
                        "              Max/Min DC Power (W): %0.3lf/%0.3lf\n\n",
+#if WF_SUPPORT
+                       app->job.app_id, app->job.user_id, app->job.user_acc, app->job.id, app->job.step_id, app->job.local_id,
+#else
                        app->job.app_id, app->job.user_id, app->job.user_acc, app->job.id, app->job.step_id,
+#endif
                        app->job.procs,
                        st, et,
                        stmpi, etmpi,
@@ -447,7 +460,7 @@ void report_application_data(application_t *app)
 }
 
 // TODO: Try to port the below implementation to verbose_application_data function
-void report_mpi_application_data(application_t *app)
+void report_mpi_application_data(int vl, application_t *app)
 {
     /* Convert values to GHz */
     float avg_f     = ((double) app->signature.avg_f)     / 1000000.0;
@@ -459,8 +472,13 @@ void report_mpi_application_data(application_t *app)
     char job_info_txt[1024]; // app / user / account / job.step
 
     snprintf(job_info_txt, sizeof(job_info_txt),
+#if WF_SUPPORT
+             "--- App id: %s / user id: %s / account: %s / job.step: %lu.%lu.%lu ---\n",
+             app->job.app_id, app->job.user_id, app->job.user_acc, app->job.id, app->job.step_id, app->job.local_id);
+#else
              "--- App id: %s / user id: %s / account: %s / job.step: %lu.%lu ---\n",
              app->job.app_id, app->job.user_id, app->job.user_acc, app->job.id, app->job.step_id);
+#endif
 
     char mpi_info_txt[512]; // signature details
 
@@ -493,15 +511,15 @@ void report_mpi_application_data(application_t *app)
 
     /* Verbose the summary */
 
-    verbose(VTYPE, "%s%s%s\n%s\n", app_summ_hdr_dec_txt, app_summ_hdr_txt, app_summ_hdr_dec_txt, job_info_txt); // header and job info
+    verbose(vl, "%s%s%s\n%s\n", app_summ_hdr_dec_txt, app_summ_hdr_txt, app_summ_hdr_dec_txt, job_info_txt); // header and job info
 
     free(app_summ_hdr_dec_txt);
 
     if (app->is_mpi) {
-        verbose(VTYPE, "%s", mpi_info_txt); // signature details
+        verbose(vl, "%s", mpi_info_txt); // signature details
     }
 
-    verbose_gpu_app(VTYPE, app); // This method outputs GPU summary
+    verbose_gpu_app(vl, app); // This method outputs GPU summary
 
     /* Build a beautiful footer */
 
@@ -511,60 +529,27 @@ void report_mpi_application_data(application_t *app)
     memset(app_summ_ftr_dec, '-', app_summ_ftr_dec_len);
     app_summ_ftr_dec[app_summ_ftr_dec_len] = '\0';
 
-    verbose(VTYPE, "%s", app_summ_ftr_dec);
+    verbose(vl, "%s", app_summ_ftr_dec);
 
     free(app_summ_ftr_dec);
 }
 
-void mark_as_eard_connected(int jid,int sid,int pid)
+void application_serialize(serial_buffer_t *b, application_t *app)
 {
-    int my_id;	
-    char *tmp,con_file[128];
-    int fd;
-    tmp=ear_getenv(ENV_PATH_TMP);
-    if (tmp == NULL){
-        debug("EAR_TMP not defined in mark_as_eard_connected");
-        return;
-    }
-    my_id=create_ID(jid,sid);
-    sprintf(con_file,"%s/.master.%d.%d",tmp,my_id,pid);
-    debug("Creating %s",con_file);	
-    fd=open(con_file,O_CREAT|O_WRONLY,S_IRUSR|S_IWUSR);
-    close(fd);
-    return;
-}
-uint is_already_connected(int jid,int sid,int pid)
-{
-    int my_id;
-    int fd;
-    char *tmp,con_file[128];;
-    tmp=ear_getenv(ENV_PATH_TMP);
-    if (tmp == NULL){ 
-        debug("EAR_TMP not defined in is_already_connected");
-        return 0;
-    }
-    my_id=create_ID(jid,sid);
-    sprintf(con_file,"%s/.master.%d.%d",tmp,my_id,pid);
-    debug("Looking for %s ",con_file);
-    fd=open(con_file,O_RDONLY);
-    if (fd>=0){
-        close(fd);
-        return 1;
-    }
-    return 0;
+    job_serialize(b, &app->job);
+    serial_dictionary_push_auto(b, app->is_mpi);
+    serial_dictionary_push_auto(b, app->is_learning);
+    serial_dictionary_push_auto(b, app->node_id);
+    power_signature_serialize(b, &app->power_sig);
+    signature_serialize(b, &app->signature);
 }
 
-void mark_as_eard_disconnected(int jid,int sid,int pid)
+void application_deserialize(serial_buffer_t *b, application_t *app)
 {
-    int my_id;
-    char *tmp,con_file[128];
-    tmp=ear_getenv(ENV_PATH_TMP);
-    if (tmp == NULL){ 
-        debug("EAR_TMP not defined in mark_as_eard_disconnected");
-        return;
-    }
-    my_id=create_ID(jid,sid);
-    sprintf(con_file,"%s/.master.%d.%d",tmp,my_id,pid);
-    debug("Removing %s",con_file);
-    unlink(con_file);
+    job_deserialize(b, &app->job);
+    serial_dictionary_pop_auto(b, app->is_mpi);
+    serial_dictionary_pop_auto(b, app->is_learning);
+    serial_dictionary_pop_auto(b, app->node_id);
+    power_signature_deserialize(b, &app->power_sig);
+    signature_deserialize(b, &app->signature);
 }

@@ -48,7 +48,6 @@
 #define NVML_DEVICE_ARCH_HOPPER  9
 #define NVML_DEVICE_ARCH_UNKNOWN 0xffffffff
 
-
 typedef int nvmlDevice_t;
 typedef int nvmlDriverModel_t;
 typedef int nvmlEnableState_t;

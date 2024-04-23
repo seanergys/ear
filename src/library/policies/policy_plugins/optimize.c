@@ -15,6 +15,8 @@
  * and COPYING.EPL files.
  */
 
+
+
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -55,8 +57,6 @@ extern unsigned long ext_def_freq;
 #define FREQ_DEF(f) f
 #endif
 
-#define MASTER (masters_info.my_master_rank >= 0)
-#define MASTER_ID masters_info.my_master_rank
 
 extern uint cpu_ready, gpu_ready;
 // extern gpu_state_t curr_gpu_state;
@@ -117,7 +117,6 @@ static uint *sig_ready;
 
 static polsym_t gpus;
 static const ulong **gpuf_pol_list;
-static const ulong **cpuf_pol_list;
 static const uint *gpuf_pol_list_items;
 
 
@@ -285,7 +284,6 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
 
     int gready; // GPU ready
     ulong curr_freq,  curr_pstate;
-    state_t st;
     sig_ext_t *se     = (sig_ext_t *) sig->sig_ext;
     optimize_readiness = EAR_POLICY_CONTINUE;
 
@@ -344,7 +342,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
     /* Else check to go to next */
     if (optimize_state == FIRST){
       verbose_master(2 , "Optimize, FIRST state: going to next ");
-      st = policy_no_models_go_next_optimize(curr_pstate,&optimize_readiness ,freqs,optimize_num_pstates);
+      policy_no_models_go_next_optimize(curr_pstate,&optimize_readiness ,freqs,optimize_num_pstates);
       optimize_state = SEARCHING;
     }else{
       if (curr_pstate == 0){
@@ -355,7 +353,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
       }else{
         uint go_next;
         go_next = policy_no_models_is_better_optimize(&sig_list[curr_pstate], &sig_list[curr_pstate -1]);
-        if (go_next) st = policy_no_models_go_next_optimize(curr_pstate,&optimize_readiness ,freqs,optimize_num_pstates);
+        if (go_next) policy_no_models_go_next_optimize(curr_pstate,&optimize_readiness ,freqs,optimize_num_pstates);
         else{         
           optimize_state = FIRST;
           policy_no_models_stop_searching(curr_pstate, &optimize_readiness, freqs);
@@ -364,10 +362,12 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
     }
     verbose_master(2, "Optimize end: Freq selected %lu state %s ", freqs->cpu_freq[0], (optimize_state == FIRST?"FIRST":"SEARCHING"));
     /* Turbo is pending*/
+#if MPI_OPTIMIZED
     /* For MPI optn */
     for (uint lp = 0; lp < num_processes; lp++){
       sig_shared_region[lp].mpi_freq = freqs->cpu_freq[0];
     }
+#endif
 
     /* If we use the same CPU freq for all cores, we set for all processes, not really needed because domain in NODE */
     set_all_cores(freqs->cpu_freq, num_processes, freqs->cpu_freq[0]);

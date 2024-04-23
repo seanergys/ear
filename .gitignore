@@ -10,6 +10,8 @@
 */lib/
 src/tests
 etc/rpms/rpmbuild.sh
+src/tests
+src/tools/list_folders
 etc/rpms/rpmbuild.sh~
 etc/rpms/specs/ear.spec
 /*.sh
@@ -23,6 +25,8 @@ etc/rpms/specs/ear.spec
 *defines.log
 /configure
 /configure~
+src/common/config/config.h.in~
+src/common/config/config.h
 
 # IDE
 cmake*
@@ -67,7 +71,9 @@ etc/slurm/ear.plugstack.conf
 etc/systemd/eard.service
 etc/systemd/eardbd.service
 etc/systemd/eargmd.service
+etc/systemd/edcmon.service
 src/common/config/config_install.h
+src/common/config/config.h.in
 
 # Build Libraries
 *libear.so
@@ -129,6 +135,7 @@ src/common/config/config_install.h
 *traces_to_paraver
 *erun
 *metrics_show
+*enode_info
 
 src/daemon/commands/ear_check_node_test
 src/database_cache/tmpi
@@ -167,6 +174,7 @@ src/tools/ear_events*
 src/tools/ear_conf
 src/tools/metrics_show
 src/commands/ear-info
+src/tools/node_manager_info
 deployment.sh
 
 

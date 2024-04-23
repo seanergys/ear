@@ -15,6 +15,8 @@
 * and COPYING.EPL files.
 */
 
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -34,17 +36,24 @@
 
 // extern uint cpu_ready, gpu_ready;
 
+/* Wrap verbosing policy general info.
+ * Currently, it is a verbose master with level 2. */
+#define verbose_gpumon_info(msg, ...) \
+	verbose_info2_master("[GPU monitoring] " msg, ##__VA_ARGS__);
+
+
 static const ulong **gpuf_list;
 static const uint *gpuf_list_items;
 static  ulong *gfreqs;
 
 state_t policy_init(polctx_t *c)
 {
-    int i,j;
+		/* Read the default GPU frequency to be set by an
+		 * authorized user through an environment variable. */
+    char *gpu_freq = ear_getenv(FLAG_GPU_DEF_FREQ);
     ulong g_freq = 0;
-    char *gpu_freq=ear_getenv(FLAG_GPU_DEF_FREQ);
-
-    if ((gpu_freq!=NULL) && (c->app->user_type==AUTHORIZED)) {
+    if (gpu_freq && c->app->user_type == AUTHORIZED)
+		{
         g_freq = atol(gpu_freq);
     }
 
@@ -52,22 +61,32 @@ state_t policy_init(polctx_t *c)
     gpuf_list       = (const ulong **) metrics_gpus_get(MGT_GPU)->avail_list;
     gpuf_list_items = (const uint *)   metrics_gpus_get(MGT_GPU)->avail_count;
 
-    for (i = 0; i < c->num_gpus; i++) {
-        verbose_master(2,"Freqs in GPU[%d]=%u", i, gpuf_list_items[i]);
-        for (j = 0; j < gpuf_list_items[i]; j++) {
-            verbose_master(2, "GPU[%d][%d]=%.2f", i, j, (float) gpuf_list[i][j] / 1000000.0);
-        }
+		/* MGT_GPU API might be DUMMY, so device count can be different with respect to 
+		 * c->num_gpus (value taken from MET_GPU, which most of times is well loaded). */
+		uint gpu_count = metrics_gpus_get(MGT_GPU)->devs_count;
+
+    for (int i = 0; i < gpu_count; i++)
+		{
+        verbose_master(2, "Frequency list in GPU %d (%u items)", i, gpuf_list_items[i]);
+        for (int j = 0; j < gpuf_list_items[i]; j++)
+				{
+					float gpu_freq_khz = (float) gpuf_list[i][j] / 1000000.0;
+					verbose_master(2, "GPU%d[%d]: %.2f", i, j, gpu_freq_khz);
+				}
     }
+
     mgt_gpu_data_alloc(&gfreqs);
-    for (i = 0; i < c->num_gpus; i++) {
-        if (g_freq) gfreqs[i] = g_freq;
-        else        gfreqs[i] = gpuf_list[i][0];
-        verbose_master(2, "Setting GPUfreq[%d] = %.2f", i, (float) gfreqs[i] / 1000000.0);
+
+    for (int i = 0; i < gpu_count; i++)
+		{
+			if (g_freq) gfreqs[i] = g_freq;
+			else        gfreqs[i] = gpuf_list[i][0];
+			verbose_master(2, "Setting GPUfreq[%d] = %.2f", i, (float) gfreqs[i] / 1000000.0);
     }
 
     mgt_gpu_freq_limit_set(no_ctx, gfreqs);
 
-    verbose_master(2,"GPU monitoring loaded");
+    verbose_gpumon_info("Plug-in loaded.");
     return EAR_SUCCESS;
 }
 

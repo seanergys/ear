@@ -115,7 +115,7 @@ void flops_perf_get_info(apinfo_t *info)
     info->bits        = 64;
 }
 
-state_t flops_perf_init(ctx_t *c)
+state_t flops_perf_init()
 {
 	uint i;
 	if (!started) {
@@ -129,9 +129,17 @@ state_t flops_perf_init(ctx_t *c)
 	return EAR_SUCCESS;
 }
 
-state_t flops_perf_dispose(ctx_t *c)
+state_t flops_perf_dispose()
 {
-    return EAR_SUCCESS;
+  uint i;
+  if (started){
+    for (i = 0; i < meta_count; ++i) {
+      perf_close(&meta[i].perf);
+    }
+    started = 0;
+		meta_count = 0;
+  }
+	return EAR_SUCCESS;
 }
 
 state_t flops_perf_read(flops_t *fl)

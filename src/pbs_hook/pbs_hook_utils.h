@@ -1,3 +1,6 @@
+#ifndef _EAR_PBSHOOK_UTILS_H
+#define _EAR_PBSHOOK_UTILS_H
+
 #define _GNU_SOURCE
 #include <sched.h>
 #include <common/types/generic.h>
@@ -8,3 +11,4 @@ int pbs_util_getaffinity(pid_t pid, size_t cpusetsize, cpu_set_t *mask, int *err
 #if 0
 int pbs_util_print_affinity_mask(pid_t pid, cpu_set_t *mask);
 #endif
+#endif // _EAR_PBSHOOK_UTILS_H

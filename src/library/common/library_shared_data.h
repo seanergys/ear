@@ -81,6 +81,8 @@ typedef struct mpi_calls_types
 /**@}*/
 
 
+#define MASTER    (masters_info.my_master_rank >= 0)
+#define MASTER_ID masters_info.my_master_rank
 /** \name Shared info
  * This group of definitions is used to share data between processes. */
 /**@{*/
@@ -89,7 +91,7 @@ typedef struct lib_shared_data {
     uint        earl_on;
     int         num_processes;
     uint        num_signatures;
-    uint        num_cpus; // Number of CPUs used for the job. Computed from node_mask attribute.
+    uint        num_cpus;													/**< Number of CPUs used for the job. Computed from node_mask attribute. */
     float       total_cache_bwidth;
     ullong      cas_counters;
     signature_t node_signature;
@@ -97,95 +99,63 @@ typedef struct lib_shared_data {
     int         master_rank;
     uint        master_ready;
     uint        global_stop_ready;
-    cpu_set_t   node_mask;
-    ulong       avg_cpufreq[MAX_CPUS_SUPPORTED]; // Average CPU freq for each processor of the job
+    cpu_set_t   node_mask;											 /**< The CPU_SET mask of the job in the node. */
+    ulong       avg_cpufreq[MAX_CPUS_SUPPORTED]; /**< Average CPU freq for each processor of the job. */
     uint        node_mgr_index;
-	uint        reduced_in_barrier; // This variable is only used in an unstable/research policy.
+		uint        reduced_in_barrier;							 /**< This variable is only used in an unstable/research policy. */
 #if MPI_OPTIMIZED
-		uint    processes_in_barrier;
-#endif
-#if DLB
-        int     must_call_libdlb; // A control variable to rule processes to call DLB blocking calls.
-        int     max_libdlb_calls; // The maximum times DLB API was called.
+    uint    processes_in_barrier;
 #endif
 } lib_shared_data_t;
 
+
 /** Per-process application data. */
 typedef struct shsignature {
-    uint              master;
-    pid_t             pid;
-    uint              ready;
+	uint              master;
+	pid_t             pid;
+	uint              ready;
 	uint              exited;
-    uint              iterations;
-    mpi_information_t mpi_info;
-    mpi_calls_types_t mpi_types_info;
-    ssig_t            sig; // it was originally a signature_t
-    int               app_state;
-    ulong             new_freq;
+	uint              iterations;
+	mpi_information_t mpi_info;
+	mpi_calls_types_t mpi_types_info;
+	ssig_t            sig; // it was originally a signature_t
+	int               app_state;
+	ulong             new_freq;
 	uint              num_cpus;
-    cpu_set_t         cpu_mask;
-    uint              pstate_index; /*!< The P-STATE selected by master for the CPUs associated, after policy_apply. */
-    int               affinity;
-    uint              unbalanced;
-    float             perc_MPI;
+	cpu_set_t         cpu_mask;
+	uint              pstate_index; /*!< The P-STATE selected by master for the CPUs associated, after policy_apply. */
+	int               affinity;
+	uint              unbalanced;
+	float             perc_MPI;
 	double            period;
-    /* This field is used for mpi opt
-     * TODO: Put below declaration inside MPI_OPTIMIZED only + decide how to handle it at min_energy. */
-    ulong             mpi_freq;
-#if DLB
-    int               libdlb_calls_cnt; // Counter for DLB API's blocking functions calls.
+#if MPI_OPTIMIZED
+	ulong             mpi_freq;
 #endif
 } shsignature_t;
-/**@}*/
-
-typedef struct shsignature_mpi{
-  mpi_information_t mpi_info;
-  mpi_calls_types_t mpi_types_info;
-}shsignature_mpi_t;
-
-
-typedef struct sh_signatures_s
-{
-    uint              *master;
-    pid_t             *pid;
-    uint              *ready;
-	uint              *exited;
-    uint              *iterations;
-    mpi_information_t *mpi_info;
-    mpi_calls_types_t *mpi_types_info;
-    ssig_t            *sig;
-    int               *app_state;
-    ulong             *new_freq;
-	uint              *num_cpus;
-    cpu_set_t         *cpu_mask;
-    uint              *pstate_index;
-    int               *affinity;
-    uint              *unbalanced;
-    float             *perc_MPI;
-	double            *period;
-    /* This field is used for mpi opt
-     * TODO: Put below declaration inside MPI_OPTIMIZED only + decide how to handle it at min_energy. */
-    ulong             *mpi_freq;
-#if DLB
-    int               *libdlb_calls_cnt;
-#endif
-} sh_signatures_t;
 
 
 typedef struct node_mgr_sh_data {
+  job_id            jid;
+  job_id            sid;
+  job_id            lid;
 	time_t            creation_time;
+	time_t            modification_time;
 	int               fd_lib;
 	int               fd_sig;
 	lib_shared_data_t *libsh;
 	shsignature_t     *shsig;
 } node_mgr_sh_data_t;
+/**@}*/
+
+
+void eid_folder(char *dst, int size, char *tmp, int jid, int sid, uint aid);
 
 
 /*********** SETTINGS configuration *******************/
 
 /** Sets in path the filename for the shared memory area between MPI processes
  * @param[out] path Output path. */
-int get_lib_shared_data_path(char *tmp, uint ID, char *path);
+int get_lib_shared_data_path(char *tmp, uint ID, uint AID, char *path);
 
 
 /** \brief Creates the shared memory.
@@ -215,7 +185,7 @@ void print_lib_shared_data(lib_shared_data_t *setting);
 
 /** Sets in path the filename for the shared memory area between MPI processes
  * @param path (output) */
-int get_shared_signatures_path(char *tmp,uint ID, char *path);
+int get_shared_signatures_path(char *tmp,uint ID, uint AID, char *path);
 
 
 /** Creates the shared mmemory.
@@ -329,7 +299,11 @@ uint compute_max_vpi_idx(const shsignature_t *sig, int n_procs, double *max_vpi)
 
 void compute_total_io(lib_shared_data_t *data,shsignature_t *sig,ullong *total_io);
 void compute_total_node_avx_and_avx_fops(lib_shared_data_t *data,shsignature_t *sig,ullong *avx);
-void compute_job_cpus(lib_shared_data_t *data,shsignature_t *sig,uint *cpus);
+
+
+/** Counts the number of CPUs of the job (on the current node) based on 
+ * \p data's node_mask attribute and stores it on \p cpus. */
+void compute_job_cpus(lib_shared_data_t *data, uint *cpus);
 
 
 void load_app_mgr_env();
@@ -341,6 +315,10 @@ void* mpi_info_get_perc_mpi(void *mpi_inf);
 /* Node mgr earl support functions */
 void init_earl_node_mgr_info();
 void update_earl_node_mgr_info();
+void release_earl_node_mgr_info();
+
+/** Returns how many apps are running in the node */
+uint node_mgr_earl_apps();
 #define PER_PROCESS 0
 #define PER_JOB     1
 void accum_estimations(lib_shared_data_t *data,shsignature_t *sig);

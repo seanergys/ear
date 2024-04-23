@@ -16,6 +16,7 @@
 */
 
 
+
 #include <common/config/config_def.h>
 #include <common/states.h>
 #include <common/types/types.h>
@@ -36,6 +37,8 @@ state_t report_init(report_id_t *id,cluster_conf_t *cconf)
   gethostname(report_nodename, sizeof(report_nodename));
   char * cearl_report_loops = ear_getenv(FLAG_REPORT_LOOPS);
 	if (cearl_report_loops != NULL) earl_report_loops = atoi(cearl_report_loops);
+
+	debug("EARL loops will be reported ? %u", earl_report_loops);
 
   strtok(report_nodename, ".");
 

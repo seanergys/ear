@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <string.h>
 #include <report/report.h>
@@ -27,12 +27,13 @@ static ullong zero = 0LLU;
 declr_up_get_tag ()
 {
     *tag = "dummy";
-    *tags_deps = "conf";
+    *tags_deps = NULL;
 }
 
 declr_up_action_init(_dummy)
 {
     *data_alloc = &zero;
+    debug("dummy init");
     return rsprintf("dummy action init(_dummy): received tag %s", tag);
 }
 
@@ -43,6 +44,7 @@ declr_up_action_init(_conf)
 
 declr_up_action_periodic(_dummy)
 {
+    debug("dummy action");
     return rsprintf("dummy action periodic(_dummy): received tag %s", tag);
 }
 

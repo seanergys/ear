@@ -292,7 +292,7 @@ static int commands_mbox_fill(cmds_mbox_t *cmds, uint cpu, uint cmd1, uint cmd2,
         // Sending
         commands_mbox_send(cmds, answers);
         // Cleaning command array
-        memset(&cmds, 0, sizeof(cmds_mbox_t));
+        memset(cmds, 0, sizeof(cmds_mbox_t));
         return 1;
     }
     return 0;

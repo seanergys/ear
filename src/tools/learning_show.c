@@ -71,7 +71,7 @@ int main(int argc,char *argv[])
   char *node_name = NULL;
   cluster_conf_t my_conf;
   application_t *apps;
-  int total_apps = 0;
+  // int total_apps = 0; Not used.
   int num_apps = 0;
   int i;
   double VPI;
@@ -160,7 +160,7 @@ int main(int argc,char *argv[])
 	} 
 
   while (num_apps > 0){
-	  total_apps += num_apps;
+	  // total_apps += num_apps; Not used.
     for (i = 0; i < num_apps; i++){
       if (strcmp(buffer, apps[i].node_id) != 0){
         strcpy(buffer, apps[i].node_id);

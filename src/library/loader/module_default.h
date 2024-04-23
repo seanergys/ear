@@ -15,11 +15,11 @@
 * and COPYING.EPL files.
 */
 
-#ifndef LIBRARY_LOADER_CONSTURCTOR_H
-#define LIBRARY_LOADER_CONSTRUCTOR_H
+#ifndef _LIBRARY_LOADER_CONSTURCTOR_H_
+#define _LIBRARY_LOADER_CONSTURCTOR_H_
 
-int module_constructor();
+int module_constructor(char *path_lib_so,char *libhack);
 
 void module_destructor();
 
-#endif //LIBRARY_LOADER_CONSTRUCTOR_H
+#endif // _LIBRARY_LOADER_CONSTURCTOR_H_

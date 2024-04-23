@@ -120,8 +120,8 @@ state_t bwidth_intel63_count_devices(ctx_t *c, uint *devs_count_in)
 
 state_t bwidth_intel63_read(ctx_t *c, bwidth_t *bw)
 {
-    ullong cas = 0LLU;
 	int p, t, i;
+	ullong cas = 0LLU;
 
 	timestamp_get(&bw[devs_count].time);
 	for (p = i = 0; p < pcis_count; ++p) {

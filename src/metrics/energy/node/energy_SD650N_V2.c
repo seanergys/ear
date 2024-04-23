@@ -81,12 +81,12 @@ static struct ipmi_rs *sendcmd(struct ipmi_intf *intf, struct ipmi_rq *req)
 	struct ipmi_recv recv;
 	struct ipmi_addr addr;
 	struct ipmi_system_interface_addr bmc_addr = {
-			addr_type:    IPMI_SYSTEM_INTERFACE_ADDR_TYPE,
-			channel:    IPMI_BMC_CHANNEL,
+			.addr_type =    IPMI_SYSTEM_INTERFACE_ADDR_TYPE,
+			.channel =    IPMI_BMC_CHANNEL,
 	};
 	struct ipmi_ipmb_addr ipmb_addr = {
-			addr_type:    IPMI_IPMB_ADDR_TYPE,
-			channel:    intf->channel & 0x0f,
+			.addr_type =    IPMI_IPMB_ADDR_TYPE,
+			.channel =    intf->channel & 0x0f,
 	};
 	static struct ipmi_rs rsp;
 	uint8_t *data = NULL;
@@ -402,9 +402,7 @@ state_t energy_init(void **c)
     if (gpu_sel_model == API_DUMMY) {
         gpu_num = 0;
     }else{
-        if (state_fail(s = gpu_count_devices(no_ctx, &gpu_num))) {
-            verbose(VGPU, "gpu_count returned %d (%s)", s, state_msg);
-        }
+        gpu_count_devices(no_ctx, &gpu_num);
 	}
 	verbose(VGPU, "GPU model %d DUMMY %d GPUS detected %d", gpu_sel_model, gpu_sel_model == API_DUMMY, gpu_num);
 	return EAR_SUCCESS;

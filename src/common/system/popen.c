@@ -15,7 +15,7 @@
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <errno.h>
 #include <fcntl.h>
@@ -23,11 +23,8 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <common/output/debug.h>
-#include <metrics/common/popen.h>
+#include <common/system/popen.h>
 
 #define MAX_ROWS          512
 #define MAX_COLS          16
@@ -86,7 +83,7 @@ static int static_read(popen_t *p, char *buffer)
 
     if (p->one_shot) {
         do {
-            // If one shot, we are reading one by one and spaces ' ' are compressed
+            // If one shot, we are reading one by one and spaces ' ' will be compressed
             buffer[len_acum] = (char) getc(p->file);
             len_acum = len_acum + 1;
             if (len_acum > 1) {
@@ -117,7 +114,7 @@ static int static_read(popen_t *p, char *buffer)
     return 1;
 }
 
-static void static_parse(popen_t *p, char *buffer)
+static void static_parse(popen_t *p, char *buffer, char separator)
 {
     int char_count = 0;
     int word_count = 0;
@@ -129,7 +126,7 @@ static void static_parse(popen_t *p, char *buffer)
     // Cleaning table
     memset(p->table, 0, sizeof(p->table));
     for (c = 0; c < strlen(buffer)+1; ++c) {
-        if (buffer[c] == ' ' || buffer[c] == '\t' || buffer[c] == '\n' || buffer[c] == '\0') {
+        if (buffer[c] == separator || buffer[c] == '\t' || buffer[c] == '\n' || buffer[c] == '\0') {
             word_count += (char_count > 0);
             char_count = 0;
         } else {
@@ -175,7 +172,7 @@ static int popen_eof(popen_t *p)
     return p->eof;
 }
 
-int popen_read(popen_t *p, const char* f, ...)
+int popen_read2(popen_t *p, char separator, const char* f, ...)
 {
     va_list args;
     int was_pending;
@@ -190,7 +187,7 @@ int popen_read(popen_t *p, const char* f, ...)
         if (!popen_eof(p)) {
             // Then read and parse
             if ((static_read(p, buffer))) {
-                static_parse(p, buffer);
+                static_parse(p, buffer, separator);
             }
         }
     }
@@ -204,6 +201,7 @@ int popen_read(popen_t *p, const char* f, ...)
     r = p->rows_index;
     c = 0;
 
+    // Variadic part
     va_start(args, f);
     while (*f != '\0')
     {
@@ -213,9 +211,21 @@ int popen_read(popen_t *p, const char* f, ...)
         // If string
         if (*f == 's') {
             char **s = va_arg(args, char **);
-            *s = &no_string;
+            s[0] = &no_string;
             if (was_pending) {
-                *s = p->table[r][c];
+                s[0] = p->table[r][c];
+            }
+        }
+        // If string vector
+        if (*f == 'S') {
+            char **S = va_arg(args, char **);
+            while(c < p->cols_count) {
+                *S = &no_string;
+                if (was_pending) {
+                    *S = p->table[r][c];
+                }
+                ++S;
+                ++c;
             }
         }
         // If signed integer
@@ -226,6 +236,20 @@ int popen_read(popen_t *p, const char* f, ...)
             } else {
                 *i = 0;
             }
+        }
+        // If signed integer vector
+        if (*f == 'I') {
+            int *I = va_arg(args, int *);
+            while(c < p->cols_count) {
+                if (was_pending) {
+                    *I = atoi(p->table[r][c]);
+                } else {
+                    *I = 0;
+                }
+                ++I;
+                ++c;
+            }
+            break;
         }
         // If double
         if (*f == 'd') {
@@ -262,7 +286,6 @@ int popen_read(popen_t *p, const char* f, ...)
             p->eof = 1;
         }
     }
-
     return was_pending;
 }
 
@@ -276,20 +299,45 @@ uint popen_count_pending(popen_t *p)
     return (uint) (p->rows_count - p->rows_index);
 }
 
-#if TEST
+#if TEST1 || TEST2
 int main(int argc, char *argv[])
 {
-    float f1, f2;
     popen_t p;
+    #if TEST1
+    double f1, f2;
+    char *s1;
     int gpu;
 
-    popen_open("for i in {1..100}; do echo GPU $i 10.0 20.0 && sleep 1; done", 0, 0, &p);
+    popen_open("for i in 0 1 2 3; do echo GPU $i 10.0 20.0 some_text && sleep 1; done", 0, 0, &p);
+    // The while(1) is here because read functions are non-blocking if init
+    // function isn't called with one_shot parameter enabled, which would block
+    // the readings. If the reading is non-blocking you will read nothing most
+    // of the time, having to repeat the readings.
     while (1) {
-        while(popen_read(&p, "aiff", &gpu, &f1, &f2)) {
-            printf("RETURNED: %d %f %f\n", gpu, f1, f2);
+        while(popen_read2(&p, ' ', "aidds", &gpu, &f1, &f2, &s1)) {
+            printf("%d %f %f %s\n", gpu, f1, f2, s1);
+            if (gpu == 3) {
+                return 0;
+            }
         }
-        sleep(2);
     }
+    #else
+    char *s1[3];
+    int i1;
+    popen_open("for i in 0 1 2 3; do echo $i text1 text2 text3 && sleep 1; done", 0, 0, &p);
+    while (1) {
+        while(popen_read2(&p, ' ', "iS", &i1, s1)) {
+            // As you can see the capital S is for vector. But the vectors have
+            // to be final letters because POPEN doesn't know the expected
+            // length. Maybe in the future we can implement a format like SN, DN
+            // or IN to specify the number of elements in advance.
+            printf("%d %s %s %s\n", i1, s1[0], s1[1], s1[2]);
+            if (i1 == 3) {
+                return 0;
+            }
+        }
+    }
+    #endif
     return 0;
 }
 #endif

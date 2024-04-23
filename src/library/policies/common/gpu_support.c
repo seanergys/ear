@@ -15,6 +15,7 @@
 * and COPYING.EPL files.
 */
 
+
 #define _GNU_SOURCE
 #include <sched.h>
 //#define SHOW_DEBUGS 1
@@ -61,7 +62,7 @@ state_t policy_gpu_load(settings_conf_t *app_settings,polsym_t *psyms)
         }
         verbose_master(2,"Loading GPU policy %s",obj_path);
         if (symplug_open(obj_path, (void **)psyms, polsyms_nam, polsyms_n) != EAR_SUCCESS){
-            verbose_master(2,"Error loading file %s",obj_path);
+            verbose_master(2,"Error loading file %s (%s)", obj_path, state_msg);
             return EAR_ERROR;
         }
 #endif

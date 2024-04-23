@@ -100,9 +100,19 @@ state_t gpu_mgr_init()
 		debug("GPU %u freq limits: def %lu max %lu current %lu",i,def_khz[i],max_khz[i],current_khz[i]);
 		debug("GPU %u power limits:def %lu min %lu max %lu current %lu",i,def_w[i],min_w[i],max_w[i],current_w[i]);
 	}
-	if (my_node_conf->gpu_def_freq == 0){
-		my_node_conf->gpu_def_freq = max_khz[0];
-	}
+    /* If gpu_def_freq == 0 --> GPU is not set at job init/end
+     * If gpu_def_freq > max GPU freq --> gpu_def_freq <- max GPU freq
+     * else --> not modified
+     * if gpu_def_freq > 0 --> GPU frequency will be set at job init/end */
+	if (my_node_conf->gpu_def_freq > 0)
+    {
+		my_node_conf->gpu_def_freq = ear_min(my_node_conf->gpu_def_freq, max_khz[0]);
+        verbose(VCONF, "Configuring GPU default frequency at job init/end to %lu",
+                my_node_conf->gpu_def_freq);
+	} else
+    {
+        verbose(VCONF, "Configuring GPU default frequency at job init/end DISABLED");
+    }
   ret = mgt_gpu_freq_list(no_ctx, (const ulong ***) &mgt_gpu.avail_list, (const uint **) &mgt_gpu.avail_count);
   if (ret != EAR_SUCCESS){
     debug("mgt_gpu_freq_list");

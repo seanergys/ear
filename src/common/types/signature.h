@@ -20,6 +20,7 @@
 
 #include <common/config.h>
 #include <common/types/generic.h>
+#include <common/utils/serial_buffer.h>
 #include <metrics/io/io.h>
 #include <metrics/gpu/gpu.h>
 #include <metrics/flops/flops.h>
@@ -79,7 +80,9 @@ typedef struct mini_sig
   double valid_time;
 } ssig_t;
 
-
+// WARNING! This type is serialized through functions signature_serialize and
+// signature_deserialize. If you want to add new types, make sure to update
+// these functions too.
 typedef struct signature
 {
   double DC_power;
@@ -195,6 +198,8 @@ int sig_gpus_used(signature_t *s);
  * to \p dst_ssig. The rest of metrics of the destination are initialised to 0. */
 void ssig_set_node_metrics(ssig_t *dst_ssig, ssig_t *src_ssig);
 
+void signature_serialize(serial_buffer_t *b, signature_t *sig);
 
+void signature_deserialize(serial_buffer_t *b, signature_t *sig);
 
 #endif

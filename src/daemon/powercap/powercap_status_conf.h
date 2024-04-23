@@ -15,8 +15,8 @@
 * and COPYING.EPL files.
 */
 
-#ifndef _PC_STATUS_H_
-#define _PC_STATUS_H_
+#ifndef _PC_STATUS_CONF_H_
+#define _PC_STATUS_CONF_H_
 
 
 #include <stdint.h>
@@ -40,7 +40,6 @@
 #define PC_DVFS     50
 #define PC_POWER    51
 
-#define PC_UNLIMITED 0
 
 
 #define PC_MODE_LIMIT   200

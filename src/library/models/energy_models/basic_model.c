@@ -16,6 +16,7 @@
 */
 
 
+
 #include <stdlib.h>
 #include <common/states.h>
 #include <common/output/debug.h>
@@ -25,6 +26,7 @@
 #include <management/cpufreq/frequency.h>
 #include <daemon/shared_configuration.h>
 #include <library/models/energy_models/common.h>
+#include <library/common/verbose_lib.h>
 
 
 static coefficient_t **coefficients;
@@ -106,7 +108,7 @@ state_t energy_model_init(char *ear_etc_path, char *ear_tmp_path, architecture_t
       i = frequency_closest_pstate(coefficients_sm[ccoeff].pstate);
       if (frequency_is_valid_pstate(ref) && frequency_is_valid_pstate(i)){
 				memcpy(&coefficients[ref][i],&coefficients_sm[ccoeff],sizeof(coefficient_t));
-        debug("initializing coeffs for ref: %d i: %d\n", ref, i);
+        //verbose_master(3,"initializing coeffs for ref: %d i: %d\n", ref, i);
       }
     }
   }
@@ -171,15 +173,17 @@ uint energy_model_projection_available(ulong from_ps, ulong to_ps)
 }
 
 
-uint energy_model_projections_available()
+uint energy_model_any_projection_available()
 {
-  uint ready = 0;
-  for (uint ps = 0; ps < num_pstates && !ready; ps++){
-    for (uint pt = 0; pt < num_pstates && !ready; pt++){
-      if ((ps != pt) && (!projection_available(ps, pt))) ready = 1;
+  for (uint ps = 0; ps < num_pstates; ps++){
+    for (uint pt = 0; pt < num_pstates; pt++){
+      if ((ps != pt) && (projection_available(ps, pt)))
+			{
+				return 1;
+			}
     }
   }
-	return 1 - ready;
+	return 0;
 }
 
 

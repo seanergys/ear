@@ -9,10 +9,14 @@ tool_BINS = \
     coeffs_default \
     coeffs_null \
     enode_control \
+		cluster_ping \
     ear_conf \
     insert_test \
-	cluster_ping
+		enode_info \
+    node_manager_info \
+		list_folders
 
+ifeq ($(FEAT_WF_SUPPORT), 1)
 ifdef DB_BASE
 tool_BINS += \
     learning_show \
@@ -20,21 +24,20 @@ tool_BINS += \
     metrics_show \
     learning_delete
 endif
-
 ifdef GSL_BASE
 tool_BINS += \
 	coeffs_compute
 endif
-
+endif
 tool_PATH = $(DESTDIR)/bin/tools
 tool_PERM = 0770
 
 ######## FILES
 
 rapi_OBJS = \
-			$(SRCDIR)/daemon/remote_api/eard_rapi_internals.o \
-			$(SRCDIR)/daemon/remote_api/eard_rapi.o \
-			$(SRCDIR)/common/messaging/msg_internals.o
+    $(SRCDIR)/daemon/remote_api/eard_rapi_internals.o \
+    $(SRCDIR)/daemon/remote_api/eard_rapi.o \
+    $(SRCDIR)/common/messaging/msg_internals.o
 
 db_OJBS = \
     $(SRCDIR)/common/libdb.a
@@ -80,11 +83,21 @@ learning_delete: learning_delete.c $(db_OJBS) $(comm_OBJS)
 ear_conf: ear_conf.c $(comm_OBJS)
 	$(CCC) -o $@ $< $(comm_OBJS)
 
-enode_control: ear_node_control.c $(comm_OBJS) 
+enode_control: ear_node_control.c $(comm_OBJS)
 	$(CCC) -o $@ $< $(comm_OBJS)
+
+enode_info: ear_node_info.c $(comm_OBJS) $(SRCDIR)/daemon/local_api/libeard.a $(SRCDIR)/metrics/libmetrics.a $(SRCDIR)/management/libmgt.a
+	$(CCC) -o $@ $< $(SRCDIR)/daemon/local_api/libeard.a  $(SRCDIR)/management/libmgt.a $(SRCDIR)/metrics/libmetrics.a $(comm_OBJS) -pthread -lm -ldl
 
 cluster_ping: cluster_ping.c $(comm_OBJS) $(rapi_OBJS)
 	$(CCC) -o $@ $< $(rapi_OBJS) $(comm_OBJS) -lm
+
+list_folders: list_folders.c $(comm_OBJS)
+	$(CCC) -I$(SRCDIR) -o $@ $< $(comm_OBJS)
+
+node_manager_info: node_manager_info.c $(comm_OBJS)
+	$(CCC) -o $@ $<  $(SRCDIR)/daemon/local_api/libeard.a $(SRCDIR)/daemon/shared_configuration.o $(SRCDIR)/daemon/shared_pmon.o $(comm_OBJS)
+
 
 ######## OPTIONS
 

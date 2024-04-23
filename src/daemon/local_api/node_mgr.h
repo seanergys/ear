@@ -33,6 +33,10 @@ typedef struct ear_njob {
 	job_id     sid;
 	cpu_set_t  node_mask;
 	time_t     creation_time;
+#if WF_SUPPORT
+	time_t     modification_time;
+  uint       num_earl_apps;
+#endif
 } ear_njob_t;
 
 /** Initializes the lock file and attaches the shared memory region.
@@ -63,4 +67,7 @@ state_t nodemgr_server_end();
 
 state_t node_mgr_info_lock();
 void node_mgr_info_unlock();
+
+/** Checks and creates the nodemgr_lock file */
+state_t nodemgr_lock_init(char *tmp);
 #endif

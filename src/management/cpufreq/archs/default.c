@@ -66,8 +66,10 @@ state_t mgt_cpufreq_default_load(topology_t *tp_in, mgt_ps_ops_t *ops, mgt_ps_dr
 	// Setting references
 	apis_put(ops->init,               mgt_cpufreq_default_init);
 	apis_put(ops->dispose,            mgt_cpufreq_default_dispose);
-	apis_put(ops->count_available,    mgt_cpufreq_default_count_available);
-	apis_put(ops->get_available_list, mgt_cpufreq_default_get_available_list);
+    apis_put(ops->get_info,           mgt_cpufreq_default_get_info);
+    apis_put(ops->get_freq_details,   mgt_cpufreq_default_get_freq_details);
+    apis_put(ops->count_available,    mgt_cpufreq_default_count_available);
+    apis_put(ops->get_available_list, mgt_cpufreq_default_get_available_list);
 	apis_put(ops->get_current_list,   mgt_cpufreq_default_get_current_list);
 	apis_put(ops->get_nominal,        mgt_cpufreq_default_get_nominal);
 	apis_put(ops->get_index,          mgt_cpufreq_default_get_index);
@@ -124,14 +126,26 @@ state_t mgt_cpufreq_default_init(ctx_t *c)
 	return EAR_SUCCESS;
 }
 
-/** Getters */
-state_t mgt_cpufreq_default_count_available(ctx_t *c, uint *pstate_count)
+void mgt_cpufreq_default_get_info(apinfo_t *info)
 {
-	*pstate_count = freqs_count;
-	return EAR_SUCCESS;
+    info->api = API_DEFAULT;
+	info->devs_count = tp.cpu_count;
+}
+
+void mgt_cpufreq_default_get_freq_details(freq_details_t *details)
+{
+    if (driver->get_freq_details != NULL) {
+        driver->get_freq_details(details);
+    }
 }
 
 // Given a frequency, find its P_STATE (or closest).
+state_t mgt_cpufreq_default_count_available(ctx_t *c, uint *pstate_count)
+{
+    *pstate_count = freqs_count;
+    return EAR_SUCCESS;
+}
+
 static state_t static_get_index(ullong freq_khz, uint *pstate_index, uint closest)
 {
 	int pst;

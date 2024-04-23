@@ -1,13 +1,20 @@
+CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC -shared
+
 ######## RULES
 
-all: all.components edcmon
+edcmon_BINS = edcmon
+edcmon_PATH = $(DESTDIR)/sbin
+edcmon_PERM = 0770
+
+
+all: all.components $(edcmon_BINS)
 
 edcmon: edcmon.c
-	$(CC) -I$(SRCDIR) -fPIC -rdynamic -o $@ $^ $(call whole,$(SRCDIR)/common/libcommon.a) -lm -lpthread -ldl
+	$(CC) $(CFLAGS) -rdynamic -o $@ $^ $(call whole,$(SRCDIR)/common/libcommon.a) -lm -lpthread -ldl
 
 ######## OPTIONS
 
-install: install.components;
+install: install.components edcmon.ginstall;
 
 %.install: %.install.components;
 

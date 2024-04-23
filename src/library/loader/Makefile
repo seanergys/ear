@@ -1,7 +1,5 @@
-CFLAGS  = -fPIC -I$(SRCDIR) -DCOUNTDOWN_BASE=\"$(COUNTDOWN_BASE)\" $(CONSTANTS)
+CFLAGS  = -fPIC -I$(SRCDIR) $(CONSTANTS)
 LDFLAGS = -ldl
-
-
 LOAD_CFLAGS = $(CFLAGS)
 
 ######## FILES
@@ -11,6 +9,7 @@ load_OBJS = \
     module_common.o \
     module_cuda.o \
     module_openmp.o \
+    module_oneapi.o \
     module_default.o \
     module_mpi.o \
     module_mpic.o \

@@ -45,5 +45,6 @@
 #define VMYSQL           0 // mysql
 #define VDBH             0 // db_helper.c
 #define VTYPE            2
+#define VCOMM            4 // src/common/messaging
 
 #endif

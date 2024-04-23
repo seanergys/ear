@@ -32,7 +32,7 @@ int filemagic_can_mwrite(char *format, int index_count, int **fds);
 
 int filemagic_word_read(int fd, char *word, int reset_position);
 
-int filemagic_word_write(int fd, char *word, int s, int line_break);
+int filemagic_word_write(int fd, char *word, int word_length, int line_break);
 
 int filemagic_word_mwrite(int *fds, int fds_count, char *word, int line_break);
 

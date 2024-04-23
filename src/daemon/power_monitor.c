@@ -15,6 +15,7 @@
 * and COPYING.EPL files.
 */
 
+
 #define _GNU_SOURCE
 
 // #define SHOW_DEBUGS 1
@@ -48,6 +49,7 @@
 #include <common/types/application.h>
 #include <common/types/periodic_metric.h>
 #include <common/types/configuration/cluster_conf.h>
+#include <common/utils/sched_support.h>
 #include <metrics/cpufreq/cpufreq.h>
 #include <management/imcfreq/imcfreq.h>
 #include <common/hardware/hardware_info.h>
@@ -63,12 +65,14 @@
 #if USE_GPUS
 #include <daemon/gpu/gpu_mgt.h>
 #endif
+#include <daemon/shared_pmon.h>
 
 #if SYSLOG_MSG
 #include <syslog.h>
 #endif
 
 #include <report/report.h>
+
 
 #define POWERMON_RESTORE 1 // Enables the restore settings mechanism.
 
@@ -78,7 +82,6 @@ extern pthread_barrier_t setup_barrier;
 extern uint report_eard ;
 extern report_id_t rid;
 extern state_t report_connection_status;
-
 
 /** These variables come from eard.c */
 extern topology_t node_desc;
@@ -95,11 +98,9 @@ extern char nodename[MAX_PATH_SIZE];
 
 extern state_t report_connection_status;
 
-
 /* from eard_node_services */
 extern manages_info_t man;
 extern metrics_info_t met;
-
 
 state_t s;
 nm_t my_nm_id;
@@ -108,16 +109,13 @@ nm_data_t nm_init, nm_end, nm_diff, last_nm;
 dom_power_t pdomain;
 cpu_set_t in_jobs_mask;
 
-
 static pthread_mutex_t app_lock = PTHREAD_MUTEX_INITIALIZER;
 static ehandler_t my_eh_pm;
 static char *TH_NAME = "PowerMon";
 
-
 /* Used to compute avg freq for jobs. Must be moved to powermon_app */
 static cpufreq_t *freq_job2;
 static uint       freq_count;
-
 
 // This array has 1 entry per job supported
 static job_context_t jobs_in_node_list[MAX_CPUS_SUPPORTED];
@@ -126,7 +124,6 @@ static char shmem_path[MAX_PATH_SIZE];
 static int fd_powermon = -1;
 static int fd_periodic = -1;
 static energy_data_t c_energy;
-
 
 /* Powercap */
 static energy_data_t e_pmon_begin, e_pmon_end, e_pmon;
@@ -137,7 +134,6 @@ static int powermon_num_pstates;
 static periodic_metric_t current_sample;
 static double last_power_reported = 0;
 static ulong  last_node_power     = 0;
-
 
 static uint *powermon_restore_cpufreq_list;
 
@@ -173,51 +169,6 @@ static state_t restore_global_cpu_settings(powermon_app_t *powermon_app);
 #endif // NAIVE_SETTINGS_SAVE
 
 
-/***************** Job verification ***********************/
-static int is_running(char *status_text)
-{
-  if (strlen(status_text) == 0) return 0;
-  if (strstr(status_text, "COMPLETED") != NULL) return 0;
-  if (strstr(status_text, "FAILED")    != NULL) return 0;
-  if (strstr(status_text, "EXITED")    != NULL) return 0;
-  if (strstr(status_text, "TIMEOUT")   != NULL) return 0;
-  if (strstr(status_text, "CANCELLED") != NULL) return 0;
-  return 1;
-}
-
-
-static int read_word(int fd, char * buff, int limit)
-{
-  int t = 0, r = 0;
-  while(((r = read(fd, &buff[t], (limit-t))) > 0) && (t < limit)){
-    t += r;
-  }
-  return t;
-}
-
-
-static int is_job_running(char *tmp, int jobid)
-{
-  /* sacct -j 1512221.4294967291 -o state -n*/
-  char path_file[GENERIC_NAME], pid_str[128], status[128];
-  int fd, size;
-
-  sprintf(path_file,"%s/jobid_status_file", tmp);
-  fd = open(path_file, O_RDWR|O_CREAT|O_TRUNC,S_IWUSR|S_IRUSR);
-  pid_t status_pid = fork();
-  if (status_pid == 0 ){
-    dup2(fd,1);
-    sprintf(pid_str,"%d.batch", jobid);
-    debug("job id: %d", jobid);
-    if (execlp("sacct", "sacct", "-j", pid_str,"-o","state", "-n", NULL) < 0) error( "Error execlp (%s)", strerror(errno)); // perror ("error execlp");
-    exit(1);
-  }
-  if (waitpid(status_pid,  NULL, 0) < 0 ) error("Error waitpid (%s)", strerror(errno));
-  if (lseek(fd, 0 , SEEK_SET) < 0 ) error("Error lseek (%s)", strerror(errno));
-  size = read_word(fd, status, 128);
-  status[size] = '\0';
-  return is_running(status);
-}
 
 
 /* This function is called to validate the jobs in the list that are still alive.
@@ -324,6 +275,19 @@ void verbose_jobs_in_node(uint vl)
 
 
 powermon_app_t *current_ear_app[MAX_NESTED_LEVELS];
+
+/**** Shared data ****/
+
+/* This vector is a list with the IDs . It's 1 single vector */
+static uint eard_joblist[MAX_NESTED_LEVELS];
+static int fd_joblist;
+static uint *shared_eard_joblist;
+static char joblist_path[MAX_PATH_SIZE];
+
+/* This is 1 region per pmon , this string is re-used, only to create the paths */
+static char jobpmon_path[MAX_PATH_SIZE];
+/***** End shared data ****/
+
 int max_context_created = 0;
 int num_contexts = 0;
 
@@ -332,6 +296,20 @@ void init_contexts() {
   int i;
   for (i = 0; i < MAX_NESTED_LEVELS; i++) current_ear_app[i] = NULL;
     init_jobs_in_node();
+
+   /* Creating shared region with job list */
+   if (get_joblist_path(ear_tmp, joblist_path) != EAR_SUCCESS){
+                verbose(0, "Error creating shared region for job list");
+   }
+   verbose(VJOBPMON, "Shared region for jobs created '%s'", joblist_path);
+   memset(eard_joblist,0, sizeof(int)*MAX_NESTED_LEVELS);
+   shared_eard_joblist = create_joblist_shared_area(joblist_path, &fd_joblist, eard_joblist, MAX_NESTED_LEVELS);
+   if (shared_eard_joblist == NULL){
+                verbose(0, "Error creating shared region for job list in path '%s', NULL address returned", joblist_path);
+   }
+
+   verbose(VJOBPMON, "Shared region with joblist initialized");
+
 }
 
 
@@ -345,6 +323,8 @@ int find_empty_context() {
       pos = i;
     } else i++;
   }
+
+	
   return pos;
 }
 
@@ -498,19 +478,27 @@ void end_context(int cc)
             ID = create_ID(current_ear_app[cc]->app.job.id,
                            current_ear_app[cc]->app.job.step_id);
 
+						/* 0 means no context or Idle context */
+						shared_eard_joblist[cc] = 0;
+						if (get_jobmon_path(ear_tmp, ID, jobpmon_path) != EAR_SUCCESS){
+							error("Creating job pmon path in end_context");
+						}
+						/* Releasing self shared area */
+						jobmon_shared_area_dispose(jobpmon_path, NULL, current_ear_app[cc]->fd_shared_areas[SELF]);
+
             del_job_in_node(current_ear_app[cc]->app.job.id);
 
             get_settings_conf_path(ear_tmp, ID, shmem_path);
 
-            settings_conf_shared_area_dispose(shmem_path);
+            settings_conf_shared_area_dispose(shmem_path, current_ear_app[cc]->settings, current_ear_app[cc]->fd_shared_areas[SETTINGS_AREA]);
             get_resched_path(ear_tmp, ID, shmem_path);
-            resched_shared_area_dispose(shmem_path);
+            resched_shared_area_dispose(shmem_path, current_ear_app[cc]->resched, current_ear_app[cc]->fd_shared_areas[RESCHED_AREA]);
 
             get_app_mgt_path(ear_tmp, ID, shmem_path);
-            app_mgt_shared_area_dispose(shmem_path);
+            app_mgt_shared_area_dispose(shmem_path, current_ear_app[cc]->app_info, current_ear_app[cc]->fd_shared_areas[APP_MGT_AREA]);
 
             get_pc_app_info_path(ear_tmp, ID, shmem_path);
-            pc_app_info_shared_area_dispose(shmem_path);
+            pc_app_info_shared_area_dispose(shmem_path, current_ear_app[cc]->pc_app_info, current_ear_app[cc]->fd_shared_areas[PC_APP_AREA]);
 
             cpufreq_data_free(&current_ear_app[cc]->freq_job1,
                               &current_ear_app[cc]->freq_diff);
@@ -524,8 +512,15 @@ void end_context(int cc)
             ear_unlock(&current_ear_app[cc]->powermon_app_mutex);
 
             pthread_mutex_destroy(&current_ear_app[cc]->powermon_app_mutex);
+#if USE_PMON_SHARED_AREA
+		/* Releasing self shared area */
+		jobmon_shared_area_dispose(jobpmon_path, current_ear_app[cc], current_ear_app[cc]->fd_shared_areas[SELF]);
+#else
+	     jobmon_shared_area_dispose(jobpmon_path, (powermon_app_t *)current_ear_app[cc]->sh_self, current_ear_app[cc]->fd_shared_areas[SELF]);
+             free(current_ear_app[cc]);
+#endif
 
-            free(current_ear_app[cc]);
+
             current_ear_app[cc] = NULL;
 
             if (cc == max_context_created) {
@@ -594,6 +589,29 @@ int select_last_context() {
 }
 
 
+/** This function iterates over the eard data and cleans not valid job metrics */
+void powermon_purge_old_jobs()
+{
+	powermon_app_t *pmapp;
+  for (uint cc = 1; cc <= max_context_created; cc++) {
+
+  	if (current_ear_app[cc] != NULL) {
+    	pmapp = current_ear_app[cc];
+
+			state_t lock_st;
+     	if ((lock_st = ear_trylock(&pmapp->powermon_app_mutex)) != EAR_SUCCESS) {
+     		error("Locking context %lu/%lu for updating its mask: %s",
+                      pmapp->app.job.id, pmapp->app.job.step_id, state_msg);
+       	return;
+     	}
+			/* test application */
+			
+			ear_unlock(&pmapp->powermon_app_mutex);
+		}
+	}
+}
+
+
 /* TODO: Thread-save here?: It's not possible because mutex is inside the context that will be created. */
 int new_context(job_id id, job_id sid, int *cc)
 {
@@ -654,10 +672,37 @@ int new_context(job_id id, job_id sid, int *cc)
 
     /* We must create per jobid, stepid shared memory regions. */
     ID = create_ID(id, sid);
+    /* Shared vector with joblist */
+    shared_eard_joblist[ccontext] = ID;
+
+		/* Start: Mapping my own data in a shared file */
+		if (get_jobmon_path(ear_tmp, ID, jobpmon_path) != EAR_SUCCESS){
+			error("Error creating jobpmon path");
+			ear_unlock(&current_ear_app[ccontext]->powermon_app_mutex);
+			return EAR_ERROR;
+		}
+		// We use the new shared area rather than the allocated area
+		powermon_app_t *aux1 , *aux2;
+		aux1 = current_ear_app[ccontext];
+		if ((aux2 = create_jobmon_shared_area(jobpmon_path, current_ear_app[ccontext], &current_ear_app[ccontext]->fd_shared_areas[SELF])) == NULL){
+			error("Error creating shared memory for pmon for ((%lu,%lu)", id,sid);
+			ear_unlock(&current_ear_app[ccontext]->powermon_app_mutex);
+			return EAR_ERROR;
+		}
+		current_ear_app[ccontext]->sh_self = (void *)aux2;
+#if USE_PMON_SHARED_AREA
+		// This option forces eard to use the shared pmapp region , otherwise it is not updated dynamically
+		// it could be used to see the list of jobs but not to update job state etc
+		current_ear_app[ccontext] = aux2;
+		free(aux1);
+#endif
+		verbose(VJOBPMON,"Self context in path '%s' for (%lu/%lu)", jobpmon_path, id, sid);
+		/* End of Pmon mapping */
+
     get_settings_conf_path(ear_tmp, ID, shmem_path);
     debug("Settings for new context placed at %s", shmem_path);
 
-    current_ear_app[ccontext]->settings = create_settings_conf_shared_area(shmem_path);
+    current_ear_app[ccontext]->settings = create_settings_conf_shared_area(shmem_path, &current_ear_app[ccontext]->fd_shared_areas[SETTINGS_AREA]);
     if (current_ear_app[ccontext]->settings == NULL) {
         error("Error creating shared memory between EARD & EARL for (%lu,%lu)",
               id,sid);
@@ -671,7 +716,7 @@ int new_context(job_id id, job_id sid, int *cc)
     get_resched_path(ear_tmp, ID, shmem_path);
     debug("Resched path for new context placed at %s",shmem_path);
 
-    current_ear_app[ccontext]->resched = create_resched_shared_area(shmem_path);
+    current_ear_app[ccontext]->resched = create_resched_shared_area(shmem_path, &current_ear_app[ccontext]->fd_shared_areas[RESCHED_AREA]);
 
     if (current_ear_app[ccontext]->resched == NULL) {
         error("Error creating resched shared memory between EARD & EARL for (%lu,%lu)",id,sid);
@@ -689,7 +734,7 @@ int new_context(job_id id, job_id sid, int *cc)
 
     debug("App_MGR for new context placed at %s",shmem_path);
 
-    current_ear_app[ccontext]->app_info = create_app_mgt_shared_area(shmem_path);
+    current_ear_app[ccontext]->app_info = create_app_mgt_shared_area(shmem_path, &current_ear_app[ccontext]->fd_shared_areas[APP_MGT_AREA]);
 
     if (current_ear_app[ccontext]->app_info == NULL) {
         error("Error creating shared memory between EARD & EARL for app_mgt (%lu,%lu)",id,sid);
@@ -703,7 +748,7 @@ int new_context(job_id id, job_id sid, int *cc)
 
     debug("PC_app_info for new context placed at %s", shmem_path);
 
-    current_ear_app[ccontext]->pc_app_info = create_pc_app_info_shared_area(shmem_path);
+    current_ear_app[ccontext]->pc_app_info = create_pc_app_info_shared_area(shmem_path, &current_ear_app[ccontext]->fd_shared_areas[PC_APP_AREA]);
     if (current_ear_app[ccontext]->pc_app_info == NULL){
         error("Error creating shared memory between EARD & EARL for pc_app_infoi (%lu,%lu)",id,sid);
         ear_unlock(&current_ear_app[ccontext]->powermon_app_mutex);
@@ -939,23 +984,38 @@ state_t powermon_create_idle_context()
   cpufreq_count_devices(no_ctx, &freq_count);
 
   ID = create_ID(jid,sid);
+
+	/* Shared vector with joblist */
+	shared_eard_joblist[0] = ID;
+	/* Start: Mapping my own data in a shared file */
+	if (get_jobmon_path(ear_tmp, ID, jobpmon_path) != EAR_SUCCESS){
+		error("Error creating jobpmon path");
+		return EAR_ERROR;
+	}
+	verbose(VJOBPMON,"Self context in path '%s'", jobpmon_path);
+	if (create_jobmon_shared_area(jobpmon_path, current_ear_app[0], &current_ear_app[0]->fd_shared_areas[SELF]) == NULL){
+		return EAR_ERROR;
+	}
+	/* End of Pmon mapping */
+
+
   /* Shared memory regions for default context */
   get_settings_conf_path(ear_tmp, ID, shmem_path);
   verbose(VJOBPMON,"Settings for new context placed at %s",shmem_path);
-  pmapp->settings = create_settings_conf_shared_area(shmem_path);
+  pmapp->settings = create_settings_conf_shared_area(shmem_path, &pmapp->fd_shared_areas[SETTINGS_AREA]);
 	if (pmapp->settings == NULL){
 		verbose(VJOBPMON,"Error creating shared memory region for earl shared data");
 	}
   get_resched_path(ear_tmp, ID,shmem_path);
   verbose(VJOBPMON,"Resched area for new context placed at %s",shmem_path);
-  pmapp->resched = create_resched_shared_area(shmem_path);
+  pmapp->resched = create_resched_shared_area(shmem_path, &pmapp->fd_shared_areas[RESCHED_AREA]);
 	if (pmapp->resched == NULL){
 		verbose(VJOBPMON,"Error creating shared memory region for re-scheduling data");
 	}
   reset_shared_memory(pmapp);
   get_app_mgt_path(ear_tmp, ID, shmem_path);
   verbose(VJOBPMON,"App- Mgr area for new context placed at %s",shmem_path);
-  pmapp->app_info = create_app_mgt_shared_area(shmem_path);
+  pmapp->app_info = create_app_mgt_shared_area(shmem_path, &pmapp->fd_shared_areas[APP_MGT_AREA]);
 	if (pmapp->app_info == NULL){
 		verbose(VJOBPMON,"Error creating app mgr shared region ");
 	}
@@ -963,7 +1023,7 @@ state_t powermon_create_idle_context()
 
   get_pc_app_info_path(ear_tmp, ID, shmem_path);
   verbose(VJOBPMON,"App PC area for new context placed at %s",shmem_path);
-  pmapp->pc_app_info = create_pc_app_info_shared_area(shmem_path);
+  pmapp->pc_app_info = create_pc_app_info_shared_area(shmem_path, &pmapp->fd_shared_areas[PC_APP_AREA]);
 	if (pmapp->pc_app_info == NULL){
 		verbose(VJOBPMON,"Error creating app pc shared region");
 	}
@@ -1405,19 +1465,22 @@ policy_conf_t *configure_context(powermon_app_t *pmapp, uint user_type,
             my_policy->p_state, cpus_free, cpus_used);
 		state_t ret_st = frequency_set_userspace_governor_all_cpus();
     check_usrspace_gov_set(ret_st, VJOBPMON);
+
     /* Setting the default CPU freq for the new job */
     frequency_set_with_mask(&not_in_jobs_mask, f);
+
     /* Moved to powermon_init mgw configuration */
     /* Setting the default IMC freq by default in all the sockets */
+    verbose(VJOBPMON, "Restoring IMC frequency");
     if (state_fail(mgt_imcfreq_set_auto(no_ctx))){
         verbose(VJOBPMON, "Error when setting IMCFREQ by default");
     }
-    verbose(VJOBPMON,"Restoring IMC frequency" );
 #if USE_GPUS
-    if (my_node_conf->gpu_def_freq > 0){
+    if (my_node_conf->gpu_def_freq > 0)
+    {
       /** Can we know which GPUS are used by this job?? */
+      verbose(VJOBPMON, "Restoring GPU frequency to %lu", my_node_conf->gpu_def_freq);
       gpu_mgr_set_freq_all_gpus(my_node_conf->gpu_def_freq);
-      verbose(VJOBPMON,"Restoring GPU frequency to %lu", my_node_conf->gpu_def_freq);
     }
 #endif
 
@@ -1689,7 +1752,7 @@ void powermon_new_job(powermon_app_t *pmapp, ehandler_t *eh, application_t *appI
 
     energy_tag_t *my_tag;
 
-    if (!powermon_is_idle()) check_status_of_jobs(appID->job.id);
+    if (!powermon_is_idle() && is_job) check_status_of_jobs(appID->job.id);
 
     verbose(VJOBPMON, "%s--- powermon_new_job (%lu,%lu) ---%s",
             COL_BLU,appID->job.id, appID->job.step_id,COL_CLR);
@@ -2619,6 +2682,9 @@ void *eard_power_monitoring(void *noinfo)
     pthread_barrier_wait(&setup_barrier);
 
     while (!eard_must_exit) {
+	// TEST	
+        // finish_pending_contexts(&my_eh_pm);	
+
         verbose(VNODEPMON, "\n%s------------------- NEW PERIOD -------------------%s", COL_BLU,COL_CLR);
         // Wait for N secs
         sleep(f_monitoring);
@@ -2833,19 +2899,24 @@ static void set_default_powermon_init(powermon_app_t *app)
 
 #if POWERMON_RESTORE
     /* IMC freq */
-    verbose(VCONF, "Resetting IMC frequency...");
+    verbose(VCONF, "Setting default IMC frequency...");
     if (node_desc.vendor == VENDOR_INTEL) {
         mgt_imcfreq_set_auto(no_ctx);
     } else if (node_desc.vendor == VENDOR_AMD) {
         mgt_imcfreq_set_current(no_ctx, 0, all_sockets);
     }
 
-    /* If policy_freq is zero, we don't need to change the current configuration */
-    if (app->policy_freq) {
+    /* If policy_freq is zero, we don't need to change the current configuration:
+     * EARL is not used and !ForceFrequencies */
+    if (app->policy_freq)
+    {
 #if USE_GPUS
         /* GPU freq. */
-        if (my_node_conf->gpu_def_freq > 0) {
-            verbose(VCONF, "Restoring to GPU freq %.2f GHz", (float) my_node_conf->gpu_def_freq / 1000000);
+        if (my_node_conf->gpu_def_freq > 0)
+        {
+            verbose(VCONF, "Setting default GPU freq.: %.2f GHz",
+                    (float) my_node_conf->gpu_def_freq / 1000000);
+
             gpu_mgr_set_freq_all_gpus(my_node_conf->gpu_def_freq);
         }
 #endif
@@ -2889,6 +2960,8 @@ static void set_default_powermon_end(powermon_app_t *app, uint idle)
 
     /* --- Setting governor --- */
 
+		// TODO: Check whether this function returns SUCCESS
+		// and then do the below conditional block.
     governor_toint(cgov, &gov);
 
     if (idle) {
@@ -2980,21 +3053,28 @@ static void set_default_powermon_end(powermon_app_t *app, uint idle)
 
 #if USE_GPUS
   /* GPUs */
-  if (idle && my_node_conf->gpu_def_freq) { /* EARD is not aware of the GPUs used */
+#if 0
+  if (idle && app->policy_freq && my_node_conf->gpu_def_freq)
+  {
+    /* EARD is not aware of the GPUs used */
     ulong idle_gpu_freq;
     /* We assume all the gpus are the same */
     gpu_mgr_get_min(0, &idle_gpu_freq);
-    verbose(VCONF + 1, "Restoring to GPU freq %.2f GHz", (float)idle_gpu_freq/1000000.0);
+    verbose(VCONF, "Set idle GPU freq %.2f GHz", (float) idle_gpu_freq / 1000000.0);
     gpu_mgr_set_freq_all_gpus(idle_gpu_freq);
   }
 #endif
+#endif
 
-  if (idle) {
+  if (idle)
+  {
     /* IMC freq : It's already done at init, but it's included here for simplicity*/
     verbose(VCONF, "Restoring IMC freq");
-    if (node_desc.vendor == VENDOR_INTEL) {
+    if (node_desc.vendor == VENDOR_INTEL)
+    {
       mgt_imcfreq_set_auto(no_ctx);
-    } else if (node_desc.vendor == VENDOR_AMD) {
+    } else if (node_desc.vendor == VENDOR_AMD)
+    {
       mgt_imcfreq_set_current(no_ctx, 0, all_sockets);
     }
   }
@@ -3050,7 +3130,6 @@ static state_t store_current_task_governor(powermon_app_t *powermon_app, cpu_set
  * Only usable in SLURM systems. */
 static void check_status_of_jobs(job_id current)
 {
-    return; // We deactivate this function because it was designed to make hard testing.
     powermon_app_t *pmapp; 
     for (uint cc = 1; cc <= max_context_created; cc++)
     {
@@ -3061,9 +3140,11 @@ static void check_status_of_jobs(job_id current)
             /* No need to check the new one :) */
             if (pmapp->app.job.id != current)
             {
-                if (is_job_running(ear_tmp, pmapp->app.job.id) == 0)
+                // if (is_job_running(ear_tmp, pmapp->app.job.id) == 0)
+								if (is_job_step_valid(pmapp->app.job.id, pmapp->app.job.step_id) == 0)
                 {
                     verbose(VJOBPMON_BASIC, "Warning, we must clean  job %lu", pmapp->app.job.id);
+										pmapp->state = APP_FINISHED;
                 }
             }
         }
