@@ -570,6 +570,8 @@ void get_cluster_config(FILE *conf_file, cluster_conf_t *conf, uint action)
         token = strtok(line, "=");
         strtoup(token);
 
+
+
 				if (EAR_include(token) == EAR_SUCCESS){
 					char *file_to_include = strtok(NULL, "=");
 					clean_newlines(file_to_include);
@@ -577,6 +579,7 @@ void get_cluster_config(FILE *conf_file, cluster_conf_t *conf, uint action)
 					FILE *fd_include = fopen(file_to_include, "r");
 					if (fd_include != NULL) get_cluster_config(fd_include, conf, ADD_CONTENT);
 					else verbose(VCCONF, "Include file cannot be open %s", strerror(errno));
+					continue;
 				}
 
         if (EARGM_token(token) == EAR_SUCCESS){
@@ -613,6 +616,11 @@ void get_cluster_config(FILE *conf_file, cluster_conf_t *conf, uint action)
         if (ETAG_token(token) == EAR_SUCCESS){
             if (ETAG_parse_token(&conf->num_etags,&conf->e_tags,line) == EAR_SUCCESS) continue;
         }
+
+				if (EDCMON_token(token) == EAR_SUCCESS){
+						line[strlen(line)] = '=';
+						if (EDCMON_parse_token(&conf->edcmon_tags, &conf->num_edcmons_tags, line) == EAR_SUCCESS) continue;
+				}
 
         //HARDWARE NODE CONFIG
         else if (!strcmp(token, "NODENAME"))
