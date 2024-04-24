@@ -18,8 +18,8 @@
 #ifndef LIBRARY_API_MPIC_H
 #define LIBRARY_API_MPIC_H
 
-#include <library/api/mpi.h>
-
+#if 0
+// These declarations are not required. We are using dlsym+mpic_t.
 int ear_mpic_Allgather(MPI3_CONST void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, MPI_Comm comm);
 int ear_mpic_Allgatherv(MPI3_CONST void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, MPI3_CONST int *recvcounts, MPI3_CONST int *displs, MPI_Datatype recvtype, MPI_Comm comm);
 int ear_mpic_Allreduce(MPI3_CONST void *sendbuf, void *recvbuf, int count, MPI_Datatype datatype, MPI_Op op, MPI_Comm comm);
@@ -114,7 +114,7 @@ int ear_mpic_Ireduce_scatter(MPI3_CONST void *sendbuf, void *recvbuf, MPI3_CONST
 int ear_mpic_Iscan(MPI3_CONST void *sendbuf, void *recvbuf, int count, MPI_Datatype datatype, MPI_Op op, MPI_Comm comm, MPI_Request *request);
 int ear_mpic_Iscatter(MPI3_CONST void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, int root, MPI_Comm comm, MPI_Request *request);
 int ear_mpic_Iscatterv(MPI3_CONST void *sendbuf, MPI3_CONST int sendcounts[], MPI3_CONST int displs[], MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, int root, MPI_Comm comm, MPI_Request *request);
-//#endif
+#endif
 
 const char *ear_mpic_names[] __attribute__((weak, visibility("hidden"))) =
 {

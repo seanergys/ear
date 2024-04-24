@@ -29,9 +29,10 @@
 #include <library/loader/module_cuda.h>
 #include <library/loader/module_common.h>
 #if FEAT_MPI_LOADER
+#include <library/api/mpi.h>
+#endif
 #include <library/api/mpic.h>
 #include <library/api/mpif.h>
-#endif
 
 #if !FEAT_MPI_LOADER
 typedef struct mpic_s {
@@ -41,8 +42,8 @@ typedef struct mpic_s {
 
 typedef mpic_t mpif_t;
 
-const char **ear_mpic_names;
-const char **ear_mpif_names;
+//const char **ear_mpic_names;
+//const char **ear_mpif_names;
 #endif
 
 static mpic_t next_mpic;

@@ -21,9 +21,8 @@
 #include <string.h>
 #include <common/config.h>
 #include <common/colors.h>
-#include <library/api/mpic.h>
+#include <library/api/mpi.h>
 #include <library/loader/module_mpi.h>
-#include <library/loader/module_mpic.h>
 #include <library/loader/module_common.h>
 
 extern mpic_t ear_mpic;
