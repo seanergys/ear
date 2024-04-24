@@ -283,3 +283,11 @@ Island=0 Nodes=node12[01-80]
 
 # Will use default tag. 
 Island=1 Nodes=node11[01-80] DBIP=node1181 DBSECIP=node1182 
+
+
+# --------------------------------------------------------------------------------------------------
+# Data Center Monitor configuration: Uncomment if needed
+# --------------------------------------------------------------------------------------------------
+
+# A edcmon.template.conf is available at @sysconfdir@/ear/. Change the name if needed
+# include=@sysconfdir@/ear/edcmon.conf
