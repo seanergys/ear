@@ -388,6 +388,7 @@ state_t monitor_register(suscription_t *s)
 
 state_t monitor_unregister(suscription_t *s)
 {
+    int id = s->id;
     int retval;
 
     if (!is_running        ) monitor_init();
@@ -395,13 +396,13 @@ state_t monitor_unregister(suscription_t *s)
     if (s->id  > queue_last) return_msg(EAR_ERROR, "incorrect suscription index");
     if (s->id  < 0         ) return_msg(EAR_ERROR, "incorrect suscription index");
 
-    while ((retval = pthread_mutex_trylock(&locks[s->id])) != 0) {
+    while ((retval = pthread_mutex_trylock(&locks[id])) != 0) {
         if (retval != EBUSY) {
             return_msg(EAR_ERROR, strerror(retval));
         }
     }
-    memset(&queue[s->id], 0, sizeof(queue_t));
-    pthread_mutex_unlock(&locks[s->id]);
+    memset(&queue[id], 0, sizeof(queue_t));
+    pthread_mutex_unlock(&locks[id]);
     return EAR_SUCCESS;
 }
 
