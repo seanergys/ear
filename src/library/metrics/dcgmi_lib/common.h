@@ -33,18 +33,25 @@
 
 typedef struct dcgmi_lib_s
 {
-	int *dcgmi_set_sizes;
-	int	dcgmi_set_count;
+	int *dcgmi_set_sizes; /**< The number of events per set. */
+	int	dcgmi_set_count;	/**< The total number of sets. */
 															
-	uint **dcgmi_events;
-	char **dcgmi_events_str;
+	uint **dcgmi_events;		 /**< The event index list for each set. */
+	char **dcgmi_events_str; /**< The format string of the current selected event
+																set (used when calling EAR's DCGMI API). */
 															
-	dcgmi_t **dcgmi_metrics;
-	dcgmi_t **dcgmi_metrics_agg;
+	dcgmi_t **dcgmi_metrics;		 /**< For each set, and for each GPU, the event metrics list. */
+	dcgmi_t **dcgmi_metrics_agg; /**< Same structure as dcgmi_metrics,
+																		but used to store application global metrics. */
 } dcgmi_lib_t;
 
 
+/** Allocates memory for \p dcgmi_data based on the number of sets \p set_count. */
 state_t dcgmi_lib_data_alloc(dcgmi_lib_t *dcgmi_data, int set_count);
+
+
+/** TODO: Implement this function. */
+state_t dcgmi_lib_data_free(dcgmi_lib_t *dcgmi_data);
 
 
 #endif // _DCGMI_LIB_COMMON_H_
