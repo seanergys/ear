@@ -117,7 +117,14 @@ AC_DEFUN([AX_BEFORE_FEATURES],
 
 	MPI_DIR=`dirname $MPICC`
 	MPI_DIR=`(cd $MPI_DIR/.. && pwd)`
-	MPI_CPPFLAGS="-I\$(MPI_BASE)/include"
+	MPI_CFLAGS="-I\$(MPI_BASE)/include"
+
+    if test -z "$MPICC"; then
+        echo checking for MPI compiler... no
+    else
+        echo checking for MPI compiler... yes
+        echo checking for MPI CFLAGS... -I$MPI_DIR/include
+    fi
 
 	#
 	# Architecture
@@ -214,7 +221,7 @@ AC_DEFUN([AX_AFTER_FEATURES],
 	AC_SUBST(MPICC)
 	AC_SUBST(MPICC_FLAGS)
 	AC_SUBST(MPI_DIR)
-	AC_SUBST(MPI_CPPFLAGS)
+	AC_SUBST(MPI_CFLAGS)
 	AC_SUBST(MPI_VERSION)
 	AC_SUBST(FEAT_MPI_LIBRARY)
 	AC_SUBST(FEAT_AVX512)

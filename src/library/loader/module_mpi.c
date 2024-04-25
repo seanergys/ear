@@ -41,9 +41,6 @@ typedef struct mpic_s {
 } mpic_t;
 
 typedef mpic_t mpif_t;
-
-//const char **ear_mpic_names;
-//const char **ear_mpif_names;
 #endif
 
 static mpic_t next_mpic;
