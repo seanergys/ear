@@ -584,7 +584,6 @@ static void plugins_fds_register(int i)
         sout = p.plugins_sorted[i]->fds_register(&fds_active);
         output_print(i, i, "FDs register status: ", sout);
     }
-next_fr:
     plugins_fds_register(i+1);
 }
 
