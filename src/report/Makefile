@@ -1,7 +1,7 @@
 CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC $(CONSTANTS) $(DB_CFLAGS) $(DEFS)
 
-DB_MYSQL_LDFLAGS = $(DB_LDFLAGS) $(SRCDIR)/common/libcommon.a
-DB_PSQL_LDFLAGS  = $(DB_LDFLAGS) -lpq $(SRCDIR)/common/libcommon.a
+DB_MYSQL_LDFLAGS = $(DB_LDFLAGS) $(SRCDIR)/common/libcommon.a $(SRCDIR)/common/libdb.a
+DB_PSQL_LDFLAGS  = $(DB_LDFLAGS) -lpq $(SRCDIR)/common/libcommon.a $(SRCDIR)/common/libdb.a
 
 
 # Examon requirements
@@ -86,10 +86,10 @@ prometheus.so: prometheus.c $(repo_DEPS)
 	$(CC) $(CFLAGS) -shared -o prometheus.so prometheus.c -lmicrohttpd 
 
 mysql.so: mysql.c $(repo_DEPS)
-	$(CC) $(CFLAGS) -shared -o $@ $^ $(DB_LDFLAGS) $(SRCDIR)/common/libcommon.a
+	$(CC) $(CFLAGS) $(DB_CFLAGS) -shared -o $@ $^ $(DB_MYSQL_LDFLAGS)
 
 psql.so: psql.c $(repo_DEPS)
-	$(CC) $(CFLAGS) $(DB_CFLAGS) -shared -o $@ $^ $(DB_LDFLAGS) $(SRCDIR)/common/libcommon.a
+	$(CC) $(CFLAGS) $(DB_CFLAGS) -shared -o $@ $^ $(DB_PSQL_LDFLAGS)
 
 ifeq ($(FEAT_EXAMON),1)
 examon.so: examon.c
