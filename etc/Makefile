@@ -39,7 +39,7 @@ serv_PERM = 0660
 slur_BINS = ear.plugstack.conf
 slur_FOLD = slurm
 slur_PATH = $(ETCDIR)/slurm
-slur_PERM = 0660
+slur_PERM = 0644
 
 ######## OPTIONS
 
