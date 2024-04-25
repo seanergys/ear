@@ -73,7 +73,7 @@ state_t policy_gpu_load(settings_conf_t *app_settings, polsym_t *psyms)
 		verbose_master(2, "Loading %s GPU policy...", gpupolicy_objc);
 		if (state_fail(symplug_open(gpupolicy_objc, (void **) psyms, polsyms_nam, polsyms_n)))
 		{
-			verbose_master(2, "Error loading file.");
+			verbose_master(2, "Error loading file %s (%s)", gpupolicy_objc, state_msg);
 			return EAR_ERROR;
 		}
 #endif
