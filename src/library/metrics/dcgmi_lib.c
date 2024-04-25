@@ -140,6 +140,8 @@ state_t dcgmi_lib_load()
 								dcgmi_monitor->call_init 	= dcgmi_paction_init;
 								dcgmi_monitor->call_main 	= dcgmi_paction;
 
+								debug("subscription ID: %d", dcgmi_monitor->id);
+
 								/* Configure the sampling period time. */
 
 								float sampling_period = DCGMI_LIB_SAMPLING_PERIOD;
