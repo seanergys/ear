@@ -43,10 +43,10 @@ void usage(char *name)
     exit(0);
 }
 
-#define APPS_QUERY "SELECT Jobs.id, Jobs.step_id, ROUND(AVG(CPI), 4), ROUND(AVG(GBS), 4), ROUND(AVG(TPI), 4), "\
+#define APPS_QUERY "SELECT Jobs.job_id, Jobs.step_id, ROUND(AVG(CPI), 4), ROUND(AVG(GBS), 4), ROUND(AVG(TPI), 4), "\
 	"ROUND(AVG(DC_power), 4), ROUND(AVG(Gflops), 4) FROM "\
-	"Applications INNER JOIN Jobs on Applications.step_id = Jobs.step_id AND job_id = Jobs.id INNER JOIN Signatures "\
-	"ON signature_id = Signatures.id WHERE job_id = %d %s GROUP BY Jobs.id, Jobs.step_id"
+	"Applications INNER JOIN Jobs on Applications.step_id = Jobs.step_id AND Applications.job_id = Jobs.job_id INNER JOIN Signatures "\
+	"ON signature_id = Signatures.id WHERE job_id = %d %s GROUP BY Jobs.job_id, Jobs.step_id"
 
 #define LOOP_QUERY "SELECT job_id, step_id, ROUND(CPI, 4), ROUND(GBS, 4), ROUND(TPI, 4), ROUND(DC_power, 4), "\
 	"ROUND(Gflops, 4) FROM Loops INNER JOIN Signatures ON signature_id = Signatures.id WHERE job_id = %d %s"

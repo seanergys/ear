@@ -1086,7 +1086,7 @@ void print_loops(loop_t *loops, int num_loops)
 }
 
 #define LOOPS_QUERY "SELECT * FROM Loops "
-#define LOOPS_FILTER_QUERY "SELECT Loops.* from Loops INNER JOIN Jobs ON Jobs.id = job_id AND Jobs.step_id = Loops.step_id "
+#define LOOPS_FILTER_QUERY "SELECT Loops.* from Loops INNER JOIN Jobs ON Jobs.job_id = Loops.job_id AND Jobs.step_id = Loops.step_id "
 #if 0
 #if USE_GPUS
 #define LOOPS_EXTENDED_QUERY "SELECT Loops.*, Signatures.*, Jobs.start_time, Jobs.end_time, CAST(Loops.total_iterations AS SIGNED)- CAST(Jobs.start_time AS SIGNED), " \
@@ -1265,10 +1265,10 @@ void read_jobs_from_loops(query_adds_t *q_a)
 
 	if (q_a->limit > 0 && q_a->job_id < 0)
 	{
-		sprintf(subquery, " ORDER BY id desc LIMIT %d", q_a->limit);
+		sprintf(subquery, " ORDER BY job_id desc LIMIT %d", q_a->limit);
 		strcat(query, subquery);
 	}
-	else strcat(query, " ORDER BY id desc");
+	else strcat(query, " ORDER BY job_id desc");
 
 	if (verbose) printf("\nQUERY: %s\n", query);
 	ret = db_run_query_string_results(query, &values, &columns, &rows);
@@ -1369,7 +1369,7 @@ void read_from_database(char *user, query_adds_t *q_a)
 		printf("Preparing query statement\n");
 	}
 
-	sprintf(query, "SELECT Applications.* FROM Applications join Jobs on job_id=id and Applications.step_id = Jobs.step_id where Jobs.id in (select id from (select id, end_time from Jobs" );
+	sprintf(query, "SELECT Applications.* FROM Applications join Jobs on Applications.job_id=Jobs.job_id and Applications.step_id = Jobs.step_id where Jobs.job_id in (select job_id from (select job_id, end_time from Jobs" );
 	application_t *apps;
 	if (q_a->job_id >= 0)
 		add_int_filter(query, "id", q_a->job_id);
@@ -1409,7 +1409,7 @@ void read_from_database(char *user, query_adds_t *q_a)
 	if (user != NULL)
 		add_string_filter(query, "user_id", user);
 
-	strcat(query, ") order by Jobs.id desc, Jobs.step_id desc, Jobs.end_time desc");
+	strcat(query, ") order by Jobs.job_id desc, Jobs.step_id desc, Jobs.end_time desc");
 
 	if (verbose) {
 		printf("Retrieving applications\n");

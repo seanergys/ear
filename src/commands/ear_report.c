@@ -54,12 +54,12 @@
 
 #define USER_QUERY  "SELECT SUM(DC_power*time)/? FROM Power_signatures WHERE id IN " \
                     "(SELECT Applications.power_signature_id FROM Applications JOIN Jobs " \
-                    "ON job_id = id AND Applications.step_id = Jobs.step_id WHERE "\
+                    "ON Applications.job_id = Jobs.job_id AND Applications.step_id = Jobs.step_id WHERE "\
                     "Jobs.user_id = '%s' AND start_time >= ? AND end_time <= ? AND DC_power < %d)"
 
 #define ETAG_QUERY  "SELECT SUM(DC_power*time)/? FROM Power_signatures WHERE id IN " \
                     "(SELECT Applications.power_signature_id FROM Applications JOIN Jobs " \
-                    "ON job_id = id AND Applications.step_id = Jobs.step_id WHERE "\
+                    "ON Applications.job_id = Jobs.job_id AND Applications.step_id = Jobs.step_id WHERE "\
                     "Jobs.e_tag = '%s' AND start_time >= ? AND end_time <= ? AND DC_power < %d)"
 
 #define SUM_QUERY   "SELECT SUM(dc_energy)/? FROM Periodic_metrics WHERE start_time" \
@@ -78,12 +78,12 @@
 
 #define USER_QUERY  "SELECT SUM(DC_power*time)/%llu FROM Power_signatures WHERE id IN " \
                     "(SELECT Applications.power_signature_id FROM Applications JOIN Jobs " \
-                    "ON job_id = id AND Applications.step_id = Jobs.step_id WHERE "\
+                    "ON Applications.job_id = Jobs.job_id AND Applications.step_id = Jobs.step_id WHERE "\
                     "Jobs.user_id = '%s' AND start_time >= %d AND end_time <= %d AND DC_power < %d)"
 
 #define ETAG_QUERY  "SELECT SUM(DC_power*time)/%llu FROM Power_signatures WHERE id IN " \
                     "(SELECT Applications.power_signature_id FROM Applications JOIN Jobs " \
-                    "ON job_id = id AND Applications.step_id = Jobs.step_id WHERE "\
+                    "ON Applications.job_id = Jobs.job_id AND Applications.step_id = Jobs.step_id WHERE "\
                     "Jobs.e_tag = '%s' AND start_time >= %d AND end_time <= %d AND DC_power < %d)"
 
 #define SUM_QUERY   "SELECT SUM(dc_energy)/%llu FROM Periodic_metrics WHERE start_time" \
@@ -94,7 +94,7 @@
 /* COMMON QUERIES */
 #define ALL_USERS   "SELECT TRUNCATE(SUM(DC_power*time), 0) as energy, Jobs.user_id FROM " \
                     "Power_signatures INNER JOIN Applications On id=Applications.power_signature_id " \
-                    "INNER JOIN Jobs ON job_id = Jobs.id AND Applications.step_id = Jobs.step_id " \
+                    "INNER JOIN Jobs ON Applciations.job_id = Jobs.job_id AND Applications.step_id = Jobs.step_id " \
                     "WHERE start_time >= %d AND end_time <= %d AND DC_power < %d GROUP BY Jobs.user_id ORDER BY energy"
 
 #if USE_GPUS
@@ -121,7 +121,7 @@
 
 #define ALL_TAGS    "SELECT TRUNCATE(SUM(DC_power*time), 0) as energy, Jobs.e_tag FROM " \
                     "Power_signatures INNER JOIN Applications ON id=Applications.power_signature_id " \
-                    "INNER JOIN Jobs ON job_id = Jobs.id AND Applications.step_id = Jobs.step_id " \
+                    "INNER JOIN Jobs ON Applications.job_id = Jobs.job_id AND Applications.step_id = Jobs.step_id " \
                     "WHERE start_time >= %d AND end_time <= %d AND DC_power < %d GROUP BY Jobs.e_tag ORDER BY energy"
 
 #if EXP_EARGM
