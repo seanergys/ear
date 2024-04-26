@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#ifndef _EDCMON_TAG_CONF_H
+#ifndef _EDCMONTAG_CONF_H
 #define _EDCMONTAG_CONF_H
 
 #include <common/config.h>
