@@ -36,7 +36,7 @@
 #define LOOP_PSQL_QUERY              "INSERT INTO Loops (event, size, level, job_id, step_id, node_id, total_iterations," \
                                 "signature_id) VALUES "
 
-#define CREATE_TEMP_JOBS    "CREATE TEMPORARY TABLE temp_jobs(id INT NOT NULL,step_id INT NOT NULL, user_id VARCHAR(128),app_id VARCHAR(128), " \
+#define CREATE_TEMP_JOBS    "CREATE TEMPORARY TABLE temp_jobs(job_id INT NOT NULL,step_id INT NOT NULL, user_id VARCHAR(128),app_id VARCHAR(128), " \
                             "start_time INT NOT NULL,end_time INT NOT NULL,start_mpi_time INT NOT NULL,end_mpi_time INT NOT NULL, "\
                             "policy VARCHAR(256) NOT NULL,threshold FLOAT NOT NULL,procs INT NOT NULL,job_type SMALLINT NOT NULL, def_f INT, "\
                             "user_acc VARCHAR(256), user_group VARCHAR(256), e_tag VARCHAR(256)) ON COMMIT DROP"
@@ -45,17 +45,17 @@
 
 #define LOCK_LEARNING_JOBS_PSQL_QUERY     "LOCK TABLE Learning_jobs IN SHARE ROW EXCLUSIVE MODE"
 
-#define INSERT_NEW_LEARNING_JOBS    "INSERT INTO Learning_jobs SELECT DISTINCT ON (temp_jobs.id, temp_jobs.step_id) temp_jobs.id, temp_jobs.step_id, temp_jobs.user_id, temp_jobs.app_id, "\
+#define INSERT_NEW_LEARNING_JOBS    "INSERT INTO Learning_jobs SELECT DISTINCT ON (temp_jobs.job_id, temp_jobs.step_id) temp_jobs.job_id, temp_jobs.step_id, temp_jobs.user_id, temp_jobs.app_id, "\
                                     "temp_jobs.start_time, temp_jobs.end_time, temp_jobs.start_mpi_time, temp_jobs.end_mpi_time, temp_jobs.policy, temp_jobs.threshold, "\
                                     "temp_jobs.procs, temp_jobs.job_type, temp_jobs.def_f, temp_jobs.user_acc, temp_jobs.user_group, temp_jobs.e_tag "\
-                                    "FROM temp_jobs LEFT OUTER JOIN Learning_jobs ON (Learning_jobs.id = temp_jobs.id AND " \
+                                    "FROM temp_jobs LEFT OUTER JOIN Learning_jobs ON (Learning_jobs.id = temp_jobs.job_id AND " \
                                     "Learning_jobs.step_id = temp_jobs.step_id) WHERE Learning_jobs.id IS NULL"
 
-#define INSERT_NEW_JOBS     "INSERT INTO Jobs SELECT DISTINCT ON (temp_jobs.id, temp_jobs.step_id) temp_jobs.id, temp_jobs.step_id, temp_jobs.user_id, temp_jobs.app_id, "\
+#define INSERT_NEW_JOBS     "INSERT INTO Jobs SELECT DISTINCT ON (temp_jobs.job_id, temp_jobs.step_id) temp_jobs.job_id, temp_jobs.step_id, temp_jobs.user_id, temp_jobs.app_id, "\
                             "temp_jobs.start_time, temp_jobs.end_time, temp_jobs.start_mpi_time, temp_jobs.end_mpi_time, temp_jobs.policy, temp_jobs.threshold, "\
                             "temp_jobs.procs, temp_jobs.job_type, temp_jobs.def_f, temp_jobs.user_acc, temp_jobs.user_group, temp_jobs.e_tag "\
-                            "FROM temp_jobs LEFT OUTER JOIN Jobs ON (Jobs.id = temp_jobs.id AND " \
-                            "Jobs.step_id = temp_jobs.step_id) WHERE Jobs.id IS NULL"
+                            "FROM temp_jobs LEFT OUTER JOIN Jobs ON (Jobs.job_id = temp_jobs.job_id AND " \
+                            "Jobs.step_id = temp_jobs.step_id) WHERE Jobs.job_id IS NULL"
 
 #define JOB_PSQL_QUERY               "INSERT INTO temp_jobs (id, step_id, user_id, app_id, start_time, end_time, start_mpi_time," \
                                 "end_mpi_time, policy, threshold, procs, job_type, def_f, user_acc, user_group, e_tag) VALUES "
@@ -670,10 +670,10 @@ int postgresql_retrieve_applications(PGconn *connection, char *query, applicatio
 
         /* JOB RETRIEVAL */
         if (is_learning)
-            sprintf(job_query, "SELECT * FROM Learning_jobs WHERE id = %lld AND step_id = %lld AND local_id = %lld",
+            sprintf(job_query, "SELECT * FROM Learning_jobs WHERE job_id = %lld AND step_id = %lld AND local_id = %lld",
                     job_id, step_id, local_id);
         else
-            sprintf(job_query, "SELECT * FROM Jobs WHERE id = %lld AND step_id = %lld AND local_id = %lld",
+            sprintf(job_query, "SELECT * FROM Jobs WHERE job_id = %lld AND step_id = %lld AND local_id = %lld",
                     job_id, step_id, local_id);
 
         if (postgresql_retrieve_jobs(connection, job_query, &job_aux) < 1)

@@ -39,7 +39,7 @@ typedef typeof((MYSQL_BIND){0}.is_null) ear_my_bool;
                                 "signature_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
 
-#define JOB_MYSQL_QUERY         "INSERT IGNORE INTO Jobs (id, step_id, local_id, user_id, app_id, start_time, end_time, start_mpi_time," \
+#define JOB_MYSQL_QUERY         "INSERT IGNORE INTO Jobs (job_id, step_id, local_id, user_id, app_id, start_time, end_time, start_mpi_time," \
                                 "end_mpi_time, policy, threshold, procs, job_type, def_f, user_acc, user_group, e_tag) VALUES" \
                                 "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
@@ -147,7 +147,7 @@ typedef typeof((MYSQL_BIND){0}.is_null) ear_my_bool;
                                            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 #endif
 
-#define LEARNING_JOB_MYSQL_QUERY          "INSERT IGNORE INTO Learning_jobs (id, step_id, local_id, user_id, app_id, start_time, end_time, "\
+#define LEARNING_JOB_MYSQL_QUERY          "INSERT IGNORE INTO Learning_jobs (job_id, step_id, local_id, user_id, app_id, start_time, end_time, "\
                                     "start_mpi_time, end_mpi_time, policy, threshold, procs, job_type, def_f, user_acc, user_group, e_tag) VALUES" \
                                     "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
@@ -717,10 +717,10 @@ int mysql_retrieve_applications(MYSQL *connection, char *query, application_t **
     while (status == 0 || status == MYSQL_DATA_TRUNCATED)
     {
         if (is_learning)
-            sprintf(job_query, "SELECT * FROM Learning_jobs WHERE id=%lu AND step_id=%lu AND local_id=%lu",
+            sprintf(job_query, "SELECT * FROM Learning_jobs WHERE job_id=%lu AND step_id=%lu AND local_id=%lu",
                     job_id, step_id, local_id);
         else
-            sprintf(job_query, "SELECT * FROM Jobs WHERE id=%lu AND step_id=%lu AND local_id=%lu",
+            sprintf(job_query, "SELECT * FROM Jobs WHERE job_id=%lu AND step_id=%lu AND local_id=%lu",
                     job_id, step_id, local_id);
         num_jobs = mysql_retrieve_jobs(connection, job_query, &job_aux);
         if (num_jobs < 1)
