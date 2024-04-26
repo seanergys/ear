@@ -21,6 +21,20 @@
 #include <metrics/gpu/gpu.h>
 
 
+#define FP64_SET  0
+#define FP32_SET  1
+#define FP16_SET  1
+#define FP64_EV   1
+#define FP32_EV   0
+#define FP16_EV   1
+#define SM_SET    2
+#define SM_EV     1
+#define TNS_SET   0
+#define TNS_EV    0
+#define DRAM_SET 0
+#define DRAM_EV  2
+
+
 /* for now, we don't need a more complex structure since event numbers
  * are consecutive
  */

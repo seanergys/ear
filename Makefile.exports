@@ -51,7 +51,7 @@ export ROOTDIR
 export SRCDIR
 export DESTDIR
 export ETCDIR
-export TMPDIR
+#export TMPDIR
 export DOCDIR
 export CHOWN_USR
 export CHOWN_GRP

@@ -20,9 +20,13 @@ oths_BINS = earld.h
 oths_PATH = $(DESTDIR)/include
 oths_PERM = 0664
 
+dummyld_BINS = earld.o
+dummyld_PATH = $(DESTDIR)/lib
+dummyld_PERM = 0664
+
 ######## RULES
 
-all: $(OBJS) $(BINS)
+all: $(OBJS) $(BINS) $(dummyld_BINS)
 
 %.o: %.c %.h
 	$(CC) $(CC_FLAGS) $(LIB_CFLAGS) $(CFLAGS) -c $<
@@ -32,7 +36,7 @@ libear_seq.so: ear_seq.o
 
 ######## OPTIONS 
 
-install: oths.ginstall;
+install: oths.ginstall dummyld.ginstall;
 
 clean: rclean;
 

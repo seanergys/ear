@@ -36,6 +36,7 @@
 #include <common/types/configuration/cluster_conf_db.h>
 #include <common/types/configuration/cluster_conf_tag.h>
 #include <common/types/configuration/cluster_conf_etag.h>
+#include <common/types/configuration/cluster_conf_edcmon_tag.h>
 #include <common/types/configuration/cluster_conf_eard.h>
 #include <common/types/configuration/cluster_conf_eargm.h>
 #include <common/types/configuration/cluster_conf_eardbd.h>
@@ -112,6 +113,8 @@ typedef struct cluster_conf
     node_island_t *islands;
     earlib_conf_t earlib;
     conf_install_t install;
+		uint            num_edcmons_tags;
+    edcmon_t       *edcmon_tags;
 } cluster_conf_t;
 
 /*
