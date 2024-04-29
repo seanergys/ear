@@ -70,7 +70,7 @@ declr_up_get_tag ()
 
 static void static_init(uint i)
 {
-		debug("Preparing query [%u]........", i);
+    debug("Preparing query [%u]........", i);
     // Create command query
     snprintf(query[i],QUERY_SIZE,"%s %s %s", command, nodelist_old, sensor_name_old);
     debug("OLD Command to be executed: \'%s\'", query[i]);
@@ -84,7 +84,8 @@ declr_up_action_init(_nodesensors)
     // We expose this information
     *data_alloc = &edcmon_info;
 
-    debug("nodesensors init");
+    debug("Initializing nodesensors tag");
+
     for (uint i = 0; i < total_enabled; i++) static_init(i);
     return rsprintf("nodesensors action init(_nodesensors): received tag %s", tag);
 }
@@ -113,6 +114,7 @@ declr_up_action_init(_conf)
 {
     conf = (conf_t *) data;
 
+    debug("Initializing conf tag");
 		// We get my name to look for my queries
 		if (gethostname(my_hostname, sizeof(my_hostname)) < 0) {
     	error("Error getting node name (%s)", strerror(errno));
@@ -120,9 +122,12 @@ declr_up_action_init(_conf)
 
   	strtok(my_hostname, ".");
 
+	debug("Server name is %s", my_hostname);
+
 		edcmons     = conf->cluster.edcmon_tags;
 		num_edcmons = conf->cluster.num_edcmons_tags;	
-	
+
+	for (uint edc = 0; edc < num_edcmons; edc++)	print_edcmon_tags_conf(&edcmons[edc], edc);	
 		// server is the edcmon hostname	
 		strncpy(edcmon_info.server, my_hostname, sizeof(edcmon_info.server));
 
@@ -200,9 +205,7 @@ static state_t static_read_power(uint i, uint *num_rows, uint expected_items)
     uint no_header = 1;
     uint one_shot  = 0;
 
-		#if TEST
-		return EAR_SUCCESS;	
-		#endif
+    debug("EDCMON Item[%u] '%s'", i, query[i]);
     if (popen_open(query[i], no_header, one_shot, &nodesensor_p) != EAR_SUCCESS){
        debug("popen failed\n");
        return EAR_ERROR;

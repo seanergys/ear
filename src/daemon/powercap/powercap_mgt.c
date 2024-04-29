@@ -949,6 +949,7 @@ static uint pmgt_powercap_status_per_domain(uint action)
     int totalok, totalrel, totalask;
     totalok = totalrel = totalask = 0;
     uint from = 0,to = 0;
+    int ret;
     memset(cdomain_status,0,sizeof(domain_status_t)*NUM_DOMAINS);
     if (pmgt_limit == POWER_CAP_UNLIMITED) return 0;
     /* We ask each domain its curent status to distribute power accross domains */

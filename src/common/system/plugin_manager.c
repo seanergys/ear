@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <common/utils/args.h>
@@ -603,7 +603,7 @@ static state_t plugins_init(void *whatever)
 
 static int plugin_manager_configure(int argc, char *argv[])
 {
-    char buffer[8192];
+    char buffer[4096];
     char params[128];
 
     if (argc == 1 || args_get(argc, argv, "help", buffer)) {
