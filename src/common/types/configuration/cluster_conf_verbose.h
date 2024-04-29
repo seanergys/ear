@@ -26,5 +26,6 @@
 
 void print_database_conf(db_conf_t *conf);
 void print_islands_conf(node_island_t *conf);
+void print_tags_conf(tag_t *tag, int i);
 #endif
 
