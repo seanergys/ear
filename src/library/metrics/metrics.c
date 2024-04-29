@@ -1623,8 +1623,10 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 
 
 	/* FLOPS */
-	flops_data_accum(&flops_diff[APP], NULL, &metrics->Gflops);
-	flops_help_toold(&flops_diff[APP], metrics->FLOPS);
+	/* flops_data_accum used in this way just computes the Gflops */
+	flops_data_accum(&flops_diff[sign_app_loop_idx], NULL, &metrics->Gflops);
+	/* Copies the FP instruction vector in FLOPS */
+	flops_help_toold(&flops_diff[sign_app_loop_idx], metrics->FLOPS);
 
 	/* num_th is 1 if perf supports accumulating per thread counters */
 	metrics->Gflops = metrics->Gflops * num_th;
