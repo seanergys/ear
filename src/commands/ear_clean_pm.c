@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <termios.h>
 #include <common/config.h>
@@ -28,6 +29,7 @@
 
 #if DB_MYSQL
 #define CLEAN_PERIODIC_QUERY "DELETE FROM Periodic_metrics WHERE end_time <= UNIX_TIMESTAMP(SUBTIME(NOW(),'%d 0:0:0.00'))"
+#define OPTIMIZE_QUERY "OPTIMIZE TABLE Periodic_metrics"
 #elif DB_PSQL
 #define CLEAN_PERIODIC_QUERY "DELETE FROM Periodic_metrics WHERE end_time <= (date_part('epoch',NOW())::int - (%d*24*3600))"
 #endif
@@ -41,6 +43,7 @@ void usage(char *app)
     printf("\t-d num_days\t\tREQUIRED: Specify how many days will be kept in database. (defaut: 0 days).\n");
     printf("\t-p\t\t\tSpecify the password for MySQL's root user.\n");
     printf("\t-o\t\t\tPrint the query instead of running it (default: off).\n");
+    printf("\t-z\t\t\tOptimize table space after running the query (default: off).\n");
     printf("\t-r\t\t\tExecute the query (default: on).\n");
     printf("\t-h\t\t\tDisplay this message.\n");
     printf("\t-v\t\t\tShow current EAR version.\n");
@@ -53,6 +56,7 @@ int main(int argc,char *argv[])
     char passw[256], query[256];
     int num_days = -1;
 	char out_type = RUN_QUERY, opt;
+    bool optimize_post_query = false;
 
 	strcpy(passw, "");
 #if PRIVATE_PASS
@@ -83,6 +87,9 @@ int main(int argc,char *argv[])
 					strcpy(passw, optarg);
 #endif
 					break;
+                case 'O':
+                    optimize_post_query = true;
+                    break;
 				case 'o':
 					out_type = OUT_QUERY;
 					break;
@@ -120,6 +127,9 @@ int main(int argc,char *argv[])
 		if (out_type == RUN_QUERY) {
 #if DB_MYSQL
 			db_run_query(query, "root", passw); 
+            if (optimize_post_query) {
+                db_run_query(OPTIMIZE_QUERY, "root", passw);
+            }
 #elif DB_PSQL
 			db_run_query(query, "postgres", passw); 
 #endif
