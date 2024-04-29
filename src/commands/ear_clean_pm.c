@@ -136,6 +136,8 @@ int main(int argc,char *argv[])
 			printf("Database successfully cleaned.\n");
 		} else {
 			printf("Query to run: %s\n", query);
+            if (optimize_post_query) {
+                printf("Optimize query: %s \n", OPTIMIZE_QUERY);
 		}
 
 		free_cluster_conf(&my_cluster);
