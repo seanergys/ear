@@ -242,7 +242,7 @@ state_t policy_init(polctx_t *c)
 #endif
 
     node_freqs_copy(&last_nodefreq_sel, &optimize_def_freqs);
-    debug("min_energy init ends");
+    debug("optimize init ends");
 
     return EAR_SUCCESS;
 }
@@ -300,7 +300,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
     /* GPU Policy : It's independent of the CPU and IMC frequency selection */
     if (gpus.node_policy_apply != NULL) {
         // Basic support for GPUs
-        verbose_master(0, "%sOptimize:GPU%s ",COL_GRE,COL_CLR);
+        verbose_master(2, "%sOptimize:GPU%s ",COL_GRE,COL_CLR);
         gpus.node_policy_apply(c, sig, freqs, &gready);
         gpu_ready = gready;
     } else {
