@@ -61,9 +61,9 @@ int main(int argc,char *argv[])
 	strcpy(passw, "");
 #if PRIVATE_PASS
 	struct termios t;
-	while ((opt = getopt(argc, argv, "u:pd:j:ovalrh")) != -1) {
+	while ((opt = getopt(argc, argv, "u:pd:j:ovalrzh")) != -1) {
 #else
-		while ((opt = getopt(argc, argv, "u:p:d:j:ovalrh")) != -1) {
+		while ((opt = getopt(argc, argv, "u:p:d:j:ovalrzh")) != -1) {
 #endif
 			switch(opt)
 			{
@@ -87,7 +87,7 @@ int main(int argc,char *argv[])
 					strcpy(passw, optarg);
 #endif
 					break;
-                case 'O':
+                case 'z':
                     optimize_post_query = true;
                     break;
 				case 'o':
