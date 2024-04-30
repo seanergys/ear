@@ -254,7 +254,7 @@ state_t report_periodic_metrics(report_id_t *id, periodic_metric_t *mets, uint c
 
     for (i = 0; i < count; i++) {
         strcpy(job_text, "");
-        snprintf(node_id, 64, mets[i].node_id); //to prevent buffer overflows since the original node_id is 256 chars
+        strncpy(node_id, mets[i].node_id, 64); //to prevent buffer overflows since the original node_id is 256 chars
         if (mets[i].job_id != 0) {
             sprintf(job_text, ", jobid=%lu, stepid=%lu", mets[i].job_id, mets[i].step_id);
         }
@@ -369,19 +369,19 @@ state_t report_misc(report_id_t *id,uint type, const char *data_in, uint count)
 {
 	char tmp_text[1024];
 
-	if (!must_report) return EAR_SUCCESS;
-
 	verbose(0, "prometheus report miscelaneous");
 	sem_wait(&prom_sem);
 	buffer_clean(&general_buffer);
+    time_t insert_time = time(NULL);
 
 	nodesensor_t *data = (nodesensor_t *)data_in;
 
 	for (uint i = 0; i < count; i ++){
 	switch (type){
 		case NODESENSORS_TYPE:
-        	snprintf(tmp_text, sizeof(tmp_text),  "%s{%s} %lf %lu\n", pdu_type_to_str(data[i].type),data[i].nodename, data[i].power, events[i].timestamp*1000);
-        	buffer_insert(&general_buffer, tmp_text, &data[i].timestamp);
+        	snprintf(tmp_text, sizeof(tmp_text),  "%s{%s} %lf %lu\n", 
+                    pdu_type_to_str(data[i].type),data[i].nodename, data[i].power, data[i].timestamp*1000);
+        	buffer_insert(&general_buffer, tmp_text, &insert_time);
 
 		break;
 
