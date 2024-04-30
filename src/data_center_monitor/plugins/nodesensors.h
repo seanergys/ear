@@ -37,8 +37,10 @@ typedef struct nodesesor{
         char      nodename[MAX_PATH_SIZE]; // PDU IP
 				pdu_t     type;
         double    power;
+#if 0
 	double    humidity;
 	double    temperature;
+#endif
 }nodesensor_t;
 
 // This is the aggregated information. for if type , one nodesensor_t per pdu
