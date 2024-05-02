@@ -1252,9 +1252,9 @@ void read_jobs_from_loops(query_adds_t *q_a)
     strcpy(query, "SELECT * FROM Jobs ");
 
 	if (q_a->job_id >= 0)
-		add_int_filter(query, "id", q_a->job_id);
+		add_int_filter(query, "job_id", q_a->job_id);
 	else if (strlen(q_a->job_ids) > 0)
-		add_int_list_filter(query, "id", q_a->job_ids);
+		add_int_list_filter(query, "job_id", q_a->job_ids);
     else printf("WARNING: -o option is meant to be used with a -j specification\n\n");
 	if (q_a->step_id >= 0)
 		add_int_filter(query, "step_id", q_a->step_id);
