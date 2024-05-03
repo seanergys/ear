@@ -124,20 +124,20 @@ char *getenv_ear_coeff_db_pathname()
 char *getenv_ear_app_name()
 {
 	char *my_name;
-	my_name=ear_getenv("JOB_NAME");
-	if (my_name!=NULL){
-		if (strcmp(my_name,"")==0) return NULL;
-		conf_ear_app_name=malloc(strlen(my_name)+1);
-		strcpy(conf_ear_app_name,my_name);	
+
+	my_name = ear_getenv(ENV_APP_NAME);
+	if ((my_name != NULL) && strcmp(my_name,"")){
+		conf_ear_app_name = malloc(strlen(my_name)+1);
+		strcpy(conf_ear_app_name,my_name);
+		return conf_ear_app_name;
 	}
-  else{
-    if ((my_name = ear_getenv(ENV_APP_NAME)) != NULL){
-      if (strcmp(my_name,"")==0) return NULL;
-        conf_ear_app_name=malloc(strlen(my_name)+1);
-        strcpy(conf_ear_app_name,my_name);
-      
-    }else return NULL;
-  }
+
+	my_name = ear_getenv("JOB_NAME");
+	if ((my_name != NULL) && strcmp(my_name,"")){
+		conf_ear_app_name = malloc(strlen(my_name)+1);
+		strcpy(conf_ear_app_name,my_name);	
+		return conf_ear_app_name;
+	}
 	return conf_ear_app_name;
 }
 void set_ear_app_name(char *name)
