@@ -77,6 +77,14 @@ state_t report_init(report_id_t *id,cluster_conf_t *cconf)
 
 }
 
+/*
+ * PDU types are
+ *     storage     = 0,
+ *     network     = 1,
+ *     management  = 2,
+ *     others      = 3,
+*/
+
 
 state_t report_misc(report_id_t *id,uint type, const char *data_in, uint count)
 {
@@ -87,9 +95,9 @@ state_t report_misc(report_id_t *id,uint type, const char *data_in, uint count)
 	for (uint i = 0; i < count; i ++){
 	switch (type){
 		case NODESENSORS_TYPE:
-		dprintf(fd_sensors,"time[%s] node %s power %.1lf W Temperature %lf F Humidity %lf \n",
-               date_str(data[i].timestamp), data[i].nodename, data[i].power,
-	       data[i].temperature, data[i].humidity);
+		dprintf(fd_sensors,"time[%s] type %s node %s power %.1lf W\n",
+	       date_str(data[i].timestamp), pdu_type_to_str(data[i].type),
+                data[i].nodename, data[i].power);
 		break;
 
 		default:

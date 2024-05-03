@@ -78,8 +78,7 @@ declr_up_action_init(_nodesensors)
 
 static uint sensor_warning(nodesensor_t *info)
 {
-	if ((info->power > POWER_LIMIT) || (info->temperature > TEMPERATURE_LIMIT) || 
-	   (info->humidity > HUMIDITY_LIMIT)) return 1;
+	if (info->power > POWER_LIMIT)  return 1;
 	return 0;
 }
 
@@ -87,8 +86,7 @@ static void execute_action(nodesensor_t *info)
 {
 	switch (warning_action){
 		case LOG:
-		verbose(0,"WARNING: node %s power %lf temperature %lf humidity %lf",
-			info->nodename, info->power, info->temperature, info->humidity);
+		verbose(0,"WARNING: node %s power %lf ", info->nodename, info->power);
 		break;
 		case NO_ACTION:
 		break;
@@ -107,11 +105,9 @@ declr_up_action_periodic(_nodesensors)
 			execute_action(&edcmon_info->edcmon_data[items]);
 		}
 #if VERBOSE_DATA
-		verbose(0,"WARNING EDCMON[%u] node %s power %lf temperature %lf humidity %lf", items,
+		verbose(0,"WARNING EDCMON[%u] node %s power %lf ", items,
 		edcmon_info->edcmon_data[items].nodename,
-		edcmon_info->edcmon_data[items].power,
-		edcmon_info->edcmon_data[items].temperature,
-		edcmon_info->edcmon_data[items].humidity);
+		edcmon_info->edcmon_data[items].power);
 #endif
 
 	}

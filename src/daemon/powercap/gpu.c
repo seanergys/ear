@@ -295,7 +295,7 @@ static state_t int_set_powercap_value(ulong limit,ulong *gpu_util)
     state_t ret;
     int i;
     float alloc,ualloc;
-    ulong gpu_idle=0,gpu_run=0,total_util=0;
+    ulong total_util=0;
     current_gpu_pc=limit;
 
     if (current_gpu_pc == POWER_CAP_UNLIMITED) {
@@ -309,14 +309,10 @@ static state_t int_set_powercap_value(ulong limit,ulong *gpu_util)
         pdist[i] = 0.0;
         total_util += gpu_util[i];
         if (gpu_util[i] == 0){ 
-            gpu_idle++;
             gpu_pc_curr_power[i] = gpu_pc_min_power[i];
             limit = limit - MIN_GPU_IDLE_POWER;
-        }else{
-            gpu_run++;
         }
     }
-    debug("GPU: Phase 2: Allocating power to %lu running GPUS",gpu_run);
     for (i=0;i<gpu_pc_num_gpus;i++){
         if (gpu_util[i]>0){
             pdist[i] = (float)gpu_util[i]/(float)total_util;

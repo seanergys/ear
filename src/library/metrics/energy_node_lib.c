@@ -99,7 +99,7 @@ state_t energy_node_load(char *path, int eard)
 		return EAR_SUCCESS;
 	}
 
-    debug("Loading %s plugin...", path);
+    verbose(2,"Loading %s plugin...", path);
     #if FAKE_ERROR_ERROR_PATH
     ret = EAR_ERROR;
     #else
