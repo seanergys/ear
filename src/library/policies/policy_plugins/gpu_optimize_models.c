@@ -350,6 +350,7 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
 
 state_t policy_restore_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
 {
+  debug("gpu_optimize_model: policy_restore_settings in");
 	/* WARNING: my_sig can be NULL */
 	if (c == NULL) return EAR_ERROR;
 
@@ -448,11 +449,13 @@ static void GPU_get_metric(uint gpu_idx, signature_t *signature, float gpus_powe
       gpu_gflops = gflops_cycle(signature, gpu_idx);
       gpu_freq = (float)(signature->gpu_sig.gpu_data[gpu_idx].GPU_freq/1000000.0);
       gpu_power = (float) signature->gpu_sig.gpu_data[gpu_idx].GPU_power;
+      float node_power = (float) signature->DC_power;
 		  float cpu_gflops = (float) signature->Gflops;    
-      debug(">>> GPU[%d] GPU_FREQ %f CPU_GFLOPS %f GPU_GFLOPS %f", gpu_idx, gpu_freq, cpu_gflops, gpu_gflops*gpu_freq); 
-      debug(">>> GPU[%d] CPU_GFLOPS_W %f GPU_GFLOPS_W %f", gpu_idx, cpu_gflops/(signature->DC_power - gpu_power), (gpu_gflops*gpu_freq)/gpu_power); 
+      debug("GPU[%d] signature->DC_power  %f gpus_power %f gpu_power %f", gpu_idx, node_power, gpus_power, gpu_power); 
+      debug("GPU[%d] GPU_FREQ %f CPU_GFLOPS %f GPU_GFLOPS %f", gpu_idx, gpu_freq, cpu_gflops, gpu_gflops*gpu_freq); 
+      debug("GPU[%d] CPU_GFLOPS_W %f GPU_GFLOPS_W %f", gpu_idx, cpu_gflops/(node_power - gpus_power), (gpu_gflops*gpu_freq)/gpu_power); 
       
-      *curr = cpu_gflops/(signature->DC_power - gpus_power) + (gpu_gflops*gpu_freq)/gpu_power; 
+      *curr = cpu_gflops/(node_power - gpus_power) + (gpu_gflops*gpu_freq)/gpu_power; 
       break;
     }
     // TODO EDP and/or ED2P once the time model is ready
