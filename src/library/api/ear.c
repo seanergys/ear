@@ -1584,11 +1584,12 @@ void ear_init()
                     } else {
                         col = COL_GRE;
                     }
-                    verbose(2, "%sProcess %d PID %d Connecting with EAR Daemon (EARD) %d node %s%s",
-                            col, my_node_id, my_pid, ear_my_rank, node_name, COL_CLR);
 
                     // Connect process with EARD
                     state_t ret = eards_connect(&application, ear_my_rank);
+
+                    verbose(2, "%sProcess %d PID %d Connecting with EAR Daemon (EARD) %d node %s status=%s %s",
+                            col, my_node_id, my_pid, ear_my_rank, node_name, ((ret == EAR_SUCCESS)?"Connected":"Not Connected"),COL_CLR);
 
 										state_t eard_comp_state = check_eard_earl_compatibility(ret);
 
@@ -2828,6 +2829,7 @@ static void  reset_earl_environment()
   metrics_lib_reset();
   report_dispose(&rep_id);
   release_shared_memory_areas();
+	eards_new_process_disconnect();
 }
 
 

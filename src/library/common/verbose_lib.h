@@ -84,8 +84,8 @@
 
 
 #define verbose_warning_master(msg, ...) do { \
-    verbose_master(VEARL_WARN, COL_YLW "[%s][%d][WARNING] " COL_CLR msg, \
-									 node_name, my_node_id, ##__VA_ARGS__); \
+    verbose_master(VEARL_WARN, COL_YLW "[%s][%d][%d][WARNING] " COL_CLR msg, \
+									 node_name, my_node_id, getpid(), ##__VA_ARGS__); \
 } while (0);
 
 
