@@ -851,7 +851,7 @@ void print_loops(loop_t *loops, int num_loops)
 }
 
 #define LOOPS_QUERY "SELECT * FROM Loops "
-#define LOOPS_FILTER_QUERY "SELECT Loops.* from Loops INNER JOIN Jobs ON Jobs.id = job_id AND Jobs.step_id = Loops.step_id "
+#define LOOPS_FILTER_QUERY "SELECT Loops.* from Loops INNER JOIN Jobs ON Jobs.job_id = Loops.job_id AND Jobs.step_id = Loops.step_id "
 
 void format_loop_query(char *user, char *query, char *base_query, query_adds_t *q_a)
 {
@@ -880,6 +880,8 @@ void format_loop_query(char *user, char *query, char *base_query, query_adds_t *
 
 }
 
+#define NUM_HEADER_NAMES 16
+
 void read_jobs_from_loops(query_adds_t *q_a)
 {
     char query[256], subquery[256], tmp_path[512];
@@ -892,13 +894,37 @@ void read_jobs_from_loops(query_adds_t *q_a)
         fd = open(tmp_path, O_WRONLY | O_CREAT | O_TRUNC , S_IRUSR|S_IWUSR|S_IRGRP);
     }
 
-    ret = db_run_query_string_results("DESCRIBE Jobs", &values, &columns, &rows);
-    if (verbose) printf("running query DESCRIBE Jobs\n");
-    if (ret != EAR_SUCCESS) {
-        printf("Error reading Loop description from database.\n");
-        return;
+	ret = db_run_query_string_results("DESCRIBE Jobs", &values, &columns, &rows);
+	if (verbose) printf("running query DESCRIBE Jobs\n");
+	if (ret != EAR_SUCCESS) {
+		printf("Error reading Loop description from database.\n");
+		return;
     }
-    print_header(fd, values, columns, rows);
+    const char *header_names[NUM_HEADER_NAMES] = { "JOBID",
+        "STEPID",
+        "USERID",
+        "APPID",
+        "START_TIME",
+        "END_TIME",
+        "START_MPI_TIME",
+        "END_MPI_TIME",
+        "POLICY",
+        "POLICY_TH",
+        "PROCS",
+        "JOB_TYPE",
+        "DEF_FREQ_KHZ",
+        "USER_ACC",
+        "USER_GROUP",
+        "ENERGY_TAG",
+    };
+    if (rows!= NUM_HEADER_NAMES) {
+        printf("Warning! number of fields does not correspond with nubmer of headers\n");
+    }
+    dprintf(fd, "%s", header_names[0]);
+    for (int32_t i = 1; i < NUM_HEADER_NAMES; i++) {
+        dprintf(fd, ";%s", header_names[i]);
+    }
+    //print_header(fd, values, columns, rows);
     dprintf(fd, "\n"); //print_header does not print a new_line
     db_free_results(values, columns, rows);
 
@@ -906,10 +932,10 @@ void read_jobs_from_loops(query_adds_t *q_a)
     reset_query_filters();
     strcpy(query, "SELECT * FROM Jobs ");
 
-    if (q_a->job_id >= 0)
-        add_int_filter(query, "id", q_a->job_id);
-    else if (strlen(q_a->job_ids) > 0)
-        add_int_list_filter(query, "id", q_a->job_ids);
+	if (q_a->job_id >= 0)
+		add_int_filter(query, "job_id", q_a->job_id);
+	else if (strlen(q_a->job_ids) > 0)
+		add_int_list_filter(query, "job_id", q_a->job_ids);
     else printf("WARNING: -o option is meant to be used with a -j specification\n\n");
     if (q_a->step_id >= 0)
         add_int_filter(query, "step_id", q_a->step_id);
@@ -920,10 +946,10 @@ void read_jobs_from_loops(query_adds_t *q_a)
 
     if (q_a->limit > 0 && q_a->job_id < 0)
     {
-        sprintf(subquery, " ORDER BY id desc LIMIT %d", q_a->limit);
+        sprintf(subquery, " ORDER BY job_id desc LIMIT %d", q_a->limit);
         strcat(query, subquery);
     }
-    else strcat(query, " ORDER BY id desc");
+    else strcat(query, " ORDER BY job_id desc");
 
     if (verbose) printf("\nQUERY: %s\n", query);
     ret = db_run_query_string_results(query, &values, &columns, &rows);
@@ -1018,12 +1044,11 @@ void read_from_database(char *user, query_adds_t *q_a)
     }
     init_db_helper(&my_conf.database);
 
-
     if (verbose) {
         printf("Preparing query statement\n");
     }
 
-    sprintf(query, "SELECT Applications.* FROM Applications join Jobs on job_id=id and Applications.step_id = Jobs.step_id where Jobs.id in (select id from (select id, end_time from Jobs" );
+    sprintf(query, "SELECT Applications.* FROM Applications join Jobs on Applications.job_id=Jobs.job_id and Applications.step_id = Jobs.step_id where Jobs.job_id in (select job_id from (select job_id, end_time from Jobs" );
     application_t *apps;
     if (q_a->job_id >= 0)
         add_int_filter(query, "id", q_a->job_id);
@@ -1044,7 +1069,8 @@ void read_from_database(char *user, query_adds_t *q_a)
     if (q_a->end_time != 0)
         add_int_comp_filter(query, "end_time", q_a->end_time, 0);
 
-    if (q_a->limit > 0) {
+    if (q_a->limit > 0)
+    {
         sprintf(subquery, " ORDER BY Jobs.end_time desc LIMIT %d", q_a->limit);
         strcat(query, subquery);
     }
@@ -1062,7 +1088,7 @@ void read_from_database(char *user, query_adds_t *q_a)
     if (user != NULL)
         add_string_filter(query, "user_id", user);
 
-    strcat(query, ") order by Jobs.id desc, Jobs.step_id desc, Jobs.end_time desc");
+    strcat(query, ") order by Jobs.job_id desc, Jobs.step_id desc, Jobs.end_time desc");
 
     if (verbose) {
         printf("Retrieving applications\n");
@@ -1078,11 +1104,13 @@ void read_from_database(char *user, query_adds_t *q_a)
         printf("Finalized retrieving applications\n");
     }
 
-    if (num_apps == EAR_MYSQL_ERROR) {
+    if (num_apps == EAR_MYSQL_ERROR)
+    {
         exit(1); //error
     }
 
-    if (num_apps < 1) {
+    if (num_apps < 1)
+    {
         printf("No jobs found.\n");
         return;
     }
@@ -1183,7 +1211,8 @@ int main(int argc, char *argv[])
     {
         c = getopt_long(argc, argv, "n:u:j:f:t:voma:pbglrs:e:c:hx::", long_options, &option_idx);
 
-        if (c == -1) break;
+        if (c == -1)
+            break;
 
         switch (c)
         {
@@ -1200,10 +1229,12 @@ int main(int argc, char *argv[])
                 break;
             case 'j':
                 query_adds.limit = query_adds.limit == 20 ? -1 : query_adds.limit; //if the limit is still the default
-                if (strchr(optarg, ',')) {
+                if (strchr(optarg, ','))
+                {
                     strcpy(query_adds.job_ids, optarg);
                 }
-                else {
+                else
+                {
                     query_adds.job_id = atoi(strtok(optarg, "."));
                     token = strtok(NULL, ".");
                     if (token != NULL) {

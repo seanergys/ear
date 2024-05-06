@@ -16,19 +16,12 @@ COMPONENTS = \
      data_center_monitor
 
 ifdef FEAT_ONLY_EAR_CORE
-COMPONENT_DISABLE = \
+COMPONENT_DISABLE += \
     commands \
     tools \
     database_cache
 endif
 
-ifdef FEAT_EARL_LITE
-COMPONENT_DISABLE = \
-    commands \
-    pbs_hook \
-    tools \
-    database_cache
-endif
 
 ifeq ($(FEAT_WF_SUPPORT), 1)  
 CC_FLAGS   += -DWF_SUPPORT=1

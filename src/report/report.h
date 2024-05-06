@@ -41,6 +41,8 @@
 #define MPITRACE              4
 #define MPI_NODE_METRICS      8
 
+#define  NODESENSORS_TYPE     1000
+
 /** This structure is used to pass information about the process calling your plugin function. 
  * The API functions receive a parameter of this type with the calling process information. */
 typedef struct report_id_s

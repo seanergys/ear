@@ -520,6 +520,7 @@ int eardbd_status_all(cluster_conf_t *conf, eardbd_table_t **edbstatus)
 		count += conf->islands[i].num_ips;
 		count += conf->islands[i].num_backups;
 	}
+    if (count == 0) return 0;
 	eardbd_table_t *aux_t = calloc(count, sizeof(eardbd_table_t));
 	count = 0;
 	for (i = 0; i < conf->num_islands; i++) {
@@ -535,6 +536,10 @@ int eardbd_status_all(cluster_conf_t *conf, eardbd_table_t **edbstatus)
 			}
 		}
 	}
+    if (count == 0) {
+        free(aux_t);
+        return 0;
+    }
 	aux_t = realloc(aux_t, count*sizeof(eardbd_table_t));
 	int ret;
 	for (i = 0; i < count; i++) 
@@ -547,8 +552,6 @@ int eardbd_status_all(cluster_conf_t *conf, eardbd_table_t **edbstatus)
 		}
 	}
 	*edbstatus = aux_t;
-
-        free(aux_t);
 
 	return count;
 }

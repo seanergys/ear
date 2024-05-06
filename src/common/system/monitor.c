@@ -189,6 +189,7 @@ static void *monitor_main(void *p)
         debug("running");
         for (i = 0, sleep_units = 1000, sleep_reason = 0; i < queue_last && is_running; ++i) {
             // Locking the suscription [i]
+						debug("holding lock %d", i);
             while (pthread_mutex_trylock(&locks[i]));
             // Getting pointers
             reg = &queue[i];
@@ -196,6 +197,7 @@ static void *monitor_main(void *p)
             // If the suscription is not registered, discard
             if (!reg->registered) {
                 pthread_mutex_unlock(&locks[i]);
+								debug("unlocking %d", i);
                 continue;
             }
             // Time calculation, a unit is 100 ms:
@@ -213,6 +215,7 @@ static void *monitor_main(void *p)
 
             // Unlocking suscription i because time is calculated
             pthread_mutex_unlock(&locks[i]);
+						debug("unlocking %d", i);
 
             if (reg->ok_init && is_running) {
                 //debug("S%d, called init", i);
@@ -268,6 +271,7 @@ static void init_atfork()
     if (is_allocated) {
         for (i = 0; i < N_QUEUE; ++i) {
             pthread_mutex_unlock(&locks[i]);
+						debug("unlocking %d", i);
         }
     }
     // If is already running, we start the monitor again
@@ -330,12 +334,14 @@ static void suscriptions_unregister_all()
 {
     int i;
     for (i = 0; is_allocated && i < N_QUEUE; ++i) {
+				debug("holding lock %d", i);
         while (pthread_mutex_trylock(&locks[i]));
     }
     memset(queue, 0, sizeof(queue_t) * N_QUEUE);
     queue_last = 0;
     for (i = 0; is_allocated && i < N_QUEUE; ++i) {
         pthread_mutex_unlock(&locks[i]);
+				debug("unlocking %d", i);
     }
 }
 
@@ -368,6 +374,7 @@ state_t monitor_register(suscription_t *s)
     if (s->call_main == NULL) return_msg(EAR_ERROR, "reading call is NULL");
     if (s->id         < 0   ) return_msg(EAR_ERROR, "incorrect suscription index");
 
+		debug("holding lock %d", s->id);
     while ((retval = pthread_mutex_trylock(&locks[s->id])) != 0) {
         if (retval != EBUSY) {
             return_msg(EAR_ERROR, strerror(retval));
@@ -380,6 +387,7 @@ state_t monitor_register(suscription_t *s)
     queue[s->id].saved_units.burst = (s->time_burst / 100);
     debug("registered S%d (%d/%d)", s->id, s->time_relax, s->time_burst);
     pthread_mutex_unlock(&locks[s->id]);
+		debug("unlocking %d", s->id);
     // Interrupt to wake monitor thread
     goto_interrupt();
 
@@ -388,6 +396,7 @@ state_t monitor_register(suscription_t *s)
 
 state_t monitor_unregister(suscription_t *s)
 {
+    int id = s->id;
     int retval;
 
     if (!is_running        ) monitor_init();
@@ -395,13 +404,13 @@ state_t monitor_unregister(suscription_t *s)
     if (s->id  > queue_last) return_msg(EAR_ERROR, "incorrect suscription index");
     if (s->id  < 0         ) return_msg(EAR_ERROR, "incorrect suscription index");
 
-    while ((retval = pthread_mutex_trylock(&locks[s->id])) != 0) {
+    while ((retval = pthread_mutex_trylock(&locks[id])) != 0) {
         if (retval != EBUSY) {
             return_msg(EAR_ERROR, strerror(retval));
         }
     }
-    memset(&queue[s->id], 0, sizeof(queue_t));
-    pthread_mutex_unlock(&locks[s->id]);
+    memset(&queue[id], 0, sizeof(queue_t));
+    pthread_mutex_unlock(&locks[id]);
     return EAR_SUCCESS;
 }
 
@@ -423,6 +432,7 @@ state_t monitor_burst(suscription_t *s, uint interrupt)
     if (s->time_burst == 0   ) return_msg(EAR_ERROR, "time cant be zero");
     if (s->time_burst  < 0   ) return_msg(EAR_ERROR, "burst time cant be less than relax time");
 
+		debug("holding lock %d", s->id);
     while ((retval = pthread_mutex_trylock(&locks[s->id])) != 0) {
         if (retval != EBUSY) {
             return_msg(EAR_ERROR, strerror(retval));
@@ -436,6 +446,7 @@ state_t monitor_burst(suscription_t *s, uint interrupt)
         }
     }
     pthread_mutex_unlock(&locks[s->id]);
+		debug("unlocking %d", s->id);
     return EAR_SUCCESS;
 }
 

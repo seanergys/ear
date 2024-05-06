@@ -34,6 +34,9 @@ CMake*
 *_trash
 *.idea
 build/
+tags
+compile_commands.json
+.cache/
 
 # Julita's
 DB/
@@ -185,3 +188,5 @@ gmon.out
 compile_commands.json
 .cache
 .cache/*
+tmp.txt
+*.plist

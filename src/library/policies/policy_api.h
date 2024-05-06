@@ -19,7 +19,7 @@
 #define EAR_POLICIES_API_H
 
 #include <common/states.h>
-#include <common/types/configuration/policy_conf.h>
+// #include <common/types/configuration/policy_conf.h>
 
 #include <library/policies/policy_ctx.h>
 

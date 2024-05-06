@@ -928,7 +928,7 @@ void pmgt_get_status(pmgt_status_t *status)
             status->status = PC_STATUS_GREEDY;
             status->requested += cdomain_status[DOMAIN_CPU].requested; 
             status->requested += cdomain_status[DOMAIN_GPU].requested;
-            status->requested = ear_min(status->requested, 256); // a total maximum step of 256 since it is the max value we can pass up
+            status->requested = ear_min(status->requested, 255); // a total maximum step of 256 since it is the max value we can pass up
             status->stress = ear_max(cdomain_status[DOMAIN_CPU].stress, cdomain_status[DOMAIN_GPU].stress);
             debug("pmgt_get_status: GREEDY + OK/GREEDY Node requested power %u",status->requested);
         }
@@ -948,13 +948,13 @@ static uint pmgt_powercap_status_per_domain(uint action)
     char is_release = 0;
     int totalok, totalrel, totalask;
     totalok = totalrel = totalask = 0;
-    uint ret,from = 0,to = 0;
+    uint ret = 0, from = 0,to = 0;
     memset(cdomain_status,0,sizeof(domain_status_t)*NUM_DOMAINS);
     if (pmgt_limit == POWER_CAP_UNLIMITED) return 0;
     /* We ask each domain its curent status to distribute power accross domains */
     for (i=0; i< NUM_DOMAINS;i++){
         if (pcsyms_fun[i].get_powercap_status != NULL){
-            ret=pcsyms_fun[i].get_powercap_status(&cdomain_status[i]);
+            pcsyms_fun[i].get_powercap_status(&cdomain_status[i]);
             /* status = 0 when it's ok and 1 when it can release power */
             totalok += (cdomain_status[i].ok == PC_STATUS_OK);
             totalrel += (cdomain_status[i].ok == PC_STATUS_RELEASE);

@@ -61,18 +61,18 @@ state_t policy_init(polctx_t *c)
     gpuf_list       = (const ulong **) metrics_gpus_get(MGT_GPU)->avail_list;
     gpuf_list_items = (const uint *)   metrics_gpus_get(MGT_GPU)->avail_count;
 
-		/* MGT_GPU API might be DUMMY, so device count can be different with respect to 
-		 * c->num_gpus (value taken from MET_GPU, which most of times is well loaded). */
-		uint gpu_count = metrics_gpus_get(MGT_GPU)->devs_count;
+	/* MGT_GPU API might be DUMMY, so device count can be different with respect to 
+	 * c->num_gpus (value taken from MET_GPU, which most of times is well loaded). */
+	uint gpu_count = metrics_gpus_get(MGT_GPU)->devs_count;
 
     for (int i = 0; i < gpu_count; i++)
-		{
+	{
         verbose_master(2, "Frequency list in GPU %d (%u items)", i, gpuf_list_items[i]);
         for (int j = 0; j < gpuf_list_items[i]; j++)
-				{
-					float gpu_freq_khz = (float) gpuf_list[i][j] / 1000000.0;
-					verbose_master(2, "GPU%d[%d]: %.2f", i, j, gpu_freq_khz);
-				}
+		{
+			float gpu_freq_ghz = (float) gpuf_list[i][j] / 1000000.0;
+			verbose_master(2, "GPU%d[%d]: %.2f (%lu kHz)", i, j, gpu_freq_ghz, gpuf_list[i][j]);
+		}
     }
 
     mgt_gpu_data_alloc(&gfreqs);

@@ -1028,6 +1028,7 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
 #else
         *ready = EAR_POLICY_CONTINUE;
 #endif
+				verbose_policy_info("EAR policy... ready");
         return EAR_SUCCESS;
     }
 

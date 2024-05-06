@@ -60,6 +60,24 @@ int coeff_file_read_no_alloc(char *path, coefficient_t *coeffs, int size)
     return (size / sizeof(coefficient_t));
 }
 
+int coeff_gpu_file_read_no_alloc(char *path, coefficient_gpu_t *coeffs, int size)
+{
+    int ret, fd;
+
+    if ((fd = open(path, O_RDONLY)) < 0) {
+        return EAR_OPEN_ERROR;
+    }
+
+    if ((ret = read(fd, coeffs, size)) != size)
+    {
+        close(fd);
+        return EAR_READ_ERROR;
+    }
+    close(fd);
+
+    return (size / sizeof(coefficient_t));
+}
+
 void coeff_print(coefficient_t *coeff)
 {
     verbose(VTYPE,"ref %lu pstate %lu avail %u A %lf B %lf C %lf D %lf E %lf F %lf",

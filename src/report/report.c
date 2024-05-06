@@ -103,7 +103,6 @@ static void static_load(const char *install_path, const char *_libs)
         }
         // Loading /install/lib/plugins/report/lib.so
         sprintf(path, "%s/reports/%s", install_path, lib);
-        debug("Loading '%s' plugin", path);
         if (state_fail(s = plug_open(path, (void **) &ops_aux, (cchar **) names, S_NUM, S_FLAGS))) {
             // Loading ./lib.so
             sprintf(path, "./%s", lib);
