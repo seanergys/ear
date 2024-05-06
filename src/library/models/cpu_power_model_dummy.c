@@ -33,6 +33,7 @@
 #include <common/types/configuration/cluster_conf.h>
 #include <daemon/shared_configuration.h>
 #include <library/common/library_shared_data.h>
+#include <library/common/verbose_lib.h>
 
 static uint arch_model_loaded = 0;
 static uint cpu_count;
@@ -41,7 +42,8 @@ state_t cpu_power_model_init_arch(settings_conf_t *libconf, conf_install_t *conf
 {
 	cpu_count = arch->top.cpu_count;
 	arch_model_loaded = 1;	
-	
+
+	verbose_master(2, "EARL[%d] CPU power model dummy loaded %d", getpid(), arch_model_loaded);	
 	return EAR_SUCCESS;
 }
 
@@ -55,6 +57,8 @@ state_t cpu_power_model_status_arch()
 state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig, node_mgr_sh_data_t *nmgr, uint node_mgr_index)
 {
 	debug("cpu_power_model_project_arch");
+  verbose_master(2,"CPU power model:  job[%d][%d] estimation", node_mgr_index,getpid());
+
 	if (!arch_model_loaded) return EAR_ERROR;
 
 	ull  node_L3 = 0;
@@ -72,6 +76,8 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 	signature_t *lsig = &data->node_signature;
 	double my_job_GBS, my_job_DRAM_power, my_job_TPI;
 	uint used_cpus = 0;
+
+
 
   if (node_mgr_earl_apps() > MAX_CPUS_SUPPORTED){
       verbose(0,"EARL ERROR, more apps than CPUS--> return");
@@ -91,7 +97,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 	memset(pck_power,0,sizeof(double)*MAX_CPUS_SUPPORTED);
   memset(inst, 0, sizeof(ullong)*MAX_CPUS_SUPPORTED);
 
-  verbose(2, "CPU power model dummy ...............");
+  verbose_master(2, "CPU power model dummy ...............");
 
 
 	if ((lsig == NULL) || (data == NULL) || (sig == NULL) || (nmgr == NULL)){ 
@@ -220,6 +226,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 			for (uint proc = 0;proc < nmgr[j].libsh->num_processes; proc++){
 				power_estimations[lp] = P * nmgr[j].shsig[proc].num_cpus;
 				debug("Power estimated for job %u/%u --> %.2lf/with %u cpus = %.3lf (gbs %.3lf)",j,proc, P,nmgr[j].shsig[proc].num_cpus, power_estimations[lp],gbs[lp]);
+				verbose_master(2,"Power estimated for job %u/%u --> %.2lf/with %u cpus = %.3lf (gbs %.3lf)",j,proc, P,nmgr[j].shsig[proc].num_cpus, power_estimations[lp],gbs[lp]);
 				total_power_estimated += power_estimations[lp];	
 				lp++;
 			}
@@ -239,6 +246,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 			sig[lp].sig.DC_power = (CPU_power * process_power_ratio[proc]) + GPU_process_power; // what about GPU power in processes	
 			sig[lp].sig.PCK_power = process_power_ratio[proc] * lsig->PCK_power;
 			debug("Power process %d/%d is %lf. PCK power %lf", job_in_process[proc], lp, sig[lp].sig.DC_power, sig[lp].sig.PCK_power);
+			verbose_master(2,"Power process %d/%d is %lf. PCK power %lf", job_in_process[proc], lp, sig[lp].sig.DC_power, sig[lp].sig.PCK_power);
 			lp++;
 		}
 	}

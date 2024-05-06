@@ -58,6 +58,7 @@
 /* Node mgr variables */
 extern ear_njob_t *node_mgr_data;
 extern uint node_mgr_index;
+extern uint node_mgr_earl_index;
 extern node_mgr_sh_data_t *node_mgr_job_info;
 extern char lib_shared_region_path_jobs[GENERIC_NAME];
 extern char sig_shared_region_path_jobs[GENERIC_NAME];
@@ -66,6 +67,7 @@ extern uint exclusive;
 extern uint fake_force_shared_node;
 
 extern sem_t *lib_shared_lock_sem;
+extern uint   AID;
 
 void eid_folder(char *dst, int size, char *tmp, int jid, int sid, uint aid)
 {
@@ -780,6 +782,11 @@ void  init_earl_node_mgr_info()
 				node_mgr_job_info[curr_app].libsh           = NULL;
 				node_mgr_job_info[curr_app].shsig           = NULL;
 
+				if (lid == AID){
+					verbose_master(2,"[%d] Self detected in pos %d", getpid(), curr_app);
+					node_mgr_earl_index = curr_app;
+				}
+
         if (apps){
           /* Mapping lib_shared_region */ 
           verbose_master(2,"[%d] Job %lu.%lu.%lu is sharing the node", getpid(), jid,sid,lid);
@@ -812,6 +819,7 @@ void  init_earl_node_mgr_info()
   node_mgr_info_unlock();
   verbose_master(WF_SUPPORT_VERB,"init_earl_node_mgr_info done: Total apps computed %d , based on folders %d", total_num_earl_apps, curr_app);
 #else
+	node_mgr_earl_index = node_mgr_index;
 	node_mgr_job_info = calloc(MAX_CPUS_SUPPORTED, sizeof(node_mgr_sh_data_t));
 
   char *tmp = get_ear_tmp();
@@ -1134,6 +1142,7 @@ void accum_estimations(lib_shared_data_t *data, shsignature_t *sig)
 
 void estimate_power_and_gbs(lib_shared_data_t *data, shsignature_t *sig, node_mgr_sh_data_t *nmgr)
 {
+		verbose_master(2, "EARL[%d] cpu_power_model_project", getpid());
     cpu_power_model_project(data, sig, nmgr);
 #if SHOW_DEBUGS
     for (uint p = 0; p < data->num_processes; p++) {

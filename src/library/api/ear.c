@@ -218,6 +218,7 @@ cluster_conf_t cconf;
 /* Info with jobs sharing the node */
 ear_njob_t *node_mgr_data;
 uint node_mgr_index;
+uint node_mgr_earl_index;
 node_mgr_sh_data_t *node_mgr_job_info;
 
 // Dynais
