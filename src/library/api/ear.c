@@ -629,8 +629,8 @@ void create_shared_regions()
 		}
 	}
 
-	verbose_master(2, "Shared region for shared signatures created for %d processes",
-            lib_shared_region->num_processes);
+	verbose_master(2, "[%s] Master (PID: %d) Shared region for shared signatures created for %d processes",
+            node_name, master_pid, lib_shared_region->num_processes);
 
 	sig_shared_region[my_node_id].master            = 1;
 	sig_shared_region[my_node_id].pid               = master_pid;
@@ -659,10 +659,10 @@ void create_shared_regions()
   masters_info.max_ppn = masters_info.ppn[0];
   for (i=1;i<masters_info.my_master_size;i++){ 
     if (masters_info.ppn[i] > masters_info.max_ppn) masters_info.max_ppn=masters_info.ppn[i];
-    if (masters_info.my_master_rank == 0) verbose_master(2,"Processes in node %d = %d",i,masters_info.ppn[i]);
+    if (masters_info.my_master_rank == 0) verbose_master(2,"[%s] Master (PID: %d) Processes in node %d = %d",node_name, master_pid, i,masters_info.ppn[i]);
   }
 
-  verbose_master(2,"max number of ppn is %d", masters_info.max_ppn);
+  verbose_master(2,"[%s] Master (PID: %d) max number of ppn is %d", node_name, master_pid,masters_info.max_ppn);
   /* For scalability concerns, we can compile the system sharing all the processes information (SHARE_INFO_PER_PROCESS) or only 1 per node (SHARE_INFO_PER_NODE)*/
   if (sh_sig_per_node && sh_sig_per_proces){
     error("Signatures can only be shared with node OR process granularity,not both, default node");
@@ -708,7 +708,7 @@ void create_shared_regions()
 				/********************************/
 				/* Attaching to node_mgr region */
 				/********************************/
-				verbose_master(2,"Creating node_mgr region in tmp %s", tmp);
+				verbose_master(2,"Master (PID: %d)  Creating node_mgr region in tmp %s", getpid(), tmp);
 				if (nodemgr_job_init(tmp, &node_mgr_data) != EAR_SUCCESS){
 								verbose_master(2,"Error creating node_mgr region");
 				}
@@ -721,10 +721,11 @@ void create_shared_regions()
 				me.modification_time = me.creation_time;
 #endif
 				CPU_ZERO(&me.node_mask);
-				verbose_master(2,"Attaching to node_mgr region");
+				verbose_master(2,"Master (PID: %d)  Attaching to node_mgr region",getpid());
 				if (nodemgr_attach_job(&me, &node_mgr_index) != EAR_SUCCESS){
 								verbose_master(2,"Error attaching to node_mgr region");
 				}
+				verbose_master(2,"Master (PID: %d)  Attached at pos %d",getpid(), node_mgr_index);
 				lib_shared_region->node_mgr_index = node_mgr_index;
         if (msync(lib_shared_region, sizeof(lib_shared_data_t),MS_SYNC) < 0){
           verbose(1, "Error synchronizing EARL shared memory (%s)", strerror(errno));
@@ -740,9 +741,12 @@ void create_shared_regions()
 				verbose_jobs_in_node(2,node_mgr_data,node_mgr_job_info);
 
         /* Add here the initialization of the shared region to coordinate with external libraries such as DLB */
+				#if 0
         get_ear_external_path(tmp, ID, shexternal_region_path);
         external_mgt = create_ear_external_shared_area(shexternal_region_path);
         verbose_master(2, "Created shared region for external libraries! (%s)", shexternal_region_path);
+				#endif
+				verbose(2,"Master (PID: %d) shared regions created", getpid());
 
 }
 
@@ -1168,10 +1172,16 @@ void ear_lib_sig_handler(int s)
         verbose(0,"EAR[%d] signal %d received", getpid(), s);
 
         if (s == SIGCHLD){
+					int pid, ret;
+					while(( pid = waitpid(-1, &ret, WNOHANG)) > 0){
+						if (WIFEXITED(ret)){ verbose(0,"Child %d finish with exitcode %d", pid, WEXITSTATUS(ret));}
+						else               { verbose(0,"Child %d finish with signal %d",   pid, WTERMSIG(ret));}
+					}
           return;
         }
 
         if (s == SIGPIPE){
+					verbose(0,"SIGPIPE received in process %d", getpid());
           mark_as_eard_disconnected(get_ear_tmp(), my_job_id,my_step_id,AID, getpid());
           eards_connection_failure();
           return;

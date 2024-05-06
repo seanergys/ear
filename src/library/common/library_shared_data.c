@@ -694,7 +694,7 @@ static uint total_num_earl_apps = 0;
 void  init_earl_node_mgr_info()
 {
 #if WF_SUPPORT
-	verbose(WF_SUPPORT_VERB, "%sinit_earl_node_mgr_info..................%s", COL_RED, COL_CLR);
+	verbose(WF_SUPPORT_VERB, "%sPID[%d] init_earl_node_mgr_info..................%s", COL_RED, getpid(), COL_CLR);
   if (total_num_earl_apps)
 	{
     //verbose(WF_SUPPORT_VERB,"New process?: Releasing node_mgr_data info ");
@@ -714,7 +714,7 @@ void  init_earl_node_mgr_info()
     return;
   }
 
-  verbose(WF_SUPPORT_VERB," EARL: allocation %d apps", total_num_earl_apps);
+  verbose(WF_SUPPORT_VERB," EARL[%d]: allocation %d apps", getpid(), total_num_earl_apps);
 
   node_mgr_job_info = calloc(total_num_earl_apps, sizeof(node_mgr_sh_data_t));
 
@@ -751,14 +751,23 @@ void  init_earl_node_mgr_info()
     
     verbose_master(WF_SUPPORT_VERB,"looking for apps in %lu.%lu job folder (%s)", jid, sid, SID_folder_name);
 
-    while (( appid_folder_full = folder_getnext_type(&SID_folder,NULL, ".app", DT_DIR))){
+		int abort_init = 0;
+    while (!abort_init && ( appid_folder_full = folder_getnext_type(&SID_folder,NULL, ".app", DT_DIR))){
         /* Filtering . and .. folders */
 
         appid_folder = strtok(appid_folder_full,".app");
         lid = (job_id)atoi(appid_folder);
         verbose_master(WF_SUPPORT_VERB,"New APP[%d] detected for %lu/%lu/%lu", curr_app,jid, sid, lid);
         if (curr_app == total_num_earl_apps){
-          verbose_master(WF_SUPPORT_VERB,"EARL error: initialzing node_mgr_earl info. Computed %d runtime based on folders %d", total_num_earl_apps, curr_app);
+          verbose_master(WF_SUPPORT_VERB,"EARL error: initialzing node_mgr_earl info. Computed %d runtime based on folders %d. Reallocating memory old address %p", total_num_earl_apps, curr_app, node_mgr_job_info);
+					node_mgr_job_info = realloc(node_mgr_job_info, sizeof(node_mgr_sh_data_t)*(total_num_earl_apps+1));
+					if (node_mgr_job_info == NULL){
+						verbose_master(WF_SUPPORT_VERB,"EARL error!!, memory cannot be reallocated");
+						abort_init = 1;
+						continue;
+					}	
+					total_num_earl_apps++;
+					verbose_master(WF_SUPPORT_VERB, "New Area space %p, total apps %d", node_mgr_job_info, total_num_earl_apps);
         }
 
         node_mgr_job_info[curr_app].jid               = jid;
@@ -768,17 +777,34 @@ void  init_earl_node_mgr_info()
         node_mgr_job_info[curr_app].modification_time = mt;
         node_mgr_job_info[curr_app].fd_lib          = -1;
         node_mgr_job_info[curr_app].fd_sig          = -1;
+				node_mgr_job_info[curr_app].libsh           = NULL;
+				node_mgr_job_info[curr_app].shsig           = NULL;
 
         if (apps){
           /* Mapping lib_shared_region */ 
-          verbose_master(2,"Job %lu.%lu.%lu is sharing the node", jid,sid,lid);
+          verbose_master(2,"[%d] Job %lu.%lu.%lu is sharing the node", getpid(), jid,sid,lid);
           if (get_lib_shared_data_path(tmp,ID,lid,lib_shared_region_path_jobs) == EAR_SUCCESS){
             node_mgr_job_info[curr_app].libsh = attach_lib_shared_data_area(lib_shared_region_path_jobs, &node_mgr_job_info[curr_app].fd_lib);
-          }
+						if (node_mgr_job_info[curr_app].libsh == NULL) continue;
+          }else{
+						continue;
+					}
+					verbose_master(2,"[%d] lib_shared_data mapped for %lu.%lu.%lu", getpid(), jid,sid,lid);
           /* Mapping shared signatures */
 				  if (get_shared_signatures_path(tmp,ID,lid,sig_shared_region_path_jobs) == EAR_SUCCESS){
 					  node_mgr_job_info[curr_app].shsig = attach_shared_signatures_area(sig_shared_region_path_jobs, node_mgr_job_info[curr_app].libsh->num_processes, &node_mgr_job_info[curr_app].fd_sig);
-				  }
+						if (node_mgr_job_info[curr_app].shsig == NULL){ 
+							dettach_lib_shared_data_area(node_mgr_job_info[curr_app].fd_lib);
+							node_mgr_job_info[curr_app].libsh = NULL;
+							continue;
+						}else{
+							verbose_master(2,"[%d] shared_signatures mapped for %lu.%lu.%lu", getpid(), jid,sid,lid);
+						}
+				  }else{
+						dettach_lib_shared_data_area(node_mgr_job_info[curr_app].fd_lib);
+						node_mgr_job_info[curr_app].libsh = NULL;
+						continue;
+					}
         }
         curr_app++;
     }

@@ -57,7 +57,7 @@ struct sigaction       action_old;
 static pthread_mutex_t lock_gen = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t locks[N_QUEUE];
 static uint            is_allocated;
-static uint            is_atforked;
+static uint            is_atforked = 1;
 static uint            is_running;
 
 static void goto_handler(int sig)

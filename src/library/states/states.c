@@ -612,7 +612,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
              {
                verbose(1, "An error occurred updating the affinity mask: %s", state_msg);
              }else{
-               verbose(2,"EARL[%d] Affinity mask updated", AID);
+               verbose(2,"EARL[%d] Affinity mask updated, using %d CPUs", AID, lib_shared_region->num_cpus);
              }
             }
 

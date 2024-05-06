@@ -509,11 +509,6 @@ ulong sendack(char *send_buf, size_t send_size, char *ack_buf, size_t ack_size, 
         return s;
     }
 		struct stat buf_test;
-		if (fstat(ear_fd_req, &buf_test) < 0){	
-			verbose(0,"EARL: invalid REQ fd %s", strerror(errno));
-			app_connected = 0;
-			return_unlock((ulong) EAR_ERROR, &lock_rpc);
-		}
     if (eards_write(ear_fd_req, send_buf, send_size) != send_size) {
 				debug("local api end error write: %s. recv size %lu. FD %d", description, ack_size, ear_fd_ack);
 				app_connected = 0;
@@ -529,11 +524,6 @@ ulong sendack(char *send_buf, size_t send_size, char *ack_buf, size_t ack_size, 
     #endif
 
 
-		if (fstat(ear_fd_ack, &buf_test) < 0){	
-			verbose(0,"EARL: invalid ACK fd %s", strerror(errno));
-			app_connected = 0;
-			return_unlock((ulong) EAR_ERROR, &lock_rpc);
-		}
     if (eards_read(ear_fd_ack, ack_buf, ack_size, WAIT_DATA) != ack_size) {
 				debug("local api end error read: %s. recv size %lu. FD %d", description, ack_size, ear_fd_ack);
 				app_connected = 0;
