@@ -87,8 +87,10 @@ static ulong *gpu_def_freq;
 static ulong *last_gpufreq_set;
 static int gpu_count;
 
-static uint dcgmi_instances;
-static uint dcgmi_ref_set;
+static uint dcgmi_instances = 0;
+// set 1: Tensor and FP activities
+// set 2: DRAM activities 
+static uint dcgmi_ref_set = 2; 
 
 static energy_model_t gpu_energy_model;
 
@@ -100,11 +102,9 @@ static char optimize_criteria[1024];
 
 static void update_optimize_options(char *metric);
 
-static void GPU_get_metric(uint gpu_idx, signature_t *signature, float gpus_power, float *curr);
+static void GPU_get_metric(uint gpu_idx, signature_t *signature, float *curr);
 
-static uint GPU_metric_ready(signature_t *sig, uint gpu_idx);
-
-static uint GPU_metric_ready_all(signature_t *sig);
+static uint GPU_metric_ready(signature_t *sig);
 
 static void GPU_metric_ready_update(signature_t *signature);
 
@@ -215,6 +215,7 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
 
 #if SHOW_DEBUGS
 	debug("apply: num_gpus %d",my_sig->gpu_sig.num_gpus);
+  debug("DC_power %lf", my_sig->DC_power); 
   for (int i = 0; i < my_sig->gpu_sig.num_gpus; i++) 
   {
 	  debug("[GPU %d Power %.2lf Freq %.2f Mem_freq %.2f Util %lu Mem_util %lu]", i,
@@ -225,10 +226,7 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
 	}
 #endif // SHOW_DEBUGS
   
-	double *power_projections_acc = (double *) calloc(gpuf_list_items[0], sizeof(double));
-  assert(power_projections_acc != NULL);
-
-	if (gpu_optimize && GPU_metric_ready_all(my_sig))
+	if (gpu_optimize && GPU_metric_ready(my_sig))
   {
 	  // Warning: We are assuming all GPUs are running at the default frequency, also we are assumming al GPUs have the same clock list.
 	  for (int j = 0; j < gpuf_list_items[0]; j++)
@@ -236,11 +234,6 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
 	    if (energy_model_projection_available(gpu_energy_model, 0, j))
 	    {
 	      energy_model_project_power(gpu_energy_model, my_sig, 0, j, power_projections[j]);
-        
-	      for (int i = 0; i < my_sig->gpu_sig.num_gpus; i++)
-        {
-          power_projections_acc[j] += power_projections[j][i];
-        }
 	    }
 	  }
 	}
@@ -268,18 +261,17 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
 	    } 
       else
 	    {
-	      if (GPU_metric_ready(my_sig, i))
+	      if (GPU_metric_ready(my_sig))
 	      {
-	        verbose_master(2, "GPU[%d] optimize metric ready instances %d", i, dcgmi_instances);
+	        debug("GPU[%d] optimize metric ready", i);
 	        metric_ready = 1;
           
 	        if (gpu_opt_st[i] & first_selection)
           {
             int best_pstate = 0;
             float current_metric, last_metric;
-            float gpus_power = (float) power_projections_acc[0];
             sig_aux.gpu_sig.gpu_data[i].GPU_freq = gpuf_list[i][0];
-            GPU_get_metric(i, &sig_aux, gpus_power, &last_metric);
+            GPU_get_metric(i, &sig_aux, &last_metric);
             
             for (int j = 1; j < gpuf_list_items[i]; j++)
             {
@@ -288,8 +280,7 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
                 debug("GPU[%d] pstate %d gfreq %ld power_projections %lf", i, j, gpuf_list[i][j], power_projections[j][i]);
                 sig_aux.gpu_sig.gpu_data[i].GPU_power = power_projections[j][i];
                 sig_aux.gpu_sig.gpu_data[i].GPU_freq = gpuf_list[i][j];
-                gpus_power = (float) power_projections_acc[j];
-                GPU_get_metric(i, &sig_aux, gpus_power, &current_metric);
+                GPU_get_metric(i, &sig_aux, &current_metric);
                 if (GPU_ok(i, &sig_aux, current_metric, last_metric))
                 {
                   last_metric = current_metric;
@@ -300,7 +291,7 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
             
 						gpu_opt_st[i] = partial_ready;
             new_freq[i] = gpuf_list[i][best_pstate];
-            debug("GPU[%d] Best p-state %u, freq %lu, metric %f",i, best_pstate, new_freq[i], last_metric);
+            debug("GPU[%d] BEST p-state %u, freq %lu, metric %f",i, best_pstate, new_freq[i], last_metric);
            
 	        } else if (gpu_opt_st[i] & partial_ready)
           {
@@ -316,7 +307,7 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
         else
 	      {
 	        // GPU data not ready yet
-	        verbose_master(2, "GPU[%d] optimize metric NOT ready instances %d, freq %lu", i, dcgmi_instances, last_gpufreq_set[i]);
+	        debug("GPU[%d] optimize metric NOT ready instances %d, freq %lu", i, dcgmi_instances, last_gpufreq_set[i]);
 	        new_freq[i] = last_gpufreq_set[i];
 	        *ready = EAR_POLICY_TRY_AGAIN;
 	      }
@@ -424,7 +415,7 @@ static void update_optimize_options(char *metric)
 	sprintf(optimize_criteria,"GPU Metric=%s", metric_is(metric_to_optimize));
 }
 
-static void GPU_get_metric(uint gpu_idx, signature_t *signature, float gpus_power, float *curr)
+static void GPU_get_metric(uint gpu_idx, signature_t *signature, float *curr)
 {
   float gpu_freq;
   float gpu_power;
@@ -451,11 +442,11 @@ static void GPU_get_metric(uint gpu_idx, signature_t *signature, float gpus_powe
       gpu_power = (float) signature->gpu_sig.gpu_data[gpu_idx].GPU_power;
       float node_power = (float) signature->DC_power;
 		  float cpu_gflops = (float) signature->Gflops;    
-      debug("GPU[%d] signature->DC_power  %f gpus_power %f gpu_power %f", gpu_idx, node_power, gpus_power, gpu_power); 
-      debug("GPU[%d] GPU_FREQ %f CPU_GFLOPS %f GPU_GFLOPS %f", gpu_idx, gpu_freq, cpu_gflops, gpu_gflops*gpu_freq); 
-      debug("GPU[%d] CPU_GFLOPS_W %f GPU_GFLOPS_W %f", gpu_idx, cpu_gflops/(node_power - gpus_power), (gpu_gflops*gpu_freq)/gpu_power); 
       
-      *curr = cpu_gflops/(node_power - gpus_power) + (gpu_gflops*gpu_freq)/gpu_power; 
+      debug("GPU[%d] GPU_FREQ %f CPU_GFLOPS %f GPU_GFLOPS %f", gpu_idx, gpu_freq, cpu_gflops, gpu_gflops*gpu_freq); 
+      debug("GPU[%d] CPU_GFLOPS_W %f GPU_GFLOPS_W %f", gpu_idx, cpu_gflops/node_power, (gpu_gflops*gpu_freq)/gpu_power); 
+      
+      *curr = cpu_gflops/node_power + (gpu_gflops*gpu_freq)/gpu_power; 
       break;
     }
     // TODO EDP and/or ED2P once the time model is ready
@@ -464,7 +455,7 @@ static void GPU_get_metric(uint gpu_idx, signature_t *signature, float gpus_powe
   }
 }
 
-static uint GPU_metric_ready(signature_t *sig, uint gpu_idx)
+static uint GPU_metric_ready(signature_t *sig)
 {
 	switch(metric_to_optimize)
 	{
@@ -480,21 +471,15 @@ static uint GPU_metric_ready(signature_t *sig, uint gpu_idx)
       if (sigex == NULL)  return 0;
       dcgmis = (dcgmi_sig_t *)&sigex->dcgmis;
       if (dcgmis == NULL) return 0;
-      if (dcgmis->dcgmi_instances[dcgmi_ref_set] > dcgmi_instances)  return 1;
+      debug("DCGMI Instnace: set A %d set B %d previous %d",dcgmis->dcgmi_instances[1], dcgmis->dcgmi_instances[2], dcgmi_instances);
+      if (dcgmis->dcgmi_instances[dcgmi_ref_set] > dcgmi_instances) {
+        return 1;
+      }
       else return 0;
 #endif
 		}
 	}
 	return 0;
-}
-
-static uint GPU_metric_ready_all(signature_t *sig)
-{
-	for (int i = 0; i < sig->gpu_sig.num_gpus; i++){
-    debug("gpu[%d] GPU_metric_ready_all\n", i);
-    if(GPU_metric_ready(sig, i) == 0) return 0;
-  }
-  return 1;
 }
 
 static void GPU_metric_ready_update(signature_t *signature)
@@ -523,7 +508,7 @@ static void GPU_metric_ready_update(signature_t *signature)
 // optimanl gpu freq selection (min ed2p or max flops/w)
 static uint GPU_ok(uint gpu_idx, signature_t *signature, float curr, float last)
 {
-	verbose_master(2, "GPU ok validation curr %f last %f", curr, last);
+	debug("GPU ok validation curr %f last %f", curr, last);
 	switch (metric_strategy)
 	{
 		case max_value : return (curr > last);
@@ -561,15 +546,14 @@ static float gflops_cycle(signature_t *signature, uint gpu_idx)
 	dcgmi_lib_get_event_info(tensor_active, tensor_info);
 	dcgmi_t *dcgmis_data_ten = dcgmis->dcgmi_metrics[tensor_info[event_info_set]];
 
-  verbose_master(2, "GPU[%u] computing CPU gflops...", gpu_idx);
   float fp16 = (float)(dcgmis_data_16[gpu_idx].values[fp16_info[event_info_pos]]);
   float fp32 = (float)(dcgmis_data_32[gpu_idx].values[fp32_info[event_info_pos]]);
   float fp64 = (float)(dcgmis_data_64[gpu_idx].values[fp64_info[event_info_pos]]);
   float tensor = (float)(dcgmis_data_ten[gpu_idx].values[tensor_info[event_info_pos]]);
 
-	verbose_master(2, "GPU[%u] data for optimization: fp64 %f fp32 %f fp16 %f tensor %f", gpu_idx, fp64, fp32, fp16, tensor);
+	debug("GPU[%u] data for optimization: fp64 %f fp32 %f fp16 %f tensor %f", gpu_idx, fp64, fp32, fp16, tensor);
   
-  // TODO automatize-
+  // TODO automatize  in function of the micro-arch
   // Here the values are for NVIDIA A100 (Update of April 12)
   return 6912*fp64 + 13824*fp32 + 55296*fp16 + 110592*tensor;
 
