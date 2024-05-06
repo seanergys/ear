@@ -64,7 +64,7 @@
 
 typedef struct ip_table
 {
-	uint32_t ip_int;
+	int32_t  ip_int;
 	char     ip[IP_LENGTH];
 	char     name[IP_LENGTH];
 	int32_t  counter;
@@ -384,14 +384,14 @@ void check_app_status(app_status_t status, ip_table_t *ips, int num_ips, char is
 			else if (status.step_id == INTERACT_STEP)
 				sprintf(step_id, "%-8s", "interact");
 			else
-				sprintf(step_id, "%-8ld", status.step_id);
+				sprintf(step_id, "%-8d", status.step_id);
 			if (is_master)
-				printf("%7lu-%-8s %6d %10.2lf %8.2lf %8.2lf %8.2lf %8.2lf %8.2lf", 
+				printf("%7d-%-8s %6d %10.2lf %8.2lf %8.2lf %8.2lf %8.2lf %8.2lf", 
 						status.job_id, step_id, status.nodes,
 						status.signature.DC_power, status.signature.CPI, status.signature.GBS, 
 						status.signature.Gflops, status.signature.time, (double)status.signature.avg_f/1000000);
 			else
-				printf("%15s %7lu-%-8s %6d %10.2lf %8.2lf %8.2lf %8.2lf %8.2lf %8.2lf", 
+				printf("%15s %7d-%-8s %6d %10.2lf %8.2lf %8.2lf %8.2lf %8.2lf %8.2lf", 
 						ips[i].name, status.job_id, step_id, status.master_rank,
 						status.signature.DC_power, status.signature.CPI, status.signature.GBS, 
 						status.signature.Gflops, status.signature.time, (double)status.signature.avg_f/1000000);

@@ -129,16 +129,16 @@ typedef struct internal_request {
 } internal_request_t; //only the necessary my_req content is sent, and what is sent can be identified by the req code 
 
 typedef struct status_node_info{
-    ulong avg_freq; // In KH
-    ulong temp; // In degres, No creo que haya falta enviar un unsigned long long
-    ulong power; // In Watts 
-    ulong rep_power; // In Watts 
-    ulong max_freq;// in KH
+    uint32_t avg_freq;  // In KH
+    uint32_t max_freq;  // In KH
+    uint16_t temp;      // In degres, 16 bits should be more than enough (temp ranges from 0 to 100 usually, but 16 is safer)
+    uint16_t power;     // In Watts, 16 bits should be more than enough (power should never peak above 65k for a single node)
+    uint16_t rep_power; // In Watts, same as above
 } status_node_info_t;
 
 typedef struct app_info{
-    uint job_id;
-    uint step_id;
+    uint32_t job_id;
+    uint32_t step_id;
 }app_info_t;
 
 typedef struct request_header {
@@ -153,23 +153,23 @@ typedef struct eard_policy_info{
 }eard_policy_info_t;
 
 typedef struct status{
-    unsigned int        ip;
-    char                ok;
+    int32_t             ip;
     status_node_info_t  node;
     app_info_t          app;
-    uint                eardbd_connected;
+    char                eardbd_connected;
+    char                ok;
 } status_t;
 
 typedef struct policy_status{
-    unsigned int        ip;
-    unsigned int        num_policies;
+    int32_t        ip;
+    uint32_t       num_policies;
     eard_policy_info_t  policy_conf[TOTAL_POLICIES];
 } policy_status_t;
 
 typedef struct app_status{
-    unsigned int ip;
-    long job_id, step_id; //need to be signed so we can set an invalid job_id (-1) to know when there is no job
-    unsigned int nodes, master_rank;
+    int32_t      ip;
+    int32_t      job_id, step_id; //need to be signed so we can set an invalid job_id (-1) to know when there is no job
+    uint32_t     nodes, master_rank;
     signature_t signature;
 }app_status_t;
 
@@ -192,8 +192,8 @@ typedef struct eargm_status {
 } eargm_status_t;
 
 typedef struct power_check {
-    uint64_t power;
-    int64_t  num_nodes;
+    uint64_t power; //this is a cluster-wide accumulator, hence the 64 bits size
+    int64_t  num_nodes; //this could be smaller, but the compiler will add padding anyway so best be safe
 } power_check_t;
 
 
