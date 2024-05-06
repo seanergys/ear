@@ -28,6 +28,8 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <signal.h>
+#include <sched.h>
+#include <sys/mman.h>
 #include <common/output/debug.h>
 #include <common/system/popen.h>
 
@@ -35,8 +37,21 @@
 #define MAX_COLS          16
 #define MAX_BUFFER        32768
 
+#define STACK_SIZE (1024*1024) // The stack size of the child process created via clone(2)
+
+
+typedef struct child_fn_args_s
+{
+	int *fd_pair;
+	char *command;
+} child_fn_args_t;
+
 static char no_string = '\0';
 static char buffer[MAX_BUFFER];
+
+static char *stack_top_ptr;
+
+static int child_function(void *arg);
 
 state_t popen_test(char *exec)
 {
@@ -66,45 +81,28 @@ state_t popen_open(char *command, int escape_lines, int one_shot, popen_t *p)
 			return_msg(EAR_ERROR, strerror(errno));
 		}
 
-		// fork
-		pid_t pid = fork();
-		if (pid < 0)
+		// clone
+		if (stack_top_ptr == NULL)
 		{
-			debug("Fork error: %s", strerror(errno));
-      return_msg(EAR_ERROR, strerror(errno));
+			// Allocate memory for the child process
+			char *stack = mmap(NULL, STACK_SIZE, PROT_READ | PROT_WRITE,
+												 MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK, -1, 0);
+			if (stack == MAP_FAILED)
+			{
+				debug("mmap error: %s", strerror(errno));
+				return_msg(EAR_ERROR, strerror(errno));
+			}
+
+			stack_top_ptr = stack + STACK_SIZE; // Assume stack grows downward
 		}
 
-		if (!pid)
+		child_fn_args_t args = {.fd_pair = fd_pair, .command = command};
+
+		pid_t pid = clone(child_function, stack_top_ptr, SIGCHLD, (void *) &args);
+		if (pid < 0)
 		{
-			/* Child process */
-
-			/* Unblock all signals for this subprocess. */
-			sigset_t sigset;
-			sigfillset(&sigset);
-			sigprocmask(SIG_UNBLOCK, &sigset, NULL);
-
-			/* Manage file descriptors */
-			close(fd_pair[0]); // Close the read-end of the pipe
-
-			dup2(fd_pair[1], STDOUT_FILENO); // Copy the write-end of the pipe to the stdout
-			dup2(STDOUT_FILENO, STDERR_FILENO); // " stderr
-
-			close(fd_pair[1]); // The write end of the pipe is not used any more.
-
-			/* Change the image of the process */
-			execlp("/bin/sh", "sh", "-c", command, (char *) NULL); // Run a shell to execute the command
-
-			/*
-			char **cmd;
-			uint cmd_cnt;
-			strtoa(command, ' ', &cmd, &cmd_cnt);
-
-			execvp(cmd[0], cmd);
-			*/
-
-			// Error handling in the case execlp returns
-			perror("execlp");
-			_exit(-1);
+			debug("clone error: %s", strerror(errno));
+      return_msg(EAR_ERROR, strerror(errno));
 		}
 
 		// Parent process
@@ -120,8 +118,8 @@ state_t popen_open(char *command, int escape_lines, int one_shot, popen_t *p)
 		{
 			if (WIFEXITED(child_status))
 			{
-				debug("execl error: %s", strerror(WEXITSTATUS(child_status)));
-				return_msg(EAR_ERROR, strerror(WEXITSTATUS(child_status)));
+				debug("execl error: %d", WEXITSTATUS(child_status));
+				return_msg(EAR_ERROR, "execl error");
 			}
 		}
 
@@ -378,6 +376,33 @@ uint popen_count_read(popen_t *p)
 uint popen_count_pending(popen_t *p)
 {
     return (uint) (p->rows_count - p->rows_index);
+}
+
+
+static int child_function(void *arg)
+{
+	/* Unblock all signals for this subprocess. */
+	sigset_t sigset;
+	sigfillset(&sigset);
+	sigprocmask(SIG_UNBLOCK, &sigset, NULL);
+
+	child_fn_args_t args = *((child_fn_args_t *) arg);
+	int *fd_pair = args.fd_pair;
+	char *command = args.command;
+
+	/* Manage file descriptors */
+	close(fd_pair[0]); // Close the read-end of the pipe
+
+	dup2(fd_pair[1], STDOUT_FILENO); // Copy the write-end of the pipe to the stdout
+
+	close(fd_pair[1]); // The write end of the pipe is not used any more.
+
+	/* Change the image of the process */
+	execlp("/bin/sh", "sh", "-c", command, (char *) NULL); // Run a shell to execute the command
+
+	// Error handling in the case execlp returns
+	perror("execlp");
+	return -1;
 }
 
 #if TEST1 || TEST2
