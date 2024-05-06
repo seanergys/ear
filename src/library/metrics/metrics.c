@@ -588,7 +588,7 @@ static void metrics_static_init(topology_t *tp)
 
 		#if EARL_LIGHT
 		if (mgt_gpu.ok && (mgt_gpu.ok != API_EARD)){
-			verbose_warning_master("GPU API is %u", met_gpu.api);
+			verbose_info2_master("GPU API is %u", met_gpu.api);
 		}
 		#endif
 
@@ -599,12 +599,19 @@ static void metrics_static_init(topology_t *tp)
 #endif
 
 #if DCGMI
+		/* Just the master loads DCGMI module. */
     if (master && met_gpu.ok)
     {
-	    if state_fail(dcgmi_lib_load())
+			state_t ret_st = dcgmi_lib_load();
+	    if (state_is(ret_st, EAR_WARNING))
 	    {
-		    error_lib("Loading EARL DCGMI module: %s", state_msg);
-	    }
+				// The warning is not relevant for a normal user
+				verbose_warning("Loading EARL DCGMI module: %s", state_msg);
+	    } else if (state_fail(ret_st))
+			{
+				// An EAR_ERROR may be relevant for a normal user, as it explictely requests DCGMI metrics.
+				verbose_error("Loading EARL DCGMI module: %s", state_msg);
+			}
     }
 #endif // DCGMI
 #endif // USE_GPUS

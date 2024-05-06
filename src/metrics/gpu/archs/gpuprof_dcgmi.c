@@ -85,13 +85,14 @@ static int get_user_devices()
             continue;
         }
         while(popen_read(&p_tmp, "sssssa", &args[0], &args[1], &args[2], &args[3], &args[4])) {
-            if (strcmp(strtolow(args[1]), "serial") == 0) {
+            if (strcmp(args[1], "Serial") == 0) {
                 serials[d] = (ullong) atoll(args[4]);
                 debug("D%d detected serial: %llu", d, serials[d]);
             }
         }
 				popen_close(&p_tmp);
         // Editing flag -i
+				debug("serial %llu", serials[d]);
         if (nvml_is_serial(serials[d])) {
             strcpy(buffer, command_ids);
             if (strlen(buffer)) {

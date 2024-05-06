@@ -15,7 +15,7 @@
  */
 
 
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 
 #include <library/metrics/dcgmi_lib.h>
@@ -139,8 +139,6 @@ static void event_info_free(int ***event_info_src);
 
 state_t dcgmi_lib_load()
 {
-	debug("dcgmi_lib_load");
-
 	if (USE_GPUS && DCGMI)
 	{
 		verbose_master(DCGMI_INIT_LVL, "GPU and DCGMI are supported.");
