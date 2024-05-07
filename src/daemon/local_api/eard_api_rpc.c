@@ -25,6 +25,7 @@
 #include <limits.h>
 #include <time.h>
 
+#include <common/config.h>
 #include <common/system/lock.h>
 #include <common/system/poll.h>
 #include <daemon/local_api/eard_api_rpc.h>
