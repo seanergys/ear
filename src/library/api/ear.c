@@ -418,6 +418,7 @@ void cleanup_job_folder()
 				uint ID = create_ID(my_job_id,my_step_id);
 				snprintf(block_file_dir,sizeof(block_file_dir),"%s/%u",tmp, ID);
 				debug("cleanup_job_folder: %s process %d\n", block_file_dir, clean_job_folder);
+				verbose_master(WF_SUPPORT_VERB,"EARL[%d] removing JOB folder (%s) ",getpid(), block_file_dir);
 				if (clean_job_folder){
 								debug("Folder needs to be removed from the library\n");
 								folder_remove(block_file_dir);
@@ -593,6 +594,11 @@ void create_shared_regions()
 		lib_shared_region->master_rank = masters_info.my_master_rank;
 		lib_shared_region->node_signature.sig_ext = (void *) calloc(1, sizeof(sig_ext_t));
 		lib_shared_region->job_signature.sig_ext  = (void *) calloc(1, sizeof(sig_ext_t));
+		/* If not estimate_node_metrics node metrics are not computed and policy is not applied */
+		lib_shared_region->estimate_node_metrics = ((ear_getenv(FLAG_DISABLE_NODE_METRICS) != NULL)? 0:1);
+		if (!lib_shared_region->estimate_node_metrics) {
+			verbose_master(2,"EARL[%d] node metrics disabled", getpid());
+		}
   }
 	debug("create_shared_regions and eard=%d",eard_ok);
 	debug("Node connected %u",my_node_id);
@@ -1188,15 +1194,17 @@ void ear_lib_sig_handler(int s)
           return;
         }
 
-        if (s == SIGBUS){
+				if ((s == SIGBUS) || (s == SIGSEGV)){
+					/* Should we cann ear_finalize?? */
           mark_as_eard_disconnected(get_ear_tmp(), my_job_id,my_step_id,AID, getpid());
           eards_connection_failure();
-          print_stack(verb_channel);
-        }
+					clean_eid_folder();
+					nodemgr_job_end(node_mgr_index);
+					if (ear_getenv(FLAG_EAR_DEBUG) != NULL) print_stack(verb_channel);
+					verbose(2,"EARL[%d] exited by %s", getpid(), ((s==SIGBUS)?"SIGBUS":"SIGSEGV"));
+				}
 
         if (s == SIGSEGV){ 
-          verbose(0, "%d: EAR finalized by signal SIGSEGV", getpid());
-          print_stack(verb_channel);
           exit(SIGSEGV);
         }
 
@@ -1258,8 +1266,6 @@ static void configure_sigactions()
   sigaction(SIGPIPE, &int_action, NULL);
 
 
-  if (ear_getenv(FLAG_EAR_DEBUG) != NULL)
-  {
   verbose(2,"EARL[%d] SIGSEGV and SIGBUS sig handler defined", getpid());
   // SIGSEGV
   sigemptyset(&segv_action.sa_mask);
@@ -1267,7 +1273,6 @@ static void configure_sigactions()
   segv_action.sa_flags = 0;
   sigaction(SIGSEGV, &segv_action, NULL);
   sigaction(SIGBUS, &segv_action, NULL);
-  }
 }
 
 

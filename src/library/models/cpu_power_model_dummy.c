@@ -105,13 +105,33 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 		return EAR_SUCCESS;
 	}
 
+	/* This flag is explicitly requested by users */
+	if (!data->estimate_node_metrics){
+		data->job_signature.PCK_power = 0;
+ 	 	data->job_signature.GBS 				= 0;
+ 	 	data->job_signature.DC_power 	= 0;
+ 	 	data->job_signature.DRAM_power = 0;
+ 	 	data->job_signature.TPI 				= 0;
+		for (uint lp = 0; lp < data->num_processes; lp ++){
+				sig[lp].sig.GBS = 0;
+				sig[lp].sig.TPI = 0;
+				sig[lp].sig.DRAM_power = 0;
+      	sig[lp].sig.DC_power   = 0;
+      	sig[lp].sig.PCK_power  = 0;
+
+		}
+		verbose_master(2,"My job[%d][%d] not estimated node metrics", node_mgr_index,getpid());
+		return EAR_SUCCESS;
+	}
 	
   /* compute_total_node_fff compute the metrics only for the calling job. It is needed to iterate over the jobs to have per node */
 
   for (uint j = 0; j < node_mgr_earl_apps(); j ++){
     /* Power condition is to do only in case the signature is ready */
-    if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL) && (nmgr[j].libsh->node_signature.DC_power))
+    if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL) && (nmgr[j].libsh->node_signature.DC_power) && nmgr[j].libsh->estimate_node_metrics)
     {
+
+			/* If not estimate metrics, this app will not receive neither power of GBs , it is assumed to be a master in a master/worker use case */
       used_cpus += nmgr[j].libsh->num_cpus;
       for (uint lp = 0; lp < nmgr[j].libsh->num_processes; lp++)
       {
@@ -222,7 +242,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 	double P = (double)CPU_power / (double)cpu_count;
 	for (uint j = 0; j < node_mgr_earl_apps(); j ++){
 		/* If job is active we compute its power estimated */
-		if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL)){
+		if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL) && (nmgr[j].libsh->estimate_node_metrics)){
 			for (uint proc = 0;proc < nmgr[j].libsh->num_processes; proc++){
 				power_estimations[lp] = P * nmgr[j].shsig[proc].num_cpus;
 				debug("Power estimated for job %u/%u --> %.2lf/with %u cpus = %.3lf (gbs %.3lf)",j,proc, P,nmgr[j].shsig[proc].num_cpus, power_estimations[lp],gbs[lp]);

@@ -1036,6 +1036,12 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
 
     verbose_master(POLICY_INFO + 1, "%sPOLICY%s Policy node apply", COL_BLU, COL_CLR);
 
+		if (!lib_shared_region->estimate_node_metrics){
+			verbose_master(POLICY_INFO,"%sPOLICY%s Policy not applied in EARL[%d] because is master in master/worker use case", COL_BLU, COL_CLR, getpid());
+			*ready = EAR_POLICY_READY;
+			return EAR_SUCCESS;
+		}
+
     //nodemgr_get_num_jobs_attached(&jobs_in_node);
     jobs_in_node = 1;
     if (jobs_in_node > 1) {

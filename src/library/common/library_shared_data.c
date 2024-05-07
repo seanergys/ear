@@ -945,12 +945,17 @@ void update_earl_node_mgr_info()
 #if WF_SUPPORT
 	uint release = 0;
 
+
+	uint expected_apps = 0;
+	uint earl_apps_in_sh_data = 0;
+	/* We check the modification date */
 	for (uint j = 0; j < total_num_earl_apps; j++)
 	{
 		job_id jid = node_mgr_job_info[j].jid;
 		job_id sid = node_mgr_job_info[j].sid;
 
 		time_t mt = node_mgr_job_info[j].modification_time;
+		earl_apps_in_sh_data += ((node_mgr_job_info[j].libsh != NULL) && (node_mgr_job_info[j].shsig != NULL));
 
 		/* For each app we compare the data */
 		if (node_manager_job_changed(jid, sid, mt))
@@ -960,6 +965,17 @@ void update_earl_node_mgr_info()
 			break;
 		}
 	}
+
+	if (!release){
+		/* We check the total number of earl apps detected and expected */
+		for (uint j = 0; j < MAX_CPUS_SUPPORTED; j++){
+			expected_apps += node_mgr_data[j].num_earl_apps;
+		}
+	
+		if (expected_apps != earl_apps_in_sh_data) release = 1;
+		verbose_master(WF_SUPPORT_VERB,"EARL[%d] Num EARL apps have changed expected %u current %u", getpid(), expected_apps, earl_apps_in_sh_data);
+	}
+
 
 	/* if something has changed, we re-map */
 	if (release)
