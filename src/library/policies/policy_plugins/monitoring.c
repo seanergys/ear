@@ -157,6 +157,21 @@ state_t policy_ok(polctx_t *c, signature_t *curr_sig, signature_t *prev_sig, int
 }
 
 
+state_t policy_restore_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
+{
+  state_t st = EAR_SUCCESS;
+
+#if USE_GPUS
+    if (gpus.restore_settings != NULL) {
+      /* Basic support for GPUS */
+      verbose(2, "%sRestore:GPU%s ",COL_GRE,COL_CLR);
+      st = gpus.restore_settings(c, my_sig, freqs);
+    }
+#endif
+  return st;
+}
+
+
 state_t policy_get_default_freq(polctx_t *c, node_freqs_t *freq_set, signature_t *s)
 {
     // TODO: The behaviour is the same done by policy.c

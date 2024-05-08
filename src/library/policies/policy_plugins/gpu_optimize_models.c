@@ -88,8 +88,9 @@ static ulong *last_gpufreq_set;
 static int gpu_count;
 
 static uint dcgmi_instances = 0;
-// set 1: Tensor and FP activities
-// set 2: DRAM activities 
+// check all sets of Tensor, FP and DRAM activities 
+// TODO use automatic value
+// A100 case: 0 -> fp32 and tf. 1 -> fp64. dram -> 2
 static uint dcgmi_ref_set = 2; 
 
 static energy_model_t gpu_energy_model;
@@ -263,7 +264,6 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
 	    {
 	      if (GPU_metric_ready(my_sig))
 	      {
-	        debug("GPU[%d] optimize metric ready", i);
 	        metric_ready = 1;
           
 	        if (gpu_opt_st[i] & first_selection)
@@ -291,7 +291,7 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
             
 						gpu_opt_st[i] = partial_ready;
             new_freq[i] = gpuf_list[i][best_pstate];
-            debug("GPU[%d] BEST p-state %u, freq %lu, metric %f",i, best_pstate, new_freq[i], last_metric);
+            debug("GPU[%d] Best P-State %u, freq %lu, metric %f",i, best_pstate, new_freq[i], last_metric);
            
 	        } else if (gpu_opt_st[i] & partial_ready)
           {
@@ -333,7 +333,7 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
 
 	if (tutil > 0) last_gpu_state = _GPU_Comp;
 
-	verbose_master(2,"%sGPU Optimize end ....%s %s", COL_BLU, optimize_criteria, COL_CLR);
+	verbose_master(2,"%sGPU Optimize end.%s %s", COL_BLU, optimize_criteria, COL_CLR);
 #endif // USE_GPUS
 
 	return EAR_SUCCESS;
@@ -341,7 +341,6 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
 
 state_t policy_restore_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
 {
-  debug("gpu_optimize_model: policy_restore_settings in");
 	/* WARNING: my_sig can be NULL */
 	if (c == NULL) return EAR_ERROR;
 
@@ -471,8 +470,9 @@ static uint GPU_metric_ready(signature_t *sig)
       if (sigex == NULL)  return 0;
       dcgmis = (dcgmi_sig_t *)&sigex->dcgmis;
       if (dcgmis == NULL) return 0;
-      debug("DCGMI Instnace: set A %d set B %d previous %d",dcgmis->dcgmi_instances[1], dcgmis->dcgmi_instances[2], dcgmi_instances);
-      if (dcgmis->dcgmi_instances[dcgmi_ref_set] > dcgmi_instances) {
+      int current_instanes = dcgmis->dcgmi_instances[dcgmi_ref_set];
+      if ( current_instanes > dcgmi_instances) {
+	      debug("GPU optimize metric ready, instances %d ", current_instanes);
         return 1;
       }
       else return 0;
@@ -497,7 +497,8 @@ static void GPU_metric_ready_update(signature_t *signature)
 			if (sigex == NULL)  return ;
 			dcgmis = (dcgmi_sig_t *)&sigex->dcgmis;
 			if (dcgmis == NULL) return ;
-			verbose_master(2,"Updating DCGMI number of instances to %d", dcgmis->dcgmi_instances[dcgmi_ref_set]);
+			
+      debug("Updating DCGMI number of instances to %d", dcgmis->dcgmi_instances[dcgmi_ref_set]);
 			dcgmi_instances = dcgmis->dcgmi_instances[dcgmi_ref_set];
 #endif
 		}
