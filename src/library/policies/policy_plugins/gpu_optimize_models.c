@@ -87,7 +87,7 @@ static ulong *gpu_def_freq;
 static ulong *last_gpufreq_set;
 static int gpu_count;
 
-static uint dcgmi_instances = 0;
+static uint set_instances_cnt = 0;
 // check all sets of Tensor, FP and DRAM activities 
 // TODO use automatic value
 // A100 case: 0 -> fp32 and tf. 1 -> fp64. dram -> 2
@@ -142,7 +142,7 @@ state_t policy_init(polctx_t *c)
 			/* The size of our projection matrix is determined bu the maximum number of frequencies. 
         This procedure is not much useful since we are assumming later all GPUs have the same clock list. 
       */
-			if (VERB_ON(3))
+			if (VERB_.)
 			{
 				verbose_master(3, "#Freqs. in GPU%d: %u", i, gpuf_list_items[i]);
 				for (int j = 0; j < gpuf_list_items[i]; j++)
@@ -307,7 +307,7 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
         else
 	      {
 	        // GPU data not ready yet
-	        debug("GPU[%d] optimize metric NOT ready instances %d, freq %lu", i, dcgmi_instances, last_gpufreq_set[i]);
+	        debug("GPU[%d] optimize metric NOT ready instances %d, freq %lu", i, set_instances_cnt, last_gpufreq_set[i]);
 	        new_freq[i] = last_gpufreq_set[i];
 	        *ready = EAR_POLICY_TRY_AGAIN;
 	      }
@@ -470,8 +470,8 @@ static uint GPU_metric_ready(signature_t *sig)
       if (sigex == NULL)  return 0;
       dcgmis = (dcgmi_sig_t *)&sigex->dcgmis;
       if (dcgmis == NULL) return 0;
-      int current_instanes = dcgmis->dcgmi_instances[dcgmi_ref_set];
-      if ( current_instanes > dcgmi_instances) {
+      int current_instanes = dcgmis->set_instances_cnt[dcgmi_ref_set];
+      if ( current_instanes > set_instances_cnt) {
 	      debug("GPU optimize metric ready, instances %d ", current_instanes);
         return 1;
       }
@@ -498,8 +498,8 @@ static void GPU_metric_ready_update(signature_t *signature)
 			dcgmis = (dcgmi_sig_t *)&sigex->dcgmis;
 			if (dcgmis == NULL) return ;
 			
-      debug("Updating DCGMI number of instances to %d", dcgmis->dcgmi_instances[dcgmi_ref_set]);
-			dcgmi_instances = dcgmis->dcgmi_instances[dcgmi_ref_set];
+      debug("Updating DCGMI number of instances to %d", dcgmis->set_instances_cnt[dcgmi_ref_set]);
+			set_instances_cnt = dcgmis->set_instances_cnt[dcgmi_ref_set];
 #endif
 		}
 	}
