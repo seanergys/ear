@@ -1957,7 +1957,7 @@ void ear_init()
         #if DCGMI
         if (metrics_dcgmi_enabled()){
           sig_ext_t *sig_ext = (sig_ext_t *)application.signature.sig_ext;
-          sig_ext->dcgmis.dcgmi_sets = 0;
+          sig_ext->dcgmis.set_cnt = 0;
         }
         #endif
 

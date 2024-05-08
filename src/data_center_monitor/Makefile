@@ -1,4 +1,4 @@
-CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC -shared
+CFLAGS = $(CC_FLAGS) -I$(SRCDIR)
 
 ######## RULES
 

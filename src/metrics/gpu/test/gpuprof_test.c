@@ -55,6 +55,10 @@ int main(int argc, char *argv[])
 	}
 	*/
 
+	char aux[8];
+	// printf("Waiting before event set...\n");
+	// scanf("%s", aux);
+
 	char sets[EVENT_SET_CNT][512];
 
 	for (int set_idx = 0; set_idx < EVENT_SET_CNT; set_idx++)
@@ -69,6 +73,9 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	// printf("Waiting after event set...\n");
+	// scanf("%s", aux);
+
 	gpuprof_read(m1);
 	sleep(2);
 
@@ -76,22 +83,32 @@ int main(int argc, char *argv[])
 	int count = 0;
 	while(1)
 	{
-		gpuprof_read_copy(m2, m1, mD);
+		gpuprof_read_diff(m2, m1, mD);
 		for (int d = 0; d < info.devs_count; ++d) {
 			for (int m = 0; m < mD[d].values_count; ++m) {
 				printf("METRIC_D%d_M%d: %lf\n", d, m, mD[d].values[m]);
 			}
 		}
 
+	// printf("Waiting after reading set...\n");
+	// scanf("%s", aux);
+
 		count++;
 		if (count % EVENT_SET_CNT == 0)
 		{
 			gpuprof_events_unset(0);
 
+	// printf("Waiting after unsetting events...\n");
+	// scanf("%s", aux);
+
 			curr_set = (curr_set + 1) % EVENT_SET_CNT;
 			gpuprof_events_set(0, sets[curr_set]);
 
 			printf("EVENTS SET %d: %s\n", curr_set, sets[curr_set]);
+
+			gpuprof_read(m1);
+	// printf("Waiting after setting new events...\n");
+	// scanf("%s", aux);
 		}
 		sleep(2);
 	}

@@ -98,11 +98,9 @@ declr_up_action_periodic(_nodesensors)
 	verbose(0, "Nodesensors_alters: %u items received", edcmon_info->num_items);
 #if VERBOSE_DATA
 	for (uint items = 0; items < edcmon_info->num_items; items++){
-			verbose(0,"WARNING EDCMON[%u] node %s power %lf temperature %lf humidity %lf", items,
+			verbose(0,"WARNING EDCMON[%u] node %s power %lf ", items,
 			edcmon_info->edcmon_data[items].nodename,
-			edcmon_info->edcmon_data[items].power,
-			edcmon_info->edcmon_data[items].temperature,
-			edcmon_info->edcmon_data[items].humidity);
+			edcmon_info->edcmon_data[items].power);
 	}
 #endif
 	report_misc(&rid, NODESENSORS_TYPE, (const char *)edcmon_info->edcmon_data, edcmon_info->num_items);

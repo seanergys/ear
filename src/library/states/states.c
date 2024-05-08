@@ -69,7 +69,7 @@
 #define DYNAIS_CUTOFF	1 // Enables the dynamic DynAIS turning off.
 
 #define states_verbose2_master(msg, ...) \
-    verbose_info2_master("States:" msg, ##__VA_ARGS__);
+    verbose_info2_master("States: " msg, ##__VA_ARGS__);
 
 
 extern masters_info_t masters_info; // Defined at externs.h

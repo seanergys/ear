@@ -40,12 +40,8 @@ static uint       total_enabled = 0;
 // Use the absolute path because otherwise popen fails
 static char *command="/opt/confluent/bin/nodesensors -c ";
 //
-// The order of sensors is hardcoded, we should implement a detection method
-static char *sensor_name_old="\'Internal Humidity\',\'Internal Temperature\',\'Total Real Power\'";
 static char **sensor_name;
 
-// Hardcoded for testing, a discovery method must be implemented
-static char *nodelist_old="p01r01a1pdu,p01r01b1pdu,p01r01e1pdu,p01r01f1pdu";
 static char **nodelist;
 static popen_t nodesensor_p;
 static pdu_t *type;
@@ -72,8 +68,6 @@ static void static_init(uint i)
 {
     debug("Preparing query [%u]........", i);
     // Create command query
-    snprintf(query[i],QUERY_SIZE,"%s %s %s", command, nodelist_old, sensor_name_old);
-    debug("OLD Command to be executed: \'%s\'", query[i]);
     snprintf(query[i],QUERY_SIZE,"%s %s %s", command, nodelist[i], sensor_name[i]);
     debug("Current Command to be executed: \'%s\'", query[i]);
 
@@ -91,22 +85,27 @@ declr_up_action_init(_nodesensors)
 }
 
 
-static void compute_num_puds(char *list, uint *elems)
+static void compute_num_puds(char *src_list, uint *elems)
 {
 	char *next;
+	char *alloc;
+	char *list;
 	*elems = 0;
 
-	debug("Parsing list %s", list);
-	if (list == NULL) 			return;
-	if (strlen(list) == 0) 	return;
+	debug("Parsing list %s", src_list);
+	if (src_list == NULL) 			return;
+	if (strlen(src_list) == 0) 	return;
+	list = calloc(strlen(src_list)+1, sizeof(char));
+	strcpy(list, src_list);
+	alloc = list;
 
 	next = strtok(list, ",");
-	*elems = 1;
 	while(next != NULL){
 		*elems = *elems + 1;
 		next = strtok(NULL, ",");
 	}
-	debug("%u pdus found in %s", *elems, list);
+	debug("%u pdus found in %s", *elems, src_list);
+	free(alloc);
 }
 
 /* We use the configuration from conf plugin (ear.conf) */
@@ -142,7 +141,7 @@ declr_up_action_init(_conf)
 			// This version only support 1 tag
 			enabled[i] = ((strcmp(edcmons[i].host, my_hostname) == 0) || (strcmp(edcmons[i].host, "any") == 0));
 			debug("EDMON[%u] host %s my host %s, enabled %u", i, edcmons[i].host, my_hostname, enabled[i]);
-			total_enabled++;
+			if (enabled[i]) total_enabled++;
 		}
 
 		// This version only supports 1 set of query per node
@@ -162,12 +161,19 @@ declr_up_action_init(_conf)
 		sensor_name = (char **)calloc(total_enabled, sizeof(char *));
 		nodelist    = (char **)calloc(total_enabled, sizeof(char *));
 		type        = (pdu_t *)calloc(total_enabled, sizeof(pdu_t *));
+		num_pdus    = (pdu_t *)calloc(total_enabled, sizeof(pdu_t *));
 		// Error control
-		for (uint i = 0; i < num_edcmons; i++) if (enabled[i]) sensor_name[i] = edcmons[i].sensors_list;
-		for (uint i = 0; i < num_edcmons; i++) if (enabled[i]) nodelist[i]    = edcmons[i].pdu_list;
-		for (uint i = 0; i < num_edcmons; i++) if (enabled[i]) type[i]        = edcmons[i].type;
+		uint idx = 0;
+		for (uint i = 0; i < num_edcmons; i++){ 
+			if (enabled[i]){ 
+				sensor_name[idx] = edcmons[i].sensors_list;
+				nodelist[idx]    = edcmons[i].pdu_list;
+				type[idx]        = edcmons[i].type;
+				compute_num_puds(nodelist[idx], &num_pdus[idx]);
+				idx++;
+			}
+		}
 
-		for (uint i = 0; i < total_enabled; i++)  compute_num_puds(nodelist[i], &num_pdus[i]);
 
 		uint total_sources = 0;
 	 	for (uint i = 0; i < total_enabled; i++)
@@ -198,9 +204,9 @@ static state_t static_read_power(uint i, uint *num_rows, uint expected_items)
 {
 	// Execute the query
     char *node;
-    char *power, *temperature, *humidity;
+    char *power;
     uint it = 0;
-		uint idx = edcmon_info.num_items;
+    uint idx = edcmon_info.num_items;
 
     uint no_header = 1;
     uint one_shot  = 0;
@@ -214,16 +220,15 @@ static state_t static_read_power(uint i, uint *num_rows, uint expected_items)
     // in case the command has not reported yet the information, the inner loop will finish with
     // no data. It is a busy waiting loop assuming the command will not last for too much time
     while(it < expected_items){
-    while(popen_read2(&nodesensor_p, sep,  "ssss", &node,&humidity,&temperature, &power)) {
-            debug("RETURNED: node %s humidity %s temperature %s power %s\n", node, humidity, temperature,power);
+    while(popen_read2(&nodesensor_p, sep,  "ss", &node,&power)) {
+            debug("RETURNED: node %s power %s\n", node, power);
 	    strncpy(edcmon_info.edcmon_data[it+idx].nodename, node, sizeof(edcmon_info.edcmon_data[it+idx].nodename));
 
 	    // Sensors units are still hardcoded. We could implement a discovery method
-	    convert_double(&edcmon_info.edcmon_data[it+idx].humidity, humidity);
-	    convert_double(&edcmon_info.edcmon_data[it+idx].temperature, temperature);
 	    convert_double(&edcmon_info.edcmon_data[it+idx].power, power);
 	    edcmon_info.edcmon_data[it+idx].timestamp  = time(NULL);
-	    debug("nodesensors[%u] time %u node %s power %lf W, temperature %lf F , humidity %lf ", it+idx, (uint)edcmon_info.edcmon_data[it+idx].timestamp, edcmon_info.edcmon_data[it+idx].nodename, edcmon_info.edcmon_data[it+idx].power, edcmon_info.edcmon_data[it+idx].temperature, edcmon_info.edcmon_data[it+idx].humidity);
+	    edcmon_info.edcmon_data[it+idx].type       = type[i];
+	    debug("nodesensors[%u] time %u node %s power %lf W ", it+idx, (uint)edcmon_info.edcmon_data[it+idx].timestamp, edcmon_info.edcmon_data[it+idx].nodename, edcmon_info.edcmon_data[it+idx].power);
 	    it++;
     }
     }

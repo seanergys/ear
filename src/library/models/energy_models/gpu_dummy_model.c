@@ -158,10 +158,10 @@ state_t energy_model_init(char *ear_etc_path, char *ear_tmp_path, architecture_t
 
 state_t energy_model_project_time(signature_t *signature, ulong from_ps, ulong to_ps, double *proj_time)
 {
-	state_t st = EAR_SUCCESS;
-	coefficient_t *coeff;
-
 	if (proj_time == NULL) return EAR_ERROR;
+
+	state_t st = EAR_SUCCESS;
+
 	memset(proj_time, 0, sizeof(double) * num_gpus);
 
 	if (from_ps == to_ps)
@@ -172,38 +172,26 @@ state_t energy_model_project_time(signature_t *signature, ulong from_ps, ulong t
 
 	if (gpu_model_init && valid_range(from_ps, to_ps))
 	{
-		coeff = &coefficients[from_ps][to_ps];
+		coefficient_t *coeff = &coefficients[from_ps][to_ps];
+
 		if (coeff->available)
 		{
-		sig_ext_t *sigex;
-  	dcgmi_sig_t *dcgmis;
-		/* SIgnature Extended */
-		sigex = (sig_ext_t *)signature->sig_ext;
-		if (sigex == NULL)  return EAR_ERROR;
-		/* DCGMI data */
-		dcgmis = (dcgmi_sig_t *)&sigex->dcgmis;
-		if (dcgmis == NULL) return EAR_ERROR;
-		/* Sets where each data is placed. Could be the same */
-		dcgmi_t *dcgmis_data_64 = dcgmis->dcgmi_metrics[FP64_SET];
-		dcgmi_t *dcgmis_data_32 = dcgmis->dcgmi_metrics[FP32_SET];
-		dcgmi_t *dcgmis_data_16 = dcgmis->dcgmi_metrics[FP16_SET];
-		dcgmi_t *dcgmis_data_ten = dcgmis->dcgmi_metrics[TNS_SET];
-		dcgmi_t *dcgmis_data_dram = dcgmis->dcgmi_metrics[DRAM_SET];
-		if ((dcgmis_data_64 == NULL) || (dcgmis_data_32 == NULL) || (dcgmis_data_16 == NULL) 
-		 || (dcgmis_data_ten == NULL) || (dcgmis_data_dram == NULL)) 
-						return EAR_ERROR;
+			sig_ext_t *sigex;
+			dcgmi_sig_t *dcgmis;
 
+			/* SIgnature Extended */
+			sigex = (sig_ext_t *)signature->sig_ext;
+			if (sigex == NULL)  return EAR_ERROR;
 
-			for (uint g = 0; g < num_gpus; g++) {
+			/* DCGMI data */
+			dcgmis = (dcgmi_sig_t *)&sigex->dcgmis;
+			if (dcgmis == NULL) return EAR_ERROR;
 
-			double CTIME = signature->time;
-			double FP64 = dcgmis_data_64[g].values[FP64_EV];
-			double FP16  = dcgmis_data_16[g].values[FP16_EV];
-			double FP32 = dcgmis_data_32[g].values[FP32_EV];
-			double TENSOR = dcgmis_data_ten[g].values[TNS_EV];
-			double DRAM   = dcgmis_data_dram[g].values[DRAM_EV];
+			for (uint g = 0; g < num_gpus; g++)
+			{
+				double CTIME = signature->time;
 
-			proj_time[g]  = project_time(coeff, FP64, FP16, FP32, TENSOR, CTIME, DRAM); // PENDING
+				proj_time[g]  = CTIME;
 			}
 		}
 	} else st = EAR_ERROR;
@@ -251,23 +239,23 @@ state_t energy_model_project_power(signature_t *signature, ulong from_ps, ulong 
 
 			int fp64_info[2];
 			dcgmi_lib_get_event_info(fp64_active, fp64_info);
-			dcgmi_t *dcgmis_data_64 = dcgmis->dcgmi_metrics[fp64_info[event_info_set]];
+			gpuprof_t *dcgmis_data_64 = dcgmis->event_metrics_sets[fp64_info[event_info_set]];
 
 			int fp32_info[2];
 			dcgmi_lib_get_event_info(fp32_active, fp32_info);
-			dcgmi_t *dcgmis_data_32 = dcgmis->dcgmi_metrics[fp32_info[event_info_set]];
+			gpuprof_t *dcgmis_data_32 = dcgmis->event_metrics_sets[fp32_info[event_info_set]];
 
 			int fp16_info[2];
 			dcgmi_lib_get_event_info(fp16_active, fp16_info);
-			dcgmi_t *dcgmis_data_16   = dcgmis->dcgmi_metrics[fp16_info[event_info_set]];
+			gpuprof_t *dcgmis_data_16   = dcgmis->event_metrics_sets[fp16_info[event_info_set]];
 
 			int tensor_info[2];
 			dcgmi_lib_get_event_info(tensor_active, tensor_info);
-			dcgmi_t *dcgmis_data_ten  = dcgmis->dcgmi_metrics[tensor_info[event_info_set]];
+			gpuprof_t *dcgmis_data_ten  = dcgmis->event_metrics_sets[tensor_info[event_info_set]];
 
 			int dram_info[2];
 			dcgmi_lib_get_event_info(dram_active, dram_info);
-			dcgmi_t *dcgmis_data_dram = dcgmis->dcgmi_metrics[dram_info[event_info_set]];
+			gpuprof_t *dcgmis_data_dram = dcgmis->event_metrics_sets[dram_info[event_info_set]];
 
 			if (!dcgmis_data_64 || !dcgmis_data_32 || !dcgmis_data_16
 					|| !dcgmis_data_ten || !dcgmis_data_dram)

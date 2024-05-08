@@ -21,6 +21,8 @@
 #include <library/metrics/dcgmi_lib.h>
 #include <metrics/gpu/gpu.h>
 
+// aa
+
 
 int main(int argc, char **argv)
 {
@@ -37,8 +39,7 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
-	while(1)
-	{
-		sleep(4);
-	}
+	sleep(30);
+
+	return 0;
 }

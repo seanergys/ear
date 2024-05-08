@@ -180,10 +180,10 @@ state_t energy_model_project_time(signature_t *signature, ulong from_ps, ulong t
 		dcgmis = (dcgmi_sig_t *)&sigex->dcgmis;
 		if (dcgmis == NULL) return EAR_ERROR;
 		/* Sets where each data is placed. Could be the same */
-		dcgmi_t *dcgmis_data_16 = dcgmis->dcgmi_metrics[FP16_SET];
-		dcgmi_t *dcgmis_data_64 = dcgmis->dcgmi_metrics[FP64_SET];
-		dcgmi_t *dcgmis_data_32 = dcgmis->dcgmi_metrics[FP32_SET];
-		dcgmi_t *dcgmis_data_ten = dcgmis->dcgmi_metrics[TNS_SET];
+		gpuprof_t *dcgmis_data_16 = dcgmis->event_metrics_sets[FP16_SET];
+		gpuprof_t *dcgmis_data_64 = dcgmis->event_metrics_sets[FP64_SET];
+		gpuprof_t *dcgmis_data_32 = dcgmis->event_metrics_sets[FP32_SET];
+		gpuprof_t *dcgmis_data_ten = dcgmis->event_metrics_sets[TNS_SET];
 		if ((dcgmis_data_16 == NULL) || (dcgmis_data_32 == NULL) || 
 		    (dcgmis_data_64 == NULL) || (dcgmis_data_ten == NULL) ) 
         return EAR_ERROR;
@@ -233,11 +233,11 @@ state_t energy_model_project_power(signature_t *signature, ulong from_ps, ulong 
       dcgmis = (dcgmi_sig_t *)&sigex->dcgmis;
       if (dcgmis == NULL) return EAR_ERROR;
       /* Sets where each data is placed. Could be the same */
-      dcgmi_t *dcgmis_data_64 = dcgmis->dcgmi_metrics[FP64_SET];
-      dcgmi_t *dcgmis_data_32 = dcgmis->dcgmi_metrics[FP32_SET];
-      dcgmi_t *dcgmis_data_16 = dcgmis->dcgmi_metrics[FP16_SET];
-      dcgmi_t *dcgmis_data_ten = dcgmis->dcgmi_metrics[TNS_SET];
-      dcgmi_t *dcgmis_data_dram = dcgmis->dcgmi_metrics[DRAM_SET];
+      gpuprof_t *dcgmis_data_64 = dcgmis->event_metrics_sets[FP64_SET];
+      gpuprof_t *dcgmis_data_32 = dcgmis->event_metrics_sets[FP32_SET];
+      gpuprof_t *dcgmis_data_16 = dcgmis->event_metrics_sets[FP16_SET];
+      gpuprof_t *dcgmis_data_ten = dcgmis->event_metrics_sets[TNS_SET];
+      gpuprof_t *dcgmis_data_dram = dcgmis->event_metrics_sets[DRAM_SET];
       if ((dcgmis_data_64 == NULL) || (dcgmis_data_32 == NULL) || (dcgmis_data_16 == NULL)
      || (dcgmis_data_ten == NULL) || (dcgmis_data_dram == NULL))
         return EAR_ERROR;

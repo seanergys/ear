@@ -22,13 +22,14 @@
 #include <common/states.h>
 #include <common/types/generic.h>
 
-
 typedef enum {
     storage     = 0,
     network     = 1,
     management  = 2,
     others      = 3,
 } pdu_t;
+
+#define pdu_type_to_str(t) ((t == storage)?"storage":((t == network)?"network":((t == management)?"management":"others")))
 
 typedef struct edcmon
 {

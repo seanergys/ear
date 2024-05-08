@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #include <math.h>
 #include <stdlib.h>
@@ -80,16 +80,19 @@ static int get_user_devices()
         user_devs[d] = -1;
         // In dmon is -i or --gpu-id instead --gpuid
         sprintf(command, "dcgmi discovery -i a -v --gpuid %d 2>&1", d);
-        if (state_fail(popen_open(command, 3, 1, &p))) {
+				popen_t p_tmp;
+        if (state_fail(popen_open(command, 3, 1, &p_tmp))) {
             continue;
         }
-        while(popen_read(&p, "sssssa", &args[0], &args[1], &args[2], &args[3], &args[4])) {
-            if (strcmp(strtolow(args[1]), "serial") == 0) {
+        while(popen_read(&p_tmp, "sssssa", &args[0], &args[1], &args[2], &args[3], &args[4])) {
+            if (strcmp(args[1], "Serial") == 0) {
                 serials[d] = (ullong) atoll(args[4]);
                 debug("D%d detected serial: %llu", d, serials[d]);
             }
         }
+				popen_close(&p_tmp);
         // Editing flag -i
+				debug("serial %llu", serials[d]);
         if (nvml_is_serial(serials[d])) {
             strcpy(buffer, command_ids);
             if (strlen(buffer)) {
@@ -173,6 +176,9 @@ GPUPROF_F_LOAD(gpuprof_dcgmi_load)
         ++events_count;
     }
     while (popen_read(&p, "sai", &event_name, &event_id));
+
+		popen_close(&p);
+
     // Allocating pool and an auxiliar buffer
     gpuprof_dcgmi_data_alloc(&pool);
     pool_aux_buffer = calloc(events_count, sizeof(double));
@@ -311,6 +317,7 @@ GPUPROF_F_READ(gpuprof_dcgmi_read)
                     pool[dev].values[m], pool_aux_buffer[m], pool[dev].samples_count, pool[dev].hash);
             }
             pool[dev].samples_count += 1.0;
+						timestamp_getfast(&pool[dev].time);
         }
     }
     // Once pooling is over, we copy the values to data

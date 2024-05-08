@@ -179,23 +179,47 @@ state_t energy_model_project_time(signature_t *signature, ulong from_ps, ulong t
 		/* DCGMI data */
 		dcgmis = (dcgmi_sig_t *)&sigex->dcgmis;
 		if (dcgmis == NULL) return EAR_ERROR;
-		/* Sets where each data is placed. Could be the same */
-		dcgmi_t *dcgmis_data_64 = dcgmis->dcgmi_metrics[FP64_SET];
-		dcgmi_t *dcgmis_data_32 = dcgmis->dcgmi_metrics[FP32_SET];
-		dcgmi_t *dcgmis_data_16 = dcgmis->dcgmi_metrics[FP16_SET];
-		dcgmi_t *dcgmis_data_ten = dcgmis->dcgmi_metrics[TNS_SET];
-		dcgmi_t *dcgmis_data_dram = dcgmis->dcgmi_metrics[DRAM_SET];
-		if ((dcgmis_data_64 == NULL) || (dcgmis_data_32 == NULL) || (dcgmis_data_16 == NULL) 
-		 || (dcgmis_data_ten == NULL) || (dcgmis_data_dram == NULL)) 
-						return EAR_ERROR;
 
-			for (uint g = 0; g < num_gpus; g++) {
+		/* Sets where each data is placed. Could be the same */
+
+		int fp64_info[2];
+		dcgmi_lib_get_event_info(fp64_active, fp64_info);
+		gpuprof_t *dcgmis_data_64 = dcgmis->event_metrics_sets[fp64_info[event_info_set]];
+
+		int fp32_info[2];
+		dcgmi_lib_get_event_info(fp32_active, fp32_info);
+		gpuprof_t *dcgmis_data_32 = dcgmis->event_metrics_sets[fp32_info[event_info_set]];
+
+		int fp16_info[2];
+		dcgmi_lib_get_event_info(fp16_active, fp16_info);
+		gpuprof_t *dcgmis_data_16   = dcgmis->event_metrics_sets[fp16_info[event_info_set]];
+
+		int tensor_info[2];
+		dcgmi_lib_get_event_info(tensor_active, tensor_info);
+		gpuprof_t *dcgmis_data_ten  = dcgmis->event_metrics_sets[tensor_info[event_info_set]];
+
+		int dram_info[2];
+		dcgmi_lib_get_event_info(dram_active, dram_info);
+		gpuprof_t *dcgmis_data_dram = dcgmis->event_metrics_sets[dram_info[event_info_set]];
+
+		if ((dcgmis_data_64 == NULL) ||
+				(dcgmis_data_32 == NULL) ||
+				(dcgmis_data_16 == NULL) ||
+				(dcgmis_data_ten == NULL) ||
+				(dcgmis_data_dram == NULL)) 
+		{
+			return EAR_ERROR;
+		}
+
+			for (uint g = 0; g < num_gpus; g++)
+			{
         double ctime = signature->time;
-        double fp16  = dcgmis_data_16[g].values[FP16_EV];
-        double fp32 = dcgmis_data_32[g].values[FP32_EV];
-        double fp64 = dcgmis_data_64[g].values[FP64_EV];
-        double tensor = dcgmis_data_ten[g].values[TNS_EV];
-        double dram   = dcgmis_data_dram[g].values[DRAM_EV];
+				double fp16 = dcgmis_data_16[g].values[fp16_info[event_info_pos]];
+				double fp32 = dcgmis_data_32[g].values[fp32_info[event_info_pos]];
+				double fp64 = dcgmis_data_64[g].values[fp64_info[event_info_pos]];
+				double tensor = dcgmis_data_ten[g].values[tensor_info[event_info_pos]];
+				double dram   = dcgmis_data_dram[g].values[dram_info[event_info_pos]];
+
         ulong df =  coeff->pstate_ref - coeff->pstate;
         proj_time[g]  = project_time(coeff, ctime, fp16, fp32, fp64, tensor, df);
 			}
@@ -244,23 +268,23 @@ state_t energy_model_project_power(signature_t *signature, ulong from_ps, ulong 
 
 			int fp64_info[2];
 			dcgmi_lib_get_event_info(fp64_active, fp64_info);
-			dcgmi_t *dcgmis_data_64 = dcgmis->dcgmi_metrics[fp64_info[event_info_set]];
+			gpuprof_t *dcgmis_data_64 = dcgmis->event_metrics_sets[fp64_info[event_info_set]];
 
 			int fp32_info[2];
 			dcgmi_lib_get_event_info(fp32_active, fp32_info);
-			dcgmi_t *dcgmis_data_32 = dcgmis->dcgmi_metrics[fp32_info[event_info_set]];
+			gpuprof_t *dcgmis_data_32 = dcgmis->event_metrics_sets[fp32_info[event_info_set]];
 
 			int fp16_info[2];
 			dcgmi_lib_get_event_info(fp16_active, fp16_info);
-			dcgmi_t *dcgmis_data_16   = dcgmis->dcgmi_metrics[fp16_info[event_info_set]];
+			gpuprof_t *dcgmis_data_16   = dcgmis->event_metrics_sets[fp16_info[event_info_set]];
 
 			int tensor_info[2];
 			dcgmi_lib_get_event_info(tensor_active, tensor_info);
-			dcgmi_t *dcgmis_data_ten  = dcgmis->dcgmi_metrics[tensor_info[event_info_set]];
+			gpuprof_t *dcgmis_data_ten  = dcgmis->event_metrics_sets[tensor_info[event_info_set]];
 
 			int dram_info[2];
 			dcgmi_lib_get_event_info(dram_active, dram_info);
-			dcgmi_t *dcgmis_data_dram = dcgmis->dcgmi_metrics[dram_info[event_info_set]];
+			gpuprof_t *dcgmis_data_dram = dcgmis->event_metrics_sets[dram_info[event_info_set]];
 
 			if (!dcgmis_data_64 || !dcgmis_data_32 || !dcgmis_data_16
 					|| !dcgmis_data_ten || !dcgmis_data_dram)
