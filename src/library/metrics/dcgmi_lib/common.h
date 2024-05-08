@@ -22,31 +22,45 @@
 #include <common/types.h>
 #include <common/states.h>
 
-#include <metrics/gpu/archs/dcgmi.h>
+// #include <metrics/gpu/archs/dcgmi.h> // TODO: To be removed
+#include <metrics/gpu/gpuprof.h>
 
 
 #define DCGMI_LIB_SUPPORTED_EVENTS 12
 
-#define dcgmi_lib_ret_alloc_err() \
-	return_msg(EAR_ERROR, Generr.alloc_error);
+#define sm_active             1002
+#define sm_occupancy          1003
+#define tensor_active         1004
+#define fp64_active           1006
+#define fp16_active           1008
+#define tensor_imma_active    1013
+#define tensor_hmma_active    1014
+#define fp32_active           1007
+#define dram_active           1005
+#define pcie_tx_bytes         1009
+#define pcie_rx_bytes         1010
+#define gr_engine_active      1001
+#define nvlink_tx_bytes       1011    
+#define nvlink_rx_bytes       1012
 
 
 typedef struct dcgmi_lib_s
 {
-	int *dcgmi_set_sizes; /**< The number of events per set. */
-	int	dcgmi_set_count;	/**< The total number of sets. */
-															
-	uint **dcgmi_events;		 /**< The event index list for each set. */
-	char **dcgmi_events_str; /**< The format string of the current selected event
-																set (used when calling EAR's DCGMI API). */
-															
-	dcgmi_t **dcgmi_metrics;		 /**< For each set, and for each GPU, the event metrics list. */
-	dcgmi_t **dcgmi_metrics_agg; /**< Same structure as dcgmi_metrics,
-																		but used to store application global metrics. */
+	int *dcgmi_set_sizes;				/**< Event set size for each set. */
+	int	dcgmi_set_count;				/**< Event set count. */
+
+	uint **dcgmi_event_ids;			/**< Event IDs for each set. */
+	char **dcgmi_event_ids_csv;	/**< CSV event strings for each set. */
+
+	gpuprof_t **gpuprof_read1;	/**< Event metrics for each set and device. */
+	gpuprof_t **gpuprof_read2;	/**< Event metrics for each set and device. */
+	gpuprof_t **gpuprof_diff;		/**< Event metrics for each set and device. */
+	gpuprof_t **gpuprof_agg;		/**< Aggregated metrics for each set and device. */
 } dcgmi_lib_t;
 
 
-/** Allocates memory for \p dcgmi_data based on the number of sets \p set_count. */
+/** Allocates \ref dcgmi_data attributes based on \ref set_count.
+ * You can use \ref state_msg to read the error message. */
 state_t dcgmi_lib_data_alloc(dcgmi_lib_t *dcgmi_data, int set_count);
 
 

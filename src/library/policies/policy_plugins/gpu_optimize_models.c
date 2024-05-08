@@ -533,19 +533,19 @@ static float gflops_cycle(signature_t *signature, uint gpu_idx)
   
   int fp64_info[2];
 	dcgmi_lib_get_event_info(fp64_active, fp64_info);
-	dcgmi_t *dcgmis_data_64 = dcgmis->dcgmi_metrics[fp64_info[event_info_set]];
+	gpuprof_t *dcgmis_data_64 = dcgmis->event_metrics_sets[fp64_info[event_info_set]];
 
 	int fp32_info[2];
 	dcgmi_lib_get_event_info(fp32_active, fp32_info);
-	dcgmi_t *dcgmis_data_32 = dcgmis->dcgmi_metrics[fp32_info[event_info_set]];
+	gpuprof_t *dcgmis_data_32 = dcgmis->event_metrics_sets[fp32_info[event_info_set]];
 
 	int fp16_info[2];
 	dcgmi_lib_get_event_info(fp16_active, fp16_info);
-	dcgmi_t *dcgmis_data_16 = dcgmis->dcgmi_metrics[fp16_info[event_info_set]];
+	gpuprof_t *dcgmis_data_16 = dcgmis->event_metrics_sets[fp16_info[event_info_set]];
 
   int tensor_info[2];
 	dcgmi_lib_get_event_info(tensor_active, tensor_info);
-	dcgmi_t *dcgmis_data_ten = dcgmis->dcgmi_metrics[tensor_info[event_info_set]];
+	gpuprof_t *dcgmis_data_ten = dcgmis->event_metrics_sets[tensor_info[event_info_set]];
 
   float fp16 = (float)(dcgmis_data_16[gpu_idx].values[fp16_info[event_info_pos]]);
   float fp32 = (float)(dcgmis_data_32[gpu_idx].values[fp32_info[event_info_pos]]);

@@ -31,6 +31,7 @@ typedef struct popen_s {
     FILE *file;
     int   eof;
     int   fd;
+		pid_t pid;
 } popen_t;
 
 // Tests if an executable (binary or script) exists, before call popen_open.

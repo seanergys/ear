@@ -1,5 +1,5 @@
 /*
- *
+ 
  * This program is part of the EAR software.
  *
  * EAR provides a dynamic, transparent and ligth-weigth solution for
@@ -69,6 +69,10 @@
 #define EARD_FILE_LOG               1
 /** Set minimum CPU frequency on idle phases. */
 #define EARD_POWERCAP_IDLE_MINFREQ  1
+/**  */
+#define SYNC_SET_RPC 1
+/**  */
+#define MIX_RPC 1
 /**@}*/
 
 
@@ -243,6 +247,14 @@
 /** Experimental feature. Enables fine-grained metrics monitor and MPI Optimize features. */
 #define MPI_OPTIMIZED 0
 
+/**@}*/
+
+
+/** @name Common
+ * Parameters that set up different EAR components. */
+/**@{*/
+/** Instead of reporting the number of iterations, report the timestamp of the loop. */
+#define REPORT_TIMESTAMP 1
 /**@}*/
 
 
