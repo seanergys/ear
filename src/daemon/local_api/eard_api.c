@@ -271,7 +271,6 @@ int eards_connect(application_t *my_app, ulong lid)
     int ret1;
     int i;
 
-		verbose(2, "eards_connect[%d] %d/%d/%d", my_app->job.id, my_app->job.step_id,lid);
     if (app_connected) {
       return EAR_SUCCESS;
     }

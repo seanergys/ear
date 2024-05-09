@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <fcntl.h>
 #include <errno.h>
@@ -25,11 +25,13 @@
 #include <strings.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <common/config.h>
 #include <common/states.h>
 #include <common/output/debug.h>
 #include <common/system/shared_areas.h>
+
 
 
 /** BASIC FUNCTIONS */
@@ -45,14 +47,14 @@ void *create_shared_area(char *path, mode_t file_perms_bits, char *data, int are
 
 	int ret;
 	void *my_shared_region = NULL;		
-	char buff[256];
+	char buff[MAX_PATH_SIZE];
 	int fd;
 
 	mode_t my_mask;
 	my_mask = umask(0);
 
-	strcpy(buff, path);
-	debug("creating file %s for shared memory", buff);
+	strncpy(buff, path,sizeof(buff));
+	debug("creating file (%s) for shared memory", buff);
 
 	fd = open(buff, O_CREAT | O_RDWR | O_TRUNC, file_perms_bits);
 	if (fd < 0)
@@ -64,7 +66,7 @@ void *create_shared_area(char *path, mode_t file_perms_bits, char *data, int are
 
 	// Is the below call to chmod needed after setting the file permissions when openning the file?
 	chmod(buff, file_perms_bits);
-	debug("shared file for mmap created");
+	debug("shared file for mmap created with fd=%d", fd);
 
 	umask(my_mask);
 
@@ -80,6 +82,17 @@ void *create_shared_area(char *path, mode_t file_perms_bits, char *data, int are
 		close(fd);
 		return NULL;
 	}
+
+#if SHOW_DEBUGS
+	struct stat buf;
+	if (fstat(fd,&buf) < 0 ){
+		debug("fstat failed %d", strerror(errno));
+	}else{
+		debug("shared region status: HL %d size %lu ", buf.st_nlink, buf.st_size);
+	}
+#endif
+
+	
 
 	debug("mapping shared memory");
 	my_shared_region= mmap(NULL, area_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);                                     
@@ -98,26 +111,27 @@ void *create_shared_area(char *path, mode_t file_perms_bits, char *data, int are
 void *attach_shared_area(char *path, int area_size, uint perm, int *shared_fd, int *s)
 {
     void *my_shared_region = NULL;
-		char buff[256];
+		char buff[MAX_PATH_SIZE];
 		int flags;
 		int size;
 		int fd;
 
-		strcpy(buff, path);
+		strncpy(buff, path, sizeof(buff));
     fd = open(buff, perm);
     *shared_fd = fd;
 
     if (fd < 0)
 		{
 #if SHOW_DEBUGS
-			error("error attaching to shared memory at %s: %s", path, strerror(errno));
-			char buffout[1024];
-			sprintf(buffout, "echo '%s, %s, %d, %u, %d' >> /tmp/PLUGIN",
-							strerror(errno), path, area_size, perm, fd);
-			system(buffout);
+			error("error attaching to shared memory at (%s): %s", buff, strerror(errno));
+  		char test[2048];
+  		sprintf(test,"ls -la %s", buff);
+  		system(test);
+
 #endif
 				return NULL;
     }
+	debug("File for shared region %s opened", path);
 	if (area_size==0){
 		size=lseek(fd,0,SEEK_END);
 		if (size<0){
@@ -136,6 +150,7 @@ void *attach_shared_area(char *path, int area_size, uint perm, int *shared_fd, i
         close(fd);
         return NULL;
     }
+	debug("File for shared region %s mapped at %p", path, my_shared_region);
 	*shared_fd=fd;
     return my_shared_region;
 }
