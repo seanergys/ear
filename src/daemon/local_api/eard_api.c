@@ -313,7 +313,7 @@ int eards_connect(application_t *my_app, ulong lid)
 
 
 #if WF_SUPPORT
-
+	#if 0
 	/* Create the common base path used inside this block ("tmp/id/local_id") */
 	char base_path[MAX_PATH_SIZE];
 	state_t ret_st = create_base_path(base_path, sizeof(base_path),
@@ -330,6 +330,7 @@ int eards_connect(application_t *my_app, ulong lid)
 	{
      return_print(EAR_ERROR, "Error when creating the EAR communicator directory.");
 	}
+	#endif
 
 	/* Pipe full paths. They're stored at base_path as well. */
   sprintf(ear_commreq,"%s/.ear_comm.req_%d.%d.%lu", base_path, i, my_id, lid);
@@ -460,7 +461,7 @@ void eards_connection_failure()
 void eards_new_process_disconnect()
 {
 	// This function closes the EARD fd for new processes to connect again
-	#if 0
+	#warning "This part is pending to be testes"
 	close(ear_fd_req);
   close(ear_fd_req_global); 
   close(ear_fd_ack);        
@@ -468,7 +469,6 @@ void eards_new_process_disconnect()
   ear_fd_req_global = -1;   
 	ear_fd_req        = -1;
   ear_fd_ack        = -1;          
-	#endif
 
 	app_connected = 0;
 }
@@ -636,6 +636,7 @@ state_t eards_get_state(eard_state_t *state)
     return eard_rpc(RPC_GET_STATE, NULL, 0, (char *) state, sizeof(eard_state_t));
 }
 
+#if 0
 static state_t create_base_path(char *base_path, size_t base_path_sz, char *tmp_path, uint job_step_id, uint app_local_id)
 {
 	int ret = snprintf(base_path, base_path_sz, "%s/%u/%u", tmp_path, job_step_id, app_local_id);
@@ -659,3 +660,4 @@ static state_t create_app_directory(char *path)
 	}
 	return EAR_SUCCESS;
 }
+#endif

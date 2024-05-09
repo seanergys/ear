@@ -264,7 +264,7 @@ static state_t check_eard_earl_compatibility(state_t eard_connect_state)
 
 	eard_state_t eard_conf;
 
-#if VERSION_MAJOR < 5
+#if VERSION_MAJOR < 5 || 1
 	verbose_master(0, "Warning, EARD compatibility test not supported");
 	return EAR_SUCCESS;
 #endif
@@ -451,9 +451,12 @@ state_t create_eid_folder(char *tmp, int jid, int sid, uint AID)
 {
   int ret;
 
-  //verbose(WF_SUPPORT_VERB,"EID folder based on tmp=%s jid %d sid %d aid %u", tmp, jid, sid, AID);
+  verbose(WF_SUPPORT_VERB,"EID folder based on tmp=%s jid %d sid %d aid %u", tmp, jid, sid, AID);
 
   while (node_mgr_info_lock() != EAR_SUCCESS){};
+	char AID_path[MAX_PATH_SIZE];
+
+	/* Application folder for WF support */
   eid_folder(EID_application_path, sizeof(EID_application_path), tmp, jid, sid, AID);
 
   strcpy(EID_application_path_finish, EID_application_path);
@@ -467,7 +470,19 @@ state_t create_eid_folder(char *tmp, int jid, int sid, uint AID)
     return EAR_ERROR;
   }
   chmod(EID_application_path,S_IRUSR|S_IWUSR|S_IXUSR);
-  //verbose(WF_SUPPORT_VERB,"EID folder (%s) created", EID_application_path);
+  verbose(WF_SUPPORT_VERB,"EID folder (%s) created", EID_application_path);
+
+	/* Application folder */
+
+	ret = mkdir(EID_application_path_finish, S_IRWXU);
+	if ((ret < 0 ) && (errno != EEXIST)){
+		verbose(WF_SUPPORT_VERB,"EAR error AID folder cannot be created (%s) (%s)", EID_application_path_finish, strerror(errno));
+    node_mgr_info_unlock();
+    return EAR_ERROR;
+	}
+	chmod(EID_application_path_finish, S_IRUSR|S_IWUSR|S_IXUSR);
+	verbose(WF_SUPPORT_VERB,"AID folder (%s) created", EID_application_path_finish);
+	
   node_mgr_info_unlock();
   return EAR_SUCCESS;
 }
@@ -747,11 +762,9 @@ void create_shared_regions()
 				verbose_jobs_in_node(2,node_mgr_data,node_mgr_job_info);
 
         /* Add here the initialization of the shared region to coordinate with external libraries such as DLB */
-				#if 0 // Must be created in AID folder
         get_ear_external_path(tmp, ID, shexternal_region_path);
         external_mgt = create_ear_external_shared_area(shexternal_region_path);
         verbose_master(2, "Created shared region for external libraries! (%s)", shexternal_region_path);
-				#endif
 				verbose(2,"Master (PID: %d) shared regions created", getpid());
 
 }
@@ -1440,7 +1453,7 @@ void ear_init()
   {
     if (ear_my_rank == 0)
     {
-      topology_print(&earl_topo, 1);
+      topology_print(&earl_topo, verb_channel);
     }
   }
 
@@ -1493,7 +1506,7 @@ void ear_init()
   if ((synchronize_masters == 0) && (!app_node_multiprocess)){
 		verbose(2, "EARL[%d][%d] initialization aborted", ear_my_rank, getpid());
     debug("EARL initialization aborted");
-//    return;
+    return;
   }
 	
 
