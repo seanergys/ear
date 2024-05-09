@@ -64,35 +64,24 @@ void *create_shared_area(char *path, mode_t file_perms_bits, char *data, int are
 		return NULL;
 	}
 
-	// Is the below call to chmod needed after setting the file permissions when openning the file?
 	chmod(buff, file_perms_bits);
 	debug("shared file for mmap created with fd=%d", fd);
 
 	umask(my_mask);
 
-	// Default values
-	if (must_clean) bzero(data, area_size);
 
-	debug("writting default values");
-	ret = write(fd, data, area_size);
+  // Default values
+  if (must_clean) bzero(data, area_size);
 
-	if (ret<0)
-	{
-		debug("error creating sharing memory (%s)\n", strerror(errno));
-		close(fd);
-		return NULL;
-	}
+  debug("writting default values");
+  ret = write(fd, data, area_size);
 
-#if SHOW_DEBUGS
-	struct stat buf;
-	if (fstat(fd,&buf) < 0 ){
-		debug("fstat failed %d", strerror(errno));
-	}else{
-		debug("shared region status: HL %d size %lu ", buf.st_nlink, buf.st_size);
-	}
-#endif
-
-	
+  if (ret<0)
+  {
+    debug("error creating sharing memory (%s)\n", strerror(errno));
+    close(fd);
+    return NULL;
+  }
 
 	debug("mapping shared memory");
 	my_shared_region= mmap(NULL, area_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);                                     
@@ -122,8 +111,8 @@ void *attach_shared_area(char *path, int area_size, uint perm, int *shared_fd, i
 
     if (fd < 0)
 		{
-#if SHOW_DEBUGS
 			error("error attaching to shared memory at (%s): %s", buff, strerror(errno));
+#if SHOW_DEBUGS
   		char test[2048];
   		sprintf(test,"ls -la %s", buff);
   		system(test);
@@ -131,6 +120,7 @@ void *attach_shared_area(char *path, int area_size, uint perm, int *shared_fd, i
 #endif
 				return NULL;
     }
+		fsync(fd);
 	debug("File for shared region %s opened", path);
 	if (area_size==0){
 		size=lseek(fd,0,SEEK_END);

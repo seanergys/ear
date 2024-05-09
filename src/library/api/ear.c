@@ -1459,11 +1459,6 @@ void ear_init()
 #endif
 
 	uint ID = create_ID(my_job_id,my_step_id);
-        // Why ?? (validate and remove). This function only creates the filename, it
-        // doesn't open or checks it
-	if (get_lib_shared_data_path(tmp, ID, AID, lib_shared_region_path) == EAR_SUCCESS){
-								unlink(lib_shared_region_path);
-	}
 
   // Create SID/AID folder
   nodemgr_lock_init(tmp);
