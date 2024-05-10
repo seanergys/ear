@@ -22,7 +22,9 @@
 
 #include <common/states.h>
 #include <common/config.h>
+#include <library/common/externs.h>
 #include <library/policies/policy_ctx.h>
+#include <library/policies/policy_state.h>
 
 const char plugin_api_version = VERSION_MAJOR;
 

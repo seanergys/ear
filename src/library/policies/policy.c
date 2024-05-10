@@ -825,6 +825,7 @@ state_t init_power_policy(settings_conf_t *app_settings, resched_t *res)
     my_pol_ctx.affinity  	      = ear_affinity_is_set;
     my_globalrank                 = masters_info.my_master_rank;
     my_pol_ctx.pc_limit	          = app_settings->pc_opt.current_pc;
+		my_pol_ctx.mpi_enabled				= is_mpi_enabled();
 
 #if MPI
     if (PMPI_Comm_dup(masters_info.new_world_comm, &my_pol_ctx.mpi.comm) != MPI_SUCCESS) {
