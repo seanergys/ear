@@ -588,7 +588,7 @@ static void metrics_static_init(topology_t *tp)
 
 		#if EARL_LIGHT
 		if (mgt_gpu.ok && (mgt_gpu.ok != API_EARD)){
-			verbose_warning_master("GPU API is %u", met_gpu.api);
+			verbose_info2_master("GPU API is %u", met_gpu.api);
 		}
 		#endif
 
@@ -599,12 +599,19 @@ static void metrics_static_init(topology_t *tp)
 #endif
 
 #if DCGMI
+		/* Just the master loads DCGMI module. */
     if (master && met_gpu.ok)
     {
-	    if state_fail(dcgmi_lib_load())
+			state_t ret_st = dcgmi_lib_load();
+	    if (state_is(ret_st, EAR_WARNING))
 	    {
-		    error_lib("Loading EARL DCGMI module: %s", state_msg);
-	    }
+				// The warning is not relevant for a normal user
+				verbose_warning("Loading EARL DCGMI module: %s", state_msg);
+	    } else if (state_fail(ret_st))
+			{
+				// An EAR_ERROR may be relevant for a normal user, as it explictely requests DCGMI metrics.
+				verbose_error("Loading EARL DCGMI module: %s", state_msg);
+			}
     }
 #endif // DCGMI
 #endif // USE_GPUS
@@ -1613,7 +1620,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 	sig_ext = metrics->sig_ext;
 
 #if USE_GPUS & DCGMI
-	if (master && dcgmi_lib_is_enabled() && (sig_ext->dcgmis.dcgmi_sets == 0))
+	if (master && dcgmi_lib_is_enabled() && (sig_ext->dcgmis.set_cnt == 0))
 	{
 		dcgmi_lib_dcgmi_sig_init(&sig_ext->dcgmis);
     }
@@ -1623,8 +1630,10 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 
 
 	/* FLOPS */
-	flops_data_accum(&flops_diff[APP], NULL, &metrics->Gflops);
-	flops_help_toold(&flops_diff[APP], metrics->FLOPS);
+	/* flops_data_accum used in this way just computes the Gflops */
+	flops_data_accum(&flops_diff[sign_app_loop_idx], NULL, &metrics->Gflops);
+	/* Copies the FP instruction vector in FLOPS */
+	flops_help_toold(&flops_diff[sign_app_loop_idx], metrics->FLOPS);
 
 	/* num_th is 1 if perf supports accumulating per thread counters */
 	metrics->Gflops = metrics->Gflops * num_th;
@@ -1713,10 +1722,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 				}
 			} else // App signature
 			{
-				if (state_ok(dcgmi_lib_get_global_metrics(&sig_ext->dcgmis)))
-				{
-					dcgmi_lib_report_total_metrics();
-				} else
+				if (state_fail(dcgmi_lib_get_global_metrics(&sig_ext->dcgmis)))
 				{
 					error_lib("Getting global DCGMI metrics: %s", state_msg);
 				}

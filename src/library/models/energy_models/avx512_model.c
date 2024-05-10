@@ -29,7 +29,6 @@
 #include <library/common/verbose_lib.h>
 
 
-
 static coefficient_t **coefficients;
 static coefficient_t *coefficients_sm;
 static int num_coeffs;

@@ -16,9 +16,10 @@
 */
 
 
-
-
 #define _GNU_SOURCE
+
+
+#include <library/policies/policy.h>
 
 #include <sched.h>
 #include <math.h>
@@ -27,40 +28,41 @@
 #endif
 #include <dlfcn.h>
 #include <semaphore.h>
+
 #include <common/includes.h>
 #include <common/system/symplug.h>
 #include <common/environment.h>
 #include <common/types/generic.h>
 #include <common/types/pc_app_info.h>
 #include <common/hardware/hardware_info.h>
+
 #include <management/cpufreq/frequency.h>
 #include <management/imcfreq/imcfreq.h>
 #include <management/cpufreq/cpufreq.h>
+#if USE_GPUS
 #include <management/gpu/gpu.h>
+#endif
+
 #include <report/report.h>
-#include <library/metrics/metrics.h>
+
+#include <daemon/local_api/eard_api.h>
+
+#include <library/loader/module_cuda.h>
 #include <library/api/mpi_support.h>
 #include <library/api/clasify.h>
+#include <library/metrics/metrics.h>
 #include <library/policies/policy_ctx.h>
-#include <library/policies/policy.h>
 #include <library/policies/common/imc_policy_support.h>
 #include <library/policies/common/mpi_stats_support.h>
 #include <library/policies/common/gpu_support.h>
 #include <library/policies/common/cpu_support.h>
+#include <library/policies/common/pc_support.h>
+#include <library/policies/policy_state.h>
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
 #include <library/common/global_comm.h>
-#include <library/loader/module_cuda.h>
 #include <library/tracer/tracer.h>
 #include <library/tracer/tracer_paraver_comp.h>
-#include <library/policies/common/pc_support.h>
-#include <library/policies/policy_state.h>
-#include <daemon/local_api/eard_api.h>
-#include <daemon/local_api/node_mgr.h>
-#include <daemon/powercap/powercap_status_conf.h>
-#if USE_GPUS
-#include <management/gpu/gpu.h>
-#endif
 
 
 /* Verbose levels */
@@ -382,37 +384,10 @@ static state_t policy_set_cpus_governor(uint exclusive);
 static state_t policy_restore_cpus_governor();
 
 
-/**** Auxiliary functions ***/
-#if 0
-state_t policy_load(char *obj_path, polsym_t *psyms)
-{
-    state_t st;
-    if ((st = symplug_open(obj_path, (void **)psyms, polsyms_nam, polsyms_n)) != EAR_SUCCESS){
-        verbose_master(POLICY_INFO, "%sError%s loading policy file: %s", COL_RED, COL_CLR, state_msg);
-    }
-    return st;	
-}
-#endif
+static void fill_cpus_out_of_cgroup(uint exc);
 
 
-void fill_cpus_out_of_cgroup(uint exc)
-{
-  if (exc == 0) return;
-
-  verbosen_master(VEARL_DEBUG, "IDLE freq (%lu) cpus --> ",
-                  frequency_pstate_to_freq(frequency_get_num_pstates()-1));
-
-  int cpu_cnt = arch_desc.top.cpu_count;
-  for (int cpu_idx = 0; cpu_idx < cpu_cnt; cpu_idx++)
-  {
-    if (freq_per_core[cpu_idx] == 0)
-    {
-      freq_per_core[cpu_idx] = frequency_pstate_to_freq(frequency_get_num_pstates()-1);
-      verbosen_master(VEARL_DEBUG, "%d ", cpu_idx);
-    }
-  }
-  verbosen_master(VEARL_DEBUG, "\n");
-}
+static void policy_new_phase(uint phase, signature_t *sig);
 
 #define DEBUG_CPUFREQ_COST 0
 
@@ -422,38 +397,6 @@ static ulong calls_cpufreq = 0;
 #endif
 
 timestamp init_last_phase, init_last_comp;
-
-
-static void policy_new_phase(uint phase, signature_t *sig)
-{
-  verbose_master(3, "policy_new_phase summary computation %s (%u/%u)",
-                 phase_to_str(phase), policy_cpu_bound, policy_mem_bound);
-
-  sig_ext_t *se = (sig_ext_t *) sig->sig_ext;
-  if (se != NULL)
-  {
-    for (uint ph = 0; ph < EARL_MAX_PHASES; ph++) se->earl_phase[ph].elapsed = 0;
-
-    timestamp currt;
-    timestamp_getfast(&currt);
-    se->earl_phase[phase].elapsed = timestamp_diff(&currt, &init_last_phase, TIME_USECS);
-
-    /* For COMP_BOUND we compute if CPU or MEM (or mix) */
-    if (phase == APP_COMP_BOUND)
-    {
-      ullong elapsed_comp = timestamp_diff(&currt, &init_last_comp, TIME_USECS);
-
-      /* policy_cpu_bound and policy_mem_bound are updated only in the APP_COMP_PHASE */
-      verbose_master(3, "COMP_PHASE: cpu %u mem %u mix %u", policy_cpu_bound, policy_mem_bound , !policy_cpu_bound && !policy_mem_bound);
-
-      if (policy_cpu_bound)      se->earl_phase[APP_COMP_CPU].elapsed = elapsed_comp;
-      else if (policy_mem_bound) se->earl_phase[APP_COMP_MEM].elapsed = elapsed_comp;
-      else                            se->earl_phase[APP_COMP_MIX].elapsed = elapsed_comp;  
-    }
-    memcpy(&init_last_phase, &currt, sizeof(timestamp));
-    verbose_time_in_phases(sig);
-  }
-}
 
 
 /* This function confgures freqs for apps consuming lot GPU. */
@@ -497,7 +440,7 @@ state_t policy_busy_waiting_configuration(polctx_t *c,signature_t *my_sig,node_f
 {
     REPORT_PHASE(APP_BUSY_WAITING);    
     if (polsyms_fun.busy_wait_settings != NULL){
-        polsyms_fun.busy_wait_settings(c,my_sig,freqs);
+        polsyms_fun.busy_wait_settings(c, my_sig, freqs);
     }
     return EAR_SUCCESS;
 }
@@ -521,7 +464,7 @@ state_t policy_domain_detail(int status, char* buff){
 }
 
 state_t policy_show_domain(node_freq_domain_t *dom){
-    char detail[64];
+    char detail[32];
 
     verbose_master(2, "--- EAR policy domain ---");
 
@@ -869,14 +812,9 @@ state_t init_power_policy(settings_conf_t *app_settings, resched_t *res)
     if (state_fail(symplug_open(obj_path, (void **)&polsyms_fun, polsyms_nam, polsyms_n))) {
         verbose_error_master("Loading %s: %s", obj_path, state_msg);
     }
-#if 0
-    if (state_fail(policy_load(obj_path, &polsyms_fun))) {
-        verbose_master(POLICY_INFO, "%sERROR%s Loading %s: %s", COL_RED, COL_CLR, obj_path, state_msg);
-    }
-#endif
 
     ear_frequency                 = DEF_FREQ(app_settings->def_freq);
-	init_def_cpufreq_khz          = ear_frequency;
+		init_def_cpufreq_khz          = ear_frequency;
     my_pol_ctx.app	              = app_settings;
     my_pol_ctx.reconfigure        = res;
     my_pol_ctx.user_selected_freq = DEF_FREQ(app_settings->def_freq);
@@ -887,6 +825,7 @@ state_t init_power_policy(settings_conf_t *app_settings, resched_t *res)
     my_pol_ctx.affinity  	      = ear_affinity_is_set;
     my_globalrank                 = masters_info.my_master_rank;
     my_pol_ctx.pc_limit	          = app_settings->pc_opt.current_pc;
+		my_pol_ctx.mpi_enabled				= is_mpi_enabled();
 
 #if MPI
     if (PMPI_Comm_dup(masters_info.new_world_comm, &my_pol_ctx.mpi.comm) != MPI_SUCCESS) {
@@ -960,8 +899,6 @@ state_t init_power_policy(settings_conf_t *app_settings, resched_t *res)
 /* freq_set and ready are output values */
 /* There is not a GPU part here, still pending */
 /* The CPU freq and GPu freq are set in this function, so freq_set is just a reference for the CPU freq selected */
-
-
 state_t policy_app_apply(ulong *freq_set, int *ready)
 {
     polctx_t *c=&my_pol_ctx;
@@ -1028,6 +965,7 @@ state_t policy_node_apply(signature_t *my_sig, ulong *freq_set, int *ready)
 #else
         *ready = EAR_POLICY_CONTINUE;
 #endif
+				verbose_policy_info("EAR policy... ready");
         return EAR_SUCCESS;
     }
 
@@ -1463,7 +1401,7 @@ state_t policy_ok(signature_t *curr, signature_t *prev, int *ok)
 state_t policy_max_tries(int *intents)
 {
     polctx_t *c=&my_pol_ctx;
-    if (masters_info.my_master_rank < 0 ){*intents = 100000; return EAR_SUCCESS;}
+    if (masters_info.my_master_rank < 0){*intents = 100000; return EAR_SUCCESS;}
     if (polsyms_fun.max_tries!=NULL)
     {
         return	polsyms_fun.max_tries( c,intents);
@@ -1511,11 +1449,12 @@ state_t policy_loop_init(loop_id_t *loop_id)
     preturn(polsyms_fun.loop_init, &my_pol_ctx, loop_id);
 }
 
-/* This function is executed at each loop end */
+
+/* This function is executed at each loop end. */
 state_t policy_loop_end(loop_id_t *loop_id)
 {
-    polctx_t *c=&my_pol_ctx;
-    preturn(polsyms_fun.loop_end,c, loop_id);
+	polctx_t *c = &my_pol_ctx;
+	preturn(polsyms_fun.loop_end, c, loop_id);
 }
 
 /* This function is executed at each loop iteration or beginning of a period */
@@ -1643,7 +1582,7 @@ state_t policy_mpi_end(mpi_call call_type)
 		polctx_t *c = &my_pol_ctx;
 		if (polsyms_fun.mpi_end != NULL)
 		{
-			st = polsyms_fun.mpi_end(c,call_type, &per_process_node_freq, &process_id);
+			st = polsyms_fun.mpi_end(c, call_type, &per_process_node_freq, &process_id);
 			if (state_fail(st))
 			{
 				verbose_error("At policy MPI call end: %s", state_msg);
@@ -1679,35 +1618,6 @@ state_t policy_configure()
     preturn(polsyms_fun.configure, c);
 }
 
-/* This function is executed forces a given frequency independently of the policy */
-state_t policy_force_global_frequency(ulong new_f)
-{
-    ulong *freq_set = calloc(MAX_CPUS_SUPPORTED,sizeof(ulong));
-    polctx_t *c=&my_pol_ctx;
-    ear_frequency = new_f;
-    int i;
-
-    if (masters_info.my_master_rank>=0)
-    {
-        c->app->def_freq = new_f;
-        for (i = 0 ; i < lib_shared_region->num_processes; i++) {
-            freq_set[i] = new_f;
-        }
-        if (ear_affinity_is_set){
-            from_proc_to_core(freq_set, lib_shared_region->num_processes, &freq_per_core, arch_desc.top.cpu_count, NULL, NULL, ALL_PROCESSES);
-        }else{
-            for (i=0;i<MAX_CPUS_SUPPORTED;i++) {
-                freq_per_core[i] = freq_set[0];
-            }
-        }
-        *(c->ear_frequency) = frequency_set_with_list(0, freq_per_core);
-        if (*(c->ear_frequency) == 0) {
-            *(c->ear_frequency) = freq_set[0];
-        }
-        // eards_change_freq(ear_frequency);
-    }
-    return EAR_SUCCESS;
-}
 
 state_t policy_get_current_freq(node_freqs_t *freq_set)
 {
@@ -2693,3 +2603,55 @@ state_t policy_restore_to_mpi_pstate(uint index)
   return EAR_SUCCESS;
 }
 #endif
+
+
+static void fill_cpus_out_of_cgroup(uint exc)
+{
+  if (exc == 0) return;
+
+  verbosen_master(VEARL_DEBUG, "IDLE freq (%lu) cpus --> ",
+                  frequency_pstate_to_freq(frequency_get_num_pstates()-1));
+
+  int cpu_cnt = arch_desc.top.cpu_count;
+  for (int cpu_idx = 0; cpu_idx < cpu_cnt; cpu_idx++)
+  {
+    if (freq_per_core[cpu_idx] == 0)
+    {
+      freq_per_core[cpu_idx] = frequency_pstate_to_freq(frequency_get_num_pstates()-1);
+      verbosen_master(VEARL_DEBUG, "%d ", cpu_idx);
+    }
+  }
+  verbosen_master(VEARL_DEBUG, "\n");
+}
+
+
+static void policy_new_phase(uint phase, signature_t *sig)
+{
+  verbose_master(3, "policy_new_phase summary computation %s (%u/%u)",
+                 phase_to_str(phase), policy_cpu_bound, policy_mem_bound);
+
+  sig_ext_t *se = (sig_ext_t *) sig->sig_ext;
+  if (se != NULL)
+  {
+    for (uint ph = 0; ph < EARL_MAX_PHASES; ph++) se->earl_phase[ph].elapsed = 0;
+
+    timestamp currt;
+    timestamp_getfast(&currt);
+    se->earl_phase[phase].elapsed = timestamp_diff(&currt, &init_last_phase, TIME_USECS);
+
+    /* For COMP_BOUND we compute if CPU or MEM (or mix) */
+    if (phase == APP_COMP_BOUND)
+    {
+      ullong elapsed_comp = timestamp_diff(&currt, &init_last_comp, TIME_USECS);
+
+      /* policy_cpu_bound and policy_mem_bound are updated only in the APP_COMP_PHASE */
+      verbose_master(3, "COMP_PHASE: cpu %u mem %u mix %u", policy_cpu_bound, policy_mem_bound , !policy_cpu_bound && !policy_mem_bound);
+
+      if (policy_cpu_bound)      se->earl_phase[APP_COMP_CPU].elapsed = elapsed_comp;
+      else if (policy_mem_bound) se->earl_phase[APP_COMP_MEM].elapsed = elapsed_comp;
+      else                            se->earl_phase[APP_COMP_MIX].elapsed = elapsed_comp;  
+    }
+    memcpy(&init_last_phase, &currt, sizeof(timestamp));
+    verbose_time_in_phases(sig);
+  }
+}

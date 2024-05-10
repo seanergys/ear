@@ -22,6 +22,7 @@
 #include <errno.h>
 
 #include <common/output/debug.h>
+#include <metrics/gpu/gpuprof.h>
 
 
 state_t dcgmi_lib_data_alloc(dcgmi_lib_t *dcgmi_lib_data, int set_count)
@@ -33,72 +34,60 @@ state_t dcgmi_lib_data_alloc(dcgmi_lib_t *dcgmi_lib_data, int set_count)
 		dcgmi_lib_data->dcgmi_set_count = set_count;
 
 		// clean first all pointers to then safetely call free func. in case of error.
-		dcgmi_lib_data->dcgmi_set_sizes		= NULL;
-		dcgmi_lib_data->dcgmi_events			= NULL;
-		dcgmi_lib_data->dcgmi_events_str	= NULL;
-		dcgmi_lib_data->dcgmi_metrics			= NULL;
-		dcgmi_lib_data->dcgmi_metrics_agg = NULL;
+		dcgmi_lib_data->dcgmi_set_sizes			= NULL;
+		dcgmi_lib_data->dcgmi_event_ids			= NULL;
+		dcgmi_lib_data->dcgmi_event_ids_csv	= NULL;
+		dcgmi_lib_data->gpuprof_read1				= NULL;
+		dcgmi_lib_data->gpuprof_read2 			= NULL;
+		dcgmi_lib_data->gpuprof_diff				= NULL;
+		dcgmi_lib_data->gpuprof_agg					= NULL;
 
 		// Set sizes array
 		dcgmi_lib_data->dcgmi_set_sizes = (int *) malloc(set_count * sizeof(int));
 
 		// Event sets array
-		dcgmi_lib_data->dcgmi_events = (uint **) calloc(set_count, sizeof(uint *));
+		dcgmi_lib_data->dcgmi_event_ids = (uint **) calloc(set_count, sizeof(uint *));
 
 		// Event sets string array
-		dcgmi_lib_data->dcgmi_events_str = (char **) calloc(set_count, sizeof(char *));
+		dcgmi_lib_data->dcgmi_event_ids_csv = (char **) calloc(set_count, sizeof(char *));
 
 		// Event sets metrics array
-		dcgmi_lib_data->dcgmi_metrics = (dcgmi_t **) malloc(set_count * sizeof(dcgmi_t *));
-
-		// Event sets aggregated metrics array
-		dcgmi_lib_data->dcgmi_metrics_agg = (dcgmi_t **) malloc(set_count * sizeof(dcgmi_t *));
+		dcgmi_lib_data->gpuprof_read1 = (gpuprof_t **) malloc(set_count * sizeof(gpuprof_t *));
+		dcgmi_lib_data->gpuprof_read2 = (gpuprof_t **) malloc(set_count * sizeof(gpuprof_t *));
+		dcgmi_lib_data->gpuprof_diff	= (gpuprof_t **) malloc(set_count * sizeof(gpuprof_t *));
+		dcgmi_lib_data->gpuprof_agg		= (gpuprof_t **) malloc(set_count * sizeof(gpuprof_t *));
 
 		if (dcgmi_lib_data->dcgmi_set_sizes &&
-				dcgmi_lib_data->dcgmi_events &&
-				dcgmi_lib_data->dcgmi_events_str &&
-				dcgmi_lib_data->dcgmi_metrics &&
-				dcgmi_lib_data->dcgmi_metrics_agg)
+				dcgmi_lib_data->dcgmi_event_ids &&
+				dcgmi_lib_data->dcgmi_event_ids_csv &&
+				dcgmi_lib_data->gpuprof_read1 &&
+				dcgmi_lib_data->gpuprof_read2 &&
+				dcgmi_lib_data->gpuprof_diff &&
+				dcgmi_lib_data->gpuprof_agg
+				)
 		{
 			return EAR_SUCCESS;
 		} else
 		{
 			free(dcgmi_lib_data->dcgmi_set_sizes);
 
-			free(dcgmi_lib_data->dcgmi_events);
-			free(dcgmi_lib_data->dcgmi_events_str);
+			free(dcgmi_lib_data->dcgmi_event_ids);
+			free(dcgmi_lib_data->dcgmi_event_ids_csv);
 
-			free(dcgmi_lib_data->dcgmi_metrics);
-			free(dcgmi_lib_data->dcgmi_metrics_agg);
+			free(dcgmi_lib_data->gpuprof_read1);
+			free(dcgmi_lib_data->gpuprof_read2);
+			free(dcgmi_lib_data->gpuprof_diff);
+			free(dcgmi_lib_data->gpuprof_agg);
 
-#if SHOW_DEBUGS
-			if (!dcgmi_lib_data->dcgmi_set_sizes)
-			{
-				debug("dcgmi_set_sizes: %d", errno);
-			}
+			dcgmi_lib_data->dcgmi_set_sizes			= NULL;
+			dcgmi_lib_data->dcgmi_event_ids			= NULL;
+			dcgmi_lib_data->dcgmi_event_ids_csv	= NULL;
+			dcgmi_lib_data->gpuprof_read1				= NULL;
+			dcgmi_lib_data->gpuprof_read2 			= NULL;
+			dcgmi_lib_data->gpuprof_diff				= NULL;
+			dcgmi_lib_data->gpuprof_agg					= NULL;
 
-			if (!dcgmi_lib_data->dcgmi_events)
-			{
-				debug("dcgmi_events: %d", errno);
-			}
-
-			if (!dcgmi_lib_data->dcgmi_events_str)
-			{
-				debug("dcgmi_events_str: %d", errno);
-			}
-
-			if (!dcgmi_lib_data->dcgmi_metrics)
-			{
-				debug("dcgmi_metrics: %d", errno);
-			}
-
-			if (!dcgmi_lib_data->dcgmi_metrics_agg)
-			{
-				debug("dcgmi_metrics_agg: %d", errno);
-			}
-#endif // SHOW_DEBUGS
-
-			dcgmi_lib_ret_alloc_err();
+			return_msg(EAR_ERROR, Generr.alloc_error);
 		}
 	} else
 	{

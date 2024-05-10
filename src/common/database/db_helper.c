@@ -1491,7 +1491,7 @@ int db_read_applications(application_t **apps,uint is_learning, int max_apps, ch
     else if (is_learning && node_name == NULL)
     {
         sprintf(query,  "SELECT Learning_applications.* FROM Learning_applications INNER JOIN "\
-                "Learning_jobs ON job_id = id where job_id < (SELECT max(id) FROM (SELECT (id) FROM "\
+                "Learning_jobs ON Learning_applications.job_id = Learning_jobs.job_id where job_id < (SELECT max(id) FROM (SELECT (id) FROM "\
                 "Learning_jobs WHERE id > %d ORDER BY id asc limit %u) as t1)+1 and "\
                 "job_id > %d GROUP BY job_id, step_id", current_job_id, max_apps, current_job_id);
     }
@@ -1509,8 +1509,8 @@ int db_read_applications(application_t **apps,uint is_learning, int max_apps, ch
     else
     {
         sprintf(query,  "SELECT Applications.* FROM Applications INNER JOIN "\
-                "Jobs ON job_id = id where job_id < (SELECT max(id) FROM (SELECT (id) FROM "\
-                "Jobs WHERE id > %d ORDER BY id asc limit %u) as t1)+1 and "\
+                "Jobs ON Applications.job_id = Jobs.job_id where job_id < (SELECT max(job_id) FROM (SELECT (job_id) FROM "\
+                "Jobs WHERE job_id > %d ORDER BY job_id asc limit %u) as t1)+1 and "\
                 "job_id > %d GROUP BY job_id, step_id", current_job_id, max_apps, current_job_id);
     }
 
@@ -1653,12 +1653,12 @@ ulong get_num_applications(char is_learning, char *node_name)
 }
 
 #define MAX_DC_POWER_QUERY  "SELECT MAX(DC_power) FROM Learning_applications INNER JOIN Power_signatures ON "\
-    "power_signature_id = id INNER JOIN Learning_jobs ON job_id = Learning_jobs.id AND "\
+    "power_signature_id = id INNER JOIN Learning_jobs ON Learning_applications.job_id = Learning_jobs.job_id AND "\
     "Learning_applications.step_id = Learning_jobs.step_id WHERE app_id LIKE '%%%s%%' AND "\
     "Learning_jobs.def_f = %lu"
 
 #define MMAX_DC_POWER_QUERY "SELECT MAX(max_DC_power) FROM Learning_applications INNER JOIN Power_signatures ON "\
-    "power_signature_id = id INNER JOIN Learning_jobs ON job_id = Learning_jobs.id AND "\
+    "power_signature_id = id INNER JOIN Learning_jobs ON Learning_applications.job_id = Learning_jobs.job_id AND "\
     "Learning_applications.step_id = Learning_jobs.step_id WHERE app_id LIKE '%%%s%%' AND "\
     "Learning_jobs.def_f = %lu"
 

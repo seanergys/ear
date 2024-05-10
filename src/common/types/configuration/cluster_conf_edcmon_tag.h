@@ -15,13 +15,12 @@
 * and COPYING.EPL files.
 */
 
-#ifndef _EDCMON_TAG_CONF_H
+#ifndef _EDCMONTAG_CONF_H
 #define _EDCMONTAG_CONF_H
 
 #include <common/config.h>
 #include <common/states.h>
 #include <common/types/generic.h>
-
 
 typedef enum {
     storage     = 0,
@@ -29,6 +28,8 @@ typedef enum {
     management  = 2,
     others      = 3,
 } pdu_t;
+
+#define pdu_type_to_str(t) ((t == storage)?"storage":((t == network)?"network":((t == management)?"management":"others")))
 
 typedef struct edcmon
 {

@@ -313,22 +313,24 @@ state_t policy_loop_init(polctx_t *c, loop_id_t *loop_id)
     return EAR_SUCCESS;
 }
 
+#if 0
 state_t policy_loop_end(polctx_t *c, loop_id_t *loop_id)
 {
-    #if 0
-    if ((c!=NULL) && (c->reset_freq_opt))
-    {
-        uint pstate_index;
-        *(c->ear_frequency) = 0;
-        if (state_ok(mgt_cpufreq_get_index(no_ctx, (ullong) FREQ_DEF(c->app->def_freq), &pstate_index, 0))) {
-            if(state_ok(mgt_cpufreq_set_current(no_ctx, pstate_index, all_cpus))) {
-                *(c->ear_frequency) = FREQ_DEF(c->app->def_freq);
-            }
-        }
-    }
-    #endif
-    return EAR_SUCCESS;
+#if 0
+	if ((c!=NULL) && (c->reset_freq_opt))
+	{
+		uint pstate_index;
+		*(c->ear_frequency) = 0;
+		if (state_ok(mgt_cpufreq_get_index(no_ctx, (ullong) FREQ_DEF(c->app->def_freq), &pstate_index, 0))) {
+			if(state_ok(mgt_cpufreq_set_current(no_ctx, pstate_index, all_cpus))) {
+				*(c->ear_frequency) = FREQ_DEF(c->app->def_freq);
+			}
+		}
+	}
+#endif
+	return EAR_SUCCESS;
 }
+#endif
 
 /** This is the main function in this file, it implements the power policy. */
 state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *ready)

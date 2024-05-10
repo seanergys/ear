@@ -239,7 +239,7 @@ void create_tables(void *connection)
     run_query(connection, query);
 
     sprintf(query, "CREATE TABLE IF NOT EXISTS Jobs ("
-            "id INT unsigned NOT NULL, "
+            "job_id INT unsigned NOT NULL, "
             "step_id INT unsigned NOT NULL, "
             "local_id INT unsigned NOT NULL, "
             "user_id VARCHAR(128), "
@@ -256,7 +256,7 @@ void create_tables(void *connection)
             "user_acc VARCHAR(256), "
             "user_group VARCHAR(256), "
             "e_tag VARCHAR(256), "
-            "PRIMARY KEY(id, step_id, local_id))");
+            "PRIMARY KEY(job_id, step_id, local_id))");
     run_query(connection, query);
 
     if (signature_detail)
@@ -413,7 +413,7 @@ void create_tables(void *connection)
     run_query(connection, query);
 
     sprintf(query, "CREATE TABLE IF NOT EXISTS Learning_jobs ("
-            "id INT unsigned NOT NULL, "
+            "job_id INT unsigned NOT NULL, "
             "step_id INT unsigned NOT NULL, "
             "local_id INT unsigned NOT NULL, "
             "user_id VARCHAR(256), "
@@ -430,7 +430,7 @@ void create_tables(void *connection)
             "user_acc VARCHAR(256) NOT NULL, "
             "user_group VARCHAR(256), "
             "e_tag VARCHAR(256), "
-            "PRIMARY KEY(id, step_id, local_id))");
+            "PRIMARY KEY(job_id, step_id, local_id))");
     run_query(connection, query);
 
     if (signature_detail)
@@ -535,7 +535,7 @@ void create_tables(void *connection)
     run_query(connection, query);
 
     sprintf(query, "CREATE TABLE IF NOT EXISTS Jobs ("
-            "id INT  NOT NULL, "
+            "job_id INT  NOT NULL, "
             "step_id INT  NOT NULL, "
             "local_id INT  NOT NULL, "
             "user_id VARCHAR(128), "
@@ -552,7 +552,7 @@ void create_tables(void *connection)
             "user_acc VARCHAR(256), "
             "user_group VARCHAR(256), "
             "e_tag VARCHAR(256), "
-            "PRIMARY KEY(id, step_id, local_id))");
+            "PRIMARY KEY(job_id, step_id, local_id))");
     run_query(connection, query);
 
     if (signature_detail)
@@ -709,7 +709,7 @@ void create_tables(void *connection)
     run_query(connection, query);
 
     sprintf(query, "CREATE TABLE IF NOT EXISTS Learning_jobs ("
-            "id INT  NOT NULL, "
+            "job_id INT  NOT NULL, "
             "step_id INT  NOT NULL, "
             "local_id INT  NOT NULL, "
             "user_id VARCHAR(256), "
@@ -726,7 +726,7 @@ void create_tables(void *connection)
             "user_acc VARCHAR(256) NOT NULL, "
             "user_group VARCHAR(256), "
             "e_tag VARCHAR(256), "
-            "PRIMARY KEY(id, step_id, local_id))");
+            "PRIMARY KEY(job_id, step_id, local_id))");
     run_query(connection, query);
 
     if (signature_detail)

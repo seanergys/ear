@@ -52,9 +52,11 @@ static state_t static_open(char *path, void *calls[], const char *names[], uint 
     void *handle;
     debug("trying to access to '%s'", path);
     if (access(path, X_OK) != 0) {
+				debug("plugin %s cannot be loaded error=%s", path, strerror(errno));
         return_msg(EAR_ERROR, strerror(errno));
     }
     if ((handle = dlopen(path, flags)) == NULL) {
+				debug("plugin %s cannot be loaded by symplug error=%s", path, dlerror());
         return_msg(EAR_ERROR, dlerror());
     }
     debug("dlopen ok");

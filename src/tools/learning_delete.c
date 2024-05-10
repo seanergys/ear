@@ -40,10 +40,10 @@
 #define ALL_QUERY4  "DELETE FROM Learning_jobs"
 
 #define POW_SIG_QUERY "DELETE FROM Power_signatures WHERE id IN (SELECT power_signature_id from Learning_applications " \
-                        "INNER JOIN Learning_jobs ON Learning_jobs.id=job_id AND Learning_jobs.step_id=Learning_applications.step_id "\
+                        "INNER JOIN Learning_jobs ON Learning_jobs.job_id=Learning_applications.job_id AND Learning_jobs.step_id=Learning_applications.step_id "\
                         "WHERE " 
 #define NODE_QUERY  "DELETE Learning_signatures, Learning_applications, Learning_jobs FROM Learning_jobs " \
-                    "INNER JOIN Learning_applications INNER JOIN Learning_signatures ON Learning_jobs.id=job_id " \
+                    "INNER JOIN Learning_applications INNER JOIN Learning_signatures ON Learning_jobs.job_id=Learning_applications.job_id " \
                     "AND Learning_jobs.step_id=Learning_applications.step_id AND Learning_signatures.id=signature_id "\
                     "WHERE "
 

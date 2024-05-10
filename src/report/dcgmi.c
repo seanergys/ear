@@ -204,7 +204,7 @@ state_t report_applications(report_id_t *id,application_t *apps, uint count)
 				sigex = (sig_ext_t *)apps[i].signature.sig_ext;
 				dcgmis = (dcgmi_sig_t *)&sigex->dcgmis;
 
-				if (dcgmis->dcgmi_sets && num_gpus)
+				if (dcgmis->set_cnt && num_gpus)
 				{
 					dcgmi_lib_dcgmi_sig_to_csv(dcgmis, extra_metrics, sizeof(extra_metrics));
 					dprintf(fd_app, "%s;", extra_metrics);
@@ -282,7 +282,7 @@ state_t report_loops(report_id_t *id, loop_t *loops, uint count)
 #if DCGMI
 			sigex = (sig_ext_t *)loops[i].signature.sig_ext;
 			dcgmis = (dcgmi_sig_t *)&sigex->dcgmis;
-			if (dcgmis->dcgmi_sets && num_gpus)
+			if (dcgmis->set_cnt && num_gpus)
 			{
 				dcgmi_lib_dcgmi_sig_to_csv(dcgmis, extra_metrics, sizeof(extra_metrics));
 				dprintf(fd_loops,"%s;", extra_metrics);

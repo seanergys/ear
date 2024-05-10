@@ -22,7 +22,8 @@
 #include <common/states.h>
 #include <common/types.h>
 
-#include <metrics/gpu/archs/dcgmi.h>
+// #include <metrics/gpu/archs/dcgmi.h>
+#include <metrics/gpu/gpuprof.h>
 
 #include <library/metrics/dcgmi_lib/common.h>
 
@@ -35,12 +36,12 @@
 
 typedef struct dcgmi_sig
 {
-	uint    dcgmi_sets;				/**< The total number of sets. */
-	uint    dcgmi_gpus; 			/**< The number of GPUs supported by DCGMI module. */
-	uint    dcgmi_num_ev; 		/**< The total number of events supported. */
-	uint    **dcgmi_events; 	/**< The event index list for each set. */
-	uint    *dcgmi_instances; /**< The number of instances for each set. */
-	dcgmi_t **dcgmi_metrics;	/**< For each set, and for each GPU,the event metrics list. */
+	uint			set_cnt;								/**< The total number of sets. */
+	uint			gpu_cnt;								/**< The number of GPUs supported by DCGMI module. */
+	uint			event_cnt;							/**< The total number of events supported. */
+	uint			**event_list_sets;			/**< The event index list for each set. */
+	uint			*set_instances_cnt;			/**< The number of instances for each set. */
+	gpuprof_t	**event_metrics_sets;		/**< For each set, and for each GPU, the event metrics list. */
 } dcgmi_sig_t;
 
 
@@ -68,9 +69,6 @@ state_t dcgmi_lib_get_current_metrics(dcgmi_sig_t *dcgmi_sig);
 
 
 state_t dcgmi_lib_get_global_metrics(dcgmi_sig_t *dcgmi_sig);
-
-
-void dcgmi_lib_report_total_metrics();
 
 
 void dcgmi_lib_reset_instances(dcgmi_sig_t *dcgmi_sig);

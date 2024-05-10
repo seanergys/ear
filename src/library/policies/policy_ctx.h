@@ -15,8 +15,8 @@
 * and COPYING.EPL files.
 */
 
-#ifndef EAR_POLICIES_CTX_H
-#define EAR_POLICIES_CTX_H
+#ifndef _EARL_POLICY_CTX_H
+#define _EARL_POLICY_CTX_H
 
 #include <common/config.h>
 #include <common/states.h>
@@ -28,6 +28,7 @@
 #if MPI
 #include <mpi.h>
 #endif
+
 
 #if MPI
 typedef struct mpi_ctx {
@@ -41,6 +42,7 @@ typedef struct mpi_ctx {
 } mpi_ctx_t;
 #endif
 
+
 typedef struct node_freqs {
 	ulong *cpu_freq; 			// Freq in KHz
 	ulong *imc_freq;     	// Pstates , no frequency
@@ -49,20 +51,21 @@ typedef struct node_freqs {
 } node_freqs_t;
 
 
-typedef struct policy_context {
+typedef struct policy_context
+{
+	int							 affinity;
+	int							 pc_limit;
+	int							 mpi_enabled;
+	uint						 num_pstates;
+	uint						 use_turbo;
+	uint						 num_gpus;
+	ulong						 user_selected_freq;
+	ulong						 reset_freq_opt;
+	ulong						*ear_frequency;
 	settings_conf_t *app;
-	resched_t *reconfigure;
-	ulong user_selected_freq;
-	ulong reset_freq_opt;
-	ulong *ear_frequency;
-	uint  num_pstates;
-	uint use_turbo;
-	//job_t 		*my_job
-	ctx_t     gpu_mgt_ctx;
-	uint      num_gpus;
-	int affinity;
-	int pc_limit;
-	mpi_ctx_t mpi;
+	resched_t				*reconfigure;
+	ctx_t						 gpu_mgt_ctx;
+	mpi_ctx_t				 mpi;
 } polctx_t;
 
 void print_policy_ctx(polctx_t *p);
@@ -104,4 +107,4 @@ typedef struct policy_symbols {
 
 void compute_avg_sel_freq(ulong * avg_sel_mem_f, ulong *imcfreqs);
 
-#endif //EAR_POLICIES_H
+#endif // _EARL_POLICY_CTX_H
