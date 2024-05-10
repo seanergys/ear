@@ -26,7 +26,7 @@ FEAT_DB_MYSQL      = @FEAT_DB_MYSQL@
 FEAT_DB_PSQL       = @FEAT_DB_PGSQL@
 FEAT_EXAMON        = 0
 FEAT_DB_CASSANDRA  = 0
-FEAT_WF_SUPPORT    = 0
+FEAT_WF_SUPPORT    = 1
 FEAT_DLB           = @FEAT_DLB@
 # Compilers
 CC                 = @CC@

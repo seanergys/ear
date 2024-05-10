@@ -313,9 +313,8 @@ int eards_connect(application_t *my_app, ulong lid)
 
 
 #if WF_SUPPORT
-	#if 0
-	/* Create the common base path used inside this block ("tmp/id/local_id") */
 	char base_path[MAX_PATH_SIZE];
+	/* Create the common base path used inside this block ("tmp/id/local_id") */
 	state_t ret_st = create_base_path(base_path, sizeof(base_path),
 																		ear_tmp, (uint) my_id, (uint) my_app->job.local_id);
 
@@ -323,6 +322,7 @@ int eards_connect(application_t *my_app, ulong lid)
 	{
      return_print(EAR_ERROR, "Error when building the EAR communicator directory path name.");
 	}
+	#if 0
 
 
 	/* We must first create the directory of this application */
@@ -636,7 +636,6 @@ state_t eards_get_state(eard_state_t *state)
     return eard_rpc(RPC_GET_STATE, NULL, 0, (char *) state, sizeof(eard_state_t));
 }
 
-#if 0
 static state_t create_base_path(char *base_path, size_t base_path_sz, char *tmp_path, uint job_step_id, uint app_local_id)
 {
 	int ret = snprintf(base_path, base_path_sz, "%s/%u/%u", tmp_path, job_step_id, app_local_id);
@@ -646,6 +645,7 @@ static state_t create_base_path(char *base_path, size_t base_path_sz, char *tmp_
 		return EAR_ERROR;
 	}
 }
+#if 0
 
 static state_t create_app_directory(char *path)
 {

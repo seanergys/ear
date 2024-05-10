@@ -264,7 +264,7 @@ static state_t check_eard_earl_compatibility(state_t eard_connect_state)
 
 	eard_state_t eard_conf;
 
-#if VERSION_MAJOR < 5 || 1
+#if VERSION_MAJOR < 5 
 	verbose_master(0, "Warning, EARD compatibility test not supported");
 	return EAR_SUCCESS;
 #endif
