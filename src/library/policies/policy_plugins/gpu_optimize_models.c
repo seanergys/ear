@@ -142,7 +142,7 @@ state_t policy_init(polctx_t *c)
 			/* The size of our projection matrix is determined bu the maximum number of frequencies. 
         This procedure is not much useful since we are assumming later all GPUs have the same clock list. 
       */
-			if (VERB_.)
+			if (VERB_ON(3))
 			{
 				verbose_master(3, "#Freqs. in GPU%d: %u", i, gpuf_list_items[i]);
 				for (int j = 0; j < gpuf_list_items[i]; j++)
