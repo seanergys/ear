@@ -57,7 +57,6 @@ typedef struct policy_context {
 	ulong *ear_frequency;
 	uint  num_pstates;
 	uint use_turbo;
-	//job_t 		*my_job
 	ctx_t     gpu_mgt_ctx;
 	uint      num_gpus;
 	int affinity;
