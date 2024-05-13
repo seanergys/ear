@@ -341,14 +341,6 @@ static uint validation_new_gpu = 0;
 static void metrics_static_dispose();
 
 
-node_freq_domain_t earl_default_domains = {
-	.cpu 	= POL_DEFAULT,
-	.mem 	= POL_DEFAULT,
-	.gpu 	= POL_DEFAULT,
-	.gpumem = POL_DEFAULT,
-};
-
-
 const metrics_t *metrics_get(uint api)
 {
     switch(api) {
@@ -383,62 +375,77 @@ uint metrics_CPU_phase_ok()
 }
 
 
-
 static void metrics_configuration(topology_t *tp)
 {
 	char topo_str[1024];
-    cfb_t bf;
+	cfb_t bf;
+
 	if (!EARL_LIGHT) return;
 
 	if (eards_connected())
-    {
-		verbose_info2_master("EARD connected");
+	{
+		verbose_info2_master("EARD connected.");
 	} else
-    {
+	{
 		verbose_warning_master("EARD not connected. Switch to monitoring ?");
 	}
 
 	if (!mgt_cpufreq.ok)
-    {
-		verbose_warning_master("Mgt cpufreq is not ok, switching to monitoring");
+	{
+		verbose_warning_master("Mgt cpufreq is not ok, switching to monitoring.");
 
-		earl_default_domains.cpu = POL_NOT_SUPPORTED;
+		// earl_default_domains.cpu = POL_NOT_SUPPORTED;
 
 		topology_tostr(tp, topo_str, sizeof(topo_str));
-		verbose_master(ERROR_VERB,"%s", topo_str);
-        cpufreq_base_init(tp, &bf);
+		verbose_master(ERROR_VERB, "%s", topo_str);
+
+		cpufreq_base_init(tp, &bf);
 		verbose_info2_master("Frequency detected %lu", (ulong) bf.frequency);
 	}
-	if (!mgt_imcfreq.ok){
+
+	if (!mgt_imcfreq.ok)
+	{
 		verbose_warning_master("Mgt imcfreq is not ok, swtching to monitoring for IMC");
-		earl_default_domains.mem = POL_NOT_SUPPORTED;
+		// earl_default_domains.mem = POL_NOT_SUPPORTED;
 	}
+
 #if USE_GPUS
-    if (!mgt_gpu.ok) {
+    if (!mgt_gpu.ok)
+		{
         verbose_warning_master("GPU dummy API, swtching to monitoring for GPU.");
-        earl_default_domains.gpu = POL_NOT_SUPPORTED;
+        // earl_default_domains.gpu = POL_NOT_SUPPORTED;
     }
 #endif // USE_GPUS
+
 	if (!met_cpufreq.ok && mgt_cpufreq.ok) {
 		verbose_warning_master("Avg cpufreq is not ok. Using mgt_cpufreq");
 	}
-	if (!met_imcfreq.ok && mgt_imcfreq.ok){
+
+	if (!met_imcfreq.ok && mgt_imcfreq.ok)
+	{
 		verbose_warning_master("Avg imcfreq is not ok. Using mgt_imcfreq");
 	}
-  if (! met_bwidth.ok)
+
+  if (!met_bwidth.ok)
   {
 		verbose_warning_master("Mem bandwith not ok. swtching to monitoring");
-		earl_default_domains.cpu = POL_NOT_SUPPORTED;
+		// earl_default_domains.cpu = POL_NOT_SUPPORTED;
   }
-  if(!met_flops.ok){
+
+  if(!met_flops.ok)
+	{
 		verbose_warning_master("FLOPS not available");
 	}
-  if (!met_cache.ok){
+
+  if (!met_cache.ok)
+	{
 		verbose_warning_master("Cache not available");
 	}
-  if (!met_cpi.ok){
+
+  if (!met_cpi.ok)
+	{
 		verbose_warning_master("CPI not available. swtching to monitoring");
-		earl_default_domains.cpu = POL_NOT_SUPPORTED;
+		// earl_default_domains.cpu = POL_NOT_SUPPORTED;
 	}
 }
 

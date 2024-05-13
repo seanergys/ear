@@ -119,6 +119,7 @@ p_plugin_t policy_plugin_load(char *plugin_path_name)
 void policy_plugin_dispose(p_plugin_t policy_plugin)
 {
 	free(policy_plugin);
+	policy_plugin = NULL;
 }
 
 
