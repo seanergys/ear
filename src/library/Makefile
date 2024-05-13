@@ -90,6 +90,7 @@ core_OBJS = \
 						policies/common/cpu_support.o \
 						policies/common/mpi_stats_support.o \
 						policies/common/imc_policy_support.o \
+						policies/common/cpuprio_support.o \
 						policies/common/generic.o \
 						states/states_comm.o \
 						states/states.o \
