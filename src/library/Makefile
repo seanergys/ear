@@ -85,6 +85,7 @@ core_OBJS = \
 						models/cpu_power_model.o \
 						models/energy_model.o \
 						policies/policy.o \
+						policies/policy_ctx.o \
 						policies/common/pc_support.o \
 						policies/common/gpu_support.o \
 						policies/common/cpu_support.o \

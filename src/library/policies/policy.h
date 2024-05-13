@@ -58,10 +58,6 @@ state_t policy_new_iteration(signature_t *sig);
 state_t policy_mpi_init(mpi_call call_type);
 state_t policy_mpi_end(mpi_call call_type);
 
-state_t policy_domain_detail(int status, char *buff);
-state_t policy_show_domain(node_freq_domain_t *dom);
-
-
 #if MPI_OPTIMIZED
 state_t policy_restore_to_mpi_pstate(uint index);
 #endif

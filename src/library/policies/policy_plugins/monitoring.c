@@ -83,9 +83,6 @@ state_t policy_init(polctx_t *c)
 #if USE_GPUS
     if (masters_info.my_master_rank >= 0)
 		{
-        if (policy_gpu_init_ctx(c) != EAR_SUCCESS) {
-            verbose(MON_ERROR_LVL, "%sError%s Loading GPU context.", COL_RED, COL_CLR);
-        }
         verbose(MON_INFO_LVL, "RANK %d GPU init", masters_info.my_master_rank);
 
         if (c->num_gpus) {

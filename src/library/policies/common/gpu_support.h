@@ -15,14 +15,13 @@
 * and COPYING.EPL files.
 */
 
-#ifndef _GPU_SUPPORT_H_
-#define _GPU_SUPPORT_H_
-#define _GNU_SOURCE
+
+#ifndef _EARL_GPU_SUPPORT_H_
+#define _EARL_GPU_SUPPORT_H_
+
 #include <common/includes.h>
 #include <library/policies/policy_ctx.h>
 
-
-state_t policy_gpu_load(settings_conf_t *app_settings,polsym_t *psyms);
-state_t policy_gpu_init_ctx(polctx_t *c);
+state_t policy_gpu_load(settings_conf_t *app_settings, polsym_t *psyms);
 #endif
 

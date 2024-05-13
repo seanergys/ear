@@ -53,13 +53,13 @@ typedef struct node_freqs {
 
 typedef struct policy_context
 {
-	int							 affinity;
+	int							 affinity; // Unused
 	int							 pc_limit;
 	int							 mpi_enabled;
 	uint						 num_pstates;
 	uint						 use_turbo;
 	uint						 num_gpus;
-	ulong						 user_selected_freq;
+	ulong						 user_selected_freq; // Unused
 	ulong						 reset_freq_opt;
 	ulong						*ear_frequency;
 	settings_conf_t *app;
@@ -106,5 +106,11 @@ typedef struct policy_symbols {
 } polsym_t;
 
 void compute_avg_sel_freq(ulong * avg_sel_mem_f, ulong *imcfreqs);
+
+void policy_show_domain(node_freq_domain_t *dom);
+
+/** Verboses the policy context \p policy_ctx if the verbosity level
+ * of the job is equal or higher than \p verb_lvl. */
+void verbose_policy_ctx(int verb_lvl, polctx_t *policy_ctx);
 
 #endif // _EARL_POLICY_CTX_H
