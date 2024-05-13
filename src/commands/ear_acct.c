@@ -1398,9 +1398,9 @@ void read_from_database(char *user, query_adds_t *q_a)
     sprintf(query, "SELECT Applications.* FROM Applications join Jobs on Applications.job_id=Jobs.job_id and Applications.step_id = Jobs.step_id where Jobs.job_id in (select job_id from (select job_id, end_time from Jobs" );
     application_t *apps;
     if (q_a->job_id >= 0)
-        add_int_filter(query, "id", q_a->job_id);
+        add_int_filter(query, "job_id", q_a->job_id);
     else if (strlen(q_a->job_ids) > 0)
-        add_int_list_filter(query, "id", q_a->job_ids);
+        add_int_list_filter(query, "job_id", q_a->job_ids);
     if (q_a->step_id >= 0)
         add_int_filter(query, "step_id", q_a->step_id);
     else if (strlen(q_a->step_ids) > 0)
@@ -1425,9 +1425,9 @@ void read_from_database(char *user, query_adds_t *q_a)
 
     query_filters = 0;
     if (q_a->job_id >= 0)
-        add_int_filter(query, "id", q_a->job_id);
+        add_int_filter(query, "job_id", q_a->job_id);
     else if (strlen(q_a->job_ids) > 0)
-        add_int_list_filter(query, "id", q_a->job_ids);
+        add_int_list_filter(query, "job_id", q_a->job_ids);
     if (q_a->step_id >= 0)
         add_int_filter(query, "Jobs.step_id", q_a->step_id);
     else if (strlen(q_a->step_ids) > 0)

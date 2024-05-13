@@ -180,3 +180,4 @@ src/commands/ear-info
 deployment.sh
 src/tools/node_manager_info
 tmp.txt
+*.plist
