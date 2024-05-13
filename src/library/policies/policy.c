@@ -320,10 +320,6 @@ static state_t policy_cpu_freq_selection(polctx_t *c, signature_t *my_sig,
                                          node_freqs_t *freqs, node_freq_domain_t *dom,
                                          node_freqs_t *avg_freq, int process_id);
 
-/** Verboses the policy context \p policy_ctx if the verbosity level
- * of the job is equal or higher than \p verb_lvl. */
-static void verbose_policy_ctx(int verb_lvl, polctx_t *policy_ctx);
-
 /** Verboses the list of frequencies \p core_cpu_freqs_khz, assuming that is given as the per CPU frequency
  * list, for a total number of \p cpu_cnt CPU/processors. Use \p verb_lvl to specify the verbosity level
  * required by the job to print the information. */
@@ -375,16 +371,30 @@ state_t init_power_policy(settings_conf_t *app_settings, resched_t *res)
 	my_globalrank                 = masters_info.my_master_rank;
 
 	// Init the policy context
-	my_pol_ctx.app	              = app_settings;
-	my_pol_ctx.reconfigure        = res;
-	my_pol_ctx.user_selected_freq = DEF_FREQ(app_settings->def_freq);
-	my_pol_ctx.reset_freq_opt     = get_ear_reset_freq();
-	my_pol_ctx.ear_frequency      = &ear_frequency;
-	my_pol_ctx.num_pstates	      = frequency_get_num_pstates();
-	my_pol_ctx.use_turbo					= ear_use_turbo;
 	my_pol_ctx.affinity						= ear_affinity_is_set;
 	my_pol_ctx.pc_limit	          = app_settings->pc_opt.current_pc;
 	my_pol_ctx.mpi_enabled				= is_mpi_enabled();
+	my_pol_ctx.num_pstates	      = frequency_get_num_pstates();
+	my_pol_ctx.use_turbo					= ear_use_turbo;
+	my_pol_ctx.user_selected_freq = DEF_FREQ(app_settings->def_freq);
+	my_pol_ctx.reset_freq_opt     = get_ear_reset_freq();
+	my_pol_ctx.ear_frequency      = &ear_frequency;
+	my_pol_ctx.app	              = app_settings;
+	my_pol_ctx.reconfigure        = res;
+	// TODO: Missing gpu_mgt_ctx
+	// TODO: Missing mpi
+
+#if USE_GPUS
+	if (metrics_gpus_get(MET_GPU)->ok)
+	{
+		my_pol_ctx.num_gpus = metrics_gpus_get(MET_GPU)->devs_count;
+	}
+#else
+	my_pol_ctx.num_gpus = 0;
+#endif
+
+	// Here it is a good place to print policy context:
+	verbose_policy_ctx(POLICY_INFO, &my_pol_ctx);
 
 #if MPI
 	if (PMPI_Comm_dup(masters_info.new_world_comm, &my_pol_ctx.mpi.comm) != MPI_SUCCESS) {
@@ -535,55 +545,6 @@ state_t policy_busy_waiting_configuration(polctx_t *c,signature_t *my_sig,node_f
 }
 
 
-state_t policy_domain_detail(int status, char* buff){
-    switch (status){
-        case POL_NOT_SUPPORTED:
-            sprintf(buff, "%sNOT SUPPORTED%s", COL_RED, COL_CLR);
-            return EAR_SUCCESS;
-        case POL_GRAIN_CORE:
-            sprintf(buff, "%sGRAIN CORE%s", COL_GRE, COL_CLR);
-            return EAR_SUCCESS;
-        case POL_GRAIN_NODE:
-            sprintf(buff, "%sGRAIN NODE%s", COL_GRE, COL_CLR);
-            return EAR_SUCCESS;
-        default:
-            break;
-    }
-    return EAR_ERROR;
-}
-
-state_t policy_show_domain(node_freq_domain_t *dom){
-    char detail[32];
-
-    verbose_master(2, "--- EAR policy domain ---");
-
-    if (policy_domain_detail(dom->cpu, detail) == EAR_SUCCESS) {
-        verbose_master(2, "      CPU: %s", detail);
-    }
-    else return EAR_ERROR;
-
-    if (policy_domain_detail(dom->mem, detail) == EAR_SUCCESS) {
-        verbose_master(2, "      MEM: %s", detail);
-    }
-    else return EAR_ERROR;
-
-    if (policy_domain_detail(dom->gpu, detail) == EAR_SUCCESS) {
-        verbose_master(2, "      GPU: %s", detail);
-    }
-    else return EAR_ERROR;
-
-    if (policy_domain_detail(dom->gpumem, detail) == EAR_SUCCESS) {
-        verbose_master(2, "  GPU_MEM: %s", detail);
-    }
-    else return EAR_ERROR;
-
-    verbose_master(2, "-------------------------");
-
-    return EAR_SUCCESS;
-}
-
-/**** End auxiliary functions ***/
-
 static state_t policy_init()
 {
     polctx_t *c = &my_pol_ctx;
@@ -619,19 +580,9 @@ static state_t policy_init()
 
     state_t retg = EAR_SUCCESS, ret = EAR_SUCCESS;
 
-    if (state_ok(policy_gpu_init_ctx(c))) {
-        verbose_policy_info("GPU library init success.");
-    } else {
-        // verbose_master(POLICY_INFO, "%sERROR%s GPU library init.", COL_RED, COL_CLR);
-        verbose_error_master("GPU library init.");
-    }
-
     /* To compute time consumed in each phase */
     timestamp_getfast(&init_last_phase);
     memcpy(&init_last_comp, &init_last_phase, sizeof(timestamp));
-
-    // Here it is a good place to print policy context:
-    verbose_policy_ctx(POLICY_INFO, c);
 
     /* We read FLAG_USE_ENERGY_MODELS before calling to polsyms_fun.init() because this function
      * may needs `use_energy_models` to configure itself. */
@@ -740,7 +691,6 @@ static state_t policy_init()
       verbose_policy_info("Affinity mask explicitly ignored. Load balance off.");
     }
 
-
     verbose_policy_info("Load balance: %u", enable_load_balance);
 
     if (cuse_turbo_for_cp != NULL) use_turbo_for_cp = atoi(cuse_turbo_for_cp);
@@ -781,11 +731,10 @@ static state_t policy_init()
     }
 #endif
 
-    if (policy_show_domain(&freqs_domain) == EAR_ERROR) {
-        verbose_error_master("Getting policy domains.");
-    }
+    policy_show_domain(&freqs_domain);
 
-    if (is_master) {
+    if (is_master)
+		{
         // Powercap (?)
         pc_support_init(c);
     }
@@ -1957,7 +1906,6 @@ static state_t policy_gpu_mem_freq_selection(polctx_t *c,signature_t *my_sig,nod
 }
 
 
-//state_t policy_gpu_freq_selection(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs, int *ready)
 static state_t policy_gpu_freq_selection(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs,
         node_freq_domain_t *dom, node_freqs_t *avg_freq)
 {
@@ -2024,30 +1972,6 @@ static state_t policy_freq_selection(polctx_t *c, signature_t *my_sig, node_freq
     }
 
     return EAR_SUCCESS;
-}
-
-
-static void verbose_policy_ctx(int verb_lvl, polctx_t *policy_ctx)
-{
-    // TODO: Improve the function body to minimize the number of I/O operations.
-    if (verb_level >= verb_lvl) {
-        verbose_master(verb_lvl, "\n%*s%s%*s", 1, "", "--- EAR policy context ---", 1, "");
-
-        verbose_master(verb_lvl, "%-18s: %u",  "user_type",          policy_ctx->app->user_type);
-        verbose_master(verb_lvl, "%-18s: %s",  "policy_name",        policy_ctx->app->policy_name);
-        verbose_master(verb_lvl, "%-18s: %lf", "policy th",          policy_ctx->app->settings[0]);
-        verbose_master(verb_lvl, "%-18s: %lu", "def_freq",           DEF_FREQ(policy_ctx->app->def_freq));
-        verbose_master(verb_lvl, "%-18s: %u",  "def_pstate",         policy_ctx->app->def_p_state);
-        verbose_master(verb_lvl, "%-18s: %d",  "reconfigure",        policy_ctx->reconfigure->force_rescheduling);
-        verbose_master(verb_lvl, "%-18s: %lu", "user_selected_freq", policy_ctx->user_selected_freq);
-        verbose_master(verb_lvl, "%-18s: %lu", "reset_freq_opt",     policy_ctx->reset_freq_opt);
-        verbose_master(verb_lvl, "%-18s: %lu", "ear_frequency",      *(policy_ctx->ear_frequency));
-        verbose_master(verb_lvl, "%-18s: %u",  "num_pstates",        policy_ctx->num_pstates);
-        verbose_master(verb_lvl, "%-18s: %u",  "use_turbo",          policy_ctx->use_turbo);
-        verbose_master(verb_lvl, "%-18s: %u",  "num_gpus",           policy_ctx->num_gpus);
-
-        verbose_master(verb_lvl, "%*s%s%*s\n", 1, "", "--------------------------", 1, "");
-    }
 }
 
 
@@ -2145,16 +2069,22 @@ static state_t policy_restore_cpus_governor()
 
 void compute_avg_sel_freq(ulong * avg_sel_mem_f, ulong *imcfreqs)
 {
-	// verbose(0,"compute_avg_sel_freq..........: %p", avg_sel_mem_f);
-	ulong avg = 0;
-	ulong low;
-	ulong f;
-	for (uint sock_id=0;sock_id<arch_desc.top.socket_count;sock_id++){
+	if (!avg_sel_mem_f || !imcfreqs || arch_desc.top.socket_count <= 0)
+	{
+		return;
+	}
+
+	ulong avg = 0, low, f;
+	for (uint sock_id = 0; sock_id < arch_desc.top.socket_count; sock_id++)
+	{
 		low = imcfreqs[sock_id * IMC_VAL + IMC_MAX];
 		f = imc_pstates[low].khz;
+
 		verbose_master(2,"Computing avg mem freq : Socket %u max freq %lu", sock_id, f);
+
 		avg += f;
 	}
+
 	avg = avg / arch_desc.top.socket_count;
 	*avg_sel_mem_f = avg;
 }

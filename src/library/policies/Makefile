@@ -1,4 +1,4 @@
-all: all.components policy.o policy_plugin.o
+all: all.components policy.o policy_plugin.o policy_ctx.o
  
 %.o: %.c 
 	$(CC) $(CC_FLAGS) $(LIB_CFLAGS) $(CFLAGS) -c $<
