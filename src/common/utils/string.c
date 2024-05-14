@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-// #define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -91,10 +91,12 @@ char **strtoa(const char *string, char separator, char ***rows, uint *rows_count
         free(pstring);
         return NULL;
     }
-    // Allocating space for the rows (plus additional NULL terminated)
-    prows = calloc(prows_count+1, sizeof(char *));
+    // Allocating space for the rows (plus additional NULL terminated and pstring original address)
+    prows    = calloc(prows_count+2, sizeof(char *));
+    prows[0] = pstring;
+    prows    = prows+1;
     // Setting new references
-    for (prows_count = i = 0; i < str_length+1; ++i) {
+    for (prows_count = char_count = i = 0; i < str_length+1; ++i) {
         if (pstring[i] == separator || pstring[i] == '\0') {
             if (char_count > 0) {
                 prows[prows_count] = &pstring[i-char_count];
@@ -120,8 +122,8 @@ char **strtoa(const char *string, char separator, char ***rows, uint *rows_count
 
 void strtoa_free(char **list)
 {
-    free(list[0]);
-    free(list);
+    free(list[-1]);
+    free(list-1);
 }
 
 void *strtoat(const char *string, char separator, void **list, uint *list_count, int id_type)
