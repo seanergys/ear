@@ -36,6 +36,7 @@
 #include <common/types/pc_app_info.h>
 #include <common/hardware/hardware_info.h>
 #include <common/sizes.h>
+#include <common/utils/string.h>
 
 #include <management/cpufreq/frequency.h>
 #include <management/imcfreq/imcfreq.h>
@@ -383,14 +384,13 @@ state_t init_power_policy(settings_conf_t *app_settings, resched_t *res)
 	my_pol_ctx.reconfigure        = res;
 	// TODO: Missing gpu_mgt_ctx
 	// TODO: Missing mpi
+	my_pol_ctx.num_gpus = 0;
 
 #if USE_GPUS
 	if (metrics_gpus_get(MET_GPU)->ok)
 	{
 		my_pol_ctx.num_gpus = metrics_gpus_get(MET_GPU)->devs_count;
 	}
-#else
-	my_pol_ctx.num_gpus = 0;
 #endif
 
 	// Here it is a good place to print policy context:
@@ -429,22 +429,21 @@ state_t init_power_policy(settings_conf_t *app_settings, resched_t *res)
 
 	debug("max cpu pstate: %u / cpu pstate cnt %u", (uint) app_settings->cpu_max_pstate, cpu_pstate_cnt);
 
-	char **policy_path;
 	uint elem_count;
-	strtoa(policy_plugin_path, '/', &policy_path, &elem_count);
-
-	char **policy_so; 
-	strtoa(policy_path[elem_count - 1], '.', &policy_so,  &elem_count);
+	char **policy_path = strtoa(policy_plugin_path, '/', NULL, &elem_count);
 
 	uint max_cpu_ps = cpu_pstate_cnt - 1;
 
-	if (strcmp(policy_so[0], "monitoring") != 0)
+	if (policy_path)
 	{
-		max_cpu_ps = ear_min(max_cpu_ps, (uint) app_settings->cpu_max_pstate);
+		if (strcmp(policy_path[elem_count - 1], "monitoring.so") != 0)
+		{
+			max_cpu_ps = ear_min(max_cpu_ps, (uint) app_settings->cpu_max_pstate);
+		}
+
+		strtoa_free(policy_path);
 	}
 
-	strtoa_free(policy_so);
-	strtoa_free(policy_path);
 
 	if (state_fail(pstate_pstofreq(cpu_pstate_lst, cpu_pstate_cnt, max_cpu_ps, &min_cpufreq)))
 	{
@@ -461,7 +460,7 @@ state_t init_power_policy(settings_conf_t *app_settings, resched_t *res)
 		verbose_error_master("Policy init could not read imc_max_pstate: %s", state_msg);
 	}
 
-	verbose_policy_info("System Min. IMC freq. limited: %llu kHz ", min_imcfreq);
+	verbose_policy_info("System Min. IMC freq. limited: %llu kHz", min_imcfreq);
 
 	return policy_init();
 }
