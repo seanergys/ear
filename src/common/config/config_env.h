@@ -132,6 +132,8 @@
 #define FLAG_TURBO_CP                "USE_TURBO_FOR_CP"
 #define FLAG_MIN_CPUFREQ             "EAR_MIN_CPUFREQ"        // Sets a minimum CPU frequency policies can set.
 #define FLAG_NTWRK_IMC               "EAR_NTWRK_IMC"          // Tells the IMC policy the application uses IMC freq for network operations, making the policy less aggressive.
+#define FLAG_DISABLE_NODE_METRICS    "EAR_DISABLE_NODE_METRICS" // If defined, This job will not be considered for node metrics and policy will not be applied : To be used in MASTER/WORKED use cases
+#define FLAG_NTASK_WORK_SHARING      "EAR_NTASK_WORK_SHARING"   // Tells EAR to consider the N tasks created by the scheduler as a single job (for non MPI use cases).
 #define FLAG_TRY_TURBO               "EAR_TRY_TURBO"          // If policies have make CPU frequency be at maximum, try to boost the CPU frequency.
 #define FLAG_REPORT_ADD              "EAR_REPORT_ADD"
 #define FLAG_USE_ENERGY_MODELS       "EAR_USE_ENERGY_MODELS"  // Tells policies to use power models instead of probe and error DVFS.

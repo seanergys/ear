@@ -37,6 +37,7 @@
 #include <metrics/flops/flops.h>
 
 #include <library/models/cpu_power_model_default.h>
+#include <library/common/verbose_lib.h>
 
 static intel_skl_t my_node_coeffs;
 static uint arch_model_loaded = 0;
@@ -78,6 +79,9 @@ state_t cpu_power_model_init_arch(settings_conf_t *libconf,
 
 	arch_model_loaded = 1;	
     cache_line_size = arch->top.cache_line_size;
+
+  verbose_master(2, "EARL[%d] CPU power model default loaded %d", getpid(), arch_model_loaded);
+
 	
 	return EAR_SUCCESS;
 }
@@ -92,6 +96,9 @@ state_t cpu_power_model_status_arch()
 state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig,
                                      node_mgr_sh_data_t *nmgr, uint node_mgr_index)
 {
+
+	verbose_master(2, "EARL[%d] CPU power model default loaded %d", getpid(), arch_model_loaded);
+
   if (!arch_model_loaded) return EAR_ERROR;
 
   if (data == NULL) return EAR_SUCCESS;

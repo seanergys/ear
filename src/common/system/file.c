@@ -59,10 +59,16 @@ int file_lock_create(char *lock_file_name)
 	return fd;
 }
 
+int file_lock_master_perm(char *lock_file_name, int flag, mode_t mode)
+{
+	int fd=open(lock_file_name,flag|O_CREAT|O_EXCL,mode);
+	return fd;
+}
+
+
 int file_lock_master(char *lock_file_name)
 {
-	int fd=open(lock_file_name,O_WRONLY|O_CREAT|O_EXCL,S_IWUSR);
-	return fd;
+	return file_lock_master_perm(lock_file_name, O_WRONLY, S_IWUSR);
 }
 
 void file_lock_clean(int fd,char *lock_file_name)

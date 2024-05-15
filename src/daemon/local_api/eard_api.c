@@ -46,23 +46,23 @@
 #include <metrics/imcfreq/imcfreq.h>
 #include <management/gpu/gpu.h>
 
-#define OUTTER_MAX_PIPE_TRIES  10
+#define OUTTER_MAX_PIPE_TRIES  50
 #define MAX_PIPE_TRIES         (MAX_SOCKET_COMM_TRIES*10)
 #define MAX_TRIES              1
-#define USE_NON_BLOCKING_IO    1
+#define USE_NON_BLOCKING_IO    0
 
 /* These pipes are used for local communication between ear library and eard */
-char ear_commreq_global[SZ_PATH]; 		/* This pipe connects with EARD, the same for all the jobs,
+static char ear_commreq_global[SZ_PATH]; 		/* This pipe connects with EARD, the same for all the jobs,
                                          * then a specific per job-step-localid is created */
-char ear_commreq[SZ_PATH];
-char ear_commack[SZ_PATH];
+static char ear_commreq[SZ_PATH];
+static char ear_commack[SZ_PATH];
 int ear_fd_req_global = -1;
 int ear_fd_req = -1;
 int ear_fd_ack = -1;
 
 afd_set_t eard_api_client_fd;
 
-static uint8_t app_connected = 0;
+uint8_t app_connected = 0;
 static app_id_t local_con_info;
 static int my_step_id;
 static int my_job_id;
@@ -309,11 +309,12 @@ int eards_connect(application_t *my_app, ulong lid)
 
 	/* There are three channels: One global for acceptance , and the ones for each connection */
   sprintf(ear_commreq_global,"%s/.ear_comm.globalreq",ear_tmp);
+	verbose(2,"Opening Global comm pipe %s", ear_commreq_global);
+
 
 #if WF_SUPPORT
-
-	/* Create the common base path used inside this block ("tmp/id/local_id") */
 	char base_path[MAX_PATH_SIZE];
+	/* Create the common base path used inside this block ("tmp/id/local_id") */
 	state_t ret_st = create_base_path(base_path, sizeof(base_path),
 																		ear_tmp, (uint) my_id, (uint) my_app->job.local_id);
 
@@ -321,6 +322,7 @@ int eards_connect(application_t *my_app, ulong lid)
 	{
      return_print(EAR_ERROR, "Error when building the EAR communicator directory path name.");
 	}
+	#if 0
 
 
 	/* We must first create the directory of this application */
@@ -328,6 +330,7 @@ int eards_connect(application_t *my_app, ulong lid)
 	{
      return_print(EAR_ERROR, "Error when creating the EAR communicator directory.");
 	}
+	#endif
 
 	/* Pipe full paths. They're stored at base_path as well. */
   sprintf(ear_commreq,"%s/.ear_comm.req_%d.%d.%lu", base_path, i, my_id, lid);
@@ -343,12 +346,12 @@ int eards_connect(application_t *my_app, ulong lid)
   debug("comack_self  : %s", ear_commack);
 
   /* Private pipes are created before the connection request is sent */
-	//verbose(2,"Creating %s",ear_commack);
+	verbose(2,"Creating %s",ear_commack);
   if (mknod(ear_commack, S_IFIFO | S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH, 0) < 0) {
      return_print(EAR_ERROR, "Error when creating ear communicator for ack %s", strerror(errno));
   }
   chmod(ear_commack, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-	//verbose(2,"Creating %s",ear_commreq);
+	verbose(2,"Creating %s",ear_commreq);
     if (mknod(ear_commreq, S_IFIFO | S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH, 0) < 0) {
         debug("Error when creating ear communicator for requests %s", strerror(errno));
         return_print(EAR_ERROR, "Error when creating ear communicator for requests %s", strerror(errno));
@@ -369,7 +372,7 @@ int eards_connect(application_t *my_app, ulong lid)
         debug("while opening the communicator for requests %s (%d attempts) (%s)", ear_commreq_global, tries, strerror(errno));
         return_print(EAR_ERROR, "while opening the communicator for requests %s (%d attempts) (%s)", ear_commreq_global, tries, strerror(errno));
     }
-	debug("Connected with EARD");
+	  verbose(2, "EARL: Communication FD created, connecting with EARD");
 
     #if USE_NON_BLOCKING_IO
     ret1 = fcntl(ear_fd_req_global, F_SETFL, O_NONBLOCK);
@@ -435,7 +438,7 @@ int eards_connect(application_t *my_app, ulong lid)
             return EAR_ERROR;
         }
         #endif
-        verbose(3, "EARD-EARL in %s connected", nodename);
+        verbose(2, "EARD-EARL in %s connected (%s)", nodename, ear_commack);
         close(ear_fd_req_global);
     } //if (ear_fd_req_global >= 0)
     app_connected = 1;
@@ -455,6 +458,20 @@ void eards_connection_failure()
   app_connected = 0;
 }
 
+void eards_new_process_disconnect()
+{
+	// This function closes the EARD fd for new processes to connect again
+	#warning "This part is pending to be testes"
+	close(ear_fd_req);
+  close(ear_fd_req_global); 
+  close(ear_fd_ack);        
+	
+  ear_fd_req_global = -1;   
+	ear_fd_req        = -1;
+  ear_fd_ack        = -1;          
+
+	app_connected = 0;
+}
 void eards_disconnect()
 {
   struct daemon_req req;
@@ -490,6 +507,7 @@ ulong sendack(char *send_buf, size_t send_size, char *ack_buf, size_t ack_size, 
 				debug("local api, cannot get the lock");
         return s;
     }
+		struct stat buf_test;
     if (eards_write(ear_fd_req, send_buf, send_size) != send_size) {
 				debug("local api end error write: %s. recv size %lu. FD %d", description, ack_size, ear_fd_ack);
 				app_connected = 0;
@@ -627,6 +645,7 @@ static state_t create_base_path(char *base_path, size_t base_path_sz, char *tmp_
 		return EAR_ERROR;
 	}
 }
+#if 0
 
 static state_t create_app_directory(char *path)
 {
@@ -641,3 +660,4 @@ static state_t create_app_directory(char *path)
 	}
 	return EAR_SUCCESS;
 }
+#endif
