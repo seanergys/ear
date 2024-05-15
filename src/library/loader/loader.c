@@ -154,8 +154,8 @@ void  __attribute__ ((constructor)) loader()
         _loaded = module_constructor_cuda(path_lib_so,libhack);
         if (_loaded) return;
 
-	_loaded = module_constructor_oneapi(path_lib_so,libhack);
-	if (_loaded) return;
+				_loaded = module_constructor_oneapi(path_lib_so,libhack);
+				if (_loaded) return;
 
         // Module default
         if (load_no_parallel()) {

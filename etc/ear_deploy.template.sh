@@ -182,6 +182,8 @@ module unload $nvidia_modules
 module unload $openmpi_modules
 fi
 
+## Intel MPI is the default library, for other librarys a specific extension is needed.
+## Use MPI_VERSION=[ompi | fujitsu | cray]
 if [ "$openmpi" == "enabled" ]; then
 module load  $openmpi_modules
 module load  $nvidia_modules

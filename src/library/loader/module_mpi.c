@@ -78,6 +78,7 @@ static void module_mpi_get_libear(char *path_lib_so,char *libhack,char *path_so,
 	int fndo = 0;
 	int fndm = 0;
   int fndfu = 0;
+	int fndcray = 0;
 
 	*lang_c = 0;
 	*lang_f = 0;
@@ -106,13 +107,16 @@ static void module_mpi_get_libear(char *path_lib_so,char *libhack,char *path_so,
 	} else if (strstr(buffer, "fujitsu mpi") != NULL) {
     verbose(2, "LOADER: fujitsu mpi found");
     fndfu = 1;
-  }else {
+  }else if (strstr(buffer, "CRAY MPICH") != NULL ){
+		verbose(2, "LOADER: CRAY MPI found");
+		fndcray = 1;
+	}else{
 		verbose(2, "LOADER: no mpi version found");
 		return;
 	}
 		
-	verbose(2, "LOADER: mpi_get_version (intel: %d, open: %d, mvapich: %d)",
-		fndi, fndo, fndm);
+	verbose(2, "LOADER: mpi_get_version (intel: %d, open: %d, mvapich: %d fujitsu: %d cray:%d)",
+		fndi, fndo, fndm, fndfu, fndcray);
 
 	//
 	extension = INTEL_EXT;
@@ -124,6 +128,10 @@ static void module_mpi_get_libear(char *path_lib_so,char *libhack,char *path_so,
   if (fndfu){
     extension = FUJITSU_MPI_EXT;
   }
+
+	if (fndcray){
+		extension = CRAY_MPI_EXT;
+	}
 
   /* Warning , no actions yet for mvapich */
 

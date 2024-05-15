@@ -36,6 +36,7 @@
  * Loader definitions. */
 /**@{*/
 #define INTEL_EXT       "so"
+#define INTELMPI_EXT    "impi.so"
 #define OPENMPI_EXT     "ompi.so"
 #define CUDA_EXT        "gen.so"
 #define OPENMP_EXT      "gen.so"
@@ -43,6 +44,7 @@
 #define DEF_EXT         "gen.so"
 
 #define FUJITSU_MPI_EXT "fujitsu.so"
+#define CRAY_MPI_EXT "cray.so"
 /**@}*/
 
 
