@@ -26,6 +26,7 @@
 #include <common/config.h>
 //#define SHOW_DEBUGS 1
 #include <common/output/verbose.h>
+#include <common/utils/sched_support.h>
 #include <common/environment.h>
 #include <common/types/generic.h>
 #include <common/types/configuration/cluster_conf.h>
@@ -261,12 +262,7 @@ double getenv_ear_performance_accuracy()
 
 int getenv_ear_local_id()
 {
-	//char *my_local_id;
-	//my_local_id=ear_getenv("SLURM_LOCALID");
-	//if (my_local_id!=NULL){ 
-	//	conf_ear_local_id=atoi(my_local_id);
-	//}
-	// if not defined, it is computed later based on the number of total processes and EAR_NUM_NODES
+	conf_ear_local_id = get_my_sched_node_rank();
 	return conf_ear_local_id;
 }
 

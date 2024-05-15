@@ -881,6 +881,7 @@ void  init_earl_node_mgr_info()
 						verbose_warning_master("Shared signatures data is NULL: ingoring job %lu.%lu.", id, sid);
 						continue;
 					}
+					total_num_earl_apps++;
         } else
 				{
           node_mgr_job_info[j].creation_time = 0;
@@ -890,6 +891,7 @@ void  init_earl_node_mgr_info()
         node_mgr_job_info[j].libsh =  lib_shared_region;
         node_mgr_job_info[j].shsig =  sig_shared_region;
 				node_mgr_job_info[j].creation_time = node_mgr_data[j].creation_time;
+				total_num_earl_apps++;
       }
     }
   }
@@ -1090,6 +1092,7 @@ void update_earl_node_mgr_info()
 		// If creation time is not zero, it is a valid job.
 		if (node_mgr_job_info[j].creation_time) current_jobs_in_node++;
 	}
+	total_num_earl_apps = current_jobs_in_node;
 #endif
 	exclusive = exclusive && (current_jobs_in_node == 1);
 	if (fake_force_shared_node) exclusive = 0;

@@ -18,8 +18,16 @@
 #ifndef _SCHED_SUPPORT_H
 #define _SCHED_SUPPORT_H
 
+#include <common/types/generic.h>
+
 /* Checks if a given jobid stepid is still valid in the scheduler. Only SLURM is supported for now */
 uint is_job_step_valid(job_id jid, job_id sid);
+int get_my_sched_node_rank();
+int get_my_sched_group_node_size();
+int get_my_sched_global_rank();
+
+void sched_local_barrier(char *file,int N);
+void remove_local_barrier(char *file);
 #endif
 
 
