@@ -16,7 +16,7 @@
 */
 
 
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <unistd.h>
 
@@ -46,13 +46,15 @@ static struct energy_op
     uint    (*is_null)       (edata_t end);
     state_t (*data_copy)     (edata_t dest, edata_t src);
     state_t   (*no_privilege_init) ();
+    uint      (*is_privileged)();
+		state_t   (*dispose_not_priv)();
 } energy_ops;
 
 static int  energy_loaded  = 0;
 
 static size_t my_energy_data_size = 0;
 
-static const int   energy_nops    = 10;
+static const int   energy_nops    = 12;
 static const char *energy_names[] = {
 	"energy_datasize",
 	"energy_frequency",
@@ -63,7 +65,9 @@ static const char *energy_names[] = {
 	"energy_data_alloc",
 	"energy_data_is_null",
 	"energy_data_copy",
-	"energy_not_privileged_init"
+	"energy_not_privileged_init",
+	"energy_is_privileged",
+	"energy_dispose_not_priv"
 };
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
@@ -86,10 +90,19 @@ state_t eards_dc_read_substitute(void *ctx, edata_t t)
 	return eards_node_dc_energy(t, my_energy_data_size);
 }
 
+void energy_node_dispose()
+{
+	if (energy_loaded && energy_ops.dispose_not_priv != NULL){
+		energy_ops.dispose_not_priv();
+	}
+
+}
+
 state_t energy_node_load(char *path, int eard)
 {
 
 	state_t ret;
+	int requires_privileges = 1;
 	if (state_fail(ret = ear_trylock(&lock))) {
 		return ret;
 	}
@@ -121,9 +134,14 @@ state_t energy_node_load(char *path, int eard)
     
     energy_loaded = 1;
 
+    if (energy_ops.is_privileged != NULL){
+	    requires_privileges = energy_ops.is_privileged();
+	    debug("Energy lib doesn't requires root privileges");
+    }
+
 	int root_privileges = (getuid() == 0);
 
-	if (!root_privileges) {
+	if (!root_privileges && requires_privileges ) {
   #if FAKE_ERROR_EARD_NOT_CONNECTED
     if (0){
   #else

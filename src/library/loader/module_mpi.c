@@ -105,9 +105,9 @@ static void module_mpi_get_libear(char *path_lib_so,char *libhack,char *path_so,
 	} else if (strstr(buffer, "mvapich") != NULL) {
 		fndm = 1;
 	} else if (strstr(buffer, "fujitsu mpi") != NULL) {
-    verbose(2, "LOADER: fujitsu mpi found");
-    fndfu = 1;
-  }else if (strstr(buffer, "CRAY MPICH") != NULL ){
+    		verbose(2, "LOADER: fujitsu mpi found");
+    		fndfu = 1;
+  	}else if (strstr(buffer, "CRAY MPICH") != NULL ){
 		verbose(2, "LOADER: CRAY MPI found");
 		fndcray = 1;
 	}else{

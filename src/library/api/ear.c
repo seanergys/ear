@@ -762,10 +762,12 @@ void create_shared_regions()
 				verbose_jobs_in_node(2,node_mgr_data,node_mgr_job_info);
 
         /* Add here the initialization of the shared region to coordinate with external libraries such as DLB */
+#if 0
         get_ear_external_path(tmp, ID, shexternal_region_path);
         external_mgt = create_ear_external_shared_area(shexternal_region_path);
         verbose_master(2, "Created shared region for external libraries! (%s)", shexternal_region_path);
 				verbose(2,"Master (PID: %d) shared regions created", getpid());
+#endif
 
 }
 

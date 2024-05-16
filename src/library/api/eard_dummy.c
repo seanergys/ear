@@ -41,7 +41,7 @@
 
 #define DEFAULT_EAR_INSTALL_PATH "/usr/lib/ear"
 #define DEFAULT_EAR_ETC_PATH "/etc"
-#define DEFAULT_ENERGY_PLUGIN "energy_rapl.so"
+#define DEFAULT_ENERGY_PLUGIN "energy_eard_nm.so"
 
 
 static char path[GENERIC_NAME];
