@@ -16,6 +16,7 @@
 */
 
 #include <pthread.h>
+#include <common/states.h>
 #include <metrics/gpu/gpuprof.h>
 #include <metrics/gpu/archs/gpuprof_nvml.h>
 #include <metrics/gpu/archs/gpuprof_dcgmi.h>
@@ -42,6 +43,23 @@ dummy:
     ok_load = 1;
 unlock_load:
     pthread_mutex_unlock(&lock);
+}
+
+GPUPROF_F_INIT(gpuprof_init)
+{
+	if (ok_load)
+	{
+		if (ops.init)
+		{
+			return ops.init();
+		} else
+		{
+			return_msg(EAR_WARNING, Generr.api_undefined);
+		}
+	} else
+	{
+		return_msg(EAR_ERROR, Generr.api_uninitialized);
+	}
 }
 
 void gpuprof_get_info(apinfo_t *info)
