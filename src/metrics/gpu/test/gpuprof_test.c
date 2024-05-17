@@ -64,9 +64,10 @@ int main(int argc, char *argv[])
 
 	for (int set_idx = 0; set_idx < EVENT_SET_CNT; set_idx++)
 	{
-		// printf("Enter a comma-separated list of EVENTS set %d: ", set_idx);
-		// scanf("%s", sets[set_idx]);
-		snprintf(sets[set_idx], 512, "11,12,13");
+		printf("Enter a comma-separated list of EVENTS set %d: ", set_idx);
+		scanf("%s", sets[set_idx]);
+		// Hardcoded if using gdb
+		// snprintf(sets[set_idx], 512, "11,12,13");
 
 		if (!set_idx)
 		{
