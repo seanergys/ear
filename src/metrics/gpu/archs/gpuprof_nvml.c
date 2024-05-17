@@ -284,7 +284,7 @@ static int set(int dev, char *evs, uint *ids, uint ids_count)
     unset(dev);
     // Changing metrics values
     while (i < ids_count) {
-        debug("D%d: setting event %u", dev, ids[dev]);
+        debug("D%d: setting event %u", dev, ids[i]);
         gpms[dev].metrics[i].metricId = ids[i];
         ++i;
     }
@@ -298,6 +298,7 @@ static int set(int dev, char *evs, uint *ids, uint ids_count)
     i = 0;
     while (i < ids_count) {
         if (gpms[dev].metrics[i].nvmlReturn == NVML_ERROR_INVALID_ARGUMENT) {
+						debug("nvmlReturn INVALID_ARGUMENT");
              return 0;
         }
         ++i;

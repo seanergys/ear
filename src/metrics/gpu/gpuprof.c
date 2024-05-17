@@ -54,7 +54,7 @@ GPUPROF_F_INIT(gpuprof_init)
 			return ops.init();
 		} else
 		{
-			return_msg(EAR_WARNING, Generr.api_undefined);
+			return EAR_SUCCESS;
 		}
 	} else
 	{

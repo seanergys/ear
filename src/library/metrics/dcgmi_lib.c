@@ -44,7 +44,6 @@
 #include <library/metrics/dcgmi_lib/ampere.h>
 
 #include <metrics/gpu/gpu.h>
-// #include <metrics/gpu/archs/dcgmi.h> // TODO: To be removed
 #include <metrics/gpu/gpuprof.h>
 #include <metrics/common/nvml.h>
 #include <metrics/common/apis.h>
@@ -58,21 +57,19 @@
 #define DCGMI_LIB_NOT_SUPPORTED_MSG		"EARL not configured to support GPUs and DCGMI."
 #define DCGMI_LIB_MODULE_DISABLED_MSG "DCGMI module not enabled."
 
-#define dcgmi_first_event     1001
 
-
-typedef state_t (*dcgmi_lib_init_fn) (dcgmi_lib_t *dcgmi_data, int **event_info, int event_info_rows, int event_info_cols);
+typedef state_t (*dcgmi_lib_init_fn) (uint api, dcgmi_lib_t *dcgmi_data, int **event_info, int event_info_rows, int event_info_cols);
 
 
 static uint dcgmi_lib_enabled = (USE_GPUS && DCGMI) ? DCGMI_DEFAULT : 0;
 
 static dcgmi_lib_t dcgmi_data;
 
-static apinfo_t gpuprof_api;
+static apinfo_t gpuprof_api; // API info of the loaded GPUPROF API
 
-static uint *set_instances_cnt;
+static uint *set_instances_cnt; // Stores the instance counter for each set.
 
-static int **event_info;
+static int **event_info; // Event information filled by dcgmi_lib_init_fn
 
 /* DCGMI monitor variables. */ 
 static suscription_t *dcgmi_monitor;
@@ -83,23 +80,25 @@ static pthread_mutex_t dcgmi_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static double elapsed_time;
 
-static char *dcgmi_ev_names[DCGMI_LIB_SUPPORTED_EVENTS] =
+/* DCGM event names. This array must match the same logic as dcgmi_event_id_t */
+static char *dcgmi_ev_names[event_id_max] =
 {
-  "gr_engine_active", /* 1001 */
+  "gr_engine_active",
   "sm_active",
   "sm_occupancy",
   "tensor_active",
-  "dram_active",      /* 1005 */
+  "dram_active",
   "fp64_active",
   "fp32_active",
   "fp16_active",
   "pcie_tx_bytes",
-  "pcie_rx_bytes",    /* 1010 */
+  "pcie_rx_bytes",
   "nvlink_tx_bytes",
   "nvlink_rx_bytes"
 };
 
-/** Inits gpuprof_api static member and checks whether GPUPROF API is not DUMMY. */
+/** Inits gpuprof_api static member and checks whether GPUPROF API is not DUMMY.
+ * This function must be used, at least, before using gpuprof_api member anywhere in the module. */
 static uint is_gpuprof_api_valid();
 
 /** Inits all static data structures of this module. */
@@ -122,8 +121,11 @@ static void aggregate_gpuprof_data(gpuprof_t *gpuprof_agg, gpuprof_t *gpuprof_sr
 /** Verboses data of the dcgmi_curr_ev_set. */
 static void verbose_current_event_set(int v_lvl);
 
-/** Fills d_str with with a string showing data for all devices stored on d. */
-static void	dcgmi_data_tostr(gpuprof_t *d, char *d_str, size_t d_str_size, uint *ev_list, uint num_ev);
+/** Fills d_str with with a string showing data for all devices stored on d.
+ *
+ * \param[in] d gpuprof_t pointer containing GPUPROF data of a single set.
+ * \param[in] set_idx The set index corresponding to \ref d. */
+static void	dcgmi_data_tostr(gpuprof_t *d, char *d_str, size_t d_str_size, uint set_idx);
 
 /** Selects the dcgmi_lib init (allocation) function based on GPU model. */
 static state_t set_init_fn(dcgmi_lib_init_fn *dst_fn_ptr);
@@ -166,6 +168,14 @@ state_t dcgmi_lib_load()
 		{
 			dcgmi_lib_enabled = 0;
 			return_msg(EAR_ERROR, "GPUPROF DUMMY class loaded.");
+		}
+
+		/* Init GPUPROF API */
+		state_t init_st = gpuprof_init();
+		if (state_fail(init_st))
+		{
+			dcgmi_lib_enabled = 0;
+			return_msg(EAR_ERROR, "GPUPROF init failed.");
 		}
 
 		/* Allocate and init static members. */
@@ -243,7 +253,7 @@ void dcgmi_lib_dcgmi_sig_init(dcgmi_sig_t *dcgmi_sig)
 	{
 		dcgmi_sig->set_cnt						= dcgmi_data.dcgmi_set_count;
 		dcgmi_sig->gpu_cnt						= gpuprof_api.devs_count;
-		dcgmi_sig->event_cnt					= DCGMI_LIB_SUPPORTED_EVENTS;
+		dcgmi_sig->event_cnt					= event_id_max;
 		dcgmi_sig->event_list_sets		= calloc(dcgmi_sig->set_cnt, sizeof(uint *));
 		dcgmi_sig->set_instances_cnt	= calloc(dcgmi_sig->set_cnt, sizeof(uint));
 		dcgmi_sig->event_metrics_sets	= calloc(dcgmi_sig->set_cnt, sizeof(gpuprof_t *));
@@ -270,21 +280,16 @@ state_t dcgmi_lib_dcgmi_sig_csv_header(char *buffer, size_t buff_size)
 	if (buffer && buff_size)
 	{
 		strncpy(buffer, "DCGMI_EVENTS_COUNT", buff_size);
-		for (int set_idx = 0; set_idx < dcgmi_data.dcgmi_set_count; set_idx++)
+		for (int event_idx = 0; event_idx < event_id_max; event_idx++)
 		{
-			int set_size = dcgmi_data.dcgmi_set_sizes[set_idx];
-			uint *set_events_list = dcgmi_data.dcgmi_event_ids[set_idx];
-			for (int event_idx = 0; event_idx < set_size; event_idx++)
+			for (int gpu_idx = 0; gpu_idx < MAX_GPUS_SUPPORTED; gpu_idx++)
 			{
-				for (int gpu_idx = 0; gpu_idx < MAX_GPUS_SUPPORTED; gpu_idx++)
-				{
-					char gpu_event_field[ID_SIZE];
-					snprintf(gpu_event_field, sizeof(gpu_event_field),
-									 ";GPU%d_%u", gpu_idx, set_events_list[event_idx]);
+				char gpu_event_field[ID_SIZE];
+				snprintf(gpu_event_field, sizeof(gpu_event_field),
+								 ";GPU%d_%s", gpu_idx, dcgmi_ev_names[event_idx]);
 
-					strncat(buffer, gpu_event_field,
-									buff_size - strlen(buffer) - 1);
-				}
+				strncat(buffer, gpu_event_field,
+								buff_size - strlen(buffer) - 1);
 			}
 		}
 		return EAR_SUCCESS;
@@ -300,31 +305,33 @@ state_t dcgmi_lib_dcgmi_sig_to_csv(dcgmi_sig_t *dcgmi_sig, char *buffer, size_t 
 	if (dcgmi_sig && buffer && buff_size)
 	{
 		/* The total number of events */
-		snprintf(buffer, buff_size, "%u", dcgmi_sig->event_cnt);
+		int event_cnt = ear_min(event_id_max, dcgmi_sig->event_cnt);
+		snprintf(buffer, buff_size, "%d", event_cnt);
 
-		/* We iterate across sets */
-		for (int set_idx = 0; set_idx < dcgmi_sig->set_cnt; set_idx++)
+		/* The event_idx order is marked by dcgm_event_idx_t */
+		for (int event_idx = 0; event_idx < event_cnt; event_idx++)
 		{
-			int set_size = dcgmi_data.dcgmi_set_sizes[set_idx];
-			gpuprof_t *set_metrics = dcgmi_sig->event_metrics_sets[set_idx];
+			int event_info[2];
+			dcgmi_lib_get_event_info(event_idx, event_info);
 
-			/* Iterate across set's event list */
-			for (int event_idx = 0; event_idx < set_size; event_idx++)
+			int event_set = event_info[event_info_set];
+			int event_pos = event_info[event_info_pos];
+
+			gpuprof_t *set_metrics = dcgmi_sig->event_metrics_sets[event_set];
+
+			/* Iterate across GPUs supported */
+			for (int gpu_idx = 0; gpu_idx < MAX_GPUS_SUPPORTED; gpu_idx++)
 			{
-				/* Iterate across GPUs supported */
-				for (int gpu_idx = 0; gpu_idx < MAX_GPUS_SUPPORTED; gpu_idx++)
+				char set_event_metric_buff[32];
+				if (dcgmi_sig->gpu_cnt > gpu_idx)
 				{
-					char set_event_metric_buff[32];
-					if (dcgmi_sig->gpu_cnt > gpu_idx)
-					{
-						snprintf(set_event_metric_buff, sizeof(set_event_metric_buff),
-										 ";%f", set_metrics[gpu_idx].values[event_idx]);
-					} else
-					{
-						snprintf(set_event_metric_buff, sizeof(set_event_metric_buff), ";0.0");
-					}
-					strncat(buffer, set_event_metric_buff, buff_size - strlen(buffer) - 1);
+					snprintf(set_event_metric_buff, sizeof(set_event_metric_buff),
+									 ";%f", set_metrics[gpu_idx].values[event_pos]);
+				} else
+				{
+					snprintf(set_event_metric_buff, sizeof(set_event_metric_buff), ";0.0");
 				}
+				strncat(buffer, set_event_metric_buff, buff_size - strlen(buffer) - 1);
 			}
 		}
 		return EAR_SUCCESS;
@@ -403,8 +410,7 @@ state_t dcgmi_lib_get_global_metrics(dcgmi_sig_t *dcgmi_sig)
 			{
 				memset(event_metrics_sets_str, 0, str_size);
 
-				dcgmi_data_tostr(dcgmi_sig->event_metrics_sets[set], event_metrics_sets_str, str_size,
-												 dcgmi_sig->event_list_sets[set], (uint) dcgmi_data.dcgmi_set_sizes[set]);
+				dcgmi_data_tostr(dcgmi_sig->event_metrics_sets[set], event_metrics_sets_str, str_size, set);
 
 				verbose_master(DCGMI_MET_LVL, "DCGMI app metrics %s elapsed %.3lf sec",
 											 event_metrics_sets_str, elapsed);
@@ -412,8 +418,6 @@ state_t dcgmi_lib_get_global_metrics(dcgmi_sig_t *dcgmi_sig)
 			free(event_metrics_sets_str);
 		}
 	}
-
-	// event_info_free(&event_info);
 
 	ear_unlock(&dcgmi_lock);
 
@@ -430,15 +434,11 @@ void dcgmi_lib_reset_instances(dcgmi_sig_t *dcgmi_sig)
 
 	if (dcgmi_sig->set_instances_cnt)
 	{
-		for (uint set = 0; set < dcgmi_data.dcgmi_set_count; set++)
-		{
-			dcgmi_sig->set_instances_cnt[set] = 0;
-		}
-
 		ear_lock(&dcgmi_lock);
 
 		for (uint set = 0; set < dcgmi_data.dcgmi_set_count; set++)
 		{
+			dcgmi_sig->set_instances_cnt[set] = 0;
 			set_instances_cnt[set] = 0;
 		}
 
@@ -473,7 +473,7 @@ static state_t static_init()
 	}
 
 	// init_fn allocates and initialize all data structures based on GPU microarch.
-	if (state_fail(init_fn(&dcgmi_data, event_info, DCGMI_LIB_SUPPORTED_EVENTS, 2)))
+	if (state_fail(init_fn(gpuprof_api.api, &dcgmi_data, event_info, event_id_max, 2)))
 	{
 		verbose_warning("Error allocating data (%s)", state_msg);
 		return_msg(EAR_ERROR, "Allocating data");
@@ -524,17 +524,19 @@ static void event_set2csv(uint *event_set, uint event_set_size, char *event_set_
 
 		strcat(event_set_csv, event_id_str);
 	}
+
+	debug("Event set csv: %s", event_set_csv);
 }
 
 
-state_t dcgmi_lib_get_event_info(uint event_id, int *event_info_dst)
+state_t dcgmi_lib_get_event_info(dcgm_event_idx_t event_id, int *event_info_dst)
 {
 	if (event_info_dst)
 	{
-		int req_idx = event_id - dcgmi_first_event;
-		if (req_idx >= 0 && req_idx < DCGMI_LIB_SUPPORTED_EVENTS)
+		if (event_id >= 0 && event_id < event_id_max)
 		{
-			memcpy(event_info_dst, event_info[req_idx], 2 * sizeof(int));
+			debug("event_info %d: %d/%d", event_id, event_info[event_id][0], event_info[event_id][1]);
+			memcpy(event_info_dst, event_info[event_id], 2 * sizeof(int));
 			return EAR_SUCCESS;
 		} else
 		{
@@ -606,15 +608,22 @@ static state_t dcgmi_paction(void *p)
 		// Increment the instance count of the current set.
 		set_instances_cnt[dcgmi_curr_ev_set]++;
 
-		// Unsets the current event set.
-		gpuprof_events_unset(all_devs);
+		if (dcgmi_data.dcgmi_set_count > 1)
+		{
+			// Unsets the current event set.
+			gpuprof_events_unset(all_devs);
 
-		/* Change the active set of events */
-		dcgmi_curr_ev_set = (dcgmi_curr_ev_set + 1) % dcgmi_data.dcgmi_set_count;
-		gpuprof_events_set(all_devs, dcgmi_data.dcgmi_event_ids_csv[dcgmi_curr_ev_set]);
+			/* Change the active set of events */
+			dcgmi_curr_ev_set = (dcgmi_curr_ev_set + 1) % dcgmi_data.dcgmi_set_count;
+			gpuprof_events_set(all_devs, dcgmi_data.dcgmi_event_ids_csv[dcgmi_curr_ev_set]);
 
-		/* Start reading the new event set. */
-		gpuprof_read(dcgmi_data.gpuprof_read1[dcgmi_curr_ev_set]);
+			/* Start reading the new event set. */
+			gpuprof_read(dcgmi_data.gpuprof_read1[dcgmi_curr_ev_set]);
+		} else
+		{
+			// Just one set, so no need to unset events, increment the set index, etc.
+			gpuprof_data_copy(read1, read2); // Copy read2 to read1
+		}
 
 		ear_unlock(&dcgmi_lock);
 
@@ -658,9 +667,9 @@ static void aggregate_gpuprof_data(gpuprof_t *gpuprof_agg, gpuprof_t *gpuprof_sr
 }
 
 
-static void	dcgmi_data_tostr(gpuprof_t *d, char *d_str, size_t d_str_size, uint *ev_list, uint num_ev)
+static void	dcgmi_data_tostr(gpuprof_t *d, char *d_str, size_t d_str_size, uint set_idx)
 {
-	if ((d == NULL) || (d_str == NULL) || (num_ev == 0)) return;
+	if ((d == NULL) || (d_str == NULL)) return;
 
 	d_str[0] = '\0';
 
@@ -671,9 +680,20 @@ static void	dcgmi_data_tostr(gpuprof_t *d, char *d_str, size_t d_str_size, uint 
 
 		strncat(d_str, ev_str, d_str_size - strlen(d_str));
 
-		for (int e = 0; e < num_ev; e++)
+		for (int e = 0; e < event_id_max; e++)
 		{
-			snprintf(ev_str, sizeof(ev_str), "\n%s %lf", dcgmi_ev_names[ev_list[e] - dcgmi_first_event], d[g].values[e]);
+			int event_info[2];
+			dcgmi_lib_get_event_info(e, event_info);
+
+			if (event_info[event_info_set] != set_idx)
+			{
+				// The set of this event_idx is not the one requested by set_idx
+				continue;
+			}
+
+			int event_pos = event_info[event_info_pos];
+
+			snprintf(ev_str, sizeof(ev_str), "\n%s %lf", dcgmi_ev_names[e], d[g].values[event_pos]);
 			strncat(d_str, ev_str, d_str_size - strlen(d_str));
 		}
 	}
@@ -686,7 +706,6 @@ static void verbose_current_event_set(int v_lvl)
 	{
 		// Most recent metrics of the current set.
 		gpuprof_t *gpuprof = dcgmi_data.gpuprof_diff[dcgmi_curr_ev_set];
-		uint *event_list = dcgmi_data.dcgmi_event_ids[dcgmi_curr_ev_set];
 		uint event_cnt = dcgmi_data.dcgmi_set_sizes[dcgmi_curr_ev_set];
 
 		size_t nmemb = gpuprof_api.devs_count * event_cnt * ID_SIZE;
@@ -697,7 +716,7 @@ static void verbose_current_event_set(int v_lvl)
 			return;
 		}
 
-		dcgmi_data_tostr(gpuprof, event_metrics_sets_str, nmemb * sizeof(char), event_list, event_cnt);
+		dcgmi_data_tostr(gpuprof, event_metrics_sets_str, nmemb * sizeof(char), dcgmi_curr_ev_set);
 
 		verbose_master(0, "DCGMI LIB set %u periodic metrics: %s elapsed %.3lf sec (total %.3lf sec)",
 				dcgmi_curr_ev_set, event_metrics_sets_str, gpuprof->time_s, elapsed_time);
@@ -746,14 +765,14 @@ static state_t event_info_alloc(int ***event_info_src)
 		// We allocate event_info_src memory:
 		// # supported events x 2 values per event (group and set at which the event belongs to)
 
-		*event_info_src = (int **) malloc(DCGMI_LIB_SUPPORTED_EVENTS * sizeof(int *));
+		*event_info_src = (int **) malloc(event_id_max * sizeof(int *));
 
 		if (*event_info_src)
 		{
 			int i = 0;
 			int alloc_err = 0;
       
-			for (i = 0; i < DCGMI_LIB_SUPPORTED_EVENTS && !alloc_err; i++)
+			for (i = 0; i < event_id_max && !alloc_err; i++)
 			{
 				(*event_info_src)[i] = (int *) calloc(2, sizeof(int));
         if((*event_info_src)[i] == NULL)
@@ -792,7 +811,7 @@ static void event_info_free(int ***event_info_src)
 {
 	if (event_info_src)
 	{
-		for (int i = 0; i < DCGMI_LIB_SUPPORTED_EVENTS; i++)
+		for (int i = 0; i < event_id_max; i++)
 		{
 			free((*event_info_src)[i]);
 		}

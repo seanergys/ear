@@ -28,7 +28,7 @@
 #define DCGMI_SET3_SIZE 1
 
 
-state_t dcgmi_lib_turing_init(dcgmi_lib_t *dcgmi_data, int **event_info, int event_info_rows, int event_info_cols)
+state_t dcgmi_lib_turing_init(uint api, dcgmi_lib_t *dcgmi_data, int **event_info, int event_info_rows, int event_info_cols)
 {
 	if (dcgmi_data && event_info)
 	{
@@ -79,22 +79,22 @@ state_t dcgmi_lib_turing_init(dcgmi_lib_t *dcgmi_data, int **event_info, int eve
 			}
 
 			// Set 1
-			dcgmi_data->dcgmi_event_ids[0][0] = sm_active;
-			dcgmi_data->dcgmi_event_ids[0][1] = sm_occupancy;
-			dcgmi_data->dcgmi_event_ids[0][2] = tensor_active;
-			dcgmi_data->dcgmi_event_ids[0][3] = fp32_active;
-			dcgmi_data->dcgmi_event_ids[0][4] = dram_active;
-			dcgmi_data->dcgmi_event_ids[0][5] = pcie_tx_bytes;
-			dcgmi_data->dcgmi_event_ids[0][6] = pcie_rx_bytes;
-			dcgmi_data->dcgmi_event_ids[0][7] = gr_engine_active;
-			dcgmi_data->dcgmi_event_ids[0][8] = nvlink_tx_bytes;
-			dcgmi_data->dcgmi_event_ids[0][9] = nvlink_rx_bytes;
+			dcgmi_data->dcgmi_event_ids[0][0] = dcgm_sm_active;
+			dcgmi_data->dcgmi_event_ids[0][1] = dcgm_sm_occupancy;
+			dcgmi_data->dcgmi_event_ids[0][2] = dcgm_tensor_active;
+			dcgmi_data->dcgmi_event_ids[0][3] = dcgm_fp32_active;
+			dcgmi_data->dcgmi_event_ids[0][4] = dcgm_dram_active;
+			dcgmi_data->dcgmi_event_ids[0][5] = dcgm_pcie_tx_bytes;
+			dcgmi_data->dcgmi_event_ids[0][6] = dcgm_pcie_rx_bytes;
+			dcgmi_data->dcgmi_event_ids[0][7] = dcgm_gr_engine_active;
+			dcgmi_data->dcgmi_event_ids[0][8] = dcgm_nvlink_tx_bytes;
+			dcgmi_data->dcgmi_event_ids[0][9] = dcgm_nvlink_rx_bytes;
 
 			// Set 2
-			dcgmi_data->dcgmi_event_ids[1][0] = fp64_active;
+			dcgmi_data->dcgmi_event_ids[1][0] = dcgm_fp64_active;
 
 			// Set 3
-			dcgmi_data->dcgmi_event_ids[2][0] = fp16_active;
+			dcgmi_data->dcgmi_event_ids[2][0] = dcgm_fp16_active;
 
 			int turing_event_info[12][2] =
 			{
