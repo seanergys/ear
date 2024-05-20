@@ -118,8 +118,8 @@
  * generates a warning and a syslog message when activated. Values greather
  * than MAX_ERROR_POWER are considered an error and not reported into the DB */
 #define MIN_SIG_POWER                       30.0
-#define MAX_SIG_POWER                       700.0
-#define MAX_ERROR_POWER                     1000.0
+#define MAX_SIG_POWER                       3000.0
+#define MAX_ERROR_POWER                     3500.0
 #define MAX_TEMP                            150
 #define MAX_POWER_CAP                       0
 #define POWER_CAP_DISABLED                  0
