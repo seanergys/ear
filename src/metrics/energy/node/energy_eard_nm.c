@@ -63,7 +63,7 @@ void energy_dispose_not_priv()
 	pthread_mutex_lock(&eard_nm_lock);
 	ear_disconnect();
 	pthread_mutex_unlock(&eard_nm_lock);
-	return EAR_SUCCESS;
+	return ;
 }
 state_t energy_datasize(size_t *size)
 {

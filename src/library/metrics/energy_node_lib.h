@@ -26,6 +26,7 @@
 state_t energy_units(uint *units);
 
 state_t energy_node_load(char *path, int eard);
+void energy_node_dispose();
 state_t energy_datasize(size_t *size);
 state_t energy_frequency(ulong *freq_us);
 state_t energy_data_accumulated(unsigned long *e,edata_t init,edata_t end);
