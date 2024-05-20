@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #include <math.h>
 #include <stdlib.h>
@@ -118,7 +118,7 @@ static int events_fill(nvmlGpmMetricsGet_t *sev, int i)
         return 1;
     }
     strcpy(events[events_count].name, sev->metrics[0].metricInfo.longName);
-    //debug("EV%d: %s (%s)", i, events[events_count].name, sev->metrics[0].metricInfo.unit);
+    debug("EV%d: %s (%s)", i, events[events_count].name, sev->metrics[0].metricInfo.unit);
     events[events_count].id = (uint) i;
     events_count++;
     return 1;
@@ -159,6 +159,7 @@ GPUPROF_F_LOAD(gpuprof_nvml_load)
     // Getting event names and ids
     i = 1;
     while(events_fill(&gpms[devs_count], i++));
+		apis_put(ops->init,							gpuprof_nvml_init);
     apis_put(ops->get_info,         gpuprof_nvml_get_info);
     apis_put(ops->events_get,       gpuprof_nvml_events_get);
     apis_put(ops->events_set,       gpuprof_nvml_events_set);
@@ -176,12 +177,16 @@ GPUPROF_F_INIT(gpuprof_nvml_init)
     if (pooling) {
         return EAR_SUCCESS;
     }
+
+		debug("gpuprof_nvml_init");
+
     // Creating pooling thread
     sus = suscription();
     sus->call_main  = gpuprof_nvml_pool;
     sus->time_relax = 2000;
     sus->time_burst = 2000;
     sus->suscribe(sus);
+		monitor_register(sus);
     pooling = 1;
 
     return EAR_SUCCESS;
@@ -279,7 +284,7 @@ static int set(int dev, char *evs, uint *ids, uint ids_count)
     unset(dev);
     // Changing metrics values
     while (i < ids_count) {
-        debug("D%d: setting event %u", dev, ids[dev]);
+        debug("D%d: setting event %u", dev, ids[i]);
         gpms[dev].metrics[i].metricId = ids[i];
         ++i;
     }
@@ -293,6 +298,7 @@ static int set(int dev, char *evs, uint *ids, uint ids_count)
     i = 0;
     while (i < ids_count) {
         if (gpms[dev].metrics[i].nvmlReturn == NVML_ERROR_INVALID_ARGUMENT) {
+						debug("nvmlReturn INVALID_ARGUMENT");
              return 0;
         }
         ++i;

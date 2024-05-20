@@ -28,20 +28,35 @@
 
 #define DCGMI_LIB_SUPPORTED_EVENTS 12
 
-#define sm_active             1002
-#define sm_occupancy          1003
-#define tensor_active         1004
-#define fp64_active           1006
-#define fp16_active           1008
-#define tensor_imma_active    1013
-#define tensor_hmma_active    1014
-#define fp32_active           1007
-#define dram_active           1005
-#define pcie_tx_bytes         1009
-#define pcie_rx_bytes         1010
-#define gr_engine_active      1001
-#define nvlink_tx_bytes       1011    
-#define nvlink_rx_bytes       1012
+#define dcgm_gr_engine_active      1001
+#define dcgm_sm_active             1002
+#define dcgm_sm_occupancy          1003
+#define dcgm_tensor_active         1004
+#define dcgm_dram_active           1005
+#define dcgm_fp64_active           1006
+#define dcgm_fp32_active           1007
+#define dcgm_fp16_active           1008
+#define dcgm_pcie_tx_bytes         1009
+#define dcgm_pcie_rx_bytes         1010
+#define dcgm_nvlink_tx_bytes       1011    
+#define dcgm_nvlink_rx_bytes       1012
+#define dcgm_tensor_imma_active    1013 // Currently not supported by EARL
+#define dcgm_tensor_hmma_active    1014 // Currently not supported by EARL
+
+#define nvml_gr_engine_active      1
+#define nvml_sm_active             2
+#define nvml_sm_occupancy          3
+#define nvml_tensor_active         5
+#define nvml_dram_active           10
+#define nvml_fp64_active           11
+#define nvml_fp32_active           12
+#define nvml_fp16_active           13
+#define nvml_pcie_tx_bytes         20
+#define nvml_pcie_rx_bytes         21
+#define nvml_nvlink_tx_bytes       61    
+#define nvml_nvlink_rx_bytes       60
+#define nvml_tensor_imma_active    9 // Currently not supported by EARL
+#define nvml_tensor_hmma_active    7 // Currently not supported by EARL
 
 
 typedef struct dcgmi_lib_s

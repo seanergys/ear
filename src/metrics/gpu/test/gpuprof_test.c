@@ -23,7 +23,7 @@
 #include <metrics/common/apis.h>
 
 
-#define EVENT_SET_CNT 3 // The number of sets you expect to test.
+#define EVENT_SET_CNT 1 // The number of sets you expect to test.
 
 
 static apinfo_t             info;
@@ -39,6 +39,7 @@ static gpuprof_t            *mD;
 int main(int argc, char *argv[])
 {
 	gpuprof_load(0);
+	gpuprof_init();
 	gpuprof_get_info(&info);
 	apinfo_tostr(&info);
 	printf("LOADED: %s %s %s %d\n", info.layer, info.api_str, info.granularity_str, info.devs_count);
@@ -65,10 +66,12 @@ int main(int argc, char *argv[])
 	{
 		printf("Enter a comma-separated list of EVENTS set %d: ", set_idx);
 		scanf("%s", sets[set_idx]);
+		// Hardcoded if using gdb
+		// snprintf(sets[set_idx], 512, "11,12,13");
 
 		if (!set_idx)
 		{
-			gpuprof_events_set(0, sets[set_idx]);
+			gpuprof_events_set(all_devs, sets[set_idx]);
 			printf("EVENTS SET %d: %s\n", set_idx, sets[set_idx]);
 		}
 	}
@@ -77,7 +80,7 @@ int main(int argc, char *argv[])
 	// scanf("%s", aux);
 
 	gpuprof_read(m1);
-	sleep(2);
+	sleep(3);
 
 	int curr_set = 0;
 	int count = 0;
@@ -94,7 +97,7 @@ int main(int argc, char *argv[])
 	// scanf("%s", aux);
 
 		count++;
-		if (count % EVENT_SET_CNT == 0)
+		if (EVENT_SET_CNT != 1 && (count % EVENT_SET_CNT == 0))
 		{
 			gpuprof_events_unset(0);
 
@@ -109,6 +112,9 @@ int main(int argc, char *argv[])
 			gpuprof_read(m1);
 	// printf("Waiting after setting new events...\n");
 	// scanf("%s", aux);
+		} else
+		{
+			gpuprof_data_copy(m1, m2);
 		}
 		sleep(2);
 	}
