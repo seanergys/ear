@@ -72,7 +72,8 @@ static int support_test()
         debug("Error while checking NVML GPM support: %s", nvml.ErrorString(r));
         return 0;
     }
-    return 1;
+
+		return (support.isSupportedDevice) ? 1 : 0;
 }
 
 static int samples_alloc(nvmlGpmMetricsGet_t *sev)
