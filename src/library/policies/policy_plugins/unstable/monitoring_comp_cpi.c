@@ -37,7 +37,7 @@ static ullong comp_insts;
 state_t policy_init(polctx_t *c)
 {
 
-    if (is_mpi_enabled()) {
+    if (module_mpi_is_enabled()) {
         cpi_read(no_ctx, &cpi_1);
         mpi_app_init(c);
     }
@@ -48,7 +48,7 @@ state_t policy_init(polctx_t *c)
 
 state_t policy_end(polctx_t *c)
 {
-    if (is_mpi_enabled()) {
+    if (module_mpi_is_enabled()) {
         cpi_read_diff(no_ctx, &cpi_2, &cpi_1, &cpi_diff, &comp_cpi);
         comp_cycles += cpi_diff.cycles;
         comp_insts += cpi_diff.instructions;
@@ -135,7 +135,7 @@ state_t policy_domain(polctx_t *c, node_freq_domain_t *domain)
 
 state_t policy_mpi_init(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id)
 {
-    if (is_mpi_enabled()) {
+    if (module_mpi_is_enabled()) {
         cpi_read_diff(no_ctx, &cpi_2, &cpi_1, &cpi_diff, &comp_cpi);
         comp_cycles += cpi_diff.cycles;
         comp_insts += cpi_diff.instructions;
@@ -149,7 +149,7 @@ state_t policy_mpi_init(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, in
 
 state_t policy_mpi_end(polctx_t *c, mpi_call call_type, node_freqs_t *freqs, int *process_id)
 {
-    if (is_mpi_enabled()) {
+    if (module_mpi_is_enabled()) {
         cpi_read(no_ctx, &cpi_1);
     }
     if (c != NULL) {

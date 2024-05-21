@@ -291,6 +291,7 @@ char *plug_host(spank_t sp)
 	if (host_p == NULL) {
 		host_p = host_b;
 		gethostname(host_p, SZ_NAME_MEDIUM);
+        sprintf(host_p, "127.0.0.1");
 	}
 
 	return host_p;

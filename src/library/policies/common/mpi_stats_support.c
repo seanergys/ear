@@ -60,6 +60,7 @@
 #include <library/metrics/metrics.h>
 #include <library/tracer/tracer.h>
 #include <library/tracer/tracer_paraver_comp.h>
+#include <library/loader/module_mpi.h>
 
 #include <report/report.h>
 
@@ -247,14 +248,14 @@ state_t mpi_app_init(polctx_t *c)
         #endif
 
         // TODO: This is redundant since policies call this function only if mpi is enabled
-        if (is_mpi_enabled()) {
+        if (module_mpi_is_enabled()) {
             mpi_stats.rank = sig_shared_region[my_node_id].mpi_info.rank;
         } else {
             mpi_stats.rank = 0;
         }
         #if MPI_SAMPLING
         char * env_mpi_sampling_enabled;
-        if (is_mpi_enabled() && ((env_mpi_sampling_enabled = ear_getenv(FLAG_MPI_SAMPLING_ENABLED)) != NULL)){
+        if (module_mpi_is_enabled() && ((env_mpi_sampling_enabled = ear_getenv(FLAG_MPI_SAMPLING_ENABLED)) != NULL)){
           mpi_sampling_enabled = atoi(env_mpi_sampling_enabled);
         }
         verbose_master(2,"MPI support: MPI sampling set to %s by env var ", (mpi_sampling_enabled?"Enabled":"Disabled"));
@@ -500,9 +501,9 @@ state_t mpi_call_init(polctx_t *c, mpi_call call_type)
 #if PER_MPI_CALL_STATS && MPI
     
 #if MPI_STATS
-    int collect_stats = (is_mpi_enabled() && (monitor_mpi || get_mpi_stats));
+    int collect_stats = (module_mpi_is_enabled() && (monitor_mpi || get_mpi_stats));
 #else
-    int collect_stats = (is_mpi_enabled() && monitor_mpi);
+    int collect_stats = (module_mpi_is_enabled() && monitor_mpi);
 #endif // MPI_STATS
 
     if (collect_stats)
@@ -570,7 +571,7 @@ state_t mpi_call_end(polctx_t *c, mpi_call call_type)
 {
 #if PER_MPI_CALL_STATS && MPI
     timestamp_t end;
-    if (is_mpi_enabled() && in_mpi_call) {
+    if (module_mpi_is_enabled() && in_mpi_call) {
 
         ullong elap = 0;
 

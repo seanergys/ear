@@ -8,7 +8,7 @@ OBJS = \
     cupti.o \
     eard_dummy.o
 
-ifeq ($(FEAT_MPI_API), 1)
+ifeq ($(FEAT_MPI_LIBRARY), 1)
 OBJS += \
     ear_mpi.o \
     mpic.o \

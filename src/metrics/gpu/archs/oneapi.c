@@ -94,11 +94,13 @@ void gpu_oneapi_get_info(apinfo_t *info)
 void gpu_oneapi_get_devices(gpu_devs_t **devs_in, uint *devs_count_in)
 {
     int dv;
-    *devs_in = calloc(devs_count, sizeof(gpu_devs_t));
-    //
-    for (dv = 0; dv < devs_count; ++dv) {
-        (*devs_in)[dv].serial = devs[dv].uuid;
-        (*devs_in)[dv].index  = dv;
+    if (devs_in != NULL) {
+        *devs_in = calloc(devs_count, sizeof(gpu_devs_t));
+        //
+        for (dv = 0; dv < devs_count; ++dv) {
+            (*devs_in)[dv].serial = devs[dv].uuid;
+            (*devs_in)[dv].index  = dv;
+        }
     }
     if (devs_count_in != NULL) {
         *devs_count_in = devs_count;

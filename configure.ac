@@ -96,10 +96,11 @@ AC_DEFUN([AC_FEATURE_CHECK],
     fi
 ])
 
-AS_ECHO("---------------------------------------Checking summary --")
-AC_DEPENDANCY_CHECK($GSL_DIR, GSL dependancy found, 1)
-AC_DEPENDANCY_CHECK($SCHED_DIR, SLURM/PBS/OAR dependancy found ($SCHED_NAME), 0)
-AC_DEPENDANCY_CHECK($DB_DIR, Database dependancy found ($DB_NAME), 1)
+AS_ECHO("--------------------------------------- Checking summary --")
+AC_DEPENDANCY_CHECK($MPI_DIR, MPI found, 0)
+AC_DEPENDANCY_CHECK($GSL_DIR, GSL found, 1)
+AC_DEPENDANCY_CHECK($SCHED_DIR, SLURM/PBS/OAR found ($SCHED_NAME), 0)
+AC_DEPENDANCY_CHECK($DB_DIR, Database found ($DB_NAME), 1)
 AS_ECHO("----------------------------------------------------------")
 
 
