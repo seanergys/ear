@@ -21,6 +21,7 @@
 #include <string.h>
 #include <common/config.h>
 #include <common/colors.h>
+#include <common/output/verbose.h>
 #include <library/api/mpi.h>
 #include <library/loader/module_mpi.h>
 #include <library/loader/module_common.h>

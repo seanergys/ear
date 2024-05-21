@@ -69,28 +69,37 @@ void print_job_fd(int fd, job_t *job)
 	char job_buff[4096];
   struct tm *ts;
   char       buf_start[80], buf_end[80];
+	time_t startt , endt;
 
 	assert(job!=NULL);
-	if (!strlen(job->user_id) || !strlen(job->app_id) || !strlen(job->policy)){
-		verbose(VTYPE,"print_job_fd some of the args are null\n");
-		return;
-	}
 //    sprintf(job_buff, "%s;%s;%lu;%s;%s;%lf", job->user_id, job->group_id,job->id, job->app_id, job->policy, job->th);
+		if (strlen(job->policy) < 1) strcpy(job->policy, " ");
+    if (strlen(job->user_id) < 1) strcpy(job->user_id, " ");
+    if (strlen(job->app_id) < 1) strcpy(job->app_id, " ");
+
     if (strlen(job->group_id) < 1) strcpy(job->group_id, " ");
     if (strlen(job->energy_tag) < 1) strcpy(job->energy_tag, " ");
     if (strlen(job->user_acc) < 1) strcpy(job->user_acc, " ");
-		
-		ts = localtime(&job->start_mpi_time);
+
+			
+		if (job->start_mpi_time){
+			startt = job->start_mpi_time;
+			endt   = job->end_mpi_time;
+		}else{
+			startt = job->start_time;
+			endt   = job->end_time;
+		}	
+		ts = localtime(&startt);
 		strftime(buf_start, sizeof(buf_start), "%Y-%m-%d %H:%M:%S", ts);
 
-		ts = localtime(&job->end_mpi_time);
+		ts = localtime(&endt);
 		strftime(buf_end, sizeof(buf_end), "%Y-%m-%d %H:%M:%S", ts);	
 #if WF_SUPPORT
-    sprintf(job_buff, "%lu;%lu;%lu;%s;%s;%s;%s;%s;%s;%lf;%s;%s", job->id, job->step_id, job->local_id, job->user_id, job->group_id, job->app_id,
-                                                          job->user_acc, job->energy_tag, job->policy, job->th, buf_start, buf_end);
+    sprintf(job_buff, "%lu;%lu;%lu;%s;%s;%s;%s;%s;%s;%lf;%lu;%lu;%s;%s", job->id, job->step_id, job->local_id, job->user_id, job->group_id, job->app_id,
+                                                          job->user_acc, job->energy_tag, job->policy, job->th, startt, endt, buf_start, buf_end);
 #else
-    sprintf(job_buff, "%lu;%lu;%s;%s;%s;%s;%s;%s;%lf;%s;%s", job->id, job->step_id, job->user_id, job->group_id, job->app_id,
-                                                          job->user_acc, job->energy_tag, job->policy, job->th, buf_start, buf_end);
+    sprintf(job_buff, "%lu;%lu;%s;%s;%s;%s;%s;%s;%lf;%lu;%lu;%s;%s", job->id, job->step_id, job->user_id, job->group_id, job->app_id,
+                                                          job->user_acc, job->energy_tag, job->policy, job->th, startt, endt, buf_start, buf_end);
 #endif
 	write(fd,job_buff,strlen(job_buff));
 }

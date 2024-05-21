@@ -24,7 +24,7 @@ etc_FOLDERS = $(ETCDIR) \
               $(ETCDIR)/systemd \
               $(ETCDIR)/slurm 
 
-conf_BINS = ear.conf.template ear.conf.full.template
+conf_BINS = ear.conf.template ear.conf.full.template edcmon.template.conf
 conf_FOLD = conf
 conf_PATH = $(ETCDIR)/ear
 conf_PERM = 0660
@@ -39,7 +39,7 @@ serv_PERM = 0660
 slur_BINS = ear.plugstack.conf
 slur_FOLD = slurm
 slur_PATH = $(ETCDIR)/slurm
-slur_PERM = 0660
+slur_PERM = 0644
 
 ######## OPTIONS
 

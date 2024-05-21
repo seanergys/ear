@@ -165,7 +165,10 @@ state_t eard_dummy_cluster_conf(char *ear_tmp, uint ID)
 
     if (cc_read_result != EAR_ERROR){
         verbose_master(2, "Reading cluster_conf");
+				uint vlevel = VERB_GET_LV();
+				VERB_SET_LV(0);
         read_cluster_conf(path, &dummy_cc);
+				VERB_SET_LV(vlevel);
     }else{
         memset(&dummy_cc, 0 , sizeof(cluster_conf_t));
         set_ear_conf_default(&dummy_cc);

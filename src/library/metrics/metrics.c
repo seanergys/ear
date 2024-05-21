@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 
 #define _GNU_SOURCE
@@ -342,14 +342,6 @@ static uint validation_new_gpu = 0;
 static void metrics_static_dispose();
 
 
-node_freq_domain_t earl_default_domains = {
-	.cpu 	= POL_DEFAULT,
-	.mem 	= POL_DEFAULT,
-	.gpu 	= POL_DEFAULT,
-	.gpumem = POL_DEFAULT,
-};
-
-
 const metrics_t *metrics_get(uint api)
 {
     switch(api) {
@@ -384,62 +376,77 @@ uint metrics_CPU_phase_ok()
 }
 
 
-
 static void metrics_configuration(topology_t *tp)
 {
 	char topo_str[1024];
-    cfb_t bf;
+	cfb_t bf;
+
 	if (!EARL_LIGHT) return;
 
 	if (eards_connected())
-    {
-		verbose_info2_master("EARD connected");
+	{
+		verbose_info2_master("EARD connected.");
 	} else
-    {
+	{
 		verbose_warning_master("EARD not connected. Switch to monitoring ?");
 	}
 
 	if (!mgt_cpufreq.ok)
-    {
-		verbose_warning_master("Mgt cpufreq is not ok, switching to monitoring");
+	{
+		verbose_warning_master("Mgt cpufreq is not ok, switching to monitoring.");
 
-		earl_default_domains.cpu = POL_NOT_SUPPORTED;
+		// earl_default_domains.cpu = POL_NOT_SUPPORTED;
 
 		topology_tostr(tp, topo_str, sizeof(topo_str));
-		verbose_master(ERROR_VERB,"%s", topo_str);
-        cpufreq_base_init(tp, &bf);
+		verbose_master(ERROR_VERB, "%s", topo_str);
+
+		cpufreq_base_init(tp, &bf);
 		verbose_info2_master("Frequency detected %lu", (ulong) bf.frequency);
 	}
-	if (!mgt_imcfreq.ok){
+
+	if (!mgt_imcfreq.ok)
+	{
 		verbose_warning_master("Mgt imcfreq is not ok, swtching to monitoring for IMC");
-		earl_default_domains.mem = POL_NOT_SUPPORTED;
+		// earl_default_domains.mem = POL_NOT_SUPPORTED;
 	}
+
 #if USE_GPUS
-    if (!mgt_gpu.ok) {
+    if (!mgt_gpu.ok)
+		{
         verbose_warning_master("GPU dummy API, swtching to monitoring for GPU.");
-        earl_default_domains.gpu = POL_NOT_SUPPORTED;
+        // earl_default_domains.gpu = POL_NOT_SUPPORTED;
     }
 #endif // USE_GPUS
+
 	if (!met_cpufreq.ok && mgt_cpufreq.ok) {
 		verbose_warning_master("Avg cpufreq is not ok. Using mgt_cpufreq");
 	}
-	if (!met_imcfreq.ok && mgt_imcfreq.ok){
+
+	if (!met_imcfreq.ok && mgt_imcfreq.ok)
+	{
 		verbose_warning_master("Avg imcfreq is not ok. Using mgt_imcfreq");
 	}
-  if (! met_bwidth.ok)
+
+  if (!met_bwidth.ok)
   {
 		verbose_warning_master("Mem bandwith not ok. swtching to monitoring");
-		earl_default_domains.cpu = POL_NOT_SUPPORTED;
+		// earl_default_domains.cpu = POL_NOT_SUPPORTED;
   }
-  if(!met_flops.ok){
+
+  if(!met_flops.ok)
+	{
 		verbose_warning_master("FLOPS not available");
 	}
-  if (!met_cache.ok){
+
+  if (!met_cache.ok)
+	{
 		verbose_warning_master("Cache not available");
 	}
-  if (!met_cpi.ok){
+
+  if (!met_cpi.ok)
+	{
 		verbose_warning_master("CPI not available. swtching to monitoring");
-		earl_default_domains.cpu = POL_NOT_SUPPORTED;
+		// earl_default_domains.cpu = POL_NOT_SUPPORTED;
 	}
 }
 
@@ -589,7 +596,7 @@ static void metrics_static_init(topology_t *tp)
 
 		#if EARL_LIGHT
 		if (mgt_gpu.ok && (mgt_gpu.ok != API_EARD)){
-			verbose_warning_master("GPU API is %u", met_gpu.api);
+			verbose_info2_master("GPU API is %u", met_gpu.api);
 		}
 		#endif
 
@@ -600,12 +607,19 @@ static void metrics_static_init(topology_t *tp)
 #endif
 
 #if DCGMI
+		/* Just the master loads DCGMI module. */
     if (master && met_gpu.ok)
     {
-	    if state_fail(dcgmi_lib_load())
+			state_t ret_st = dcgmi_lib_load();
+	    if (state_is(ret_st, EAR_WARNING))
 	    {
-		    error_lib("Loading EARL DCGMI module: %s", state_msg);
-	    }
+				// The warning is not relevant for a normal user
+				verbose_warning("Loading EARL DCGMI module: %s", state_msg);
+	    } else if (state_fail(ret_st))
+			{
+				// An EAR_ERROR may be relevant for a normal user, as it explictely requests DCGMI metrics.
+				verbose_error("Loading EARL DCGMI module: %s", state_msg);
+			}
     }
 #endif // DCGMI
 #endif // USE_GPUS
@@ -1614,7 +1628,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 	sig_ext = metrics->sig_ext;
 
 #if USE_GPUS & DCGMI
-	if (master && dcgmi_lib_is_enabled() && (sig_ext->dcgmis.dcgmi_sets == 0))
+	if (master && dcgmi_lib_is_enabled() && (sig_ext->dcgmis.set_cnt == 0))
 	{
 		dcgmi_lib_dcgmi_sig_init(&sig_ext->dcgmis);
     }
@@ -1624,8 +1638,10 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 
 
 	/* FLOPS */
-	flops_data_accum(&flops_diff[APP], NULL, &metrics->Gflops);
-	flops_help_toold(&flops_diff[APP], metrics->FLOPS);
+	/* flops_data_accum used in this way just computes the Gflops */
+	flops_data_accum(&flops_diff[sign_app_loop_idx], NULL, &metrics->Gflops);
+	/* Copies the FP instruction vector in FLOPS */
+	flops_help_toold(&flops_diff[sign_app_loop_idx], metrics->FLOPS);
 
 	/* num_th is 1 if perf supports accumulating per thread counters */
 	metrics->Gflops = metrics->Gflops * num_th;
@@ -1714,10 +1730,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 				}
 			} else // App signature
 			{
-				if (state_ok(dcgmi_lib_get_global_metrics(&sig_ext->dcgmis)))
-				{
-					dcgmi_lib_report_total_metrics();
-				} else
+				if (state_fail(dcgmi_lib_get_global_metrics(&sig_ext->dcgmis)))
 				{
 					error_lib("Getting global DCGMI metrics: %s", state_msg);
 				}

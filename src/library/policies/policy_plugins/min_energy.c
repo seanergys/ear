@@ -336,12 +336,6 @@ state_t policy_loop_init(polctx_t *c, loop_id_t *l)
 }
 
 
-state_t policy_loop_end(polctx_t *c,loop_id_t *l)
-{
-    return EAR_SUCCESS;
-}
-
-
 state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *ready)
 {
     ulong *new_freq = freqs->cpu_freq; // Output freqs

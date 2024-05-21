@@ -75,7 +75,7 @@ datarootdir        = @datarootdir@
 DOCDIR             = @docdir@
 CHOWN_USR          = @USER@
 CHOWN_GRP          = @GROUP@
-CONSTANTS          = -DSEC_KEY=10001 -DREPORT_TIMESTAMP=1 -DSYNC_SET_RPC=1 -DMIX_RPC=1 -DESTIMATE_PERF=0
+CONSTANTS          = -DSEC_KEY=10001 -DESTIMATE_PERF=0
 REPLACE            =
 
 ######## EXPORTS

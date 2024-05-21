@@ -36,6 +36,9 @@ all: $(plug_BINS) dummy.so
 %.so: %.c
 	$(CC) $(CFLAGS)  -o $@ $^
 
+conf.so:conf.c
+	$(CC)  $(CFLAGS)  -o $@ $^ $(call whole,$(SRCDIR)/common/libcommon.a)
+
 eardcon.so: eardcon.c $(SRCDIR)/daemon/local_api/libeard.a
 	$(CC) $(CFLAGS)  -o $@ $^
 

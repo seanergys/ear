@@ -24,6 +24,7 @@
 #include <stdlib.h>
 // #define SHOW_DEBUGS 1
 #include <common/output/debug.h>
+#include <common/utils/string.h>
 #include <common/string_enhanced.h>
 #include <common/config/config_env.h>
 #include <library/loader/loader.h>
@@ -36,7 +37,8 @@
 
 static int _loaded;
 
-static int init() {
+static int init()
+{
     char *verb;
     char *task;
     pid_t pid1 = 1;
@@ -64,7 +66,8 @@ static int init() {
     // return pid1 == pid2;
 }
 
-int must_load() {
+int must_load()
+{
     if ((strstr(program_invocation_name, "bash") == NULL) &&
         (strstr(program_invocation_name, "hydra") == NULL)) {
         verbose(2, "LOADER: Program %s loaded with EAR", program_invocation_name);
@@ -74,13 +77,18 @@ int must_load() {
     return 0;
 }
 
-int load_no_official() {
-    char *app_to_load = ear_getenv(FLAG_LOADER_APPLICATION);
-    if (app_to_load == NULL) {
+int load_no_official()
+{
+    char  *envar = ear_getenv(FLAG_LOADER_APPLICATION);
+    char **list;
+    uint   list_count;
+    int    l;
+
+    if (envar == NULL) {
         // TODO: This check is for the transition to the new environment variables.
         // It will be removed when SCHED_LOADER_LOAD_NO_MPI_LIB will be removed, in the next release.
-        app_to_load = ear_getenv(SCHED_LOADER_LOAD_NO_MPI_LIB);
-        if (app_to_load != NULL) {
+        envar = ear_getenv(SCHED_LOADER_LOAD_NO_MPI_LIB);
+        if (envar != NULL) {
             verbose(1, "LOADER: %sWARNING%s %s will be removed on the next EAR release. "
                        "Please, change it by %s in your submission scripts.",
                     COL_RED, COL_CLR, SCHED_LOADER_LOAD_NO_MPI_LIB, FLAG_LOADER_APPLICATION);
@@ -88,22 +96,31 @@ int load_no_official() {
             return 0;
         }
     }
-    if (app_to_load == NULL) return 0;
-    verbose(2, "LOADER: Using %s = %s as special cases", FLAG_LOADER_APPLICATION, app_to_load);
-    if (strinlist(app_to_load, ",", program_invocation_name)) {
-        verbose(1, "LOADER: %s found in list ", program_invocation_name);
-        return 1;
+    if (envar == NULL) {
+        return 0;
     }
-
+    verbose(2, "LOADER: Using %s = %s as special cases", FLAG_LOADER_APPLICATION, envar);
+    if (strtoa((const char *) envar, ',', &list, &list_count) == NULL) {
+        return 0;
+    }
+    for (l = 0; l < list_count; ++l) {
+        if (strstr(program_invocation_name, list[l]) != NULL) {
+            strtoa_free(list);
+            return 1;
+        }
+    }
+    strtoa_free(list);
     return 0;
 }
 
-int load_no_parallel() {
+int load_no_parallel()
+{
     if (strstr(program_invocation_name, "python") != NULL) return 1;
     return 0;
 }
 
-void __attribute__ ((constructor)) loader() {
+void __attribute__ ((constructor)) loader()
+{
     char *path_lib_so;
     char *libhack;
 

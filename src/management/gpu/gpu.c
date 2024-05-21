@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -169,6 +169,7 @@ state_t mgt_gpu_freq_get_valid(ctx_t *c, uint dev, ulong freq_ref, ulong *freq_n
 
 state_t mgt_gpu_freq_get_next(ctx_t *c, uint dev, ulong freq_ref, uint *freq_idx, uint flag)
 {
+  debug("mgt_gpu_freq_get_next IN: dev %d freq_ref %lu flag %d FREQ_TOP %d", dev, freq_ref, flag, FREQ_TOP);
 	const uint   *freqs_alldevs_count;
 	const ulong **freqs_alldevs;
 	const ulong  *freqs_dev;
@@ -197,10 +198,12 @@ state_t mgt_gpu_freq_get_next(ctx_t *c, uint dev, ulong freq_ref, uint *freq_idx
 	{
 		freq_ceil  = freqs_dev[i+0];
 		freq_floor = freqs_dev[i+1];
+    debug("i: %d freq_ref %lu freq_ceil %lu freq_floor %lu", i, freq_ref, freq_ceil, freq_floor);
 		//
 		if (freq_ref == freq_ceil || (freq_ref < freq_ceil && freq_ref > freq_floor)) {
 			if (flag == FREQ_TOP) {
-				*freq_idx = i-1;
+				//*freq_idx = i-1;
+				*freq_idx = i;
 			} else {
 				*freq_idx = i+1;
 			}

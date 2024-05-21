@@ -1,5 +1,5 @@
 /*
- *
+ 
  * This program is part of the EAR software.
  *
  * EAR provides a dynamic, transparent and ligth-weigth solution for
@@ -36,6 +36,7 @@
  * Loader definitions. */
 /**@{*/
 #define INTEL_EXT       "so"
+#define INTELMPI_EXT    "impi.so"
 #define OPENMPI_EXT     "ompi.so"
 #define CUDA_EXT        "gen.so"
 #define OPENMP_EXT      "gen.so"
@@ -43,6 +44,7 @@
 #define DEF_EXT         "gen.so"
 
 #define FUJITSU_MPI_EXT "fujitsu.so"
+#define CRAY_MPI_EXT "cray.so"
 /**@}*/
 
 
@@ -69,6 +71,10 @@
 #define EARD_FILE_LOG               1
 /** Set minimum CPU frequency on idle phases. */
 #define EARD_POWERCAP_IDLE_MINFREQ  1
+/**  */
+#define SYNC_SET_RPC 1
+/**  */
+#define MIX_RPC 1
 /**@}*/
 
 
@@ -96,7 +102,7 @@
 #define CPUFREQ_SET_ALL_USERS 1
 
 /** Maximum number of tries when doing non-blocking communications. */
-#define MAX_SOCKET_COMM_TRIES               100000000
+#define MAX_SOCKET_COMM_TRIES               1000000
 //
 
 /* These flags configures EARL */
@@ -243,6 +249,14 @@
 /** Experimental feature. Enables fine-grained metrics monitor and MPI Optimize features. */
 #define MPI_OPTIMIZED 0
 
+/**@}*/
+
+
+/** @name Common
+ * Parameters that set up different EAR components. */
+/**@{*/
+/** Instead of reporting the number of iterations, report the timestamp of the loop. */
+#define REPORT_TIMESTAMP 1
 /**@}*/
 
 

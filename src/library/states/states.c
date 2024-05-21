@@ -26,7 +26,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 #if !SHOW_DEBUGS
 #define NDEBUG // Activate assert calls only in the debug mode.
 #endif
@@ -69,7 +69,7 @@
 #define DYNAIS_CUTOFF	1 // Enables the dynamic DynAIS turning off.
 
 #define states_verbose2_master(msg, ...) \
-    verbose_info2_master("States:" msg, ##__VA_ARGS__);
+    verbose_info2_master("States: " msg, ##__VA_ARGS__);
 
 
 extern masters_info_t masters_info; // Defined at externs.h
@@ -612,7 +612,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
              {
                verbose(1, "An error occurred updating the affinity mask: %s", state_msg);
              }else{
-               verbose(2,"EARL[%d] Affinity mask updated", AID);
+               verbose(2,"EARL[%d] Affinity mask updated, using %d CPUs", AID, lib_shared_region->num_cpus);
              }
             }
 

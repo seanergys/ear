@@ -95,8 +95,10 @@
 #define HACK_POWER_POLICY            "HACK_POWER_POLICY"       // This var forces to load a specific power policy. Replaces (SCHED_PREFIX)_EAR_POWER_POLICY.
 #define HACK_GPU_POWER_POLICY        "HACK_GPU_POWER_POLICY"   // This var forces to load a specific gpu power policy. Replaces (SCHED_PREFIX)_EAR_GPU_POWER_POLICY.
 #define HACK_POWER_MODEL             "HACK_POWER_MODEL"        // This var forces to load a specific power model plugin. Replaces (SCHED_PREFIX)_EAR_POWER_MODEL.
+#define HACK_GPU_ENERGY_MODEL        "HACK_GPU_ENERGY_MODEL"   // This var forces to load a specific GPU energy model plugin. Replaces (SCHED_PREFIX)_EAR_GPU_POWER_MODEL.
 #define HACK_CPU_POWER_MODEL         "HACK_CPU_POWER_MODEL"    // This var forces to load a specific cpu power model plugin.
 #define HACK_EARL_COEFF_FILE         "HACK_EARL_COEFF_FILE"    // This var forces to load a specific coefficient file
+#define HACK_EARL_GPU_COEFF_FILE     "HACK_EARL_GPU_COEFF_FILE"    // This var forces to load a specific coefficient file for GPU models
 #define HACK_DYNAIS_WINDOW_SIZE      "HACK_DYNAIS_WINDOW_SIZE" // This var forces a specific dynais windows size. Replaces (SCHED_PREFIX)_EAR_DYNAIS_WINDOW_SIZE.
 #define HACK_DEF_FREQ                "HACK_DEF_FREQ"           // This var forces a different default frequency than the predefined for a policy. Replaces (SCHED_PREFIX)_EAR_DEF_FREQ.
 #define HACK_EARL_VERBOSE            "HACK_EARL_VERBOSE"       // This var forces an EARL verbosity.
@@ -130,6 +132,8 @@
 #define FLAG_TURBO_CP                "USE_TURBO_FOR_CP"
 #define FLAG_MIN_CPUFREQ             "EAR_MIN_CPUFREQ"        // Sets a minimum CPU frequency policies can set.
 #define FLAG_NTWRK_IMC               "EAR_NTWRK_IMC"          // Tells the IMC policy the application uses IMC freq for network operations, making the policy less aggressive.
+#define FLAG_DISABLE_NODE_METRICS    "EAR_DISABLE_NODE_METRICS" // If defined, This job will not be considered for node metrics and policy will not be applied : To be used in MASTER/WORKED use cases
+#define FLAG_NTASK_WORK_SHARING      "EAR_NTASK_WORK_SHARING"   // Tells EAR to consider the N tasks created by the scheduler as a single job (for non MPI use cases).
 #define FLAG_TRY_TURBO               "EAR_TRY_TURBO"          // If policies have make CPU frequency be at maximum, try to boost the CPU frequency.
 #define FLAG_REPORT_ADD              "EAR_REPORT_ADD"
 #define FLAG_USE_ENERGY_MODELS       "EAR_USE_ENERGY_MODELS"  // Tells policies to use power models instead of probe and error DVFS.

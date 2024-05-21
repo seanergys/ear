@@ -26,6 +26,7 @@
 #include <common/config.h>
 //#define SHOW_DEBUGS 1
 #include <common/output/verbose.h>
+#include <common/utils/sched_support.h>
 #include <common/environment.h>
 #include <common/types/generic.h>
 #include <common/types/configuration/cluster_conf.h>
@@ -124,20 +125,20 @@ char *getenv_ear_coeff_db_pathname()
 char *getenv_ear_app_name()
 {
 	char *my_name;
-	my_name=ear_getenv("JOB_NAME");
-	if (my_name!=NULL){
-		if (strcmp(my_name,"")==0) return NULL;
-		conf_ear_app_name=malloc(strlen(my_name)+1);
-		strcpy(conf_ear_app_name,my_name);	
+
+	my_name = ear_getenv(ENV_APP_NAME);
+	if ((my_name != NULL) && strcmp(my_name,"")){
+		conf_ear_app_name = malloc(strlen(my_name)+1);
+		strcpy(conf_ear_app_name,my_name);
+		return conf_ear_app_name;
 	}
-  else{
-    if ((my_name = ear_getenv(ENV_APP_NAME)) != NULL){
-      if (strcmp(my_name,"")==0) return NULL;
-        conf_ear_app_name=malloc(strlen(my_name)+1);
-        strcpy(conf_ear_app_name,my_name);
-      
-    }else return NULL;
-  }
+
+	my_name = ear_getenv("JOB_NAME");
+	if ((my_name != NULL) && strcmp(my_name,"")){
+		conf_ear_app_name = malloc(strlen(my_name)+1);
+		strcpy(conf_ear_app_name,my_name);	
+		return conf_ear_app_name;
+	}
 	return conf_ear_app_name;
 }
 void set_ear_app_name(char *name)
@@ -261,12 +262,7 @@ double getenv_ear_performance_accuracy()
 
 int getenv_ear_local_id()
 {
-	//char *my_local_id;
-	//my_local_id=ear_getenv("SLURM_LOCALID");
-	//if (my_local_id!=NULL){ 
-	//	conf_ear_local_id=atoi(my_local_id);
-	//}
-	// if not defined, it is computed later based on the number of total processes and EAR_NUM_NODES
+	conf_ear_local_id = get_my_sched_node_rank();
 	return conf_ear_local_id;
 }
 

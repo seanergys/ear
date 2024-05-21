@@ -23,7 +23,7 @@
 
 typedef struct coefficient
 {
-	ulong pstate_ref;	
+	  ulong pstate_ref;	
     ulong pstate;
     uint available;
     /* For power projection */
@@ -36,12 +36,35 @@ typedef struct coefficient
     double F;
 } coefficient_t;
 
+
+typedef struct coefficient_gpu
+{
+    ulong pstate_ref;
+    ulong pstate;
+    uint available;
+    /* For power projection */
+    double A;
+    double B;
+    double C;
+    double D;
+    double E;
+    /* For time projection */
+    double F;
+    double G;
+    double H;
+    double I;
+    double J;
+} coefficient_gpu_t;
+
+
 // File
 int coeff_file_size(char *path);
 
 int coeff_file_read(char *path, coefficient_t **coeffs);
 
 int coeff_file_read_no_alloc(char *path, coefficient_t *coeffs, int size);
+
+int coeff_gpu_file_read_no_alloc(char *path, coefficient_gpu_t *coeffs, int size);
 
 // Misc
 void coeff_reset(coefficient_t *coeff);

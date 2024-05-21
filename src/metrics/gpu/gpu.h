@@ -23,7 +23,7 @@
 #include <common/plugins.h>
 #include <common/system/time.h>
 #include <metrics/common/apis.h>
-#include <metrics/gpu/archs/dcgmi.h>
+// #include <metrics/gpu/archs/dcgmi.h> // TODO: To be removed
 
 typedef struct gpu_devs_s {
     ullong serial;

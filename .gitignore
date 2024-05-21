@@ -34,6 +34,9 @@ CMake*
 *_trash
 *.idea
 build/
+tags
+compile_commands.json
+.cache/
 
 # Julita's
 DB/
@@ -176,3 +179,5 @@ src/tools/metrics_show
 src/commands/ear-info
 deployment.sh
 src/tools/node_manager_info
+tmp.txt
+*.plist

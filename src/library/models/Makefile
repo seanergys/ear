@@ -6,9 +6,11 @@ modl_BINS = \
 						energy_models/imc_linear_model.so \
 						cpu_power_model_default.so \
 						cpu_power_model_gflops.so \
-						cpu_power_model_dummy.so
+						cpu_power_model_dummy.so \
+						energy_models/gpu_dummy_model.so \
+						energy_models/gpu_model.so 
 
-modl_OBJS = cpu_power_model.o energy_model.o
+modl_OBJS = cpu_power_model.o energy_model.o 
 modl_PATH = $(DESTDIR)/lib/plugins/models
 modl_PERM = 0775
 modl_DEPS = $(SRCDIR)/common/libcommon.a
@@ -41,7 +43,8 @@ cpu_power_model_%.so: cpu_power_model_%.o $(modl_DEPS)
 
 install: modl.ginstall;
 
-clean: modl.gclean;
+clean: modl.gclean
+	rm -rf *.o *.so
 
 ######## DEPENDENCIES
 

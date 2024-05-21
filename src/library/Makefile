@@ -1,5 +1,5 @@
 # If USER_TEST is set to 1, any user can execute the hacks with the library.
-CFLAGS  = -fPIC  -I$(SRCDIR) -DUSER_TEST=0 $(CONSTANTS) 
+CFLAGS  = -fPIC  -I$(SRCDIR) -DUSER_TEST=0 $(CONSTANTS)
 LDFLAGS = -shared -ldl -lm -lpthread -rdynamic -pthread
 
 
@@ -68,7 +68,7 @@ comm_OBJS = \
     $(SRCDIR)/management/libmgt.a \
     $(SRCDIR)/metrics/libmetrics.a \
     $(SRCDIR)/daemon/local_api/libeard.a \
-    $(SRCDIR)/common/libcommon.a 
+    $(SRCDIR)/common/libcommon.a
 
 
 core_OBJS = \
@@ -85,17 +85,18 @@ core_OBJS = \
     models/cpu_power_model.o \
     models/energy_model.o \
     policies/policy.o \
+    policies/policy_ctx.o \
     policies/common/pc_support.o \
     policies/common/gpu_support.o \
     policies/common/cpu_support.o \
     policies/common/mpi_stats_support.o \
     policies/common/imc_policy_support.o \
+    policies/common/cpuprio_support.o \
     policies/common/generic.o \
     states/states_comm.o \
     states/states.o \
     tracer/tracer.o \
     dynais/dynais.a
-
 
 ifeq ($(DCGMI), 1)
 core_OBJS += \
@@ -136,6 +137,7 @@ clean: clean.components rclean;
 
 post:
 	@ $(MAKE) -C 'metrics' $@ || exit
+	@ $(MAKE) -C 'policies' $@ || exit
 
 
 ######## SUBFOLDERS

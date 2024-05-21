@@ -1,6 +1,7 @@
 CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC $(CONSTANTS) $(DB_CFLAGS) $(DEFS)
 
-DB_MYSQL_LDFLAGS = $(DB_LDFLAGS) $(SRCDIR)/common/libcommon.a $(SRCDIR)/common/libdb.a
+DB_MYSQL_LDFLAGS = $(DB_LDFLAGS)
+DB_MYSQL_STATIC =  $(SRCDIR)/common/libdb.a  $(SRCDIR)/common/libcommon.a
 DB_PSQL_LDFLAGS  = $(DB_LDFLAGS) -lpq $(SRCDIR)/common/libcommon.a $(SRCDIR)/common/libdb.a
 
 
@@ -59,8 +60,7 @@ endif
 ifeq ($(DCGMI), 1)
 CFLAGS += \
 	-DDCGMI=1
-repo_BINS += \
-	dcgmi.so
+repo_BINS += dcgmi.so
 endif	
 
 ######## RULES
@@ -85,8 +85,8 @@ eardbd.so: eardbd.c $(SRCDIR)/database_cache/eardbd_api.c $(repo_DEPS)
 prometheus.so: prometheus.c $(repo_DEPS)
 	$(CC) $(CFLAGS) -shared -o prometheus.so prometheus.c -lmicrohttpd 
 
-mysql.so: mysql.c $(repo_DEPS)
-	$(CC) $(CFLAGS) $(DB_CFLAGS) -shared -o $@ $^ $(DB_MYSQL_LDFLAGS)
+mysql.so: mysql.c $(DB_MYSQL_STATIC)
+	$(CC) $(CFLAGS) $(DB_CFLAGS)  $(DB_MYSQL_STATIC) -shared -o $@ $^ $(DB_MYSQL_LDFLAGS)
 
 psql.so: psql.c $(repo_DEPS)
 	$(CC) $(CFLAGS) $(DB_CFLAGS) -shared -o $@ $^ $(DB_PSQL_LDFLAGS)

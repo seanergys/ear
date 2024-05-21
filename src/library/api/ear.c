@@ -17,7 +17,7 @@
 
 
 #define _GNU_SOURCE
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 /* 1 means invatid shared memory or invalid id (all processes), 
  * 2 means invatid shared memory or invalid id (half processes),
@@ -66,6 +66,7 @@
 #include <common/hardware/hardware_info.h>
 #include <common/system/monitor.h>
 #include <common/system/execute.h>
+#include <common/utils/sched_support.h>
 
 #include <library/common/externs_alloc.h>
 #include <library/common/externs.h>
@@ -133,20 +134,18 @@ uint   AID;
 
 // Statics
 #define JOB_ID_OFFSET		100
-#define USE_LOCK_FILES 		1
 pthread_t earl_periodic_th;
 unsigned long ext_def_freq=0;
 int dispose=0;
 
-#if USE_LOCK_FILES
 #include <common/system/file.h>
 static char master_lock_filename[MAX_PATH_SIZE];
 static int fd_master_lock;
-#endif
 
 // Process information
 static int my_id = 1;
-static int my_size;
+static int ear_my_size;
+static int app_node_multiprocess = 0;
 static int num_nodes;
 static int ppnode;
 
@@ -218,6 +217,7 @@ cluster_conf_t cconf;
 /* Info with jobs sharing the node */
 ear_njob_t *node_mgr_data;
 uint node_mgr_index;
+uint node_mgr_earl_index;
 node_mgr_sh_data_t *node_mgr_job_info;
 
 // Dynais
@@ -264,8 +264,10 @@ static state_t check_eard_earl_compatibility(state_t eard_connect_state)
 
 	eard_state_t eard_conf;
 
+#if VERSION_MAJOR < 5 
 	verbose_master(0, "Warning, EARD compatibility test not supported");
 	return EAR_SUCCESS;
+#endif
 
 	// If eards_get_state returns EAR_ERROR, means that the connected EARD does not have the RPC
 	// implemented, so we assume it is an old version and (by now) it should be compatible.
@@ -305,7 +307,7 @@ static void print_local_data()
         //verbose(2, "App/loop summary file: '%s'/'%s'", app_summary_path, loop_summary_path);
         verbose(1, "%30s: %u/%lu (%d)", "P_STATE/frequency (turbo)",
                 EAR_default_pstate, application.job.def_f, ear_use_turbo);
-        verbose(1, "%30s: %u/%d/%d/%.3f", "Tasks/nodes/ppn/node_ratio", my_size, num_nodes, ppnode, ratio_PPN);
+        verbose(1, "%30s: %u/%d/%d/%.3f", "Tasks/nodes/ppn/node_ratio", ear_my_size, num_nodes, ppnode, ratio_PPN);
         verbose(1, "%30s: %s (%d)", "Policy (learning)",
                 application.job.policy, ear_whole_app);
         verbose(1, "%30s: %0.2lf/%0.2lf", "Policy threshold/Perf accuracy",
@@ -373,7 +375,7 @@ void notify_eard_connection(int status)
 												if (masters_connected!=num_nodes){
 																num_nodes=masters_connected;
 																set_ear_num_nodes(num_nodes);
-																ppnode = my_size / num_nodes;
+																ppnode = ear_my_size / num_nodes;
 												}
 								}
 								return;
@@ -417,6 +419,7 @@ void cleanup_job_folder()
 				uint ID = create_ID(my_job_id,my_step_id);
 				snprintf(block_file_dir,sizeof(block_file_dir),"%s/%u",tmp, ID);
 				debug("cleanup_job_folder: %s process %d\n", block_file_dir, clean_job_folder);
+				verbose_master(WF_SUPPORT_VERB,"EARL[%d] removing JOB folder (%s) ",getpid(), block_file_dir);
 				if (clean_job_folder){
 								debug("Folder needs to be removed from the library\n");
 								folder_remove(block_file_dir);
@@ -448,9 +451,12 @@ state_t create_eid_folder(char *tmp, int jid, int sid, uint AID)
 {
   int ret;
 
-  //verbose(WF_SUPPORT_VERB,"EID folder based on tmp=%s jid %d sid %d aid %u", tmp, jid, sid, AID);
+  verbose(WF_SUPPORT_VERB,"EID folder based on tmp=%s jid %d sid %d aid %u", tmp, jid, sid, AID);
 
   while (node_mgr_info_lock() != EAR_SUCCESS){};
+	char AID_path[MAX_PATH_SIZE];
+
+	/* Application folder for WF support */
   eid_folder(EID_application_path, sizeof(EID_application_path), tmp, jid, sid, AID);
 
   strcpy(EID_application_path_finish, EID_application_path);
@@ -464,7 +470,19 @@ state_t create_eid_folder(char *tmp, int jid, int sid, uint AID)
     return EAR_ERROR;
   }
   chmod(EID_application_path,S_IRUSR|S_IWUSR|S_IXUSR);
-  //verbose(WF_SUPPORT_VERB,"EID folder (%s) created", EID_application_path);
+  verbose(WF_SUPPORT_VERB,"EID folder (%s) created", EID_application_path);
+
+	/* Application folder */
+
+	ret = mkdir(EID_application_path_finish, S_IRWXU);
+	if ((ret < 0 ) && (errno != EEXIST)){
+		verbose(WF_SUPPORT_VERB,"EAR error AID folder cannot be created (%s) (%s)", EID_application_path_finish, strerror(errno));
+    node_mgr_info_unlock();
+    return EAR_ERROR;
+	}
+	chmod(EID_application_path_finish, S_IRUSR|S_IWUSR|S_IXUSR);
+	verbose(WF_SUPPORT_VERB,"AID folder (%s) created", EID_application_path_finish);
+	
   node_mgr_info_unlock();
   return EAR_SUCCESS;
 }
@@ -526,28 +544,17 @@ void mark_as_eard_disconnected(char *tmp, int jid,int sid,uint aid, int pid)
 void create_shared_regions()
 {
 	char *tmp=get_ear_tmp();
-#if 0
-	int bfd=-1;
-#endif
   int total_elements = 1;
   int per_node_elements = 1;
   uint current_jobs_in_node;
+#if MPI == 0
+	char path_barrier[1024];
+#endif
 #if SHOW_DEBUGS
   int total_size;
 #endif
   uint ID = create_ID(application.job.id, application.job.step_id);
 
-  #if 0
-  char EID_folder[MAX_PATH_SIZE]
-
-  eid_folder(EID_folder, sizeof(EID_folder), tmp, application.job.id, application.job.step_id, AID);
-
-	/* This file is going to be used to access the lib_shared region in exclusive mode */
-	xsnprintf(block_file,sizeof(block_file),"%s/.my_local_lock.%s",EID_folder, application.job.user_id);
-  if ((lib_shared_lock_fd = file_lock_create(block_file))<0){
-  	error("Creating lock file for lib_shared_region hared memory:%s (%s)", block_file, strerror(errno));
-  }
-	#endif
 
   /* Semaphore based on AID and node */
   xsnprintf(sem_file, sizeof(sem_file), "ear_semaphore_%u_%s", AID, node_name);
@@ -561,12 +568,6 @@ void create_shared_regions()
   pid_t master_pid = getpid();
 	verbose(2, "[%s] Master (PID: %d) creating shared regions for node synchronisation...",
             node_name, master_pid);
- #if 0
-  xsnprintf(block_file,sizeof(block_file),"%s/%u/.my_local_lock_2.%s",tmp, ID, application.job.user_id);
-  if ((bfd=file_lock_create(block_file))<0){
-    error("Creating lock file for shared memory: %s (%s)",block_file, strerror(errno));
-  }
-  #endif
 
   /* ****************************************************************************************
    * We have two shared regions, one for the node and other for all the processes in the app.
@@ -584,18 +585,23 @@ void create_shared_regions()
 		if (lib_shared_region==NULL){
 			error("Creating the lib_shared_data region");
 		}
-		my_node_id=0;
+		verbose(2,"EARL[%d][%d] creating libsh path %s", ear_my_rank,getpid(), lib_shared_region_path);
+		my_node_id												=	0;
 		lib_shared_region->node_mgr_index = NULL_NODE_MGR_INDEX;
-		lib_shared_region->earl_on = eard_ok || EARL_LIGHT;
-		lib_shared_region->num_processes=1;
-		lib_shared_region->num_signatures=0;
-		lib_shared_region->master_rank = masters_info.my_master_rank;
+		lib_shared_region->earl_on 				= eard_ok || EARL_LIGHT;
+		lib_shared_region->num_processes	=	1;
+		lib_shared_region->num_signatures	=	0;
+		lib_shared_region->master_rank 		= masters_info.my_master_rank;
 		lib_shared_region->node_signature.sig_ext = (void *) calloc(1, sizeof(sig_ext_t));
 		lib_shared_region->job_signature.sig_ext  = (void *) calloc(1, sizeof(sig_ext_t));
+		/* If not estimate_node_metrics node metrics are not computed and policy is not applied */
+		lib_shared_region->estimate_node_metrics = ((ear_getenv(FLAG_DISABLE_NODE_METRICS) != NULL)? 0:1);
+		if (!lib_shared_region->estimate_node_metrics) {
+			verbose_master(2,"EARL[%d] node metrics disabled", getpid());
+		}
   }
 	debug("create_shared_regions and eard=%d",eard_ok);
 	debug("Node connected %u",my_node_id);
-#if ONLY_MASTER == 0
 #if MPI
   /* This barrier notifies the others the shared memory region is ready */
   if (PMPI_Barrier(MPI_COMM_WORLD)!=MPI_SUCCESS){
@@ -607,8 +613,18 @@ void create_shared_regions()
     error("MPI_Barrier");
     return;
   }
+#else 
+	if (app_node_multiprocess){
+		snprintf(path_barrier, sizeof(path_barrier),"%s/%u/%u/.barrier1",tmp,ID,AID);
+		verbose(2,"EARL[%d][%d] sched_barrier section (%s)", ear_my_rank, getpid(), path_barrier);
+		sched_local_barrier(path_barrier, ear_my_size);
+		if (!eard_ok && !EARL_LIGHT) return;
+		snprintf(path_barrier, sizeof(path_barrier),"%s/%u/%u/.barrier2",tmp,ID,AID);
+		verbose(2,"EARL[%d][%d] sched_barrier section (%s)", ear_my_rank, getpid(), path_barrier);
+		sched_local_barrier(path_barrier, ear_my_size);
+	}
 #endif
-#endif
+  verbose(2,"EARL[%d ][%d] My node ID is %d/%d", ear_my_rank, getpid(), my_node_id, lib_shared_region->num_processes);
 
   /* This region is for processes in the same node */
 
@@ -629,21 +645,26 @@ void create_shared_regions()
 		}
 	}
 
-	verbose_master(2, "Shared region for shared signatures created for %d processes",
-            lib_shared_region->num_processes);
+	verbose_master(2, "[%s] Master (PID: %d) Shared region for shared signatures created for %d processes",
+            node_name, master_pid, lib_shared_region->num_processes);
 
 	sig_shared_region[my_node_id].master            = 1;
 	sig_shared_region[my_node_id].pid               = master_pid;
 	sig_shared_region[my_node_id].mpi_info.rank     = ear_my_rank;
 	clean_my_mpi_info(&sig_shared_region[my_node_id].mpi_info);
 
-#if ONLY_MASTER == 0
 #if MPI
   if (PMPI_Barrier(MPI_COMM_WORLD)!=MPI_SUCCESS){
     error("MPI_Barrier");
     return;
   }
-#endif
+#else
+	if (app_node_multiprocess){
+		snprintf(path_barrier, sizeof(path_barrier),"%s/%u/%u/.barrier3",tmp,ID,AID);
+		verbose(2,"EARL[%d][%d] sched_barrier section (%s)", ear_my_rank, getpid(), path_barrier);
+  	sched_local_barrier(path_barrier, ear_my_size);
+	}
+
 #endif
   /* This part allocates memory for sharing data between nodes */
   masters_info.ppn = malloc(masters_info.my_master_size*sizeof(int));
@@ -653,16 +674,16 @@ void create_shared_regions()
     error("Sharing the number of processes per node");
   }
 #else
-  masters_info.ppn[0] = 1;
+  masters_info.ppn[0] = ear_my_size;
 #endif
   int i;
   masters_info.max_ppn = masters_info.ppn[0];
   for (i=1;i<masters_info.my_master_size;i++){ 
     if (masters_info.ppn[i] > masters_info.max_ppn) masters_info.max_ppn=masters_info.ppn[i];
-    if (masters_info.my_master_rank == 0) verbose_master(2,"Processes in node %d = %d",i,masters_info.ppn[i]);
+    if (masters_info.my_master_rank == 0) verbose_master(2,"[%s] Master (PID: %d) Processes in node %d = %d",node_name, master_pid, i,masters_info.ppn[i]);
   }
 
-  verbose_master(2,"max number of ppn is %d", masters_info.max_ppn);
+  verbose_master(2,"[%s] Master (PID: %d) max number of ppn is %d", node_name, master_pid,masters_info.max_ppn);
   /* For scalability concerns, we can compile the system sharing all the processes information (SHARE_INFO_PER_PROCESS) or only 1 per node (SHARE_INFO_PER_NODE)*/
   if (sh_sig_per_node && sh_sig_per_proces){
     error("Signatures can only be shared with node OR process granularity,not both, default node");
@@ -708,7 +729,7 @@ void create_shared_regions()
 				/********************************/
 				/* Attaching to node_mgr region */
 				/********************************/
-				verbose_master(2,"Creating node_mgr region in tmp %s", tmp);
+				verbose_master(2,"Master (PID: %d)  Creating node_mgr region in tmp %s", getpid(), tmp);
 				if (nodemgr_job_init(tmp, &node_mgr_data) != EAR_SUCCESS){
 								verbose_master(2,"Error creating node_mgr region");
 				}
@@ -721,10 +742,11 @@ void create_shared_regions()
 				me.modification_time = me.creation_time;
 #endif
 				CPU_ZERO(&me.node_mask);
-				verbose_master(2,"Attaching to node_mgr region");
+				verbose_master(2,"Master (PID: %d)  Attaching to node_mgr region",getpid());
 				if (nodemgr_attach_job(&me, &node_mgr_index) != EAR_SUCCESS){
 								verbose_master(2,"Error attaching to node_mgr region");
 				}
+				verbose_master(2,"Master (PID: %d)  Attached at pos %d",getpid(), node_mgr_index);
 				lib_shared_region->node_mgr_index = node_mgr_index;
         if (msync(lib_shared_region, sizeof(lib_shared_data_t),MS_SYNC) < 0){
           verbose(1, "Error synchronizing EARL shared memory (%s)", strerror(errno));
@@ -743,6 +765,7 @@ void create_shared_regions()
         get_ear_external_path(tmp, ID, shexternal_region_path);
         external_mgt = create_ear_external_shared_area(shexternal_region_path);
         verbose_master(2, "Created shared region for external libraries! (%s)", shexternal_region_path);
+				verbose(2,"Master (PID: %d) shared regions created", getpid());
 
 }
 
@@ -758,6 +781,11 @@ void attach_shared_regions()
 				char *tmp = get_ear_tmp();
 				uint ID = create_ID(application.job.id, application.job.step_id);
 				uint current_jobs_in_node;
+				#if !MPI
+				char path_barrier[1024];
+				#endif
+
+				verbose(0,"%sEARL[%d][%d] Attaching task to shared region%s", COL_BLU, ear_my_rank, getpid(), COL_CLR);
 
 				/* This function is executed by processes different than masters */
 				/* they first join the Node shared memory */
@@ -780,9 +808,19 @@ void attach_shared_regions()
 												error("MPI_Barrier");
 												return;
 								}
+#else
+	if (app_node_multiprocess){
+		snprintf(path_barrier, sizeof(path_barrier),"%s/%u/%u/.barrier1",tmp,ID,AID);
+		verbose(2,"EARL[%d][%d] sched_barrier section (%s)", ear_my_rank, getpid(), path_barrier);
+  	sched_local_barrier(path_barrier, ear_my_size);
+	}
 #endif
 								do{
-												lib_shared_region = attach_lib_shared_data_area(lib_shared_region_path, &fd_libsh);
+									verbose(2,"EARL[%d][%d] attaching to libsh path %s", ear_my_rank,getpid(), lib_shared_region_path);
+								  lib_shared_region = attach_lib_shared_data_area(lib_shared_region_path, &fd_libsh);
+									if (lib_shared_region == NULL){
+										usleep(1000000);
+									}
 								}while(lib_shared_region == NULL);
 								while(file_lock(bfd) < 0);
 								if (!lib_shared_region->earl_on){
@@ -791,8 +829,8 @@ void attach_shared_regions()
 												file_unlock(bfd);
 												return;
 								}
-								my_node_id = lib_shared_region->num_processes;
-								lib_shared_region->num_processes = lib_shared_region->num_processes+1;
+								my_node_id 												= lib_shared_region->num_processes;
+								lib_shared_region->num_processes 	= lib_shared_region->num_processes+1;
 								file_unlock(bfd);
 				}
 #if MPI
@@ -802,16 +840,28 @@ void attach_shared_regions()
 				if (PMPI_Barrier(MPI_COMM_WORLD)!= MPI_SUCCESS){	
 								error("In MPI_BARRIER");
 				}
+#else
+	if (app_node_multiprocess){
+		snprintf(path_barrier, sizeof(path_barrier),"%s/%u/%u/.barrier2",tmp,ID,AID);
+		verbose(2,"EARL[%d][%d] sched_barrier section (%s)", ear_my_rank , getpid(), path_barrier);
+  	sched_local_barrier(path_barrier, ear_my_size);
+		snprintf(path_barrier, sizeof(path_barrier),"%s/%u/%u/.barrier3",tmp,ID,AID);
+		verbose(2,"EARL[%d][%d] sched_barrier section (%s)", ear_my_rank ,getpid(), path_barrier);
+  	sched_local_barrier(path_barrier, ear_my_size);
+	}
+
 #endif
-				verbose(3,"My node ID is %d/%d", my_node_id, lib_shared_region->num_processes);
+				verbose(2,"EARL[%d ][%d] My node ID is %d/%d", ear_my_rank, getpid(), my_node_id, lib_shared_region->num_processes);
 				if (get_shared_signatures_path(tmp,ID, AID, shsignature_region_path) != EAR_SUCCESS){
 								error("Getting the shsignature_region_path  ");
 				}else{
+								verbose(2,"EARL[%d ][%d] attaching to shared regions %s", ear_my_rank, getpid(), shsignature_region_path);
 								sig_shared_region = attach_shared_signatures_area(shsignature_region_path,lib_shared_region->num_processes, &fd_sigsh);
 								if (sig_shared_region == NULL){
 												error("NULL pointer returned in attach_shared_signatures_area");
 								}
 				}
+				verbose(2,"EARL[%d ][%d] Attached!", ear_my_rank, getpid());
 				memset(&sig_shared_region[my_node_id].sig, 0, sizeof(ssig_t));
 				sig_shared_region[my_node_id].master            = 0;
 				sig_shared_region[my_node_id].pid               = getpid();
@@ -858,7 +908,7 @@ void attach_shared_regions()
 				}
 				exclusive = (current_jobs_in_node == 1);
 
-
+				verbose(0,"%sEARL[%d][%d] Attached task to shared region%s", COL_BLU, ear_my_rank, getpid(), COL_CLR);
 }
 
 static void release_shared_memory_areas()
@@ -912,11 +962,12 @@ void attach_to_master_set(int master)
 				//my_master_rank=0;
 				color=0;
 #if MPI
-				if (master) color=0;
-				else color=MPI_UNDEFINED;
+				if (master) color = 0;
+				else color        = MPI_UNDEFINED;
 #endif
-				if (master) masters_info.my_master_rank=0;
-				else masters_info.my_master_rank=-1;
+				if (master) masters_info.my_master_rank = 0;
+				else 				masters_info.my_master_rank = -1;
+				masters_info.my_master_size = 1;
 #if MPI
 				/* If OpenMPI, we don't synchronize unless all the processes answer the gather. */
 				if (module_mpi_is_enabled() && module_mpi_is_open())
@@ -953,7 +1004,7 @@ void attach_to_master_set(int master)
 				}
 #endif
 				// OpenMPI support
-				if (synchronize_masters) masters_comm_created=1;
+				if (synchronize_masters) masters_comm_created = 1;
 				else{ 
 								if  (master){
 												masters_info.my_master_size = 1;
@@ -965,13 +1016,10 @@ void attach_to_master_set(int master)
 #if MPI
 								PMPI_Comm_rank(masters_info.masters_comm,&masters_info.my_master_rank);
 								PMPI_Comm_size(masters_info.masters_comm,&masters_info.my_master_size);
-#else
-								masters_info.my_master_rank=0;
-								masters_info.my_master_size=1;
 #endif
 								debug("New master communicator created with %d masters. My master rank %d\n",masters_info.my_master_size,masters_info.my_master_rank);
 				}
-				debug("Attach to master set end");
+				verbose(2, "EARL[%d][%d] Attach to master set end, rank %d size %d", ear_my_rank, getpid(), masters_info.my_master_rank, masters_info.my_master_size);
 }
 
 
@@ -980,53 +1028,34 @@ void attach_to_master_set(int master)
 /****************************************************************************************************************************************************************/
 static int get_local_id(char *node_name)
 {
-				int master = 1;
+				int lid = 1;
         char EID_folder[MAX_PATH_SIZE];
 
         strcpy(EID_folder, EID_application_path);
 
 
-#if USE_LOCK_FILES
+	if (app_node_multiprocess){
+		lid = ear_my_rank;
+	}else{
         /* This lock file is used to select the master */
 				snprintf(master_lock_filename, sizeof(master_lock_filename), "%s/.master_lock", EID_folder);
         //verbose(WF_SUPPORT_VERB, "Using EID lock path %s", master_lock_filename);
 				debug("Using lock file %s",master_lock_filename);
 				if ((fd_master_lock = file_lock_master(master_lock_filename)) < 0) {
 								if (errno != EBUSY) debug("Error creating lock file %s",strerror(errno));
-								master = 1;
+								lid = 1;
 				} else {
-								master = 0;
+								lid = 0;
 				}
+		}
 #if SHOW_DEBUGS
-#if MPI
-				if (master) {
-								debug("Rank %d is not the master in node %s", ear_my_rank, node_name);
+				if (lid == 0) {
+								debug("EARL[%d] Rank %d is not the master in node %s", getpid(), ear_my_rank, node_name);
 				}else{
-								debug("Rank %d is the master in node %s", ear_my_rank, node_name);
-				}
-#else
-				if (master) {
-								debug("Process %d is not the master in node %s", getpid(), node_name);
-				}else{
-								debug("Process %d is the master in node %s", getpid(), node_name);
+								debug("EARL[%d] Rank %d is the master in node %s", getpid(), ear_my_rank, node_name);
 				}
 #endif
-#endif
-
-#else
-#if MPI
-				master = get_ear_local_id();
-#else 
-				master=0;
-#endif
-
-
-				if (master < 0) {
-								master = (ear_my_rank % ppnode);
-				}
-#endif
-
-				return master;
+		return lid;
 }
 
 /****************************************************************************************************************************************************************/
@@ -1168,24 +1197,32 @@ void ear_lib_sig_handler(int s)
         verbose(0,"EAR[%d] signal %d received", getpid(), s);
 
         if (s == SIGCHLD){
+					int pid, ret;
+					while(( pid = waitpid(-1, &ret, WNOHANG)) > 0){
+						if (WIFEXITED(ret)){ verbose(0,"Child %d finish with exitcode %d", pid, WEXITSTATUS(ret));}
+						else               { verbose(0,"Child %d finish with signal %d",   pid, WTERMSIG(ret));}
+					}
           return;
         }
 
         if (s == SIGPIPE){
+					verbose(0,"SIGPIPE received in process %d", getpid());
           mark_as_eard_disconnected(get_ear_tmp(), my_job_id,my_step_id,AID, getpid());
           eards_connection_failure();
           return;
         }
 
-        if (s == SIGBUS){
+				if ((s == SIGBUS) || (s == SIGSEGV)){
+					/* Should we cann ear_finalize?? */
           mark_as_eard_disconnected(get_ear_tmp(), my_job_id,my_step_id,AID, getpid());
           eards_connection_failure();
-          print_stack(verb_channel);
-        }
+					clean_eid_folder();
+					nodemgr_job_end(node_mgr_index);
+					if (ear_getenv(FLAG_EAR_DEBUG) != NULL) print_stack(verb_channel);
+					verbose(2,"EARL[%d] exited by %s", getpid(), ((s==SIGBUS)?"SIGBUS":"SIGSEGV"));
+				}
 
         if (s == SIGSEGV){ 
-          verbose(0, "%d: EAR finalized by signal SIGSEGV", getpid());
-          print_stack(verb_channel);
           exit(SIGSEGV);
         }
 
@@ -1218,6 +1255,37 @@ static int get_ear_application_id()
   int master_pid = getpid();
 #if MPI
   PMPI_Bcast(&master_pid, 1, MPI_INT, 0 , MPI_COMM_WORLD);
+#else
+	// If multiprocess , we must get a single AID
+	if (app_node_multiprocess){
+		char AID_number_file[1024];	
+		int fd, tries = 0;
+		uint ID = create_ID(my_job_id,my_step_id);
+		snprintf(AID_number_file,sizeof(AID_number_file),"%s/%u/AID",get_ear_tmp(), ID);
+		if (ear_my_rank == 0){
+			verbose(0,"EARL[%d] generating AID %d in (%s)", ear_my_rank, master_pid, AID_number_file);
+			fd = open(AID_number_file, O_WRONLY|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR);
+			if (fd >= 0){
+				write(fd, &master_pid, sizeof(int));
+				close(fd);
+			}
+		}else{
+			verbose(0,"EARL[%d] reading AID from (%s)", ear_my_rank, AID_number_file);
+			fd = open(AID_number_file,O_RDONLY);
+			while((fd < 0) && (tries < 10000)){
+				usleep(100);
+				tries++;
+				fd = open(AID_number_file,O_RDONLY);
+			}
+			if (fd >= 0){
+				read(fd,&master_pid,sizeof(int));
+				close(fd);
+				verbose(0,"EARL[%d] master_id detected %d", ear_my_rank, master_pid);
+			}else{
+				error("Synchronization for AID failed");
+			}
+	}
+	}
 #endif
   /* For non-MPI there is no problem, for MPI, is it possible the case of having two applications
    * at the same time with same jid/stepid where the rank 0 have the same PID (two nodes).
@@ -1247,8 +1315,6 @@ static void configure_sigactions()
   sigaction(SIGPIPE, &int_action, NULL);
 
 
-  if (ear_getenv(FLAG_EAR_DEBUG) != NULL)
-  {
   verbose(2,"EARL[%d] SIGSEGV and SIGBUS sig handler defined", getpid());
   // SIGSEGV
   sigemptyset(&segv_action.sa_mask);
@@ -1256,7 +1322,6 @@ static void configure_sigactions()
   segv_action.sa_flags = 0;
   sigaction(SIGSEGV, &segv_action, NULL);
   sigaction(SIGBUS, &segv_action, NULL);
-  }
 }
 
 
@@ -1316,27 +1381,48 @@ void ear_init()
 
   timestamp_getfast(&ear_application_time_init);
 
+  gethostname(node_name, sizeof(node_name));
+  strtok(node_name, ".");
+
   // MPI
 #if MPI
   PMPI_Comm_rank(MPI_COMM_WORLD, &ear_my_rank);
-  PMPI_Comm_size(MPI_COMM_WORLD, &my_size);
+  PMPI_Comm_size(MPI_COMM_WORLD, &ear_my_size);
 #else
-  ear_my_rank=0;
-  my_size=1;
+	if (ear_getenv(FLAG_NTASK_WORK_SHARING) != NULL){
+  	ear_my_rank     = get_my_sched_node_rank();
+  	ear_my_size     = get_my_sched_group_node_size();
+		if (ear_my_size > 1) app_node_multiprocess = 1;
+		if (app_node_multiprocess ){
+			verbose(0,"EARL[%d][%d] Node multiprocess enabled: %d tasks detected in %s", ear_my_rank, getpid(), ear_my_size, node_name);
+		}
+	}else{
+		ear_my_rank = 0;
+		ear_my_size = 1;
+	}
 #endif
-      /* This is new. It is a collective operation to get the PID of rank 0 */
-        AID = get_ear_application_id();
-
-  load_app_mgr_env();
-
-  //debug("Reading the environment");
 
   // Environment initialization
   ear_lib_environment();
 
-  gethostname(node_name, sizeof(node_name));
-  strtok(node_name, ".");
+	// This function gets info from the sched env var
+	get_job_identification();
+  // Test ear tmp folder exists
+	tmp = get_ear_tmp();
+	folder_t tmp_test;
+	if (folder_open(&tmp_test, tmp) != EAR_SUCCESS){
+		/* If tmp does not exist ear will be off but we need to set some tmp until we contact with other nodes */
+		verbose_master(1,"ear tmp %s does not exists in node %s. EAR OFF", tmp, node_name);  
+		set_ear_tmp("/tmp");
+		tmp = get_ear_tmp();
+	}
+  // Test SID folder exists, if not , creates it
+  check_job_folder();
 
+  /* This is new. It is a collective operation to get the PID of rank 0 */
+ 	AID = get_ear_application_id();
+
+  load_app_mgr_env();
   read_hack_env();
 
   // Fundamental data
@@ -1344,15 +1430,6 @@ void ear_init()
   pid_t my_pid = getpid();
   debug("Running in %s process = %d", node_name, my_pid);
 
-        // Test ear tmp folder exists
-				tmp = get_ear_tmp();
-				folder_t tmp_test;
-				if (folder_open(&tmp_test, tmp) != EAR_SUCCESS){
-								/* If tmp does not exist ear will be off but we need to set some tmp until we contact with other nodes */
-								verbose_master(1,"ear tmp %s does not exists in node %s. EAR OFF", tmp, node_name);  
-								set_ear_tmp("/tmp");
-								tmp = get_ear_tmp();
-				}
 
 
   // TODO: We could update the default freq an avoid the macro DEF_FREQ on each policy.
@@ -1363,24 +1440,24 @@ void ear_init()
 
   debug("[%s] Using tmp %s ", node_name, get_ear_tmp());
 
-				verb_level = get_ear_verbose();
-				verb_channel=2;
-        char * hack_verb_lv;
-				if (( hack_verb_lv = ear_getenv(HACK_EARL_VERBOSE)) != NULL) {
+	verb_level 		= get_ear_verbose();
+	verb_channel 	= 2;
+  char * hack_verb_lv;
+	if (( hack_verb_lv = ear_getenv(HACK_EARL_VERBOSE)) != NULL) {
 								verb_level = atoi(hack_verb_lv);
 								VERB_SET_LV(verb_level);
-				}
+	}
 
   // We print here the topology in order to do it only at verbose 2
   if (VERB_ON(2))
   {
     if (ear_my_rank == 0)
     {
-      topology_print(&earl_topo, 1);
+      topology_print(&earl_topo, verb_channel);
     }
   }
 
-  set_ear_total_processes(my_size);
+  set_ear_total_processes(ear_my_size);
 #if FAKE_LEARNING
   ear_whole_app = 1;
 #else
@@ -1388,30 +1465,19 @@ void ear_init()
 #endif
 #if MPI
   num_nodes = get_ear_num_nodes();
-  ppnode = my_size / num_nodes;
+  ppnode 		= ear_my_size / num_nodes;
 #else
-  num_nodes=1;
-  ppnode=1;
+  num_nodes	= 1;
+  ppnode		= ear_my_size;
 #endif
 
-				get_job_identification();
+	uint ID = create_ID(my_job_id,my_step_id);
 
-        // Test SID folder exists
-				check_job_folder();
-				uint ID = create_ID(my_job_id,my_step_id);
-        // Why ?? (validate and remove). This function only creates the filename, it
-        // doesn't open or checks it
-				if (get_lib_shared_data_path(tmp, ID, AID, lib_shared_region_path)==EAR_SUCCESS){
-								unlink(lib_shared_region_path);
-				}
-
-        // Create SID/AID folder
-        nodemgr_lock_init(tmp);
+  // Create SID/AID folder
+  nodemgr_lock_init(tmp);
        
-        create_eid_folder(tmp, my_job_id, my_step_id, AID);
+  create_eid_folder(tmp, my_job_id, my_step_id, AID);
 
-        // Checks in TMP folder if ear_tmp/.master.ID.pid exists 
-        // it doesn't create it
 				if (is_already_connected(tmp, my_job_id, my_step_id, AID, my_pid)) {
 								verbose_master(VEAR_INIT,
                                         "%sWARNING%s (Job/step/process) (%d/%d/%d) already conncted.\n",
@@ -1425,7 +1491,7 @@ void ear_init()
 
 
         int i_am_master = my_id == 0;
-       int verb_pid_lvl = i_am_master ? 2 : 3;
+       int verb_pid_lvl = i_am_master ? 2 : 2; //UPDATED
        verbose(verb_pid_lvl, "%sEAR INIT%s [PID: %d] [MASTER: %d] [NODE: %s]",
                         COL_BLU, COL_CLR, my_pid, i_am_master, node_name);
 
@@ -1433,26 +1499,26 @@ void ear_init()
 
 				/* All masters connect in a new MPI communicator */
 				attach_to_master_set(my_id==0);
+				
+				verbose(2, "EARL[%d][%d] attach_to_master_set done . Sync %d MP %d", ear_my_rank, getpid(), synchronize_masters, app_node_multiprocess);
 
   /* This option is set to 0 when application is MPI and some processes are not running the  EARL , which is a mesh */
-  if (synchronize_masters == 0){
+  if ((synchronize_masters == 0) && (!app_node_multiprocess)){
+		verbose(2, "EARL[%d][%d] initialization aborted", ear_my_rank, getpid());
     debug("EARL initialization aborted");
     return;
   }
-
-  // if we are not the master, we return
-#if ONLY_MASTER
-  if (my_id != 0) {
-    return;
-  }
-#endif
+	
 
   debug("Executing EAR library IDs(%d,%d)", ear_my_rank, my_id);
+	verbose(2,"EARL[%d][%d] Attaching to EARD shared regions\n\n", ear_my_rank, getpid());
+	
 
 				/* At this point we haven't connected yet with EARD, but, it these regions doesn't exist, we can not connect */
 				/* Three potential reasons: 1) EARD is not running, 2) there is some version mistmatch between the earl-earplug-eard,
  				 * 3) Paths are not correct and we are looking at incorrect ear_tmp path */
- 
+
+				 
 				get_settings_conf_path(get_ear_tmp(),ID,system_conf_path);
 
         /* resched path must be migrated to EID folder */
@@ -1464,6 +1530,7 @@ void ear_init()
         #endif
 				do
 				{
+					verbose(2,"EARL[%d][%d] settings %s", ear_my_rank, getpid(), system_conf_path);
 					system_conf = attach_settings_conf_shared_area(system_conf_path);
 					resched_conf = attach_resched_shared_area(resched_conf_path);
 
@@ -1497,6 +1564,8 @@ void ear_init()
   debug("create_ID() = %u", create_ID(my_job_id,my_step_id)); // id*100+sid
   if (fake_eard_error) verbose_master(0, "Warning, executing fake eard errors: %u", fake_eard_error);
 
+	verbose(2,"EARL[%d][%d]	testing valid ID %u (settings %p resched %p)", ear_my_rank, getpid(), create_ID(my_job_id,my_step_id), system_conf, resched_conf);
+
 				uint valid_ID;
 				if ((system_conf != NULL) && (resched_conf != NULL)){
 					valid_ID = (system_conf->id == create_ID(my_job_id,my_step_id));
@@ -1511,6 +1580,8 @@ void ear_init()
 					valid_ID = 0;
 				}
 
+				verbose(2,"EARL[%d][%d] JOB/STEP valid", ear_my_rank, getpid());
+
 				/* Updating configuration */
 				if (valid_ID){
 								debug("Updating the configuration sent by the EARD");
@@ -1518,24 +1589,18 @@ void ear_init()
 				}else{
 								eard_ok = 0;
 								verbose_master(2,"EARD not detected");
-#if USE_LOCK_FILES
+								verbose(2,"EARL[%d][%d] EARD not detected", ear_my_rank, getpid());
 								if (!my_id){ 
                         /* This lock file is created in get_local_id function, and it is used to select the master */
 												debug("Application master releasing the lock %d %s", ear_my_rank,master_lock_filename);
 												file_unlock_master(fd_master_lock,master_lock_filename);
 								}
-#endif
     /* Only the node master will notify the problem to the other masters */
     if (!my_id) notify_eard_connection(0);
   }	
   /* my_id is 0 for the master (for each node) and 1 for the others */
   /* eard_ok reflects the eard connection status, if eard_ok is 0, earl is disabled */
 
-#if ONLY_MASTER
-  if (my_id != 0) {
-    return;
-  }
-#endif
 
 				// Application static data and metrics
 				init_application(&application);
@@ -1553,7 +1618,7 @@ void ear_init()
 
 				// Getting environment data
 				get_app_name(ear_app_name);
-				verbose_master(2, "App name is %s",ear_app_name);
+				verbose(2, "EARL[%d][%d] App name is %s",ear_my_rank, getpid(),ear_app_name);
 				if (application.is_learning){
 								verbose_master(VEAR_INIT,"Learning phase app %s p_state %lu\n",ear_app_name,application.job.def_f);
 				}
@@ -1574,7 +1639,7 @@ void ear_init()
 				start_mpi(&application.job);
 				debug("Job time initialized");
 
-				verbose_master(0,"EARD connection section EARD=%d",eard_ok);
+				verbose(2,"EARL[%d][%d] EARD connection section EARD=%d",ear_my_rank, getpid(), eard_ok);
        if (eard_ok) { // all processes will connect with eard
 
                     char *col;
@@ -1584,11 +1649,12 @@ void ear_init()
                     } else {
                         col = COL_GRE;
                     }
-                    verbose(2, "%sProcess %d PID %d Connecting with EAR Daemon (EARD) %d node %s%s",
-                            col, my_node_id, my_pid, ear_my_rank, node_name, COL_CLR);
 
                     // Connect process with EARD
                     state_t ret = eards_connect(&application, ear_my_rank);
+
+                    verbose(2, "%sProcess %d PID %d Connecting with EAR Daemon (EARD) %d node %s status=%s %s",
+                            col, my_node_id, my_pid, ear_my_rank, node_name, ((ret == EAR_SUCCESS)?"Connected":"Not Connected"),COL_CLR);
 
 										state_t eard_comp_state = check_eard_earl_compatibility(ret);
 
@@ -1630,6 +1696,7 @@ void ear_init()
 				} else {
 								attach_shared_regions();
 				}
+				verbose(2,"EARL[%d][rank = %d]  Created/Attached shared regions Total procs %d", getpid(), ear_my_rank, lib_shared_region->num_processes);
 
         if (!eard_ok) {
 
@@ -1661,6 +1728,16 @@ void ear_init()
 				/* Processes in same node connectes each other*/
 
 				if (system_conf->user_type != AUTHORIZED) 	VERB_SET_LV(ear_min(verb_level,1));
+
+			// We print here the topology in order to do it only at verbose 2
+		  if (VERB_ON(2))
+  		{
+    		if (ear_my_rank == 0)
+    		{
+      		topology_print(&earl_topo, 1);
+    		}
+  		}
+
 
 				/* create verbose file for each job */
 				char *verb_path = ear_getenv(FLAG_EARL_VERBOSE_PATH);
@@ -1934,13 +2011,13 @@ void ear_init()
 
 				// Passing the frequency in KHz to MHz
 				application.signature.def_f   = application.job.def_f = EAR_default_frequency;
-				application.job.procs         = my_size;
+				application.job.procs         = ear_my_size;
 				application.job.th            = system_conf->settings[0];
         application.signature.sig_ext = (void *) calloc(1, sizeof(sig_ext_t));
         #if DCGMI
         if (metrics_dcgmi_enabled()){
           sig_ext_t *sig_ext = (sig_ext_t *)application.signature.sig_ext;
-          sig_ext->dcgmis.dcgmi_sets = 0;
+          sig_ext->dcgmis.set_cnt = 0;
         }
         #endif
 
@@ -1989,7 +2066,7 @@ void ear_init()
         #if SINGLE_CONNECTION
                 if (masters_info.my_master_rank>=0) {
                     traces_init(system_conf, application.job.app_id, masters_info.my_master_rank,
-                            my_id, num_nodes, my_size, ppnode);
+                            my_id, num_nodes, ear_my_size, ppnode);
 
                     traces_start();
                     traces_frequency(ear_my_rank, my_id, EAR_default_frequency);
@@ -1999,7 +2076,7 @@ void ear_init()
                 }
                 #else
                     traces_init(system_conf, application.job.app_id, ear_my_rank,
-                            my_node_id, num_nodes, my_size, ppnode);
+                            my_node_id, num_nodes, ear_my_size, ppnode);
 
                     traces_start();
                     traces_frequency(ear_my_rank, my_node_id, EAR_default_frequency);
@@ -2165,14 +2242,12 @@ void ear_finalize(int exit_status)
 								return;
 				}
 				verbose(WF_SUPPORT_VERB+1, "EARL[%d] node id %d: Finalizing", getpid(), my_node_id);
-#if USE_LOCK_FILES
 				if (!my_id){
                 /* Releasing master lock file. Used to select the master */
 								debug("Application master releasing the lock %d %s", ear_my_rank, master_lock_filename);
 								file_unlock_master(fd_master_lock,master_lock_filename);
 								mark_as_eard_disconnected(get_ear_tmp(), my_job_id,my_step_id,AID, getpid());
 				}
-#endif
 
 #if SINGLE_CONNECTION
         if (masters_info.my_master_rank>=0){
@@ -2828,6 +2903,7 @@ static void  reset_earl_environment()
   metrics_lib_reset();
   report_dispose(&rep_id);
   release_shared_memory_areas();
+	eards_new_process_disconnect();
 }
 
 

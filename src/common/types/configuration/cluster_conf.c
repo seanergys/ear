@@ -977,7 +977,23 @@ int validate_configuration(cluster_conf_t *conf)
 
 eargm_def_t *get_eargm_conf(cluster_conf_t *conf, char *host)
 {
-    int i;
+    int i, id;
+    eargm_def_t *curr;
+    curr = NULL;
+    char *idx = ear_getenv("EARGMID");
+    if (idx != NULL) {
+        id = atoi(idx);
+        for (i = 0; i < conf->eargm.num_eargms; i++)
+        {
+            if (conf->eargm.eargms[i].id == id)
+            {
+                curr = &conf->eargm.eargms[i];
+                break;
+            }
+        }
+    }
+    if (curr != NULL ) return curr;
+
 
     for (i = 0; i < conf->eargm.num_eargms; i++)
     {
