@@ -429,6 +429,7 @@ state_t init_power_policy(settings_conf_t *app_settings, resched_t *res)
 
 	debug("max cpu pstate: %u / cpu pstate cnt %u", (uint) app_settings->cpu_max_pstate, cpu_pstate_cnt);
 
+#if 0
 	uint elem_count;
 	char **policy_path = strtoa(policy_plugin_path, '/', NULL, &elem_count);
 
@@ -443,6 +444,13 @@ state_t init_power_policy(settings_conf_t *app_settings, resched_t *res)
 
 		strtoa_free(policy_path);
 	}
+#else
+	uint max_cpu_ps = cpu_pstate_cnt - 1;
+	if (strcmp(app_settings->policy_name, "monitoring") != 0)
+	{
+			max_cpu_ps = ear_min(max_cpu_ps, (uint) app_settings->cpu_max_pstate);
+	}
+#endif
 
 
 	if (state_fail(pstate_pstofreq(cpu_pstate_lst, cpu_pstate_cnt, max_cpu_ps, &min_cpufreq)))
