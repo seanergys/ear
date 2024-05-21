@@ -75,15 +75,15 @@ AC_DEFUN([AX_BEFORE_FEATURES],
 	# Disable RPATH
 	#
 	AC_ARG_ENABLE([rpath],
-		AS_HELP_STRING([--disable-rpath], [Disables RPATH/RUNPATH from the compiled binaries])
-	)
+		AS_HELP_STRING([--disable-rpath], [Disables RPATH/RUNPATH from the compiled binaries]))
 
 	#
 	# MPI
 	#
     AC_ARG_ENABLE([mpi],
-        AS_HELP_STRING([--disable-mpi], [Compiles the non-mpi version of the library.])
-    )
+        AS_HELP_STRING([--disable-mpi], [Compiles the non-mpi version of the library.]))
+    AC_ARG_ENABLE([mpi-loader],
+        AS_HELP_STRING([--disable-mpi-loader], [Compiles the non-mpi version of the loader.]))
 
 	AC_ARG_VAR([CC_FLAGS],[Adds parameters to C compiler])
 	AC_ARG_VAR([MPICC],[Defines the MPI compiler])
@@ -91,12 +91,14 @@ AC_DEFUN([AX_BEFORE_FEATURES],
 	AC_ARG_VAR([MPI_VERSION],[Adds a suffix to the EAR library referring the MPI version used to compile])
 
     FEAT_MPI_LIBRARY=1
+    FEAT_MPI_LOADER=1
 
 	if test -z "$MPICC"; then
 		if which mpicc &> /dev/null; then
 			MPICC="`which mpicc`"
 		else
             FEAT_MPI_LIBRARY=0
+            FEAT_MPI_LOADER=0
 		fi
     else
 		if which $MPICC &> /dev/null; then
@@ -107,6 +109,9 @@ AC_DEFUN([AX_BEFORE_FEATURES],
 	# The disable flag has the priority, so it is computed at the end
     if test "x$enable_mpi" = "xno"; then
         FEAT_MPI_LIBRARY=0
+    fi
+    if test "x$enable_mpi_loader" = "xno"; then
+        FEAT_MPI_LOADER=0
     fi
 
 	if echo "$CC" | grep -q "/"; then
@@ -130,8 +135,7 @@ AC_DEFUN([AX_BEFORE_FEATURES],
 	# Architecture
 	#
 	AC_ARG_ENABLE([avx512],
-		AS_HELP_STRING([--disable-avx512], [Compiles replacing AVX-512 instructions by AVX-2])
-        )
+		AS_HELP_STRING([--disable-avx512], [Compiles replacing AVX-512 instructions by AVX-2]))
 	
 	FEAT_AVX512=1
 
@@ -142,8 +146,7 @@ AC_DEFUN([AX_BEFORE_FEATURES],
 	# GPUs
 	
 	AC_ARG_ENABLE([gpus],
-		AS_HELP_STRING([--disable-gpus], [Does not allocate GPU types nor report any information])
-    )
+		AS_HELP_STRING([--disable-gpus], [Does not allocate GPU types nor report any information]))
 	
 	FEAT_GPUS=1
 	if test "x$enable_gpus" = "xno"; then
@@ -224,6 +227,7 @@ AC_DEFUN([AX_AFTER_FEATURES],
 	AC_SUBST(MPI_CFLAGS)
 	AC_SUBST(MPI_VERSION)
 	AC_SUBST(FEAT_MPI_LIBRARY)
+	AC_SUBST(FEAT_MPI_LOADER)
 	AC_SUBST(FEAT_AVX512)
 	AC_SUBST(FEAT_GPUS)
 	AC_SUBST(FEAT_DB_MYSQL)
