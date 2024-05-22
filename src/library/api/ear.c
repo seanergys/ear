@@ -1410,6 +1410,7 @@ void ear_init()
 
   // Environment initialization
   ear_lib_environment();
+	read_hack_env();
 
 	// This function gets info from the sched env var
 	get_job_identification();
@@ -1429,7 +1430,6 @@ void ear_init()
  	AID = get_ear_application_id();
 
   load_app_mgr_env();
-  if (read_hack_env()) check_job_folder();
 
   // Fundamental data
 
