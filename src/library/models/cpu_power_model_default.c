@@ -154,6 +154,26 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
 
   if ((lsig == NULL) || (sig == NULL) || (nmgr == NULL)) return EAR_SUCCESS;
 
+  /* This flag is explicitly requested by users */
+  if (!data->estimate_node_metrics){
+    data->job_signature.PCK_power = 0;
+    data->job_signature.GBS         = 0;
+    data->job_signature.DC_power  = 0;
+    data->job_signature.DRAM_power = 0;
+    data->job_signature.TPI         = 0;
+    for (uint lp = 0; lp < data->num_processes; lp ++){
+        sig[lp].sig.GBS = 0;
+        sig[lp].sig.TPI = 0;
+        sig[lp].sig.DRAM_power = 0;
+        sig[lp].sig.DC_power   = 0;
+        sig[lp].sig.PCK_power  = 0;
+
+    }
+    verbose_master(2,"My job[%d][%d] not estimated node metrics", node_mgr_index,getpid());
+    return EAR_SUCCESS;
+  }
+
+
   /* Normalize with the average of instructions */
   for (uint lp = 0; lp < data->num_processes; lp++){
     totalinst += sig[lp].sig.instructions;
@@ -171,7 +191,10 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
     if (nmgr[j].creation_time
         && nmgr[j].libsh != NULL
         && nmgr[j].shsig != NULL
-        && nmgr[j].libsh->node_signature.DC_power) {
+        && nmgr[j].libsh->node_signature.DC_power
+        && nmgr[j].libsh->estimate_node_metrics) {
+		/* If not estimate metrics, this app will not receive neither power of GBs , it is assumed to be a master in a master/worker use case */
+
 
       ull avx = 0;
 
@@ -269,12 +292,13 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
 
   /* Power : Power is estimated based on CPU activity and Memory activity. Less CPI means more CPU activity and more L3 means more Mem actitivy */
 
+
   /* Per job in node loop */
   double total_power_estimated = 0, CPU_power, GPU_power = 0;
   lp = 0;
   for (uint j = 0; j < node_mgr_earl_apps(); j ++){
     /* If job is active we compute its power estimated */
-    if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL) && f[lp]){
+    if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL) && f[lp] && (nmgr[j].libsh->estimate_node_metrics)){
       for (uint proc = 0;proc < nmgr[j].libsh->num_processes; proc++){
         double P;
         P = (ipc[lp] * my_node_coeffs.ipc) +
@@ -301,7 +325,13 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
     GPU_power +=  lsig->gpu_sig.gpu_data[gid].GPU_power;
   }
 #endif
-  CPU_power -= GPU_power;
+  if (CPU_power > GPU_power){   
+    CPU_power -= GPU_power;
+  }else {
+    /* This case should not happen */
+    if ((lsig->PCK_power > 0 ) && ( lsig->DRAM_power > 0)) CPU_power = lsig->PCK_power + lsig->DRAM_power;
+    else                                                   CPU_power = 300;
+  }
 
   debug("Baseline CPU power %lf", CPU_power);
 

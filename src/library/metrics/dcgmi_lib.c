@@ -603,7 +603,7 @@ static state_t dcgmi_paction(void *p)
 
 		aggregate_gpuprof_data(agg, diff);
 
-		verbose_current_event_set(DCGMI_MET_LVL);
+		verbose_current_event_set(DCGMI_MET_LVL+1);
 
 		// Increment the instance count of the current set.
 		set_instances_cnt[dcgmi_curr_ev_set]++;

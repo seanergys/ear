@@ -16,7 +16,7 @@
 */
 
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <unistd.h>
 
@@ -113,7 +113,11 @@ state_t energy_node_load(char *path, int eard)
 	}
 
     verbose(2,"Loading %s plugin...", path);
-    #if FAKE_ERROR_ERROR_PATH
+		/* If EAR full installation, path is the path of the official energy plugin, if not (EAR lite),
+ 		* It is the path to the eard_nm energy plugin, which is a special case where EAR lite uses an official
+ 		* installation not compatible 
+ 		*/
+    #if FAKE_ENERGY_PLUGIN_ERROR_PATH
     ret = EAR_ERROR;
     #else
     ret = symplug_open(path, (void **) &energy_ops, 
@@ -125,7 +129,8 @@ state_t energy_node_load(char *path, int eard)
         return_msg(ret, "Energy plugin symbols can not be opened.");
     }
 
-    if (energy_ops.no_privilege_init)
+		/* If there is a not privileged initialization */
+    if (energy_ops.no_privilege_init != NULL)
     {
         debug("The loaded plugin requires a non-priviledged init...");
         energy_ops.no_privilege_init();
@@ -142,7 +147,11 @@ state_t energy_node_load(char *path, int eard)
 	int root_privileges = (getuid() == 0);
 
 	if (!root_privileges && requires_privileges ) {
-  #if FAKE_ERROR_EARD_NOT_CONNECTED
+		/* We try to connect with EARD: Regular EARL context */
+	#if FAKE_EARD_NOT_CONNECTED_ENERGY_PLUGIN
+	verbose(0,"FAKE_EARD_NOT_CONNECTED_ENERGY_PLUGIN used");
+	#endif
+  #if FAKE_EARD_NOT_CONNECTED_ENERGY_PLUGIN
     if (0){
   #else
 		if (eard && eards_connected()) {
@@ -150,6 +159,9 @@ state_t energy_node_load(char *path, int eard)
 			energy_ops.read = eards_dc_read_substitute;
 			debug("energy_dc_read is eards");
 		} else {
+			/* If we cannot, we replace with a dummy and the EARL will try to compute
+ 			* the power doing CPU+GPU 
+ 			*/
 			energy_ops.read = dummy_dc_read_substitute;
 			debug("energy_dc_read is dummy");
 		}

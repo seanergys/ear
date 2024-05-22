@@ -508,11 +508,11 @@ static void metrics_static_init(topology_t *tp)
     sa(mgt_cpuprio_load(tp, eard));
 
 #if USE_GPUS
-		if (!EARL_LIGHT){
+		if (eards_connected() || !EARL_LIGHT){ // If we are connected or NOT EAR-lite version
         	gpu_load(eard);
 		}else{
 			/* If master but EARD not connected */
-			if (eard && !eards_connected()){
+			if ((eard == API_EARD) && !eards_connected()){
 					  gpu_load(API_NVML);
 			}	else{
 						gpu_load(API_FREE);

@@ -216,7 +216,13 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 	#if EARL_LIGHT	
 	if (CPU_power == 0) CPU_power = lsig->PCK_power + lsig->DRAM_power + GPU_power;
 	#endif
-  	CPU_power -= GPU_power;
+  if (CPU_power > GPU_power){  	
+		CPU_power -= GPU_power;
+	}else {
+		/* This case should not happen */
+		if ((lsig->PCK_power > 0 ) && (	lsig->DRAM_power > 0)) CPU_power = lsig->PCK_power + lsig->DRAM_power;
+		else 																									 CPU_power = 300;
+	}
 
 	debug("Baseline CPU power %lf", CPU_power);
 	double GPU_process_power = 0;

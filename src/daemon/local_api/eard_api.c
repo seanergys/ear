@@ -46,8 +46,8 @@
 #include <metrics/imcfreq/imcfreq.h>
 #include <management/gpu/gpu.h>
 
-#define OUTTER_MAX_PIPE_TRIES  50
-#define MAX_PIPE_TRIES         (MAX_SOCKET_COMM_TRIES*10)
+#define OUTTER_MAX_PIPE_TRIES  60
+#define MAX_PIPE_TRIES         (MAX_SOCKET_COMM_TRIES*1000)
 #define MAX_TRIES              1
 #define USE_NON_BLOCKING_IO    0
 
@@ -207,11 +207,11 @@ uint warning_api(int return_value, int expected, char *msg)
 {
 	if (return_value != expected){ 
 		app_connected=0;
-		debug("eards: %s (returned %d expected %d)", msg,return_value,expected);
+		verbose(2, "eards: %s (returned %d expected %d)", msg,return_value,expected);
 	}
 	if (return_value < 0){ 
 		app_connected=0;
-		debug("eards: %s (%s)", msg,strerror(errno));
+		verbose(2, "eards: %s (%s)", msg,strerror(errno));
 	}
 	return (return_value != expected);
 }
@@ -388,7 +388,7 @@ int eards_connect(application_t *my_app, ulong lid)
 
 		if (ear_fd_req_global >= 0) {
         debug("Sending connection request to EARD\n");
-        if (warning_api(eards_write(ear_fd_req_global, (char *)&req, sizeof(req)), sizeof(req), "writting req_service in ear_daemon_client_connect"))
+        if (warning_api( eards_write(ear_fd_req_global, (char *)&req, sizeof(req)), sizeof(req), "writting req_service in ear_daemon_client_connect"))
         {
             ear_fd_req_global = -1;
             return_print(EAR_ERROR, "Error sending connection request");
@@ -417,6 +417,7 @@ int eards_connect(application_t *my_app, ulong lid)
 
         debug( "ear_client: waiting for ear_daemon ok");
         if (warning_api(eards_read(ear_fd_ack, (char *) &ack,sizeof(ulong), WAIT_DATA),sizeof(ulong), "ERROR while reading ack ")) {
+					  verbose(2,"EARL[%d] EARD connection failed because of timeout", getpid());
             CLOSE_LOCAL_COMM();
             return EAR_ERROR;
         }

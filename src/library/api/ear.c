@@ -1216,12 +1216,12 @@ void ear_lib_sig_handler(int s)
 
 				if ((s == SIGBUS) || (s == SIGSEGV)){
 					/* Should we cann ear_finalize?? */
+					if (ear_getenv(FLAG_EAR_DEBUG) != NULL) print_stack(verb_channel);
+					verbose(2,"EARL[%d] exited by %s", getpid(), ((s==SIGBUS)?"SIGBUS":"SIGSEGV"));
           mark_as_eard_disconnected(get_ear_tmp(), my_job_id,my_step_id,AID, getpid());
           eards_connection_failure();
 					clean_eid_folder();
 					nodemgr_job_end(node_mgr_index);
-					if (ear_getenv(FLAG_EAR_DEBUG) != NULL) print_stack(verb_channel);
-					verbose(2,"EARL[%d] exited by %s", getpid(), ((s==SIGBUS)?"SIGBUS":"SIGSEGV"));
 				}
 
         if (s == SIGSEGV){ 
@@ -1237,19 +1237,23 @@ void ear_lib_sig_handler(int s)
 				exit(0);
 }
 
-static void read_hack_env()
+static int read_hack_env()
 {
 	char *hack_tmp = ear_getenv(HACK_EAR_TMP);
 	char *hack_etc = ear_getenv(HACK_EAR_ETC);
+	int updated = 0;
 	if (hack_tmp != NULL){
 		set_ear_tmp(hack_tmp);
 		setenv("EAR_TMP", hack_tmp, 1);
+		updated = 1;
 		verbose(0,"[%s] Using HACK tmp %s ", node_name, get_ear_tmp());
 	}
 	if (hack_etc != NULL){
 		setenv("EAR_ETC", hack_etc, 1);
 		verbose(0,"[%s] Using HACK etc %s ", node_name, hack_etc);
+		updated = 1;
 	}
+	return updated;
 }
 
 static int get_ear_application_id()
@@ -1425,7 +1429,7 @@ void ear_init()
  	AID = get_ear_application_id();
 
   load_app_mgr_env();
-  read_hack_env();
+  if (read_hack_env()) check_job_folder();
 
   // Fundamental data
 
@@ -1451,6 +1455,7 @@ void ear_init()
 	}
 
   // We print here the topology in order to do it only at verbose 2
+  #if PRINT_TOPOLOGY
   if (VERB_ON(2))
   {
     if (ear_my_rank == 0)
@@ -1458,6 +1463,7 @@ void ear_init()
       topology_print(&earl_topo, verb_channel);
     }
   }
+	#endif
 
   set_ear_total_processes(ear_my_size);
 #if FAKE_LEARNING
@@ -1476,11 +1482,11 @@ void ear_init()
 	uint ID = create_ID(my_job_id,my_step_id);
 
   // Create SID/AID folder
-  nodemgr_lock_init(tmp);
+  nodemgr_lock_init(get_ear_tmp());
        
-  create_eid_folder(tmp, my_job_id, my_step_id, AID);
+  create_eid_folder(get_ear_tmp(), my_job_id, my_step_id, AID);
 
-				if (is_already_connected(tmp, my_job_id, my_step_id, AID, my_pid)) {
+				if (is_already_connected(get_ear_tmp(), my_job_id, my_step_id, AID, my_pid)) {
 								verbose_master(VEAR_INIT,
                                         "%sWARNING%s (Job/step/process) (%d/%d/%d) already conncted.\n",
                                         COL_RED, COL_CLR, my_job_id, my_step_id, my_pid);

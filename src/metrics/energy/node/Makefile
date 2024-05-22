@@ -1,6 +1,6 @@
 CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC
 EAR_OFFICIAL_NM_INSTALL_PATH=/hpc/base/EAR/ear5.0.EL9-CLX
-EAR_OFFICIAL_TMP=/var/ear
+EAR_OFFICIAL_TMP=/var/ear/lite
 
 ######## FILES
 
