@@ -46,7 +46,7 @@
 #include <metrics/imcfreq/imcfreq.h>
 #include <management/gpu/gpu.h>
 
-#define OUTTER_MAX_PIPE_TRIES  60
+#define OUTTER_MAX_PIPE_TRIES  100
 #define MAX_PIPE_TRIES         (MAX_SOCKET_COMM_TRIES*1000)
 #define MAX_TRIES              1
 #define USE_NON_BLOCKING_IO    0
