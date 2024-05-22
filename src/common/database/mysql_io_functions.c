@@ -403,8 +403,8 @@ int mysql_batch_insert_applications(MYSQL *connection, application_t *app, int n
         bind[0+offset].is_unsigned = bind[1+offset].is_unsigned = bind[2+offset].is_unsigned =
             bind[4+offset].is_unsigned = bind[5+offset].is_unsigned = 1;
         if (!is_mpi) {
-            bind[3+offset].buffer_type = MYSQL_TYPE_NULL;
-            bind[3+offset].is_null = (ear_my_bool) 1;
+            bind[4+offset].buffer_type = MYSQL_TYPE_NULL;
+            bind[4+offset].is_null = (ear_my_bool) 1;
         }
 
         //string types

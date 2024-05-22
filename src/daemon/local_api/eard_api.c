@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-// #define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #define _GNU_SOURCE             
 #include <time.h>
@@ -49,7 +49,9 @@
 #define OUTTER_MAX_PIPE_TRIES  60
 #define MAX_PIPE_TRIES         (MAX_SOCKET_COMM_TRIES*1000)
 #define MAX_TRIES              1
-#define USE_NON_BLOCKING_IO    0
+#define USE_NON_BLOCKING_IO    1
+
+#define VPROC_LAPI	3
 
 static int connecting = 0;
 
@@ -97,10 +99,11 @@ int eards_read(int fd,char *buff,int size, uint wait_mode)
 
 	int out_tries = 0;
 	int tries = 0;
-	int limit_outer_tries;
+	ullong limit_outer_tries;
 
-	if (connecting) limit_outer_tries = OUTTER_MAX_PIPE_TRIES * 100;
+	if (connecting) limit_outer_tries = OUTTER_MAX_PIPE_TRIES * 1000;
 	else            limit_outer_tries = OUTTER_MAX_PIPE_TRIES;
+
 	while (out_tries < limit_outer_tries)
 	{
 		tries = 0;
@@ -133,6 +136,7 @@ int eards_read(int fd,char *buff,int size, uint wait_mode)
 			out_tries = limit_outer_tries;
 		}
 	}
+	debug("limits reached %lu/%llu", tries, out_tries);
 
 	if (tries >= MAX_PIPE_TRIES)
 	{
@@ -155,9 +159,13 @@ int eards_write(int fd,char *buff,int size)
   uint to_send,sended=0;
   uint must_abort=0;
   to_send=size;
+	ullong limit_outer_tries;
 
 	int out_tries = 0;
-	while (out_tries < OUTTER_MAX_PIPE_TRIES)
+  if (connecting) limit_outer_tries = OUTTER_MAX_PIPE_TRIES * 1000;
+  else            limit_outer_tries = OUTTER_MAX_PIPE_TRIES;
+
+	while (out_tries < limit_outer_tries)
 	{
 		tries = 0;
 		do
@@ -183,9 +191,10 @@ int eards_write(int fd,char *buff,int size)
 			out_tries++;
 		} else
 		{
-			out_tries = OUTTER_MAX_PIPE_TRIES;
+			out_tries = limit_outer_tries;
 		}
 	}
+	debug("limits reached %lu/%llu", tries, out_tries);
   /* If there are bytes left to send, we return a 0 */
 	if (ret<0) return ret;
 	return sended;
@@ -213,11 +222,11 @@ uint warning_api(int return_value, int expected, char *msg)
 {
 	if (return_value != expected){ 
 		app_connected=0;
-		verbose(2, "eards: %s (returned %d expected %d)", msg,return_value,expected);
+		verbose(VPROC_LAPI, "eards: %s (returned %d expected %d)", msg,return_value,expected);
 	}
 	if (return_value < 0){ 
 		app_connected=0;
-		verbose(2, "eards: %s (%s)", msg,strerror(errno));
+		verbose(VPROC_LAPI, "eards: %s (%s)", msg,strerror(errno));
 	}
 	return (return_value != expected);
 }
@@ -315,7 +324,7 @@ int eards_connect(application_t *my_app, ulong lid)
 
 	/* There are three channels: One global for acceptance , and the ones for each connection */
   sprintf(ear_commreq_global,"%s/.ear_comm.globalreq",ear_tmp);
-	verbose(2,"Opening Global comm pipe %s", ear_commreq_global);
+	verbose(VPROC_LAPI,"Opening Global comm pipe %s", ear_commreq_global);
 
 
 #if WF_SUPPORT
@@ -352,12 +361,12 @@ int eards_connect(application_t *my_app, ulong lid)
   debug("comack_self  : %s", ear_commack);
 
   /* Private pipes are created before the connection request is sent */
-	verbose(2,"Creating %s",ear_commack);
+	verbose(VPROC_LAPI,"Creating %s",ear_commack);
   if (mknod(ear_commack, S_IFIFO | S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH, 0) < 0) {
      return_print(EAR_ERROR, "Error when creating ear communicator for ack %s", strerror(errno));
   }
   chmod(ear_commack, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-	verbose(2,"Creating %s",ear_commreq);
+	verbose(VPROC_LAPI,"Creating %s",ear_commreq);
     if (mknod(ear_commreq, S_IFIFO | S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH, 0) < 0) {
         debug("Error when creating ear communicator for requests %s", strerror(errno));
         return_print(EAR_ERROR, "Error when creating ear communicator for requests %s", strerror(errno));
@@ -378,7 +387,7 @@ int eards_connect(application_t *my_app, ulong lid)
         debug("while opening the communicator for requests %s (%d attempts) (%s)", ear_commreq_global, tries, strerror(errno));
         return_print(EAR_ERROR, "while opening the communicator for requests %s (%d attempts) (%s)", ear_commreq_global, tries, strerror(errno));
     }
-	  verbose(2, "EARL: Communication FD created, connecting with EARD");
+	  verbose(VPROC_LAPI, "EARL: Communication FD created, connecting with EARD");
 
     #if USE_NON_BLOCKING_IO
     ret1 = fcntl(ear_fd_req_global, F_SETFL, O_NONBLOCK);
@@ -407,7 +416,7 @@ int eards_connect(application_t *my_app, ulong lid)
     if (ear_fd_req_global >= 0)
     {
         /* EARD sends an ack when ack pipe for specific service is created */
-        verbose(3,"%s: Opening %s",nodename, ear_commack);
+        verbose(VPROC_LAPI+1,"%s: Opening %s",nodename, ear_commack);
         ear_fd_ack = open(ear_commack,O_RDONLY);
         if (ear_fd_ack < 0){
             error("Error opening local ack communicator with EARD (%s)",strerror(errno));
@@ -416,7 +425,7 @@ int eards_connect(application_t *my_app, ulong lid)
             ear_fd_req_global = -1;
             return EAR_ERROR;
         }
-        verbose(3,"%s: %s open",nodename, ear_commack);
+        verbose(VPROC_LAPI+1,"%s: %s open",nodename, ear_commack);
         #if USE_NON_BLOCKING_IO
         ret1 = fcntl(ear_fd_ack, F_SETFL, O_NONBLOCK);
         if (ret1<0){
@@ -433,17 +442,17 @@ int eards_connect(application_t *my_app, ulong lid)
             return EAR_ERROR;
         }
         /* ACK received */
-        verbose(3,"ACK received from EARD %s. Opening REQ...", nodename);
+        verbose(VPROC_LAPI+1,"ACK received from EARD %s. Opening REQ...", nodename);
 				debug("ACK received: %lu", ack);
 
-        verbose(3,"%s: Open %s",nodename, ear_commreq);
+        verbose(VPROC_LAPI+1,"%s: Open %s",nodename, ear_commreq);
         if ((ear_fd_req = open(ear_commreq,O_WRONLY)) < 0) {
             error("Error opening local req communicator, closing the EARD connection");
             CLOSE_LOCAL_COMM();
 						connecting = 0;
             return EAR_ERROR;
         }
-        verbose(3, "%s: %s open", nodename, ear_commreq);
+        verbose(VPROC_LAPI+1, "%s: %s open", nodename, ear_commreq);
         #if USE_NON_BLOCKING_IO
         ret1 = fcntl(ear_fd_req, F_SETFL, O_NONBLOCK);
         if (ret1 < 0) {
@@ -452,7 +461,7 @@ int eards_connect(application_t *my_app, ulong lid)
             return EAR_ERROR;
         }
         #endif
-        verbose(2, "EARD-EARL in %s connected (%s)", nodename, ear_commack);
+        verbose(VPROC_LAPI, "EARD-EARL in %s connected (%s)", nodename, ear_commack);
         close(ear_fd_req_global);
     } //if (ear_fd_req_global >= 0)
     app_connected = 1;

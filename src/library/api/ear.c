@@ -18,6 +18,11 @@
 
 #define _GNU_SOURCE
 //#define SHOW_DEBUGS 1
+//
+#define VPROC_INIT 3
+#define VJOB_INIT  2
+#define VPROC_MGT  3
+#define VNTASKS_INIT 3
 
 /* 1 means invatid shared memory or invalid id (all processes), 
  * 2 means invatid shared memory or invalid id (half processes),
@@ -357,7 +362,7 @@ void notify_eard_connection(int status)
 												}
                         int master_pid = getpid();
                         PMPI_Bcast(&master_pid, 1, MPI_INT, 0 , masters_info.masters_comm );
-                        verbose(2,"PID for master is %d", master_pid);
+                        verbose(VPROC_INIT,"PID for master is %d", master_pid);
 								}
 #else
 								masters_connected=1;
@@ -451,7 +456,7 @@ state_t create_eid_folder(char *tmp, int jid, int sid, uint AID)
 {
   int ret;
 
-  verbose(WF_SUPPORT_VERB,"EID folder based on tmp=%s jid %d sid %d aid %u", tmp, jid, sid, AID);
+  verbose(WF_SUPPORT_VERB+1,"EID folder based on tmp=%s jid %d sid %d aid %u", tmp, jid, sid, AID);
 
   while (node_mgr_info_lock() != EAR_SUCCESS){};
 	char AID_path[MAX_PATH_SIZE];
@@ -462,15 +467,15 @@ state_t create_eid_folder(char *tmp, int jid, int sid, uint AID)
   strcpy(EID_application_path_finish, EID_application_path);
   strcat(EID_application_path,".app");
 
-  verbose(WF_SUPPORT_VERB, "EARL: Creating app folder %s", EID_application_path);
+  verbose(WF_SUPPORT_VERB+1, "EARL: Creating app folder %s", EID_application_path);
   ret = mkdir(EID_application_path, S_IRWXU);
   if ((ret < 0 ) && (errno != EEXIST)){
-    verbose(WF_SUPPORT_VERB,"EAR error EID folder cannot be created (%s) (%s)", EID_application_path, strerror(errno));
+    verbose(WF_SUPPORT_VERB+1,"EAR error EID folder cannot be created (%s) (%s)", EID_application_path, strerror(errno));
     node_mgr_info_unlock();
     return EAR_ERROR;
   }
   chmod(EID_application_path,S_IRUSR|S_IWUSR|S_IXUSR);
-  verbose(WF_SUPPORT_VERB,"EID folder (%s) created", EID_application_path);
+  verbose(WF_SUPPORT_VERB+1,"EID folder (%s) created", EID_application_path);
 
 	/* Application folder */
 
@@ -481,7 +486,7 @@ state_t create_eid_folder(char *tmp, int jid, int sid, uint AID)
     return EAR_ERROR;
 	}
 	chmod(EID_application_path_finish, S_IRUSR|S_IWUSR|S_IXUSR);
-	verbose(WF_SUPPORT_VERB,"AID folder (%s) created", EID_application_path_finish);
+	verbose(WF_SUPPORT_VERB+1,"AID folder (%s) created", EID_application_path_finish);
 	
   node_mgr_info_unlock();
   return EAR_SUCCESS;
@@ -566,7 +571,7 @@ void create_shared_regions()
 
 	/* This section allocates shared memory for processes in same node */
   pid_t master_pid = getpid();
-	verbose(2, "[%s] Master (PID: %d) creating shared regions for node synchronisation...",
+	verbose(VPROC_INIT, "[%s] Master (PID: %d) creating shared regions for node synchronisation...",
             node_name, master_pid);
 
   /* ****************************************************************************************
@@ -585,7 +590,7 @@ void create_shared_regions()
 		if (lib_shared_region==NULL){
 			error("Creating the lib_shared_data region");
 		}
-		verbose(2,"EARL[%d][%d] creating libsh path %s", ear_my_rank,getpid(), lib_shared_region_path);
+		verbose(VPROC_INIT,"EARL[%d][%d] creating libsh path %s", ear_my_rank,getpid(), lib_shared_region_path);
 		my_node_id												=	0;
 		lib_shared_region->node_mgr_index = NULL_NODE_MGR_INDEX;
 		lib_shared_region->earl_on 				= eard_ok || EARL_LIGHT;
@@ -616,15 +621,15 @@ void create_shared_regions()
 #else 
 	if (app_node_multiprocess){
 		snprintf(path_barrier, sizeof(path_barrier),"%s/%u/%u/.barrier1",tmp,ID,AID);
-		verbose(2,"EARL[%d][%d] sched_barrier section (%s)", ear_my_rank, getpid(), path_barrier);
+		verbose(VNTASKS_INIT,"EARL[%d][%d] sched_barrier section (%s)", ear_my_rank, getpid(), path_barrier);
 		sched_local_barrier(path_barrier, ear_my_size);
 		if (!eard_ok && !EARL_LIGHT) return;
 		snprintf(path_barrier, sizeof(path_barrier),"%s/%u/%u/.barrier2",tmp,ID,AID);
-		verbose(2,"EARL[%d][%d] sched_barrier section (%s)", ear_my_rank, getpid(), path_barrier);
+		verbose(VNTASKS_INIT,"EARL[%d][%d] sched_barrier section (%s)", ear_my_rank, getpid(), path_barrier);
 		sched_local_barrier(path_barrier, ear_my_size);
 	}
 #endif
-  verbose(2,"EARL[%d ][%d] My node ID is %d/%d", ear_my_rank, getpid(), my_node_id, lib_shared_region->num_processes);
+  verbose(VPROC_INIT,"EARL[%d ][%d] My node ID is %d/%d", ear_my_rank, getpid(), my_node_id, lib_shared_region->num_processes);
 
   /* This region is for processes in the same node */
 
@@ -661,7 +666,7 @@ void create_shared_regions()
 #else
 	if (app_node_multiprocess){
 		snprintf(path_barrier, sizeof(path_barrier),"%s/%u/%u/.barrier3",tmp,ID,AID);
-		verbose(2,"EARL[%d][%d] sched_barrier section (%s)", ear_my_rank, getpid(), path_barrier);
+		verbose(VNTASKS_INIT,"EARL[%d][%d] sched_barrier section (%s)", ear_my_rank, getpid(), path_barrier);
   	sched_local_barrier(path_barrier, ear_my_size);
 	}
 
@@ -787,7 +792,7 @@ void attach_shared_regions()
 				char path_barrier[1024];
 				#endif
 
-				verbose(0,"%sEARL[%d][%d] Attaching task to shared region%s", COL_BLU, ear_my_rank, getpid(), COL_CLR);
+				verbose(VPROC_INIT,"%sEARL[%d][%d] Attaching task to shared region%s", COL_BLU, ear_my_rank, getpid(), COL_CLR);
 
 				/* This function is executed by processes different than masters */
 				/* they first join the Node shared memory */
@@ -813,12 +818,12 @@ void attach_shared_regions()
 #else
 	if (app_node_multiprocess){
 		snprintf(path_barrier, sizeof(path_barrier),"%s/%u/%u/.barrier1",tmp,ID,AID);
-		verbose(2,"EARL[%d][%d] sched_barrier section (%s)", ear_my_rank, getpid(), path_barrier);
+		verbose(VNTASKS_INIT,"EARL[%d][%d] sched_barrier section (%s)", ear_my_rank, getpid(), path_barrier);
   	sched_local_barrier(path_barrier, ear_my_size);
 	}
 #endif
 								do{
-									verbose(2,"EARL[%d][%d] attaching to libsh path %s", ear_my_rank,getpid(), lib_shared_region_path);
+									verbose(VPROC_INIT,"EARL[%d][%d] attaching to libsh path %s", ear_my_rank,getpid(), lib_shared_region_path);
 								  lib_shared_region = attach_lib_shared_data_area(lib_shared_region_path, &fd_libsh);
 									if (lib_shared_region == NULL){
 										usleep(1000000);
@@ -845,25 +850,25 @@ void attach_shared_regions()
 #else
 	if (app_node_multiprocess){
 		snprintf(path_barrier, sizeof(path_barrier),"%s/%u/%u/.barrier2",tmp,ID,AID);
-		verbose(2,"EARL[%d][%d] sched_barrier section (%s)", ear_my_rank , getpid(), path_barrier);
+		verbose(VNTASKS_INIT,"EARL[%d][%d] sched_barrier section (%s)", ear_my_rank , getpid(), path_barrier);
   	sched_local_barrier(path_barrier, ear_my_size);
 		snprintf(path_barrier, sizeof(path_barrier),"%s/%u/%u/.barrier3",tmp,ID,AID);
-		verbose(2,"EARL[%d][%d] sched_barrier section (%s)", ear_my_rank ,getpid(), path_barrier);
+		verbose(VNTASKS_INIT,"EARL[%d][%d] sched_barrier section (%s)", ear_my_rank ,getpid(), path_barrier);
   	sched_local_barrier(path_barrier, ear_my_size);
 	}
 
 #endif
-				verbose(2,"EARL[%d ][%d] My node ID is %d/%d", ear_my_rank, getpid(), my_node_id, lib_shared_region->num_processes);
+				verbose(VPROC_INIT,"EARL[%d ][%d] My node ID is %d/%d", ear_my_rank, getpid(), my_node_id, lib_shared_region->num_processes);
 				if (get_shared_signatures_path(tmp,ID, AID, shsignature_region_path) != EAR_SUCCESS){
 								error("Getting the shsignature_region_path  ");
 				}else{
-								verbose(2,"EARL[%d ][%d] attaching to shared regions %s", ear_my_rank, getpid(), shsignature_region_path);
+								verbose(VPROC_INIT,"EARL[%d ][%d] attaching to shared regions %s", ear_my_rank, getpid(), shsignature_region_path);
 								sig_shared_region = attach_shared_signatures_area(shsignature_region_path,lib_shared_region->num_processes, &fd_sigsh);
 								if (sig_shared_region == NULL){
 												error("NULL pointer returned in attach_shared_signatures_area");
 								}
 				}
-				verbose(2,"EARL[%d ][%d] Attached!", ear_my_rank, getpid());
+				verbose(VPROC_INIT,"EARL[%d ][%d] Attached!", ear_my_rank, getpid());
 				memset(&sig_shared_region[my_node_id].sig, 0, sizeof(ssig_t));
 				sig_shared_region[my_node_id].master            = 0;
 				sig_shared_region[my_node_id].pid               = getpid();
@@ -883,15 +888,15 @@ void attach_shared_regions()
 				me.sid = application.job.step_id;
 				me.creation_time = time(NULL);
 				CPU_ZERO(&me.node_mask);
-				verbose(3,"%d: Waiting for master to be attached to node_mgr region", my_node_id);
+				verbose(VPROC_INIT,"%d: Waiting for master to be attached to node_mgr region", my_node_id);
 				if (msync(lib_shared_region, sizeof(lib_shared_data_t),MS_SYNC) < 0){
-					verbose(1, "Error synchronizing EARL shared memory (%s)", strerror(errno));
+					verbose(VPROC_INIT, "Error synchronizing EARL shared memory (%s)", strerror(errno));
 				}
 				/* Synchro: This value is set by the master */
 				while (lib_shared_region->node_mgr_index == NULL_NODE_MGR_INDEX){
 								usleep(100);
 								if (msync(lib_shared_region, sizeof(lib_shared_data_t),MS_SYNC) < 0){
-									verbose(1, "Error synchronizing EARL shared memory (%s)", strerror(errno));
+									verbose(VPROC_INIT, "Error synchronizing EARL shared memory (%s)", strerror(errno));
 								}
 				}
 				verbose(3,"%d:We are attached at position %u", my_node_id, lib_shared_region->node_mgr_index);
@@ -910,7 +915,7 @@ void attach_shared_regions()
 				}
 				exclusive = (current_jobs_in_node == 1);
 
-				verbose(0,"%sEARL[%d][%d] Attached task to shared region%s", COL_BLU, ear_my_rank, getpid(), COL_CLR);
+				verbose(VPROC_INIT,"%sEARL[%d][%d] Attached task to shared region%s", COL_BLU, ear_my_rank, getpid(), COL_CLR);
 }
 
 static void release_shared_memory_areas()
@@ -1021,7 +1026,7 @@ void attach_to_master_set(int master)
 #endif
 								debug("New master communicator created with %d masters. My master rank %d\n",masters_info.my_master_size,masters_info.my_master_rank);
 				}
-				verbose(2, "EARL[%d][%d] Attach to master set end, rank %d size %d", ear_my_rank, getpid(), masters_info.my_master_rank, masters_info.my_master_size);
+				verbose(VPROC_INIT, "EARL[%d][%d] Attach to master set end, rank %d size %d", ear_my_rank, getpid(), masters_info.my_master_rank, masters_info.my_master_size);
 }
 
 
@@ -1196,19 +1201,19 @@ void ear_lib_sig_handler(int s)
         //verbose(0, "%d: EAR finalized by signal %d", getpid(), s);
         /* This is new based to avoid the extra thread to enter (again) in the sig_handler */
 
-        verbose(0,"EAR[%d] signal %d received", getpid(), s);
+        verbose(VPROC_MGT,"EAR[%d] signal %d received", getpid(), s);
 
         if (s == SIGCHLD){
 					int pid, ret;
 					while(( pid = waitpid(-1, &ret, WNOHANG)) > 0){
-						if (WIFEXITED(ret)){ verbose(0,"Child %d finish with exitcode %d", pid, WEXITSTATUS(ret));}
-						else               { verbose(0,"Child %d finish with signal %d",   pid, WTERMSIG(ret));}
+						if (WIFEXITED(ret)){ verbose(VPROC_MGT,"Child %d finish with exitcode %d", pid, WEXITSTATUS(ret));}
+						else               { verbose(VPROC_MGT,"Child %d finish with signal %d",   pid, WTERMSIG(ret));}
 					}
           return;
         }
 
         if (s == SIGPIPE){
-					verbose(0,"SIGPIPE received in process %d", getpid());
+					verbose(VPROC_MGT,"SIGPIPE received in process %d", getpid());
           mark_as_eard_disconnected(get_ear_tmp(), my_job_id,my_step_id,AID, getpid());
           eards_connection_failure();
           return;
@@ -1217,7 +1222,7 @@ void ear_lib_sig_handler(int s)
 				if ((s == SIGBUS) || (s == SIGSEGV)){
 					/* Should we cann ear_finalize?? */
 					if (ear_getenv(FLAG_EAR_DEBUG) != NULL) print_stack(verb_channel);
-					verbose(2,"EARL[%d] exited by %s", getpid(), ((s==SIGBUS)?"SIGBUS":"SIGSEGV"));
+					verbose(VPROC_MGT,"EARL[%d] exited by %s", getpid(), ((s==SIGBUS)?"SIGBUS":"SIGSEGV"));
           mark_as_eard_disconnected(get_ear_tmp(), my_job_id,my_step_id,AID, getpid());
           eards_connection_failure();
 					clean_eid_folder();
@@ -1246,11 +1251,11 @@ static int read_hack_env()
 		set_ear_tmp(hack_tmp);
 		setenv("EAR_TMP", hack_tmp, 1);
 		updated = 1;
-		verbose(0,"[%s] Using HACK tmp %s ", node_name, get_ear_tmp());
+		verbose(VPROC_INIT,"[%s] Using HACK tmp %s ", node_name, get_ear_tmp());
 	}
 	if (hack_etc != NULL){
 		setenv("EAR_ETC", hack_etc, 1);
-		verbose(0,"[%s] Using HACK etc %s ", node_name, hack_etc);
+		verbose(VPROC_INIT,"[%s] Using HACK etc %s ", node_name, hack_etc);
 		updated = 1;
 	}
 	return updated;
@@ -1269,14 +1274,14 @@ static int get_ear_application_id()
 		uint ID = create_ID(my_job_id,my_step_id);
 		snprintf(AID_number_file,sizeof(AID_number_file),"%s/%u/AID",get_ear_tmp(), ID);
 		if (ear_my_rank == 0){
-			verbose(0,"EARL[%d] generating AID %d in (%s)", ear_my_rank, master_pid, AID_number_file);
+			verbose(VJOB_INIT,"EARL[%d] generating AID %d in (%s)", ear_my_rank, master_pid, AID_number_file);
 			fd = open(AID_number_file, O_WRONLY|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR);
 			if (fd >= 0){
 				write(fd, &master_pid, sizeof(int));
 				close(fd);
 			}
 		}else{
-			verbose(0,"EARL[%d] reading AID from (%s)", ear_my_rank, AID_number_file);
+			verbose(VPROC_INIT,"EARL[%d] reading AID from (%s)", ear_my_rank, AID_number_file);
 			fd = open(AID_number_file,O_RDONLY);
 			while((fd < 0) && (tries < 10000)){
 				usleep(100);
@@ -1286,7 +1291,7 @@ static int get_ear_application_id()
 			if (fd >= 0){
 				read(fd,&master_pid,sizeof(int));
 				close(fd);
-				verbose(0,"EARL[%d] master_id detected %d", ear_my_rank, master_pid);
+				verbose(VPROC_INIT,"EARL[%d] master_id detected %d", ear_my_rank, master_pid);
 			}else{
 				error("Synchronization for AID failed");
 			}
@@ -1321,7 +1326,7 @@ static void configure_sigactions()
   sigaction(SIGPIPE, &int_action, NULL);
 
 
-  verbose(2,"EARL[%d] SIGSEGV and SIGBUS sig handler defined", getpid());
+  verbose(VPROC_INIT,"EARL[%d] SIGSEGV and SIGBUS sig handler defined", getpid());
   // SIGSEGV
   sigemptyset(&segv_action.sa_mask);
   segv_action.sa_handler = ear_lib_sig_handler;
@@ -1376,7 +1381,7 @@ void ear_init()
 
   main_pid = syscall(SYS_gettid);
 
-        verbose(2, "%s EAR [%d] init .......................................%s", COL_BLU, main_pid, COL_CLR);
+        verbose(VPROC_INIT, "%s EAR [%d] init .......................................%s", COL_BLU, main_pid, COL_CLR);
 
   if (ear_lib_initialized){
     verbose_master(1,"EAR library already initialized");
@@ -1400,7 +1405,7 @@ void ear_init()
   	ear_my_size     = get_my_sched_group_node_size();
 		if (ear_my_size > 1) app_node_multiprocess = 1;
 		if (app_node_multiprocess ){
-			verbose(0,"EARL[%d][%d] Node multiprocess enabled: %d tasks detected in %s", ear_my_rank, getpid(), ear_my_size, node_name);
+			verbose(2,"EARL[%d][%d] Node multiprocess enabled: %d tasks detected in %s", ear_my_rank, getpid(), ear_my_size, node_name);
 		}
 	}else{
 		ear_my_rank = 0;
@@ -1508,18 +1513,18 @@ void ear_init()
 				/* All masters connect in a new MPI communicator */
 				attach_to_master_set(my_id==0);
 				
-				verbose(2, "EARL[%d][%d] attach_to_master_set done . Sync %d MP %d", ear_my_rank, getpid(), synchronize_masters, app_node_multiprocess);
+				verbose(VPROC_INIT, "EARL[%d][%d] attach_to_master_set done . Sync %d MP %d", ear_my_rank, getpid(), synchronize_masters, app_node_multiprocess);
 
   /* This option is set to 0 when application is MPI and some processes are not running the  EARL , which is a mesh */
   if ((synchronize_masters == 0) && (!app_node_multiprocess)){
-		verbose(2, "EARL[%d][%d] initialization aborted", ear_my_rank, getpid());
+		verbose(VPROC_INIT, "EARL[%d][%d] initialization aborted", ear_my_rank, getpid());
     debug("EARL initialization aborted");
     return;
   }
 	
 
   debug("Executing EAR library IDs(%d,%d)", ear_my_rank, my_id);
-	verbose(2,"EARL[%d][%d] Attaching to EARD shared regions\n\n", ear_my_rank, getpid());
+	verbose(VPROC_INIT,"EARL[%d][%d] Attaching to EARD shared regions\n\n", ear_my_rank, getpid());
 	
 
 				/* At this point we haven't connected yet with EARD, but, it these regions doesn't exist, we can not connect */
@@ -1538,7 +1543,7 @@ void ear_init()
         #endif
 				do
 				{
-					verbose(2,"EARL[%d][%d] settings %s", ear_my_rank, getpid(), system_conf_path);
+					verbose(VPROC_INIT,"EARL[%d][%d] settings %s", ear_my_rank, getpid(), system_conf_path);
 					system_conf = attach_settings_conf_shared_area(system_conf_path);
 					resched_conf = attach_resched_shared_area(resched_conf_path);
 
@@ -1556,7 +1561,7 @@ void ear_init()
 
     if ((system_conf == NULL) && (resched_conf == NULL) && !my_id)
     {
-      verbose(2, "[%s] Shared memory not present, creating dummy areas", node_name);
+      verbose(VPROC_INIT, "[%s] Shared memory not present, creating dummy areas", node_name);
       create_eard_dummy_shared_regions(get_ear_tmp(), create_ID(my_job_id,my_step_id));
       fd_dummy = file_lock_create(dummy_areas_path);
     } else if ((system_conf == NULL) && (resched_conf == NULL) && my_id)
@@ -1572,7 +1577,7 @@ void ear_init()
   debug("create_ID() = %u", create_ID(my_job_id,my_step_id)); // id*100+sid
   if (fake_eard_error) verbose_master(0, "Warning, executing fake eard errors: %u", fake_eard_error);
 
-	verbose(2,"EARL[%d][%d]	testing valid ID %u (settings %p resched %p)", ear_my_rank, getpid(), create_ID(my_job_id,my_step_id), system_conf, resched_conf);
+	verbose(VPROC_INIT,"EARL[%d][%d]	testing valid ID %u (settings %p resched %p)", ear_my_rank, getpid(), create_ID(my_job_id,my_step_id), system_conf, resched_conf);
 
 				uint valid_ID;
 				if ((system_conf != NULL) && (resched_conf != NULL)){
@@ -1588,7 +1593,7 @@ void ear_init()
 					valid_ID = 0;
 				}
 
-				verbose(2,"EARL[%d][%d] JOB/STEP valid", ear_my_rank, getpid());
+				verbose(VPROC_INIT,"EARL[%d][%d] JOB/STEP valid", ear_my_rank, getpid());
 
 				/* Updating configuration */
 				if (valid_ID){
@@ -1597,7 +1602,7 @@ void ear_init()
 				}else{
 								eard_ok = 0;
 								verbose_master(2,"EARD not detected");
-								verbose(2,"EARL[%d][%d] EARD not detected", ear_my_rank, getpid());
+								verbose(VPROC_INIT,"EARL[%d][%d] EARD not detected", ear_my_rank, getpid());
 								if (!my_id){ 
                         /* This lock file is created in get_local_id function, and it is used to select the master */
 												debug("Application master releasing the lock %d %s", ear_my_rank,master_lock_filename);
@@ -1626,7 +1631,7 @@ void ear_init()
 
 				// Getting environment data
 				get_app_name(ear_app_name);
-				verbose(2, "EARL[%d][%d] App name is %s",ear_my_rank, getpid(),ear_app_name);
+				verbose(VPROC_INIT, "EARL[%d][%d] App name is %s",ear_my_rank, getpid(),ear_app_name);
 				if (application.is_learning){
 								verbose_master(VEAR_INIT,"Learning phase app %s p_state %lu\n",ear_app_name,application.job.def_f);
 				}
@@ -1647,7 +1652,7 @@ void ear_init()
 				start_mpi(&application.job);
 				debug("Job time initialized");
 
-				verbose(2,"EARL[%d][%d] EARD connection section EARD=%d",ear_my_rank, getpid(), eard_ok);
+				verbose(VPROC_INIT-1,"EARL[%d][%d] EARD connection section EARD=%d",ear_my_rank, getpid(), eard_ok);
        if (eard_ok) { // all processes will connect with eard
 
                     char *col;
@@ -1661,7 +1666,7 @@ void ear_init()
                     // Connect process with EARD
                     state_t ret = eards_connect(&application, ear_my_rank);
 
-                    verbose(2, "%sProcess %d PID %d Connecting with EAR Daemon (EARD) %d node %s status=%s %s",
+                    verbose(VPROC_INIT-1, "%sProcess %d PID %d Connecting with EAR Daemon (EARD) %d node %s status=%s %s",
                             col, my_node_id, my_pid, ear_my_rank, node_name, ((ret == EAR_SUCCESS)?"Connected":"Not Connected"),COL_CLR);
 
 										state_t eard_comp_state = check_eard_earl_compatibility(ret);
@@ -1689,7 +1694,7 @@ void ear_init()
                         }
 
                     } else {
-                        verbose(2, "%sRank %d NOT connected with EARD%s %s",
+                        verbose(VPROC_INIT-1, "%sRank %d NOT connected with EARD%s %s",
                                 COL_BLU, ear_my_rank, COL_CLR, state_msg);
                         eard_ok = 0;
                         if (!my_id) notify_eard_connection(0);
@@ -1704,7 +1709,7 @@ void ear_init()
 				} else {
 								attach_shared_regions();
 				}
-				verbose(2,"EARL[%d][rank = %d]  Created/Attached shared regions Total procs %d", getpid(), ear_my_rank, lib_shared_region->num_processes);
+				verbose(VPROC_INIT,"EARL[%d][rank = %d]  Created/Attached shared regions Total procs %d", getpid(), ear_my_rank, lib_shared_region->num_processes);
 
         if (!eard_ok) {
 
@@ -1917,7 +1922,7 @@ void ear_init()
                         sig_shared_region[my_node_id].cpu_mask = ear_process_mask;
                         sig_shared_region[my_node_id].num_cpus = proc_mask_cpu_count;
                     } else {
-                        verbose(1, "%sWARNING%s CPU mask for thread ID %d has no CPUs.",
+                        verbose(VPROC_INIT, "%sWARNING%s CPU mask for thread ID %d has no CPUs.",
                                 COL_YLW, COL_CLR, my_pid);
                     }
 
@@ -2157,7 +2162,7 @@ void ear_init()
             ear_cuda_init();
         }
 #endif
-        verbose(2, "%s EAR [%d] end .......................................%s", COL_BLU, main_pid, COL_CLR);
+        verbose(VPROC_INIT, "%s EAR [%d] end .......................................%s", COL_BLU, main_pid, COL_CLR);
 }
 
 

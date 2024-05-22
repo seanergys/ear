@@ -150,7 +150,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
   memset(pck_power,0,sizeof(double)*MAX_CPUS_SUPPORTED);
   memset(inst, 0, sizeof(ullong)*MAX_CPUS_SUPPORTED);
 
-  verbose(2, "CPU power model default ...............");
+  verbose(3, "CPU power model default ...............");
 
   if ((lsig == NULL) || (sig == NULL) || (nmgr == NULL)) return EAR_SUCCESS;
 

@@ -696,7 +696,7 @@ static uint total_num_earl_apps = 0;
 void  init_earl_node_mgr_info()
 {
 #if WF_SUPPORT
-	verbose(WF_SUPPORT_VERB, "%sPID[%d] init_earl_node_mgr_info..................%s", COL_RED, getpid(), COL_CLR);
+	verbose(WF_SUPPORT_VERB+1, "%sPID[%d] init_earl_node_mgr_info..................%s", COL_RED, getpid(), COL_CLR);
   if (total_num_earl_apps)
 	{
     //verbose(WF_SUPPORT_VERB,"New process?: Releasing node_mgr_data info ");
@@ -716,7 +716,7 @@ void  init_earl_node_mgr_info()
     return;
   }
 
-  verbose(WF_SUPPORT_VERB," EARL[%d]: allocation %d apps", getpid(), total_num_earl_apps);
+  verbose(WF_SUPPORT_VERB+1," EARL[%d]: allocation %d apps", getpid(), total_num_earl_apps);
 
   node_mgr_job_info = calloc(total_num_earl_apps, sizeof(node_mgr_sh_data_t));
 

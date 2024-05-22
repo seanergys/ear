@@ -37,13 +37,15 @@
 
 static uint arch_model_loaded = 0;
 static uint cpu_count;
+static int report_per_process = 0;
 
 state_t cpu_power_model_init_arch(settings_conf_t *libconf, conf_install_t *conf, architecture_t *arch)
 {
 	cpu_count = arch->top.cpu_count;
 	arch_model_loaded = 1;	
 
-	verbose_master(2, "EARL[%d] CPU power model dummy loaded %d", getpid(), arch_model_loaded);	
+	if (ear_getenv(FLAG_REPORT_CPUPOW_MODEL) != NULL) report_per_process = 1;
+	verbose_master(2, "EARL[%d] CPU power model dummy loaded %d . Report process power %d", getpid(), arch_model_loaded, report_per_process);	
 	return EAR_SUCCESS;
 }
 
@@ -252,7 +254,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 			for (uint proc = 0;proc < nmgr[j].libsh->num_processes; proc++){
 				power_estimations[lp] = P * nmgr[j].shsig[proc].num_cpus;
 				debug("Power estimated for job %u/%u --> %.2lf/with %u cpus = %.3lf (gbs %.3lf)",j,proc, P,nmgr[j].shsig[proc].num_cpus, power_estimations[lp],gbs[lp]);
-				verbose_master(2,"Power estimated for job %u/%u --> %.2lf/with %u cpus = %.3lf (gbs %.3lf)",j,proc, P,nmgr[j].shsig[proc].num_cpus, power_estimations[lp],gbs[lp]);
+				if (report_per_process) verbose_master(2,"Power estimated for job %u/%u --> %.2lf/with %u cpus = %.3lf (gbs %.3lf)",j,proc, P,nmgr[j].shsig[proc].num_cpus, power_estimations[lp],gbs[lp]);
 				total_power_estimated += power_estimations[lp];	
 				lp++;
 			}
@@ -272,7 +274,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 			sig[lp].sig.DC_power = (CPU_power * process_power_ratio[proc]) + GPU_process_power; // what about GPU power in processes	
 			sig[lp].sig.PCK_power = process_power_ratio[proc] * lsig->PCK_power;
 			debug("Power process %d/%d is %lf. PCK power %lf", job_in_process[proc], lp, sig[lp].sig.DC_power, sig[lp].sig.PCK_power);
-			verbose_master(2,"Power process %d/%d is %lf. PCK power %lf", job_in_process[proc], lp, sig[lp].sig.DC_power, sig[lp].sig.PCK_power);
+			if (report_per_process) verbose_master(2,"Power process %d/%d is %lf. PCK power %lf", job_in_process[proc], lp, sig[lp].sig.DC_power, sig[lp].sig.PCK_power);
 			lp++;
 		}
 	}

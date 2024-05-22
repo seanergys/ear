@@ -177,6 +177,7 @@
 #define FLAG_SHOW_SIGNATURES         "EAR_SHOW_SIGNATURES"
 #define FLAG_REPORT_NODE_SIGNATURES  "EAR_REPORT_NODE_SIGNATURES"
 #define FLAG_REPORT_ALL_SIGNATURES   "EAR_REPORT_ALL_SIGNATURES"
+#define FLAG_REPORT_CPUPOW_MODEL     "EAR_REPORT_CPUPOW_MODEL"    // Asks the cpu power model to print per process data
 #define FLAG_SHARE_INFO_PPROC        "EAR_SHARE_INFO_PER_PROCESS" // Forces to share all the signatures.
 #define FLAG_SHARE_INFO_PNODE 	     "EAR_SHARE_INFO_PER_NODE"    // Forces to share only the average signature per node.
 #define FLAG_APP_MGR_POLICIES	     "EAR_APP_MGR_POLICIES"
