@@ -1,6 +1,8 @@
 CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC
-EAR_OFFICIAL_NM_INSTALL_PATH=/hpc/base/EAR/ear5.0.EL9-CLX
-EAR_OFFICIAL_TMP=/var/ear/lite
+
+# Define and uncomment these two constants with the EAR installation path if you want to enable the eard_nm energy plugin
+#EAR_OFFICIAL_NM_INSTALL_PATH=
+#EAR_OFFICIAL_TMP=
 
 ######## FILES
 

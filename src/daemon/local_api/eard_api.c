@@ -46,10 +46,12 @@
 #include <metrics/imcfreq/imcfreq.h>
 #include <management/gpu/gpu.h>
 
-#define OUTTER_MAX_PIPE_TRIES  100
+#define OUTTER_MAX_PIPE_TRIES  60
 #define MAX_PIPE_TRIES         (MAX_SOCKET_COMM_TRIES*1000)
 #define MAX_TRIES              1
 #define USE_NON_BLOCKING_IO    0
+
+static int connecting = 0;
 
 /* These pipes are used for local communication between ear library and eard */
 static char ear_commreq_global[SZ_PATH]; 		/* This pipe connects with EARD, the same for all the jobs,
@@ -95,7 +97,11 @@ int eards_read(int fd,char *buff,int size, uint wait_mode)
 
 	int out_tries = 0;
 	int tries = 0;
-	while (out_tries < OUTTER_MAX_PIPE_TRIES)
+	int limit_outer_tries;
+
+	if (connecting) limit_outer_tries = OUTTER_MAX_PIPE_TRIES * 100;
+	else            limit_outer_tries = OUTTER_MAX_PIPE_TRIES;
+	while (out_tries < limit_outer_tries)
 	{
 		tries = 0;
 		do
@@ -124,7 +130,7 @@ int eards_read(int fd,char *buff,int size, uint wait_mode)
 			out_tries++;
 		} else
 		{
-			out_tries = OUTTER_MAX_PIPE_TRIES;
+			out_tries = limit_outer_tries;
 		}
 	}
 
@@ -381,6 +387,7 @@ int eards_connect(application_t *my_app, ulong lid)
     }
     #endif
 
+		connecting = 1;
     /* We now connect with the EARD, the tag CONNECT_EARD_NODE_SERVICES is used as the first service requested (for backward compatibility ) */
     req.req_service = CONNECT_EARD_NODE_SERVICES;
     req.sec         = create_sec_tag();
@@ -390,6 +397,7 @@ int eards_connect(application_t *my_app, ulong lid)
         debug("Sending connection request to EARD\n");
         if (warning_api( eards_write(ear_fd_req_global, (char *)&req, sizeof(req)), sizeof(req), "writting req_service in ear_daemon_client_connect"))
         {
+						connecting = 0;
             ear_fd_req_global = -1;
             return_print(EAR_ERROR, "Error sending connection request");
         }
@@ -403,6 +411,7 @@ int eards_connect(application_t *my_app, ulong lid)
         ear_fd_ack = open(ear_commack,O_RDONLY);
         if (ear_fd_ack < 0){
             error("Error opening local ack communicator with EARD (%s)",strerror(errno));
+						connecting = 0;
             close(ear_fd_req_global);
             ear_fd_req_global = -1;
             return EAR_ERROR;
@@ -411,6 +420,7 @@ int eards_connect(application_t *my_app, ulong lid)
         #if USE_NON_BLOCKING_IO
         ret1 = fcntl(ear_fd_ack, F_SETFL, O_NONBLOCK);
         if (ret1<0){
+						connecting = 0;
             return_print(EAR_ERROR,"Setting O_NONBLOCK for eard ack communicator %s",strerror(errno));
         }
         #endif
@@ -419,6 +429,7 @@ int eards_connect(application_t *my_app, ulong lid)
         if (warning_api(eards_read(ear_fd_ack, (char *) &ack,sizeof(ulong), WAIT_DATA),sizeof(ulong), "ERROR while reading ack ")) {
 					  verbose(2,"EARL[%d] EARD connection failed because of timeout", getpid());
             CLOSE_LOCAL_COMM();
+						connecting = 0;
             return EAR_ERROR;
         }
         /* ACK received */
@@ -429,6 +440,7 @@ int eards_connect(application_t *my_app, ulong lid)
         if ((ear_fd_req = open(ear_commreq,O_WRONLY)) < 0) {
             error("Error opening local req communicator, closing the EARD connection");
             CLOSE_LOCAL_COMM();
+						connecting = 0;
             return EAR_ERROR;
         }
         verbose(3, "%s: %s open", nodename, ear_commreq);
@@ -436,6 +448,7 @@ int eards_connect(application_t *my_app, ulong lid)
         ret1 = fcntl(ear_fd_req, F_SETFL, O_NONBLOCK);
         if (ret1 < 0) {
             error("Setting O_NONBLOCK for eard req communicator %s",strerror(errno));
+						connecting = 0;
             return EAR_ERROR;
         }
         #endif
@@ -450,6 +463,7 @@ int eards_connect(application_t *my_app, ulong lid)
 
     // Initializing serial buffer with plenty space
     serial_alloc(&b, SIZE_8KB);
+		connecting = 0;
 
     return EAR_SUCCESS;
 }
