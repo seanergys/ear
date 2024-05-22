@@ -16,7 +16,7 @@
 */
 
 
-#include <mpi.h>
+//#include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 //#define SHOW_DEBUGS 1

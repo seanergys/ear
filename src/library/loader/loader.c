@@ -15,8 +15,6 @@
 * and COPYING.EPL files.
 */
 
-
-// #define SHOW_DEBUGS 1
 #define _GNU_SOURCE
 
 #include <stdio.h>
@@ -24,17 +22,18 @@
 #include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <sys/types.h>
+// #define SHOW_DEBUGS 1
+#include <common/output/debug.h>
+#include <common/utils/string.h>
+#include <common/string_enhanced.h>
+#include <common/config/config_env.h>
 #include <library/loader/loader.h>
-#include <library/loader/module_common.h>
 #include <library/loader/module_mpi.h>
 #include <library/loader/module_cuda.h>
+#include <library/loader/module_common.h>
 #include <library/loader/module_openmp.h>
 #include <library/loader/module_oneapi.h>
 #include <library/loader/module_default.h>
-#include <common/config/config_env.h>
-#include <common/output/debug.h>
-#include <common/string_enhanced.h>
 
 static int _loaded;
 
@@ -63,18 +62,18 @@ static int init()
         verbose(4, "LOADER: loader pid: %d", pid1);
     }
 
-    return 1;	
+    return 1;
     // return pid1 == pid2;
 }
 
 int must_load()
 {
     if ((strstr(program_invocation_name, "bash") == NULL) &&
-            (strstr(program_invocation_name, "hydra") == NULL)){
-        verbose(2,"LOADER: Program %s loaded with EAR",program_invocation_name);
+        (strstr(program_invocation_name, "hydra") == NULL)) {
+        verbose(2, "LOADER: Program %s loaded with EAR", program_invocation_name);
         return 1;
     }
-    verbose(2,"LOADER: Program %s loaded without EAR",program_invocation_name);
+    verbose(2, "LOADER: Program %s loaded without EAR", program_invocation_name);
     return 0;
 }
 
@@ -116,15 +115,14 @@ int load_no_official()
 
 int load_no_parallel()
 {
-		if (strstr(program_invocation_name,"python") != NULL) return 1;
-		return 0;
+    if (strstr(program_invocation_name, "python") != NULL) return 1;
+    return 0;
 }
 
-void  __attribute__ ((constructor)) loader()
+void __attribute__ ((constructor)) loader()
 {
     char *path_lib_so;
     char *libhack;
-
 
     // Initialization
     if (!init()) {
@@ -133,42 +131,34 @@ void  __attribute__ ((constructor)) loader()
     }
     verbose(2, "LOADER[%d]: loading for application '%s'", getpid(), program_invocation_name);
 
-    if (must_load()){
-        module_get_path_libear(&path_lib_so,&libhack);
-        if ((path_lib_so == NULL) && (libhack == NULL)){
-            verbose(1,"LOADER EAR path and EAR debug HACKS are NULL");
-            return ;
+    if (must_load()) {
+        module_get_path_libear(&path_lib_so, &libhack);
+        if ((path_lib_so == NULL) && (libhack == NULL)) {
+            verbose(1, "LOADER: EAR path and EAR debug HACKS are NULL");
+            return;
         }
 
         // Module MPI
-        verbose(2,"Tring MPI module");
+        verbose(2, "LOADER: Trying MPI module");
         _loaded = module_mpi(path_lib_so, libhack);
-
         if (_loaded) return;
-        
-				verbose(2,"Tring openmp/mkl module");
-
-        _loaded = module_constructor_openmp(path_lib_so,libhack);
+        verbose(2, "LOADER: Trying openmp/mkl module");
+        _loaded = module_constructor_openmp(path_lib_so, libhack);
         if (_loaded) return;
-
-        _loaded = module_constructor_cuda(path_lib_so,libhack);
+        _loaded = module_constructor_cuda(path_lib_so, libhack);
         if (_loaded) return;
-
-				_loaded = module_constructor_oneapi(path_lib_so,libhack);
-				if (_loaded) return;
-
+        _loaded = module_constructor_oneapi(path_lib_so, libhack);
+        if (_loaded) return;
         // Module default
         if (load_no_parallel()) {
-					verbose(2,"Tring default module because app name is %s", program_invocation_name);
-					_loaded = module_constructor(path_lib_so,libhack);
-				}
+            verbose(2, "LOADER: Trying default module because app name is %s", program_invocation_name);
+            _loaded = module_constructor(path_lib_so, libhack);
+        }
         if (_loaded) return;
-
         if (load_no_official()) {
-            verbose(2, "Tring default module");
-            _loaded = module_constructor(path_lib_so,libhack);
+            verbose(2, "LOADER: Tring default module");
+            _loaded = module_constructor(path_lib_so, libhack);
         }
     }
-
     return;
 }

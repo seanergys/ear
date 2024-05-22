@@ -139,7 +139,7 @@ void print_cluster_conf(cluster_conf_t *conf)
 	for (i = 0; i < conf->num_edcmons_tags; i++){
 		print_edcmon_tags_conf(&conf->edcmon_tags[i], i);
 	}
-	verbose(VCCONF,"");
+	verbose(VCCONF," ");
 
 	verbosen(VCCONF, "\n>>>>> Energy tags section <<<<<\n");
 	for (i = 0; i < conf->num_etags; i++)

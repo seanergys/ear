@@ -61,7 +61,7 @@ state_t policy_init(polctx_t *c)
             def_freqs.imc_freq[i*IMC_VAL+IMC_MIN] = imc_max_pstate[i];
         }
 
-        if (is_mpi_enabled()) {
+        if (module_mpi_is_enabled()) {
 
             mpi_app_init(c);
 

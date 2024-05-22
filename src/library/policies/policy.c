@@ -46,9 +46,8 @@
 #endif
 
 #include <report/report.h>
-
 #include <daemon/local_api/eard_api.h>
-
+#include <library/loader/module_mpi.h>
 #include <library/loader/module_cuda.h>
 #include <library/api/mpi_support.h>
 #include <library/api/clasify.h>
@@ -372,11 +371,11 @@ state_t init_power_policy(settings_conf_t *app_settings, resched_t *res)
 	my_globalrank                 = masters_info.my_master_rank;
 
 	// Init the policy context
-	my_pol_ctx.affinity						= ear_affinity_is_set;
+	my_pol_ctx.affinity           = ear_affinity_is_set;
 	my_pol_ctx.pc_limit	          = app_settings->pc_opt.current_pc;
-	my_pol_ctx.mpi_enabled				= is_mpi_enabled();
+	my_pol_ctx.mpi_enabled        = module_mpi_is_enabled();
 	my_pol_ctx.num_pstates	      = frequency_get_num_pstates();
-	my_pol_ctx.use_turbo					= ear_use_turbo;
+	my_pol_ctx.use_turbo          = ear_use_turbo;
 	my_pol_ctx.user_selected_freq = DEF_FREQ(app_settings->def_freq);
 	my_pol_ctx.reset_freq_opt     = get_ear_reset_freq();
 	my_pol_ctx.ear_frequency      = &ear_frequency;
@@ -429,6 +428,7 @@ state_t init_power_policy(settings_conf_t *app_settings, resched_t *res)
 
 	debug("max cpu pstate: %u / cpu pstate cnt %u", (uint) app_settings->cpu_max_pstate, cpu_pstate_cnt);
 
+#if 0
 	uint elem_count;
 	char **policy_path = strtoa(policy_plugin_path, '/', NULL, &elem_count);
 
@@ -443,6 +443,13 @@ state_t init_power_policy(settings_conf_t *app_settings, resched_t *res)
 
 		strtoa_free(policy_path);
 	}
+#else
+	uint max_cpu_ps = cpu_pstate_cnt - 1;
+	if (strcmp(app_settings->policy_name, "monitoring") != 0)
+	{
+			max_cpu_ps = ear_min(max_cpu_ps, (uint) app_settings->cpu_max_pstate);
+	}
+#endif
 
 
 	if (state_fail(pstate_pstofreq(cpu_pstate_lst, cpu_pstate_cnt, max_cpu_ps, &min_cpufreq)))

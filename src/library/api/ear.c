@@ -76,7 +76,7 @@
 #include <library/api/clasify.h>
 #include <library/api/eard_dummy.h>
 #include <library/api/mpi_support.h>
-
+#include <library/loader/module_mpi.h>
 #include <library/dynais/dynais.h>
 #include <library/tracer/tracer.h>
 #include <library/states/states.h>
@@ -972,7 +972,7 @@ void attach_to_master_set(int master)
 				masters_info.my_master_size = 1;
 #if MPI
 				/* If OpenMPI, we don't synchronize unless all the processes answer the gather. */
-				if (is_mpi_enabled() && is_openmpi())
+				if (module_mpi_is_enabled() && module_mpi_is_open())
 				{
 								int n = openmpi_num_nodes();
 								int sched_num_nodes = utils_get_sched_num_nodes();
@@ -2105,7 +2105,7 @@ void ear_init()
 				/* Monitor is used for applications with no mpi of few mpi calss per second. Gets control of signature computation
          * if neded*/
 
-        if (!is_mpi_enabled())
+        if (!module_mpi_is_enabled())
         {
             ear_guided = TIME_GUIDED;
         }
@@ -2795,7 +2795,7 @@ state_t earl_periodic_actions_init(void *no_arg)
     timestamp_getfast(&periodic_time);
     seconds = 0;
     last_mpis = 0;
-    if (!is_mpi_enabled() || (ear_guided == TIME_GUIDED)) {
+    if (!module_mpi_is_enabled() || (ear_guided == TIME_GUIDED)) {
         ear_periodic_mode = PERIODIC_MODE_ON;
 #if SINGLE_CONNECTION
         if (masters_info.my_master_rank>=0) 
@@ -2835,7 +2835,7 @@ state_t earl_periodic_actions(void *no_arg)
 	last_signature_elapsed = timestamp_diff(&curr_periodic_time, &time_last_signature, TIME_SECS);
 
 	debug("%s [%d] elapsed %lu: first_exec_monitor %d Iterations %d MPI %d time_guided %d periodic %u dynais(%d) calls %lu",
-				node_name, my_node_id, period_elapsed, first_exec_monitor, ear_iterations, is_mpi_enabled(), ear_guided == TIME_GUIDED, ear_periodic_mode, dynais_enabled, dynais_calls);
+				node_name, my_node_id, period_elapsed, first_exec_monitor, ear_iterations, module_mpi_is_enabled(), ear_guided == TIME_GUIDED, ear_periodic_mode, dynais_enabled, dynais_calls);
 
 	if (first_exec_monitor)
 	{
@@ -2844,7 +2844,7 @@ state_t earl_periodic_actions(void *no_arg)
 		return EAR_SUCCESS;
 	}
 
-	if (!is_mpi_enabled() || (ear_guided == TIME_GUIDED))
+	if (!module_mpi_is_enabled() || (ear_guided == TIME_GUIDED))
 	{
 		//if (ear_guided == TIME_GUIDED) verbose_master(1, "(Time guided) elapsed %lu iteration iters %d period %u", period_elapsed, ear_iterations, lib_period);
 		states_new_iteration(my_id, ITERS_PER_PERIOD, ear_iterations, 1, 1, lib_period, 0);
