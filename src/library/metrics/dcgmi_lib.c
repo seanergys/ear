@@ -49,7 +49,6 @@
 #include <metrics/common/apis.h>
 
 
-#define DCGMI_INIT_LVL		1
 #define DCGMI_MET_LVL			2
 
 #define DCGMI_LIB_SAMPLING_PERIOD 2
@@ -143,7 +142,7 @@ state_t dcgmi_lib_load()
 {
 	if (USE_GPUS && DCGMI)
 	{
-		verbose_master(DCGMI_INIT_LVL, "GPU and DCGMI are supported.");
+		verbose_info_master("GPU and DCGMI are supported.");
 
 		/* First checkout whether DCGMI is explicitely requested
 		 * to be enabled or disabled by the user. */
@@ -392,8 +391,6 @@ state_t dcgmi_lib_get_global_metrics(dcgmi_sig_t *dcgmi_sig)
 
 	for (uint set = 0; set < dcgmi_data.dcgmi_set_count; set++)
 	{
-		verbose_master(DCGMI_MET_LVL, "DCGMI[%u] accumulated metrics:", set);
-
 		for (uint gpu_idx = 0; gpu_idx < gpuprof_api.devs_count; gpu_idx++)
 		{
 			for (uint event_idx = 0; event_idx < dcgmi_data.dcgmi_set_sizes[set]; event_idx++)
@@ -412,8 +409,8 @@ state_t dcgmi_lib_get_global_metrics(dcgmi_sig_t *dcgmi_sig)
 
 				dcgmi_data_tostr(dcgmi_sig->event_metrics_sets[set], event_metrics_sets_str, str_size, set);
 
-				verbose_master(DCGMI_MET_LVL, "DCGMI app metrics %s elapsed %.3lf sec",
-											 event_metrics_sets_str, elapsed);
+				verbose_master(DCGMI_MET_LVL, "DCGMI set %u app metrics %s elapsed %.3lf sec",
+											 set, event_metrics_sets_str, elapsed);
 			}
 			free(event_metrics_sets_str);
 		}
@@ -535,7 +532,7 @@ state_t dcgmi_lib_get_event_info(dcgm_event_idx_t event_id, int *event_info_dst)
 	{
 		if (event_id >= 0 && event_id < event_id_max)
 		{
-			debug("event_info %d: %d/%d", event_id, event_info[event_id][0], event_info[event_id][1]);
+			// debug("event_info %d: %d/%d", event_id, event_info[event_id][0], event_info[event_id][1]);
 			memcpy(event_info_dst, event_info[event_id], 2 * sizeof(int));
 			return EAR_SUCCESS;
 		} else
@@ -555,9 +552,9 @@ static state_t dcgmi_paction_init(void *p)
 	// events_set internally starts the pool reading
 	gpuprof_events_set(all_devs, dcgmi_data.dcgmi_event_ids_csv[dcgmi_curr_ev_set]);
 
-	gpuprof_read(dcgmi_data.gpuprof_read1[dcgmi_curr_ev_set]);
-
 	sleep(2); // Let the API to collect more metrics
+
+	gpuprof_read(dcgmi_data.gpuprof_read1[dcgmi_curr_ev_set]);
 
 	return EAR_SUCCESS;
 }
@@ -580,22 +577,17 @@ static state_t dcgmi_paction(void *p)
 
 		gpuprof_read_diff(read2, read1, diff);
 
-		// TODO: To be removed or inside debugs
-#if 0
+#if SHOW_DEBUGS
 		size_t nmemb = gpuprof_api.devs_count * dcgmi_data.dcgmi_set_sizes[dcgmi_curr_ev_set] * ID_SIZE;
 
 		char *event_metrics_sets_str = calloc(nmemb, sizeof(char));
-		dcgmi_data_tostr(read1, event_metrics_sets_str, nmemb * sizeof(char),
-										 dcgmi_data.dcgmi_event_ids[dcgmi_curr_ev_set],
-										 dcgmi_data.dcgmi_set_sizes[dcgmi_curr_ev_set]);
-		debug("SET %u read1: %s elapsed %.3lf s", dcgmi_curr_ev_set, event_metrics_sets_str, read1->time_s);
+		dcgmi_data_tostr(read1, event_metrics_sets_str, nmemb * sizeof(char), dcgmi_curr_ev_set);
+		debug("SET %u read1: %s elapsed %.3lf s", dcgmi_curr_ev_set, event_metrics_sets_str, read1->time.tv_sec);
 
 		memset(event_metrics_sets_str, 0, nmemb * sizeof(char));
 
-		dcgmi_data_tostr(read2, event_metrics_sets_str, nmemb * sizeof(char),
-										 dcgmi_data.dcgmi_event_ids[dcgmi_curr_ev_set],
-										 dcgmi_data.dcgmi_set_sizes[dcgmi_curr_ev_set]);
-		debug("SET %u read2: %s elapsed %.3lf s", dcgmi_curr_ev_set, event_metrics_sets_str, read1->time_s);
+		dcgmi_data_tostr(read2, event_metrics_sets_str, nmemb * sizeof(char), dcgmi_curr_ev_set);
+		debug("SET %u read2: %s elapsed %.3lf s", dcgmi_curr_ev_set, event_metrics_sets_str, read2->time.tv_sec);
 #endif
 
 		/* Accumulate current set of events. */
