@@ -502,7 +502,7 @@ int mysql_batch_insert_jobs(MYSQL *connection, application_t *app, int num_apps)
         //storage variable assignation
         bind[0+offset].buffer = (char *)&app[i].job.id;
         bind[1+offset].buffer = (char *)&app[i].job.step_id;
-        bind[2+offset].buffer = (char *)&app[i].job.step_id;
+        bind[2+offset].buffer = (char *)&app[i].job.local_id;
         bind[3+offset].buffer = (char *)&app[i].job.user_id;
         bind[4+offset].buffer = (char *)&app[i].job.app_id;
         bind[5+offset].buffer = (char *)&app[i].job.start_time;
@@ -661,7 +661,7 @@ int mysql_retrieve_applications(MYSQL *connection, char *query, application_t **
     bind[0].buffer_type = bind[1].buffer_type = bind[2].buffer_type = 
         bind[4].buffer_type = bind[5].buffer_type = MYSQL_TYPE_LONGLONG;
     bind[0].is_unsigned = bind[1].is_unsigned = bind[2].is_unsigned = 
-        bind[4].is_unsigned = bind[5].is_unsigned;
+        bind[4].is_unsigned = bind[5].is_unsigned = 1;
 
     //string types
     bind[3].buffer_type = MYSQL_TYPE_VAR_STRING;
