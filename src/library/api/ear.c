@@ -1747,7 +1747,7 @@ void ear_init()
   		{
     		if (ear_my_rank == 0)
     		{
-      		topology_print(&earl_topo, 1);
+      		topology_print(&earl_topo, verb_channel);
     		}
   		}
 

@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -603,8 +603,8 @@ int mysql_batch_insert_applications_no_mpi(MYSQL *connection, application_t *app
         bind[0+offset].is_unsigned = bind[1+offset].is_unsigned = bind[2+offset].is_unsigned=
             bind[4+offset].is_unsigned = bind[5+offset].is_unsigned = 1;
 
-        bind[3+offset].buffer_type = MYSQL_TYPE_NULL;
-        bind[3+offset].is_null = (ear_my_bool) 1;
+        bind[4+offset].buffer_type = MYSQL_TYPE_NULL;
+        bind[4+offset].is_null = (ear_my_bool) 1;
 
         //string types
         bind[3+offset].buffer_type = MYSQL_TYPE_STRING;
@@ -654,6 +654,8 @@ int mysql_retrieve_applications(MYSQL *connection, char *query, application_t **
     long long sig_id = 0; 
     int num_apps;
     memset(bind, 0, sizeof(bind));
+
+		debug("Query:%s", query);
 
     //integer types
     bind[0].buffer_type = bind[1].buffer_type = bind[2].buffer_type = 
@@ -722,6 +724,7 @@ int mysql_retrieve_applications(MYSQL *connection, char *query, application_t **
         else
             sprintf(job_query, "SELECT * FROM Jobs WHERE job_id=%lu AND step_id=%lu AND local_id=%lu",
                     job_id, step_id, local_id);
+        debug("Job query:%s", job_query);
         num_jobs = mysql_retrieve_jobs(connection, job_query, &job_aux);
         if (num_jobs < 1)
         {
