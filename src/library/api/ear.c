@@ -777,6 +777,16 @@ void create_shared_regions()
 
 }
 
+void verbose_shared_data()
+{
+	if (VERB_ON(2) && (MASTER_ID >= 0)){
+		verbose_master(2,"List of processes in node %s\n", node_name);
+		for (uint lid = 0; lid < lib_shared_region->num_processes; lid++){
+			verbose_master(2,"\t Proc[%d] PID %d\n", lid, sig_shared_region[lid].pid);
+		}
+	}
+}
+
 /****************************************************************************************************************************************************************/
 /****************** This function attaches the process to the shared regions to coordinate processes in same node ***********************************************/
 /****************** It is executed by the NOT master processses  ************************************************************************************************/
@@ -1715,6 +1725,7 @@ void ear_init()
 								attach_shared_regions();
 				}
 				verbose(VPROC_INIT,"EARL[%d][rank = %d]  Created/Attached shared regions Total procs %d", getpid(), ear_my_rank, lib_shared_region->num_processes);
+				verbose_shared_data();
 
         if (!eard_ok) {
 
@@ -2321,6 +2332,7 @@ void ear_finalize(int exit_status)
 #endif
 								end_job(&application.job);
 								end_mpi(&application.job);
+								verbose(2, "EARL[%d][%d] Application report", ear_my_rank,getpid());
 								if (report_applications(&rep_id,&application,1) != EAR_SUCCESS){
 												verbose_master(1,"Error reporting application");
 								}

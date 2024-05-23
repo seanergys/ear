@@ -17,9 +17,9 @@ EAR_FEATURES="DCGMI=1"
 SRCPATH=$PWD
 
 # EAR library versions: enabled or disabled
-openmpi="disabled"
+openmpi="enabled"
 nompi="enabled"
-intelmpi="disabled"
+intelmpi="enabled"
 
 # Start disable section:  Empty by default
   #--enable-arm64          Compiles for ARM64 architecture
