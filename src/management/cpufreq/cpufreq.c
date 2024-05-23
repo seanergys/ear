@@ -78,6 +78,7 @@ state_t mgt_cpufreq_load(topology_t *tp, int eard)
 	debug("Loaded DUMMY");
     // PRIORITY subsystem
     mgt_cpufreq_prio_load(tp, eard);
+		debug("API %d", api);
     // Finishing
     pthread_mutex_unlock(&lock);
     return EAR_SUCCESS;
