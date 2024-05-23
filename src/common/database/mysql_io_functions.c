@@ -911,8 +911,8 @@ int mysql_retrieve_loops(MYSQL *connection, char *query, loop_t **loops)
     }
 
     //string types
-    bind[5].buffer_type = MYSQL_TYPE_VAR_STRING;
-    bind[5].buffer_length = 256;
+    bind[6].buffer_type = MYSQL_TYPE_VAR_STRING;
+    bind[6].buffer_length = 256;
 
     //reciever variables assignation
     bind[0].buffer = &loop_aux->id.event;
