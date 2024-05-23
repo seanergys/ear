@@ -1243,23 +1243,27 @@ void ear_lib_sig_handler(int s)
 				exit(0);
 }
 
-static int read_hack_env()
+/** Reads and updates tmp and etc hack variables.
+ * \param[out] tmp The new tmp if hacked. If not, it is untouched. */
+static void read_hack_env(char **tmp)
 {
 	char *hack_tmp = ear_getenv(HACK_EAR_TMP);
 	char *hack_etc = ear_getenv(HACK_EAR_ETC);
-	int updated = 0;
-	if (hack_tmp != NULL){
+
+	if (hack_tmp != NULL)
+	{
 		set_ear_tmp(hack_tmp);
+		*tmp = get_ear_tmp(); // Update the passed tmp path
 		setenv("EAR_TMP", hack_tmp, 1);
-		updated = 1;
+
 		verbose(VPROC_INIT,"[%s] Using HACK tmp %s ", node_name, get_ear_tmp());
 	}
-	if (hack_etc != NULL){
+
+	if (hack_etc != NULL)
+	{
 		setenv("EAR_ETC", hack_etc, 1);
 		verbose(VPROC_INIT,"[%s] Using HACK etc %s ", node_name, hack_etc);
-		updated = 1;
 	}
-	return updated;
 }
 
 static int get_ear_application_id()
@@ -1416,7 +1420,7 @@ void ear_init()
 
   // Environment initialization
   ear_lib_environment();
-	read_hack_env();
+	read_hack_env(&tmp);
 
 	// This function gets info from the sched env var
 	get_job_identification();
@@ -1748,7 +1752,7 @@ void ear_init()
   		{
     		if (ear_my_rank == 0)
     		{
-      		topology_print(&earl_topo, 1);
+      		topology_print(&earl_topo, verb_channel);
     		}
   		}
 

@@ -428,7 +428,7 @@ state_t init_power_policy(settings_conf_t *app_settings, resched_t *res)
 
 	debug("max cpu pstate: %u / cpu pstate cnt %u", (uint) app_settings->cpu_max_pstate, cpu_pstate_cnt);
 
-#if 0
+#if 1
 	uint elem_count;
 	char **policy_path = strtoa(policy_plugin_path, '/', NULL, &elem_count);
 
