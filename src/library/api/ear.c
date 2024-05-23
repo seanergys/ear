@@ -265,6 +265,7 @@ extern ulong perf_accuracy_min_time;
 static state_t check_eard_earl_compatibility(state_t eard_connect_state)
 {
 	state_t st = EAR_SUCCESS;
+	return st;
 	if (state_fail(eard_connect_state)) return EAR_ERROR;
 
 	eard_state_t eard_conf;
