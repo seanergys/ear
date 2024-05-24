@@ -138,7 +138,7 @@ static int aux_metrics_build(CUmetric *metrics)
         metrics_count = MET_N;
     }
     for (i = 0; i < metrics_count; ++i) {
-        strncpy(metrics[i].name, matrix[i], 32);
+        strncpy(metrics[i].name, matrix[i], sizeof(metrics[i].name) - 1);
         debug("MET%d: '%s'", i, metrics[i].name);
         if (!strcmp(matrix[i], "flop_count_dp")) { metrics[i].num = METRIC_FLOPS_DP; }
         if (!strcmp(matrix[i], "flop_count_sp")) { metrics[i].num = METRIC_FLOPS_SP; }

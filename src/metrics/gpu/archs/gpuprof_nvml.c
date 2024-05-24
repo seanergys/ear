@@ -160,17 +160,17 @@ GPUPROF_F_LOAD(gpuprof_nvml_load)
     gpuprof_nvml_data_alloc(&pool);
     // Getting event names and ids
     i = 1;
-    while(events_fill(&gpms[devs_count], i++));
+		while(events_fill(&gpms[devs_count], i++));
 		apis_put(ops->init,							gpuprof_nvml_init);
-    apis_put(ops->get_info,         gpuprof_nvml_get_info);
-    apis_put(ops->events_get,       gpuprof_nvml_events_get);
-    apis_put(ops->events_set,       gpuprof_nvml_events_set);
-    apis_put(ops->events_unset,     gpuprof_nvml_events_unset);
-    apis_put(ops->read,             gpuprof_nvml_read);
-    apis_put(ops->read_raw,         gpuprof_nvml_read_raw);
-    apis_put(ops->data_diff,        gpuprof_nvml_data_diff);
-    apis_put(ops->data_alloc,       gpuprof_nvml_data_alloc);
-    apis_put(ops->data_copy,        gpuprof_nvml_data_copy);
+		apis_put(ops->get_info,         gpuprof_nvml_get_info);
+		apis_put(ops->events_get,       gpuprof_nvml_events_get);
+		apis_put(ops->events_set,       gpuprof_nvml_events_set);
+		apis_put(ops->events_unset,     gpuprof_nvml_events_unset);
+		apis_put(ops->read,             gpuprof_nvml_read);
+		apis_put(ops->read_raw,         gpuprof_nvml_read_raw);
+		apis_put(ops->data_diff,        gpuprof_nvml_data_diff);
+		apis_put(ops->data_alloc,       gpuprof_nvml_data_alloc);
+		apis_put(ops->data_copy,        gpuprof_nvml_data_copy);
     debug("Loaded NVML");
 }
 

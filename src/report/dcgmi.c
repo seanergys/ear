@@ -39,7 +39,6 @@ static char *csv_log_file_env_loops;
 #endif
 static char csv_loop_log_file[MAX_PATH_SIZE];
 static char csv_log_file[MAX_PATH_SIZE];
-static char dcgmi_metrics[1024];
 static char path_base[1024];
 static char path_dir_app[1024], path_dir_loops[1024];
 

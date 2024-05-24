@@ -198,18 +198,18 @@ int create_loop_header(char * header, char *path, int ts, uint num_gpus, int sin
         return EAR_SUCCESS;
     }
 
-    if (header != NULL) strncpy(HEADER, header, sizeof(HEADER));
-    strncat(HEADER,HEADER_NOTS,sizeof(HEADER));
+    if (header != NULL) strncpy(HEADER, header, sizeof(HEADER) - 1);
+    strncat(HEADER, HEADER_NOTS, sizeof(HEADER) - strlen(HEADER) - 1);
 
 #if USE_GPUS
     if (single_column) num_gpus = ear_min(1, num_gpus);
     for (uint j = 0; j < num_gpus; ++j) {
         sprintf(gpu_header,HEADER_GPU_SIG,j,j,j,j,j);
-        strncat(HEADER,gpu_header,strlen(gpu_header));
+        strncat(HEADER, gpu_header,  sizeof(HEADER) - strlen(HEADER) - 1);
     }
 #endif
 
-    strncat(HEADER, HEADER_LOOP,sizeof(HEADER));
+    strncat(HEADER, HEADER_LOOP, sizeof(HEADER) - strlen(HEADER) - 1);
 
     if (ts) {
         xstrncat(HEADER, ";ELAPSED;DATE", sizeof(HEADER));

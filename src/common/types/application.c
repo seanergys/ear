@@ -169,8 +169,8 @@ int create_app_header(char * header, char *path, uint num_gpus, char is_extended
 		if (file_is_regular(path)) return EAR_SUCCESS;
 
 		if (header != NULL){ 
-			strncpy(HEADER, header, sizeof(HEADER));
-			strncat(HEADER, HEADER_BASE, sizeof(HEADER));
+			strncpy(HEADER, header, sizeof(HEADER) - 1);
+			strncat(HEADER, HEADER_BASE, sizeof(HEADER) - strlen(HEADER) - 1);
 		}else{
 			strncpy(HEADER, HEADER_BASE, sizeof(HEADER));
 		}

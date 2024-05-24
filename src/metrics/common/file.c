@@ -78,7 +78,7 @@ static int filemagic_can_msomething(char *format, int index_count, int **fds, in
             return 0;
         }
     }
-    *fds = calloc((size_t)index_count, sizeof(int));
+    *fds = calloc((unsigned int)index_count, sizeof(int));
     for (i = 0; i < index_count; ++i) {
         sprintf(buffer, format, i);
         if (!can(buffer, &((*(fds))[i]))) {

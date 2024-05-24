@@ -128,7 +128,7 @@ ssize_t ear_file_size(char *path)
 state_t ear_file_read(const char *path, char *buffer, size_t size)
 {
 	int fd = open(path, O_RDONLY);
-	ssize_t r;
+	ssize_t r = 0;
 	ssize_t totalr = 0;
 
 	if (fd < 0) {
@@ -152,7 +152,7 @@ state_t ear_file_read(const char *path, char *buffer, size_t size)
 state_t ear_file_write(const char *path, const char *buffer, size_t size)
 {
 	int fd = open(path, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-	ssize_t w;
+	ssize_t w = 0;
 	ssize_t totalw = 0;
 
 	if (fd < 0) {

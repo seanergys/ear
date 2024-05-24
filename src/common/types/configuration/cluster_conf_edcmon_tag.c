@@ -118,7 +118,7 @@ state_t EDCMON_parse_token(edcmon_t **edcmon_i, unsigned int *num_edcmon_i, char
         }
 				else if (!strcmp(key, "HOST"))
 				{
-        	strncpy(edcmons[idx].host , value, sizeof(edcmons[idx].host));
+        	strncpy(edcmons[idx].host , value, sizeof(edcmons[idx].host) - 1);
 				}
         else if (!strcmp(key, "PDU_TYPE"))
         {
@@ -126,15 +126,15 @@ state_t EDCMON_parse_token(edcmon_t **edcmon_i, unsigned int *num_edcmon_i, char
         }
         else if (!strcmp(key, "PDU_IPS"))
         {
-        	strncpy(edcmons[idx].pdu_list , value, sizeof(edcmons[idx].pdu_list));
+        	strncpy(edcmons[idx].pdu_list , value, sizeof(edcmons[idx].pdu_list) - 1);
         }
         else if (!strcmp(key, "SENSOR_LIST"))
         {
-					strncpy(edcmons[idx].sensors_list, value, sizeof(edcmons[idx].sensors_list));
+					strncpy(edcmons[idx].sensors_list, value, sizeof(edcmons[idx].sensors_list) - 1);
 					value = strtok_r(NULL, "\"", &buffer_ptr);
 					if (value){
-						strncat(edcmons[idx].sensors_list, " ", sizeof(edcmons[idx].sensors_list));
-						strncat(edcmons[idx].sensors_list, value, sizeof(edcmons[idx].sensors_list));
+						strncat(edcmons[idx].sensors_list, " ", sizeof(edcmons[idx].sensors_list) - 1);
+						strncat(edcmons[idx].sensors_list, value, sizeof(edcmons[idx].sensors_list) - strlen(edcmons[idx].sensors_list) - 1);
 					}
 					remove_chars(edcmons[idx].sensors_list, '"');
 					remove_chars(edcmons[idx].sensors_list, '\n');
