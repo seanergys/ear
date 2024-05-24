@@ -23,6 +23,7 @@
 #include <common/output/debug.h>
 #include <common/utils/string.h>
 #include <common/system/monitor.h>
+#include <common/system/time.h>
 #include <common/math_operations.h>
 #include <metrics/common/nvml.h>
 #include <metrics/gpu/archs/gpuprof_nvml.h>
@@ -358,11 +359,18 @@ GPUPROF_F_EVENTS_UNSET(gpuprof_nvml_events_unset)
 
 GPUPROF_F_READ(gpuprof_nvml_read)
 {
-    //gpuprof_nvml_pool(NULL);
+	// gpuprof_nvml_pool(NULL);
 	while (pthread_mutex_trylock(&lock));
-    gpuprof_nvml_data_copy(data, pool);
+
+	gpuprof_nvml_data_copy(data, pool);
+	timestamp_getfast(&data[0].time);
+	for (int i = 1; i < devs_count; i++)
+	{
+		data[i].time = data[0].time;
+	}
+
 	pthread_mutex_unlock(&lock);
-    return EAR_SUCCESS;
+	return EAR_SUCCESS;
 }
 
 GPUPROF_F_READ_RAW(gpuprof_nvml_read_raw)
