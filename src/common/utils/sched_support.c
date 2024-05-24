@@ -128,7 +128,7 @@ void sched_local_barrier(char *file,int N)
 	snprintf(lock_file,sizeof(lock_file),"%s.lock", file); // Implements the exclusive acess
 	// Create the file and accum 1 element
 	while((fd_lock = file_lock_master(lock_file)) < 0); // lock
-		fd = open(file, O_RDWR|O_CREAT, S_IRUSR|S_IWUSR);
+	fd = open(file, O_RDWR|O_CREAT, S_IRUSR|S_IWUSR);
 		// Update
 		if (fd >= 0){
 			int curr = 0, leido;
@@ -149,7 +149,7 @@ void sched_local_barrier(char *file,int N)
 
 	debug("Waiting for processes");
 	// Wait until the value is equal to N
-	int out_tries = 0 , tries = 0;
+	int out_tries = 0;
 	int max_tries = 1000000;
 	int value = -1;
 	do{ // Out
