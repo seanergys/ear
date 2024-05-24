@@ -23,9 +23,7 @@
 int main(int argc, char *argv[])
 {
     printf("%s: Started....\n", argv[0]);
-#if 0
     plugin_manager_main(argc, argv);
     plugin_manager_wait();
-#endif
     return 0;
 }

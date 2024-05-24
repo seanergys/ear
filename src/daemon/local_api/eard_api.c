@@ -51,7 +51,7 @@
 #define MAX_TRIES              1
 #define USE_NON_BLOCKING_IO    1
 
-#define VPROC_LAPI	2
+#define VPROC_LAPI	3
 
 static int connecting = 0;
 
