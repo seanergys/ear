@@ -2802,7 +2802,7 @@ static state_t metrics_compute_total_io(io_data_t *total)
             } else {
                 debug("IO data process %d (%d) can not be read", i, sig_shared_region[i].pid);
 								char err_msg[1024];
-								snprintf(err_msg,sizeof(err_msg), "I/O could not be read for process %d", sig_shared_region[i].pid);
+								snprintf(err_msg,sizeof(err_msg), "I/O could not be read for process PROC[%d]=%d", i, sig_shared_region[i].pid);
 
                 return_msg(EAR_ERROR, err_msg);
             }

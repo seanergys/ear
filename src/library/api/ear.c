@@ -780,9 +780,9 @@ void create_shared_regions()
 void verbose_shared_data()
 {
 	if (VERB_ON(2) && (MASTER_ID >= 0)){
-		verbose_master(2,"List of processes in node %s\n", node_name);
+		verbose_master(2,"List of processes in node %s", node_name);
 		for (uint lid = 0; lid < lib_shared_region->num_processes; lid++){
-			verbose_master(2,"\t Proc[%d] PID %d\n", lid, sig_shared_region[lid].pid);
+			verbose_master(2,"\t Proc[%d] PID %d", lid, sig_shared_region[lid].pid);
 		}
 	}
 }

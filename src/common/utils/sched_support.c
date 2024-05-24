@@ -28,6 +28,7 @@
 
 #include <common/config.h>
 #include <common/output/verbose.h>
+#include <common/output/debug.h>
 #include <common/output/error.h>
 #include <common/types/generic.h>
 #include <common/system/popen.h>
@@ -120,7 +121,7 @@ int get_my_sched_group_node_size()
 
 void sched_local_barrier(char *file,int N)
 {
-	verbose(2,"EARL[%d] waiting in %s for %d processes", getpid(), file, N);
+	debug("EARL[%d] waiting in %s for %d processes", getpid(), file, N);
 	char lock_file[1024];
 	int fd, fd_lock;
 	
@@ -146,7 +147,7 @@ void sched_local_barrier(char *file,int N)
 	file_unlock_master(fd_lock, lock_file);
 
 
-	verbose(2,"Waiting for processes");
+	debug("Waiting for processes");
 	// Wait until the value is equal to N
 	int out_tries = 0 , tries = 0;
 	int max_tries = 1000000;
