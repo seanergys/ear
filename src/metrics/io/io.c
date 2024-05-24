@@ -46,7 +46,7 @@ state_t io_init(ctx_t *c,pid_t pid)
 	f=fopen(io_path,"r");
 	if (f==NULL){
 		char error_msg[1024];
-		snprintf(error_msg,sizeof(error_msg),"Opening io file %s %s", io_path, strerror(errno));
+		snprintf(error_msg, sizeof(error_msg), "Opening io file %s %s", io_path, strerror(errno));
 		state_return_msg(EAR_OPEN_ERROR,errno,error_msg);
 	}
 	c->context=(void *)f;
