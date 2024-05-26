@@ -70,7 +70,7 @@
 /** When set to 1, verbose, debug, and error output is sent to eard.log file stored at EAR_TMP. */
 #define EARD_FILE_LOG               1
 /** Set minimum CPU frequency on idle phases. */
-#define EARD_POWERCAP_IDLE_MINFREQ  1
+#define EARD_POWERCAP_IDLE_MINFREQ  0
 /**  */
 #define SYNC_SET_RPC 1
 /**  */

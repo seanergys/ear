@@ -200,4 +200,15 @@
 #define SCHED_LOAD_BALANCE_TH        "SLURM_LOAD_BALANCE_TH"               // TODO: Deprectated.
 /** @} */
 
+
+/*
+ * EARD flags
+ */
+
+#define EARD_USE_MINCPUFREQ_PC       "EARD_USE_MINCPUFREQ_PC"							// EARD will apply min CPU freq when idle periods
+#define EAR_POWERCAP_POLICY_NODE     "EAR_POWERCAP_POLICY_NODE"           // Defines the EARD powercapo plugin for domain node
+#define EAR_POWERCAP_POLICY_CPU      "EAR_POWERCAP_POLICY_CPU"            // Defines the EARD powercapo plugin for domain CPU
+#define EAR_POWERCAP_POLICY_DRAM     "EAR_POWERCAP_POLICY_DRAM"           // Defines the EARD powercapo plugin for domain DRAM
+#define EAR_POWERCAP_POLICY_GPU      "EAR_POWERCAP_POLICY_GPU"            // Defines the EARD powercapo plugin for domain GPU
+
 #endif //COMMON_CONFIG_ENV_H

@@ -2952,8 +2952,11 @@ void ear_constructor()
     ear_init();
     pthread_atfork(ear_fork_prolog, ear_fork_epilog, ear_fork_new_child);
 }
+static int ear_already_finalize = 0;
 void ear_destructor()
 {
+		if (ear_already_finalize) return;
+
     debug("Calling ear_finalize in ear_destructor %d",getpid());
     verbose(WF_SUPPORT_VERB,"Calling ear_finalize in ear_destructor %d",getpid());
 
@@ -2962,6 +2965,7 @@ void ear_destructor()
         return;
     }
 #endif
+		ear_already_finalize = 1;
     ear_finalize(EAR_SUCCESS);
 }
 #else
