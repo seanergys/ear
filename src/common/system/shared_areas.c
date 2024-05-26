@@ -53,7 +53,7 @@ void *create_shared_area(char *path, mode_t file_perms_bits, char *data, int are
 	mode_t my_mask;
 	my_mask = umask(0);
 
-	strncpy(buff, path,sizeof(buff));
+	strncpy(buff, path, sizeof(buff) - 1);
 	debug("creating file (%s) for shared memory", buff);
 
 	fd = open(buff, O_CREAT | O_RDWR | O_TRUNC, file_perms_bits);
@@ -105,7 +105,7 @@ void *attach_shared_area(char *path, int area_size, uint perm, int *shared_fd, i
 		int size;
 		int fd;
 
-		strncpy(buff, path, sizeof(buff));
+		strncpy(buff, path, sizeof(buff) - 1);
     fd = open(buff, perm);
     *shared_fd = fd;
 

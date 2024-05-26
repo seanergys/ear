@@ -87,7 +87,7 @@ static serial_buffer_t b;
 
 
 static state_t create_base_path(char *base_path, size_t base_path_sz, char *tmp_path, uint job_step_id, uint app_local_id);
-static state_t create_app_directory(char *path);
+// static state_t create_app_directory(char *path);
 
 int eards_read(int fd,char *buff,int size, uint wait_mode)
 {
@@ -540,8 +540,7 @@ ulong sendack(char *send_buf, size_t send_size, char *ack_buf, size_t ack_size, 
 
 
     #if MIX_RPC
-    int ack_ready;
-    ack_ready = aselect(&eard_api_client_fd, 3000, NULL);
+    aselect(&eard_api_client_fd, 3000, NULL);
     AFD_ZERO(&eard_api_client_fd);
     AFD_SETT(ear_fd_ack, &eard_api_client_fd, NULL);
     #endif
