@@ -68,10 +68,10 @@ static int plug_rcom_eard_job_srun(spank_t sp, plug_serialization_t *sd, int new
 {
 	// Hostlist get
 	sd->pack.eard.connected = 1;
-    if (plug_rcom_eard_connect(sp, sd, "SRUN") == ESPANK_ERROR) {
+	if (plug_rcom_eard_connect(sp, sd, "SRUN") == ESPANK_ERROR) {
 		sd->pack.eard.connected = 0;
 		return ESPANK_ERROR;
-    }
+	}
 	//
 	if (new_job) {
 		ear_node_new_job(&sd->job.app);
@@ -79,7 +79,7 @@ static int plug_rcom_eard_job_srun(spank_t sp, plug_serialization_t *sd, int new
 	} else {
 		ear_node_end_job(sd->job.app.job.id, sd->job.app.job.step_id);
 	}
-    plug_rcom_eard_disconnect(sp, sd, "SRUN");
+	plug_rcom_eard_disconnect(sp, sd, "SRUN");
 
 	return ESPANK_SUCCESS;
 }
