@@ -37,6 +37,7 @@
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
 #include <library/api/clasify.h>
+
 #include <library/metrics/metrics.h>
 // #include <library/policies/policy_api.h>
 #include <library/policies/policy_state.h>
@@ -46,6 +47,7 @@
 #include <library/policies/common/imc_policy_support.h>
 #include <library/policies/common/generic.h>
 #include <library/models/energy_model.h>
+#include <library/loader/module_mpi.h>
 
 #define MASTER (masters_info.my_master_rank >= 0)
 #define MASTER_ID masters_info.my_master_rank
@@ -184,7 +186,7 @@ state_t policy_init(polctx_t *c)
 
 		debug("min_time init");
 
-		if (is_mpi_enabled()) {
+		if (module_mpi_is_enabled()) {
 			mpi_app_init(c);
 
 			uint block_type;
@@ -313,22 +315,24 @@ state_t policy_loop_init(polctx_t *c, loop_id_t *loop_id)
     return EAR_SUCCESS;
 }
 
+#if 0
 state_t policy_loop_end(polctx_t *c, loop_id_t *loop_id)
 {
-    #if 0
-    if ((c!=NULL) && (c->reset_freq_opt))
-    {
-        uint pstate_index;
-        *(c->ear_frequency) = 0;
-        if (state_ok(mgt_cpufreq_get_index(no_ctx, (ullong) FREQ_DEF(c->app->def_freq), &pstate_index, 0))) {
-            if(state_ok(mgt_cpufreq_set_current(no_ctx, pstate_index, all_cpus))) {
-                *(c->ear_frequency) = FREQ_DEF(c->app->def_freq);
-            }
-        }
-    }
-    #endif
-    return EAR_SUCCESS;
+#if 0
+	if ((c!=NULL) && (c->reset_freq_opt))
+	{
+		uint pstate_index;
+		*(c->ear_frequency) = 0;
+		if (state_ok(mgt_cpufreq_get_index(no_ctx, (ullong) FREQ_DEF(c->app->def_freq), &pstate_index, 0))) {
+			if(state_ok(mgt_cpufreq_set_current(no_ctx, pstate_index, all_cpus))) {
+				*(c->ear_frequency) = FREQ_DEF(c->app->def_freq);
+			}
+		}
+	}
+#endif
+	return EAR_SUCCESS;
 }
+#endif
 
 /** This is the main function in this file, it implements the power policy. */
 state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *ready)
@@ -853,7 +857,7 @@ static state_t int_policy_ok(signature_t *curr_sig, signature_t *last_sig, int *
     my_node_mpi_types_calls = se->mpi_types;
 
     /*  Check for load balance data */
-    if (is_mpi_enabled() && enable_load_balance && use_energy_models) {
+    if (module_mpi_is_enabled() && enable_load_balance && use_energy_models) {
 
         verbose_mpi_calls_types(3, my_node_mpi_types_calls);
 

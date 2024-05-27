@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #include <math.h>
 #include <stdlib.h>
@@ -23,6 +23,7 @@
 #include <common/output/debug.h>
 #include <common/utils/string.h>
 #include <common/system/monitor.h>
+#include <common/system/time.h>
 #include <common/math_operations.h>
 #include <metrics/common/nvml.h>
 #include <metrics/gpu/archs/gpuprof_nvml.h>
@@ -72,7 +73,8 @@ static int support_test()
         debug("Error while checking NVML GPM support: %s", nvml.ErrorString(r));
         return 0;
     }
-    return 1;
+
+		return (support.isSupportedDevice) ? 1 : 0;
 }
 
 static int samples_alloc(nvmlGpmMetricsGet_t *sev)
@@ -118,7 +120,7 @@ static int events_fill(nvmlGpmMetricsGet_t *sev, int i)
         return 1;
     }
     strcpy(events[events_count].name, sev->metrics[0].metricInfo.longName);
-    //debug("EV%d: %s (%s)", i, events[events_count].name, sev->metrics[0].metricInfo.unit);
+    debug("EV%d: %s (%s)", i, events[events_count].name, sev->metrics[0].metricInfo.unit);
     events[events_count].id = (uint) i;
     events_count++;
     return 1;
@@ -158,16 +160,17 @@ GPUPROF_F_LOAD(gpuprof_nvml_load)
     gpuprof_nvml_data_alloc(&pool);
     // Getting event names and ids
     i = 1;
-    while(events_fill(&gpms[devs_count], i++));
-    apis_put(ops->get_info,         gpuprof_nvml_get_info);
-    apis_put(ops->events_get,       gpuprof_nvml_events_get);
-    apis_put(ops->events_set,       gpuprof_nvml_events_set);
-    apis_put(ops->events_unset,     gpuprof_nvml_events_unset);
-    apis_put(ops->read,             gpuprof_nvml_read);
-    apis_put(ops->read_raw,         gpuprof_nvml_read_raw);
-    apis_put(ops->data_diff,        gpuprof_nvml_data_diff);
-    apis_put(ops->data_alloc,       gpuprof_nvml_data_alloc);
-    apis_put(ops->data_copy,        gpuprof_nvml_data_copy);
+		while(events_fill(&gpms[devs_count], i++));
+		apis_put(ops->init,							gpuprof_nvml_init);
+		apis_put(ops->get_info,         gpuprof_nvml_get_info);
+		apis_put(ops->events_get,       gpuprof_nvml_events_get);
+		apis_put(ops->events_set,       gpuprof_nvml_events_set);
+		apis_put(ops->events_unset,     gpuprof_nvml_events_unset);
+		apis_put(ops->read,             gpuprof_nvml_read);
+		apis_put(ops->read_raw,         gpuprof_nvml_read_raw);
+		apis_put(ops->data_diff,        gpuprof_nvml_data_diff);
+		apis_put(ops->data_alloc,       gpuprof_nvml_data_alloc);
+		apis_put(ops->data_copy,        gpuprof_nvml_data_copy);
     debug("Loaded NVML");
 }
 
@@ -176,12 +179,16 @@ GPUPROF_F_INIT(gpuprof_nvml_init)
     if (pooling) {
         return EAR_SUCCESS;
     }
+
+		debug("gpuprof_nvml_init");
+
     // Creating pooling thread
     sus = suscription();
     sus->call_main  = gpuprof_nvml_pool;
     sus->time_relax = 2000;
     sus->time_burst = 2000;
     sus->suscribe(sus);
+		monitor_register(sus);
     pooling = 1;
 
     return EAR_SUCCESS;
@@ -279,7 +286,7 @@ static int set(int dev, char *evs, uint *ids, uint ids_count)
     unset(dev);
     // Changing metrics values
     while (i < ids_count) {
-        debug("D%d: setting event %u", dev, ids[dev]);
+        debug("D%d: setting event %u", dev, ids[i]);
         gpms[dev].metrics[i].metricId = ids[i];
         ++i;
     }
@@ -293,6 +300,7 @@ static int set(int dev, char *evs, uint *ids, uint ids_count)
     i = 0;
     while (i < ids_count) {
         if (gpms[dev].metrics[i].nvmlReturn == NVML_ERROR_INVALID_ARGUMENT) {
+						debug("nvmlReturn INVALID_ARGUMENT");
              return 0;
         }
         ++i;
@@ -351,11 +359,18 @@ GPUPROF_F_EVENTS_UNSET(gpuprof_nvml_events_unset)
 
 GPUPROF_F_READ(gpuprof_nvml_read)
 {
-    //gpuprof_nvml_pool(NULL);
+	// gpuprof_nvml_pool(NULL);
 	while (pthread_mutex_trylock(&lock));
-    gpuprof_nvml_data_copy(data, pool);
+
+	gpuprof_nvml_data_copy(data, pool);
+	timestamp_getfast(&data[0].time);
+	for (int i = 1; i < devs_count; i++)
+	{
+		data[i].time = data[0].time;
+	}
+
 	pthread_mutex_unlock(&lock);
-    return EAR_SUCCESS;
+	return EAR_SUCCESS;
 }
 
 GPUPROF_F_READ_RAW(gpuprof_nvml_read_raw)

@@ -8,7 +8,7 @@ OBJS = \
     cupti.o \
     eard_dummy.o
 
-ifeq ($(FEAT_MPI_API), 1)
+ifeq ($(FEAT_MPI_LIBRARY), 1)
 OBJS += \
     ear_mpi.o \
     mpic.o \
@@ -20,7 +20,7 @@ oths_BINS = earld.h
 oths_PATH = $(DESTDIR)/include
 oths_PERM = 0664
 
-dummyld_BINS = earld.o
+dummyld_BINS = libearld_dummy.a
 dummyld_PATH = $(DESTDIR)/lib
 dummyld_PERM = 0664
 
@@ -33,6 +33,9 @@ all: $(OBJS) $(BINS) $(dummyld_BINS)
 
 libear_seq.so: ear_seq.o
 	$(CC) $(CC_FLAGS) -shared -o $@ $^ -ldl
+
+libearld_dummy.a:earld.o
+	ar rvs libearld_dummy.a earld.o
 
 ######## OPTIONS 
 

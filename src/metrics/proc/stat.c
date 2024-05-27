@@ -52,7 +52,7 @@ state_t kernel_version(uint *kernel, uint *major, uint *minor, uint *patch)
 	p = buffer.release;
 	i = 0;
 	//
-	while (*p) {
+	while (*p && i < 4) {
 		if (isdigit(*p)) {
 			ver[i] = (uint) strtol(p, &p, 10);
 			i++;

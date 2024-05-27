@@ -91,7 +91,7 @@ MYSQL_RES *mysql_run_query_result(char *query)
 int mysql_run_query_int_result(char *query)
 {
     MYSQL_RES *result = mysql_run_query_result(query);
-    int num_indexes;
+    int num_indexes = 0;
     if (result == NULL) {
         verbose(VDBH, "Error while retrieving result");
         return EAR_ERROR;

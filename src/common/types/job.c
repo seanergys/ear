@@ -95,11 +95,11 @@ void print_job_fd(int fd, job_t *job)
 		ts = localtime(&endt);
 		strftime(buf_end, sizeof(buf_end), "%Y-%m-%d %H:%M:%S", ts);	
 #if WF_SUPPORT
-    sprintf(job_buff, "%lu;%lu;%lu;%s;%s;%s;%s;%s;%s;%lf;%s;%s", job->id, job->step_id, job->local_id, job->user_id, job->group_id, job->app_id,
-                                                          job->user_acc, job->energy_tag, job->policy, job->th, buf_start, buf_end);
+    sprintf(job_buff, "%lu;%lu;%lu;%s;%s;%s;%s;%s;%s;%lf;%lu;%lu;%s;%s", job->id, job->step_id, job->local_id, job->user_id, job->group_id, job->app_id,
+                                                          job->user_acc, job->energy_tag, job->policy, job->th, startt, endt, buf_start, buf_end);
 #else
-    sprintf(job_buff, "%lu;%lu;%s;%s;%s;%s;%s;%s;%lf;%s;%s", job->id, job->step_id, job->user_id, job->group_id, job->app_id,
-                                                          job->user_acc, job->energy_tag, job->policy, job->th, buf_start, buf_end);
+    sprintf(job_buff, "%lu;%lu;%s;%s;%s;%s;%s;%s;%lf;%lu;%lu;%s;%s", job->id, job->step_id, job->user_id, job->group_id, job->app_id,
+                                                          job->user_acc, job->energy_tag, job->policy, job->th, startt, endt, buf_start, buf_end);
 #endif
 	write(fd,job_buff,strlen(job_buff));
 }

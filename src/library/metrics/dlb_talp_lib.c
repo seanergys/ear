@@ -35,11 +35,9 @@
 
 #include <common/types/generic.h>
 #include <common/system/monitor.h>
-
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
-#include <library/api/mpi_support.h>
-
+#include <library/loader/module_mpi.h>
 
 #define TALP_SHM_TIMEOUT 5 // in seconds
 #define TALP_SHM_NAME "/earl_dlb_talp.dat"
@@ -209,7 +207,7 @@ state_t earl_dlb_talp_read(earl_talp_t *earl_talp_data)
 
 static state_t talp_monitor_create(suscription_t *sus)
 {
-  if (is_mpi_enabled())
+  if (module_mpi_is_enabled())
   {
 		/** Init subscription function is talp_monitor_init,
 		 * and the main rutine is talp_monitor_periodic_action. */

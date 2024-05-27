@@ -27,15 +27,15 @@
 // Error definitions. ALWAYS use EAR_ERROR instead more specific
 // definitions. Use specific errors ONLY when you are controlling
 // differently from outside.
-#define EAR_SUCCESS              0
-#define EAR_ERROR               -1
-#define EAR_WARNING             -2
-#define EAR_NOT_INITIALIZED		-8
+#define EAR_SUCCESS					 0
+#define EAR_ERROR						-1
+#define EAR_WARNING					-2
+#define EAR_NOT_INITIALIZED	-8
 #define EAR_BAD_ARGUMENT		-13
 #define EAR_SYSCALL_ERROR		-18
-#define EAR_TIMEOUT				-21
-#define EAR_UNDEFINED			-24
-#define EAR_CANCELLED           -25
+#define EAR_TIMEOUT					-21
+#define EAR_UNDEFINED				-24
+#define EAR_CANCELLED				-25
 
 /* error buffer */
 char state_buffer[SZ_BUFFER] __attribute__((weak));

@@ -30,7 +30,7 @@
 
 static void clean_buffer_background(strscreen_t *s)
 {
-    int y, x;
+    int y, x = 0;
     for (y = 0; y < s->height; ++y) {
         for (x = 0; x < s->width; ++x) {
             buffer(y,x) = s->bckchr;

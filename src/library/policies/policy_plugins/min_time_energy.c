@@ -43,6 +43,7 @@
 #include <library/policies/common/mpi_stats_support.h>
 #include <library/policies/common/imc_policy_support.h>
 #include <library/policies/common/generic.h>
+#include <library/loader/module_mpi.h>
 // #include <library/metrics/gpu.h>
 
 #ifdef EARL_RESEARCH
@@ -171,7 +172,7 @@ state_t policy_init(polctx_t *c)
 
 		int i, sid = 0;
 
-		if (is_mpi_enabled())
+		if (module_mpi_is_enabled())
 		{
 			mpi_app_init(c);
 
@@ -285,16 +286,16 @@ state_t policy_loop_init(polctx_t *c,loop_id_t *loop_id)
     }
 }
 
+#if 0
 state_t policy_loop_end(polctx_t *c,loop_id_t *loop_id)
 {
-#if 0
     if ((c!=NULL) && (c->reset_freq_opt))
     {
         *(c->ear_frequency) = eards_change_freq(FREQ_DEF(c->app->def_freq));
     }
-#endif
     return EAR_SUCCESS;
 }
+#endif
 
 
 // This is the main function in this file, it implements power policy
@@ -828,7 +829,7 @@ static state_t int_policy_ok(signature_t *curr_sig,signature_t *last_sig,int *ok
     my_node_mpi_types_calls   = se->mpi_types;
 
     /*  Check for load balance data */
-    if (is_mpi_enabled() && enable_load_balance && use_energy_models){
+    if (module_mpi_is_enabled() && enable_load_balance && use_energy_models){
 
         verbose_mpi_calls_types(3, my_node_mpi_types_calls);
 

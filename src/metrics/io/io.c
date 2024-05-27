@@ -44,8 +44,10 @@ state_t io_init(ctx_t *c,pid_t pid)
 	char io_path[MAX_PATH_SIZE];
 	sprintf(io_path,IO_PATH,(int)pid);
 	f=fopen(io_path,"r");
-	if (f==NULL){
-		state_return_msg(EAR_OPEN_ERROR,errno,"Opening io file");
+	if (f==NULL)
+	{
+		verbose(1, "%sError%s Opening io file %s (%s)", COL_RED, COL_CLR, io_path, strerror(errno));
+		state_return_msg(EAR_OPEN_ERROR, errno, strerror(errno));
 	}
 	c->context=(void *)f;
 	state_return(EAR_SUCCESS);

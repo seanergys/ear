@@ -60,6 +60,7 @@ int file_lock_create(char *lock_file_name);
 
 /** Opens a file with O_EXCL, only one process per node will do that */
 int file_lock_master(char *lock_file_name);
+int file_lock_master_perm(char *lock_file_name, int flag, mode_t mode);
 
 /** Closes and removes the lock file */
 void file_lock_clean(int fd,char *lock_file_name);

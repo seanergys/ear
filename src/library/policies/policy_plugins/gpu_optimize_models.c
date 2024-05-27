@@ -78,7 +78,7 @@ static ulong *gpu_def_freq;
 static ulong *last_gpufreq_set;
 static int gpu_count;
 
-static uint dcgmi_instances;
+static uint set_instances_cnt;
 static uint dcgmi_ref_set;
 
 static energy_model_t gpu_energy_model;
@@ -257,7 +257,7 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
 	    {
 	      if (GPU_metric_ready(my_sig, i))
 	      {
-	        verbose_master(2, "GPU[%d] optimize metric ready instances %d", i, dcgmi_instances);
+	        verbose_master(2, "GPU[%d] optimize metric ready instances %d", i, set_instances_cnt);
 	        metric_ready = 1;
           
 	        int best_pstate = 0;
@@ -437,7 +437,7 @@ static uint GPU_metric_ready(signature_t *sig, uint gpu_idx)
       if (sigex == NULL)  return 0;
       dcgmis = (dcgmi_sig_t *)&sigex->dcgmis;
       if (dcgmis == NULL) return 0;
-      if (dcgmis->dcgmi_instances[dcgmi_ref_set] > dcgmi_instances)  return 1;
+      if (dcgmis->set_instances_cnt[dcgmi_ref_set] > set_instances_cnt)  return 1;
       else return 0;
 #endif
 		}
@@ -469,8 +469,8 @@ static void GPU_metric_ready_update(signature_t *signature)
 			if (sigex == NULL)  return ;
 			dcgmis = (dcgmi_sig_t *)&sigex->dcgmis;
 			if (dcgmis == NULL) return ;
-			verbose_master(2,"Updating DCGMI number of instances to %d", dcgmis->dcgmi_instances[dcgmi_ref_set]);
-			dcgmi_instances = dcgmis->dcgmi_instances[dcgmi_ref_set];
+			verbose_master(2,"Updating DCGMI number of instances to %d", dcgmis->set_instances_cnt[dcgmi_ref_set]);
+			set_instances_cnt = dcgmis->set_instances_cnt[dcgmi_ref_set];
 #endif
 		}
 	}
@@ -504,19 +504,19 @@ static float gflops_cycle(signature_t *signature, uint gpu_idx)
   
   int fp64_info[2];
 	dcgmi_lib_get_event_info(fp64_active, fp64_info);
-	dcgmi_t *dcgmis_data_64 = dcgmis->dcgmi_metrics[fp64_info[event_info_set]];
+	gpuprof_t *dcgmis_data_64 = dcgmis->event_metrics_sets[fp64_info[event_info_set]];
 
 	int fp32_info[2];
 	dcgmi_lib_get_event_info(fp32_active, fp32_info);
-	dcgmi_t *dcgmis_data_32 = dcgmis->dcgmi_metrics[fp32_info[event_info_set]];
+	gpuprof_t *dcgmis_data_32 = dcgmis->event_metrics_sets[fp32_info[event_info_set]];
 
 	int fp16_info[2];
 	dcgmi_lib_get_event_info(fp16_active, fp16_info);
-	dcgmi_t *dcgmis_data_16 = dcgmis->dcgmi_metrics[fp16_info[event_info_set]];
+	gpuprof_t *dcgmis_data_16 = dcgmis->event_metrics_sets[fp16_info[event_info_set]];
 
   int tensor_info[2];
 	dcgmi_lib_get_event_info(tensor_active, tensor_info);
-	dcgmi_t *dcgmis_data_ten = dcgmis->dcgmi_metrics[tensor_info[event_info_set]];
+	gpuprof_t *dcgmis_data_ten = dcgmis->event_metrics_sets[tensor_info[event_info_set]];
 
   verbose_master(2, "GPU[%u] computing CPU gflops...", gpu_idx);
   float fp16 = (float)(dcgmis_data_16[gpu_idx].values[fp16_info[event_info_pos]]);

@@ -45,13 +45,15 @@ state_t cpufreq_load(topology_t *tp, int force_api)
 	if (state_ok(s = cpufreq_eard_status(tp, &ops, API_IS(force_api, API_EARD)))) {
 		api = API_EARD;
 		debug("Loaded EARD");
+	}else{
+		debug("Not loaded EARD: %s (%d)", state_msg, s);
 	}
-	debug("Not loaded EARD: %s (%d)", state_msg, s);
 	if (state_ok(s = cpufreq_intel63_status(tp, &ops))) {
 		api = API_INTEL63;
 		debug("Loaded INTEL63");
+	}else{
+		debug("Not loaded INTEL63: %s (%d)", state_msg, s);
 	}
-	debug("Not loaded INTEL63: %s (%d)", state_msg, s);
 dummy:
 	if (state_ok(s = cpufreq_dummy_status(tp, &ops))) {}
 	debug("Loaded metrics/cpufreq/DUMMY %p", ops.data_diff);

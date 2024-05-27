@@ -89,4 +89,7 @@ int eards_connected();
 // Closes the connection with EARD.
 void eards_disconnect();
 
+// Closes the FDs and sets the status to not connected. To be used only with multiprocess
+void eards_new_process_disconnect();
+
 #endif //EARD_LOCAL_API_INTERNS_H

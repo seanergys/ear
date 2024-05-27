@@ -103,6 +103,7 @@ typedef struct lib_shared_data {
     ulong       avg_cpufreq[MAX_CPUS_SUPPORTED]; /**< Average CPU freq for each processor of the job. */
     uint        node_mgr_index;
 		uint        reduced_in_barrier;							 /**< This variable is only used in an unstable/research policy. */
+		uint        estimate_node_metrics;
 #if MPI_OPTIMIZED
     uint    processes_in_barrier;
 #endif

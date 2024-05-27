@@ -33,15 +33,19 @@
 #include <common/types/configuration/cluster_conf.h>
 #include <daemon/shared_configuration.h>
 #include <library/common/library_shared_data.h>
+#include <library/common/verbose_lib.h>
 
 static uint arch_model_loaded = 0;
 static uint cpu_count;
+static int report_per_process = 0;
 
 state_t cpu_power_model_init_arch(settings_conf_t *libconf, conf_install_t *conf, architecture_t *arch)
 {
 	cpu_count = arch->top.cpu_count;
 	arch_model_loaded = 1;	
-	
+
+	if (ear_getenv(FLAG_REPORT_CPUPOW_MODEL) != NULL) report_per_process = 1;
+	verbose_master(2, "EARL[%d] CPU power model dummy loaded %d . Report process power %d", getpid(), arch_model_loaded, report_per_process);	
 	return EAR_SUCCESS;
 }
 
@@ -55,6 +59,8 @@ state_t cpu_power_model_status_arch()
 state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig, node_mgr_sh_data_t *nmgr, uint node_mgr_index)
 {
 	debug("cpu_power_model_project_arch");
+  verbose_master(2,"CPU power model:  job[%d][%d] estimation", node_mgr_index,getpid());
+
 	if (!arch_model_loaded) return EAR_ERROR;
 
 	ull  node_L3 = 0;
@@ -72,6 +78,8 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 	signature_t *lsig = &data->node_signature;
 	double my_job_GBS, my_job_DRAM_power, my_job_TPI;
 	uint used_cpus = 0;
+
+
 
   if (node_mgr_earl_apps() > MAX_CPUS_SUPPORTED){
       verbose(0,"EARL ERROR, more apps than CPUS--> return");
@@ -91,7 +99,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 	memset(pck_power,0,sizeof(double)*MAX_CPUS_SUPPORTED);
   memset(inst, 0, sizeof(ullong)*MAX_CPUS_SUPPORTED);
 
-  verbose(2, "CPU power model dummy ...............");
+  verbose_master(2, "CPU power model dummy ...............");
 
 
 	if ((lsig == NULL) || (data == NULL) || (sig == NULL) || (nmgr == NULL)){ 
@@ -99,13 +107,33 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 		return EAR_SUCCESS;
 	}
 
+	/* This flag is explicitly requested by users */
+	if (!data->estimate_node_metrics){
+		data->job_signature.PCK_power = 0;
+ 	 	data->job_signature.GBS 				= 0;
+ 	 	data->job_signature.DC_power 	= 0;
+ 	 	data->job_signature.DRAM_power = 0;
+ 	 	data->job_signature.TPI 				= 0;
+		for (uint lp = 0; lp < data->num_processes; lp ++){
+				sig[lp].sig.GBS = 0;
+				sig[lp].sig.TPI = 0;
+				sig[lp].sig.DRAM_power = 0;
+      	sig[lp].sig.DC_power   = 0;
+      	sig[lp].sig.PCK_power  = 0;
+
+		}
+		verbose_master(2,"My job[%d][%d] not estimated node metrics", node_mgr_index,getpid());
+		return EAR_SUCCESS;
+	}
 	
   /* compute_total_node_fff compute the metrics only for the calling job. It is needed to iterate over the jobs to have per node */
 
   for (uint j = 0; j < node_mgr_earl_apps(); j ++){
     /* Power condition is to do only in case the signature is ready */
-    if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL) && (nmgr[j].libsh->node_signature.DC_power))
+    if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL) && (nmgr[j].libsh->node_signature.DC_power) && nmgr[j].libsh->estimate_node_metrics)
     {
+
+			/* If not estimate metrics, this app will not receive neither power of GBs , it is assumed to be a master in a master/worker use case */
       used_cpus += nmgr[j].libsh->num_cpus;
       for (uint lp = 0; lp < nmgr[j].libsh->num_processes; lp++)
       {
@@ -190,7 +218,13 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 	#if EARL_LIGHT	
 	if (CPU_power == 0) CPU_power = lsig->PCK_power + lsig->DRAM_power + GPU_power;
 	#endif
-  	CPU_power -= GPU_power;
+  if (CPU_power > GPU_power){  	
+		CPU_power -= GPU_power;
+	}else {
+		/* This case should not happen */
+		if ((lsig->PCK_power > 0 ) && (	lsig->DRAM_power > 0)) CPU_power = lsig->PCK_power + lsig->DRAM_power;
+		else 																									 CPU_power = 300;
+	}
 
 	debug("Baseline CPU power %lf", CPU_power);
 	double GPU_process_power = 0;
@@ -216,10 +250,11 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 	double P = (double)CPU_power / (double)cpu_count;
 	for (uint j = 0; j < node_mgr_earl_apps(); j ++){
 		/* If job is active we compute its power estimated */
-		if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL)){
+		if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL) && (nmgr[j].libsh->estimate_node_metrics)){
 			for (uint proc = 0;proc < nmgr[j].libsh->num_processes; proc++){
 				power_estimations[lp] = P * nmgr[j].shsig[proc].num_cpus;
 				debug("Power estimated for job %u/%u --> %.2lf/with %u cpus = %.3lf (gbs %.3lf)",j,proc, P,nmgr[j].shsig[proc].num_cpus, power_estimations[lp],gbs[lp]);
+				if (report_per_process) verbose_master(2,"Power estimated for job %u/%u --> %.2lf/with %u cpus = %.3lf (gbs %.3lf)",j,proc, P,nmgr[j].shsig[proc].num_cpus, power_estimations[lp],gbs[lp]);
 				total_power_estimated += power_estimations[lp];	
 				lp++;
 			}
@@ -239,13 +274,14 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data,shsignature_t *sig,
 			sig[lp].sig.DC_power = (CPU_power * process_power_ratio[proc]) + GPU_process_power; // what about GPU power in processes	
 			sig[lp].sig.PCK_power = process_power_ratio[proc] * lsig->PCK_power;
 			debug("Power process %d/%d is %lf. PCK power %lf", job_in_process[proc], lp, sig[lp].sig.DC_power, sig[lp].sig.PCK_power);
+			if (report_per_process) verbose_master(2,"Power process %d/%d is %lf. PCK power %lf", job_in_process[proc], lp, sig[lp].sig.DC_power, sig[lp].sig.PCK_power);
 			lp++;
 		}
 	}
 	data->job_signature.DC_power = (CPU_power	* job_power_ratio) + GPU_power;
 	data->job_signature.PCK_power = job_power_ratio * lsig->PCK_power;
 
-	debug("My job[%d] power is %lf (node (CPU %lf + GPU %lf) x ratio %lf) PCK %lf", node_mgr_index, data->job_signature.DC_power, CPU_power, GPU_power, job_power_ratio, data->job_signature.PCK_power);
+	verbose_master(2,"My job[%d][%d] power is %lf (node (CPU %lf + GPU %lf) x ratio %lf) PCK %lf", node_mgr_index,getpid(), data->job_signature.DC_power, CPU_power, GPU_power, job_power_ratio, data->job_signature.PCK_power);
 
 	return EAR_SUCCESS;
 }

@@ -15,14 +15,16 @@
 * and COPYING.EPL files.
 */
 
-
-
+#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 #include <common/config.h>
-#include <library/loader/module_common.h>
+#include <common/colors.h>
+#include <common/output/verbose.h>
+#include <library/api/mpi.h>
 #include <library/loader/module_mpi.h>
-
+#include <library/loader/module_common.h>
 
 extern mpic_t ear_mpic;
 
@@ -196,7 +198,7 @@ int MPI_Ibsend(MPI3_CONST void *buf, int count, MPI_Datatype datatype, int dest,
 	return ear_mpic.Ibsend(buf, count, datatype, dest, tag, comm, request);
 }
 
-int ear_usage_mpi()
+static int ear_usage_mpi()
 {
     char msg[1024];
     snprintf(msg, sizeof(msg),
@@ -209,55 +211,51 @@ int ear_usage_mpi()
     return MPI_ERR_INTERN;
 }
 
-static  uint EAR_Init = 0;
-static  char *path_lib_so;
-static  char *libhack;
-extern  uint force_mpi_load;
-extern  uint MPI_Get_library_version_detected;
-
-static void EAR_force_mpi_library()
+static void module_mpi_python()
 {
-	if (!MPI_Get_library_version_detected && ear_getenv(FLAG_LOAD_MPI_VERSION) == NULL) {
+    static uint EAR_Init = 0;
+    static char *path_lib_so;
+    static char *libhack;
+
+    // This function can be written in module_mpi.c
+    if (!module_mpi_is_detected() && ear_getenv(FLAG_LOAD_MPI_VERSION) == NULL) {
         // TODO: This check is for the transition to the new environment variables.
         // It will be removed when SCHED_LOAD_MPI_VERSION will be removed, on the next release.
         if (ear_getenv(SCHED_LOAD_MPI_VERSION) != NULL) {
             verbose(1, "LOADER: %sWARNING%s %s will be removed on the next EAR release. "
                     "Please, change it by %s in your submission scripts.",
                     COL_RED, COL_CLR, SCHED_LOAD_MPI_VERSION, FLAG_LOAD_MPI_VERSION);
-        }
-        else {
+        } else {
             ear_usage_mpi();
         }
     }
-	  /* At this point we must force the symbol loading */
-  force_mpi_load = 1;
+    /* At this point we must force the symbol loading */
+    module_mpi_set_forced();
 
-  /* If EAR has not been already enabled we must load it */
-  if (!is_mpi_enabled() && !EAR_Init){
-    module_get_path_libear(&path_lib_so,&libhack);
-    if ((path_lib_so == NULL) && (libhack == NULL)){
-        verbose(1,"LOADER EAR path and EAR debug HACKS are NULL");
-				return;
+    /* If EAR has not been already enabled we must load it */
+    if (!module_mpi_is_enabled() && !EAR_Init) {
+        module_get_path_libear(&path_lib_so,&libhack);
+        if ((path_lib_so == NULL) && (libhack == NULL)){
+            verbose(1,"LOADER EAR path and EAR debug HACKS are NULL");
+            return;
+        }
+        // Module MPI
+        verbose(2,"Tring MPI module");
+        module_mpi(path_lib_so,libhack);
+        EAR_Init = 1;
     }
-
-    // Module MPI
-    verbose(2,"Tring MPI module");
-    module_mpi(path_lib_so,libhack);
-    EAR_Init = 1;
-  }
-
 }
 
 int MPI_Init(int *argc, char ***argv)
 {
-	EAR_force_mpi_library();
+	module_mpi_python();
 
 	return ear_mpic.Init(argc, argv);
 }
 
 int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
 {
-	EAR_force_mpi_library();
+	module_mpi_python();
 
 	return ear_mpic.Init_thread(argc, argv, required, provided);
 }

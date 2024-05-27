@@ -41,6 +41,7 @@
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
 #include <library/api/clasify.h>
+#include <library/loader/module_mpi.h>
 #include <library/metrics/metrics.h>
 #include <library/policies/policy_api.h>
 #include <library/policies/policy_state.h>
@@ -182,7 +183,7 @@ state_t policy_init(polctx_t *c)
 
     debug("optimize init");
 
-    if (is_mpi_enabled())
+    if (module_mpi_is_enabled())
     {
         uint block_type;
         mpi_app_init(c);

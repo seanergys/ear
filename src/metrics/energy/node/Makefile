@@ -1,5 +1,9 @@
 CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC
 
+# Define and uncomment these two constants with the EAR installation path if you want to enable the eard_nm energy plugin
+#EAR_OFFICIAL_NM_INSTALL_PATH=
+#EAR_OFFICIAL_TMP=
+
 ######## FILES
 
 ener_OBJS = \
@@ -11,16 +15,19 @@ ener_OBJS = \
     energy_SD650N_V2.o \
     energy_dummy.o \
     energy_cpu_gpu.o \
-	  energy_sd650_power.o
+    energy_sd650_power.o \
+    energy_eard_nm.o
 
 ifdef FREEIPMI_BASE
-ener_OBJS +=\
-		energy_inm_power_freeipmi.o
+ener_OBJS += energy_inm_power_freeipmi.o
 endif
 
 ifdef REDFISH_BASE
-	ener_OBJS +=\
-				energy_redfish.o
+ener_OBJS += energy_redfish.o
+endif
+
+ifdef EAR_OFFICIAL_NM_INSTALL_PATH
+ener_OBJS += energy_eard_nm.o
 endif
 
 ener_BINS = \
@@ -32,7 +39,11 @@ ener_BINS = \
     energy_SD650N_V2.so \
     energy_cpu_gpu.so \
     energy_dummy.so \
-	  energy_sd650_power.so
+    energy_sd650_power.so 
+
+ifdef EAR_OFFICIAL_NM_INSTALL_PATH
+    ener_BINS += energy_eard_nm.so
+endif
 
 ifdef FREEIPMI_BASE
 ener_BINS += \
@@ -79,6 +90,9 @@ energy_rapl.so: energy_rapl.o $(rapl_DEPS) $(ener_DEPS)
 
 %.so: %.o $(ener_DEPS)
 	$(CC) $(CC_FLAGS) $(CFLAGS) -pthread -shared $< -o $@ $(ener_DEPS) 
+
+energy_eard_nm.so:energy_eard_nm.c
+	$(CC) $(CC_FLAGS) -DEAR_NM_TMP=\"$(EAR_OFFICIAL_TMP)\" -I$(EAR_OFFICIAL_NM_INSTALL_PATH)/include $(CFLAGS) -pthread -shared $< -o $@ $(ener_DEPS) -L$(EAR_OFFICIAL_NM_INSTALL_PATH)/lib -lear_api
 
 ######## OPTIONS
 

@@ -148,9 +148,8 @@ static int callback(struct dl_phdr_info *info, size_t size, void *data)
 	// int p_type, j;
 	uint lib_found = 0;
 
-	verbose(2, "LOADER: Name: \"%s\" (%d segments)\n", info->dlpi_name,
+	verbose(2, "LOADER: Name: \"%s\" (%d segments)", info->dlpi_name,
 			info->dlpi_phnum);
-
 	for (uint l = 0; (l < libs_oneapi_n) && !lib_found ; l++){
 		if (strstr(info->dlpi_name, libs_oneapi_nam[l]) != NULL){
 			verbose(2,"LOADER: Library %s detected", libs_oneapi_nam[l]);
