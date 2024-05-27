@@ -177,12 +177,13 @@ state_t report_applications(report_id_t *id,application_t *apps, uint count)
 			debug("Using %d GPUS", num_gpus);
 #endif
 
-      #if DCGMI
+#if DCGMI
 			dcgmi_lib_dcgmi_sig_csv_header(extra_header_app, sizeof(extra_header_app));
-      strcat(app_header, ";");
-      #endif
-    
       strcpy(app_header, extra_header_app);
+      strcat(app_header, ";");
+#endif
+    
+      //strcpy(app_header, extra_header_app);
       /* Headers for phases */
       for (uint ph = 1; ph < EARL_MAX_PHASES; ph++){
         strcat(app_header, phase_to_str(ph));
