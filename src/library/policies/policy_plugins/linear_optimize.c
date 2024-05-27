@@ -49,6 +49,9 @@
 #include <library/policies/common/cpu_support.h>
 #include <library/policies/common/mpi_stats_support.h>
 #include <library/policies/common/generic.h>
+#if MPI_OPTIMIZED
+#include <common/system/monitor.h>
+#endif
 
 #ifdef EARL_RESEARCH
 extern unsigned long ext_def_freq;
@@ -182,14 +185,16 @@ state_t policy_init(polctx_t *c)
 
     debug("optimize init");
 
-    if (is_mpi_enabled())
+#if MPI_OPTIMIZED
+    //if (is_mpi_enabled())
+    if (module_mpi_is_enabled())
     {
         uint block_type;
         mpi_app_init(c);
         is_blocking_busy_waiting(&block_type);
         verbose_master(2, "Busy waiting MPI: %u", block_type == BUSY_WAITING_BLOCK);
     }
-
+#endif
 
     nominal_node = frequency_get_nominal_freq();
     verbose_master(3, "Nominal CPU freq. is %lu kHz", nominal_node);

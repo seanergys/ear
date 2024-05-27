@@ -111,7 +111,8 @@ static void GPU_metric_ready_update(signature_t *signature);
 
 static uint GPU_ok(uint gpu_idx, signature_t *signature, float curr, float last);
 
-static float gflops_cycle(signature_t *signature, uint gpu_idx);
+// TODO to be replaced by the dcgmi_lib function gflops_cycle or use direcrly the gflops from signature
+static float get_gflops_cycle(signature_t *signature, uint gpu_idx);
 
 state_t policy_init(polctx_t *c)
 {
@@ -264,7 +265,7 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
 	    } 
       else
 	    {
-	      gpu_gflops = gflops_cycle(my_sig, i);
+	      gpu_gflops = get_gflops_cycle(my_sig, i);
         debug("GPU[%d] gpu_gflops %f", i, gpu_gflops);
         if (GPU_metric_ready(my_sig))
 	      {
@@ -457,7 +458,7 @@ static void GPU_get_metric(uint gpu_idx, signature_t *signature, float *curr)
 #if DCGMI
     case GPU_GFLOPS_W:
     {
-      gpu_gflops = gflops_cycle(signature, gpu_idx); 
+      gpu_gflops = get_gflops_cycle(signature, gpu_idx); 
       gpu_freq = (float)(signature->gpu_sig.gpu_data[gpu_idx].GPU_freq/1000000.0);
       gpu_power = (float) signature->gpu_sig.gpu_data[gpu_idx].GPU_power;
       
@@ -466,7 +467,7 @@ static void GPU_get_metric(uint gpu_idx, signature_t *signature, float *curr)
     } 
     case SYS_GFLOPS_W: 
     {
-      gpu_gflops = gflops_cycle(signature, gpu_idx);
+      gpu_gflops = get_gflops_cycle(signature, gpu_idx);
       gpu_freq = (float)(signature->gpu_sig.gpu_data[gpu_idx].GPU_freq/1000000.0);
       gpu_power = (float) signature->gpu_sig.gpu_data[gpu_idx].GPU_power;
       float node_power = (float) signature->DC_power;
@@ -550,7 +551,7 @@ static uint GPU_ok(uint gpu_idx, signature_t *signature, float curr, float last)
 }
 
 // Return FP activies by second for each GPU
-static float gflops_cycle(signature_t *signature, uint gpu_idx)
+static float get_gflops_cycle(signature_t *signature, uint gpu_idx)
 {
 	if (signature == NULL) return 0;
 	
