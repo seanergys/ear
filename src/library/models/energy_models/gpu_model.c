@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 0
 
 #include <stdlib.h>
 #if !SHOW_DEBUGS
@@ -360,7 +360,7 @@ static double project_time(coefficient_gpu_t *coeff, double ctime, double fp16, 
 
 static double project_power(coefficient_gpu_t *coeff, double cpower, double fp16, double fp32, double fp64, double tensor, double dram, ulong to_freq)
 {
-	//debug("project_gpu_power: to_freq %lu power %lf fp16 %lf fp32 %lf fp64 %lf tensor %lf dram %lf", to_freq, cpower, fp16, fp32, fp64, tensor, dram);
+	debug("project_gpu_power: to_freq %lu power %lf fp16 %lf fp32 %lf fp64 %lf tensor %lf dram %lf", to_freq, cpower, fp16, fp32, fp64, tensor, dram);
   double fp_act;
   double proj_power;
   

@@ -133,7 +133,6 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
 #if USE_GPUS
   if (gpus.node_policy_apply != NULL) {
     /* Basic support for GPUS */
-    verbose(2, "%sOptimize:GPU%s ",COL_GRE,COL_CLR);
     gpus.node_policy_apply(c, my_sig, freqs, (int *) &gpu_ready);
   }else{
     gpu_ready = EAR_POLICY_READY;

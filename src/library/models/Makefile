@@ -6,9 +6,15 @@ modl_BINS = \
 						energy_models/imc_linear_model.so \
 						cpu_power_model_default.so \
 						cpu_power_model_gflops.so \
-						cpu_power_model_dummy.so \
+						cpu_power_model_dummy.so 
+
+ifeq ($(FEAT_GPUS), 1)
+ifeq ($(FEAT_GPU_OPT), 1)
+modl_BINS += \
 						energy_models/gpu_dummy_model.so \
 						energy_models/gpu_model.so 
+endif
+endif
 
 modl_OBJS = cpu_power_model.o energy_model.o 
 modl_PATH = $(DESTDIR)/lib/plugins/models
