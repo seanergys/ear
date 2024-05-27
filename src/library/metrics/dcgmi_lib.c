@@ -59,6 +59,7 @@
 
 typedef state_t (*dcgmi_lib_init_fn) (uint api, dcgmi_lib_t *dcgmi_data, int **event_info, int event_info_rows, int event_info_cols);
 
+typedef state_t (*dcgmi_lib_fp_coeffs) (int **coeffs, size_t coeffs_length);
 
 static uint dcgmi_lib_enabled = (USE_GPUS && DCGMI) ? DCGMI_DEFAULT : 0;
 
@@ -96,6 +97,8 @@ static char *dcgmi_ev_names[event_id_max] =
   "nvlink_rx_bytes"
 };
 
+static dcgmi_lib_fp_coeffs fp_coeffs_fn;
+
 /** Inits gpuprof_api static member and checks whether GPUPROF API is not DUMMY.
  * This function must be used, at least, before using gpuprof_api member anywhere in the module. */
 static uint is_gpuprof_api_valid();
@@ -127,7 +130,7 @@ static void verbose_current_event_set(int v_lvl);
 static void	dcgmi_data_tostr(gpuprof_t *d, char *d_str, size_t d_str_size, uint set_idx);
 
 /** Selects the dcgmi_lib init (allocation) function based on GPU model. */
-static state_t set_init_fn(dcgmi_lib_init_fn *dst_fn_ptr);
+static state_t set_init_fn(dcgmi_lib_init_fn *dst_fn_ptr, dcgmi_lib_fp_coeffs *fp_coeffs_ptr);
 
 /** Allocates event information for each event supported.
  * This event information consist of 2 values, indicating the
@@ -463,7 +466,7 @@ static state_t static_init()
 	// Set the allocate function based on the GPU model.
 	dcgmi_lib_init_fn init_fn;
 
-	if (state_fail(set_init_fn(&init_fn)))
+	if (state_fail(set_init_fn(&init_fn, &fp_coeffs_fn)))
 	{
 		verbose_warning("Error getting the device model (%s)", state_msg);
 		return_msg(EAR_ERROR, "Getting device model");
@@ -718,7 +721,7 @@ static void verbose_current_event_set(int v_lvl)
 }
 
 
-static state_t set_init_fn(dcgmi_lib_init_fn *dst_fn_ptr)
+static state_t set_init_fn(dcgmi_lib_init_fn *dst_fn_ptr, dcgmi_lib_fp_coeffs *fp_coeffs_ptr)
 {
 	if (dst_fn_ptr)
 	{
@@ -729,14 +732,17 @@ static state_t set_init_fn(dcgmi_lib_init_fn *dst_fn_ptr)
 			case NVML_DEVICE_ARCH_TURING:
 				debug("Turing microarch detected.");
 				*dst_fn_ptr = dcgmi_lib_turing_init;
+				//*fp_coeffs_ptr = dcgmi_lib_turing_fp_coeffs; TODO add 
 				break;
 			case NVML_DEVICE_ARCH_HOPPER:
 				debug("Hopper microarch detected.");
 				*dst_fn_ptr = dcgmi_lib_hopper_init;
+				*fp_coeffs_ptr = dcgmi_lib_hopper_fp_coeffs;
 				break;
 			case NVML_DEVICE_ARCH_AMPERE:
 				debug("Ampere microarch detected.");
 				*dst_fn_ptr = dcgmi_lib_ampere_init;
+				*fp_coeffs_ptr = dcgmi_lib_ampere_fp_coeffs;
 				break;
 			default:
 				*dst_fn_ptr = NULL;
@@ -809,5 +815,45 @@ static void event_info_free(int ***event_info_src)
 		}
 		free(*event_info_src);
 		*event_info_src = NULL;
+	}
+}
+
+
+float gflops_cycle(dcgmi_sig_t *dcgmi_sig, uint gpu_idx)
+{
+	if (!dcgmi_lib_enabled)
+	{
+			return_msg(EAR_ERROR, DCGMI_LIB_MODULE_DISABLED_MSG);
+	}
+	
+  int fp16_info[2];
+	dcgmi_lib_get_event_info(fp16_active, fp16_info);
+	gpuprof_t *dcgmis_data_16 = dcgmi_sig->event_metrics_sets[fp16_info[event_info_set]];
+
+	int fp32_info[2];
+	dcgmi_lib_get_event_info(fp32_active, fp32_info);
+	gpuprof_t *dcgmis_data_32 = dcgmi_sig->event_metrics_sets[fp32_info[event_info_set]];
+
+  int fp64_info[2];
+	dcgmi_lib_get_event_info(fp64_active, fp64_info);
+	gpuprof_t *dcgmis_data_64 = dcgmi_sig->event_metrics_sets[fp64_info[event_info_set]];
+
+  int tensor_info[2];
+	dcgmi_lib_get_event_info(tensor_active, tensor_info);
+	gpuprof_t *dcgmis_data_ten = dcgmi_sig->event_metrics_sets[tensor_info[event_info_set]];
+
+  float fp16 = (float)(dcgmis_data_16[gpu_idx].values[fp16_info[event_info_pos]]);
+  float fp32 = (float)(dcgmis_data_32[gpu_idx].values[fp32_info[event_info_pos]]);
+  float fp64 = (float)(dcgmis_data_64[gpu_idx].values[fp64_info[event_info_pos]]);
+  float tensor = (float)(dcgmis_data_ten[gpu_idx].values[tensor_info[event_info_pos]]);
+  
+  if(fp_coeffs_fn)
+  {
+    int *coeffs;
+    fp_coeffs_fn(&coeffs, 4);
+    return coeffs[0]*fp64 + coeffs[1]*fp32 + coeffs[2]*fp16 + coeffs[3]*tensor;
+  } else
+	{
+		return 0; // TODO Error message?
 	}
 }

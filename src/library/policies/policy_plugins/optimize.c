@@ -76,16 +76,6 @@ state_t policy_init(polctx_t *c)
         return EAR_ERROR;
     }
 
-    char *cmetric_to_optimize   = ear_getenv(FLAG_METRIC_TO_OPTIMIZE);
-    char *cstrategy_to_optimize = ear_getenv(FLAG_STRATEGY_TO_OPTIMIZE);
-
-    /* This function checks the metric and strategy (max, min) */
-    update_optimize_options(cmetric_to_optimize, cstrategy_to_optimize);
-
-    int i = 0;
-
-    topology_init(&me_top);
-
     debug("optimize init");
 
     if (module_mpi_is_enabled())
