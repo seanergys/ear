@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-
+#include <common/plugins.h>
 #include <common/output/debug.h>
 #include <library/api/mpif.h>
 #include <library/api/ear_mpi.h>

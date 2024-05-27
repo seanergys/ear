@@ -46,6 +46,7 @@
 
 #include <library/api/clasify.h>
 #include <library/api/eard_dummy.h>
+#include <library/loader/module_mpi.h>
 #include <library/loader/module_cuda.h>
 #include <library/common/utils.h>
 #include <library/common/externs.h>
@@ -341,14 +342,6 @@ static uint validation_new_gpu = 0;
 static void metrics_static_dispose();
 
 
-node_freq_domain_t earl_default_domains = {
-	.cpu 	= POL_DEFAULT,
-	.mem 	= POL_DEFAULT,
-	.gpu 	= POL_DEFAULT,
-	.gpumem = POL_DEFAULT,
-};
-
-
 const metrics_t *metrics_get(uint api)
 {
     switch(api) {
@@ -383,62 +376,77 @@ uint metrics_CPU_phase_ok()
 }
 
 
-
 static void metrics_configuration(topology_t *tp)
 {
 	char topo_str[1024];
-    cfb_t bf;
+	cfb_t bf;
+
 	if (!EARL_LIGHT) return;
 
 	if (eards_connected())
-    {
-		verbose_info2_master("EARD connected");
+	{
+		verbose_info2_master("EARD connected.");
 	} else
-    {
+	{
 		verbose_warning_master("EARD not connected. Switch to monitoring ?");
 	}
 
 	if (!mgt_cpufreq.ok)
-    {
-		verbose_warning_master("Mgt cpufreq is not ok, switching to monitoring");
+	{
+		verbose_warning_master("Mgt cpufreq is not ok, switching to monitoring.");
 
-		earl_default_domains.cpu = POL_NOT_SUPPORTED;
+		// earl_default_domains.cpu = POL_NOT_SUPPORTED;
 
 		topology_tostr(tp, topo_str, sizeof(topo_str));
-		verbose_master(ERROR_VERB,"%s", topo_str);
-        cpufreq_base_init(tp, &bf);
+		verbose_master(ERROR_VERB, "%s", topo_str);
+
+		cpufreq_base_init(tp, &bf);
 		verbose_info2_master("Frequency detected %lu", (ulong) bf.frequency);
 	}
-	if (!mgt_imcfreq.ok){
+
+	if (!mgt_imcfreq.ok)
+	{
 		verbose_warning_master("Mgt imcfreq is not ok, swtching to monitoring for IMC");
-		earl_default_domains.mem = POL_NOT_SUPPORTED;
+		// earl_default_domains.mem = POL_NOT_SUPPORTED;
 	}
+
 #if USE_GPUS
-    if (!mgt_gpu.ok) {
+    if (!mgt_gpu.ok)
+		{
         verbose_warning_master("GPU dummy API, swtching to monitoring for GPU.");
-        earl_default_domains.gpu = POL_NOT_SUPPORTED;
+        // earl_default_domains.gpu = POL_NOT_SUPPORTED;
     }
 #endif // USE_GPUS
+
 	if (!met_cpufreq.ok && mgt_cpufreq.ok) {
 		verbose_warning_master("Avg cpufreq is not ok. Using mgt_cpufreq");
 	}
-	if (!met_imcfreq.ok && mgt_imcfreq.ok){
+
+	if (!met_imcfreq.ok && mgt_imcfreq.ok)
+	{
 		verbose_warning_master("Avg imcfreq is not ok. Using mgt_imcfreq");
 	}
-  if (! met_bwidth.ok)
+
+  if (!met_bwidth.ok)
   {
 		verbose_warning_master("Mem bandwith not ok. swtching to monitoring");
-		earl_default_domains.cpu = POL_NOT_SUPPORTED;
+		// earl_default_domains.cpu = POL_NOT_SUPPORTED;
   }
-  if(!met_flops.ok){
+
+  if(!met_flops.ok)
+	{
 		verbose_warning_master("FLOPS not available");
 	}
-  if (!met_cache.ok){
+
+  if (!met_cache.ok)
+	{
 		verbose_warning_master("Cache not available");
 	}
-  if (!met_cpi.ok){
+
+  if (!met_cpi.ok)
+	{
 		verbose_warning_master("CPI not available. swtching to monitoring");
-		earl_default_domains.cpu = POL_NOT_SUPPORTED;
+		// earl_default_domains.cpu = POL_NOT_SUPPORTED;
 	}
 }
 
@@ -501,11 +509,11 @@ static void metrics_static_init(topology_t *tp)
     sa(mgt_cpuprio_load(tp, eard));
 
 #if USE_GPUS
-		if (!EARL_LIGHT){
+		if (eards_connected() || !EARL_LIGHT){ // If we are connected or NOT EAR-lite version
         	gpu_load(eard);
 		}else{
 			/* If master but EARD not connected */
-			if (eard && !eards_connected()){
+			if ((eard == API_EARD) && !eards_connected()){
 					  gpu_load(API_NVML);
 			}	else{
 						gpu_load(API_FREE);
@@ -983,7 +991,7 @@ static void metrics_global_stop()
 	if (master) {
 
 		/* MPI statistics */
-		if (is_mpi_enabled()) {
+		if (module_mpi_is_enabled()) {
 			read_diff_node_mpi_info(lib_shared_region, sig_shared_region,
 					metrics_mpi_info[APP], metrics_last_mpi_info[APP]);
 #if MPI_CALL_TYPES
@@ -1337,8 +1345,8 @@ static int metrics_partial_stop(uint where)
 		} else {
       /* If there is an error, power is computed based on power from CPu+GPU. Computed in 
        * compute_signature_data */
-			//verbose_master(ERROR_VERB, "%sWARNING%s Computed power (%lf) is not correct. Reducing it to %lf...\n",
-      //              COL_YLW, COL_CLR, c_power, system_conf->min_sig_power);
+			verbose_master(ERROR_VERB, "%sWARNING%s Computed power (%lf) is not correct [%lf-%lf]. Estimate power enabled \n",
+                    COL_YLW, COL_CLR, c_power, system_conf->min_sig_power, system_conf->max_sig_power);
 			// acum_ipmi[LOO] = system_conf->min_sig_power*c_time;
       estimate_power = 1;
 		}
@@ -1365,7 +1373,7 @@ static int metrics_partial_stop(uint where)
 	// Daemon metrics
 	if (master) {
 		/* MPI statistics */
-		if (is_mpi_enabled()) {
+		if (module_mpi_is_enabled()) {
 			read_diff_node_mpi_info(lib_shared_region, sig_shared_region,
 					metrics_mpi_info[LOO], metrics_last_mpi_info[LOO]);
 #if MPI_CALL_TYPES
@@ -1731,7 +1739,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 #endif  // DCGMI & USE_GPUS
 
 		/* MPI statistics */
-		if (is_mpi_enabled()) {
+		if (module_mpi_is_enabled()) {
 			double mpi_time_perc = 0.0;
 			for (int i = 0; i < lib_shared_region->num_processes; i++) {
 
@@ -2793,8 +2801,10 @@ static state_t metrics_compute_total_io(io_data_t *total)
                 io_dispose(&local_io_ctx);
             } else {
                 debug("IO data process %d (%d) can not be read", i, sig_shared_region[i].pid);
+								char err_msg[1024];
+								snprintf(err_msg,sizeof(err_msg), "I/O could not be read for process PROC[%d]=%d", i, sig_shared_region[i].pid);
 
-                return_msg(EAR_ERROR, "I/O could not be read for some process.");
+                return_msg(EAR_ERROR, err_msg);
             }
         }
 
@@ -2880,6 +2890,7 @@ static state_t energy_lib_init(settings_conf_t *conf)
 
 static void metrics_static_dispose()
 {
+	energy_node_dispose();
 }
 
 

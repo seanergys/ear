@@ -1,5 +1,6 @@
 export ARCH
-export FEAT_MPI_API
+export FEAT_MPI_LIBRARY
+export FEAT_MPI_LOADER
 export FEAT_AVX512
 export FEAT_RESEARCH
 export FEAT_GPUS

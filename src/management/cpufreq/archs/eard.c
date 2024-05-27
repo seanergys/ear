@@ -68,6 +68,7 @@ state_t mgt_cpufreq_eard_load(topology_t *tp_in, mgt_ps_ops_t *ops, mgt_ps_drive
 	// Setting references
 	apis_put(ops->init,               mgt_cpufreq_eard_init);
 	apis_put(ops->dispose,            mgt_cpufreq_eard_dispose);
+	apis_put(ops->get_info,           mgt_cpufreq_eard_get_info);
 	apis_put(ops->count_available,    mgt_cpufreq_eard_count_available);
 	apis_put(ops->get_available_list, mgt_cpufreq_eard_get_available_list);
 	apis_put(ops->get_current_list,   mgt_cpufreq_eard_get_current_list);

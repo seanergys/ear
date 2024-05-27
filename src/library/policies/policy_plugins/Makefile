@@ -6,7 +6,8 @@ poli_BINS = \
     optimize.so \
     linear_optimize.so \
     monitoring.so \
-    min_time_energy.so
+    min_time_energy.so \
+		test.so
 
 GPU_OPT_FLAG = -DGPU_OPT=0
 

@@ -1187,8 +1187,8 @@ int eard_system(eard_head_t *head, int req_fd, int ack_fd)
                 loop_deserialize(&wb, &loop);
 
                 powermon_loop_signature(eard_local_conn[con_id].jid, eard_local_conn[con_id].sid, &loop);
-                // print_loop_fd(1,&req.req_data.loop);
-                s = report_loops(&rid, &req.req_data.loop, 1);
+                // print_loop_fd(1,&loop);
+                s = report_loops(&rid, &loop, 1);
             }
             break;
         case RPC_WRITE_EVENT:
@@ -1200,8 +1200,7 @@ int eard_system(eard_head_t *head, int req_fd, int ack_fd)
                 serror(Rpcerr.pending);
             } else {
                 event_deserialize(&wb, &event);
-
-                s = report_events(&rid, &req.req_data.event, 1);
+                s = report_events(&rid, &event, 1);
             }
             break;
         default:

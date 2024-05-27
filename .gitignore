@@ -140,6 +140,7 @@ src/common/config/config.h.in
 *metrics_show
 *enode_info
 
+src/tools/type_sizes
 src/daemon/commands/ear_check_node_test
 src/database_cache/tmpi
 src/management/test
@@ -180,3 +181,4 @@ src/commands/ear-info
 deployment.sh
 src/tools/node_manager_info
 tmp.txt
+*.plist

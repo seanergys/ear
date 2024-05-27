@@ -612,7 +612,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
              {
                verbose(1, "An error occurred updating the affinity mask: %s", state_msg);
              }else{
-               verbose(2,"EARL[%d] Affinity mask updated", AID);
+               verbose(2,"EARL[%d] Affinity mask updated, using %d CPUs", AID, lib_shared_region->num_cpus);
              }
             }
 
@@ -1207,7 +1207,7 @@ static void report_loop_signature(uint iterations, loop_t *my_loop)
         clean_db_loop(my_loop, system_conf->max_sig_power);
 
         application.power_sig.max_DC_power = ear_max(application.power_sig.max_DC_power, my_loop->signature.DC_power);
-
+				verbose(2, "EARL[%d][%d] Loop report", ear_my_rank,getpid());
         if (state_fail(report_loops(&rep_id, my_loop, 1))) {
             verbose_error_master("Reporting loop.");
         }

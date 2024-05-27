@@ -39,6 +39,7 @@
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
 #include <library/api/clasify.h>
+#include <library/loader/module_mpi.h>
 #include <library/metrics/metrics.h>
 #include <library/policies/policy_state.h>
 #include <library/policies/common/imc_policy_support.h>
@@ -216,7 +217,7 @@ state_t policy_init(polctx_t *c)
 
     debug("min_energy init");
 
-    if (is_mpi_enabled())
+    if (module_mpi_is_enabled())
     {
         mpi_app_init(c);
 
@@ -332,12 +333,6 @@ state_t policy_loop_init(polctx_t *c, loop_id_t *l)
     }
 
     return EAR_ERROR;
-}
-
-
-state_t policy_loop_end(polctx_t *c,loop_id_t *l)
-{
-    return EAR_SUCCESS;
 }
 
 
@@ -1126,7 +1121,7 @@ static state_t int_policy_ok(signature_t *curr_sig, signature_t *last_sig, int *
     my_node_mpi_types_calls = se->mpi_types;
 
     /*  Check for load balance data */
-    if (is_mpi_enabled() && enable_load_balance && use_energy_models) {
+    if (module_mpi_is_enabled() && enable_load_balance && use_energy_models) {
 
         verbose_mpi_calls_types(3, my_node_mpi_types_calls);
 

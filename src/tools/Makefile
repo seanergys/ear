@@ -8,13 +8,14 @@ tool_BINS = \
     coeffs_show \
     coeffs_default \
     coeffs_null \
-    enode_control \
-		cluster_ping \
+    cluster_ping \
     ear_conf \
     insert_test \
-		enode_info \
+    enode_info \
     node_manager_info \
-		list_folders
+    list_folders
+
+#enode_control
 
 ifeq ($(FEAT_WF_SUPPORT), 1)
 ifdef DB_BASE

@@ -19,14 +19,21 @@
 
 #include <stdlib.h>
 
+#include <metrics/common/apis.h>
 #include <library/metrics/dcgmi_lib/common.h>
 
 
-state_t dcgmi_lib_hopper_init(dcgmi_lib_t *dcgmi_data, int **event_info, int event_info_rows, int event_info_cols)
+state_t dcgmi_lib_hopper_init(uint api, dcgmi_lib_t *dcgmi_data, int **event_info, int event_info_rows, int event_info_cols)
 {
 	if (dcgmi_data)
 	{
 		debug("dcgmi_lib_hopper_init");
+
+		if (!API_IS(API_DCGMI, api) && !API_IS(API_NVML, api))
+		{
+			return_msg(EAR_ERROR, Generr.api_undefined);
+		}
+
 		if (state_ok(dcgmi_lib_data_alloc(dcgmi_data, 1)))
 		{
 			dcgmi_data->dcgmi_set_sizes[0] = DCGMI_LIB_SUPPORTED_EVENTS;
@@ -53,18 +60,18 @@ state_t dcgmi_lib_hopper_init(dcgmi_lib_t *dcgmi_data, int **event_info, int eve
 			}
 
 			// Set 1
-			dcgmi_data->dcgmi_event_ids[0][0]		= gr_engine_active;
-			dcgmi_data->dcgmi_event_ids[0][1] 	= sm_active;
-			dcgmi_data->dcgmi_event_ids[0][2] 	= sm_occupancy;
-			dcgmi_data->dcgmi_event_ids[0][3] 	= tensor_active;
-			dcgmi_data->dcgmi_event_ids[0][4] 	= dram_active;
-			dcgmi_data->dcgmi_event_ids[0][5] 	= fp64_active;
-			dcgmi_data->dcgmi_event_ids[0][6] 	= fp32_active;
-			dcgmi_data->dcgmi_event_ids[0][7] 	= fp16_active;
-			dcgmi_data->dcgmi_event_ids[0][8] 	= pcie_tx_bytes;
-			dcgmi_data->dcgmi_event_ids[0][9] 	= pcie_rx_bytes;
-			dcgmi_data->dcgmi_event_ids[0][10]	= nvlink_tx_bytes;
-			dcgmi_data->dcgmi_event_ids[0][11]	= nvlink_rx_bytes;
+			dcgmi_data->dcgmi_event_ids[0][0]		= (API_IS(API_NVML, api)) ? nvml_gr_engine_active : dcgm_gr_engine_active;
+			dcgmi_data->dcgmi_event_ids[0][1] 	= (API_IS(API_NVML, api)) ? nvml_sm_active				: dcgm_sm_active;
+			dcgmi_data->dcgmi_event_ids[0][2] 	= (API_IS(API_NVML, api)) ? nvml_sm_occupancy			: dcgm_sm_occupancy;
+			dcgmi_data->dcgmi_event_ids[0][3] 	= (API_IS(API_NVML, api)) ? nvml_tensor_active		: dcgm_tensor_active;
+			dcgmi_data->dcgmi_event_ids[0][4] 	= (API_IS(API_NVML, api)) ? nvml_dram_active			: dcgm_dram_active;
+			dcgmi_data->dcgmi_event_ids[0][5] 	= (API_IS(API_NVML, api)) ? nvml_fp64_active			: dcgm_fp64_active;
+			dcgmi_data->dcgmi_event_ids[0][6] 	= (API_IS(API_NVML, api)) ? nvml_fp32_active			: dcgm_fp32_active;
+			dcgmi_data->dcgmi_event_ids[0][7] 	= (API_IS(API_NVML, api)) ? nvml_fp16_active			: dcgm_fp16_active;
+			dcgmi_data->dcgmi_event_ids[0][8] 	= (API_IS(API_NVML, api)) ? nvml_pcie_tx_bytes		: dcgm_pcie_tx_bytes;
+			dcgmi_data->dcgmi_event_ids[0][9] 	= (API_IS(API_NVML, api)) ? nvml_pcie_rx_bytes		: dcgm_pcie_rx_bytes;
+			dcgmi_data->dcgmi_event_ids[0][10]	= (API_IS(API_NVML, api)) ? nvml_nvlink_tx_bytes	: dcgm_nvlink_tx_bytes;
+			dcgmi_data->dcgmi_event_ids[0][11]	= (API_IS(API_NVML, api)) ? nvml_nvlink_rx_bytes	: dcgm_nvlink_rx_bytes;
 
 			int hopper_event_info[12][2] =
 			{
@@ -79,7 +86,7 @@ state_t dcgmi_lib_hopper_init(dcgmi_lib_t *dcgmi_data, int **event_info, int eve
 				{0, 8}, // pcie_tx_bytes
 				{0, 9}, // pcie_rx_bytes
 				{0, 10}, // nvlink_tx_bytes
-				{0, 11} // nvlink_rx_bytes
+				{0, 11} //  nvlink_rx_bytes
 			};
 
 			for (int i = 0; i < ear_min(event_info_rows, 12); i++)

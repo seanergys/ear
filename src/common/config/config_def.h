@@ -36,6 +36,7 @@
  * Loader definitions. */
 /**@{*/
 #define INTEL_EXT       "so"
+#define INTELMPI_EXT    "impi.so"
 #define OPENMPI_EXT     "ompi.so"
 #define CUDA_EXT        "gen.so"
 #define OPENMP_EXT      "gen.so"
@@ -43,6 +44,7 @@
 #define DEF_EXT         "gen.so"
 
 #define FUJITSU_MPI_EXT "fujitsu.so"
+#define CRAY_MPI_EXT "cray.so"
 /**@}*/
 
 
@@ -68,7 +70,7 @@
 /** When set to 1, verbose, debug, and error output is sent to eard.log file stored at EAR_TMP. */
 #define EARD_FILE_LOG               1
 /** Set minimum CPU frequency on idle phases. */
-#define EARD_POWERCAP_IDLE_MINFREQ  1
+#define EARD_POWERCAP_IDLE_MINFREQ  0
 /**  */
 #define SYNC_SET_RPC 1
 /**  */
@@ -100,7 +102,7 @@
 #define CPUFREQ_SET_ALL_USERS 1
 
 /** Maximum number of tries when doing non-blocking communications. */
-#define MAX_SOCKET_COMM_TRIES               100000000
+#define MAX_SOCKET_COMM_TRIES               1000000
 //
 
 /* These flags configures EARL */
@@ -116,8 +118,8 @@
  * generates a warning and a syslog message when activated. Values greather
  * than MAX_ERROR_POWER are considered an error and not reported into the DB */
 #define MIN_SIG_POWER                       30.0
-#define MAX_SIG_POWER                       700.0
-#define MAX_ERROR_POWER                     1000.0
+#define MAX_SIG_POWER                       5000.0
+#define MAX_ERROR_POWER                     5500.0
 #define MAX_TEMP                            150
 #define MAX_POWER_CAP                       0
 #define POWER_CAP_DISABLED                  0

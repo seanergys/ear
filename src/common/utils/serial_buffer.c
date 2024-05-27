@@ -273,7 +273,7 @@ int serial_dictionary_pop(serial_buffer_t *b, char *tag, char *param, size_t exp
 {
     char *param_next;
     char *tag_next;
-    size_t size;
+    size_t size = 0;
 
     // String manipulation
     serial_rewind(b);

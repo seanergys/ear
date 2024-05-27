@@ -210,7 +210,7 @@ state_t policy_init(polctx_t *c)
 
     debug("min_energy init");
 
-    if (is_mpi_enabled())
+    if (module_mpi_is_enabled())
     {
         mpi_app_init(c);
         is_blocking_busy_waiting(&block_type);
@@ -1092,7 +1092,7 @@ static state_t int_policy_ok(signature_t *curr_sig, signature_t *last_sig, int *
     my_node_mpi_types_calls = se->mpi_types;
 
     /*  Check for load balance data */
-    if (is_mpi_enabled() && enable_load_balance && use_energy_models) {
+    if (module_mpi_is_enabled() && enable_load_balance && use_energy_models) {
 
         verbose_mpi_calls_types(3, my_node_mpi_types_calls);
 

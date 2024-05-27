@@ -132,6 +132,8 @@
 #define FLAG_TURBO_CP                "USE_TURBO_FOR_CP"
 #define FLAG_MIN_CPUFREQ             "EAR_MIN_CPUFREQ"        // Sets a minimum CPU frequency policies can set.
 #define FLAG_NTWRK_IMC               "EAR_NTWRK_IMC"          // Tells the IMC policy the application uses IMC freq for network operations, making the policy less aggressive.
+#define FLAG_DISABLE_NODE_METRICS    "EAR_DISABLE_NODE_METRICS" // If defined, This job will not be considered for node metrics and policy will not be applied : To be used in MASTER/WORKED use cases
+#define FLAG_NTASK_WORK_SHARING      "EAR_NTASK_WORK_SHARING"   // Tells EAR to consider the N tasks created by the scheduler as a single job (for non MPI use cases).
 #define FLAG_TRY_TURBO               "EAR_TRY_TURBO"          // If policies have make CPU frequency be at maximum, try to boost the CPU frequency.
 #define FLAG_REPORT_ADD              "EAR_REPORT_ADD"
 #define FLAG_USE_ENERGY_MODELS       "EAR_USE_ENERGY_MODELS"  // Tells policies to use power models instead of probe and error DVFS.
@@ -175,6 +177,7 @@
 #define FLAG_SHOW_SIGNATURES         "EAR_SHOW_SIGNATURES"
 #define FLAG_REPORT_NODE_SIGNATURES  "EAR_REPORT_NODE_SIGNATURES"
 #define FLAG_REPORT_ALL_SIGNATURES   "EAR_REPORT_ALL_SIGNATURES"
+#define FLAG_REPORT_CPUPOW_MODEL     "EAR_REPORT_CPUPOW_MODEL"    // Asks the cpu power model to print per process data
 #define FLAG_SHARE_INFO_PPROC        "EAR_SHARE_INFO_PER_PROCESS" // Forces to share all the signatures.
 #define FLAG_SHARE_INFO_PNODE 	     "EAR_SHARE_INFO_PER_NODE"    // Forces to share only the average signature per node.
 #define FLAG_APP_MGR_POLICIES	     "EAR_APP_MGR_POLICIES"
@@ -196,5 +199,16 @@
 #define SCHED_TRY_TURBO              "SLURM_TRY_TURBO"                     // TODO: Deprectated.
 #define SCHED_LOAD_BALANCE_TH        "SLURM_LOAD_BALANCE_TH"               // TODO: Deprectated.
 /** @} */
+
+
+/*
+ * EARD flags
+ */
+
+#define EARD_USE_MINCPUFREQ_PC       "EARD_USE_MINCPUFREQ_PC"							// EARD will apply min CPU freq when idle periods
+#define EAR_POWERCAP_POLICY_NODE     "EAR_POWERCAP_POLICY_NODE"           // Defines the EARD powercapo plugin for domain node
+#define EAR_POWERCAP_POLICY_CPU      "EAR_POWERCAP_POLICY_CPU"            // Defines the EARD powercapo plugin for domain CPU
+#define EAR_POWERCAP_POLICY_DRAM     "EAR_POWERCAP_POLICY_DRAM"           // Defines the EARD powercapo plugin for domain DRAM
+#define EAR_POWERCAP_POLICY_GPU      "EAR_POWERCAP_POLICY_GPU"            // Defines the EARD powercapo plugin for domain GPU
 
 #endif //COMMON_CONFIG_ENV_H

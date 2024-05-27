@@ -36,6 +36,7 @@ state_t energy_cpu_dispose(ctx_t *c);
 
 state_t energy_cpu_get_api(uint *api_int);
 
+
 // Data
 state_t energy_cpu_data_alloc(ctx_t *c, ullong **values, uint *rapl_count);
 

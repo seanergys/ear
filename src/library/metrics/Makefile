@@ -14,6 +14,8 @@ OBJS += \
     dcgmi_lib/common.o
 
 dcgmilib_DEPS = dcgmi_lib/common.h
+
+post_DEPS = dcgmi_lib_test
 endif
 
 ifeq ($(FEAT_DLB), 1)
@@ -38,7 +40,7 @@ dlb_talp_lib.o: dlb_talp_lib.c dlb_talp_lib.h
 %.o: %.c %.h
 	$(CC) $(CC_FLAGS) $(LIB_CFLAGS) $(CFLAGS) -c $<
 
-post: dcgmi_lib_test
+post: $(post_DEPS)
 
 dcgmi_lib_test: test/dcgmi_lib_test.c $(SRCDIR)/common/libcommon.a dcgmi_lib.h
 	$(CC) $(CC_FLAGS) $(CFLAGS) -o $@ test/dcgmi_lib_test.c $(SRCDIR)/common/libcommon.a $(SRCDIR)/metrics/libmetrics.a $(dcgmi_lib_test_LDFLAGS) $(LDFLAGS) $(dcgmi_lib_test_LIBS) $(LIBS)

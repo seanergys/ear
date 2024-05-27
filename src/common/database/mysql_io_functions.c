@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -403,8 +403,8 @@ int mysql_batch_insert_applications(MYSQL *connection, application_t *app, int n
         bind[0+offset].is_unsigned = bind[1+offset].is_unsigned = bind[2+offset].is_unsigned =
             bind[4+offset].is_unsigned = bind[5+offset].is_unsigned = 1;
         if (!is_mpi) {
-            bind[3+offset].buffer_type = MYSQL_TYPE_NULL;
-            bind[3+offset].is_null = (ear_my_bool) 1;
+            bind[4+offset].buffer_type = MYSQL_TYPE_NULL;
+            bind[4+offset].is_null = (ear_my_bool) 1;
         }
 
         //string types
@@ -502,7 +502,7 @@ int mysql_batch_insert_jobs(MYSQL *connection, application_t *app, int num_apps)
         //storage variable assignation
         bind[0+offset].buffer = (char *)&app[i].job.id;
         bind[1+offset].buffer = (char *)&app[i].job.step_id;
-        bind[2+offset].buffer = (char *)&app[i].job.step_id;
+        bind[2+offset].buffer = (char *)&app[i].job.local_id;
         bind[3+offset].buffer = (char *)&app[i].job.user_id;
         bind[4+offset].buffer = (char *)&app[i].job.app_id;
         bind[5+offset].buffer = (char *)&app[i].job.start_time;
@@ -603,8 +603,8 @@ int mysql_batch_insert_applications_no_mpi(MYSQL *connection, application_t *app
         bind[0+offset].is_unsigned = bind[1+offset].is_unsigned = bind[2+offset].is_unsigned=
             bind[4+offset].is_unsigned = bind[5+offset].is_unsigned = 1;
 
-        bind[3+offset].buffer_type = MYSQL_TYPE_NULL;
-        bind[3+offset].is_null = (ear_my_bool) 1;
+        bind[4+offset].buffer_type = MYSQL_TYPE_NULL;
+        bind[4+offset].is_null = (ear_my_bool) 1;
 
         //string types
         bind[3+offset].buffer_type = MYSQL_TYPE_STRING;
@@ -655,11 +655,13 @@ int mysql_retrieve_applications(MYSQL *connection, char *query, application_t **
     int num_apps;
     memset(bind, 0, sizeof(bind));
 
+		debug("Query:%s", query);
+
     //integer types
     bind[0].buffer_type = bind[1].buffer_type = bind[2].buffer_type = 
         bind[4].buffer_type = bind[5].buffer_type = MYSQL_TYPE_LONGLONG;
     bind[0].is_unsigned = bind[1].is_unsigned = bind[2].is_unsigned = 
-        bind[4].is_unsigned = bind[5].is_unsigned;
+        bind[4].is_unsigned = bind[5].is_unsigned = 1;
 
     //string types
     bind[3].buffer_type = MYSQL_TYPE_VAR_STRING;
@@ -722,6 +724,7 @@ int mysql_retrieve_applications(MYSQL *connection, char *query, application_t **
         else
             sprintf(job_query, "SELECT * FROM Jobs WHERE job_id=%lu AND step_id=%lu AND local_id=%lu",
                     job_id, step_id, local_id);
+        debug("Job query:%s", job_query);
         num_jobs = mysql_retrieve_jobs(connection, job_query, &job_aux);
         if (num_jobs < 1)
         {
@@ -729,7 +732,7 @@ int mysql_retrieve_applications(MYSQL *connection, char *query, application_t **
             if (mysql_stmt_close(statement)) ret = EAR_MYSQL_ERROR;
             free(app_aux);
             free(apps_aux);
-            debug("No job structure found in the database for job %lu.%lu.\n", job_id, step_id);
+            debug("No job structure found in the database for job %lu.%lu\n", job_id, step_id);
             return ret;
         }
         copy_job(&app_aux->job, job_aux);
@@ -908,8 +911,8 @@ int mysql_retrieve_loops(MYSQL *connection, char *query, loop_t **loops)
     }
 
     //string types
-    bind[5].buffer_type = MYSQL_TYPE_VAR_STRING;
-    bind[5].buffer_length = 256;
+    bind[6].buffer_type = MYSQL_TYPE_VAR_STRING;
+    bind[6].buffer_length = 256;
 
     //reciever variables assignation
     bind[0].buffer = &loop_aux->id.event;

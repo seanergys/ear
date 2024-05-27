@@ -18,50 +18,39 @@
 #ifndef _MPI_SUPPORT_
 #define _MPI_SUPPORT_
 
-#define p2i unsigned long
-
+#define p2i                 unsigned long
 #define BUSY_WAITING_BLOCK  0
 #define YIELD_BLOCK         1
+#define N_CALL_TYPES        15
+#define UNKNOWN             0
+#define SEND                1
+#define RECEIVE             2
+#define BARRIER             3
+#define WAIT                4
+#define BCAST               5
+#define ALL2ALL             6
+#define GATHER              7
+#define SCATTER             8
+#define SCAN                9
+#define REDUCE              10
+#define SENDRECV            11
+#define TEST                12
+#define COMM                13
+#define IO                  14
 
-#define is_mpi_blocking(call)    (call&Only_Blocking)
-
-#define is_collective(call)      ((call == Only_Reduce) || \
+#define is_mpi_blocking(call)     (call&Only_Blocking)
+#define is_collective(call)      ((call == Only_Reduce)  || \
                                   (call == Only_Scatter) || \
-                                  (call == Only_Gather) || \
+                                  (call == Only_Gather)  || \
                                   (call == Only_All2All) || \
                                   (call == Only_Bcast))
-
-#define is_synchronization(call) ((call == Only_Wait) || \
+#define is_synchronization(call) ((call == Only_Wait)    || \
                                   (call == Only_Barrier) || \
                                   (call == Only_Test))
-
-#define remove_blocking(call)    (call&~Only_Blocking)
-
-#define is_barrier(call)         (call == Only_Barrier)
-
-#define is_gather(call)			 (call == Only_Gather)
-
-#define is_wait(call)            (call == Only_Wait);
-
-
-#define N_CALL_TYPES 15
-
-#define UNKNOWN  0
-#define SEND     1
-#define RECEIVE  2
-#define BARRIER  3
-#define WAIT     4
-#define BCAST    5
-#define ALL2ALL  6
-#define GATHER   7
-#define SCATTER  8
-#define SCAN     9
-#define REDUCE   10
-#define SENDRECV 11
-#define TEST     12
-#define COMM     13
-#define IO       14
-
+#define remove_blocking(call)     (call&~Only_Blocking)
+#define is_barrier(call)          (call == Only_Barrier)
+#define is_gather(call)			  (call == Only_Gather)
+#define is_wait(call)             (call == Only_Wait)
 
 enum type_mpi_call {
     _Unknown  = 0,
@@ -81,7 +70,6 @@ enum type_mpi_call {
     _IO       = 14,
     _Blocking = 0x10
 };
-
 
 typedef enum
 {
@@ -194,9 +182,6 @@ typedef enum
     Not_implemented
 } mpi_call;
 
-
-int is_mpi_enabled();
-int is_intelmpi();
-int is_openmpi();
 int openmpi_num_nodes();
+
 #endif

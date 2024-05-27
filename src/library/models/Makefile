@@ -49,7 +49,8 @@ cpu_power_model_%.so: cpu_power_model_%.o $(modl_DEPS)
 
 install: modl.ginstall;
 
-clean: modl.gclean;
+clean: modl.gclean
+	rm -rf *.o *.so
 
 ######## DEPENDENCIES
 

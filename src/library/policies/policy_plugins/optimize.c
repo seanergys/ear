@@ -36,7 +36,10 @@
 
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>
-#include <library/policies/policy_ctx.h>
+#include <library/api/clasify.h>
+#include <library/loader/module_mpi.h>
+#include <library/metrics/metrics.h>
+#include <library/policies/policy_api.h>
 #include <library/policies/policy_state.h>
 #include <library/policies/common/cpu_support.h>
 #include <library/policies/common/gpu_support.h>
@@ -68,10 +71,26 @@ static state_t policy_mpi_end_optimize(node_freqs_t *freqs, int *process_id);
 
 state_t policy_init(polctx_t *c)
 {
-    if (is_mpi_enabled()) {
-#if MPI_OPTIMIZED
-        mpi_opt_load(&mpi_opt_symbols);
-#endif
+    if (c == NULL)
+    {
+        return EAR_ERROR;
+    }
+
+    char *cmetric_to_optimize   = ear_getenv(FLAG_METRIC_TO_OPTIMIZE);
+    char *cstrategy_to_optimize = ear_getenv(FLAG_STRATEGY_TO_OPTIMIZE);
+
+    /* This function checks the metric and strategy (max, min) */
+    update_optimize_options(cmetric_to_optimize, cstrategy_to_optimize);
+
+    int i = 0;
+
+    topology_init(&me_top);
+
+    debug("optimize init");
+
+    if (module_mpi_is_enabled())
+    {
+        uint block_type;
         mpi_app_init(c);
     }
     for (uint i = 0 ; i < lib_shared_region->num_processes; i++) {

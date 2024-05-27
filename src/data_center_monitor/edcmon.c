@@ -18,6 +18,7 @@
 //#define SHOW_DEBUGS 1
 
 #include <common/system/plugin_manager.h>
+#include <unistd.h>
 
 int main(int argc, char *argv[])
 {

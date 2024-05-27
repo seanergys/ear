@@ -81,10 +81,10 @@ static plugins_t   p;
 static char      **priority_paths;
 static char        date[128];
 static uint        exit_called;
-static int         fds_status;
+// static int         fds_status;
 static afd_set_t   fds_active;
-static ullong      timeout;
-static ullong      timeout_remaining;
+// static ullong      timeout;
+// static ullong      timeout_remaining;
 
 static int plugins_dependencies_read(cchar *string, ullong father_time_lapse, uint priority, uint *father_deps_table)
 {
@@ -460,6 +460,7 @@ next_ap:
     plugins_action_periodic(i+1, time_now, time_passed);
 }
 
+#if 0
 static void plugins_fds_attend(int i)
 {
     char *sout;
@@ -480,6 +481,7 @@ static void plugins_fds_attend(int i)
 next_fa:
     plugins_fds_attend(i+1);
 }
+#endif
 
 static state_t plugins_main(void *whatever)
 {

@@ -117,6 +117,7 @@ state_t mgt_cpufreq_amd17_load(topology_t *tp_in, mgt_ps_ops_t *ops, mgt_ps_driv
 	// Setting references (if driver set is not available, this API neither)
 	apis_put(ops->init,               mgt_cpufreq_amd17_init);
 	apis_put(ops->dispose,            mgt_cpufreq_amd17_dispose);
+	apis_put(ops->get_info,           mgt_cpufreq_amd17_get_info);
 	apis_put(ops->count_available,    mgt_cpufreq_amd17_count_available);
 	apis_put(ops->get_available_list, mgt_cpufreq_amd17_get_available_list);
 	apis_put(ops->get_current_list,   mgt_cpufreq_amd17_get_current_list);
