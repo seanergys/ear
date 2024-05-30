@@ -10,6 +10,7 @@ powercap_OBJS = \
 powercap_BINS = \
     inm.so \
     dvfs.so \
+    cpu_generic.so \
     gpu_dummy.so \
     gpu.so \
     gpu_dvfs.so
@@ -34,6 +35,8 @@ all:$(powercap_OBJS)  $(powercap_BINS)
 dvfs.so:dvfs.o $(dvfs_DEPS)
 	$(CC) $(CC_FLAGS) $(CFLAGS) -shared $< -o $@ $(dvfs_DEPS)
 
+cpu_generic.so:cpu_generic.o $(dvfs_DEPS)
+	$(CC) $(CC_FLAGS) $(CFLAGS) -shared $< -o $@ $(dvfs_DEPS)
 gpu.so:gpu.o $(gpu_DEPS)
 	$(CC) $(CC_FLAGS) $(CFLAGS) -shared $< -o $@ $(gpu_DEPS)
 
