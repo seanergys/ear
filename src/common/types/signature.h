@@ -202,4 +202,7 @@ void signature_serialize(serial_buffer_t *b, signature_t *sig);
 
 void signature_deserialize(serial_buffer_t *b, signature_t *sig);
 
+
+double compute_dc_nogpu_power(signature_t *lsig);
+
 #endif

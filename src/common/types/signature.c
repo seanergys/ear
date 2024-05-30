@@ -621,3 +621,16 @@ void signature_deserialize(serial_buffer_t *b, signature_t *sig)
     gpu_signature_deserialize(b, &sig->gpu_sig);
 #endif
 }
+double compute_dc_nogpu_power(signature_t *lsig)
+{
+	double CPU_power = lsig->DC_power;
+	double GPU_power = 0;
+	#if USE_GPUS
+	for (uint gid = 0; gid < lsig->gpu_sig.num_gpus; gid++){
+	GPU_power +=  lsig->gpu_sig.gpu_data[gid].GPU_power;
+	}
+	#endif
+	CPU_power -= GPU_power;
+	return CPU_power;
+}
+
