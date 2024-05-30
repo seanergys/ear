@@ -175,7 +175,7 @@ state_t energy_model_projections_available()
   uint ready = 0;
   for (uint ps = 0; ps < num_pstates && !ready; ps++){
     for (uint pt = 0; pt < num_pstates && !ready; pt++){
-      if ((ps != pt) && (model_projection_available(ps, pt) == EAR_SUCCESS)) ready = 1;
+      if ((ps != pt) && (energy_model_projection_available(ps, pt) == EAR_SUCCESS)) ready = 1;
     }
   }
   if (ready) return EAR_SUCCESS;
