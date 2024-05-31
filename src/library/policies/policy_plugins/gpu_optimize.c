@@ -583,11 +583,10 @@ static float get_gflops_cycle(signature_t *signature, uint gpu_idx)
   float fp64 = (float)(dcgmis_data_64[gpu_idx].values[fp64_info[event_info_pos]]);
   float tensor = (float)(dcgmis_data_ten[gpu_idx].values[tensor_info[event_info_pos]]);
 
-	//debug("GPU[%u] data for optimization: fp64 %f fp32 %f fp16 %f tensor %f", gpu_idx, fp64, fp32, fp16, tensor);
+	debug("GPU[%u] data for optimization: fp64 %f fp32 %f fp16 %f tensor %f", gpu_idx, fp64, fp32, fp16, tensor);
   
-  // TODO automatize  in function of the micro-arch
-  // Here the values are for NVIDIA A100 (Update of April 12)
-  return 6912*fp64 + 13824*fp32 + 55296*fp16 + 110592*tensor;
+  //return 6912*fp64 + 13824*fp32 + 55296*fp16 + 110592*tensor; //A100
+  return (16384*fp64 + 32768*fp32 + 65536*fp16 + 32768*tensor)/100; //H100
 
 #else
 	return 0;

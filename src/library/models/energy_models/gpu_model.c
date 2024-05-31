@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 0
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #if !SHOW_DEBUGS
@@ -198,15 +198,10 @@ state_t energy_model_project_time(signature_t *signature, ulong from_ps, ulong t
 		dcgmi_lib_get_event_info(tensor_active, tensor_info);
 		gpuprof_t *dcgmis_data_ten  = dcgmis->event_metrics_sets[tensor_info[event_info_set]];
 
-		int dram_info[2];
-		dcgmi_lib_get_event_info(dram_active, dram_info);
-		gpuprof_t *dcgmis_data_dram = dcgmis->event_metrics_sets[dram_info[event_info_set]];
-
 		if ((dcgmis_data_64 == NULL) ||
 				(dcgmis_data_32 == NULL) ||
 				(dcgmis_data_16 == NULL) ||
-				(dcgmis_data_ten == NULL) ||
-				(dcgmis_data_dram == NULL)) 
+				(dcgmis_data_ten == NULL)) 
 		{
 			return EAR_ERROR;
 		}
@@ -218,7 +213,6 @@ state_t energy_model_project_time(signature_t *signature, ulong from_ps, ulong t
 				double fp32 = dcgmis_data_32[g].values[fp32_info[event_info_pos]];
 				double fp64 = dcgmis_data_64[g].values[fp64_info[event_info_pos]];
 				double tensor = dcgmis_data_ten[g].values[tensor_info[event_info_pos]];
-				double dram   = dcgmis_data_dram[g].values[dram_info[event_info_pos]];
 
         ulong df =  coeff->pstate_ref - coeff->pstate;
         proj_time[g]  = project_time(coeff, ctime, fp16, fp32, fp64, tensor, df);
@@ -351,7 +345,7 @@ static double project_time(coefficient_gpu_t *coeff, double ctime, double fp16, 
   double fp_act;
   double proj_time;
 
-  fp_act = fp16 + fp32 + fp64 + tensor;
+  fp_act = (fp16 + fp32 + fp64 + tensor)/100;
   proj_time= ctime + coeff->F*fp_act+ coeff->G*df + coeff->H*fp_act*fp_act + coeff->I*fp_act*df + coeff->J*df*df; 
 	
   return proj_time;
@@ -364,7 +358,7 @@ static double project_power(coefficient_gpu_t *coeff, double cpower, double fp16
   double fp_act;
   double proj_power;
   
-  fp_act = fp16 + fp32 + fp64 + tensor;
+  fp_act = (fp16 + fp32 + fp64 + tensor)/100;
   proj_power = coeff->A*cpower + coeff->B*fp_act + coeff->C*dram + coeff->D*to_freq/1000000.0; //+ coeff->E; 
   	
   //debug("Power: %lf = %lf x %lf + %lf x %lf + %lf x %lf + %lf x %lu", 
