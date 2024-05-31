@@ -43,6 +43,8 @@
 #define dcgm_tensor_imma_active    1013 // Currently not supported by EARL
 #define dcgm_tensor_hmma_active    1014 // Currently not supported by EARL
 
+#define dcgm_first_event_id				 dcgm_gr_engine_active
+
 #define nvml_gr_engine_active      1
 #define nvml_sm_active             2
 #define nvml_sm_occupancy          3

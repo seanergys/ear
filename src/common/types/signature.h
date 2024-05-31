@@ -40,6 +40,9 @@ typedef struct gpu_app {
   ulong  GPU_mem_freq;
   ulong  GPU_util;
   ulong  GPU_mem_util;
+#if WF_SUPPORT
+	float  GPU_GFlops;
+#endif
 } gpu_app_t;
 
 

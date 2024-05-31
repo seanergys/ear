@@ -480,27 +480,36 @@ state_t init_power_policy(settings_conf_t *app_settings, resched_t *res)
 /* The CPU freq and GPu freq are set in this function, so freq_set is just a reference for the CPU freq selected */
 state_t policy_app_apply(ulong *freq_set, int *ready)
 {
-    polctx_t *c=&my_pol_ctx;
-    state_t st = EAR_SUCCESS;
-    node_freqs_t *freqs = &nf;
-    *ready = EAR_POLICY_READY;
-    if (polsyms_fun.app_policy_apply == NULL){
-        *ready = EAR_POLICY_LOCAL_EV;
-        return st;
-    }
-    if (!eards_connected() || (masters_info.my_master_rank<0)){
-        *ready = EAR_POLICY_CONTINUE;
-        return st;
-    }
-    if (freqs_domain.cpu == POL_GRAIN_CORE) memset(freqs->cpu_freq,0,sizeof(ulong)*MAX_CPUS_SUPPORTED);
-    st=polsyms_fun.app_policy_apply(c, &policy_last_global_signature, freqs,ready);
-    if (*ready == EAR_POLICY_READY){
-        debug("Average frequency after app_policy is %lu",*freq_set );
-        //policy_cpu_freq_selection(&policy_last_global_signature,freqs);
-        st = policy_master_freq_selection(c,&policy_last_global_signature,freqs,&freqs_domain,&avg_nf, ALL_PROCESSES);
-        *freq_set = avg_nf.cpu_freq[0];
-    }
-    return st;
+	state_t st = EAR_SUCCESS;
+
+	if (polsyms_fun.app_policy_apply == NULL)
+	{
+		*ready = EAR_POLICY_LOCAL_EV;
+		return st;
+	}
+
+	if (!eards_connected() || (masters_info.my_master_rank < 0))
+	{
+		*ready = EAR_POLICY_CONTINUE;
+		return st;
+	}
+
+	node_freqs_t *freqs = &nf;
+	if (freqs_domain.cpu == POL_GRAIN_CORE)
+	{
+		memset(freqs->cpu_freq, 0, sizeof(ulong) * MAX_CPUS_SUPPORTED);
+	}
+
+	*ready = EAR_POLICY_READY;
+	st = polsyms_fun.app_policy_apply(&my_pol_ctx, &policy_last_global_signature, freqs, ready);
+
+	if (*ready == EAR_POLICY_READY)
+	{
+		debug("Average frequency after app_policy is %lu",*freq_set );
+		st = policy_master_freq_selection(c,&policy_last_global_signature,freqs,&freqs_domain,&avg_nf, ALL_PROCESSES);
+		*freq_set = avg_nf.cpu_freq[0];
+	}
+	return st;
 }
 
 
