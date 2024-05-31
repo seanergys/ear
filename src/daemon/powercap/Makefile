@@ -20,6 +20,7 @@ powercap_PERM = 0775
 gpu_DEPS      =
 gpu_dvfs_DEPS =
 dvfs_DEPS     = $(SRCDIR)/metrics/libmetrics.a
+generic_DEPS  = $(SRCDIR)/management/libmgt.a $(SRCDIR)/metrics/libmetrics.a $(SRCDIR)/common/libcommon.a
 inm_DEPS      = $(SRCDIR)/common/libcommon.a
 
 ######## RULES
@@ -35,8 +36,9 @@ all:$(powercap_OBJS)  $(powercap_BINS)
 dvfs.so:dvfs.o $(dvfs_DEPS)
 	$(CC) $(CC_FLAGS) $(CFLAGS) -shared $< -o $@ $(dvfs_DEPS)
 
-cpu_generic.so:cpu_generic.o $(dvfs_DEPS)
-	$(CC) $(CC_FLAGS) $(CFLAGS) -shared $< -o $@ $(dvfs_DEPS)
+cpu_generic.so:cpu_generic.o $(generic_DEPS)
+	$(CC) $(CC_FLAGS) $(CFLAGS) -shared $< -o $@ $(generic_DEPS)
+
 gpu.so:gpu.o $(gpu_DEPS)
 	$(CC) $(CC_FLAGS) $(CFLAGS) -shared $< -o $@ $(gpu_DEPS)
 
