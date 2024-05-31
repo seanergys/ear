@@ -68,6 +68,10 @@ void state_verbose_signature(loop_t *sig, int master_rank, char *aname, char *nn
     ulong elapsed;
     timestamp end;
     char mode[32];
+		char gflops_str[128];
+#if WF_SUPPORT
+		float GPU_GFlops = 0;
+#endif
 
     if (VERB_GET_LV() == 0) return;
     sprintf(mode, "%s", "");
@@ -210,12 +214,20 @@ void state_verbose_signature(loop_t *sig, int master_rank, char *aname, char *nn
             char gpu_sig_hdr[] = "----------- GPU signature -----------\nGPU Id. Power (W) Util (%) Freq (GHz)\0";
             verbose_master(3, "%s", gpu_sig_hdr);
 
-            for(int i = 0; i < gpu_cnt; i++) { 
-
+            for(int i = 0; i < gpu_cnt; i++)
+						{ 
+#if WF_SUPPORT
+                verbose_master(3, "%7d %-9.2f %-8lu %-10lu %-9.2f)", i,
+                        sig->signature.gpu_sig.gpu_data[i].GPU_power,
+                        sig->signature.gpu_sig.gpu_data[i].GPU_util,
+                        sig->signature.gpu_sig.gpu_data[i].GPU_freq,
+												sig->signature.gpu_sig.gpu_data[i].GPU_GFlops);
+#else
                 verbose_master(3, "%7d %-9.2f %-8lu %-10lu)", i,
                         sig->signature.gpu_sig.gpu_data[i].GPU_power,
                         sig->signature.gpu_sig.gpu_data[i].GPU_util,
                         sig->signature.gpu_sig.gpu_data[i].GPU_freq);
+#endif
 
                 gpu_pwr_sum  += sig->signature.gpu_sig.gpu_data[i].GPU_power;
                 gpu_freq_sum += (float) sig->signature.gpu_sig.gpu_data[i].GPU_freq;
@@ -227,6 +239,9 @@ void state_verbose_signature(loop_t *sig, int master_rank, char *aname, char *nn
                     GPU_FREQ     += sig->signature.gpu_sig.gpu_data[i].GPU_freq; 
                     GPU_UTIL     += sig->signature.gpu_sig.gpu_data[i].GPU_util; 
                     GPU_mem_util     += sig->signature.gpu_sig.gpu_data[i].GPU_mem_util; 
+#if WF_SUPPORT
+                    GPU_GFlops       += sig->signature.gpu_sig.gpu_data[i].GPU_GFlops; 
+#endif
                 }
             } 
             verbose_master(3, "-------------------------------------");
@@ -253,8 +268,17 @@ void state_verbose_signature(loop_t *sig, int master_rank, char *aname, char *nn
                 mode, AID, aname, PFREQ, sel_mem_f,nname, master_rank, elapsed); 
         verbosen(1, "%s", COL_GRE);
 
+				snprintf(gflops_str, sizeof(gflops_str), "%.2lf", FLOPS);
+
 #if USE_GPUS
-        if (gpu_cnt > 0 ) verbosen(2,"%s", gpu_buff);
+        if (gpu_cnt > 0 ){ 
+#if WF_SUPPORT
+					char gpu_glops[64];
+					snprintf(gpu_glops, sizeof(gpu_glops), "/%.2f", GPU_GFlops);
+					strcat(gflops_str, gpu_glops);
+#endif
+					verbosen(2,"%s", gpu_buff);
+				}
 #endif
 
         strcpy(gpu_buff," ");
@@ -264,7 +288,7 @@ void state_verbose_signature(loop_t *sig, int master_rank, char *aname, char *nn
         }
 
         debug("%swriting CPI GBS power...%s", COL_YLW, COL_CLR);
-        verbosen(1,"(CPI=%.3lf GBS=%.2lf Power=%s%.1lfW%s Time=%.3lfs\n\tAvgCPUF=%.2fGHz/AvgIMCF=%.2fGHz GFlop/s=%.2lf IO=%.2fMB/s %s) %s", CPI, GBS, COL_MGT,POWER, COL_GRE, TIME,  AVGF, imcf, FLOPS, IO_MBS, pmpi_txt, gpu_buff);
+        verbosen(1,"(CPI=%.3lf GBS=%.2lf Power=%s%.1lfW%s Time=%.3lfs\n\tAvgCPUF=%.2fGHz/AvgIMCF=%.2fGHz GFlop/s=%s IO=%.2fMB/s %s) %s", CPI, GBS, COL_MGT,POWER, COL_GRE, TIME,  AVGF, imcf, gflops_str, IO_MBS, pmpi_txt, gpu_buff);
 
         if (new_freq > 0){ verbosen(1,"\n\t Next Frequency %.2f",NFREQ);}
 

@@ -187,8 +187,13 @@ int create_app_header(char * header, char *path, uint num_gpus, char is_extended
 	if (single_column) num_gpus = ear_min(num_gpus, 1);
     for (int i = 0; i < num_gpus; i++){
         char gpu_hdr[128];
+#if WF_SUPPORT
+        xsnprintf(gpu_hdr, sizeof(gpu_hdr), ";GPU%d_POWER_W;GPU%d_FREQ_KHZ;GPU%d_MEM_FREQ_KHZ;GPU%d_UTIL_PERC;GPU%d_MEM_UTIL_PERC;GPU%d_GFLOPS",
+                i, i, i, i, i, i);
+#else
         xsnprintf(gpu_hdr, sizeof(gpu_hdr), ";GPU%d_POWER_W;GPU%d_FREQ_KHZ;GPU%d_MEM_FREQ_KHZ;GPU%d_UTIL_PERC;GPU%d_MEM_UTIL_PERC",
                 i, i, i, i, i);
+#endif
         xstrncat(HEADER, gpu_hdr, sizeof(gpu_hdr));
     }
 #endif

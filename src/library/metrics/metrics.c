@@ -1735,6 +1735,8 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 					error_lib("Getting global DCGMI metrics: %s", state_msg);
 				}
 			}
+			// If WF_SUPPORT disabled, metrics is not filled.
+			dcgmi_lib_compute_gpu_gflops(&sig_ext->dcgmis, metrics);
 		}
 #endif  // DCGMI & USE_GPUS
 

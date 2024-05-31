@@ -109,3 +109,20 @@ state_t dcgmi_lib_hopper_init(uint api, dcgmi_lib_t *dcgmi_data, int **event_inf
 		return_msg(EAR_ERROR, Generr.input_null);
 	}
 }
+
+
+state_t dcgmi_lib_hopper_fp_coeffs(int **coeffs, size_t coeffs_length)
+{
+
+  int *hopper_coeffs;
+  hopper_coeffs = (int*) malloc (coeffs_length * (sizeof(int)));
+  
+  hopper_coeffs[0] = 16384; //FP64 activities
+  hopper_coeffs[1] = 32768; //FP32 activities
+  hopper_coeffs[2] = 65536; //FP16 activities
+  hopper_coeffs[3] = 32768; //Tensor activities
+
+  *coeffs = hopper_coeffs;
+
+	return EAR_SUCCESS;
+}
