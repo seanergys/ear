@@ -506,7 +506,7 @@ state_t policy_app_apply(ulong *freq_set, int *ready)
 	if (*ready == EAR_POLICY_READY)
 	{
 		debug("Average frequency after app_policy is %lu",*freq_set );
-		st = policy_master_freq_selection(c,&policy_last_global_signature,freqs,&freqs_domain,&avg_nf, ALL_PROCESSES);
+		st = policy_master_freq_selection(&my_pol_ctx ,&policy_last_global_signature,freqs,&freqs_domain,&avg_nf, ALL_PROCESSES);
 		*freq_set = avg_nf.cpu_freq[0];
 	}
 	return st;

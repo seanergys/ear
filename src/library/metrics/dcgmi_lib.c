@@ -477,19 +477,11 @@ void dcgmi_lib_compute_gpu_gflops(dcgmi_sig_t *dcgmi_sig, signature_t *metrics)
 	// Fill positions left
 	while (gpu_idx < MAX_GPUS_SUPPORTED)
 	{
-		metrics->gpu_sig.gpu_data[gpu_idx].GPU_GFlops = 0F;
+		metrics->gpu_sig.gpu_data[gpu_idx].GPU_GFlops = 0;
 		gpu_idx++;
 	}
 #endif
 	return;
-}
-
-
-float dcgmi_lib_compute_gpu_ith_gflops(ulong gpu_freq)
-{
-	gflops_cycle = coeffs[0]*fp64 + coeffs[1]*fp32 + coeffs[2]*fp16 + coeffs[3]*tensor;
-	gpu_freq = (float) (gpu_freq / 1000000.0); // kHz to GHz
-	return gflops_cycle * gpu_freq;
 }
 
 
@@ -647,7 +639,7 @@ static state_t dcgmi_paction(void *p)
 		gpuprof_t *diff = dcgmi_data.gpuprof_diff[dcgmi_curr_ev_set];
 
 		gpuprof_read_diff(read2, read1, diff);
-		if (API_IS(API_DCGMI))
+		if (API_IS(gpuprof_api.api, API_DCGMI))
 		{
 			dcgm_ratios_as_percent(diff, dcgmi_data.dcgmi_event_ids[dcgmi_curr_ev_set],
 					dcgmi_data.dcgmi_set_sizes[dcgmi_curr_ev_set]);
@@ -910,7 +902,7 @@ static void dcgm_ratios_as_percent(gpuprof_t *event_metrics_set, uint *event_ids
 		0  // dcgm_nvlink_rx_bytes
 	};
 
-	for (int event_idx = 0; event_idx < set_size; event_id++)
+	for (int event_idx = 0; event_idx < set_size; event_idx++)
 	{
 		uint event_id = event_ids_set[event_idx];
 		uint event_is_ratio = dcgm_metrics_ratio[event_id - dcgm_first_event_id];
