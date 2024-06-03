@@ -47,6 +47,9 @@ uint is_job_step_valid(job_id jid, job_id sid)
   snprintf(command, sizeof(command),"/usr/bin/sacct -j %lu.%lu -o State", jid, sid);
 
   uint no_header = 2;
+	// 'one_shot' creates a non-blocking pipe, so we then need
+	// to nest to while loops. We could test by setting one_shot
+	// to 1, so the popen module itself will block.
   uint one_shot  = 0;
   char sep = ' ';
   char *job_sched_state;
