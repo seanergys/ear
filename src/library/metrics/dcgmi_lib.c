@@ -35,6 +35,7 @@
 #include <common/system/monitor.h>
 #include <common/output/debug.h>
 #include <common/types/generic.h>
+#include <common/types/signature.h>
 
 #include <library/common/verbose_lib.h>
 #include <library/common/externs.h>
@@ -59,6 +60,7 @@
 
 typedef state_t (*dcgmi_lib_init_fn) (uint api, dcgmi_lib_t *dcgmi_data, int **event_info, int event_info_rows, int event_info_cols);
 
+typedef state_t (*dcgmi_lib_fp_coeffs) (int **coeffs, size_t coeffs_length);
 
 static uint dcgmi_lib_enabled = (USE_GPUS && DCGMI) ? DCGMI_DEFAULT : 0;
 
@@ -96,6 +98,8 @@ static char *dcgmi_ev_names[event_id_max] =
   "nvlink_rx_bytes"
 };
 
+static dcgmi_lib_fp_coeffs fp_coeffs_fn;
+
 /** Inits gpuprof_api static member and checks whether GPUPROF API is not DUMMY.
  * This function must be used, at least, before using gpuprof_api member anywhere in the module. */
 static uint is_gpuprof_api_valid();
@@ -127,7 +131,7 @@ static void verbose_current_event_set(int v_lvl);
 static void	dcgmi_data_tostr(gpuprof_t *d, char *d_str, size_t d_str_size, uint set_idx);
 
 /** Selects the dcgmi_lib init (allocation) function based on GPU model. */
-static state_t set_init_fn(dcgmi_lib_init_fn *dst_fn_ptr);
+static state_t set_init_fn(dcgmi_lib_init_fn *dst_fn_ptr, dcgmi_lib_fp_coeffs *fp_coeffs_ptr);
 
 /** Allocates event information for each event supported.
  * This event information consist of 2 values, indicating the
@@ -136,6 +140,9 @@ static state_t event_info_alloc(int ***event_info_src);
 
 /** Frees the memory allocated by the above function. */
 static void event_info_free(int ***event_info_src);
+
+/**   */
+static void dcgm_ratios_as_percent(gpuprof_t *event_metrics_set, uint *event_ids_set, int set_size);
 
 
 state_t dcgmi_lib_load()
@@ -256,8 +263,9 @@ void dcgmi_lib_dcgmi_sig_init(dcgmi_sig_t *dcgmi_sig)
 		dcgmi_sig->event_list_sets		= calloc(dcgmi_sig->set_cnt, sizeof(uint *));
 		dcgmi_sig->set_instances_cnt	= calloc(dcgmi_sig->set_cnt, sizeof(uint));
 		dcgmi_sig->event_metrics_sets	= calloc(dcgmi_sig->set_cnt, sizeof(gpuprof_t *));
+		dcgmi_sig->gpu_gflops					= calloc(gpuprof_api.devs_count, sizeof(float));
 
-		verbose_info2_master("DCGMI: %u GPUs detected", dcgmi_sig->gpu_cnt);
+		verbose_info2_master("DCGM: %u GPUs detected.", dcgmi_sig->gpu_cnt);
 
 		for (uint set = 0; set < dcgmi_sig->set_cnt; set++)
 		{
@@ -422,6 +430,61 @@ state_t dcgmi_lib_get_global_metrics(dcgmi_sig_t *dcgmi_sig)
 }
 
 
+void dcgmi_lib_compute_gpu_gflops(dcgmi_sig_t *dcgmi_sig, signature_t *metrics)
+{
+	if (metrics == NULL) return;
+  if (!dcgmi_lib_enabled || !dcgmi_sig) return;
+  if (!fp_coeffs_fn) return;
+	
+  int fp16_info[2];
+	dcgmi_lib_get_event_info(fp16_active, fp16_info);
+	gpuprof_t *dcgmis_data_16 = dcgmi_sig->event_metrics_sets[fp16_info[event_info_set]];
+
+	int fp32_info[2];
+	dcgmi_lib_get_event_info(fp32_active, fp32_info);
+	gpuprof_t *dcgmis_data_32 = dcgmi_sig->event_metrics_sets[fp32_info[event_info_set]];
+
+  int fp64_info[2];
+	dcgmi_lib_get_event_info(fp64_active, fp64_info);
+	gpuprof_t *dcgmis_data_64 = dcgmi_sig->event_metrics_sets[fp64_info[event_info_set]];
+
+  int tensor_info[2];
+	dcgmi_lib_get_event_info(tensor_active, tensor_info);
+	gpuprof_t *dcgmis_data_ten = dcgmi_sig->event_metrics_sets[tensor_info[event_info_set]];
+
+  float fp16, fp32, fp64, tensor, gpu_freq, gflops_cycle;    
+  int *coeffs;
+  fp_coeffs_fn(&coeffs, 4);
+
+	uint gpu_idx = 0;
+	for (gpu_idx = 0; gpu_idx < dcgmi_sig->gpu_cnt; gpu_idx++) 
+	{
+		fp16 = (float) (dcgmis_data_16[gpu_idx].values[fp16_info[event_info_pos]]);
+		fp32 = (float) (dcgmis_data_32[gpu_idx].values[fp32_info[event_info_pos]]);
+		fp64 = (float) (dcgmis_data_64[gpu_idx].values[fp64_info[event_info_pos]]);
+		tensor = (float) (dcgmis_data_ten[gpu_idx].values[tensor_info[event_info_pos]]);
+
+		gflops_cycle = (coeffs[0]*fp64 + coeffs[1]*fp32 + coeffs[2]*fp16 + coeffs[3]*tensor)/100;
+		gpu_freq = (float) (metrics->gpu_sig.gpu_data[gpu_idx].GPU_freq / 1000000.0);
+
+		dcgmi_sig->gpu_gflops[gpu_idx] = gflops_cycle * gpu_freq;
+#if WF_SUPPORT
+		metrics->gpu_sig.gpu_data[gpu_idx].GPU_GFlops = gflops_cycle * gpu_freq;
+#endif
+	}
+
+#if WF_SUPPORT
+	// Fill positions left
+	while (gpu_idx < MAX_GPUS_SUPPORTED)
+	{
+		metrics->gpu_sig.gpu_data[gpu_idx].GPU_GFlops = 0;
+		gpu_idx++;
+	}
+#endif
+	return;
+}
+
+
 void dcgmi_lib_reset_instances(dcgmi_sig_t *dcgmi_sig)
 {
 	if (!dcgmi_lib_enabled || !dcgmi_sig)
@@ -463,7 +526,7 @@ static state_t static_init()
 	// Set the allocate function based on the GPU model.
 	dcgmi_lib_init_fn init_fn;
 
-	if (state_fail(set_init_fn(&init_fn)))
+	if (state_fail(set_init_fn(&init_fn, &fp_coeffs_fn)))
 	{
 		verbose_warning("Error getting the device model (%s)", state_msg);
 		return_msg(EAR_ERROR, "Getting device model");
@@ -576,6 +639,11 @@ static state_t dcgmi_paction(void *p)
 		gpuprof_t *diff = dcgmi_data.gpuprof_diff[dcgmi_curr_ev_set];
 
 		gpuprof_read_diff(read2, read1, diff);
+		if (API_IS(gpuprof_api.api, API_DCGMI))
+		{
+			dcgm_ratios_as_percent(diff, dcgmi_data.dcgmi_event_ids[dcgmi_curr_ev_set],
+					dcgmi_data.dcgmi_set_sizes[dcgmi_curr_ev_set]);
+		}
 
 #if SHOW_DEBUGS
 		size_t nmemb = gpuprof_api.devs_count * dcgmi_data.dcgmi_set_sizes[dcgmi_curr_ev_set] * ID_SIZE;
@@ -718,7 +786,7 @@ static void verbose_current_event_set(int v_lvl)
 }
 
 
-static state_t set_init_fn(dcgmi_lib_init_fn *dst_fn_ptr)
+static state_t set_init_fn(dcgmi_lib_init_fn *dst_fn_ptr, dcgmi_lib_fp_coeffs *fp_coeffs_ptr)
 {
 	if (dst_fn_ptr)
 	{
@@ -729,14 +797,17 @@ static state_t set_init_fn(dcgmi_lib_init_fn *dst_fn_ptr)
 			case NVML_DEVICE_ARCH_TURING:
 				debug("Turing microarch detected.");
 				*dst_fn_ptr = dcgmi_lib_turing_init;
+				//*fp_coeffs_ptr = dcgmi_lib_turing_fp_coeffs; TODO add 
 				break;
 			case NVML_DEVICE_ARCH_HOPPER:
 				debug("Hopper microarch detected.");
 				*dst_fn_ptr = dcgmi_lib_hopper_init;
+				*fp_coeffs_ptr = dcgmi_lib_hopper_fp_coeffs;
 				break;
 			case NVML_DEVICE_ARCH_AMPERE:
 				debug("Ampere microarch detected.");
 				*dst_fn_ptr = dcgmi_lib_ampere_init;
+				*fp_coeffs_ptr = dcgmi_lib_ampere_fp_coeffs;
 				break;
 			default:
 				*dst_fn_ptr = NULL;
@@ -809,5 +880,36 @@ static void event_info_free(int ***event_info_src)
 		}
 		free(*event_info_src);
 		*event_info_src = NULL;
+	}
+}
+
+
+static void dcgm_ratios_as_percent(gpuprof_t *event_metrics_set, uint *event_ids_set, int set_size)
+{
+	static uint dcgm_metrics_ratio[event_id_max] =
+	{
+		1, // dcgm_gr_engine_active
+		1, // dcgm_sm_active
+		1, // dcgm_sm_occupancy
+		1, // dcgm_tensor_active
+		1, // dcgm_dram_active
+		1, // dcgm_fp64_active
+		1, // dcgm_fp32_active
+		1, // dcgm_fp16_active
+		0, // dcgm_pcie_tx_bytes
+		0, // dcgm_pcie_rx_bytes
+		0, // dcgm_nvlink_tx_bytes
+		0  // dcgm_nvlink_rx_bytes
+	};
+
+	for (int event_idx = 0; event_idx < set_size; event_idx++)
+	{
+		uint event_id = event_ids_set[event_idx];
+		uint event_is_ratio = dcgm_metrics_ratio[event_id - dcgm_first_event_id];
+
+		for (int gpu_idx = 0; gpu_idx < gpuprof_api.devs_count; gpu_idx++)
+		{
+			event_metrics_set[gpu_idx].values[event_idx] *= (1 + 99 * event_is_ratio);
+		}
 	}
 }

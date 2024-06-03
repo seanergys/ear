@@ -1461,7 +1461,7 @@ void ear_init()
 
   if (ear_lib_initialized)
 	{
-    verbose(1, "[%s] EAR Library already initialized. Exiting...", main_pid);
+    verbose(1, "[%d] EAR Library already initialized. Exiting...", main_pid);
     return;
   }
 
