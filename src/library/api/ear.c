@@ -513,7 +513,6 @@ state_t create_eid_folder(char *tmp, int jid, int sid, uint AID)
   verbose(WF_SUPPORT_VERB+1,"EID folder based on tmp=%s jid %d sid %d aid %u", tmp, jid, sid, AID);
 
   while (node_mgr_info_lock() != EAR_SUCCESS){};
-	char AID_path[MAX_PATH_SIZE];
 
 	/* Application folder for WF support */
   eid_folder(EID_application_path, sizeof(EID_application_path), tmp, jid, sid, AID);
@@ -1342,7 +1341,10 @@ static int get_ear_application_id(uint can_synch)
 			fd = open(AID_number_file, O_WRONLY|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR);
 			if (fd >= 0)
 			{
-				write(fd, &master_pid, sizeof(int));
+				if (write(fd, &master_pid, sizeof(int)) < 0)
+				{
+					error_lib("Writing the master PID to fd %d: %s", fd, strerror(errno));
+				}
 				close(fd);
 			}
 		} else
@@ -1358,7 +1360,10 @@ static int get_ear_application_id(uint can_synch)
 			}
 			if (fd >= 0)
 			{
-				read(fd, &master_pid, sizeof(int));
+				if (read(fd, &master_pid, sizeof(int)) < 0)
+				{
+					error_lib("Reading the master PID from fd %d: %s", fd, strerror(errno));
+				}
 				close(fd);
 				verbose(VPROC_INIT, "EARL[%d] master_id detected %d", ear_my_rank, master_pid);
 			} else

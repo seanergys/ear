@@ -79,23 +79,23 @@ state_t fine_grain_metrics_init()
 }
 
 
+#if MPI_OPTIMIZED
 static state_t earl_periodic_actions_mpi_opt_init(void *no_arg)
 {
-#if MPI_OPTIMIZED
-    if (module_mpi_is_enabled() && ear_mpi_opt)
-		{
-        memset(my_mpi_stats, 0, sizeof(mpi_information_t)*3);
-        memset(my_mpi_types, 0, sizeof(mpi_calls_types_t)*3);
-        metrics_start_cpupower();
-    }
-#endif
-    return EAR_SUCCESS;
+	if (module_mpi_is_enabled() && ear_mpi_opt)
+	{
+		memset(my_mpi_stats, 0, sizeof(mpi_information_t)*3);
+		memset(my_mpi_types, 0, sizeof(mpi_calls_types_t)*3);
+		metrics_start_cpupower();
+	}
+	return EAR_SUCCESS;
 }
+#endif
 
 
+#if MPI_OPTIMIZED
 static state_t earl_periodic_actions_mpi_opt(void *no_arg)
 {
-#if MPI_OPTIMIZED
 	if (module_mpi_is_enabled() && (ear_mpi_opt || traces_are_on()))
 	{
 		/* Read */
@@ -132,6 +132,6 @@ static state_t earl_periodic_actions_mpi_opt(void *no_arg)
 			local_max_sync_block = 0;
 		}
 	}
-#endif // MPI_OPTIMIZED
 	return EAR_SUCCESS;
 }
+#endif // MPI_OPTIMIZED
