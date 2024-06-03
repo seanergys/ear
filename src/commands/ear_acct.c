@@ -195,7 +195,7 @@ bool print_power_signature_format(application_t *app, char f)
             printf("%-8s ", "---");
             break;
         case 'g': //GBS
-            printf("%-10s ", "---");
+            printf("%-7s ", "---");
             break;
         case 'm': //MPI perc
             printf("%-5s ", "---");
@@ -204,7 +204,7 @@ bool print_power_signature_format(application_t *app, char f)
             printf("%-7s ", "---");
             break;
         case 'e': //energy
-            printf("%-10.2lf ", app->power_sig.DC_power*app->power_sig.time);
+            printf("%-12.2lf ", app->power_sig.DC_power*app->power_sig.time);
             break;
         case 'p': //DC power
             printf("%-10.2lf ", app->power_sig.DC_power);
@@ -221,11 +221,30 @@ bool print_power_signature_format(application_t *app, char f)
             printf("%-10.2lf ", app->power_sig.PCK_power);
             break;
         case 'G': //GPUs
-            printf(" %-7.2s/%-7.2s %-7.3s %-s%%/%s%% ", "---","---","---","---","---");
+            printf(" %-7.2s/%-7.2s %-7.3s %s%%/%-s%% ", "---","---","---","---","---");
             break;
+
+        //these format chars exist in Signatures, but not power_signature. Should be consumed
+        case 'r':
+            printf("%-3s/%-3s/%-8s ", "---", "---", "---");
+            break;
+        case 'L':
+            printf("%-10s ", "---");
+            printf("%-10s ", "---");
+            printf("%-10s ", "---");
+            break;
+        case 'C': 
+            printf("%-5s ", "---");
+            break;
+        case 'T':
+        case 's':
+        case 'I':
+            printf("%-10s ", "---");
+
+            break;
+
         default:
             return false; //return false if there isn't any field corresponding to this format
-            break;
 
     }
     return true;
@@ -244,13 +263,13 @@ bool print_signature_format(signature_t *sig, char f)
             printf("%-10.2lf ", sig->PCK_power);
             break;
         case 'g': //GBS
-            printf("%-10.2lf ", sig->GBS);
+            printf("%-7.2lf ", sig->GBS);
             break;
         case 'T': //TPI
-            printf("%-10.2lf ", sig->TPI);
+            printf("%-5.2lf ", sig->TPI);
             break;
         case 'C': //CPI
-            printf("%-10.2lf ", sig->CPI);
+            printf("%-5.2lf ", sig->CPI);
             break;
         case 's': //gflops
             printf("%-10.2lf ", sig->Gflops/sig->DC_power);
@@ -276,7 +295,7 @@ bool print_signature_format(signature_t *sig, char f)
         case 'r': // all three frequencies
             printf("%-3.2lf/", sig->avg_f/1000000.0);
             printf("%-3.2lf/", sig->def_f/1000000.0);
-            printf("%-8.2lf ", sig->avg_imc_f/1000000.0);
+            printf("%-6.2lf ", sig->avg_imc_f/1000000.0);
             break;
         case 'f': //frequency
             printf("%-8.2lf ", sig->avg_f/1000000.0);
@@ -301,7 +320,7 @@ bool print_signature_format(signature_t *sig, char f)
             }
             break;
         case 'e': //energy
-            printf("%-10.2lf ", sig->DC_power*sig->time);
+            printf("%-12.2lf ", sig->DC_power*sig->time);
             break;
         case 'G': //GPUs
             { // declare a custom scope to avoid compiler complains
@@ -327,11 +346,13 @@ bool print_signature_format(signature_t *sig, char f)
                     if (num_gpus > 0) {
                         gpu_util /= num_gpus;
                         gpu_mem_util /= num_gpus;
-                        printf(" %-7.2lf/%-7.2lf %-7.3lf %-7lu%%/%6lu%% ", gpu_total_power,
-                                gpu_power, (double)gpu_freq/1000000, gpu_util, gpu_mem_util);
+                        char mem_util_buf[16] = { 0 };
+                        snprintf(mem_util_buf, 16, "%6lu%%", gpu_mem_util);
+                        printf(" %-7.2lf/%-7.2lf %-7.3lf %7lu%%/%-6s ", gpu_total_power,
+                                gpu_power, (double)gpu_freq/1000000, gpu_util, mem_util_buf);
                     }
                     else {
-                        printf(" %-7.2lf/%-7.2s %-7.3s %-s%%/%s%% ", gpu_total_power, "---", "---", "---", "---"); 
+                        printf(" %-7.2lf/%-7.2s %-7.3s %s%%/%-s%% ", gpu_total_power, "---", "---", "---", "---"); 
                     }
                 }
             }
@@ -354,6 +375,7 @@ void print_app_format(application_t *app, char *fmt, int num_nodes)
 
 
     for (i = 0; i < strlen(fmt); i++) { //this is preferable to a while loop because of the use of continues
+        //is_consumed is 1 only if that format char corresponds to signature/power signature
         if (app->is_mpi) is_consumed = print_signature_format(&app->signature, fmt[i]);
         else is_consumed = print_power_signature_format(app, fmt[i]);
 
@@ -364,7 +386,7 @@ void print_app_format(application_t *app, char *fmt, int num_nodes)
                 if (strlen(app->job.app_id) > 30)
                     if (strchr(app->job.app_id, '/') != NULL)
                         strcpy(app->job.app_id, strrchr(app->job.app_id, '/')+1);
-                printf("%-10s ", app->job.app_id);
+                printf("%-16s ", app->job.app_id);
                 break;
             case 'j': //jobid
                 is_sbatch = (app->job.step_id == (uint32_t)BATCH_STEP) ? 1 : 0;
@@ -410,7 +432,7 @@ void print_header_format(char *fmt)
                 printf("%-16s ", "APPLICATION");
                 break;
             case 'j': //jobid
-                printf("%7s-%-4s ", "JOB", "STEP");
+                printf("%8s-%-4s ", "JOB", "STEP");
                 break;
             case 'u': //user id
                 printf("%-10s ", "USER");
@@ -422,9 +444,10 @@ void print_header_format(char *fmt)
                 printf("%-10s ", "NODES");
                 break;
             case 'p': //DC power
-                printf("%-8s ", "POWER(W)");
+                printf("%-10s ", "POWER(W)");
                 break;
             case 'G': //GPUs
+                printf(" %-14s %-8s %-13s ", "G-POW (T/U)", "G-FREQ","G-UTIL(G/MEM)");
                 break;
             case 'D': //DRAM power
                 printf("%-10s ", "DRAM POW(W)");
@@ -442,7 +465,7 @@ void print_header_format(char *fmt)
                 printf("%-5s ", "CPI");
                 break;
             case 's': //gflops
-                printf("%-12s ", "GFLOPS/W");
+                printf("%-10s ", "GFLOPS/W");
                 break;
             case 't': //time
                 printf("%-10s ", "TIME(s)");
@@ -497,6 +520,7 @@ void print_header_format(char *fmt)
 void print_applications(struct avg_apps *apps, int num_apps, char *fmt)
 {
     int i;
+    print_header_format(fmt);
     for (i = 0; i < num_apps; i++) {
         print_app_format(&apps[i].app, fmt, apps[i].num_nodes);
     }
@@ -540,7 +564,7 @@ void print_short_apps(application_t *apps, int num_apps, bool is_csv)
             }
         }
     } else {
-        print_applications(sorted_apps, new_num_apps, "janft");
+        print_applications(sorted_apps, new_num_apps, "juapNrtpgCseG");
     }
     free(sorted_apps);
 }
@@ -1119,7 +1143,7 @@ void read_from_database(char *user, query_adds_t *q_a)
     if (q_a->limit == 20 && strlen(csv_path) < 1)
         printf("\nBy default only the first 20 jobs are retrieved.\n\n");
 
-    bool is_csv = (strlen(csv_path) < 1);
+    bool is_csv = (strlen(csv_path) > 1);
     bool aggregate = !full_length;
     process_and_print_applications(apps, num_apps, is_csv, aggregate);
 
