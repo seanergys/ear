@@ -90,11 +90,15 @@ uint is_job_step_valid(job_id jid, job_id sid)
 
 int get_my_sched_node_rank()
 {
-  #if SCHED_SLURM
-		#if APP_MULTIPROCESS_NO_MPI_SUPPORT
+#if APP_MULTIPROCESS_NO_MPI_SUPPORT
+#if SCHED_SLURM
     if (ear_getenv("SLURM_LOCALID") != NULL) return atoi(ear_getenv("SLURM_LOCALID"));
-		#endif
-  #endif
+#endif
+#if SCHED_PBS
+		// WARNING: Not tested!
+    if (ear_getenv("PBS_TASKNUM") != NULL) return atoi(ear_getenv("SLURM_LOCALID"));
+#endif
+#endif
     return 0;
 }
 
