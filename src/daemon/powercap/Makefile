@@ -34,7 +34,7 @@ all:$(powercap_OBJS)  $(powercap_BINS)
 	$(CC) $(CC_FLAGS) $(CFLAGS) -shared $< -o $@ 
 
 dvfs.so:dvfs.o $(dvfs_DEPS)
-	$(CC) $(CC_FLAGS) $(CFLAGS) -shared $< -o $@ $(dvfs_DEPS)
+	$(CC) $(CC_FLAGS) $(CFLAGS) -shared $< -o $@ $(generic_DEPS)
 
 cpu_generic.so:cpu_generic.o $(generic_DEPS)
 	$(CC) $(CC_FLAGS) $(CFLAGS) -shared $< -o $@ $(generic_DEPS)

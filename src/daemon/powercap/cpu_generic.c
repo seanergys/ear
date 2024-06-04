@@ -57,6 +57,7 @@ static domain_settings_t settings = { .node_ratio = 0.02, .security_range = 0.01
 
 state_t disable()
 {
+    mgt_cpupow_powercap_reset(CPUPOW_DRAM);
     return mgt_cpupow_powercap_reset(CPUPOW_SOCKET);
 }
 
@@ -70,16 +71,11 @@ state_t enable(suscription_t *sus)
     }
 
     mgt_cpupow_load(&node_desc, 0);
-#if 0
-    bool capable = mgt_cpupow_powercap_is_capable(CPUPOW_SOCKET);
-    if (!capable) {
-        verbose(VEARD_PC, "CPU powercap: current system does not have powercap enabled via hardware. Disabling powercap");
-        return EAR_ERROR;
-    }
-#endif
 
     num_cpus = mgt_cpupow_count_devices(CPUPOW_SOCKET);
     num_dram = mgt_cpupow_count_devices(CPUPOW_DRAM);
+
+    debug("num cpus: %u num_dram: %u", num_cpus, num_dram);
 
     uint32_t total_cpu_power  = 0;
     uint32_t total_dram_power = 0;
@@ -97,8 +93,12 @@ state_t enable(suscription_t *sus)
         total_dram_power += dram_power[i];
     }
 
+    debug("total cpu tdp: %u total dram tdp: %u", total_cpu_power, total_dram_power);
      cpu_weight = (float)total_cpu_power  / (total_cpu_power + total_dram_power);
     dram_weight = (float)total_dram_power / (total_cpu_power + total_dram_power);
+    debug("cpu weigt: %.2lf dram weight: %.2lf", cpu_weight, dram_weight);
+
+    current_limit = UINT32_MAX;
 
     sus_cpu_pc = sus;
     return EAR_SUCCESS;
@@ -121,10 +121,15 @@ void plugin_get_settings(domain_settings_t *s)
 
 state_t set_powercap_value(uint pid, uint32_t domain, uint32_t limit, uint32_t *cpu_util)
 {
-    current_limit=limit;
     pc_on=1;
     debug("setting powercap %u", limit);
-    if (current_limit == POWER_CAP_UNLIMITED) return mgt_cpupow_powercap_reset(CPUPOW_SOCKET);
+    if (limit == current_limit) return EAR_SUCCESS;
+
+    current_limit = limit;
+    if (limit == POWER_CAP_UNLIMITED) {
+        mgt_cpupow_powercap_reset(CPUPOW_DRAM);
+        return mgt_cpupow_powercap_reset(CPUPOW_SOCKET);
+    }
 
     for (int32_t i = 0; i < num_cpus; i++) {
         cpu_power[i] = (limit * cpu_weight) / num_cpus;

@@ -49,14 +49,14 @@ comm_OBJS = \
 
 mang_OBJS = \
     $(SRCDIR)/management/libmgt.a \
-	$(SRCDIR)/metrics/libmetrics.a
+	$(SRCDIR)/metrics/libmetrics.a 
 
 ######## RULES
 
 all: $(tool_BINS)
 
 powercap_test: powercap_test.c $(mang_OBJS) $(comm_OBJS)
-	$(CCC) -o $@ $< $(LDFLAGS) $(mang_OBJS) $(SRCDIR)/daemon/local_api/libeard.a $(comm_OBJS)  -lpthread -ldl
+	$(CCC) -rdynamic -o $@ $< $(LDFLAGS) $(mang_OBJS) $(SRCDIR)/daemon/local_api/libeard.a $(comm_OBJS) -lpthread -ldl
 
 coeffs_compute: coeffs_compute.c $(mang_OBJS) $(db_OJBS) $(comm_OBJS)
 	$(CCC) -o $@ $< $(LDFLAGS) $(mang_OBJS) $(db_OJBS) $(comm_OBJS) $(DB_LDFLAGS) -lpthread -ldl

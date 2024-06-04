@@ -1,5 +1,6 @@
 
 #include "common/config/config_def.h"
+#include "common/types/generic.h"
 #include "metrics/imcfreq/imcfreq.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,6 +15,10 @@
 #include <metrics/metrics.h>
 
 #include <daemon/powercap/powercap_status_conf.h>
+
+#include <sys/types.h>
+
+#include <management/cpufreq/frequency.h>
 
 #define DEFAULT_PC_PLUGIN_NAME_CPU "cpu_generic"
 
@@ -74,7 +79,7 @@ static metrics_diff_t mrD;
 static state_t metrics_apis_init(void *whatever)
 {
     topology_init(&tp);
-    metrics_init(&m, &tp, NULL, 0);
+    metrics_init(&m, &tp, "/home/void/ear_install/lib/plugins/energy/energy_cpu_gpu.so", 0);
     //metrics_init_screen(&m, &tp);
     metrics_data_alloc(&mr1, &mr2, &mrD);
     metrics_read(&mr1);
@@ -84,6 +89,22 @@ static state_t metrics_apis_init(void *whatever)
 static char *nodepow_data_tostr(ulong avrg, char *buffer, size_t length)
 {
     sprintf(buffer, "!%lu", avrg);
+    return buffer;
+}
+
+static char *dram_data_tostr(ullong *diffs, double secs, char *buffer, size_t length)
+{
+    double power = 0.0;
+    double mean = 0.0;
+    int i, j;
+
+    buffer[0] = '\0';
+    for (i = j = 0; i < tp.socket_count; ++i) {
+        power = energy_cpu_compute_power(diffs[i], secs);
+        j += sprintf(&buffer[j], "%0.1lf ", power);
+        mean += power;
+    }
+    sprintf(&buffer[j], "!%0.1lf", mean);
     return buffer;
 }
 
@@ -103,6 +124,12 @@ static char *cpupow_data_tostr(ullong *diffs, double secs, char *buffer, size_t 
     return buffer;
 }
 
+static void energy_to_power_tostr(ulong *energy, ulong elapsed_time, char *buffer)
+{
+    sprintf(buffer, "!%.2lf", (float)(*energy)/elapsed_time);
+    
+}
+
 static state_t metrics_apis_update(void *whatever)
 {
     printf(" ====================================== \n");
@@ -116,10 +143,10 @@ static state_t metrics_apis_update(void *whatever)
     printf("IMC frequency %s\n", tmp);
     cpupow_data_tostr(mrD.pow_diff, mrD.time, tmp, sizeof(tmp));
     printf("CPU power %s\n", tmp);
-    nodepow_data_tostr(mrD.nod_avrg, tmp, sizeof(tmp));
+    dram_data_tostr(mrD.pow_diff, mrD.time, tmp, sizeof(tmp));
+    printf("DRAM power %s\n", tmp);
+    energy_to_power_tostr(&mrD.nod_avrg, 2000, tmp);
     printf("Node power %s\n", tmp);
-
-
 
 
 
@@ -128,12 +155,28 @@ static state_t metrics_apis_update(void *whatever)
     return EAR_SUCCESS;
 }
 
+uint32_t powercap_get_stress(uint32_t freq1, uint32_t freq2, uint32_t freq3, uint32_t freq4)
+{
+    return 0;
+}
+
+ulong pmgt_idle_def_freq = 3501000;
+
+void pmgt_get_app_req_freq(ullong domain, ullong *freq, uint32_t nodesize)
+{
+    for (int32_t i = 0; i < nodesize; i++) {
+        freq[i] = pmgt_idle_def_freq;
+    }
+    return;
+}
+
 int main(int argc, char *argv[])
 {
     uint32_t power = POWER_CAP_UNLIMITED;
     if (argc > 1) {
         power = atoi(argv[1]);
     }
+    verb_level = 2;
     // Monitoring
     monitor_init();
     suscription_t *sus = suscription();
@@ -143,6 +186,11 @@ int main(int argc, char *argv[])
     sus->time_burst    = 2000;
     sus->suscribe(sus);
 
+    char *time_env = getenv("POWERCAP_TEST_SLEEP");
+    uint32_t ttime = 100;
+    if (time_env) { 
+        ttime = atoi(time_env);
+    }
 
     //ear conf
     char ear_path[256] = { 0 };
@@ -183,9 +231,11 @@ int main(int argc, char *argv[])
     suscription_t *pc_sus = suscription();
     pcsym_fun.enable(pc_sus);
     uint64_t cpu_util = 0;
+
+    printf("Setting power to %u\n", power);
     pcsym_fun.set_powercap_value(0, 0, power, &cpu_util);
 
-    sleep(100);
+    sleep(ttime);
 
     return 0;
 }
