@@ -102,6 +102,7 @@ static void frequency_nfreq_to_npstate(ulong *f,uint *p,uint cpus)
         else p[i] = 0; //modified to be more conservative towards user performance
     }
 }
+
 static void frequency_npstate_to_nfreq(uint *p,ulong *f,uint cpus)
 {
     int i;
@@ -291,14 +292,16 @@ state_t dvfs_pc_thread_main(void *p)
     /* Copy init=end */
 	energy_cpu_data_copy(NULL, values_rapl_init, values_rapl_end);
 
+    /* Changed from acum_rapl to use the new (and proper) energy_cpu API */
     power_rapl = 0;
     for (int32_t i = 0; i < node_desc.socket_count; i++) {
+        //DRAM power
         power_rapl += energy_cpu_compute_power(values_diff[i], elapsed/1000.0);
+        //CPU power
         power_rapl += energy_cpu_compute_power(values_diff[node_desc.socket_count + i], elapsed/1000.0);
     }
 
     my_limit = (float)current_dvfs_pc;
-    //vector_print_pstates(prev_pstate, node_size);
     debug("Current power %f current limit %f (%u cpus)", power_rapl, my_limit,node_size);
 
     if (power_rapl < 0.5) return EAR_SUCCESS;
@@ -311,10 +314,6 @@ state_t dvfs_pc_thread_main(void *p)
     verbose_frequencies(node_size, c_freq);
 
     if (power_rapl > my_limit){ /* We are above the PC , reduce freq*/
-        //print_frequencies(node_size,c_freq);
-        //vector_print_pstates(c_pstate, node_size);
-        //print_frequencies(node_size,c_req_f);
-        //vector_print_pstates(t_pstate, node_size);
         verbose(VEARD_PC+1,"%sCurrent freq freq0 %lu freqn %lu%s", COL_RED, c_freq[0], c_freq[node_size-1],COL_CLR);
         if (current_dvfs_pc < default_dvfs_pc) {
             dvfs_ask_def = 1;
@@ -344,10 +343,6 @@ state_t dvfs_pc_thread_main(void *p)
         verbose(VEARD_PC+1,"%spower above limit. Curr %.2f Limit %.2f, setting freq0 %lu freqm %lu%s", COL_RED, power_rapl, my_limit, c_freq[0], c_freq[node_size-1], COL_CLR);
 
     }else{ /* We are below the PC */
-        //if (is_null_f(c_req_f)) {
-            //debug("current requested frequency is not set");
-            //return EAR_SUCCESS;
-        //}
         frequency_nfreq_to_npstate(c_req_f,t_pstate,node_size);
         if (higher_pstate(c_pstate,t_pstate)){
 
