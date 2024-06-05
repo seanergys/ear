@@ -218,7 +218,7 @@ state_t energy_model_project_time(signature_t *signature, ulong from_ps, ulong t
 				double fp32 = dcgmis_data_32[g].values[fp32_info[event_info_pos]];
 				double fp64 = dcgmis_data_64[g].values[fp64_info[event_info_pos]];
 				double tensor = dcgmis_data_ten[g].values[tensor_info[event_info_pos]];
-				double dram   = dcgmis_data_dram[g].values[dram_info[event_info_pos]];
+				// double dram   = dcgmis_data_dram[g].values[dram_info[event_info_pos]];
 
         ulong df =  coeff->pstate_ref - coeff->pstate;
         proj_time[g]  = project_time(coeff, ctime, fp16, fp32, fp64, tensor, df);

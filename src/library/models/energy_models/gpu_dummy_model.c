@@ -38,8 +38,6 @@
 /* These coefficiency type must be specific per model */
 /* Do we need a gpu_coefficient_t or can we use the same ? */
 static coefficient_t **coefficients;
-static coefficient_t *coefficients_sm;
-static int num_coeffs;
 static uint num_gpu_pstates;
 static uint num_gpus = 0;
 static uint gpu_model_init = 0;
@@ -51,11 +49,6 @@ static const uint *gpuf_list_items;
 
 /** Returns whether the pair <from_ps, to_ps> is between the configured pstate list. */
 static int valid_range(ulong from_ps, ulong to_ps);
-
-/** Computes the projection of the \ref signature loop time by using \ref coeff.
- * \pre All pointers must be initialized. Also freq_dst and signature's CPI must be non-zero. */
-static double project_time(coefficient_t *coeff, double FP64, double FP16, double FP32, double TENSOR, double CTIME, double DRAM);
-
 
 
 /** Computes the projection of the \ref signature DC node power by using \ref coeffs.
@@ -72,7 +65,6 @@ static uint projection_available(ulong from_ps, ulong to_ps);
 state_t energy_model_init(char *ear_etc_path, char *ear_tmp_path, architecture_t *arch_desc)
 {
   uint i, ref;
-  char * hack_file = ear_getenv(HACK_EARL_GPU_COEFF_FILE);
 
 	debug("Using gpu_model");
 
@@ -110,11 +102,9 @@ state_t energy_model_init(char *ear_etc_path, char *ear_tmp_path, architecture_t
     }
   }
 
-
-  char coeffs_path[GENERIC_NAME];
-
-
 #if 0
+  char * hack_file = ear_getenv(HACK_EARL_GPU_COEFF_FILE);
+  char coeffs_path[GENERIC_NAME];
   if (hack_file == NULL){
 	  verbose(0, "ERROR: GPU coefficients are not yet supported in ear.conf. Define %s", HACK_EARL_GPU_COEFF_FILE);
 	  return EAR_ERROR;
@@ -313,15 +303,6 @@ static int valid_range(ulong from_ps, ulong to_ps)
 {
 	if ((from_ps < num_gpu_pstates) && (to_ps < num_gpu_pstates)) return 1;
 	else return 0;
-}
-
-
-
-static double project_time(coefficient_t *coeff, double FP64, double FP16, double FP32, double TENSOR, double CTIME, double DRAM)
-{
-	debug("project_time with FP 64 %lf FP16 %lf FP32 %lf TENSOR %lf CTIME %lf DRAM %lf", FP64, FP16, FP32, TENSOR, CTIME, DRAM);
-	/* Replace this function with the model */
-	return (double)CTIME;
 }
 
 

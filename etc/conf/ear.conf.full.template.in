@@ -120,6 +120,8 @@ EARGMEnergyPeriodT1=90
 EARGMEnergyPeriodT2=259200
 # '-' are Joules, 'K' KiloJoules and 'M' MegaJoules.
 EARGMEnergyUnits=K
+# EARGM events will be registered through the selected report plugins 
+EARGMReportPlugins=mysql.so
 # Use aggregated periodic metrics or periodic power metrics.
 # Aggregated metrics are only available when EARDBD is running.
 EARGMEnergyUseAggregated=1

@@ -356,7 +356,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
 
     ulong curr_imc_freq;
     uint eUFS = dyn_unc;
-    uint curr_imc_pstate;
+    uint curr_imc_pstate = 0;
 
     // TODO: Can we assign this values calling some function who return values based on current architecture?
     ulong max_cpufreq_sel = 0, min_cpufreq_sel = 10000000;
