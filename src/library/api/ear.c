@@ -19,7 +19,7 @@
 #define _GNU_SOURCE
 //#define SHOW_DEBUGS 1
 //
-#define VPROC_INIT 3
+#define VPROC_INIT 2
 #define VJOB_INIT  2
 #define VPROC_MGT  3
 #define VNTASKS_INIT 3
@@ -61,6 +61,7 @@
 #include <common/colors.h>
 #include <common/utils/overhead.h>
 #include <common/system/folder.h>
+#include <common/system/lock.h>
 #include <common/system/version.h>
 #include <common/environment.h>
 #include <library/common/verbose_lib.h>
@@ -128,6 +129,7 @@ ear_mgt_t *external_mgt;
 void ear_finalize(int exit_status);
 static uint cancelled = 0;
 
+static pthread_mutex_t earl_th_locks = PTHREAD_MUTEX_INITIALIZER;
 
 #define MASTER_ID masters_info.my_master_rank
 
@@ -261,6 +263,7 @@ static ulong dynais_calls = 0;
 uint limit_exceeded = 0;
 
 extern ulong perf_accuracy_min_time;
+static uint exiting = 0;
 
 
 /* Checks whether the job-step folder was created.
@@ -513,7 +516,6 @@ state_t create_eid_folder(char *tmp, int jid, int sid, uint AID)
   verbose(WF_SUPPORT_VERB+1,"EID folder based on tmp=%s jid %d sid %d aid %u", tmp, jid, sid, AID);
 
   while (node_mgr_info_lock() != EAR_SUCCESS){};
-	char AID_path[MAX_PATH_SIZE];
 
 	/* Application folder for WF support */
   eid_folder(EID_application_path, sizeof(EID_application_path), tmp, jid, sid, AID);
@@ -866,7 +868,9 @@ void attach_shared_regions()
 				if ((bfd = file_lock_create(block_file))<0){
 								error("Creating lock file for shared memory:%s (%s)", block_file, strerror(errno));
 				}
-        xsnprintf(sem_file, sizeof(sem_file), "ear_semaphore_%u_%s", ID, node_name);
+
+				/* We were using ID here but that was an error */
+        xsnprintf(sem_file, sizeof(sem_file), "ear_semaphore_%u_%s", AID, node_name);
         lib_shared_lock_sem = sem_open(sem_file, O_CREAT, S_IRUSR|S_IWUSR, 1);
         if (lib_shared_lock_sem == SEM_FAILED){
           error("Creating/Attaching sempahore %s (%s)", sem_file, strerror(errno));
@@ -1464,6 +1468,7 @@ void ear_init()
     verbose(1, "[%d] EAR Library already initialized. Exiting...", main_pid);
     return;
   }
+	exiting = 0;
 
   timestamp_getfast(&ear_application_time_init);
 
@@ -1764,7 +1769,7 @@ void ear_init()
 				start_mpi(&application.job);
 				debug("Job time initialized");
 
-				verbose(VPROC_INIT-1,"EARL[%d][%d] EARD connection section EARD=%d",ear_my_rank, getpid(), eard_ok);
+				verbose(VPROC_INIT-1,"EARL[%d][%d] EARD connection section EARD=%d MASTER=%u",ear_my_rank, getpid(), eard_ok, my_id==0);
        if (eard_ok) { // all processes will connect with eard
 
                     char *col;
@@ -1816,9 +1821,11 @@ void ear_init()
 
 				debug("Shared region creation section");
 				if (!my_id) {
+								verbose(VPROC_INIT,"EARL[%d][%d] creating", ear_my_rank, getpid());
 								debug("%sI'm the master, creating shared regions%s",COL_BLU,COL_CLR);
 								create_shared_regions();
 				} else {
+								verbose(VPROC_INIT,"EARL[%d][%d] attaching", ear_my_rank, getpid());
 								attach_shared_regions();
 				}
 				verbose(VPROC_INIT,"EARL[%d][rank = %d]  Created/Attached shared regions Total procs %d", getpid(), ear_my_rank, lib_shared_region->num_processes);
@@ -2291,18 +2298,34 @@ static void print_resource_usage()
 
 }
 */
-
+#define MAX_TRIES_FINALIZE 100
 void ear_finalize(int exit_status)
 {
 				uint fake_error = 0;
+				state_t st;
+				uint attemps = 0;
 				char *cfake = ear_getenv(FAKE_PROCESS_ERRROR);
 				if (cfake != NULL) fake_error = atoi(cfake);
+				/* This lock is to avoid the earl_periodic_action to be excuted at the same time than ear_finalize */
+				do{
+					st = ear_trylock(&earl_th_locks);
+					attemps++;
+				}while ((st != EAR_SUCCESS) && (attemps < MAX_TRIES_FINALIZE)); 
+				if (state_fail(st)){ 
+					verbose(2, "%sEARL[%d][%d] at %s[WARNING]%s ear_finalize without lock, continuing to avoid app block", COL_YLW, ear_my_rank, getpid(), node_name, COL_CLR);
+				}
+				exiting = 1;
+				if (state_ok(st)){
+					ear_unlock(&earl_th_locks);
+				}
+				/* We don't execute the whole app with the lock */
 
 	if (!ear_lib_initialized)
 	{
 		verbose(1, "%s[%d][%s][WARNING]%s EARL not initialized. Returning...", COL_YLW, main_pid, node_name, COL_CLR);
 		return;
 	}
+       
 
 				if (synchronize_masters == 0) return; // TODO: why?
 
@@ -2954,6 +2977,9 @@ state_t earl_periodic_actions(void *no_arg)
 	timestamp_t curr_periodic_time;
 	uint new_ear_guided = ear_guided;
 
+	// exiting is true when earl is in the ear_finalize function
+	if (exiting) return EAR_SUCCESS;
+
 	overhead_start(id_ovh_earl_monitor);
 
 	if (ear_guided == TIME_GUIDED)
@@ -2978,7 +3004,13 @@ state_t earl_periodic_actions(void *no_arg)
 	if (!module_mpi_is_enabled() || (ear_guided == TIME_GUIDED))
 	{
 		//if (ear_guided == TIME_GUIDED) verbose_master(1, "(Time guided) elapsed %lu iteration iters %d period %u", period_elapsed, ear_iterations, lib_period);
-		states_new_iteration(my_id, ITERS_PER_PERIOD, ear_iterations, 1, 1, lib_period, 0);
+		/* This lock is to avoid this function to be called at the same time than ear_finalize */
+		state_t st = ear_trylock(&earl_th_locks);
+		if (state_ok(st)){
+			if (!exiting)
+				states_new_iteration(my_id, ITERS_PER_PERIOD, ear_iterations, 1, 1, lib_period, 0);
+			ear_unlock(&earl_th_locks);
+		}
 		if (avg_mpi_calls_per_second() >= MAX_MPI_CALLS_SECOND) limit_exceeded = 1;
 	}
 
@@ -3038,6 +3070,8 @@ void ear_fork_epilog()
 static void  reset_earl_environment()
 {
   ear_lib_initialized = 0;
+	/* This lock is used per-process, we unlock just in case it was already locked */
+	ear_unlock(&earl_th_locks);
   monitor_dispose();
   metrics_lib_reset();
   report_dispose(&rep_id);
@@ -3048,7 +3082,7 @@ static void  reset_earl_environment()
 
 void ear_fork_new_child()
 {
-  verbose(WF_SUPPORT_VERB,"EAR: New process %d!", getpid());
+  verbose(2,"EAR: New process %d!", getpid());
   reset_earl_environment();
   ear_init();
 

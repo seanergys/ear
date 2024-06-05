@@ -485,7 +485,7 @@ void eards_connection_failure()
 void eards_new_process_disconnect()
 {
 	// This function closes the EARD fd for new processes to connect again
-	#warning "This part is pending to be testes"
+	#warning "This part is pending to be tested"
 	close(ear_fd_req);
   close(ear_fd_req_global); 
   close(ear_fd_ack);        
