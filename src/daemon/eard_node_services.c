@@ -1162,6 +1162,7 @@ int eard_system(eard_head_t *head, int req_fd, int ack_fd)
 
     switch (head->req_service) {
         case RPC_WRITE_APPLICATION:
+        case RPC_WRITE_WF_APPLICATION:
             // Initializing
             memset(&app, 0, sizeof(application_t));
             serial_reset(&wb, head->size);
@@ -1172,7 +1173,12 @@ int eard_system(eard_head_t *head, int req_fd, int ack_fd)
                 application_deserialize(&wb, &app);
 
                 if (!eard_local_conn[con_id].anonymous) {
-                    powermon_mpi_signature(&app);
+									if (head->req_service == RPC_WRITE_APPLICATION){
+                  	powermon_mpi_signature(&app);
+									}
+									if (head->req_service == RPC_WRITE_WF_APPLICATION){
+										report_applications(&rid, &app, 1);
+									}
                 }
             }
             break;

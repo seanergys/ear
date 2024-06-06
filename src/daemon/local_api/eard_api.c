@@ -582,6 +582,21 @@ ulong eards_write_app_signature(application_t *app)
     #endif
 }
 
+ulong eards_write_wf_app_signature(application_t *app)
+{
+    #if WF_SUPPORT
+    serial_clean(&b);
+    application_serialize(&b, app);
+    return eard_rpc(RPC_WRITE_WF_APPLICATION, serial_data(&b), serial_size(&b), NULL, 0);
+    #else
+		/* This case should never happen */
+    init_service(WRITE_WF_APP_SIGNATURE);
+    memcpy(&req.req_data.app, app, sizeof(application_t));
+    return sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ulong), "APP signature", 0);
+    #endif
+}
+
+
 ulong eards_write_event(ear_event_t *event)
 {
     #if WF_SUPPORT
@@ -608,20 +623,6 @@ ulong eards_write_loop_signature(loop_t *loop)
     #endif
 }
 
-ulong eards_get_data_size_rapl() // size in bytes
-{
-    if (!app_connected) return sizeof(ulong);
-    init_service(DATA_SIZE_RAPL);
-    rapl_size = sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ulong), "RAPL size", 0);
-    return rapl_size;
-}
-
-int eards_read_rapl(unsigned long long *values)
-{
-    if (!app_connected) { values[0]=0; return EAR_SUCCESS; }
-    init_service(READ_RAPL);
-    return (int) sendack((char *) &req, sizeof(req), (char *) values, rapl_size, "RAPL read", 1);
-}
 
 int eards_node_dc_energy(void *energy,ulong datasize)
 {
@@ -658,6 +659,28 @@ state_t eards_get_state(eard_state_t *state)
 {
     return eard_rpc(RPC_GET_STATE, NULL, 0, (char *) state, sizeof(eard_state_t));
 }
+
+
+
+ulong eards_get_data_size_rapl() // size in bytes
+{
+    if (!app_connected) return sizeof(ulong);
+    init_service(DATA_SIZE_RAPL);
+    rapl_size = sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ulong), "RAPL size", 0);
+    return rapl_size;
+}
+
+int eards_read_rapl(unsigned long long *values)
+{
+    if (!app_connected) { values[0]=0; return EAR_SUCCESS; }
+    init_service(READ_RAPL);
+    return (int) sendack((char *) &req, sizeof(req), (char *) values, rapl_size, "RAPL read", 1);
+}
+
+
+
+
+
 
 static state_t create_base_path(char *base_path, size_t base_path_sz, char *tmp_path, uint job_step_id, uint app_local_id)
 {

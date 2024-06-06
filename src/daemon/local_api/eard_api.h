@@ -34,23 +34,6 @@ void eards_connection_failure();
 state_t eard_new_application(application_t *app);
 state_t eard_end_application(application_t *app);
 
-/** \defgroup rapl_services RAPL services
- * \ingroup local_api
- * \todo Add a description.
- * @{ */
-/** Sends a request to read the RAPL counters. Returns -1 if there's an error,
- * and on success returns 0 and fills the array \p values with the counters' values. */
-int eards_read_rapl(unsigned long long *values);
-/** Sends the request to start the RAPL counters. Returns 0 on success or if
- * the application is not connected, -1 if there's an error. */
-int eards_start_rapl();
-/** Sends the request to reset the RAPL counters. Returns 0 on success or if
- * the application is not connected, -1 if there's an error. */
-int eards_reset_rapl();
-/** Requests the rapl data size.
- * Returns -1 if there's an error, and the actual value otherwise. */
-unsigned long eards_get_data_size_rapl();
-/** @} */
 typedef struct eard_state_s {
     version_t version;
     uint gpus_supported_count;
@@ -67,6 +50,7 @@ state_t eards_get_state(eard_state_t *state);
 
 // Request to write an application signature. Returns 0 on success, -1 on error.
 ulong eards_write_app_signature(application_t *app_signature);
+ulong eards_write_wf_app_signature(application_t *app_signature);
 
 // Request write a loop signature into the DB. Returns 0 on success, -1 on error.
 ulong eards_write_loop_signature(loop_t *loop_signature);
@@ -92,6 +76,22 @@ int eards_gpu_support();
 // Returns basic EARD compile configured limits & options for verification
 state_t eards_get_state(eard_state_t *state);
 
+
+/** \defgroup rapl_services RAPL services
+ * \ingroup local_api
+ * \todo Add a description.
+ * @{ */
+/** Sends a request to read the RAPL counters. Returns -1 if there's an error,
+ * and on success returns 0 and fills the array \p values with the counters' values. */
+int eards_read_rapl(unsigned long long *values);
+/** Requests the rapl data size.
+ * Returns -1 if there's an error, and the actual value otherwise. */
+unsigned long eards_get_data_size_rapl();
+/** @} */
+
+
+
+
 // Legacy non-RPC services
 #define CONNECT_EARD_NODE_SERVICES      5
 #define DISCONNECT_EARD_NODE_SERVICES   1000
@@ -105,6 +105,7 @@ state_t eards_get_state(eard_state_t *state);
 #define READ_DC_ENERGY                  400
 #define ENERGY_FREQ                     403
 #define GPU_SUPPORTED                   505
+#define WRITE_WF_APP_SIGNATURE          301
 #define NEW_API_SERVICES                1000
 
 #endif //EARD_LOCAL_API_FUNCTIONS_H

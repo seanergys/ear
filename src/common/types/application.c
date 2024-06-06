@@ -564,3 +564,18 @@ void application_deserialize(serial_buffer_t *b, application_t *app)
     power_signature_deserialize(b, &app->power_sig);
     signature_deserialize(b, &app->signature);
 }
+
+
+
+void fill_basic_sig(application_t *app)
+{
+	app->power_sig.DC_power 		= app->signature.DC_power;
+	app->power_sig.DRAM_power   = app->signature.DRAM_power;
+	app->power_sig.PCK_power    = app->signature.PCK_power;
+	app->power_sig.EDP          = app->signature.EDP;
+	app->power_sig.max_DC_power = app->signature.DC_power;
+	app->power_sig.min_DC_power = app->signature.DC_power;
+	app->power_sig.time         = app->signature.time;
+	app->power_sig.avg_f        = app->signature.avg_f;
+	app->power_sig.def_f        = app->signature.def_f;
+}

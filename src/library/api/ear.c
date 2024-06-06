@@ -128,6 +128,8 @@ ear_mgt_t *external_mgt;
 
 void ear_finalize(int exit_status);
 static uint cancelled = 0;
+/* This var means if the appid has to report with report_application or report_misc(WF_APPLICATION) */
+static uint first_application = 1;
 
 static pthread_mutex_t earl_th_locks = PTHREAD_MUTEX_INITIALIZER;
 
@@ -1498,6 +1500,7 @@ void ear_init()
 	}else{
 		ear_my_rank = 0;
 		ear_my_size = 1;
+		if (get_my_sched_node_rank() > 0) first_application = 0;
 	}
 #endif
 
@@ -2463,9 +2466,12 @@ void ear_finalize(int exit_status)
 #endif
 								end_job(&application.job);
 								end_mpi(&application.job);
-								verbose(2, "EARL[%d][%d] Application report", ear_my_rank,getpid());
-								if (report_applications(&rep_id,&application,1) != EAR_SUCCESS){
+								verbose(2, "EARL[%d][%d] Application report (type %s)", ear_my_rank,getpid(),( first_application? "Regular App":"WF App"));
+								if (first_application && report_applications(&rep_id,&application,1) != EAR_SUCCESS){
 												verbose_master(1,"Error reporting application");
+								}else{
+									fill_basic_sig(&application);
+									report_misc(&rep_id, WF_APPLICATION, &application,1);
 								}
                 if (masters_info.my_master_rank == 0){
 								  report_mpi_application_data(1, &application);
@@ -3079,6 +3085,7 @@ static void  reset_earl_environment()
   ear_lib_initialized = 0;
 	/* This lock is used per-process, we unlock just in case it was already locked */
 	ear_unlock(&earl_th_locks);
+	first_application = 0;
   monitor_dispose();
   metrics_lib_reset();
   report_dispose(&rep_id);
