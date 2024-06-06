@@ -1095,7 +1095,7 @@ static int get_local_id(char *node_name)
 	} else
 	{
 		/* This lock file is used to select the master */
-		snprintf(master_lock_filename, sizeof(master_lock_filename), "%s/.master_lock", EID_folder);
+		xsnprintf(master_lock_filename, sizeof(master_lock_filename), "%s/.master_lock", EID_folder);
 
 		// verbose(WF_SUPPORT_VERB, "Using EID lock path %s", master_lock_filename);
 		debug("Using lock file %s",master_lock_filename);
