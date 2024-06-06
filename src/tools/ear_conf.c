@@ -64,6 +64,7 @@ int main(int argc,char *argv[])
         } else {
             printf("\nNODE_CONF FOR NODE: %s\n\n", nodename);
             print_my_node_conf(my_node_conf);
+						printf("Default policy after filter is %u\n", my_cluster.default_policy);
             free(my_node_conf->policies);
             free(my_node_conf);
         }
