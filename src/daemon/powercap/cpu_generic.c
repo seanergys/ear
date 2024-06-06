@@ -53,7 +53,7 @@ static uint32_t *dram_power = NULL;
 
 static suscription_t *sus_cpu_pc;
 
-static domain_settings_t settings = { .node_ratio = 0.02, .security_range = 0.01 }; //
+static domain_settings_t settings = { .node_ratio = 0.1, .security_range = 0.01 }; //
 
 state_t disable()
 {
