@@ -796,8 +796,8 @@ void set_default_island_conf(node_island_t *isl_conf, uint id)
 
 void set_default_conf_install(conf_install_t *inst)
 {
-    sprintf(inst->obj_ener, "default");
-    sprintf(inst->obj_power_model, "default");
+    sprintf(inst->obj_ener, "energy_cpu_gpu.so");
+    sprintf(inst->obj_power_model, "avx512_model.so");
 }
 
 /*
