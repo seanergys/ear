@@ -54,8 +54,6 @@ static int    *fds_sgv;
 
 void mgt_intel_pstate_load(topology_t *tp, mgt_ps_driver_ops_t *ops)
 {
-    //char freq_max_string[64];
-    //char freq_min_string[64];
     int set_frequency = 1;
     int set_governor  = 1;
 
@@ -88,8 +86,6 @@ void mgt_intel_pstate_load(topology_t *tp, mgt_ps_driver_ops_t *ops)
     cpufreq_base_init(tp, &bf);
     // Saving some required data
     cpu_count     = tp->cpu_count;
-    //freq_max0     = (ullong) atoi(freq_max_string);
-    //freq_min0     = (ullong) atoi(freq_min_string);
     freq_max      = freq_max0;
     current_list  = calloc(cpu_count, sizeof(ullong));
     //
