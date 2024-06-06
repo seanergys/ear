@@ -228,7 +228,8 @@ Tag=6148_GPU  max_avx512=2.2 max_avx2=2.6 max_power=5000 min_power=150 error_pow
 DefaultPowerPolicy=min_time
 Policy=monitoring Settings=0 DefaultPstate=1 Privileged=0
 Policy=min_time Settings=0.7 DefaultPstate=4 Privileged=0
-Policy=min_energy Settings=0.05 DefaultPstate=1 Privileged=1
+Policy=min_energy Settings=0.05 DefaultPstate=1 Privileged=0
+Policy=optimize Settings=0.00 DefaultPstate=1 Privileged=0
 #
 # For homogeneous systems, default frequencies can be easily specified using freqs.
 # For heterogeneous systems it is preferred to use pstates or use tags 

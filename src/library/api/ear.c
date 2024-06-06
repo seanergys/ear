@@ -2316,6 +2316,7 @@ void ear_finalize(int exit_status)
 				do{
 					st = ear_trylock(&earl_th_locks);
 					attemps++;
+					usleep(1000);
 				}while ((st != EAR_SUCCESS) && (attemps < MAX_TRIES_FINALIZE)); 
 				if (state_fail(st)){ 
 					verbose(2, "%sEARL[%d][%d] at %s[WARNING]%s ear_finalize without lock, continuing to avoid app block", COL_YLW, ear_my_rank, getpid(), node_name, COL_CLR);
@@ -3016,7 +3017,7 @@ state_t earl_periodic_actions(void *no_arg)
 			if (!exiting)
 				states_new_iteration(my_id, ITERS_PER_PERIOD, ear_iterations, 1, 1, lib_period, 0);
 			ear_unlock(&earl_th_locks);
-		}
+		}else return EAR_SUCCESS;
 		if (avg_mpi_calls_per_second() >= MAX_MPI_CALLS_SECOND) limit_exceeded = 1;
 	}
 
