@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 0
 
 #include <stdlib.h>
 #if !SHOW_DEBUGS
@@ -283,10 +283,9 @@ state_t energy_model_project_power(signature_t *signature, ulong from_ps, ulong 
 			if (!dcgmis_data_64 || !dcgmis_data_32 || !dcgmis_data_16
 					|| !dcgmis_data_ten || !dcgmis_data_dram)
 				return EAR_ERROR;
-
 			for (uint g = 0; g < num_gpus; g++)
 			{
-				//debug("Going to project the power for the GPU %d...", g);
+				debug("Going to project the power for the GPU %d...", g);
 				double cpower = signature->gpu_sig.gpu_data[g].GPU_power;
 				double fp16 = dcgmis_data_16[g].values[fp16_info[event_info_pos]];
 				double fp32 = dcgmis_data_32[g].values[fp32_info[event_info_pos]];
@@ -358,11 +357,11 @@ static double project_power(coefficient_gpu_t *coeff, double cpower, double fp16
   double fp_act;
   double proj_power;
   
-  fp_act = (fp16 + fp32 + fp64 + tensor)/100;
-  proj_power = coeff->A*cpower + coeff->B*fp_act + coeff->C*dram + coeff->D*to_freq/1000000.0; //+ coeff->E; 
+  fp_act = fp16 + fp32 + fp64 + tensor;
+  proj_power = coeff->A*cpower + coeff->B*fp_act/100 + coeff->C*dram/100 + coeff->D*to_freq/1000000.0; 
   	
-  //debug("Power: %lf = %lf x %lf + %lf x %lf + %lf x %lf + %lf x %lu", 
-  //      proj_power, coeff->A, cpower, coeff->B, fp_act, coeff->C, dram, coeff->D, to_freq);
+  debug("PROJPower: %lf = %lf x %lf + %lf x %lf + %lf x %lf + %lf x %lu", 
+        proj_power, coeff->A, cpower, coeff->B, fp_act/100, coeff->C, dram/100, coeff->D, to_freq/1000000.0);
 
   return proj_power;
 }

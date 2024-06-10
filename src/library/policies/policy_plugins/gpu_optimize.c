@@ -90,8 +90,10 @@ static int gpu_count;
 static uint set_instances_cnt = 0;
 // check all sets of Tensor, FP and DRAM activities 
 // TODO use automatic value
-// A100 case: 0 -> fp32 and tf. 1 -> fp64. dram -> 2
-static uint dcgmi_ref_set = 2; 
+// A100 2 sets case: 0 -> fp32 and tf. 1 -> fp64. dram -> 2
+// H100 1 set
+// use dcgmis->set_cnt to get the number of sets
+static uint dcgmi_ref_set = 0; 
 
 static energy_model_t gpu_energy_model;
 
@@ -211,7 +213,6 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
   ulong *new_freq=freqs->gpu_freq;
   ulong util = 0;
   ulong tutil = 0;
-  float gpu_gflops;
   *ready = EAR_POLICY_READY;
 
 #if USE_GPUS
@@ -265,8 +266,6 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
 	    } 
       else
 	    {
-	      gpu_gflops = get_gflops_cycle(my_sig, i);
-        debug("GPU[%d] gpu_gflops %f", i, gpu_gflops);
         if (GPU_metric_ready(my_sig))
 	      {
 	        metric_ready = 1;
@@ -277,12 +276,11 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
             float current_metric, last_metric;
             sig_aux.gpu_sig.gpu_data[i].GPU_freq = gpuf_list[i][0];
             GPU_get_metric(i, &sig_aux, &last_metric);
-            
             for (int j = 1; j < gpuf_list_items[i]; j++)
             {
               if (power_projections[j][i] != 0)
               {
-                //debug("GPU[%d] pstate %d gfreq %ld power_projections %lf", i, j, gpuf_list[i][j], power_projections[j][i]);
+                debug("GPU[%d] pstate %d gfreq %ld power_projections %lf", i, j, gpuf_list[i][j], power_projections[j][i]);
                 sig_aux.gpu_sig.gpu_data[i].GPU_power = power_projections[j][i];
                 sig_aux.gpu_sig.gpu_data[i].GPU_freq = gpuf_list[i][j];
                 GPU_get_metric(i, &sig_aux, &current_metric);
@@ -293,7 +291,6 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
                 } 
               }
             }// for loop
-            
 						gpu_opt_st[i] = partial_ready;
             new_freq[i] = gpuf_list[i][best_pstate];
             debug("GPU[%d] Best P-State %u, freq %lu, metric %f",i, best_pstate, new_freq[i], last_metric);
@@ -473,8 +470,8 @@ static void GPU_get_metric(uint gpu_idx, signature_t *signature, float *curr)
       float node_power = (float) signature->DC_power;
 		  float cpu_gflops = (float) signature->Gflops;    
       
-      //debug("GPU[%d] GPU_FREQ %f CPU_GFLOPS %f GPU_GFLOPS %f", gpu_idx, gpu_freq, cpu_gflops, gpu_gflops*gpu_freq); 
-      //debug("GPU[%d] CPU_GFLOPS_W %f GPU_GFLOPS_W %f", gpu_idx, cpu_gflops/node_power, (gpu_gflops*gpu_freq)/gpu_power); 
+      debug("GPU[%d] GPU_FREQ %f CPU_GFLOPS %f GPU_GFLOPS %f", gpu_idx, gpu_freq, cpu_gflops, gpu_gflops*gpu_freq); 
+      debug("GPU[%d] CPU_GFLOPS_W %f GPU_GFLOPS_W %f", gpu_idx, cpu_gflops/node_power, (gpu_gflops*gpu_freq)/gpu_power); 
       
       *curr = cpu_gflops/node_power + (gpu_gflops*gpu_freq)/gpu_power; 
       break;
@@ -545,7 +542,7 @@ static uint GPU_ok(uint gpu_idx, signature_t *signature, float curr, float last)
 	{
 		case max_value : return (curr > last);
 		case min_value : return (curr < last);
-		default        : return 0;
+		default        : return 1;
 	}
 	return 0;
 }
