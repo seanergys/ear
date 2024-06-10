@@ -41,7 +41,9 @@
 
 #define DEFAULT_EAR_INSTALL_PATH "/usr/lib/ear"
 #define DEFAULT_EAR_ETC_PATH "/etc"
-#define DEFAULT_ENERGY_PLUGIN "energy_eard_nm.so"
+#define DEFAULT_ENERGY_PLUGIN "energy_cray_pm.so"
+//#define DEFAULT_ENERGY_PLUGIN "energy_eard_nm.so"
+//#define DEFAULT_ENERGY_PLUGIN "energy_cpu_gpu.so"
 
 
 static char path[GENERIC_NAME];
@@ -53,6 +55,8 @@ static ear_njob_t *dummy_nodemgr;
 
 static settings_conf_t * dummy_sett;
 static ulong           * dummy_frequencies;
+
+uint earl_config_dummy = 0;
 
 
 #define check_null(p, str, arg) \
@@ -375,6 +379,7 @@ void eard_dummy_replace_base_freq(ulong base)
 state_t create_eard_dummy_shared_regions(char *ear_tmp, uint ID)
 {
 				verbose(2,"Creating dummy areas in %s and ID %u", ear_tmp, ID);
+			 earl_config_dummy = 1;
 				eard_dummy_cluster_conf(ear_tmp, ID);
 				eard_dummy_earl_settings(ear_tmp, ID);
 				eard_dummy_nodemgr(ear_tmp, ID);

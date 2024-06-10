@@ -350,6 +350,7 @@ static ulong calls_cpufreq = 0;
 timestamp init_last_phase, init_last_comp;
 
 
+
 /** This function loads specific CPU and GPU policy functions and calls the initialization functions. */
 state_t init_power_policy(settings_conf_t *app_settings, resched_t *res)
 {

@@ -142,6 +142,7 @@ extern cluster_conf_t cconf;
 extern sem_t *lib_shared_lock_sem;
 
 extern ear_classify_t phases_limits; // Get from ear.c
+extern uint earl_config_dummy;
 
 extern int         dispose;
 // Hardware
@@ -402,6 +403,19 @@ static void metrics_configuration(topology_t *tp)
 
 		cpufreq_base_init(tp, &bf);
 		verbose_info2_master("Frequency detected %lu", (ulong) bf.frequency);
+	}else{
+			/* If the CPU freq based has not been detected during the dummy initialization phase */
+		  if (system_conf->def_freq == 0 && earl_config_dummy){
+      	uint nominal;
+      	pstate_t *pst_list;
+      	mgt_cpufreq_get_nominal(no_ctx, &nominal);
+      	pst_list                    = mgt_cpufreq.avail_list;
+      	verbose_master(ERROR_VERB, "Using base_freq cpufreq_list[%u] = %llu based on MGT cpufreq",nominal, pst_list[nominal].khz);
+
+      	eard_dummy_replace_base_freq(pst_list[nominal].khz);
+    	}    
+
+
 	}
 
 	if (!mgt_imcfreq.ok)

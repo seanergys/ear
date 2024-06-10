@@ -65,6 +65,7 @@ static int basefreq_intel_haswell(topology_t *tp, cpufreq_base_t *base)
     // This is a complete function, it returns the frequency and boost.
     // There are no points to think that retrieving one of them could fail.
     if (tp->vendor != VENDOR_INTEL || tp->model < MODEL_HASWELL_X) {
+        debug("bfreq not found: this is not Intel nor Haswell or greater")
         return 0; 
     }
     cpuid_regs_t regs;
@@ -92,22 +93,33 @@ static int basefreq_amd_zen(topology_t *tp, cpufreq_base_t *base)
     // it will fail. In the future, maybe we can build an MSR class to avoid
     // the use of MSR driver.
     if (tp->vendor != VENDOR_AMD || tp->model < FAMILY_ZEN) {
-        return 0; 
-    }
-    if (state_fail(msr_open(0, MSR_RD))) {
+        debug("bfreq not found: this is not AMD nor Zen or greater")
         return 0;
     }
-    if (!found_freq && state_ok(msr_read(0, (char *) &aux, sizeof(ullong), REG_P0))) {
-        fid = getbits64(aux,  7, 0);
-        did = getbits64(aux, 13, 8);
-        if (did > 0) {
-            base->frequency = (ulong) (((fid * 200LLU) / did) * 1000);
-            basefreq_found_set(1, 0);
+    if (state_fail(msr_open(0, MSR_RD))) {
+        debug("bfreq not found: MSR can not be opened (%s)", state_msg);
+        return 0;
+    }
+    if (!found_freq) {
+        if (state_ok(msr_read(0, (char *) &aux, sizeof(ullong), REG_P0))) {
+            fid = getbits64(aux, 7, 0);
+            did = getbits64(aux, 13, 8);
+            if (did > 0) {
+                base->frequency = (ulong)(((fid * 200LLU) / did) * 1000);
+                basefreq_found_set(1, 0);
+            }
+        } else {
+            debug("bfreq not found: MSR read error: %s", state_msg);
         }
     }
-    if (!found_boost && state_ok(msr_read(0, (char *) &aux, sizeof(ullong), REG_HWCONF))) {
-        base->boost_enabled = (uint) !getbits64(aux, 25, 25);
-        basefreq_found_set(0, 1);
+    if (!found_boost) {
+        if(state_ok(msr_read(0, (char *) &aux, sizeof(ullong), REG_HWCONF))) {
+            base->boost_enabled = (uint)
+            !getbits64(aux, 25, 25);
+            basefreq_found_set(0, 1);
+        } else {
+            debug("boost not found: MSR read error: %s", state_msg);
+        }
     }
     return basefreq_completed();
 }
@@ -137,6 +149,8 @@ static int basefreq_file_baf(topology_t *tp, cpufreq_base_t *base)
     if (filemagic_once_read(FILE_BAF, buffer, sizeof(buffer))) {
         base->frequency = (ullong) atoi(buffer);
         basefreq_found_set(1, 0);
+    } else {
+        debug("bfreq not found: error reading %s: %s", FILE_BAF, state_msg);
     }
     return basefreq_completed();
 }
@@ -153,6 +167,8 @@ static int basefreq_file_ntb(topology_t *tp, cpufreq_base_t *base)
         base->boost_enabled = atoi(buffer);
         base->boost_enabled = !base->boost_enabled;
         basefreq_found_set(0, 1);
+    } else {
+        debug("boost not found: error reading %s: %s", FILE_NTB, state_msg);
     }
     return basefreq_completed();
 }
@@ -168,9 +184,14 @@ static int basefreq_file_cpb(topology_t *tp, cpufreq_base_t *base)
     if (filemagic_once_read(FILE_BST, buffer, sizeof(buffer))) {
         base->boost_enabled = atoi(buffer);
         basefreq_found_set(0, 1);
-    } else if (filemagic_once_read(FILE_CPB, buffer, sizeof(buffer))) {
-        base->boost_enabled = atoi(buffer);
-        basefreq_found_set(0, 1);
+    } else {
+        debug("boost not found: error reading %s: %s", FILE_BST, state_msg);
+        if (filemagic_once_read(FILE_CPB, buffer, sizeof(buffer))) {
+            base->boost_enabled = atoi(buffer);
+            basefreq_found_set(0, 1);
+        } else {
+            debug("boost not found: error reading %s: %s", FILE_CPB, state_msg);
+        }
     }
     return basefreq_completed();
 }
@@ -195,6 +216,7 @@ static int basefreq_file_saf(topology_t *tp, cpufreq_base_t *base)
     int fd;
     // This is a complete function
     if ((fd = open(FILE_SAF, O_RDONLY)) < 0) {
+        debug("bfreq not found: error reading %s: %s", FILE_SAF, strerror(errno));
         return 0;
     }
     f0 = file_read_value(fd);
@@ -221,6 +243,7 @@ static int basefreq_file_cpuinfo(topology_t *tp, cpufreq_base_t *base)
         return 0;
     }
     if ((fd = fopen("/proc/cpuinfo", "r")) == NULL) {
+        debug("bfreq not found: error reading %s: %s", "/proc/cpuinfo", strerror(errno));
         return 0;
     }
     while(getline(&line, &len, fd) != -1) {
@@ -282,6 +305,8 @@ static int basefreq_file_smf(topology_t *tp, cpufreq_base_t *base)
             base->not_reliable = 1;
             basefreq_found_set(1, 0);
         }
+    } else {
+        debug("bfreq not found: error reading %s (or scaling_max_freq): %s", FILE_CMF, strerror(errno));
     }
     return basefreq_completed();
 }
@@ -294,6 +319,7 @@ static int basefreq_spec_valididity_test(cpufreq_base_t *base)
         base->not_reliable = 1;
         return basefreq_found_set(1, 0);
     }
+    debug("bfreq not found: %llu is not a valid frequency", base->frequency);
     return 0;
 }
 
@@ -308,6 +334,7 @@ static int basefreq_spec_tsc(topology_t *tp, cpufreq_base_t *base)
     // The ARM TSC doesn't work at base frequency. CNTFRQ_EL0 has the
     // TSC (CNTVCT_EL0 or CNTPCT_EL0) frequency. From ARMv8.6 is 1GHz.
     if (tp->vendor == VENDOR_ARM) {
+        debug("bfreq not found: can't be estimated by TSC in ARM");
         return 0;
     }
     l1 = h1 = 0LLU;
@@ -397,13 +424,21 @@ static int basefreq_spec_hardcode(topology_t *tp, cpufreq_base_t *base)
 void basefreq_init_static(topology_t *tp, cpufreq_base_t *base)
 {
     // no_turbo has the priority over the hardware/bios
+    debug("ntb");
     if (basefreq_file_ntb(tp, base)) return;
+    debug("intel haswell");
     if (basefreq_intel_haswell(tp, base)) return;
+    debug("amd zen");
     if (basefreq_amd_zen(tp, base)) return;
+    debug("baf");
     if (basefreq_file_baf(tp, base)) return;
+    debug("environment");
     if (basefreq_environment(tp, base)) return;
+    debug("cpn");
     if (basefreq_file_cpb(tp, base)) return;
+    debug("saf");
     if (basefreq_file_saf(tp, base)) return;
+    debug("cpuinfo");
     if (basefreq_file_cpuinfo(tp, base)) return;
     if (basefreq_spec_tsc(tp, base)) return;
     if (basefreq_file_smf(tp, base)) return;
@@ -428,8 +463,13 @@ void cpufreq_base_init(topology_t *tp, cpufreq_base_t *base)
 #if TEST
 int main(int argc, char *argv[])
 {
+    cpufreq_base_t bt;
     char *c[2] = { "-", "f" };
     int n = 0;
+
+    cpufreq_base_init(NULL, &bt);
+    printf("cpufreq_base_init reports base freq %llu\n", bt.frequency);
+
     printf("test   frequency  f  boost  f   !rel   name\n");
     printf("----   ---------  -  -----  -   ----   ----\n");
     #define PRINT(call, string) {                  \

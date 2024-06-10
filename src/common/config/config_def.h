@@ -247,7 +247,7 @@
 #define EARL_CPUBUSYWAIT_VALIDATE 1
 
 /** When set to 1, turbo is allowed */
-#define USE_TURBO 0
+#define USE_TURBO 1
 
 /** Experimental feature. Enables fine-grained metrics monitor and MPI Optimize features. */
 #define MPI_OPTIMIZED 0

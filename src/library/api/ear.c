@@ -19,7 +19,7 @@
 #define _GNU_SOURCE
 //#define SHOW_DEBUGS 1
 //
-#define VPROC_INIT 2
+#define VPROC_INIT 3
 #define VJOB_INIT  2
 #define VPROC_MGT  3
 #define VNTASKS_INIT 3

@@ -117,11 +117,11 @@ static void module_mpi_get_libear(char *path_lib_so, char *libhack, char *path_s
     } else if (strstr(buffer, "fujitsu mpi") != NULL) {
         verbose(2, "LOADER: fujitsu mpi found");
         found_fujitsu = 1;
-    } else if (strstr(buffer, "CRAY MPICH") != NULL ) {
+    } else if (strstr(buffer, "cray mpich") != NULL ) {
         verbose(2, "LOADER: cray mpi found");
         found_cray = 1;
     } else {
-        verbose(2, "LOADER: no mpi version found");
+        verbose(2, "LOADER: no mpi version found in list of recognized versions '%s'", buffer);
         return;
     }
     verbose(2, "LOADER: mpi_get_version (intel: %d, open: %d, mvapich: %d, fujitsu: %d, cray: %d)",
