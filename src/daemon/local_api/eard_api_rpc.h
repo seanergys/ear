@@ -28,6 +28,7 @@
 
 #define RPC_GET_STATE                      2001
 #define RPC_WRITE_APPLICATION              2002
+#define RPC_WRITE_WF_APPLICATION           2003
 #define RPC_WRITE_LOOP                     2004
 #define RPC_WRITE_EVENT                    2006
 #define RPC_MGT_CPUFREQ_GET_API            1001

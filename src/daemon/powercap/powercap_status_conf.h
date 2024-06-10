@@ -22,7 +22,6 @@
 #include <stdint.h>
 #include <common/types/powercap.h>
 
-#define POWERCAP_IDLE_PERC 0.5
 
 #define DOMAIN_NODE     0
 #define DOMAIN_CPU      1

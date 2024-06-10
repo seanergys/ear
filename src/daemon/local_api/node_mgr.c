@@ -60,13 +60,14 @@ state_t nodemgr_lock_init(char *tmp)
 
   return EAR_SUCCESS;
 }
-state_t nodemgr_job_init(char *tmp, ear_njob_t **nodelist )
+
+state_t nodemgr_job_init(char *tmp, ear_njob_t **nodelist)
 {
 	if (tmp == NULL) return EAR_ERROR;
 	if (nodelist == NULL ) return EAR_ERROR;
 
   if (state_fail(nodemgr_lock_init(tmp))){
-    verbose(WF_SUPPORT_VERB," EAR Error, nodemgr_lock cannot be initialized");
+    verbose(WF_SUPPORT_VERB,"EAR Error, nodemgr_lock cannot be initialized");
     return EAR_ERROR;
   }
 

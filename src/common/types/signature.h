@@ -40,6 +40,9 @@ typedef struct gpu_app {
   ulong  GPU_mem_freq;
   ulong  GPU_util;
   ulong  GPU_mem_util;
+#if WF_SUPPORT
+	float  GPU_GFlops;
+#endif
 } gpu_app_t;
 
 
@@ -201,5 +204,8 @@ void ssig_set_node_metrics(ssig_t *dst_ssig, ssig_t *src_ssig);
 void signature_serialize(serial_buffer_t *b, signature_t *sig);
 
 void signature_deserialize(serial_buffer_t *b, signature_t *sig);
+
+
+double compute_dc_nogpu_power(signature_t *lsig);
 
 #endif

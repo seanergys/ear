@@ -47,6 +47,9 @@ uint is_job_step_valid(job_id jid, job_id sid)
   snprintf(command, sizeof(command),"/usr/bin/sacct -j %lu.%lu -o State", jid, sid);
 
   uint no_header = 2;
+	// 'one_shot' creates a non-blocking pipe, so we then need
+	// to nest to while loops. We could test by setting one_shot
+	// to 1, so the popen module itself will block.
   uint one_shot  = 0;
   char sep = ' ';
   char *job_sched_state;
@@ -90,11 +93,15 @@ uint is_job_step_valid(job_id jid, job_id sid)
 
 int get_my_sched_node_rank()
 {
-  #if SCHED_SLURM
-		#if APP_MULTIPROCESS_NO_MPI_SUPPORT
+#if APP_MULTIPROCESS_NO_MPI_SUPPORT
+#if SCHED_SLURM
     if (ear_getenv("SLURM_LOCALID") != NULL) return atoi(ear_getenv("SLURM_LOCALID"));
-		#endif
-  #endif
+#endif
+#if SCHED_PBS
+		// WARNING: Not tested!
+    if (ear_getenv("PBS_TASKNUM") != NULL) return atoi(ear_getenv("SLURM_LOCALID"));
+#endif
+#endif
     return 0;
 }
 

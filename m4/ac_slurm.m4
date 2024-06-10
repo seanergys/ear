@@ -40,7 +40,7 @@ AC_DEFUN([X_AC_SLURM],
 
     AC_ARG_WITH(
         [slurm],
-        AS_HELP_STRING(--with-slurm=PATH,Specify path to SLURM installation),
+        AS_HELP_STRING(--with-slurm=PATH,Specify path to SLURM installation. Use no to disable),
         [
 		    if test "x$withval" = "xno"; then
                 _x_ac_slurm_force="no"

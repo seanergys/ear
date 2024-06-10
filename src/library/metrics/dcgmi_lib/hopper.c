@@ -126,4 +126,3 @@ state_t dcgmi_lib_hopper_fp_coeffs(int **coeffs, size_t coeffs_length)
 
 	return EAR_SUCCESS;
 }
-

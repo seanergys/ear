@@ -40,6 +40,7 @@
 #define PERIODIC_AGGREGATIONS 2
 #define MPITRACE              4
 #define MPI_NODE_METRICS      8
+#define WF_APPLICATION        16
 
 #define  NODESENSORS_TYPE     1000
 

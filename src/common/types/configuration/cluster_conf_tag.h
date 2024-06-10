@@ -21,6 +21,7 @@
 #include <common/config.h>
 #include <common/states.h>
 #include <common/types/generic.h>
+#include <common/types/configuration/policy_conf.h>
 
 typedef struct tags
 {
@@ -50,7 +51,7 @@ typedef struct tags
     char powercap_gpu_plugin[GENERIC_NAME];
     char coeffs[GENERIC_NAME];
 	char idle_governor[GENERIC_NAME];
-
+	char default_policy[POLICY_NAME_SIZE];
 } tag_t;
 
 

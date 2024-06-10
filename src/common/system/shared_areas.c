@@ -111,8 +111,8 @@ void *attach_shared_area(char *path, int area_size, uint perm, int *shared_fd, i
 
     if (fd < 0)
 		{
-			error("error attaching to shared memory at (%s): %s", buff, strerror(errno));
 #if SHOW_DEBUGS
+			error("error attaching to shared memory at (%s): %s", buff, strerror(errno));
   		char test[2048];
   		sprintf(test,"ls -la %s", buff);
   		system(test);

@@ -1104,7 +1104,10 @@ static void metrics_global_stop()
 		assert(io_buffer != NULL);
 
 		sprintf(io_buffer, "[%d] APP I/O DATA: %s\n", ear_my_rank, io_info);
-		write(fd, io_buffer, strlen(io_buffer));
+		if (write(fd, io_buffer, strlen(io_buffer)) < 0)
+		{
+			error_lib("Writing I/O info to fd %d: %s", fd, strerror(errno));
+		}
 
 		free(io_buffer);
 
@@ -1735,6 +1738,8 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 					error_lib("Getting global DCGMI metrics: %s", state_msg);
 				}
 			}
+			// If WF_SUPPORT disabled, metrics is not filled.
+			dcgmi_lib_compute_gpu_gflops(&sig_ext->dcgmis, metrics);
 		}
 #endif  // DCGMI & USE_GPUS
 
@@ -2900,7 +2905,6 @@ int ear_get_num_threads()
 {
   verbose(VERB_NUMTH, "EARL: Testing new threads");
   folder_t ltasks;
-  state_t  s;
   char miproc[256];
   char *my_th;
   int num_th = 0; 

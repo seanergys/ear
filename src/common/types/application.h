@@ -51,6 +51,11 @@ void copy_application(application_t *destiny, application_t *source);
 /** Cleaned remake of the classic print 'fd' function. */
 void application_print_channel(FILE *file, application_t *app);
 
+
+/** Uses signature to fill the basic (power) signature
+ */
+void fill_basic_sig(application_t *app);
+
 /*
  *
  * Obsolete?

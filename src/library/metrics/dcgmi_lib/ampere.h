@@ -29,4 +29,5 @@ state_t dcgmi_lib_ampere_init(uint api, dcgmi_lib_t *dcgmi_data, int **event_inf
 
 state_t dcgmi_lib_ampere_fp_coeffs(int **coeffs, size_t coeffs_length);
 
+
 #endif // _DCGMI_LIB_AMPERE_H_

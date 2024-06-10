@@ -26,6 +26,7 @@
 
 state_t dcgmi_lib_hopper_init(uint api, dcgmi_lib_t *dcgmi_data, int **event_info, int event_info_rows, int event_info_cols);
 
+state_t dcgmi_lib_hopper_fp_coeffs(int **coeffs, size_t coeffs_length);
 
 state_t dcgmi_lib_hopper_fp_coeffs(int **coeffs, size_t coeffs_length);
 

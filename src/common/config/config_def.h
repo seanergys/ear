@@ -71,6 +71,9 @@
 #define EARD_FILE_LOG               1
 /** Set minimum CPU frequency on idle phases. */
 #define EARD_POWERCAP_IDLE_MINFREQ  0
+/* If set to 1, there should be no issues with jobs running while the node is "idle".
+ * If set to 0, the idle powercap will be POWERCAP_UNLIMITED */
+#define EARD_POWERCAP_IDLE_PERC 1
 /**  */
 #define SYNC_SET_RPC 1
 /**  */
