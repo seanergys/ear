@@ -1,8 +1,5 @@
 CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC
 
-# Define and uncomment these two constants with the EAR installation path if you want to enable the eard_nm energy plugin
-#EAR_OFFICIAL_NM_INSTALL_PATH=
-#EAR_OFFICIAL_TMP=
 
 ######## FILES
 
@@ -27,7 +24,10 @@ ifdef REDFISH_BASE
 ener_OBJS += energy_redfish.o
 endif
 
-ifdef EAR_OFFICIAL_NM_INSTALL_PATH
+ifeq ($(SYSTEM_TYPE), 3)
+# Define and uncomment these two constants with the EAR installation path if you want to enable the eard_nm energy plugin
+#EAR_OFFICIAL_NM_INSTALL_PATH=
+#EAR_OFFICIAL_TMP=
 ener_OBJS += energy_eard_nm.o
 endif
 
@@ -43,7 +43,7 @@ ener_BINS = \
     energy_sd650_power.so  \
 		energy_cray_pm.so
 
-ifdef EAR_OFFICIAL_NM_INSTALL_PATH
+ifeq ($(SYSTEM_TYPE), 3)
     ener_BINS += energy_eard_nm.so
 endif
 

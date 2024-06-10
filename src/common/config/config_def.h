@@ -22,6 +22,13 @@
 
 #include <common/config/config_install.h>
 
+#define LENOVO        0
+#define GRACE_HOOPER  1
+#define CRAY_HPE      2
+#define EAR_NODE_MGR  3
+#define GENERIC 			100
+
+
 
 /** @name Paths
  * EAR paths and names. */
@@ -164,13 +171,25 @@
  */
 #define DEFAULT_EAR_INSTALL_PATH "/usr/lib/ear"
 #define DEFAULT_EAR_ETC_PATH "/etc"
+
+
+#if   SYSTEM_TYPE == LENOVO
+#define DEFAULT_ENERGY_PLUGIN "energy_sd650.so"
 #define DEFAULT_ENERGY_MODEL  "avx512_model.so"
-#if defined(ARCH_ARM)
+#elif SYSTEM_TYPE == "Grace Hooper"
 #define DEFAULT_ENERGY_PLUGIN "grace_hopper_module_power.so"
+#define DEFAULT_ENERGY_MODEL  "avx512_model.so"
+#elif SYSTEM_TYPE == "Cray HPE"
+#define DEFAULT_ENERGY_PLUGIN "energy_cray_pm.so"
+#define DEFAULT_ENERGY_MODEL  "avx512_model.so"
+#elif SYSTEM_TYPE == "EAR Node Manager"
+#define DEFAULT_ENERGY_PLUGIN "energy_eard_nm.so"
+#define DEFAULT_ENERGY_MODEL  "avx512_model.so"
 #else
-//#define DEFAULT_ENERGY_PLUGIN "energy_eard_nm.so"
 #define DEFAULT_ENERGY_PLUGIN "energy_cpu_gpu.so"
+#define DEFAULT_ENERGY_MODEL  "avx512_model.so"
 #endif
+
 
 
 /* Maximum power error supported. It is used to compute the min time to compute
