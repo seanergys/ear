@@ -395,11 +395,11 @@ static int basefreq_spec_asm(topology_t *tp, cpufreq_base_t *base)
         "mov x1, #10000;"
         "mov x2, #10000;"
         "mul x1, x1, x2;"
-        "Loop:"
+        "CPF_Loop:"
         DO_40("mov x8, x8;") // 40 cycles
         "add x0, x0, #1;"    // 1 cycle
         "cmp x0, x1;"        // 1 cycle
-        "bne Loop;"          // 2 cycles
+        "bne CPUF_Loop;"          // 2 cycles
     );
     #else
     // On the contrary, MOV and NOP seems to not work well on X86,
@@ -408,11 +408,11 @@ static int basefreq_spec_asm(topology_t *tp, cpufreq_base_t *base)
         "mov $0, %eax;"
         "mov $10000, %ebx;"
         "imul %ebx, %ebx;"
-        "Loop:"
+        "CPUF_Loop:"
         "add $1, %eax;"        // 1 cycle
         DO_40("add $1, %ecx;") // 40 cycles
         "cmp %ebx, %eax;"      // 1 cycle
-        "jl Loop;"             // X cycles
+        "jl CPUF_Loop;"             // X cycles
     );
     #endif
     ns  = (double) timestamp_diffnow(&ts1, TIME_NSECS);
