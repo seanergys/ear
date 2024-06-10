@@ -158,6 +158,21 @@
 #define GRACE_T1                            3
 #define MAX_TIME_DYNAIS_WITHOUT_SIGNATURE   15
 
+
+/* 
+ * To be used by default in eard and eard_dummy
+ */
+#define DEFAULT_EAR_INSTALL_PATH "/usr/lib/ear"
+#define DEFAULT_EAR_ETC_PATH "/etc"
+#define DEFAULT_ENERGY_MODEL  "avx512_model.so"
+#if defined(ARCH_ARM)
+#define DEFAULT_ENERGY_PLUGIN "grace_hopper_module_power.so"
+#else
+//#define DEFAULT_ENERGY_PLUGIN "energy_eard_nm.so"
+#define DEFAULT_ENERGY_PLUGIN "energy_cpu_gpu.so"
+#endif
+
+
 /* Maximum power error supported. It is used to compute the min time to compute
  * a valid signature */
 #define MAX_POWER_ERROR                     0.05
@@ -247,7 +262,7 @@
 #define EARL_CPUBUSYWAIT_VALIDATE 1
 
 /** When set to 1, turbo is allowed */
-#define USE_TURBO 1
+#define USE_TURBO 0
 
 /** Experimental feature. Enables fine-grained metrics monitor and MPI Optimize features. */
 #define MPI_OPTIMIZED 0
