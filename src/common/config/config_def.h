@@ -176,13 +176,13 @@
 #if   SYSTEM_TYPE == LENOVO
 #define DEFAULT_ENERGY_PLUGIN "energy_sd650.so"
 #define DEFAULT_ENERGY_MODEL  "avx512_model.so"
-#elif SYSTEM_TYPE == "Grace Hooper"
+#elif SYSTEM_TYPE == GRACE_HOOPER
 #define DEFAULT_ENERGY_PLUGIN "grace_hopper_module_power.so"
 #define DEFAULT_ENERGY_MODEL  "avx512_model.so"
-#elif SYSTEM_TYPE == "Cray HPE"
+#elif SYSTEM_TYPE == CRAY_HPE
 #define DEFAULT_ENERGY_PLUGIN "energy_cray_pm.so"
 #define DEFAULT_ENERGY_MODEL  "avx512_model.so"
-#elif SYSTEM_TYPE == "EAR Node Manager"
+#elif SYSTEM_TYPE == EAR_NODE_MGR
 #define DEFAULT_ENERGY_PLUGIN "energy_eard_nm.so"
 #define DEFAULT_ENERGY_MODEL  "avx512_model.so"
 #else

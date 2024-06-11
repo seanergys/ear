@@ -224,6 +224,16 @@ state_t report_applications(report_id_t *id,application_t *apps, uint count)
 		return EAR_SUCCESS;
 }
 
+state_t report_misc(report_id_t *id, uint type, const char *data, uint count)
+{
+  if (type == WF_APPLICATION){
+    report_applications(id, (application_t *)data, count);
+  }
+  return EAR_SUCCESS;
+
+}
+
+
 
 static uint file_loop_created = 0;
 static int fd_loops = -1;
