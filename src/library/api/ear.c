@@ -6,7 +6,7 @@
 * Energy management. It has been developed in the context of the
 * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
 *
-* Copyright © 2017-present BSC-Lenovo
+* 
 * BSC Contact   mailto:ear-support@bsc.es
 * 
 *
