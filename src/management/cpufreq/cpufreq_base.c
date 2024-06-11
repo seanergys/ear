@@ -437,21 +437,13 @@ static int basefreq_spec_hardcode(topology_t *tp, cpufreq_base_t *base)
 void basefreq_init_static(topology_t *tp, cpufreq_base_t *base)
 {
     // no_turbo has the priority over the hardware/bios
-    debug("ntb");
     if (basefreq_file_ntb(tp, base)) return;
-    debug("intel haswell");
     if (basefreq_intel_haswell(tp, base)) return;
-    debug("amd zen");
     if (basefreq_amd_zen(tp, base)) return;
-    debug("baf");
     if (basefreq_file_baf(tp, base)) return;
-    debug("environment");
     if (basefreq_environment(tp, base)) return;
-    debug("cpn");
     if (basefreq_file_cpb(tp, base)) return;
-    debug("saf");
     if (basefreq_file_saf(tp, base)) return;
-    debug("cpuinfo");
     if (basefreq_file_cpuinfo(tp, base)) return;
     if (basefreq_spec_tsc(tp, base)) return;
     if (basefreq_file_smf(tp, base)) return;
