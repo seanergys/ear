@@ -2467,12 +2467,18 @@ void ear_finalize(int exit_status)
 								end_job(&application.job);
 								end_mpi(&application.job);
 								verbose(2, "EARL[%d][%d] Application report (type %s)", ear_my_rank,getpid(),( first_application? "Regular App":"WF App"));
-								if (first_application && report_applications(&rep_id,&application,1) != EAR_SUCCESS){
-												verbose_master(1,"Error reporting application");
-								}else{
+								if (first_application)
+								{
+									if (state_fail(report_applications(&rep_id, &application, 1)))
+									{
+												verbose_master(1, "Error reporting application");
+									}
+								} else
+								{
 									fill_basic_sig(&application);
 									report_misc(&rep_id, WF_APPLICATION, &application,1);
 								}
+
                 if (masters_info.my_master_rank == 0){
 								  report_mpi_application_data(1, &application);
                 }else{
