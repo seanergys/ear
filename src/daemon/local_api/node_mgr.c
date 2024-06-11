@@ -6,9 +6,9 @@
 * Energy management. It has been developed in the context of the
 * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
 *
-* Copyright © 2017-present BSC-Lenovo
+* 
 * BSC Contact   mailto:ear-support@bsc.es
-* Lenovo contact  mailto:hpchelp@lenovo.com
+* 
 *
 * EAR is an open source software, and it is licensed under both the BSD-3 license
 * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
@@ -60,13 +60,14 @@ state_t nodemgr_lock_init(char *tmp)
 
   return EAR_SUCCESS;
 }
-state_t nodemgr_job_init(char *tmp, ear_njob_t **nodelist )
+
+state_t nodemgr_job_init(char *tmp, ear_njob_t **nodelist)
 {
 	if (tmp == NULL) return EAR_ERROR;
 	if (nodelist == NULL ) return EAR_ERROR;
 
   if (state_fail(nodemgr_lock_init(tmp))){
-    verbose(WF_SUPPORT_VERB," EAR Error, nodemgr_lock cannot be initialized");
+    verbose(WF_SUPPORT_VERB,"EAR Error, nodemgr_lock cannot be initialized");
     return EAR_ERROR;
   }
 

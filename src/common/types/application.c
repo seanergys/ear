@@ -6,9 +6,9 @@
 * Energy management. It has been developed in the context of the
 * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
 *
-* Copyright © 2017-present BSC-Lenovo
+* 
 * BSC Contact   mailto:ear-support@bsc.es
-* Lenovo contact  mailto:hpchelp@lenovo.com
+* 
 *
 * EAR is an open source software, and it is licensed under both the BSD-3 license
 * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
@@ -187,8 +187,13 @@ int create_app_header(char * header, char *path, uint num_gpus, char is_extended
 	if (single_column) num_gpus = ear_min(num_gpus, 1);
     for (int i = 0; i < num_gpus; i++){
         char gpu_hdr[128];
+#if WF_SUPPORT
+        xsnprintf(gpu_hdr, sizeof(gpu_hdr), ";GPU%d_POWER_W;GPU%d_FREQ_KHZ;GPU%d_MEM_FREQ_KHZ;GPU%d_UTIL_PERC;GPU%d_MEM_UTIL_PERC;GPU%d_GFLOPS",
+                i, i, i, i, i, i);
+#else
         xsnprintf(gpu_hdr, sizeof(gpu_hdr), ";GPU%d_POWER_W;GPU%d_FREQ_KHZ;GPU%d_MEM_FREQ_KHZ;GPU%d_UTIL_PERC;GPU%d_MEM_UTIL_PERC",
                 i, i, i, i, i);
+#endif
         xstrncat(HEADER, gpu_hdr, sizeof(gpu_hdr));
     }
 #endif
@@ -558,4 +563,19 @@ void application_deserialize(serial_buffer_t *b, application_t *app)
     serial_dictionary_pop_auto(b, app->node_id);
     power_signature_deserialize(b, &app->power_sig);
     signature_deserialize(b, &app->signature);
+}
+
+
+
+void fill_basic_sig(application_t *app)
+{
+	app->power_sig.DC_power 		= app->signature.DC_power;
+	app->power_sig.DRAM_power   = app->signature.DRAM_power;
+	app->power_sig.PCK_power    = app->signature.PCK_power;
+	app->power_sig.EDP          = app->signature.EDP;
+	app->power_sig.max_DC_power = app->signature.DC_power;
+	app->power_sig.min_DC_power = app->signature.DC_power;
+	app->power_sig.time         = app->signature.time;
+	app->power_sig.avg_f        = app->signature.avg_f;
+	app->power_sig.def_f        = app->signature.def_f;
 }

@@ -6,9 +6,9 @@
 * Energy management. It has been developed in the context of the
 * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
 *
-* Copyright © 2017-present BSC-Lenovo
+* 
 * BSC Contact   mailto:ear-support@bsc.es
-* Lenovo contact  mailto:hpchelp@lenovo.com
+* 
 *
 * EAR is an open source software, and it is licensed under both the BSD-3 license
 * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
@@ -485,7 +485,7 @@ void eards_connection_failure()
 void eards_new_process_disconnect()
 {
 	// This function closes the EARD fd for new processes to connect again
-	#warning "This part is pending to be testes"
+	#warning "This part is pending to be tested"
 	close(ear_fd_req);
   close(ear_fd_req_global); 
   close(ear_fd_ack);        
@@ -582,6 +582,21 @@ ulong eards_write_app_signature(application_t *app)
     #endif
 }
 
+ulong eards_write_wf_app_signature(application_t *app)
+{
+    #if WF_SUPPORT
+    serial_clean(&b);
+    application_serialize(&b, app);
+    return eard_rpc(RPC_WRITE_WF_APPLICATION, serial_data(&b), serial_size(&b), NULL, 0);
+    #else
+		/* This case should never happen */
+    init_service(WRITE_WF_APP_SIGNATURE);
+    memcpy(&req.req_data.app, app, sizeof(application_t));
+    return sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ulong), "APP signature", 0);
+    #endif
+}
+
+
 ulong eards_write_event(ear_event_t *event)
 {
     #if WF_SUPPORT
@@ -608,20 +623,6 @@ ulong eards_write_loop_signature(loop_t *loop)
     #endif
 }
 
-ulong eards_get_data_size_rapl() // size in bytes
-{
-    if (!app_connected) return sizeof(ulong);
-    init_service(DATA_SIZE_RAPL);
-    rapl_size = sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ulong), "RAPL size", 0);
-    return rapl_size;
-}
-
-int eards_read_rapl(unsigned long long *values)
-{
-    if (!app_connected) { values[0]=0; return EAR_SUCCESS; }
-    init_service(READ_RAPL);
-    return (int) sendack((char *) &req, sizeof(req), (char *) values, rapl_size, "RAPL read", 1);
-}
 
 int eards_node_dc_energy(void *energy,ulong datasize)
 {
@@ -658,6 +659,28 @@ state_t eards_get_state(eard_state_t *state)
 {
     return eard_rpc(RPC_GET_STATE, NULL, 0, (char *) state, sizeof(eard_state_t));
 }
+
+
+
+ulong eards_get_data_size_rapl() // size in bytes
+{
+    if (!app_connected) return sizeof(ulong);
+    init_service(DATA_SIZE_RAPL);
+    rapl_size = sendack((char *) &req, sizeof(req), (char *) &ack, sizeof(ulong), "RAPL size", 0);
+    return rapl_size;
+}
+
+int eards_read_rapl(unsigned long long *values)
+{
+    if (!app_connected) { values[0]=0; return EAR_SUCCESS; }
+    init_service(READ_RAPL);
+    return (int) sendack((char *) &req, sizeof(req), (char *) values, rapl_size, "RAPL read", 1);
+}
+
+
+
+
+
 
 static state_t create_base_path(char *base_path, size_t base_path_sz, char *tmp_path, uint job_step_id, uint app_local_id)
 {

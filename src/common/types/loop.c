@@ -6,9 +6,9 @@
 * Energy management. It has been developed in the context of the
 * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
 *
-* Copyright © 2017-present BSC-Lenovo
+* 
 * BSC Contact   mailto:ear-support@bsc.es
-* Lenovo contact  mailto:hpchelp@lenovo.com
+* 
 *
 * EAR is an open source software, and it is licensed under both the BSD-3 license
 * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
@@ -184,7 +184,11 @@ int create_loop_header(char * header, char *path, int ts, uint num_gpus, int sin
 
 #if USE_GPUS
     char gpu_header[512];
+#if WF_SUPPORT
+    char *HEADER_GPU_SIG = ";GPU%d_POWER_W;GPU%d_FREQ_KHZ;GPU%d_MEM_FREQ_KHZ;GPU%d_UTIL_PERC;GPU%d_MEM_UTIL_PERC;GPU%d_GFLOPS";
+#else
     char *HEADER_GPU_SIG = ";GPU%d_POWER_W;GPU%d_FREQ_KHZ;GPU%d_MEM_FREQ_KHZ;GPU%d_UTIL_PERC;GPU%d_MEM_UTIL_PERC";
+#endif
 #endif
 #if REPORT_TIMESTAMP
     char *HEADER_LOOP = ";LOOPID;LOOP_NEST_LEVEL;LOOP_SIZE;TIMESTAMP";
@@ -204,7 +208,11 @@ int create_loop_header(char * header, char *path, int ts, uint num_gpus, int sin
 #if USE_GPUS
     if (single_column) num_gpus = ear_min(1, num_gpus);
     for (uint j = 0; j < num_gpus; ++j) {
+#if WF_SUPPORT
+        sprintf(gpu_header,HEADER_GPU_SIG,j,j,j,j,j,j);
+#else
         sprintf(gpu_header,HEADER_GPU_SIG,j,j,j,j,j);
+#endif
         strncat(HEADER, gpu_header,  sizeof(HEADER) - strlen(HEADER) - 1);
     }
 #endif

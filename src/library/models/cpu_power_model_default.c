@@ -6,9 +6,9 @@
 * Energy management. It has been developed in the context of the
 * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
 *
-* Copyright © 2017-present BSC-Lenovo
+* 
 * BSC Contact   mailto:ear-support@bsc.es
-* Lenovo contact  mailto:hpchelp@lenovo.com
+* 
 *
 * EAR is an open source software, and it is licensed under both the BSD-3 license
 * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
@@ -114,7 +114,9 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
   double tpi[MAX_CPUS_SUPPORTED];
   double gbs[MAX_CPUS_SUPPORTED];
   double vpi[MAX_CPUS_SUPPORTED];
+#if SHOW_DEBUGS
   double oldTPI;
+#endif
 
   ulong  f[MAX_CPUS_SUPPORTED];
   ullong inst[MAX_CPUS_SUPPORTED], totalinst = 0;
@@ -179,7 +181,9 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
     totalinst += sig[lp].sig.instructions;
   }
   totalinst /= data->num_processes;
+#if SHOW_DEBUGS
   oldTPI = lsig->TPI;
+#endif
   lsig->TPI = (data->cas_counters * cache_line_size)/totalinst;
 
   /* compute_job_node_XXX compute the metrics only for the calling job. It is

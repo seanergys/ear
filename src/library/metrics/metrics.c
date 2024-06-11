@@ -6,9 +6,9 @@
 * Energy management. It has been developed in the context of the
 * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
 *
-* Copyright © 2017-present BSC-Lenovo
+* 
 * BSC Contact   mailto:ear-support@bsc.es
-* Lenovo contact  mailto:hpchelp@lenovo.com
+* 
 *
 * EAR is an open source software, and it is licensed under both the BSD-3 license
 * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
@@ -142,6 +142,7 @@ extern cluster_conf_t cconf;
 extern sem_t *lib_shared_lock_sem;
 
 extern ear_classify_t phases_limits; // Get from ear.c
+extern uint earl_config_dummy;
 
 extern int         dispose;
 // Hardware
@@ -402,6 +403,19 @@ static void metrics_configuration(topology_t *tp)
 
 		cpufreq_base_init(tp, &bf);
 		verbose_info2_master("Frequency detected %lu", (ulong) bf.frequency);
+	}else{
+			/* If the CPU freq based has not been detected during the dummy initialization phase */
+		  if (system_conf->def_freq == 0 && earl_config_dummy){
+      	uint nominal;
+      	pstate_t *pst_list;
+      	mgt_cpufreq_get_nominal(no_ctx, &nominal);
+      	pst_list                    = mgt_cpufreq.avail_list;
+      	verbose_master(ERROR_VERB, "Using base_freq cpufreq_list[%u] = %llu based on MGT cpufreq",nominal, pst_list[nominal].khz);
+
+      	eard_dummy_replace_base_freq(pst_list[nominal].khz);
+    	}    
+
+
 	}
 
 	if (!mgt_imcfreq.ok)
@@ -1104,7 +1118,10 @@ static void metrics_global_stop()
 		assert(io_buffer != NULL);
 
 		sprintf(io_buffer, "[%d] APP I/O DATA: %s\n", ear_my_rank, io_info);
-		write(fd, io_buffer, strlen(io_buffer));
+		if (write(fd, io_buffer, strlen(io_buffer)) < 0)
+		{
+			error_lib("Writing I/O info to fd %d: %s", fd, strerror(errno));
+		}
 
 		free(io_buffer);
 
@@ -1735,6 +1752,8 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 					error_lib("Getting global DCGMI metrics: %s", state_msg);
 				}
 			}
+			// If WF_SUPPORT disabled, metrics is not filled.
+			dcgmi_lib_compute_gpu_gflops(&sig_ext->dcgmis, metrics);
 		}
 #endif  // DCGMI & USE_GPUS
 
@@ -2900,7 +2919,6 @@ int ear_get_num_threads()
 {
   verbose(VERB_NUMTH, "EARL: Testing new threads");
   folder_t ltasks;
-  state_t  s;
   char miproc[256];
   char *my_th;
   int num_th = 0; 

@@ -19,7 +19,8 @@ comm_OBJS = \
     perf.o \
     pstate.o \
     redfish.o \
-    rsmi.o
+    rsmi.o \
+    cray_pm_counters.o
 
 ######## RULES
 

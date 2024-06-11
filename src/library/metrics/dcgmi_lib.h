@@ -5,9 +5,9 @@
  * Energy management. It has been developed in the context of the
  * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
  *
- * Copyright © 2017-present BSC-Lenovo
+ * 
  * BSC Contact   mailto:ear-support@bsc.es
- * Lenovo contact  mailto:hpchelp@lenovo.com
+ * 
  *
  * EAR is an open source software, and it is licensed under both the BSD-3 license
  * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
@@ -21,6 +21,7 @@
 
 #include <common/states.h>
 #include <common/types.h>
+#include <common/types/signature.h>
 
 // #include <metrics/gpu/archs/dcgmi.h>
 #include <metrics/gpu/gpuprof.h>
@@ -44,6 +45,7 @@ typedef struct dcgmi_sig
 	uint			event_cnt;							/**< The total number of events supported. */
 	uint			**event_list_sets;			/**< The event index list for each set. */
 	uint			*set_instances_cnt;			/**< The number of instances for each set. */
+	float			*gpu_gflops;						/**< The GFLOPS rate for each GPU. */
 	gpuprof_t	**event_metrics_sets;		/**< For each set, and for each GPU, the event metrics list. */
 } dcgmi_sig_t;
 
@@ -92,6 +94,8 @@ state_t dcgmi_lib_get_global_metrics(dcgmi_sig_t *dcgmi_sig);
 
 
 void dcgmi_lib_reset_instances(dcgmi_sig_t *dcgmi_sig);
+
+void dcgmi_lib_compute_gpu_gflops(dcgmi_sig_t *dcgmi_sig, signature_t *metrics);
 
 
 /** Fills memory pointed by \ref event_info_dst with the

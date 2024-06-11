@@ -6,9 +6,9 @@
 * Energy management. It has been developed in the context of the
 * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
 *
-* Copyright © 2017-present BSC-Lenovo
+* 
 * BSC Contact   mailto:ear-support@bsc.es
-* Lenovo contact  mailto:hpchelp@lenovo.com
+* 
 *
 * EAR is an open source software, and it is licensed under both the BSD-3 license
 * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
@@ -28,6 +28,7 @@
 
 #define RPC_GET_STATE                      2001
 #define RPC_WRITE_APPLICATION              2002
+#define RPC_WRITE_WF_APPLICATION           2003
 #define RPC_WRITE_LOOP                     2004
 #define RPC_WRITE_EVENT                    2006
 #define RPC_MGT_CPUFREQ_GET_API            1001

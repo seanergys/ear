@@ -6,9 +6,9 @@
 * Energy management. It has been developed in the context of the
 * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
 *
-* Copyright © 2017-present BSC-Lenovo
+* 
 * BSC Contact   mailto:ear-support@bsc.es
-* Lenovo contact  mailto:hpchelp@lenovo.com
+* 
 *
 * EAR is an open source software, and it is licensed under both the BSD-3 license
 * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
@@ -75,22 +75,23 @@ static int getenv_local(char *var, char *buf, int len)
 
 static int getenv_remote(spank_t sp, char *var, char *buf, int len)
 {
-	spank_err_t serrno;
-
-	if (var == NULL || buf == NULL) {
-		return 0;
-	}
-	
-	serrno = spank_getenv (sp, var, buf, len);
-
-	if (serrno != ESPANK_SUCCESS) {
-		return 0;
-	}
-	if (strlen(buf) <= 0) {
-		return 0;
-	}
-
-	return 1;
+    char new_var[128];
+    if (var == NULL || buf == NULL) {
+        return 0;
+    }
+    if (spank_getenv (sp, var, buf, len) == ESPANK_SUCCESS) {
+        if (strlen(buf) > 0) {
+            return 1;
+        }
+    }
+    new_var[0] = '\0';
+    strcat(new_var, "SLURM_");
+    if (spank_getenv (sp, strcat(new_var, var), buf, len) == ESPANK_SUCCESS) {
+        if (strlen(buf) > 0) {
+            return 1;
+        }
+    }
+    return 0;
 }
 
 static int isenv_local(char *var, char *val)

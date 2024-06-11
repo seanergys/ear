@@ -6,9 +6,9 @@
 * Energy management. It has been developed in the context of the
 * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
 *
-* Copyright © 2017-present BSC-Lenovo
+* 
 * BSC Contact   mailto:ear-support@bsc.es
-* Lenovo contact  mailto:hpchelp@lenovo.com
+* 
 *
 * EAR is an open source software, and it is licensed under both the BSD-3 license
 * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
@@ -91,4 +91,19 @@ state_t report_events(report_id_t *id, ear_event_t *eves, uint count)
   	eards_write_event(&eves[i]);
 	}
 	return EAR_SUCCESS;
+}
+
+state_t report_misc(report_id_t *id, uint type, const char *data, uint count)
+{
+	if (!must_report) return EAR_SUCCESS;
+	if (!eards_connected()) return EAR_ERROR;
+	application_t * apps = (application_t *)data;
+	debug("Report type %u", type);
+	for (uint i = 0; i < count; i++){
+		if (type == WF_APPLICATION){
+			eards_write_wf_app_signature(&apps[i]);
+		}
+  }
+  return EAR_SUCCESS;
+
 }

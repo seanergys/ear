@@ -6,9 +6,9 @@
  * Energy management. It has been developed in the context of the
  * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
  *
- * Copyright © 2017-present BSC-Lenovo
+ * 
  * BSC Contact   mailto:ear-support@bsc.es
- * Lenovo contact  mailto:hpchelp@lenovo.com
+ * 
  *
  * EAR is an open source software, and it is licensed under both the BSD-3 license
  * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
@@ -46,7 +46,7 @@ state_t policy_gpu_load(settings_conf_t *app_settings, polsym_t *psyms)
 		if (hack_gpu_policy_plugin)
 		{
 			debug("GPU policy hacked via path: %s", hack_gpu_policy_plugin);
-			strncpy(gpupolicy_objc, hack_gpu_policy_plugin, sizeof(gpupolicy_objc));
+			strncpy(gpupolicy_objc, hack_gpu_policy_plugin, sizeof(gpupolicy_objc) - 1);
 		} else if (app_settings->policy_name)
 		{
 			char gpupolicy_name[SZ_FILENAME];

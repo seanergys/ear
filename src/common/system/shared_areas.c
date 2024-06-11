@@ -6,9 +6,9 @@
 * Energy management. It has been developed in the context of the
 * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
 *
-* Copyright © 2017-present BSC-Lenovo
+* 
 * BSC Contact   mailto:ear-support@bsc.es
-* Lenovo contact  mailto:hpchelp@lenovo.com
+* 
 *
 * EAR is an open source software, and it is licensed under both the BSD-3 license
 * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
@@ -111,8 +111,8 @@ void *attach_shared_area(char *path, int area_size, uint perm, int *shared_fd, i
 
     if (fd < 0)
 		{
-			error("error attaching to shared memory at (%s): %s", buff, strerror(errno));
 #if SHOW_DEBUGS
+			error("error attaching to shared memory at (%s): %s", buff, strerror(errno));
   		char test[2048];
   		sprintf(test,"ls -la %s", buff);
   		system(test);

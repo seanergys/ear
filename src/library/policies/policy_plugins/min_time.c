@@ -6,9 +6,9 @@
  * Energy management. It has been developed in the context of the
  * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
  *
- * Copyright © 2017-present BSC-Lenovo
+ * 
  * BSC Contact   mailto:ear-support@bsc.es
- * Lenovo contact  mailto:hpchelp@lenovo.com
+ * 
  *
  * EAR is an open source software, and it is licensed under both the BSD-3 license
  * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
@@ -356,7 +356,7 @@ state_t policy_apply(polctx_t *c, signature_t *sig, node_freqs_t *freqs, int *re
 
     ulong curr_imc_freq;
     uint eUFS = dyn_unc;
-    uint curr_imc_pstate;
+    uint curr_imc_pstate = 0;
 
     // TODO: Can we assign this values calling some function who return values based on current architecture?
     ulong max_cpufreq_sel = 0, min_cpufreq_sel = 10000000;

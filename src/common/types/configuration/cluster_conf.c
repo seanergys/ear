@@ -6,9 +6,9 @@
  * Energy management. It has been developed in the context of the
  * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
  *
- * Copyright © 2017-present BSC-Lenovo
+ * 
  * BSC Contact   mailto:ear-support@bsc.es
- * Lenovo contact  mailto:hpchelp@lenovo.com
+ * 
  *
  * EAR is an open source software, and it is licensed under both the BSD-3 license
  * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
@@ -443,6 +443,16 @@ my_node_conf_t *get_my_node_conf(cluster_conf_t *my_conf, char *nodename)
         n->powercap_gpu_plugin = my_conf->tags[tag_id].powercap_gpu_plugin;
 
         n->coef_file = strlen(my_conf->tags[tag_id].coeffs) > 0 ? my_conf->tags[tag_id].coeffs : "coeffs.default";
+				// There is a specific default_policy , we replace the cluster conf default policy
+				if (strlen(my_conf->tags[tag_id].default_policy) > 0){
+					uint p = 0;
+					for (p = 0; p < my_conf->num_policies; p++){
+						if (strcmp(my_conf->power_policies[p].name, my_conf->tags[tag_id].default_policy) == 0){
+							my_conf->default_policy = p;
+							break;
+						}
+					}
+				}
     }
     else warning("No tag found for current node in ear.conf\n");
 
@@ -462,7 +472,7 @@ my_node_conf_t *get_my_node_conf(cluster_conf_t *my_conf, char *nodename)
                     if (!strcmp(my_conf->power_policies[i].name, n->policies[j].name)) //two policies are the same if they are have the same name, so we replace them
                     {
 						if (i == my_conf->default_policy) {
-							printf("Found default policy and changing it!");
+							debug("Found default policy and changing it!");
 							my_conf->default_policy = j; //if the default policy is the one we are replacing, change the pointer
 						}
                         memcpy(&n->policies[j], &my_conf->power_policies[i], sizeof(policy_conf_t));
@@ -761,6 +771,7 @@ void set_default_tag_values(tag_t *tag)
     strcpy(tag->powercap_plugin, "");
     strcpy(tag->powercap_gpu_plugin, "");
     strcpy(tag->idle_governor, "default");
+		strcpy(tag->default_policy, "");
 }
 
 
@@ -785,8 +796,8 @@ void set_default_island_conf(node_island_t *isl_conf, uint id)
 
 void set_default_conf_install(conf_install_t *inst)
 {
-    sprintf(inst->obj_ener, "default");
-    sprintf(inst->obj_power_model, "default");
+    sprintf(inst->obj_ener, DEFAULT_ENERGY_PLUGIN);
+    sprintf(inst->obj_power_model, DEFAULT_ENERGY_MODEL);
 }
 
 /*

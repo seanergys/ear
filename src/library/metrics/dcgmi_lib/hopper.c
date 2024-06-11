@@ -5,9 +5,9 @@
  * Energy management. It has been developed in the context of the
  * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
  *
- * Copyright © 2017-present BSC-Lenovo
+ * 
  * BSC Contact   mailto:ear-support@bsc.es
- * Lenovo contact  mailto:hpchelp@lenovo.com
+ * 
  *
  * EAR is an open source software, and it is licensed under both the BSD-3 license
  * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
@@ -108,4 +108,21 @@ state_t dcgmi_lib_hopper_init(uint api, dcgmi_lib_t *dcgmi_data, int **event_inf
 	{
 		return_msg(EAR_ERROR, Generr.input_null);
 	}
+}
+
+
+state_t dcgmi_lib_hopper_fp_coeffs(int **coeffs, size_t coeffs_length)
+{
+
+  int *hopper_coeffs;
+  hopper_coeffs = (int*) malloc (coeffs_length * (sizeof(int)));
+  
+  hopper_coeffs[0] = 16384; //FP64 activities
+  hopper_coeffs[1] = 32768; //FP32 activities
+  hopper_coeffs[2] = 65536; //FP16 activities
+  hopper_coeffs[3] = 32768; //Tensor activities
+
+  *coeffs = hopper_coeffs;
+
+	return EAR_SUCCESS;
 }

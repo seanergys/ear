@@ -6,9 +6,9 @@
 * Energy management. It has been developed in the context of the
 * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
 *
-* Copyright © 2017-present BSC-Lenovo
+* 
 * BSC Contact   mailto:ear-support@bsc.es
-* Lenovo contact  mailto:hpchelp@lenovo.com
+* 
 *
 * EAR is an open source software, and it is licensed under both the BSD-3 license
 * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
@@ -54,8 +54,6 @@ static int    *fds_sgv;
 
 void mgt_intel_pstate_load(topology_t *tp, mgt_ps_driver_ops_t *ops)
 {
-    char freq_max_string[64];
-    char freq_min_string[64];
     int set_frequency = 1;
     int set_governor  = 1;
 
@@ -88,8 +86,6 @@ void mgt_intel_pstate_load(topology_t *tp, mgt_ps_driver_ops_t *ops)
     cpufreq_base_init(tp, &bf);
     // Saving some required data
     cpu_count     = tp->cpu_count;
-    freq_max0     = (ullong) atoi(freq_max_string);
-    freq_min0     = (ullong) atoi(freq_min_string);
     freq_max      = freq_max0;
     current_list  = calloc(cpu_count, sizeof(ullong));
     //
@@ -234,7 +230,7 @@ state_t mgt_intel_pstate_set_current(uint freq_index, int cpu)
         } else {
             sprintf(data, "%llu", avail_list[freq_index]);
         }
-        debug("writing a word '%s'", data);
+        debug("writing a word '%s' freq_index %u freq_max %llu", data, freq_index, freq_max0);
         strcat(data, "\n");
         return (filemagic_word_write(fds_smf[cpu], data, strlen(data), 0) ? EAR_SUCCESS:EAR_ERROR);
     }

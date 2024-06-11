@@ -6,9 +6,9 @@
  * Energy management. It has been developed in the context of the
  * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
  *
- * Copyright © 2017-present BSC-Lenovo
+ * 
  * BSC Contact   mailto:ear-support@bsc.es
- * Lenovo contact  mailto:hpchelp@lenovo.com
+ * 
  *
  * EAR is an open source software, and it is licensed under both the BSD-3 license
  * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
@@ -183,7 +183,7 @@ static int set_powercap_value(uint domain, uint limit)
 void set_default_node_powercap_opt(node_powercap_opt_t *my_powercap_opt)
 {
     my_powercap_opt->def_powercap = powermon_get_powercap_def();
-    my_powercap_opt->powercap_idle = ear_max(powermon_get_powercap_def()*POWERCAP_IDLE_PERC, 1);
+    my_powercap_opt->powercap_idle = ear_max(powermon_get_powercap_def()*EARD_POWERCAP_IDLE_PERC, 1);
     my_powercap_opt->current_pc = 0;
     my_powercap_opt->last_t1_allocated = powermon_get_powercap_def();
     my_powercap_opt->max_node_power = powermon_get_max_powercap_def();
@@ -243,7 +243,7 @@ int powercap_init()
     last_status=PC_STATUS_IDLE;
     pc_cpu_strategy=pmgt_get_powercap_cpu_strategy(pcmgr);
     pmgt_set_pc_mode(pcmgr,PC_MODE_TARGET);
-    set_powercap_value(DOMAIN_NODE,my_pc_opt.powercap_idle);
+    set_powercap_value(DOMAIN_NODE, my_pc_opt.powercap_idle);
     debug("powercap initialization finished");
     powercap_monitor_init();
     update_node_powercap_opt_shared_info();

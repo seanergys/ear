@@ -6,9 +6,9 @@
  * Energy management. It has been developed in the context of the
  * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
  *
- * Copyright © 2017-present BSC-Lenovo
+ * 
  * BSC Contact   mailto:ear-support@bsc.es
- * Lenovo contact  mailto:hpchelp@lenovo.com
+ * 
  *
  * EAR is an open source software, and it is licensed under both the BSD-3 license
  * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD * and COPYING.EPL files.
@@ -104,11 +104,11 @@ static ulong  dom_util_limit[NUM_DOMAINS];
 /* pdomains_min defines the minimum power balance that a certain domain can reach when rebalancing 
  * the node due to excessive power consumption. */
 /* pdomains_min_dummy is used when GPUs are enabled but the domain loads the dummy plugin*/
-static float pdomains[NUM_DOMAINS]={0.6,0.45,0,GPU_PERC_UTIL};
-static float pdomains_idle[NUM_DOMAINS]={0.6,0.45,0,GPU_PERC_UTIL};
-static float pdomains_def[NUM_DOMAINS]={0.6,0.5,0,GPU_PERC_UTIL};
+static float pdomains[NUM_DOMAINS]={1.0,0.45,0,GPU_PERC_UTIL};
+static float pdomains_idle[NUM_DOMAINS]={1.0,0.45,0,GPU_PERC_UTIL};
+static float pdomains_def[NUM_DOMAINS]={1.0,0.5,0,GPU_PERC_UTIL};
 static float pdomains_def_dummy[NUM_DOMAINS]={1.0,0.9,0,0};
-static float pdomains_min[NUM_DOMAINS]={0.6,0.4,0,GPU_PERC_UTIL};
+static float pdomains_min[NUM_DOMAINS]={1.0,0.4,0,GPU_PERC_UTIL};
 static float pdomains_min_dummy[NUM_DOMAINS]={1.0,0.75,0,0};
 #else
 static float pdomains[NUM_DOMAINS]={1.0, 0.9, 0, 0};
@@ -196,17 +196,19 @@ static topology_t pc_topology_info;
 /* These functions identies and monitors load changes */
 
 
-static uint rapl_pck_tdps[MAX_PACKAGES];
-static uint rapl_dram_tdps[MAX_PACKAGES];
-#define TDP_CPU 150
-#define TDP_DRAM 30
+static uint  pck_tdps[MAX_PACKAGES];
+static uint  dram_tdps[MAX_PACKAGES];
+static ulong gpu_tdps[MAX_GPUS_SUPPORTED];
+static ulong gpu_tdps_min[MAX_GPUS_SUPPORTED];
 #define TDP_GPU 250
 
 void init_tdps()
 {
     mgt_cpupow_load(&pc_topology_info, NO_EARD);
-    mgt_cpupow_tdp_get(CPUPOW_SOCKET, rapl_pck_tdps);
-    mgt_cpupow_tdp_get(CPUPOW_DRAM, rapl_dram_tdps);
+    mgt_cpupow_tdp_get(CPUPOW_SOCKET, pck_tdps);
+    mgt_cpupow_tdp_get(CPUPOW_DRAM, dram_tdps);
+    mgt_gpu_load(NO_EARD);
+    mgt_gpu_power_cap_get_rank(NULL, gpu_tdps_min, gpu_tdps);
 }
 
 void compute_power_distribution()
@@ -219,11 +221,12 @@ void compute_power_distribution()
     init_tdps();
 
     /* CPU and DRAM are read in eard.c during the initialization */
-    bpd_cpu = rapl_pck_tdps[0];
-    bpd_dram = rapl_dram_tdps[0];
+    /* We assume that ALL CPUs, DRAM and GPUs have the same TDP */
+    bpd_cpu = pck_tdps[0];
+    bpd_dram = dram_tdps[0];
     debug("Using CPU TDP %u DRAM TDP %u", bpd_cpu, bpd_dram);
 #if USE_GPUS
-    if ((domains_loaded[DOMAIN_GPU]) && (gpu_pc_model != API_DUMMY)) bpd_gpu = TDP_GPU;
+    if ((domains_loaded[DOMAIN_GPU]) && (gpu_pc_model != API_DUMMY)) bpd_gpu = gpu_tdps[0];
 #endif
     pd_cpu = bpd_cpu * pc_topology_info.socket_count;
     pd_dram = bpd_dram * pc_topology_info.socket_count;
@@ -523,7 +526,9 @@ state_t pmgt_init()
     else ret=EAR_ERROR;
 #endif
     debug("Initializing Util monitoring");
-    util_monitoring_init();
+    if (!domains_loaded[DOMAIN_NODE]) {
+        util_monitoring_init();
+    }
     memset(cdomain_status,0,NUM_DOMAINS*sizeof(domain_status_t));
     memset(&cdomain_settings, 0, sizeof(domain_settings_t)*NUM_DOMAINS);
     for (i = 0; i<NUM_DOMAINS; i++) {

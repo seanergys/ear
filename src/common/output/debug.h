@@ -6,9 +6,9 @@
 * Energy management. It has been developed in the context of the
 * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
 *
-* Copyright © 2017-present BSC-Lenovo
+* 
 * BSC Contact   mailto:ear-support@bsc.es
-* Lenovo contact  mailto:hpchelp@lenovo.com
+* 
 *
 * EAR is an open source software, and it is licensed under both the BSD-3 license
 * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
@@ -21,11 +21,11 @@
 #include <stdio.h>
 #include <string.h>
 
-#define DEBUG_ENABLED     0
+#define DEBUG_ENABLED     1
 int  debug_channel	       __attribute__((weak)) = 2;
 int adebug_enabled         __attribute__((weak)) = 0;
 
-#define ENABLE_DEBUG     1
+#define ENABLE_DEBUG     0
 #define DEBUG_SET_FD(fd) debug_channel = fd;
 
 // Set

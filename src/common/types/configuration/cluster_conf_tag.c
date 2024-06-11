@@ -6,9 +6,9 @@
 * Energy management. It has been developed in the context of the
 * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
 *
-* Copyright © 2017-present BSC-Lenovo
+* 
 * BSC Contact   mailto:ear-support@bsc.es
-* Lenovo contact  mailto:hpchelp@lenovo.com
+* 
 *
 * EAR is an open source software, and it is licensed under both the BSD-3 license
 * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
@@ -212,6 +212,10 @@ state_t TAG_parse_token(tag_t **tags_i, unsigned int *num_tags_i, char *line)
             if (!strcmp(value, "NODE"))
                 tags[idx].powercap_type = POWERCAP_TYPE_NODE;
         }
+				else if (!strcmp(key, "POLICY"))
+				{
+					strcpy(tags[idx].default_policy, value);					
+				}
 
 
         token = strtok_r(NULL, " ", &buffer_ptr);
@@ -239,7 +243,7 @@ void power2str(ulong power, char *str)
 void print_tags_conf(tag_t *tag, int i)
 {
   char buffer[64];
-    verbosen(VCCONF, "Tag[%d]: %s\ttype: %d\tdefault: %d\tpowercap_type: %d\n", i, tag->id, tag->type, tag->is_default, tag->powercap_type);
+    verbosen(VCCONF, "Tag[%d]: %s\ttype: %d\tdefault: %d\t policy: '%s'\t powercap_type: %d\n", i, tag->id, tag->type, tag->is_default, tag->default_policy, tag->powercap_type);
     verbosen(VCCONF, "\t\tavx512_freq: %lu\tavx2_freq: %lu\tmax_power: %lu\tmin_power: %lu\terror_power: %lu\t \n", 
                      tag->max_avx512_freq, tag->max_avx2_freq, tag->max_power, tag->min_power, tag->error_power);
 	verbosen(VCCONF, "\t\tgpu_def_freq %lu / cpu_max_pstate %d / imc_max_pstate %d\n", tag->gpu_def_freq, tag->cpu_max_pstate, tag->imc_max_pstate);

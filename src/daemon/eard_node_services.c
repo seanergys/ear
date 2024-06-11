@@ -6,9 +6,9 @@
 * Energy management. It has been developed in the context of the
 * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
 *
-* Copyright © 2017-present BSC-Lenovo
+* 
 * BSC Contact   mailto:ear-support@bsc.es
-* Lenovo contact  mailto:hpchelp@lenovo.com
+* 
 *
 * EAR is an open source software, and it is licensed under both the BSD-3 license
 * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
@@ -1162,6 +1162,7 @@ int eard_system(eard_head_t *head, int req_fd, int ack_fd)
 
     switch (head->req_service) {
         case RPC_WRITE_APPLICATION:
+        case RPC_WRITE_WF_APPLICATION:
             // Initializing
             memset(&app, 0, sizeof(application_t));
             serial_reset(&wb, head->size);
@@ -1172,7 +1173,12 @@ int eard_system(eard_head_t *head, int req_fd, int ack_fd)
                 application_deserialize(&wb, &app);
 
                 if (!eard_local_conn[con_id].anonymous) {
-                    powermon_mpi_signature(&app);
+									if (head->req_service == RPC_WRITE_APPLICATION){
+                  	powermon_mpi_signature(&app);
+									}
+									if (head->req_service == RPC_WRITE_WF_APPLICATION){
+										report_applications(&rid, &app, 1);
+									}
                 }
             }
             break;

@@ -6,9 +6,9 @@
 * Energy management. It has been developed in the context of the
 * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
 *
-* Copyright © 2017-present BSC-Lenovo
+* 
 * BSC Contact   mailto:ear-support@bsc.es
-* Lenovo contact  mailto:hpchelp@lenovo.com
+* 
 *
 * EAR is an open source software, and it is licensed under both the BSD-3 license
 * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
@@ -86,6 +86,9 @@ state_t perf_open_ext(perf_t *perf, perf_t *group, pid_t pid, uint type, ulong e
 	perf->attr.disabled       = 1;
 	#if ESTIMATE_PERF == 0
 	perf->attr.inherit        = 1;
+    #if PERF_ATTR_SIZE_VER6
+	perf->attr.inherit_thread = 1;
+    #endif
 	#endif
 	perf->attr.exclude_kernel = 1;
 	perf->attr.exclude_hv     = 1;
