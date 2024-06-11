@@ -6,9 +6,9 @@
 * Energy management. It has been developed in the context of the
 * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
 *
-* Copyright © 2017-present BSC-Lenovo
+* 
 * BSC Contact   mailto:ear-support@bsc.es
-* Lenovo contact  mailto:hpchelp@lenovo.com
+* 
 *
 * EAR is an open source software, and it is licensed under both the BSD-3 license
 * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
@@ -19,7 +19,7 @@
 #define _GNU_SOURCE
 //#define SHOW_DEBUGS 1
 //
-#define VPROC_INIT 2
+#define VPROC_INIT 3
 #define VJOB_INIT  2
 #define VPROC_MGT  3
 #define VNTASKS_INIT 3
@@ -2467,12 +2467,18 @@ void ear_finalize(int exit_status)
 								end_job(&application.job);
 								end_mpi(&application.job);
 								verbose(2, "EARL[%d][%d] Application report (type %s)", ear_my_rank,getpid(),( first_application? "Regular App":"WF App"));
-								if (first_application && report_applications(&rep_id,&application,1) != EAR_SUCCESS){
-												verbose_master(1,"Error reporting application");
-								}else{
+								if (first_application)
+								{
+									if (state_fail(report_applications(&rep_id, &application, 1)))
+									{
+												verbose_master(1, "Error reporting application");
+									}
+								} else
+								{
 									fill_basic_sig(&application);
 									report_misc(&rep_id, WF_APPLICATION, &application,1);
 								}
+
                 if (masters_info.my_master_rank == 0){
 								  report_mpi_application_data(1, &application);
                 }else{

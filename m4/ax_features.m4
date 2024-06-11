@@ -71,6 +71,7 @@ AC_DEFUN([AX_BEFORE_FEATURES],
 		docdir=/share/doc/ear
 	fi
 
+
 	#
 	# Disable RPATH
 	#
@@ -163,6 +164,24 @@ AC_DEFUN([AX_BEFORE_FEATURES],
     # Makefile name
     #
 	AC_ARG_VAR([MAKE_NAME],[Add a name to the compilation. It adds an additional Makefile with a suffix.])
+
+   	#
+   	# System type: Numbers defined in config_def.h
+   	#
+   	SYSTEM_TYPE=100
+   	if test "x$system_type" = "xLenovo"; then
+			SYSTEM_TYPE=0
+		fi
+   	if test "x$system_type" = "xGrace_Hooper"; then
+			SYSTEM_TYPE=1
+		fi
+   	if test "x$system_type" = "xCray_HPE"; then
+			SYSTEM_TYPE=2
+		fi
+   	if test "x$system_type" = "xEAR_Node_Mgr"; then
+			SYSTEM_TYPE=3
+		fi
+		
 ])
 
 AC_DEFUN([AX_AFTER_FEATURES],
@@ -240,6 +259,7 @@ AC_DEFUN([AX_AFTER_FEATURES],
 	AC_SUBST(VERSION_MINOR)
     AC_SUBST(SCHED_DIR)
     AC_SUBST(SCHED_NAME)
+	AC_SUBST(SYSTEM_TYPE)
 ])
 
 AC_DEFUN([AX_AFTER_OUTPUT],

@@ -6,9 +6,9 @@
  * Energy management. It has been developed in the context of the
  * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
  *
- * Copyright © 2017-present BSC-Lenovo
+ * 
  * BSC Contact   mailto:ear-support@bsc.es
- * Lenovo contact  mailto:hpchelp@lenovo.com
+ * 
  *
  * EAR is an open source software, and it is licensed under both the BSD-3 license
  * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
@@ -21,6 +21,13 @@
 
 
 #include <common/config/config_install.h>
+
+#define LENOVO        0
+#define GRACE_HOOPER  1
+#define CRAY_HPE      2
+#define EAR_NODE_MGR  3
+#define GENERIC 			100
+
 
 
 /** @name Paths
@@ -157,6 +164,33 @@
 #define DEFAULT_POWER                       300
 #define GRACE_T1                            3
 #define MAX_TIME_DYNAIS_WITHOUT_SIGNATURE   15
+
+
+/* 
+ * To be used by default in eard and eard_dummy
+ */
+#define DEFAULT_EAR_INSTALL_PATH "/usr/lib/ear"
+#define DEFAULT_EAR_ETC_PATH "/etc"
+
+
+#if   SYSTEM_TYPE == LENOVO
+#define DEFAULT_ENERGY_PLUGIN "energy_sd650.so"
+#define DEFAULT_ENERGY_MODEL  "avx512_model.so"
+#elif SYSTEM_TYPE == GRACE_HOOPER
+#define DEFAULT_ENERGY_PLUGIN "grace_hopper_module_power.so"
+#define DEFAULT_ENERGY_MODEL  "avx512_model.so"
+#elif SYSTEM_TYPE == CRAY_HPE
+#define DEFAULT_ENERGY_PLUGIN "energy_cray_pm.so"
+#define DEFAULT_ENERGY_MODEL  "avx512_model.so"
+#elif SYSTEM_TYPE == EAR_NODE_MGR
+#define DEFAULT_ENERGY_PLUGIN "energy_eard_nm.so"
+#define DEFAULT_ENERGY_MODEL  "avx512_model.so"
+#else
+#define DEFAULT_ENERGY_PLUGIN "energy_cpu_gpu.so"
+#define DEFAULT_ENERGY_MODEL  "avx512_model.so"
+#endif
+
+
 
 /* Maximum power error supported. It is used to compute the min time to compute
  * a valid signature */

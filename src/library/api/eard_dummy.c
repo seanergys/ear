@@ -6,9 +6,9 @@
 * Energy management. It has been developed in the context of the
 * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
 *
-* Copyright © 2017-present BSC-Lenovo
+* 
 * BSC Contact   mailto:ear-support@bsc.es
-* Lenovo contact  mailto:hpchelp@lenovo.com
+* 
 *
 * EAR is an open source software, and it is licensed under both the BSD-3 license
 * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
@@ -39,10 +39,6 @@
 #include <daemon/local_api/node_mgr.h>
 #include <daemon/shared_configuration.h>
 
-#define DEFAULT_EAR_INSTALL_PATH "/usr/lib/ear"
-#define DEFAULT_EAR_ETC_PATH "/etc"
-#define DEFAULT_ENERGY_PLUGIN "energy_eard_nm.so"
-
 
 static char path[GENERIC_NAME];
 static cluster_conf_t dummy_cc;
@@ -53,6 +49,8 @@ static ear_njob_t *dummy_nodemgr;
 
 static settings_conf_t * dummy_sett;
 static ulong           * dummy_frequencies;
+
+uint earl_config_dummy = 0;
 
 
 #define check_null(p, str, arg) \
@@ -83,7 +81,7 @@ static void create_dummy_island(cluster_conf_t *dummycc)
 	dummycc->tags = calloc(1, sizeof(tag_t));
 	memset(dummycc->tags, 0, sizeof(tag_t));
 	set_default_tag_values(dummycc->tags);
-	strcpy(dummycc->tags[0].energy_model, "avx512_model.so");
+	strcpy(dummycc->tags[0].energy_model, DEFAULT_ENERGY_MODEL);
 	strcpy(dummycc->tags[0].energy_plugin, DEFAULT_ENERGY_PLUGIN);
 	strcpy(dummycc->tags[0].powercap_plugin, "");
 	strncpy(dummycc->tags[0].id,  "default", sizeof(dummycc->tags[0].id));
@@ -135,7 +133,7 @@ static void create_dummy_conf_paths(cluster_conf_t *dummycc, char *ear_tmp)
 	else 			strcpy(dummycc->install.dir_conf, DEFAULT_EAR_ETC_PATH);
 	strcpy(dummycc->install.dir_plug, dummycc->install.dir_inst);
 	strcat(dummycc->install.dir_plug, "/lib/plugins");
-	strcpy(dummycc->install.obj_power_model, "avx512_model.so");
+	strcpy(dummycc->install.obj_power_model, DEFAULT_ENERGY_MODEL);
 	strcpy(dummycc->install.obj_ener, DEFAULT_ENERGY_PLUGIN);
 }
 
@@ -167,6 +165,8 @@ state_t eard_dummy_cluster_conf(char *ear_tmp, uint ID)
         verbose_master(2, "Reading cluster_conf");
 				uint vlevel = VERB_GET_LV();
 				VERB_SET_LV(0);
+				// Change th value or this var to enable/disable some verbosity
+				VCCONF = 3;
         read_cluster_conf(path, &dummy_cc);
 				VERB_SET_LV(vlevel);
     }else{
@@ -189,6 +189,11 @@ state_t eard_dummy_cluster_conf(char *ear_tmp, uint ID)
     if (dummy_node_conf != NULL){
         if (VERB_GET_LV() >= 2) print_my_node_conf(dummy_node_conf);
     }
+		// Updating the energy plugin with the one in the nod_conf
+		if (dummy_node_conf->energy_plugin != dummy_cc.install.obj_ener){
+			strcpy(dummy_cc.install.obj_ener, dummy_node_conf->energy_plugin);
+		}
+
 
     /* serialization */
     serialize_cluster_conf(&dummy_cc, &dummy_ser_cc, &dummy_ser_cc_size);
@@ -375,6 +380,7 @@ void eard_dummy_replace_base_freq(ulong base)
 state_t create_eard_dummy_shared_regions(char *ear_tmp, uint ID)
 {
 				verbose(2,"Creating dummy areas in %s and ID %u", ear_tmp, ID);
+			 earl_config_dummy = 1;
 				eard_dummy_cluster_conf(ear_tmp, ID);
 				eard_dummy_earl_settings(ear_tmp, ID);
 				eard_dummy_nodemgr(ear_tmp, ID);

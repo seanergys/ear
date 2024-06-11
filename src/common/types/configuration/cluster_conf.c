@@ -6,9 +6,9 @@
  * Energy management. It has been developed in the context of the
  * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
  *
- * Copyright © 2017-present BSC-Lenovo
+ * 
  * BSC Contact   mailto:ear-support@bsc.es
- * Lenovo contact  mailto:hpchelp@lenovo.com
+ * 
  *
  * EAR is an open source software, and it is licensed under both the BSD-3 license
  * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
@@ -796,8 +796,8 @@ void set_default_island_conf(node_island_t *isl_conf, uint id)
 
 void set_default_conf_install(conf_install_t *inst)
 {
-    sprintf(inst->obj_ener, "energy_cpu_gpu.so");
-    sprintf(inst->obj_power_model, "avx512_model.so");
+    sprintf(inst->obj_ener, DEFAULT_ENERGY_PLUGIN);
+    sprintf(inst->obj_power_model, DEFAULT_ENERGY_MODEL);
 }
 
 /*

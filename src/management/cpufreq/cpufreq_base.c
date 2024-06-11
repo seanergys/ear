@@ -6,16 +6,16 @@
 * Energy management. It has been developed in the context of the
 * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
 *
-* Copyright © 2017-present BSC-Lenovo
+* 
 * BSC Contact   mailto:ear-support@bsc.es
-* Lenovo contact  mailto:hpchelp@lenovo.com
+* 
 *
 * EAR is an open source software, and it is licensed under both the BSD-3 license
 * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <math.h>
 #include <unistd.h>
@@ -395,11 +395,11 @@ static int basefreq_spec_asm(topology_t *tp, cpufreq_base_t *base)
         "mov x1, #10000;"
         "mov x2, #10000;"
         "mul x1, x1, x2;"
-        "Loop:"
+        "CPF_Loop:"
         DO_40("mov x8, x8;") // 40 cycles
         "add x0, x0, #1;"    // 1 cycle
         "cmp x0, x1;"        // 1 cycle
-        "bne Loop;"          // 2 cycles
+        "bne CPUF_Loop;"          // 2 cycles
     );
     #else
     // On the contrary, MOV and NOP seems to not work well on X86,
@@ -408,11 +408,11 @@ static int basefreq_spec_asm(topology_t *tp, cpufreq_base_t *base)
         "mov $0, %eax;"
         "mov $10000, %ebx;"
         "imul %ebx, %ebx;"
-        "Loop:"
+        "CPUF_Loop:"
         "add $1, %eax;"        // 1 cycle
         DO_40("add $1, %ecx;") // 40 cycles
         "cmp %ebx, %eax;"      // 1 cycle
-        "jl Loop;"             // X cycles
+        "jl CPUF_Loop;"             // X cycles
     );
     #endif
     ns  = (double) timestamp_diffnow(&ts1, TIME_NSECS);
@@ -451,15 +451,15 @@ void basefreq_init_static(topology_t *tp, cpufreq_base_t *base)
     if (basefreq_spec_hardcode(tp, base)) return;
 }
 
-void cpufreq_base_tests(topology_t *tp, int fd)
+__attribute__((unused)) static void cpufreq_base_tests(topology_t *tp, int fd)
 {
     char        *c[2] = { "-", "f" };
     cfb_t        bf;
     int          n = 0;
 
-    printf("test   frequency  f  boost  f   !rel   name                                !reason\n");
-    printf("----   ---------  -  -----  -   ----   ----                                -------\n");
-    #define PRINT(call, string) {                  \
+    dprintf(fd, "test   frequency  f  boost  f   !rel   name                                !reason\n");
+    dprintf(fd, "----   ---------  -  -----  -   ----   ----                                -------\n");
+    #define PRINTEST(call, string) {                  \
         memset(&bf, 0, sizeof(cfb_t));             \
         basefreq_clean();                          \
         call;                                      \
@@ -468,18 +468,18 @@ void cpufreq_base_tests(topology_t *tp, int fd)
             bf.boost_enabled, c[found_boost],      \
             bf.not_reliable, string, reason);      \
     }
-    PRINT(basefreq_file_ntb(tp, &bf)     , "no_turbo file                     ");
-    PRINT(basefreq_intel_haswell(tp, &bf), "intel cpuid                       ");
-    PRINT(basefreq_amd_zen(tp, &bf)      , "amd msr                           ");
-    PRINT(basefreq_file_baf(tp, &bf)     , "base_frequency file               ");
-    PRINT(basefreq_environment(tp, &bf)  , "environment                       ");
-    PRINT(basefreq_file_cpb(tp, &bf)     , "cpb/boost files                   ");
-    PRINT(basefreq_file_saf(tp, &bf)     , "scaling_available_frequencies file");
-    PRINT(basefreq_file_cpuinfo(tp, &bf) , "proc/cpuinfo                      ");
-    PRINT(basefreq_spec_tsc(tp, &bf)     , "spec tsc                          ");
-    PRINT(basefreq_file_smf(tp, &bf)     , "cpuinfo_max_freq files            ");
-    PRINT(basefreq_spec_asm(tp, &bf)     , "spec asm                          ");
-    PRINT(basefreq_spec_hardcode(tp, &bf), "hardcode                          ");
+    PRINTEST(basefreq_file_ntb(tp, &bf)     , "no_turbo file                     ");
+    PRINTEST(basefreq_intel_haswell(tp, &bf), "intel cpuid                       ");
+    PRINTEST(basefreq_amd_zen(tp, &bf)      , "amd msr                           ");
+    PRINTEST(basefreq_file_baf(tp, &bf)     , "base_frequency file               ");
+    PRINTEST(basefreq_environment(tp, &bf)  , "environment                       ");
+    PRINTEST(basefreq_file_cpb(tp, &bf)     , "cpb/boost files                   ");
+    PRINTEST(basefreq_file_saf(tp, &bf)     , "scaling_available_frequencies file");
+    PRINTEST(basefreq_file_cpuinfo(tp, &bf) , "proc/cpuinfo                      ");
+    PRINTEST(basefreq_spec_tsc(tp, &bf)     , "spec tsc                          ");
+    PRINTEST(basefreq_file_smf(tp, &bf)     , "cpuinfo_max_freq files            ");
+    PRINTEST(basefreq_spec_asm(tp, &bf)     , "spec asm                          ");
+    PRINTEST(basefreq_spec_hardcode(tp, &bf), "hardcode                          ");
 }
 
 void cpufreq_base_init(topology_t *tp, cpufreq_base_t *base)
