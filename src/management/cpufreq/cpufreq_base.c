@@ -459,15 +459,15 @@ void basefreq_init_static(topology_t *tp, cpufreq_base_t *base)
     if (basefreq_spec_hardcode(tp, base)) return;
 }
 
-void cpufreq_base_tests(topology_t *tp, int fd)
+__attribute__((unused)) static void cpufreq_base_tests(topology_t *tp, int fd)
 {
     char        *c[2] = { "-", "f" };
     cfb_t        bf;
     int          n = 0;
 
-    printf("test   frequency  f  boost  f   !rel   name                                !reason\n");
-    printf("----   ---------  -  -----  -   ----   ----                                -------\n");
-    #define PRINT(call, string) {                  \
+    dprintf(fd, "test   frequency  f  boost  f   !rel   name                                !reason\n");
+    dprintf(fd, "----   ---------  -  -----  -   ----   ----                                -------\n");
+    #define PRINTEST(call, string) {                  \
         memset(&bf, 0, sizeof(cfb_t));             \
         basefreq_clean();                          \
         call;                                      \
@@ -476,18 +476,18 @@ void cpufreq_base_tests(topology_t *tp, int fd)
             bf.boost_enabled, c[found_boost],      \
             bf.not_reliable, string, reason);      \
     }
-    PRINT(basefreq_file_ntb(tp, &bf)     , "no_turbo file                     ");
-    PRINT(basefreq_intel_haswell(tp, &bf), "intel cpuid                       ");
-    PRINT(basefreq_amd_zen(tp, &bf)      , "amd msr                           ");
-    PRINT(basefreq_file_baf(tp, &bf)     , "base_frequency file               ");
-    PRINT(basefreq_environment(tp, &bf)  , "environment                       ");
-    PRINT(basefreq_file_cpb(tp, &bf)     , "cpb/boost files                   ");
-    PRINT(basefreq_file_saf(tp, &bf)     , "scaling_available_frequencies file");
-    PRINT(basefreq_file_cpuinfo(tp, &bf) , "proc/cpuinfo                      ");
-    PRINT(basefreq_spec_tsc(tp, &bf)     , "spec tsc                          ");
-    PRINT(basefreq_file_smf(tp, &bf)     , "cpuinfo_max_freq files            ");
-    PRINT(basefreq_spec_asm(tp, &bf)     , "spec asm                          ");
-    PRINT(basefreq_spec_hardcode(tp, &bf), "hardcode                          ");
+    PRINTEST(basefreq_file_ntb(tp, &bf)     , "no_turbo file                     ");
+    PRINTEST(basefreq_intel_haswell(tp, &bf), "intel cpuid                       ");
+    PRINTEST(basefreq_amd_zen(tp, &bf)      , "amd msr                           ");
+    PRINTEST(basefreq_file_baf(tp, &bf)     , "base_frequency file               ");
+    PRINTEST(basefreq_environment(tp, &bf)  , "environment                       ");
+    PRINTEST(basefreq_file_cpb(tp, &bf)     , "cpb/boost files                   ");
+    PRINTEST(basefreq_file_saf(tp, &bf)     , "scaling_available_frequencies file");
+    PRINTEST(basefreq_file_cpuinfo(tp, &bf) , "proc/cpuinfo                      ");
+    PRINTEST(basefreq_spec_tsc(tp, &bf)     , "spec tsc                          ");
+    PRINTEST(basefreq_file_smf(tp, &bf)     , "cpuinfo_max_freq files            ");
+    PRINTEST(basefreq_spec_asm(tp, &bf)     , "spec asm                          ");
+    PRINTEST(basefreq_spec_hardcode(tp, &bf), "hardcode                          ");
 }
 
 void cpufreq_base_init(topology_t *tp, cpufreq_base_t *base)
