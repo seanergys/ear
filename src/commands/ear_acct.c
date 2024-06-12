@@ -37,6 +37,7 @@
 #include <common/types/classification_limits.h>
 
 #include <commands/query_helpers.h>
+#include <commands/ear_acct_auxiliary.h>
 
 #if USE_DB
 #include <common/states.h>
@@ -67,6 +68,7 @@ static void print_colors_legend()
 {
   printf("%s CPU busy waiting %s memory bound %s cpu bound %s IO bound%s\n", COL_CYA, COL_GRE, COL_RED, COL_MGT, COL_CLR);
 }
+
 static void select_color_by_phase(double CPI, double GBS, double IO, double GFLOPS)
 {
   char *col = NULL;
@@ -115,6 +117,7 @@ void usage(char *app)
 #endif
 	exit(0);
 }
+
 
 void print_values(int fd, char ***values, int columns, int rows)
 {
@@ -180,67 +183,71 @@ void average_applications(application_t *apps, int num_apps, struct avg_apps **s
     *num_sorted_apps = current;
 }
 
-
 #if IMPROVEMENTS
 bool print_power_signature_format(application_t *app, char f)
 { 
     switch(f) {
         case 'f': //frequency
-            printf("%-8.2lf ", app->power_sig.avg_f/1000000.0);
+            print_format(FREQ_WIDTH, app->power_sig.avg_f/1000000.0, 2);
             break;
         case 't': //time
-            printf("%-10.0lf ", app->power_sig.time);
-            break;
-        case 'i': //imc freq
-            printf("%-8s ", "---");
-            break;
-        case 'g': //GBS
-            printf("%-7s ", "---");
-            break;
-        case 'm': //MPI perc
-            printf("%-5s ", "---");
-            break;
-        case 'o': //IO_MBGS
-            printf("%-7s ", "---");
+            print_format(TIME_WIDTH, app->power_sig.time, 0);
             break;
         case 'e': //energy
-            printf("%-12.2lf ", app->power_sig.DC_power*app->power_sig.time);
+            print_format(ENERGY_WIDTH, app->power_sig.DC_power*app->power_sig.time, 2);
             break;
         case 'p': //DC power
-            printf("%-10.2lf ", app->power_sig.DC_power);
+            print_format(POWER_WIDTH, app->power_sig.DC_power, 2);
+            break;
+        case 'D': //DRAM power
+            print_format(DRAM_POWER_WIDTH, app->power_sig.DRAM_power, 2);
+            break;
+        case 'P': //PCK power
+            print_format(PCK_POWER_WIDTH, app->power_sig.PCK_power, 2);
+            break;
+        //these format chars exist in Signatures, but not power_signature. Should be consumed
+        case 'i': //imc freq
+            print_format(IMC_WIDTH, "---");
+            break;
+        case 'g': //GBS
+            print_format(GBS_WIDTH, "---");
+            break;
+        case 'm': //MPI perc
+            print_format(MPI_WIDTH, "---");
+            break;
+        case 'o': //IO_MBGS
+            print_format(IO_WIDTH, "---");
             break;
         case 'F': //FLOPS
             for (int i = 0; i < FLOPS_EVENTS; i++) {
-                printf("%-10s ", "---");
+                print_format(FLOPS_WIDTH, "---");
             }
             break;
-        case 'D': //DRAM power
-            printf("%-10.2lf ", app->power_sig.DRAM_power);
-            break;
-        case 'P': //PCK power
-            printf("%-10.2lf ", app->power_sig.PCK_power);
-            break;
         case 'G': //GPUs
-            printf(" %-7.2s/%-7.2s %-7.3s %s%%/%-s%% ", "---","---","---","---","---");
+            print_format_custom(" %-7.2s/%-7.2s %-7.3s %s%%/%-s%% ", "---","---","---","---","---");
             break;
-
-        //these format chars exist in Signatures, but not power_signature. Should be consumed
-        case 'r':
-            printf("%-3s/%-3s/%-8s ", "---", "---", "---");
+        case 'r': //all frequencies
+            print_format_custom("%-3s/%-3s/%-8s ", "---", "---", "---");
             break;
-        case 'L':
-            printf("%-10s ", "---");
-            printf("%-10s ", "---");
-            printf("%-10s ", "---");
+        case 'L': //cache misses
+            print_format(CACHE_WIDTH, "---");
+            print_format(CACHE_WIDTH, "---");
+            print_format(CACHE_WIDTH, "---");
             break;
-        case 'C': 
-            printf("%-5s ", "---");
+        case 'C': //CPI
+            print_format(CPI_WIDTH, "---");
             break;
-        case 'T':
-        case 's':
-        case 'I':
-            printf("%-10s ", "---");
-
+        case 'T': //TPI
+            print_format(TPI_WIDTH, "---");
+            break;
+        case 's': //gflops
+            print_format(GFLOPS_WIDTH, "---");
+            break;
+        case 'y': //cycles
+            print_format(CYCLES_WIDTH, "---");
+            break;
+        case 'I': //instructions
+            print_format(INSTRUCTIONS_WIDTH, "---");
             break;
 
         default:
@@ -254,73 +261,73 @@ bool print_signature_format(signature_t *sig, char f)
 {
     switch(f) {
         case 'p': //DC power
-           printf("%-10.2lf ", sig->DC_power);
+            print_format(POWER_WIDTH, sig->DC_power, 2);
             break;
         case 'D': //DRAM power
-            printf("%-10.2lf ", sig->DRAM_power);
+            print_format(DRAM_POWER_WIDTH, sig->DRAM_power, 2);
             break;
         case 'P': //PCK power
-            printf("%-10.2lf ", sig->PCK_power);
+            print_format(PCK_POWER_WIDTH, sig->PCK_power, 2);
             break;
         case 'g': //GBS
-            printf("%-7.2lf ", sig->GBS);
+            print_format(GBS_WIDTH, sig->GBS, 2);
             break;
         case 'T': //TPI
-            printf("%-5.2lf ", sig->TPI);
+            print_format(TPI_WIDTH, sig->TPI, 2j);
             break;
         case 'C': //CPI
-            printf("%-5.2lf ", sig->CPI);
+            print_format(CPI_WIDTH, sig->CPI, 2);
             break;
         case 's': //gflops
-            printf("%-10.2lf ", sig->Gflops/sig->DC_power);
+            print_format(GFLOPS_WIDTH, sig->Gflops/sig->DC_power, 2);
             break;
         case 't': //time
-            printf("%-10.0lf ", sig->time);
+            print_format(TIME_WIDTH, sig->time, 0);
             break;
         case 'F': //FLOPS
             for (int i = 0; i < FLOPS_EVENTS; i++)
-                printf("%-10llu ", sig->FLOPS[i]);
+                print_format(FLOPS_WIDTH, sig->FLOPS[i]);
             break;
         case 'L': //L1/2/3 misses
-            printf("%-10llu ", sig->L1_misses);
-            printf("%-10llu ", sig->L2_misses);
-            printf("%-10llu ", sig->L3_misses);
+            print_format(CACHE_WIDTH, sig->L1_misses);
+            print_format(CACHE_WIDTH, sig->L2_misses);
+            print_format(CACHE_WIDTH, sig->L3_misses);
             break;
         case 'I': //instructions
-            printf("%-10llu ", sig->instructions);
+            print_format(INSTRUCTIONS_WIDTH, sig->instructions);
             break;
         case 'y': //cycles
-            printf("%-10llu ", sig->cycles);
+            print_format(CYCLES_WIDTH, sig->cycles);
             break;
         case 'r': // all three frequencies
-            printf("%-3.2lf/", sig->avg_f/1000000.0);
-            printf("%-3.2lf/", sig->def_f/1000000.0);
-            printf("%-6.2lf ", sig->avg_imc_f/1000000.0);
+            print_format_custom("%-3.2lf/", sig->avg_f/1000000.0);
+            print_format_custom("%-3.2lf/", sig->def_f/1000000.0);
+            print_format_custom("%-6.2lf ", sig->avg_imc_f/1000000.0);
             break;
         case 'f': //frequency
-            printf("%-8.2lf ", sig->avg_f/1000000.0);
+            print_format(FREQ_WIDTH, sig->avg_f/1000000.0, 2);
             break;
-        case 'i': //img freq
-            printf("%-8.2lf ", sig->avg_imc_f/1000000.0);
+        case 'i': //imc freq
+            print_format(IMC_WIDTH, sig->avg_imc_f/1000000.0, 2);
             break;
         case 'd': //def_f
-            printf("%-8.2lf ", sig->def_f/1000000.0);
+            print_format(FREQ_WIDTH, sig->def_f/1000000.0, 2);
             break;
         case 'm': //MPI perc
-            printf("%-5.1lf ", sig->perc_MPI);
+            print_format(MPI_WIDTH, sig->perc_MPI, 1);
             break;
-        case 'o': //IO_MBGS
-            printf("%-7.1lf ", sig->IO_MBS);
+        case 'o': //IO_MBS
+            print_format(IO_WIDTH, sig->IO_MBS, 1);
             break;
         case 'v': //vpi
             {
                 double vpi;
                 compute_sig_vpi(&vpi, sig); 
-                printf("%-7.2lf ", vpi*100);
+                print_format(VPI_WIDTH, vpi*100, 2);
             }
             break;
         case 'e': //energy
-            printf("%-12.2lf ", sig->DC_power*sig->time);
+            print_format(ENERGY_WIDTH, sig->DC_power*sig->time, 2);
             break;
         case 'G': //GPUs
             { // declare a custom scope to avoid compiler complains
@@ -348,11 +355,11 @@ bool print_signature_format(signature_t *sig, char f)
                         gpu_mem_util /= num_gpus;
                         char mem_util_buf[16] = { 0 };
                         snprintf(mem_util_buf, 16, "%6lu%%", gpu_mem_util);
-                        printf(" %-7.2lf/%-7.2lf %-7.3lf %7lu%%/%-6s ", gpu_total_power,
+                        print_format_custom(" %-7.2lf/%-7.2lf %-7.3lf %7lu%%/%-6s ", gpu_total_power,
                                 gpu_power, (double)gpu_freq/1000000, gpu_util, mem_util_buf);
                     }
                     else {
-                        printf(" %-7.2lf/%-7.2s %-7.3s %s%%/%-s%% ", gpu_total_power, "---", "---", "---", "---"); 
+                        print_format_custom(" %-7.2lf/%-7.2s %-7.3s %s%%/%-s%% ", gpu_total_power, "---", "---", "---", "---"); 
                     }
                 }
             }
@@ -386,23 +393,23 @@ void print_app_format(application_t *app, char *fmt, int num_nodes)
                 if (strlen(app->job.app_id) > 30)
                     if (strchr(app->job.app_id, '/') != NULL)
                         strcpy(app->job.app_id, strrchr(app->job.app_id, '/')+1);
-                printf("%-16s ", app->job.app_id);
+                print_format(APP_WIDTH, app->job.app_id);
                 break;
             case 'j': //jobid
                 is_sbatch = (app->job.step_id == (uint32_t)BATCH_STEP) ? 1 : 0;
                 if (is_sbatch) 
-                    printf("%8lu-%-4s ", app->job.id, "sb");
+                    print_format_custom("%8lu-%-4s ", app->job.id, "sb");
                 else
-                    printf("%8lu-%-4lu ", app->job.id, app->job.step_id);
+                    print_format_custom("%8lu-%-4lu ", app->job.id, app->job.step_id);
                 break;
             case 'u': //user id
-                printf("%-10s ", app->job.user_id);
+                print_format(OTHER_WIDTH, app->job.user_id);
                 break;
             case 'n': //node id
-                printf("%-10s ", app->node_id);
+                print_format(OTHER_WIDTH, app->node_id);
                 break;
             case 'N': //num nodes
-                printf("%-10d ", num_nodes);
+                print_format(OTHER_WIDTH, num_nodes);
                 break;
             default:
                 printf("unknown format char %c\n", fmt[i]);
@@ -419,95 +426,88 @@ void print_app_format(application_t *app, char *fmt, int num_nodes)
 
 void print_header_format(char *fmt)
 { 
-#if 0
-    if (avx)
-        dprintf(fd, header_format,
-                "JOB", "STEP", "USER", "APPLICATION", "POLICY", "NODES", "AVG","DEF", "IMC(GHz)", "TIME(s)",
-                "POWER(W)", "GBS", "CPI", "ENERGY(J)", "GFLOPS/W", "IO(MBs)", "MPI%", "VPI(%)");
-   strcpy(header_format, "%7s-%-4s %-10s %-16s %-6s %-5s %-3s/%-3s/%-8s %-10s %-8s %-7s %-5s %-12s %-8s %-7s %-5s %-14s");
-#endif
     while (*fmt) {
         switch(*fmt) {
             case 'a': //application id
-                printf("%-16s ", "APPLICATION");
+                print_format(APP_WIDTH, "APPLICATION");
                 break;
             case 'j': //jobid
-                printf("%8s-%-4s ", "JOB", "STEP");
+                print_format_custom("%8s-%-4s ", "JOB", "STEP");
                 break;
             case 'u': //user id
-                printf("%-10s ", "USER");
+                print_format(OTHER_WIDTH, "USER");
                 break;
             case 'n': //node id
-                printf("%-10s ", "NODE ID");
+                print_format(OTHER_WIDTH, "NODE ID");
                 break;
-            case 'N': //node id
-                printf("%-10s ", "NODES");
+            case 'N': //num nodes
+                print_format(OTHER_WIDTH, "NODES");
                 break;
             case 'p': //DC power
-                printf("%-10s ", "POWER(W)");
+                print_format(POWER_WIDTH, "POWER(W)");
                 break;
             case 'G': //GPUs
-                printf(" %-14s %-8s %-13s ", "G-POW (T/U)", "G-FREQ","G-UTIL(G/MEM)");
+                print_format_custom("%s %s %s", "G-POW (T/U)", "G-FREQ","G-UTIL(G/MEM)");
                 break;
             case 'D': //DRAM power
-                printf("%-10s ", "DRAM POW(W)");
+                print_format(DRAM_POWER_WIDTH, "DRAM POW(W)");
                 break;
             case 'P': //PCK power
-                printf("%-10s ", "PKG POW(W)");
+                print_format(PCK_POWER_WIDTH, "PKG POW(W)");
                 break;
             case 'g': //GBS
-                printf("%-7s ", "GBS");
+                print_format(GBS_WIDTH, "GBS");
                 break;
             case 'T': //TPI
-                printf("%-5s ", "TPI");
+                print_format(TPI_WIDTH, "TPI");
                 break;
             case 'C': //CPI
-                printf("%-5s ", "CPI");
+                print_format(CPI_WIDTH, "CPI");
                 break;
             case 's': //gflops
-                printf("%-10s ", "GFLOPS/W");
+                print_format(GFLOPS_WIDTH, "GFLOPS/W");
                 break;
             case 't': //time
-                printf("%-10s ", "TIME(s)");
+                print_format(TIME_WIDTH, "TIME(s)");
                 break;
             case 'F': //FLOPS
                 for (int i = 0; i < FLOPS_EVENTS; i++) 
-                    printf("%-5s%-5d ", "FLOPS", i+1);
+                    print_format_custom("%-*s%-*d ", FLOPS_WIDTH/2, "FLOPS", FLOPS_WIDTH/2, i+1);
                 break;
             case 'L': //L1/2/3 misses
-                printf("%-10s ", "L1_misses");
-                printf("%-10s ", "L2_misses");
-                printf("%-10s ", "L3_misses");
+                print_format(CACHE_WIDTH, "L1_misses");
+                print_format(CACHE_WIDTH, "L2_misses");
+                print_format(CACHE_WIDTH, "L3_misses");
                 break;
             case 'I': //instructions
-                printf("%-10s ", "INSTRUCT");
+                print_format(INSTRUCTIONS_WIDTH, "INSTRUCT");
                 break;
             case 'y': //cycles
-                printf("%-10s ", "CYCLES");
+                print_format(CYCLES_WIDTH, "CYCLES");
                 break;
             case 'r': //all three freqs in format
-                printf("%-3s/%-3s/%-8s ", "AVG", "DEF", "IMC(GHz)");
+                print_format_custom("%-3s/%-3s/%-8s ", "AVG", "DEF", "IMC(GHz)");
                 break;
             case 'f': //frequency
-                printf("%-8s ", "AVG(GHz)");
+                print_format(FREQ_WIDTH, "AVG(GHz)");
                 break;
             case 'i': //img freq
-                printf("%-8s ", "IMC(GHz)");
+                print_format(FREQ_WIDTH, "IMC(GHz)");
                 break;
             case 'd': //def_f
-                printf("%-8s ", "DEF(GHz)");
+                print_format(FREQ_WIDTH, "DEF(GHz)");
                 break;
             case 'm': //MPI perc
-                printf("%-5s ", "MPI(%)");
+                print_format(MPI_WIDTH, "MPI(%)");
                 break;
             case 'o': //IO_MBGS
-                printf("%-7s ", "IO(MBs)");
+                print_format(IO_WIDTH, "IO(MBs)");
                 break;
             case 'v': //vpi
-                printf("%-14s ", "VPI(%)");
+                print_format(VPI_WIDTH, "VPI(%)");
                 break;
             case 'e': //energy
-                printf("%-12s ", "ENERGY(J)");
+                print_format(ENERGY_WIDTH, "ENERGY(J)");
                 break;
             default:
                 break;
@@ -918,11 +918,11 @@ void read_jobs_from_loops(query_adds_t *q_a)
         fd = open(tmp_path, O_WRONLY | O_CREAT | O_TRUNC , S_IRUSR|S_IWUSR|S_IRGRP);
     }
 
-	ret = db_run_query_string_results("DESCRIBE Jobs", &values, &columns, &rows);
-	if (verbose) printf("running query DESCRIBE Jobs\n");
-	if (ret != EAR_SUCCESS) {
-		printf("Error reading Loop description from database.\n");
-		return;
+    ret = db_run_query_string_results("DESCRIBE Jobs", &values, &columns, &rows);
+    if (verbose) printf("running query DESCRIBE Jobs\n");
+    if (ret != EAR_SUCCESS) {
+        printf("Error reading Loop description from database.\n");
+        return;
     }
     const char *header_names[NUM_HEADER_NAMES] = { "JOBID",
         "STEPID",
@@ -956,10 +956,10 @@ void read_jobs_from_loops(query_adds_t *q_a)
     reset_query_filters();
     strcpy(query, "SELECT * FROM Jobs ");
 
-	if (q_a->job_id >= 0)
-		add_int_filter(query, "job_id", q_a->job_id);
-	else if (strlen(q_a->job_ids) > 0)
-		add_int_list_filter(query, "job_id", q_a->job_ids);
+    if (q_a->job_id >= 0)
+        add_int_filter(query, "job_id", q_a->job_id);
+    else if (strlen(q_a->job_ids) > 0)
+        add_int_list_filter(query, "job_id", q_a->job_ids);
     else printf("WARNING: -o option is meant to be used with a -j specification\n\n");
     if (q_a->step_id >= 0)
         add_int_filter(query, "step_id", q_a->step_id);
