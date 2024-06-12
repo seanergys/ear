@@ -1,3 +1,14 @@
+/*
+*
+* This program has been developped by Energy Aware Solutions S.L. 
+*
+* Copyright © 2024-present Energy Aware Solutions S.L.
+* Contact: support@eas4dc.com
+*
+* License:
+*/
+
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
