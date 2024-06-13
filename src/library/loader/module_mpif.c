@@ -19,6 +19,7 @@
 
 extern mpif_t ear_mpif;
 
+#ifndef PMPI_DISABLED
 void mpi_allgather(MPI3_CONST void *sendbuf, MPI_Fint *sendcount, MPI_Fint *sendtype, void *recvbuf, MPI_Fint *recvcount, MPI_Fint *recvtype, MPI_Fint *comm, MPI_Fint *ierror)
 {
 	ear_mpif.allgather(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, comm, ierror);
@@ -223,12 +224,6 @@ void mpi_file_write_at_all(MPI_File *fh, MPI_Offset *offset, MPI3_CONST void *bu
 void mpi_file_write_at_all_ (MPI_File *fh, MPI_Offset *offset, MPI3_CONST void *buf, MPI_Fint *count, MPI_Fint *datatype, MPI_Status *status, MPI_Fint *ierror) __attribute__((alias("mpi_file_write_at_all")));
 void mpi_file_write_at_all__ (MPI_File *fh, MPI_Offset *offset, MPI3_CONST void *buf, MPI_Fint *count, MPI_Fint *datatype, MPI_Status *status, MPI_Fint *ierror) __attribute__((alias("mpi_file_write_at_all")));
 
-void mpi_finalize(MPI_Fint *ierror)
-{
-	ear_mpif.finalize(ierror);
-}
-void mpi_finalize_ (MPI_Fint *ierror) __attribute__((alias("mpi_finalize")));
-void mpi_finalize__ (MPI_Fint *ierror) __attribute__((alias("mpi_finalize")));
 
 void mpi_gather(MPI3_CONST void *sendbuf, MPI_Fint *sendcount, MPI_Fint *sendtype, void *recvbuf, MPI_Fint *recvcount, MPI_Fint *recvtype, MPI_Fint *root, MPI_Fint *comm, MPI_Fint *ierror)
 {
@@ -258,6 +253,15 @@ void mpi_ibsend(MPI3_CONST void *buf, MPI_Fint *count, MPI_Fint *datatype, MPI_F
 void mpi_ibsend_ (MPI3_CONST void *buf, MPI_Fint *count, MPI_Fint *datatype, MPI_Fint *dest, MPI_Fint *tag, MPI_Fint *comm, MPI_Fint *request, MPI_Fint *ierror) __attribute__((alias("mpi_ibsend")));
 void mpi_ibsend__ (MPI3_CONST void *buf, MPI_Fint *count, MPI_Fint *datatype, MPI_Fint *dest, MPI_Fint *tag, MPI_Fint *comm, MPI_Fint *request, MPI_Fint *ierror) __attribute__((alias("mpi_ibsend")));
 
+#endif
+
+void mpi_finalize(MPI_Fint *ierror)
+{
+  ear_mpif.finalize(ierror);
+}
+void mpi_finalize_ (MPI_Fint *ierror) __attribute__((alias("mpi_finalize")));
+void mpi_finalize__ (MPI_Fint *ierror) __attribute__((alias("mpi_finalize")));
+
 void mpi_init(MPI_Fint *ierror)
 {
 	ear_mpif.init(ierror);
@@ -271,6 +275,8 @@ void mpi_init_thread(MPI_Fint *required, MPI_Fint *provided, MPI_Fint *ierror)
 }
 void mpi_init_thread_ (MPI_Fint *required, MPI_Fint *provided, MPI_Fint *ierror) __attribute__((alias("mpi_init_thread")));
 void mpi_init_thread__ (MPI_Fint *required, MPI_Fint *provided, MPI_Fint *ierror) __attribute__((alias("mpi_init_thread")));
+
+#ifndef PMPI_DISABLED
 
 void mpi_intercomm_create(MPI_Fint *local_comm, MPI_Fint *local_leader, MPI_Fint *peer_comm, MPI_Fint *remote_leader, MPI_Fint *tag, MPI_Fint *newintercomm, MPI_Fint *ierror)
 {
@@ -671,4 +677,6 @@ void mpi_iscatterv(MPI3_CONST void *sendbuf, MPI3_CONST MPI_Fint *sendcounts, MP
 }
 void mpi_iscatterv_ (MPI3_CONST void *sendbuf, MPI3_CONST MPI_Fint *sendcounts, MPI3_CONST MPI_Fint *displs, MPI_Fint *sendtype, void *recvbuf, MPI_Fint *recvcount, MPI_Fint *recvtype, MPI_Fint *root, MPI_Fint *comm, MPI_Fint *request, MPI_Fint *ierror) __attribute__((alias("mpi_iscatterv")));
 void mpi_iscatterv__ (MPI3_CONST void *sendbuf, MPI3_CONST MPI_Fint *sendcounts, MPI3_CONST MPI_Fint *displs, MPI_Fint *sendtype, void *recvbuf, MPI_Fint *recvcount, MPI_Fint *recvtype, MPI_Fint *root, MPI_Fint *comm, MPI_Fint *request, MPI_Fint *ierror) __attribute__((alias("mpi_iscatterv")));
+
+#endif
 //#endif

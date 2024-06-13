@@ -16,7 +16,7 @@
 */
 
 //#define SHOW_DEBUGS 1
-#define VCPU_GPU 1
+#define VCPU_GPU 3
 
 #include <stdio.h>
 #include <string.h>
@@ -220,8 +220,8 @@ state_t energy_accumulated(unsigned long *e, edata_t init, edata_t end) {
 	/* Accumulated */
 	total_cpu_energy = total_cpu_energy / 1000000;
 	total_gpu_energy = total_gpu_energy * 1000;
-	verbose(VCPU_GPU, "CPU-GPU: total_cpu_energy %llu total_gpu_energy %lu", total_cpu_energy, total_gpu_energy);
-	*e = (ulong)(total_cpu_energy + total_gpu_energy);
+	*e = (ulong)((ulong)total_cpu_energy + (ulong)total_gpu_energy);
+	verbose(VCPU_GPU, "CPU-GPU: total_cpu_energy %llu total_gpu_energy %lu: total %lu mJ", total_cpu_energy, total_gpu_energy, *e);
 	return EAR_SUCCESS;
 }
 static char cpu_buff[1024];
@@ -236,7 +236,7 @@ state_t energy_to_str(char *str, edata_t e) {
 				energy_cpu_to_str(no_ctx, cpu_buff, pe->cpu_energy);
 				gpu_data_tostr(pe->gpu_energy, gpu_buff, sizeof(gpu_buff));
 
-				sprintf(str,"CPU data (%s) GPU (%s)", cpu_buff, gpu_buff);
+				sprintf(str,"CPU data (%s)\n GPU (%s)", cpu_buff, gpu_buff);
 
 				verbose(VCPU_GPU,"energy_to_str:%s" , str);
         return EAR_SUCCESS;
@@ -276,6 +276,7 @@ state_t energy_not_privileged_init()
   	//gpu_count_system_devices(no_ctx, &gpu_num_no_priv);
 		gpu_data_alloc(&gpu_data);
   	gpu_count_devices(no_ctx, &gpu_num_no_priv);
+		gpu_num = gpu_num_no_priv;
 	verbose(VCPU_GPU,"CPU-GPU plugin:  detected %u GPUs\n", gpu_num_no_priv);
   	gpu_energy_loaded = 1;
 	}

@@ -1234,7 +1234,7 @@ static int metrics_partial_stop(uint where)
 	long long c_time;
 	float c_power;
 	long long aux_time_stop;
-	char stop_energy_str[256], start_energy_str[256];
+	char stop_energy_str[1024], start_energy_str[1024];
 	state_t s;
 
 	debug("metrics_partial_stop %u", my_node_id);
@@ -1309,7 +1309,7 @@ static int metrics_partial_stop(uint where)
 
 	/* energy is computed in node_energy_units and time in usecs */
 	c_power=(float)(c_energy*(1000000.0/(double)node_energy_units))/(float)c_time;
-	verbose_master(2, "EARL[%d][%d] %f = %lu (units = %d) / %lf", ear_my_rank, getpid(), c_power, c_energy, node_energy_units, (float)c_time);
+	verbose_master(2, "EARL[%d][%d] %f = %lu mJ (units = %d) / %lf usecs", ear_my_rank, getpid(), c_power, c_energy, node_energy_units, (float)c_time);
 
   #if FAKE_POWER_READING
   c_power = 1000000;
