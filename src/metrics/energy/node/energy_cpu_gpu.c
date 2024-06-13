@@ -16,7 +16,7 @@
 */
 
 //#define SHOW_DEBUGS 1
-#define VCPU_GPU 3
+#define VCPU_GPU 1
 
 #include <stdio.h>
 #include <string.h>

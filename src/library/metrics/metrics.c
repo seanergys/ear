@@ -1309,6 +1309,7 @@ static int metrics_partial_stop(uint where)
 
 	/* energy is computed in node_energy_units and time in usecs */
 	c_power=(float)(c_energy*(1000000.0/(double)node_energy_units))/(float)c_time;
+	verbose_master(2, "EARL[%d][%d] %f = %lu (units = %d) / %lf", ear_my_rank, getpid(), c_power, c_energy, node_energy_units, (float)c_time);
 
   #if FAKE_POWER_READING
   c_power = 1000000;

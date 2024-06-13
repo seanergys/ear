@@ -379,7 +379,7 @@ void eard_dummy_replace_base_freq(ulong base)
 /* This function is called when metrics are not yet initialized */
 state_t create_eard_dummy_shared_regions(char *ear_tmp, uint ID)
 {
-				verbose(2,"Creating dummy areas in %s and ID %u", ear_tmp, ID);
+				verbose(2,"Creating dummy areas in %s and ID %u . SYSTEM_TYPE %u", ear_tmp, ID, SYSTEM_TYPE);
 			 earl_config_dummy = 1;
 				eard_dummy_cluster_conf(ear_tmp, ID);
 				eard_dummy_earl_settings(ear_tmp, ID);
