@@ -53,39 +53,11 @@ static int test_paranoid()
 
 state_t perf_open(perf_t *perf, perf_t *group, pid_t pid, uint type, ulong event)
 {
-    return perf_open_ext(perf, group, pid, type, event, 0, -1);
+    return perf_open_cpu(perf, group, pid, type, event, 0, -1);
 }
 
-state_t perf_open_system(perf_t *perf, perf_t *group, pid_t pid, uint type, ulong event, int cpu)
-{
-	int gp_fd = -1;
-	debug("perf_open_system pid %d type %u event %x cpu %d", pid, type, event, cpu);
-	return perf_open_ext(perf, group, pid, type, event, 0, cpu);
-	#if 0
-	memset(perf, 0, sizeof(perf_t));
-	perf->attr.type           = type;
-	perf->attr.size           = sizeof(struct perf_event_attr);
-	perf->attr.config         = event;
-	perf->attr.read_format    = PERF_FORMAT_TOTAL_TIME_ENABLED | PERF_FORMAT_TOTAL_TIME_RUNNING;
-	perf->fd = syscall(__NR_perf_event_open, &perf->attr, pid, cpu, gp_fd, 0);	
-  #ifdef SHOW_DEBUGS
-    debug("input: event %lx, group %p and fd %d type %u size %u cpu %d group fd %d", event, group, perf->fd, perf->attr.type, perf->attr.size, cpu, gp_fd);
-  if (perf->fd == -1) {
-    debug("event %lx returned fd %d (no: %d, str: %s)", event, perf->fd, errno, strerror(errno));
-  } else {
-    debug("ok event %lx, group %p and fd %d type %u size %u cpu %d group fd %d", event, group, perf->fd, perf->attr.type, perf->attr.size, cpu, gp_fd);
-  }
-  #endif
-  if (perf->fd == -1) {
-    return_msg(EAR_ERROR, strerror(errno));
-  }
-  return EAR_SUCCESS;
-	#endif
 
-	
-}
-
-state_t perf_open_ext(perf_t *perf, perf_t *group, pid_t pid, uint type, ulong event, uint options, int cpu)
+state_t perf_open_cpu(perf_t *perf, perf_t *group, pid_t pid, uint type, ulong event, uint options, int cpu)
 {
 	int gp_flag =  0;	
 	int gp_fd   = -1;

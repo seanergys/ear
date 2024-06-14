@@ -105,6 +105,8 @@ cat /sys/bus/event_source/devices/power/events/energy-ram.scale
 #define POWER_ENERGY_RAM    0x3
 #define POWER_ENERGY_SYS    0x5
 
+#define NO_OPTIONS 0
+
 #define EVENTS_PATH			"/sys/bus/event_source/devices/power"
 
 
@@ -215,10 +217,10 @@ state_t perf_rapl_load(topology_t *tp_in)
     debug("perf_rapl: Using %d sockets. All memory allocated", my_topo.cpu_count);
 
     for (j = 0; j < my_topo.cpu_count; j++) {
-			if (state_fail(perf_rapl_core_st[j] = perf_open_system( &perf_rapl_core_perf[j] , NULL, -1, perf_type, (ulong)POWER_ENERGY_PCK, my_topo.cpus[j].id))){
+			if (state_fail(perf_rapl_core_st[j] = perf_open_cpu( &perf_rapl_core_perf[j] , NULL, -1, perf_type, (ulong)POWER_ENERGY_PCK, NO_OPTIONS, my_topo.cpus[j].id))){
 				debug("perf_rapl: event %x open for cpu %d failed", POWER_ENERGY_PCK, my_topo.cpus[j].id);
 			}
-			if (state_fail(perf_rapl_uncore_st[j] = perf_open_system( &perf_rapl_uncore_perf[j] , NULL, -1, perf_type, (ulong)POWER_ENERGY_RAM, my_topo.cpus[j].id))){
+			if (state_fail(perf_rapl_uncore_st[j] = perf_open_cpu( &perf_rapl_uncore_perf[j] , NULL, -1, perf_type, (ulong)POWER_ENERGY_RAM, NO_OPTIONS, my_topo.cpus[j].id))){
 				debug("perf_rapl: event %x open for cpu %d failed", POWER_ENERGY_RAM, my_topo.cpus[j].id);
 			}
 			perf_rapl_num_sockets = perf_rapl_num_sockets + (state_ok(perf_rapl_core_st[j]) || state_ok(perf_rapl_uncore_st[j]));
