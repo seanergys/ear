@@ -32,9 +32,10 @@ typedef struct perf_s {
 	int fd;
 } perf_t;
 
+/* For per-process events */
 state_t perf_open(perf_t *perf, perf_t *group, pid_t pid, uint type, ulong event);
-// Perf open extended/extra. With more options.
-state_t perf_open_ext(perf_t *perf, perf_t *group, pid_t pid, uint type, ulong event, uint options);
+// Perf open extended/extra. With more options. Using cpu > 0 will imply system wide configuration
+state_t perf_open_cpu(perf_t *perf, perf_t *group, pid_t pid, uint type, ulong event, uint options, int cpu);
 
 state_t perf_reset(perf_t *perf);
 

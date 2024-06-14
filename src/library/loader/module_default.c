@@ -101,7 +101,7 @@ int module_constructor(char *path_lib_so,char *libhack)
 
 void module_destructor()
 {
-	verbose(0, "LOADER: loading module default (destructor)");
+	verbose(1, "LOADER: loading module default (destructor)");
 
 	if (func_des != NULL) {
 		func_des();

@@ -28,6 +28,7 @@
 
 extern mpic_t ear_mpic;
 
+#ifndef PMPI_DISABLED
 int MPI_Allgather(MPI3_CONST void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, MPI_Comm comm)
 {
 	return ear_mpic.Allgather(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, comm);
@@ -173,10 +174,6 @@ int MPI_File_write_at_all(MPI_File fh, MPI_Offset offset, MPI3_CONST void *buf, 
 	return ear_mpic.File_write_at_all(fh, offset, buf, count, datatype, status);
 }
 
-int MPI_Finalize(void)
-{
-	return ear_mpic.Finalize();
-}
 
 int MPI_Gather(MPI3_CONST void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, int root, MPI_Comm comm)
 {
@@ -196,6 +193,11 @@ int MPI_Get(void *origin_addr, int origin_count, MPI_Datatype origin_datatype, i
 int MPI_Ibsend(MPI3_CONST void *buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm, MPI_Request *request)
 {
 	return ear_mpic.Ibsend(buf, count, datatype, dest, tag, comm, request);
+}
+#endif
+int MPI_Finalize(void)
+{
+	return ear_mpic.Finalize();
 }
 
 static int ear_usage_mpi()
@@ -259,6 +261,8 @@ int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
 
 	return ear_mpic.Init_thread(argc, argv, required, provided);
 }
+
+#ifndef PMPI_DISABLED
 
 int MPI_Intercomm_create(MPI_Comm local_comm, int local_leader, MPI_Comm peer_comm, int remote_leader, int tag, MPI_Comm *newintercomm)
 {
@@ -545,4 +549,5 @@ int MPI_Iscatterv(MPI3_CONST void *sendbuf, MPI3_CONST int sendcounts[], MPI3_CO
 {
     return ear_mpic.Iscatterv(sendbuf, sendcounts, displs, sendtype, recvbuf, recvcount, recvtype, root, comm, request);
 }
+#endif
 //#endif
