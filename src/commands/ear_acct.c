@@ -1397,7 +1397,7 @@ void read_from_database(char *user, query_adds_t *q_a)
         printf("Preparing query statement\n");
     }
 
-    sprintf(query, "SELECT Applications.* FROM Applications join Jobs on Applications.job_id=Jobs.job_id and Applications.step_id = Jobs.step_id where Jobs.job_id in (select job_id from (select job_id, end_time from Jobs" );
+    sprintf(query, "SELECT Applications.* FROM Applications join Jobs on Applications.job_id=Jobs.job_id and Applications.step_id = Jobs.step_id and Jobs.local_id = Applications.local_id where Jobs.job_id in (select job_id from (select job_id, end_time from Jobs" );
     application_t *apps;
     if (q_a->job_id >= 0)
         add_int_filter(query, "job_id", q_a->job_id);
