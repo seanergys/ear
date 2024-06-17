@@ -258,6 +258,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 {
 	uint current_job_id = -1;
 	uint current_step_id = -1;
+	uint current_local_id = -1;
 	uint current_is_mpi = 0;
 	uint current_apps = 0;
 
@@ -304,19 +305,19 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 	{
 		if (avx)
 		{
-			strcpy(header_format, "%7s-%-4s %-10s %-16s %-6s %-5s %-3s/%-3s/%-8s %-10s %-8s %-7s %-5s %-12s %-8s %-7s %-5s %-14s");
-			strcpy(line_format, "%7u-%-3u  %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6.2lf %-10.2lf %-8.2lf %-7.2lf %-5.2lf %-12.0lf %-8.4lf %-7.1lf %-5.1lf %-14.2lf");
-			strcpy(mpi_line_format, "%7u-%-3u  %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6s %-10.2lf %-8.2lf %-7s %-5s %-12.0lf %-8s %-7s %-5s %-14s");
-			strcpy(sbatch_line_format, "%7u-%-3s  %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6.2lf %-10.2lf %-8.2lf %-7.2lf %-5.2lf %-12.0lf %-8.4lf %-7.1lf %-5.1lf %-14.3lf");
-			strcpy(mpi_sbatch_line_format, "%7u-%-3s  %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6s %-10.2lf %-8.2lf %-7s %-5s %-12.0lf %-8s %-8s %-5s %-14s");
+			strcpy(header_format, "%7s-%-4s-%-7s %-10s %-16s %-6s %-5s %-3s/%-3s/%-8s %-10s %-8s %-7s %-5s %-12s %-8s %-7s %-5s %-14s");
+			strcpy(line_format, "%7u-%-3u-%-7u  %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6.2lf %-10.2lf %-8.2lf %-7.2lf %-5.2lf %-12.0lf %-8.4lf %-7.1lf %-5.1lf %-14.2lf");
+			strcpy(mpi_line_format, "%7u-%-3u-%-7u  %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6s %-10.2lf %-8.2lf %-7s %-5s %-12.0lf %-8s %-7s %-5s %-14s");
+			strcpy(sbatch_line_format, "%7u-%-3s-%-7u  %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6.2lf %-10.2lf %-8.2lf %-7.2lf %-5.2lf %-12.0lf %-8.4lf %-7.1lf %-5.1lf %-14.3lf");
+			strcpy(mpi_sbatch_line_format, "%7u-%-3s-%-7u  %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6s %-10.2lf %-8.2lf %-7s %-5s %-12.0lf %-8s %-8s %-5s %-14s");
 		}
 		else
 		{
-			strcpy(header_format, "%7s-%-4s %-10s %-16s %-6s %-5s %-3s/%-3s/%-8s %-10s %-8s %-7s %-5s %-12s %-8s %-7s %-5s");
-			strcpy(line_format, "%7u-%-3u  %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6.2lf %-10.2lf %-8.2lf %-7.2lf %-5.2lf %-12.0lf %-8.4lf %-7.1lf %-5.1lf");
-			strcpy(mpi_line_format, "%7u-%-3u  %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6s %-10.2lf %-8.2lf %-7s %-5s %-12.0lf %-8s %-7s %-5s");
-			strcpy(sbatch_line_format, "%7u-%-3s  %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6.2lf %-10.2lf %-8.2lf %-7.2lf %-5.2lf %-12.0lf %-8.4lf %-7.1lf %-5.1lf");
-			strcpy(mpi_sbatch_line_format, "%7u-%-3s  %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6s %-10.2lf %-8.2lf %-7s %-5s %-12.0lf %-8s %-7s %-5s");
+			strcpy(header_format, "%7s-%-4s-%-7s %-10s %-16s %-6s %-5s %-3s/%-3s/%-8s %-10s %-8s %-7s %-5s %-12s %-8s %-7s %-5s");
+			strcpy(line_format, "%7u-%-3u-%-7u  %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6.2lf %-10.2lf %-8.2lf %-7.2lf %-5.2lf %-12.0lf %-8.4lf %-7.1lf %-5.1lf");
+			strcpy(mpi_line_format, "%7u-%-3u-%-7u  %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6s %-10.2lf %-8.2lf %-7s %-5s %-12.0lf %-8s %-7s %-5s");
+			strcpy(sbatch_line_format, "%7u-%-3s-%-7u  %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6.2lf %-10.2lf %-8.2lf %-7.2lf %-5.2lf %-12.0lf %-8.4lf %-7.1lf %-5.1lf");
+			strcpy(mpi_sbatch_line_format, "%7u-%-3s-%-7u  %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6s %-10.2lf %-8.2lf %-7s %-5s %-12.0lf %-8s %-7s %-5s");
 		}
 #if USE_GPUS
 		strcpy(gpu_header, " %-15s %-7s %-13s");
@@ -327,19 +328,19 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 	{
 		if (avx)
 		{
-			strcpy(header_format, "%s-%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s");
-			strcpy(line_format, "%u-%u;%s;%s;%s;%u;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf");
-			strcpy(mpi_line_format, "%u-%u;%s;%s;%s;%u;%lf;%lf;%s;%lf;%lf;%s;%s;%lf;%s;%s;%s;%s");
-			strcpy(sbatch_line_format, "%u-%s;%s;%s;%s;%u;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf");
-			strcpy(mpi_sbatch_line_format, "%u-%s;%s;%s;%s;%u;%lf;%lf;%s;%lf;%lf;%s;%s;%lf;%s;%s;%s;%s");
+			strcpy(header_format, "%s-%s-%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s");
+			strcpy(line_format, "%u-%u-%u;%s;%s;%s;%u;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf");
+			strcpy(mpi_line_format, "%u-%u-%u;%s;%s;%s;%u;%lf;%lf;%s;%lf;%lf;%s;%s;%lf;%s;%s;%s;%s");
+			strcpy(sbatch_line_format, "%u-%s-%u;%s;%s;%s;%u;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf");
+			strcpy(mpi_sbatch_line_format, "%u-%s-%u;%s;%s;%s;%u;%lf;%lf;%s;%lf;%lf;%s;%s;%lf;%s;%s;%s;%s");
 		}
 		else
 		{
-			strcpy(header_format, "%s-%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s");
-			strcpy(line_format, "%u-%u;%s;%s;%s;%u;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf");
-			strcpy(mpi_line_format, "%u-%u;%s;%s;%s;%u;%lf;%lf;%s;%lf;%lf;%s;%s;%lf;%s;%s;%s");
-			strcpy(sbatch_line_format, "%u-%u;%s;%s;%s;%u;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf");
-			strcpy(mpi_sbatch_line_format, "%u-%s;%s;%s;%s;%u;%lf;%lf;%s;%lf;%lf;%s;%s;%lf;%s;%s;%s");
+			strcpy(header_format, "%s-%s-%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s");
+			strcpy(line_format, "%u-%u-%u;%s;%s;%s;%u;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf");
+			strcpy(mpi_line_format, "%u-%u-%u;%s;%s;%s;%u;%lf;%lf;%s;%lf;%lf;%s;%s;%lf;%s;%s;%s");
+			strcpy(sbatch_line_format, "%u-%u-%u;%s;%s;%s;%u;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf");
+			strcpy(mpi_sbatch_line_format, "%u-%s-%u;%s;%s;%s;%u;%lf;%lf;%s;%lf;%lf;%s;%s;%lf;%s;%s;%s");
 		}
 #if USE_GPUS
 		strcpy(gpu_header, ";%s;%s;%s");
@@ -348,12 +349,12 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 	}
 	if (avx)
 		dprintf(fd, header_format,
-				"JOB", "STEP", "USER", "APPLICATION", "POLICY", "NODES", "AVG","DEF", "IMC(GHz)", "TIME(s)",
+				"JOB", "STEP", "LOCALID", "USER", "APPLICATION", "POLICY", "NODES", "AVG","DEF", "IMC(GHz)", "TIME(s)",
 				"POWER(W)", "GBS", "CPI", "ENERGY(J)", "GFLOPS/W", "IO(MBs)", "MPI%", "VPI(%)");
 
 	else
 		dprintf(fd, header_format,
-				"JOB", "STEP", "USER", "APPLICATION", "POLICY", "NODES", "AVG", "DEF", "IMC(GHz)","TIME(s)",
+				"JOB", "STEP", "LOCALID", "USER", "APPLICATION", "POLICY", "NODES", "AVG", "DEF", "IMC(GHz)","TIME(s)",
 				"POWER(W)", "GBS", "CPI", "ENERGY(J)", "GFLOPS/W", "IO(MBs)", "MPI%");
 
 #if USE_GPUS
@@ -364,7 +365,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 	for (i = 0; i < num_apps; i ++)
 	{
     printf("%s", COL_CLR);fflush(stdout);
-		if (apps[i].job.id == current_job_id && apps[i].job.step_id == current_step_id)
+		if (apps[i].job.id == current_job_id && apps[i].job.step_id == current_step_id && apps[i].job.local_id == current_local_id)
 		{
 			if (current_is_mpi && !all_mpi)
 			{
@@ -482,23 +483,23 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 					{
 						if (avx)
 							dprintf(fd, line_format,
-									current_job_id, current_step_id, apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
+									current_job_id, current_step_id, current_local_id, apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
 									avg_frequency, (double) apps[idx].job.def_f/1000000.0, avg_imc, avg_time, avg_power, avg_GBS, avg_CPI, total_energy, gflops_watt, avg_io, avg_perc, avg_VPI);
 						else
 							dprintf(fd, line_format,
-									current_job_id, current_step_id, apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
+									current_job_id, current_step_id, current_local_id, apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
 									avg_frequency, (double) apps[idx].job.def_f/1000000.0, avg_imc, avg_time, avg_power, avg_GBS, avg_CPI, total_energy, gflops_watt, avg_io, avg_perc);
 					}
 					else
 					{
 						if (avx)
 							dprintf(fd, sbatch_line_format,
-									current_job_id, is_sbatch ? "sb" : "inte", apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
+									current_job_id, is_sbatch ? "sb" : "inte", current_local_id, apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
 									avg_frequency,(double) apps[idx].job.def_f/1000000.0, avg_imc, avg_time, avg_power, avg_GBS, avg_CPI, total_energy, gflops_watt, avg_io, avg_perc, avg_VPI);
 
 						else
 							dprintf(fd, sbatch_line_format,
-									current_job_id, is_sbatch ? "sb" : "inte", apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
+									current_job_id, is_sbatch ? "sb" : "inte", current_local_id, apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
 									avg_frequency,(double) apps[idx].job.def_f/1000000.0, avg_imc, avg_time, avg_power, avg_GBS, avg_CPI, total_energy, gflops_watt, avg_io, avg_perc);
 					}
 #if USE_GPUS
@@ -531,22 +532,22 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 					{
 						if (avx)
 							dprintf(fd, mpi_line_format,
-									current_job_id, current_step_id, apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
+									current_job_id, current_step_id, current_local_id, apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
 									avg_frequency,(double) apps[idx].job.def_f/1000000.0, "---", avg_time, avg_power, "---", "---", total_energy, "---", "---", "---", "---");
 						else
 							dprintf(fd, mpi_line_format,
-									current_job_id, current_step_id, apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
+									current_job_id, current_step_id, current_local_id, apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
 									avg_frequency, (double) apps[idx].job.def_f/1000000.0, "---", avg_time, avg_power, "---", "---", total_energy, "---", "---", "---");
 					}
 					else
 					{
 						if (avx)
 							dprintf(fd, mpi_sbatch_line_format,
-									current_job_id, is_sbatch ? "sb" : "inte", apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
+									current_job_id, is_sbatch ? "sb" : "inte", current_local_id, apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
 									avg_frequency, (double) apps[idx].job.def_f/1000000.0, "---", avg_time, avg_power, "---", "---", total_energy, "---", "---", "---", "---");
 						else
 							dprintf(fd, mpi_sbatch_line_format,
-									current_job_id, is_sbatch ? "sb" : "inte", apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
+									current_job_id, is_sbatch ? "sb" : "inte", current_local_id, apps[idx].job.user_id, apps[idx].job.app_id, curr_policy, current_apps, 
 									avg_frequency, (double) apps[idx].job.def_f/1000000.0, "---", avg_time, avg_power, "---", "---", total_energy, "---", "---", "---");
 					}
 #if USE_GPUS
@@ -557,11 +558,12 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 				else
 					missing_apps++;
 			}
-			if (apps[i].job.id != current_job_id || apps[i].job.step_id != current_step_id)
+			if (apps[i].job.id != current_job_id || apps[i].job.step_id != current_step_id || apps[i].job.local_id != current_local_id)
 			{
 				get_short_policy(curr_policy, apps[i].job.policy, &my_conf);
 				current_job_id = apps[i].job.id;
 				current_step_id = apps[i].job.step_id;
+				current_local_id = apps[i].job.local_id;
 				current_is_mpi = apps[i].is_mpi && (apps[i].signature.avg_f > 0);
 				current_apps = 0;
 				avg_frequency = 0;
@@ -632,22 +634,22 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 				{
 					if (avx)
 						dprintf(fd, line_format,
-								current_job_id, current_step_id, apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
+								current_job_id, current_step_id, current_local_id, apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
 								avg_frequency, (double) apps[i-1].job.def_f/1000000.0, avg_imc, avg_time, avg_power, avg_GBS, avg_CPI, total_energy, gflops_watt, avg_io, avg_perc, avg_VPI);
 					else
 						dprintf(fd, line_format,
-								current_job_id, current_step_id, apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
+								current_job_id, current_step_id, current_local_id, apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
 								avg_frequency, (double) apps[i-1].job.def_f/1000000.0, avg_imc, avg_time, avg_power, avg_GBS, avg_CPI, total_energy, gflops_watt, avg_io, avg_perc);
 				}
 				else
 				{
 					if (avx)
 						dprintf(fd, sbatch_line_format,
-								current_job_id, is_sbatch ? "sb" : "inte", apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
+								current_job_id, is_sbatch ? "sb" : "inte", current_local_id, apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
 								avg_frequency,(double) apps[i-1].job.def_f/1000000.0, avg_imc, avg_time, avg_power, avg_GBS, avg_CPI, total_energy, gflops_watt, avg_io, avg_perc, avg_VPI);
 					else
 						dprintf(fd, sbatch_line_format,
-								current_job_id, is_sbatch ? "sb" : "inte", apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
+								current_job_id, is_sbatch ? "sb" : "inte", current_local_id, apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
 								avg_frequency,(double) apps[i-1].job.def_f/1000000.0, avg_imc, avg_time, avg_power, avg_GBS, avg_CPI, total_energy, gflops_watt, avg_io, avg_perc);
 				}
 #if USE_GPUS
@@ -679,22 +681,22 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 				{
 					if (avx)
 						dprintf(fd, mpi_line_format,
-								current_job_id, current_step_id, apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
+								current_job_id, current_step_id, current_local_id, apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
 								avg_frequency, (double) apps[i-1].job.def_f/1000000.0, "---", avg_time, avg_power, "---", "---", total_energy, "---", "---", "---", "---");
 					else
 						dprintf(fd, mpi_line_format,
-								current_job_id, current_step_id, apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
+								current_job_id, current_step_id, current_local_id, apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
 								avg_frequency, (double) apps[i-1].job.def_f/1000000.0, "---", avg_time, avg_power, "---", "---", total_energy, "---", "---", "---");
 				}
 				else
 				{
 					if (avx)
 						dprintf(fd, mpi_sbatch_line_format,
-								current_job_id, is_sbatch ? "sb" : "inte", apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
+								current_job_id, is_sbatch ? "sb" : "inte", current_local_id, apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
 								avg_frequency,(double) apps[i-1].job.def_f/1000000.0, "---", avg_time, avg_power, "---", "---", total_energy, "---", "---", "---", "---");
 					else
 						dprintf(fd, mpi_sbatch_line_format,
-								current_job_id, is_sbatch ? "sb" : "inte", apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
+								current_job_id, is_sbatch ? "sb" : "inte", current_local_id, apps[i-1].job.user_id, apps[i-1].job.app_id, curr_policy, current_apps, 
 								avg_frequency, (double) apps[i-1].job.def_f/1000000.0, "---", avg_time, avg_power, "---", "---", total_energy, "---", "---", "---");
 				}
 #if USE_GPUS
