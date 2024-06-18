@@ -47,6 +47,7 @@ mets_OBJS = \
     $(SRCDIR)/metrics/energy_cpu/archs/linux_powercap.o \
     $(SRCDIR)/metrics/energy_cpu/archs/eard.o \
     $(SRCDIR)/metrics/energy_cpu/archs/msr.o \
+    $(SRCDIR)/metrics/energy_cpu/archs/perf.o \
     $(SRCDIR)/metrics/flops/flops.o \
     $(SRCDIR)/metrics/flops/archs/perf.o \
     $(SRCDIR)/metrics/flops/archs/dummy.o \

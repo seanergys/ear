@@ -233,8 +233,12 @@ void compute_power_distribution()
     pd_gpu = bpd_gpu * gpu_pc_num_gpus;
     pd_pckg = pd_cpu + pd_dram;
     pd_total = pd_pckg + pd_gpu + pd_pckg * node_ratio;        
-    pdomains_def[DOMAIN_NODE] = ((float)pd_pckg +(float)pd_pckg * node_ratio) / (float)pd_total;
-    pdomains_def[DOMAIN_CPU] = (float) pd_pckg / (float)pd_total;
+    /* DOMAIN NODE is the total power
+     * DOMAIN_CPU is (currently) PKG + DRAM
+     * DOMAIN_DRAM is (currently) DRAM
+     * DOMAIN_GPU is all the GPUs*/
+    pdomains_def[DOMAIN_NODE] = (float)pd_total;
+    pdomains_def[DOMAIN_CPU] = (float) (pd_pckg + pd_dram) / (float)pd_total;
     pdomains_def[DOMAIN_DRAM] = (float) pd_dram / (float)pd_total;
     pdomains_def[DOMAIN_GPUS] = 0;
     debug("pd_cpu: %u with %u sockets", pd_cpu, pc_topology_info.socket_count);
@@ -905,6 +909,7 @@ void pmgt_run_to_idle(pwr_mgt_t *phandler)
     pmgt_set_status(phandler,PC_STATUS_IDLE);
 }
 
+
 void pmgt_get_status(pmgt_status_t *status)
 {
     int i;
@@ -951,6 +956,8 @@ void pmgt_get_status(pmgt_status_t *status)
 
 }
 
+/* This is only used when USE_GPUs is defined. It computes
+ */
 static uint pmgt_powercap_status_per_domain(uint action)
 {
 #if USE_GPUS
