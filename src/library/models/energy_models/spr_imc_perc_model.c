@@ -17,7 +17,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 #include <common/states.h>
 #include <library/common/externs.h>
 #include <common/output/debug.h>

@@ -921,7 +921,7 @@ void powermon_update_node_mask(cpu_set_t *nodem)
         pmapp = current_ear_app[i];
 
         if (pmapp != NULL) {
-            aggregate_cpus_to_mask(nodem, &pmapp->app_info->node_mask);
+            cpumask_aggregate(nodem, &pmapp->app_info->node_mask);
         }
     }
 }
@@ -1450,10 +1450,10 @@ policy_conf_t *configure_context(powermon_app_t *pmapp, uint user_type,
     cpu_set_t not_in_jobs_mask;
     powermon_update_node_mask(&in_jobs_mask);
 
-    cpus_not_in_mask(&not_in_jobs_mask, &in_jobs_mask);
+    cpumask_not(&not_in_jobs_mask, &in_jobs_mask);
 
-    uint cpus_used = num_cpus_in_mask(&in_jobs_mask);
-    uint cpus_free = num_cpus_in_mask(&not_in_jobs_mask);
+    uint cpus_used = cpumask_count(&in_jobs_mask);
+    uint cpus_free = cpumask_count(&not_in_jobs_mask);
     verbose(VCONF, "CPUs used %u. CPUs free %u", cpus_used, cpus_free);
 #endif
 
@@ -2193,12 +2193,12 @@ void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
 
             if (pmapp->app.is_mpi) {
                 // * is_mpi: = step + EARL *
-                pmapp->earl_num_cpus = num_cpus_in_mask(&pmapp->plug_mask);
+                pmapp->earl_num_cpus = cpumask_count(&pmapp->plug_mask);
             } else if (!pmapp->is_job || // * else, !is_job = step without EARL *
                        (pmapp->is_job && // * else, is_job and 1 context = srun without sbatch *
                         job_in_node &&
                         alloc->num_ctx == 1)) {
-                pmapp->earl_num_cpus  = ear_min(num_cpus_in_mask(&pmapp->plug_mask), pmapp->plug_num_cpus);
+                pmapp->earl_num_cpus  = ear_min(cpumask_count(&pmapp->plug_mask), pmapp->plug_num_cpus);
             }
 
             /* earl_num_cpus is > 0 when the app uses EARL */
@@ -2571,13 +2571,13 @@ void powermon_init_nm()
 
 void powermon_new_jobmask(cpu_set_t *newjobmask)
 {
-    aggregate_cpus_to_mask(&in_jobs_mask, newjobmask);
+    cpumask_aggregate(&in_jobs_mask, newjobmask);
 }
 
 
 void powermon_end_jobmask(cpu_set_t *endjobmask)
 {
-    remove_cpus_from_mask(&in_jobs_mask, endjobmask);
+    cpumask_remove(&in_jobs_mask, endjobmask);
 }
 
 
