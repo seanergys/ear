@@ -390,9 +390,13 @@ void print_app_format(application_t *app, char *fmt, int num_nodes)
 
         switch(fmt[i]) {
             case 'a': //application id
-                if (strlen(app->job.app_id) > 30)
-                    if (strchr(app->job.app_id, '/') != NULL)
+                if (strlen(app->job.app_id) > APP_WIDTH) {
+                    if (strchr(app->job.app_id, '/') != NULL) {
                         strcpy(app->job.app_id, strrchr(app->job.app_id, '/')+1);
+                    } else { //dirty, but it works
+                        app->job.app_id[APP_WIDTH] = '\0';
+                    }
+                }
                 print_format(APP_WIDTH, app->job.app_id);
                 break;
             case 'j': //jobid
@@ -526,7 +530,7 @@ void print_applications(struct avg_apps *apps, int num_apps, char *fmt)
     }
 }
 
-void print_full_apps(application_t *apps, int num_apps, bool is_csv)
+void print_full_apps(application_t *apps, int num_apps, bool is_csv, char *format)
 {
     if (is_csv) {
         if (!strcmp(csv_path, "no_file")) {
@@ -540,14 +544,19 @@ void print_full_apps(application_t *apps, int num_apps, bool is_csv)
         }
     }
     else {
+        print_header_format(format);
         for (int i = 0; i < num_apps; i++) {
-            print_app_format(&apps[i], "format", 1);
+            print_app_format(&apps[i], format, 1);
         }
     }
 }
 
-void print_short_apps(application_t *apps, int num_apps, bool is_csv)
+void print_short_apps(application_t *apps, int num_apps, bool is_csv, char *format)
 {
+    if (format == NULL) { 
+        printf("Format string cannot be null\n");
+        return; 
+    }
     if (num_apps == 0) 
         printf("No applications retrieved\n");
     struct avg_apps *sorted_apps = NULL;
@@ -564,18 +573,18 @@ void print_short_apps(application_t *apps, int num_apps, bool is_csv)
             }
         }
     } else {
-        print_applications(sorted_apps, new_num_apps, "juapNrtpgCseG");
+        print_applications(sorted_apps, new_num_apps, format);
     }
     free(sorted_apps);
 }
 #endif 
 
-void process_and_print_applications(application_t *apps, int num_apps, bool is_csv, bool aggregate) 
+void process_and_print_applications(application_t *apps, int num_apps, bool is_csv, bool aggregate, char *format) 
 {
     if (aggregate)
-        print_short_apps(apps, num_apps, is_csv);
+        print_short_apps(apps, num_apps, is_csv, format);
     else
-        print_full_apps(apps, num_apps, is_csv);
+        print_full_apps(apps, num_apps, is_csv, format);
 
 }
 
@@ -1002,13 +1011,6 @@ void read_loops(char *user, query_adds_t *q_a)
     }
     init_db_helper(&my_conf.database);
 
-#if 0
-    if (loop_extended) {
-        format_loop_query(user, query, LOOPS_EXTENDED_QUERY, q_a);
-        return extended_loop_print(query);
-    }
-#endif
-
     if (user != NULL) {
         format_loop_query(user, query, LOOPS_FILTER_QUERY, q_a);
     } else {
@@ -1049,12 +1051,9 @@ void read_loops(char *user, query_adds_t *q_a)
 
 }
 
-
-//select Applications.* from Applications join Jobs on job_id = id where Jobs.end_time in (select end_time from (select end_time from Jobs where user_id = "xjcorbalan" and id = 284360 order by end_time desc limit 25) as t1) order by Jobs.end_time desc;
-//select Applications.* from Applications join Jobs on job_id=id where Jobs.user_id = "xjcorbalan" group by job_id order by Jobs.end_time desc limit 5;
-#if USE_DB
-void read_from_database(char *user, query_adds_t *q_a) 
+void read_applications_from_database(char *user, query_adds_t *q_a, char *format) 
 {
+#if USE_DB
     int num_apps = 0;
     char subquery[256];
     char query[512];
@@ -1145,27 +1144,26 @@ void read_from_database(char *user, query_adds_t *q_a)
 
     bool is_csv = (strlen(csv_path) > 1);
     bool aggregate = !full_length;
-    process_and_print_applications(apps, num_apps, is_csv, aggregate);
+    process_and_print_applications(apps, num_apps, is_csv, aggregate, format);
 
     free(apps);
 
-}
 #endif
+}
 
-void read_from_files(char *path)
+void read_applications_from_files(char *path, char *format)
 {
     application_t *apps;
     int num_apps = read_application_text_file(path, &apps, 0);
-    if (full_length) print_full_apps(apps, num_apps, false);
-    else print_short_apps(apps, num_apps, false);
+    if (full_length) print_full_apps(apps, num_apps, false, format);
+    else print_short_apps(apps, num_apps, false, format);
 }
 
 int main(int argc, char *argv[])
 {
     int c;
 
-    query_adds_t query_adds;
-    memset(&query_adds, 0, sizeof(query_adds_t));
+    query_adds_t query_adds = { 0 };
 
     query_adds.limit = 20;
     query_adds.job_id = -1;
@@ -1174,7 +1172,8 @@ int main(int argc, char *argv[])
     char is_loops = 0;
     char is_events = 0;
 
-    char path_name[256];
+    char path_name[256] = { 0 };
+    char format[256] = { 0 };
     char *file_name = NULL;
 
     struct tm tinfo = {0};
@@ -1225,6 +1224,7 @@ int main(int argc, char *argv[])
         {"app-id",     required_argument, 0, 'a'},
         {"start-time", required_argument, 0, 's'},
         {"end-time",   required_argument, 0, 'e'},
+        {"format",     required_argument, 0, 'F'},
     };
 
 #if COLORS
@@ -1233,7 +1233,7 @@ int main(int argc, char *argv[])
 
     while (1)
     {
-        c = getopt_long(argc, argv, "n:u:j:f:t:voma:pbglrs:e:c:hx::", long_options, &option_idx);
+        c = getopt_long(argc, argv, "n:u:j:f:t:voma:pbglrs:e:c:hF:x::", long_options, &option_idx);
 
         if (c == -1)
             break;
@@ -1341,6 +1341,9 @@ int main(int argc, char *argv[])
                 }
                 query_adds.end_time = mktime(&tinfo);
                 break;
+            case 'F':
+                strncpy(format, optarg, sizeof(format));
+                break;
             case 'h':
                 free_cluster_conf(&my_conf);
                 usage(argv[0]);
@@ -1349,11 +1352,17 @@ int main(int argc, char *argv[])
     }
 
     if (verbose) printf("Limit set to %d\n", query_adds.limit);
+    if (strlen(format) < 1) {
+        if (full_length)
+            strcpy(format, "juapnrtpgCseG");
+        else
+            strcpy(format, "juapNrtpgCseG");
+    }
 
-    if (file_name != NULL) read_from_files(file_name);
+    if (file_name != NULL) read_applications_from_files(file_name, format);
     else if (is_events) read_events(user, &query_adds);
     else if (is_loops) read_loops(user, &query_adds);
-    else read_from_database(user, &query_adds); 
+    else read_applications_from_database(user, &query_adds, format); 
 
 #if COLORS
     printf("%s",COL_CLR);
