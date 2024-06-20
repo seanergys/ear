@@ -94,6 +94,7 @@
 #define HACK_ENERGY_PLUGIN           "HACK_ENERGY_PLUGIN"       // This var forces to load a specific energy plugin.
 #define HACK_POWER_POLICY            "HACK_POWER_POLICY"       // This var forces to load a specific power policy. Replaces (SCHED_PREFIX)_EAR_POWER_POLICY.
 #define HACK_GPU_POWER_POLICY        "HACK_GPU_POWER_POLICY"   // This var forces to load a specific gpu power policy. Replaces (SCHED_PREFIX)_EAR_GPU_POWER_POLICY.
+#define HACK_GPU_POLICY_PENALTY      "HACK_GPU_POLICY_PENALTY" // Sets the threshold penalty tolered by Min-GPU-Ebnergy policy.. Replaces (SCHED_PREFIX)_EAR_GPU_POLICY_PENALTY.
 #define HACK_POWER_MODEL             "HACK_POWER_MODEL"        // This var forces to load a specific power model plugin. Replaces (SCHED_PREFIX)_EAR_POWER_MODEL.
 #define HACK_GPU_ENERGY_MODEL        "HACK_GPU_ENERGY_MODEL"   // This var forces to load a specific GPU energy model plugin. Replaces (SCHED_PREFIX)_EAR_GPU_POWER_MODEL.
 #define HACK_CPU_POWER_MODEL         "HACK_CPU_POWER_MODEL"    // This var forces to load a specific cpu power model plugin.
