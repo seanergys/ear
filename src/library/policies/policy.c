@@ -2046,7 +2046,7 @@ static state_t policy_set_cpus_governor(uint exclusive)
 
         cpu_set_t cpus_to_be_set;
         if (exclusive){
-          set_mask_all_ones(&cpus_to_be_set);
+          cpumask_all_cpus(&cpus_to_be_set);
         }else{
           memcpy(&cpus_to_be_set, &lib_shared_region->node_mask, sizeof(cpu_set_t));
         }

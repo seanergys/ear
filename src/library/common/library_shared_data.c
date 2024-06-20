@@ -177,7 +177,7 @@ void aggregate_all_the_cpumasks(lib_shared_data_t *data,shsignature_t *sig, cpu_
 	CPU_ZERO(m);
 	for (uint p = 0; p < data->num_processes; p++)
 	{
-		aggregate_cpus_to_mask(m, &sig[p].cpu_mask);
+		cpumask_aggregate(m, &sig[p].cpu_mask);
 	}
 }
 
@@ -593,7 +593,7 @@ state_t compute_job_node_io_mbs(const shsignature_t *sig, int n_procs, double *i
 
 void compute_job_cpus(lib_shared_data_t *data, uint *cpus)
 {
-	*cpus = num_cpus_in_mask(&data->node_mask);
+	*cpus = cpumask_count(&data->node_mask);
 	verbose_master(2, "Job: %u. CPUs: %u.", node_mgr_index, *cpus);
 }
 
@@ -1206,7 +1206,14 @@ state_t update_job_affinity_mask(lib_shared_data_t *data, shsignature_t *sig)
                         COL_YLW, COL_CLR, errno);
             }
 
+#if 1
+						// This function build the cpuset mask of the process taking into account its threads
+						// may not share the same cpuset, so the global process mask is retrieved as we
+						// work with processes and not threads.
+						int ret_val = !(state_ok(cpumask_get_processmask(&sig[i].cpu_mask, sig[i].pid)));
+#else
             int ret_val = sched_getaffinity(sig[i].pid, sizeof(cpu_set_t), &sig[i].cpu_mask);
+#endif
 
             if (!sem_ret_val)
             {
@@ -1220,7 +1227,8 @@ state_t update_job_affinity_mask(lib_shared_data_t *data, shsignature_t *sig)
             if (!ret_val)
             {
                 // Update the number of CPUs of the process' mask
-                sig[i].num_cpus = CPU_COUNT(&sig[i].cpu_mask);
+                // sig[i].num_cpus = CPU_COUNT(&sig[i].cpu_mask);
+                sig[i].num_cpus = cpumask_count(&sig[i].cpu_mask);
 
                 // Update node(job)_mask
                 CPU_OR(&data->node_mask, &data->node_mask, &sig[i].cpu_mask);
