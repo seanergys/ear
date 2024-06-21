@@ -2487,6 +2487,8 @@ void ear_finalize(int exit_status)
 
                 if (masters_info.my_master_rank == 0){
 								  report_mpi_application_data(1, &application);
+									// This version prints more details
+									// verbose_application_data(1, &application);
                 }else{
 								  report_mpi_application_data(2, &application);
                 }
