@@ -27,7 +27,7 @@ static cluster_sensors_t *edcmon_info;
 static conf_t                   *conf;
 static report_id_t               rid;
 
-static ullong zero = 0LLU;
+//static ullong zero = 0LLU;
 static char my_report_plugin[128];
 
 

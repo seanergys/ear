@@ -34,6 +34,8 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 //#define SHOW_DEBUGS 0
+#include <report/report.h>
+
 #include <common/states.h>
 #include <common/config.h>
 #include <common/colors.h>
@@ -643,7 +645,7 @@ int main(int argc,char *argv[])
         print_eargm_conf(&my_cluster_conf.eargm);
     }
 
-		create_tmp(my_cluster_conf.install.dir_temp);
+    create_tmp(my_cluster_conf.install.dir_temp);
 
     if (my_cluster_conf.eargm.use_log){
         create_log(my_cluster_conf.install.dir_temp, "eargmd", fd_my_log);
@@ -653,16 +655,13 @@ int main(int argc,char *argv[])
     update_eargm_configuration(&my_cluster_conf);
 
 
-
+    report_load(my_cluster_conf.install.dir_conf, my_cluster_conf.eargm.plugins);
     switch (policy){
         case MAXENERGY:
             verbose(VGM,"MAXENERGY policy configured with limit %lu %s",energy_budget,unit_name);
             break;
         default: break;
     }	
-
-
-
 
     if ((period_t1<=0) || (period_t2<=0) ) usage(argv[0]);
     cluster_powercap_init(&my_cluster_conf);
@@ -861,7 +860,8 @@ int main(int argc,char *argv[])
 				if (current_level!=last_level) T1_stables=0;
 				else T1_stables++;
 #if USE_DB
-				db_insert_gm_warning(&my_warning);
+                report_misc(NULL, EARGM_WARNINGS, (const char *)&my_warning, 1);
+				//db_insert_gm_warning(&my_warning);
 #endif
 				last_level = current_level;
 			}// ALARM
