@@ -53,13 +53,12 @@ extern unsigned long ext_def_freq;
 
 #define FLAG_GPU_METRIC_TO_OPTIMIZE   "EAR_GPU_METRIC_TO_OPTIMIZE"
 
-#define metric_is(x)    (x == SYS_GFLOPS_W?"SYS_GFLOPS_W":(x == GPU_GFLOPS_W?"GPU_GFLOPS_W":(x == EDP?"EDP":"UNDEF")))
+#define metric_is(x)    (x == MAX_GFLOPS_WATT?"MAX_GFLOPS_WATT":(x == MIN_GPU_ENERGY?"MIN_GPU_ENERGY":(x == EDP?"EDP":"UNDEF")))
 
 
 /* Configuration */
 typedef enum {
-	GPU_GFLOPS_W = 0,
-	SYS_GFLOPS_W,
+	MAX_GFLOPS_WATT = 0,
   MIN_GPU_ENERGY,
 	EDP
 } gpu_opt_metric_t;
@@ -460,8 +459,7 @@ static void update_optimize_options(char *metric)
 {
 	if (metric != NULL)
 	{
-		if (strcmp(metric, "SYS_GFLOPS_W") == 0)  metric_to_optimize = SYS_GFLOPS_W;
-		if (strcmp(metric, "GPU_GFLOPS_W") == 0)  metric_to_optimize = GPU_GFLOPS_W;
+		if (strcmp(metric, "MAX_GFLOPS_WATT") == 0)  metric_to_optimize = MAX_GFLOPS_WATT;
 		if (strcmp(metric, "MIN_GPU_ENERGY") == 0)
     {
       metric_to_optimize = MIN_GPU_ENERGY;
@@ -488,16 +486,7 @@ static void GPU_get_metric(uint gpu_idx, signature_t *signature, float *curr)
   switch(metric_to_optimize)
   {
 #if DCGMI
-    case GPU_GFLOPS_W:
-    {
-      gpu_gflops = get_gflops_cycle(signature, gpu_idx); 
-      gpu_freq = (float)(signature->gpu_sig.gpu_data[gpu_idx].GPU_freq/1000000.0);
-      gpu_power = (float) signature->gpu_sig.gpu_data[gpu_idx].GPU_power;
-      
-      *curr = gpu_gflops*gpu_freq/gpu_power;
-      break;
-    } 
-    case SYS_GFLOPS_W: 
+    case MAX_GFLOPS_WATT: 
     {
       gpu_gflops = get_gflops_cycle(signature, gpu_idx);
       gpu_freq = (float)(signature->gpu_sig.gpu_data[gpu_idx].GPU_freq/1000000.0);
@@ -523,8 +512,7 @@ static uint GPU_metric_ready(signature_t *sig)
 	{
 		case EDP :return 1;
     case MIN_GPU_ENERGY:
-		case SYS_GFLOPS_W :
-		case GPU_GFLOPS_W :
+		case MAX_GFLOPS_WATT :
 		{
 #if DCGMI
       sig_ext_t *sigex;
@@ -549,10 +537,9 @@ static uint GPU_metric_ready(signature_t *sig)
 static void GPU_metric_ready_update(signature_t *signature)
 {
   switch(metric_to_optimize){
-	  case EDP         : return ;
-    case MIN_GPU_ENERGY:
-	  case SYS_GFLOPS_W :
-	  case GPU_GFLOPS_W :
+	  case EDP            : return;
+    case MIN_GPU_ENERGY :
+	  case MAX_GFLOPS_WATT:
     {
 #if DCGMI
       sig_ext_t *sigex;
