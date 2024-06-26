@@ -655,8 +655,14 @@ int main(int argc,char *argv[])
     update_eargm_configuration(&my_cluster_conf);
 
 
-    report_load(my_cluster_conf.install.dir_conf, my_cluster_conf.eargm.plugins);
-    report_init(NULL, &my_cluster_conf);
+    state_t report_ret = report_load(my_cluster_conf.install.dir_plug, my_cluster_conf.eargm.plugins);
+    if (report_ret != EAR_SUCCESS) {
+        error("Error loading report plugins");
+    }
+    report_ret = report_init(NULL, &my_cluster_conf);
+    if (report_ret != EAR_SUCCESS) {
+        error("Error initializing report plugins");
+    }
     switch (policy){
         case MAXENERGY:
             verbose(VGM,"MAXENERGY policy configured with limit %lu %s",energy_budget,unit_name);
