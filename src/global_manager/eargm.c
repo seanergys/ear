@@ -656,6 +656,7 @@ int main(int argc,char *argv[])
 
 
     report_load(my_cluster_conf.install.dir_conf, my_cluster_conf.eargm.plugins);
+    report_init(NULL, &my_cluster_conf);
     switch (policy){
         case MAXENERGY:
             verbose(VGM,"MAXENERGY policy configured with limit %lu %s",energy_budget,unit_name);
