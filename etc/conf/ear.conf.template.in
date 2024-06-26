@@ -79,6 +79,8 @@ EARGMPowerCapSuspendAction=no_action
 EARGMPowerCapResumeLimit=40
 # Format for action is: command_name current_power current_limit total_idle_nodes total_idle_power 
 EARGMPowerCapResumeAction=no_action
+# Sets the report plugins to use for EARGM warning and events accounting
+EARGMReportPlugins=mysql.so
 
 # EARGMs must be specified with a unique id, their node and the port that receives remote
 # connections. An EARGM can also act as meta-eargm if the meta field is filled, and it will
