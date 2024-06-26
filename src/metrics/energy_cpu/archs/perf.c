@@ -175,40 +175,51 @@ state_t perf_rapl_load(topology_t *tp_in)
 			debug("Warning, Vendor %u Model %u not tested , not loading", tp_in->vendor, tp_in->model);
 			return EAR_ERROR;
 		}
-		if (perf_rapl_num_sockets) return EAR_SUCCESS;
+
+		if (perf_rapl_num_sockets)
+		{
+			return EAR_SUCCESS;
+		}
+
+    pthread_mutex_lock(&perf_rapl_lock);
 
 		if (state_fail(perf_rapl_read_conf())){ 
 			debug("perf_rapl: Configuration failed");
+      pthread_mutex_unlock(&perf_rapl_lock);
 			return EAR_ERROR;
 		}
 
     /* If it is not initialized, I do it, else, I get the ids */
-    pthread_mutex_lock(&perf_rapl_lock);
 
     if (state_fail(s = topology_select(tp_in, &my_topo, TPSelect.socket, TPGroup.merge, 0))) {
         debug("topology select fails");
         pthread_mutex_unlock(&perf_rapl_lock);
         return s;
     }
+
 		/* To detect socket is enabled */
     perf_rapl_socket = calloc(my_topo.cpu_count, sizeof(uint));
     if (perf_rapl_socket == NULL) {
         pthread_mutex_unlock(&perf_rapl_lock); return EAR_ERROR;
     }
+
 		/* Status of  perf access */
     perf_rapl_core_st = calloc(my_topo.cpu_count, sizeof(state_t));
     if (perf_rapl_core_st == NULL) {
         pthread_mutex_unlock(&perf_rapl_lock); return EAR_ERROR;
     }
+
     perf_rapl_uncore_st = calloc(my_topo.cpu_count, sizeof(state_t));
     if (perf_rapl_uncore_st == NULL) {
         pthread_mutex_unlock(&perf_rapl_lock); return EAR_ERROR;
     }
+
 		/* Perf data */
 		perf_rapl_core_perf 	= calloc(my_topo.cpu_count, sizeof(perf_t));
 		if (perf_rapl_core_perf == NULL){
 			pthread_mutex_unlock(&perf_rapl_lock);return EAR_ERROR;
 		}
+
 		perf_rapl_uncore_perf	= calloc(my_topo.cpu_count, sizeof(perf_t));
 		if (perf_rapl_uncore_perf == NULL){
 			pthread_mutex_unlock(&perf_rapl_lock);return EAR_ERROR;
@@ -226,7 +237,9 @@ state_t perf_rapl_load(topology_t *tp_in)
 			perf_rapl_num_sockets = perf_rapl_num_sockets + (state_ok(perf_rapl_core_st[j]) || state_ok(perf_rapl_uncore_st[j]));
 			perf_rapl_socket[j]   = state_ok(perf_rapl_core_st[j]) || state_ok(perf_rapl_uncore_st[j]);
     }
+
     pthread_mutex_unlock(&perf_rapl_lock);
+
 		#if SHOW_DEBUGS
 		debug("perf_rapl: %u sockets with events detected", perf_rapl_num_sockets);
 		if (perf_rapl_num_sockets){
@@ -235,8 +248,14 @@ state_t perf_rapl_load(topology_t *tp_in)
 			}
 		}
 		#endif
-    if (perf_rapl_num_sockets) return EAR_SUCCESS;
-    return EAR_ERROR;
+
+		if (perf_rapl_num_sockets)
+		{
+			return EAR_SUCCESS;
+		} else
+		{
+			return EAR_ERROR;
+		}
 }
 
 state_t perf_rapl_init(ctx_t *c)
@@ -248,13 +267,16 @@ state_t perf_rapl_init(ctx_t *c)
 state_t perf_rapl_dispose(ctx_t *c)
 {
 		if (!perf_rapl_num_sockets) return EAR_SUCCESS;
+
     for (uint s = 0; s < my_topo.cpu_count; s++) {
         if (perf_rapl_socket[s]) {
             if (state_ok(perf_rapl_core_st[s])) perf_close(&perf_rapl_core_perf[s]);
             if (state_ok(perf_rapl_uncore_st[s])) perf_close(&perf_rapl_uncore_perf[s]);
         }
     }
-		/* In case it comes from ear_finalize */
+
+		/* In case it comes from ear_finalize
+		 * TODO: What?? */
 		pthread_mutex_unlock(&perf_rapl_lock);
     return EAR_SUCCESS;
 }
