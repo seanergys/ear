@@ -110,13 +110,12 @@ cat /sys/bus/event_source/devices/power/events/energy-ram.scale
 #define EVENTS_PATH			"/sys/bus/event_source/devices/power"
 
 
-
 static pthread_mutex_t perf_rapl_lock = PTHREAD_MUTEX_INITIALIZER;
 static uint           *perf_rapl_socket;
 static state_t         *perf_rapl_core_st;
 static state_t         *perf_rapl_uncore_st;
 static topology_t      my_topo;
-static uint            perf_rapl_num_sockets = 0;
+static uint            perf_rapl_num_sockets = 0; // Used also to check whether the API is loaded
 static perf_t 				 *perf_rapl_core_perf, *perf_rapl_uncore_perf;
 static int 						 perf_type;
 static double 				 pkg_scale, ram_scale;
@@ -283,40 +282,49 @@ state_t perf_rapl_dispose(ctx_t *c)
 
 state_t perf_rapl_count_devices(ctx_t *c, uint *devs_count_in)
 {
-    *devs_count_in = my_topo.cpu_count;
+	if (perf_rapl_num_sockets)
+	{
+		*devs_count_in = my_topo.cpu_count;
     return EAR_SUCCESS;
+	}
+	return EAR_ERROR;
 }
 
 /* Data is stored DRAM0 DRAM1 PCK0 PCK1 */
 /* Data is reported in nano J */
 state_t perf_rapl_read(ctx_t *c, ullong *values)
 {
+	if (perf_rapl_num_sockets)
+	{
 		llong local_energy = 0;
 		pthread_mutex_lock(&perf_rapl_lock);
-    for (uint s = 0; s < my_topo.cpu_count; s++) {
-        if (perf_rapl_socket[s]) {
-            /* Reading core energy in socket s */
-            if (state_ok(perf_rapl_core_st[s])) {
-								local_energy = 0;
-								if (state_fail(perf_read(&perf_rapl_core_perf[s], &local_energy))){
-									debug("perf_rapl: socket[%u] read pck error", s);
-								}
-								debug("perf_rapl: socket[%u] read core %lld", s, local_energy);
-                values[my_topo.cpu_count + s] = (ullong) local_energy * pkg_scale * 1000000000;
-                debug("CORE energy[%d]  %llu nJ", s, values[my_topo.cpu_count + s]);
-            }
-            /* Reading uncore energy in socket s */
-            if (state_ok(perf_rapl_uncore_st[s])) {
-								local_energy = 0;
-								if (state_fail(perf_read(&perf_rapl_uncore_perf[s], &local_energy))){
-                  debug("perf_rapl: socket[%u] read ram error", s);
-                }
-								debug("perf_rapl: socket[%u] read uncore %lld", s, local_energy);
-                values[s] = (ullong) local_energy * pkg_scale * 1000000000;
-                debug("UNCORE enrgy[%d] %llu nJ", s, values[s]);
-            }
-        }
-    }
+		for (uint s = 0; s < my_topo.cpu_count; s++) {
+			if (perf_rapl_socket[s]) {
+				/* Reading core energy in socket s */
+				if (state_ok(perf_rapl_core_st[s])) {
+					local_energy = 0;
+					if (state_fail(perf_read(&perf_rapl_core_perf[s], &local_energy))){
+						debug("perf_rapl: socket[%u] read pck error", s);
+					}
+					debug("perf_rapl: socket[%u] read core %lld", s, local_energy);
+					values[my_topo.cpu_count + s] = (ullong) local_energy * pkg_scale * 1000000000;
+					debug("CORE energy[%d]  %llu nJ", s, values[my_topo.cpu_count + s]);
+				}
+				/* Reading uncore energy in socket s */
+				if (state_ok(perf_rapl_uncore_st[s])) {
+					local_energy = 0;
+					if (state_fail(perf_read(&perf_rapl_uncore_perf[s], &local_energy))){
+						debug("perf_rapl: socket[%u] read ram error", s);
+					}
+					debug("perf_rapl: socket[%u] read uncore %lld", s, local_energy);
+					values[s] = (ullong) local_energy * pkg_scale * 1000000000;
+					debug("UNCORE enrgy[%d] %llu nJ", s, values[s]);
+				}
+			}
+		}
 		pthread_mutex_unlock(&perf_rapl_lock);
-    return EAR_SUCCESS;
+		return EAR_SUCCESS;
+	}
+
+	return EAR_ERROR;
 }
