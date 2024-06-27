@@ -866,10 +866,11 @@ int main(int argc,char *argv[])
 				}
 				if (current_level!=last_level) T1_stables=0;
 				else T1_stables++;
-#if USE_DB
-                report_misc(NULL, EARGM_WARNINGS, (const char *)&my_warning, 1);
-				//db_insert_gm_warning(&my_warning);
-#endif
+
+                if (report_misc(NULL, EARGM_WARNINGS, (const char *)&my_warning, 1) != EAR_SUCCESS) {
+                    verbose(VGM,"EARGM[%d]: report EARGM_RECORD FAILED", getpid());
+                }
+
 				last_level = current_level;
 			}// ALARM
 			if (powercap_th_start){
