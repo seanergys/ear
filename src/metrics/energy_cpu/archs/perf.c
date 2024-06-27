@@ -13,7 +13,10 @@
 * and COPYING.EPL files.
 */
 
+
 #define SHOW_DEBUGS 1
+
+
 #include <math.h>
 #include <time.h>
 #include <stdio.h>
@@ -23,15 +26,12 @@
 
 #include <common/config.h>
 #include <common/states.h>
-
 #include <common/output/verbose.h>
 #include <common/output/debug.h>
 #include <common/hardware/hardware_info.h>
+
 #include <metrics/common/apis.h>
 #include <metrics/common/perf.h>
-
-
-
 
 
 /* 
@@ -95,10 +95,8 @@ cat /sys/bus/event_source/devices/power/events/energy-ram.unit
 Joules
 cat /sys/bus/event_source/devices/power/events/energy-ram.scale 
 2.3283064365386962890625e-10
-
-
-
 */
+
 
 /* This list must be extended for other CPU models */
 #define POWER_ENERGY_PCK		0x2
@@ -135,10 +133,8 @@ state_t perf_rapl_load(topology_t *tp_in)
 
 		if (perf_rapl_num_sockets)
 		{
-			return EAR_SUCCESS;
+			return EAR_ERROR;
 		}
-
-    pthread_mutex_lock(&perf_rapl_lock);
 
 		if (state_fail(perf_rapl_read_conf())){ 
 			debug("perf_rapl: Configuration failed");
@@ -147,6 +143,8 @@ state_t perf_rapl_load(topology_t *tp_in)
 		}
 
     /* If it is not initialized, I do it, else, I get the ids */
+
+    pthread_mutex_lock(&perf_rapl_lock);
 
     if (state_fail(s = topology_select(tp_in, &my_topo, TPSelect.socket, TPGroup.merge, 0))) {
         debug("topology select fails");
@@ -231,9 +229,6 @@ state_t perf_rapl_dispose(ctx_t *c)
 {
 		if (!perf_rapl_num_sockets) return EAR_SUCCESS;
 
-		// Added
-		pthread_mutex_lock(&perf_rapl_lock);
-
     for (uint s = 0; s < my_topo.cpu_count; s++)
 		{
         if (perf_rapl_socket[s]) {
@@ -243,7 +238,7 @@ state_t perf_rapl_dispose(ctx_t *c)
     }
 
 		/* In case it comes from ear_finalize
-		 * TODO: What?? */
+		 * TODO: This call yields to undefined behaviour. */
 		pthread_mutex_unlock(&perf_rapl_lock);
     return EAR_SUCCESS;
 }
@@ -312,6 +307,9 @@ static state_t perf_rapl_read_conf()
 		debug("perf_rapl: type file %s cannot be read", cfile);
 		return EAR_ERROR;
 	}
+
+	pthread_mutex_lock(&perf_rapl_lock);
+
 	fscanf(fconfig,"%d", &perf_type);
 	fclose(fconfig);
 	debug("perf_rapl: type for rapl events detected %d", perf_type);
@@ -322,12 +320,12 @@ static state_t perf_rapl_read_conf()
 	fconfig = fopen(cfile,"r");
 	if (fconfig == NULL){
 		debug("perf_rapl: pck scale file cannot be opened");
+		pthread_mutex_unlock(&perf_rapl_lock);
 		return EAR_ERROR;
 	}
 	fscanf(fconfig,"%lf", &pkg_scale);
 	debug("perf_rapl: scale for pkg %E", pkg_scale);
 	fclose(fconfig);	
-	
 	
 	/* RAM Units */
 	snprintf(cfile, sizeof(cfile),"%s/events/energy-ram.scale",EVENTS_PATH);
@@ -335,10 +333,12 @@ static state_t perf_rapl_read_conf()
 	fconfig = fopen(cfile,"r");
 	if (fconfig == NULL){
 		debug("perf_rapl: ram scale file cannot be opened");
+		pthread_mutex_unlock(&perf_rapl_lock);
 		return EAR_ERROR;
 	}
 	fscanf(fconfig,"%lf", &ram_scale);
 	debug("perf_rapl: scale for ram %E", ram_scale);
 	fclose(fconfig);
+	pthread_mutex_unlock(&perf_rapl_lock);
 	return EAR_SUCCESS;
 }
