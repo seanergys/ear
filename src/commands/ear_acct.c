@@ -153,8 +153,8 @@ void print_full_apps(application_t *apps, int num_apps)
 	double avg_f, imc, vpi;
     char is_sbatch, is_interactive;
 
-	printf("%8s-%-4s\t %-10s %-10s %-16s %-5s/%-5s %-10s %-10s %-10s %-10s %-10s %-7s %-5s %-7s",
-			"JOB", "STEP", "NODE ID", "USER ID", "APPLICATION", "AVG-F", "IMC-F", "TIME(s)",
+	printf("%8s-%-4s %-6s %-10s %-10s %-16s %-5s/%-5s %-10s %-10s %-10s %-10s %-10s %-7s %-5s %-7s",
+			"JOB", "STEP", "AID", "NODE ID", "USER ID", "APPLICATION", "AVG-F", "IMC-F", "TIME(s)",
 			"POWER(W)", "GBS", "CPI", "ENERGY(J)", "IO(MBS)", "MPI%", "VPI(%)");
 
 #if USE_GPUS
@@ -183,15 +183,15 @@ void print_full_apps(application_t *apps, int num_apps)
 			compute_sig_vpi(&vpi, &apps[i].signature);
 			if (!is_sbatch && !is_interactive)
 			{
-				printf("%8lu-%-4lu\t %-10s %-10s %-16.16s %5.2lf/%-5.2lf %-10.2lf %-10.2lf %-10.2lf %-10.2lf %-10.0lf %-7.1lf %-5.1lf %-7.2lf",
-						apps[i].job.id, apps[i].job.step_id, apps[i].node_id, apps[i].job.user_id, apps[i].job.app_id, 
+				printf("%8lu-%-4lu %-6lu %-10s %-10s %-16.16s %5.2lf/%-5.2lf %-10.2lf %-10.2lf %-10.2lf %-10.2lf %-10.0lf %-7.1lf %-5.1lf %-7.2lf",
+						apps[i].job.id, apps[i].job.step_id, apps[i].job.local_id, apps[i].node_id, apps[i].job.user_id, apps[i].job.app_id, 
 						avg_f, imc, apps[i].signature.time, apps[i].signature.DC_power, apps[i].signature.GBS, apps[i].signature.CPI, 
 						apps[i].signature.time * apps[i].signature.DC_power, apps[i].signature.IO_MBS, apps[i].signature.perc_MPI, vpi*100);
 			}
 			else
 			{
-				printf("%8lu-%-4s\t %-10s %-10s %-16.16s %5.2lf/%-5.2lf %-10.2lf %-10.2lf %-10.2lf %-10.2lf %-10.0lf %-7.1lf %5.1lf %-7.2lf",
-						apps[i].job.id, is_sbatch ? "sb" : "inte", apps[i].node_id, apps[i].job.user_id, apps[i].job.app_id, 
+				printf("%8lu-%-4s %-6lu %-10s %-10s %-16.16s %5.2lf/%-5.2lf %-10.2lf %-10.2lf %-10.2lf %-10.2lf %-10.0lf %-7.1lf %5.1lf %-7.2lf",
+						apps[i].job.id, is_sbatch ? "sb" : "inte", apps[i].job.local_id, apps[i].node_id, apps[i].job.user_id, apps[i].job.app_id, 
 						avg_f, imc, apps[i].signature.time, apps[i].signature.DC_power, apps[i].signature.GBS, apps[i].signature.CPI, 
 						apps[i].signature.time * apps[i].signature.DC_power, apps[i].signature.IO_MBS, apps[i].signature.perc_MPI, vpi*100);
 			}
@@ -233,15 +233,15 @@ void print_full_apps(application_t *apps, int num_apps)
 			avg_f = (double) apps[i].power_sig.avg_f/1000000;
 			if (!is_sbatch && !is_interactive)
 			{
-				printf("%8lu-%-4lu\t %-10s %-10s %-16s %5.2lf/%-5s %-10.2lf %-10.2lf %-10s %-10s %-10.0lf %-7s %-5s %-7s",
-						apps[i].job.id, apps[i].job.step_id, apps[i].node_id, apps[i].job.user_id, apps[i].job.app_id, 
+				printf("%8lu-%-4lu %-6lu %-10s %-10s %-16s %5.2lf/%-5s %-10.2lf %-10.2lf %-10s %-10s %-10.0lf %-7s %-5s %-7s",
+						apps[i].job.id, apps[i].job.step_id, apps[i].job.local_id, apps[i].node_id, apps[i].job.user_id, apps[i].job.app_id, 
 						avg_f, "---", apps[i].power_sig.time, apps[i].power_sig.DC_power, "---", "---", 
 						apps[i].power_sig.time * apps[i].power_sig.DC_power, "---", "---", "---");
 			}
 			else
 			{
-				printf("%8lu-%-4s\t %-10s %-10s %-16s %5.2lf/%-5s %-10.2lf %-10.2lf %-10s %-10s %-10.0lf %-7s %-5s %-7s",
-						apps[i].job.id, is_sbatch ? "sb" : "inte", apps[i].node_id, apps[i].job.user_id, apps[i].job.app_id, 
+				printf("%8lu-%-4s %-6lu %-10s %-10s %-16s %5.2lf/%-5s %-10.2lf %-10.2lf %-10s %-10s %-10.0lf %-7s %-5s %-7s",
+						apps[i].job.id, is_sbatch ? "sb" : "inte", apps[i].job.local_id, apps[i].node_id, apps[i].job.user_id, apps[i].job.app_id, 
 						avg_f, "---", apps[i].power_sig.time, apps[i].power_sig.DC_power, "---", "---", 
 						apps[i].power_sig.time * apps[i].power_sig.DC_power, "---", "---", "---");
 
@@ -305,19 +305,19 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 	{
 		if (avx)
 		{
-			strcpy(header_format, "%7s-%-4s-%-7s %-10s %-16s %-6s %-5s %-3s/%-3s/%-8s %-10s %-8s %-7s %-5s %-12s %-8s %-7s %-5s %-14s");
-			strcpy(line_format, "%7u-%-3u-%-7u  %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6.2lf %-10.2lf %-8.2lf %-7.2lf %-5.2lf %-12.0lf %-8.4lf %-7.1lf %-5.1lf %-14.2lf");
-			strcpy(mpi_line_format, "%7u-%-3u-%-7u  %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6s %-10.2lf %-8.2lf %-7s %-5s %-12.0lf %-8s %-7s %-5s %-14s");
-			strcpy(sbatch_line_format, "%7u-%-3s-%-7u  %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6.2lf %-10.2lf %-8.2lf %-7.2lf %-5.2lf %-12.0lf %-8.4lf %-7.1lf %-5.1lf %-14.3lf");
-			strcpy(mpi_sbatch_line_format, "%7u-%-3s-%-7u  %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6s %-10.2lf %-8.2lf %-7s %-5s %-12.0lf %-8s %-8s %-5s %-14s");
+			strcpy(header_format, "%7s-%-4s %-6s %-10s %-16s %-6s %-5s %-3s/%-3s/%-8s %-10s %-8s %-7s %-5s %-12s %-8s %-7s %-5s %-14s");
+			strcpy(line_format, "%7u-%-4u %-6u  %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6.2lf %-10.2lf %-8.2lf %-7.2lf %-5.2lf %-12.0lf %-8.4lf %-7.1lf %-5.1lf %-14.2lf");
+			strcpy(mpi_line_format, "%7u-%-4u %-6u  %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6s %-10.2lf %-8.2lf %-7s %-5s %-12.0lf %-8s %-7s %-5s %-14s");
+			strcpy(sbatch_line_format, "%7u-%-4s %-6u  %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6.2lf %-10.2lf %-8.2lf %-7.2lf %-5.2lf %-12.0lf %-8.4lf %-7.1lf %-5.1lf %-14.3lf");
+			strcpy(mpi_sbatch_line_format, "%7u-%-4s %-6u  %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6s %-10.2lf %-8.2lf %-7s %-5s %-12.0lf %-8s %-8s %-5s %-14s");
 		}
 		else
 		{
-			strcpy(header_format, "%7s-%-4s-%-7s %-10s %-16s %-6s %-5s %-3s/%-3s/%-8s %-10s %-8s %-7s %-5s %-12s %-8s %-7s %-5s");
-			strcpy(line_format, "%7u-%-3u-%-7u  %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6.2lf %-10.2lf %-8.2lf %-7.2lf %-5.2lf %-12.0lf %-8.4lf %-7.1lf %-5.1lf");
-			strcpy(mpi_line_format, "%7u-%-3u-%-7u  %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6s %-10.2lf %-8.2lf %-7s %-5s %-12.0lf %-8s %-7s %-5s");
-			strcpy(sbatch_line_format, "%7u-%-3s-%-7u  %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6.2lf %-10.2lf %-8.2lf %-7.2lf %-5.2lf %-12.0lf %-8.4lf %-7.1lf %-5.1lf");
-			strcpy(mpi_sbatch_line_format, "%7u-%-3s-%-7u  %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6s %-10.2lf %-8.2lf %-7s %-5s %-12.0lf %-8s %-7s %-5s");
+			strcpy(header_format, "%7s-%-4s %-6s %-10s %-16s %-6s %-5s %-3s/%-3s/%-8s %-10s %-8s %-7s %-5s %-12s %-8s %-7s %-5s");
+			strcpy(line_format, "%7u-%-4u %-6u %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6.2lf %-10.2lf %-8.2lf %-7.2lf %-5.2lf %-12.0lf %-8.4lf %-7.1lf %-5.1lf");
+			strcpy(mpi_line_format, "%7u-%-4u-% 6u %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6s %-10.2lf %-8.2lf %-7s %-5s %-12.0lf %-8s %-7s %-5s");
+			strcpy(sbatch_line_format, "%7u-%-4s %-6u %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6.2lf %-10.2lf %-8.2lf %-7.2lf %-5.2lf %-12.0lf %-8.4lf %-7.1lf %-5.1lf");
+			strcpy(mpi_sbatch_line_format, "%7u-%-4s %-6u %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6s %-10.2lf %-8.2lf %-7s %-5s %-12.0lf %-8s %-7s %-5s");
 		}
 #if USE_GPUS
 		strcpy(gpu_header, " %-15s %-7s %-13s");
@@ -349,12 +349,12 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 	}
 	if (avx)
 		dprintf(fd, header_format,
-				"JOB", "STEP", "LOCALID", "USER", "APPLICATION", "POLICY", "NODES", "AVG","DEF", "IMC(GHz)", "TIME(s)",
+				"JOB", "STEP", "AID", "USER", "APPLICATION", "POLICY", "NODES", "AVG","DEF", "IMC(GHz)", "TIME(s)",
 				"POWER(W)", "GBS", "CPI", "ENERGY(J)", "GFLOPS/W", "IO(MBs)", "MPI%", "VPI(%)");
 
 	else
 		dprintf(fd, header_format,
-				"JOB", "STEP", "LOCALID", "USER", "APPLICATION", "POLICY", "NODES", "AVG", "DEF", "IMC(GHz)","TIME(s)",
+				"JOB", "STEP", "AID", "USER", "APPLICATION", "POLICY", "NODES", "AVG", "DEF", "IMC(GHz)","TIME(s)",
 				"POWER(W)", "GBS", "CPI", "ENERGY(J)", "GFLOPS/W", "IO(MBs)", "MPI%");
 
 #if USE_GPUS
@@ -1016,11 +1016,11 @@ void print_loops(loop_t *loops, int num_loops)
 #endif
 
 #if REPORT_TIMESTAMP
-	strcpy(line, "%6s-%-4s\t %-10s %-9s %-8s %-7s %-8s %-8s %-8s %-8s %-5s %-7s %-5s ");
-	printf(line, "JOB", "STEP", "NODE ID", "DATE", "POWER(W)", "GBS/TPI", "CPI", "GFLOPS/W", "TIME(s)", "AVG_F/F", "IMC_F", "IO(MBS)", "MPI%");
+	strcpy(line, "%6s-%-4s %-6s %-10s %-9s %-8s %-7s %-8s %-8s %-8s %-8s %-5s %-7s %-5s ");
+	printf(line, "JOB", "STEP", "AID", "NODE ID", "DATE", "POWER(W)", "GBS/TPI", "CPI", "GFLOPS/W", "TIME(s)", "AVG_F/F", "IMC_F", "IO(MBS)", "MPI%");
 #else
-	strcpy(line, "%6s-%-4s\t %-10s %-6s %-8s %-8s %-8s %-8s %-8s %-8s %-5s %-7s %-5s ");
-	printf(line, "JOB", "STEP", "NODE ID", "ITER.", "POWER(W)", "GBS", "CPI", "GFLOPS/W", "TIME(s)", "AVG_F/F", "IMC_F", "IO(MBS)", "MPI%");
+	strcpy(line, "%6s-%-4s %-6s %-10s %-6s %-8s %-8s %-8s %-8s %-8s %-8s %-5s %-7s %-5s ");
+	printf(line, "JOB", "STEP", "AID", "NODE ID", "ITER.", "POWER(W)", "GBS", "CPI", "GFLOPS/W", "TIME(s)", "AVG_F/F", "IMC_F", "IO(MBS)", "MPI%");
 #endif
 #if USE_GPUS
 	//GPU variable declaration
@@ -1036,7 +1036,7 @@ void print_loops(loop_t *loops, int num_loops)
 #endif
 	printf("\n");
 
-	strcpy(line, "%6u-%-4u\t %-10s %-9s %-8.1lf %-3.0lf/%-3.0lf %-8.3lf %-8.3lf %-8.3lf %-4.2lf/%-3.1lf %-5.2lf %-7.1lf %-5.1lf ");
+	strcpy(line, "%6u-%-4u %-6u %-10s %-9s %-8.1lf %-3.0lf/%-3.0lf %-8.3lf %-8.3lf %-8.3lf %-4.2lf/%-3.1lf %-5.2lf %-7.1lf %-5.1lf ");
 	for (i = 0; i < num_loops; i++)
 	{
 		signature_copy(&sig, &loops[i].signature);
@@ -1071,7 +1071,7 @@ void print_loops(loop_t *loops, int num_loops)
 #else
                 sprintf(date_iter,"%lu", loops[i].total_iterations);
 #endif
-		printf(line, loops[i].jid, loops[i].step_id, loops[i].node_id, date_iter,
+		printf(line, loops[i].jid, loops[i].step_id, loops[i].local_id, loops[i].node_id, date_iter,
 				sig.DC_power, sig.GBS, sig.TPI,sig.CPI, sig.Gflops/sig.DC_power, sig.time, (double)(sig.avg_f)/1000000,(double)(sig.def_f)/1000000, (double)(sig.avg_imc_f)/1000000, sig.IO_MBS, sig.perc_MPI);
 #if USE_GPUS
 		sprintf(tmp, "%lu%%/%lu%%", gpuu, gpu_mem_util);
