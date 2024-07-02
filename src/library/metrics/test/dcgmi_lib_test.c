@@ -30,7 +30,7 @@ int main(int argc, char **argv)
 	gpu_load(0); // 0 means no forcing any API
 	gpu_init(no_ctx);
 
-	VERB_SET_LV(2);
+	VERB_SET_LV(3);
 	
 	verb(0, "Loading EARL DCGMI module...");
 	if (state_fail(dcgmi_lib_load()))
