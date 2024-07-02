@@ -747,6 +747,7 @@ int main(int argc, char *argv[])
     int32_t mail_fd = -1;
     int32_t num_nodes = 0;
     int64_t set_limit = -2;
+    bool send_message = false;
 
 
     char get_power = 0;
@@ -757,6 +758,7 @@ int main(int argc, char *argv[])
 
     char *mail = NULL;
     char **nodes = NULL;
+    char *message = NULL;
 
     strcpy(node_name,"");
     VCCONF = 2;
@@ -805,6 +807,7 @@ int main(int argc, char *argv[])
         {"inc-powercap",    required_argument, 0, 'i'},
         {"red-powercap",    required_argument, 0, 'd'},
         {"mail",            required_argument, 0, 'm'},
+        {"send-message",    required_argument, 0, 'M'},
         {"conf-path",       required_argument, 0, 'a'},
         {"verbose",         optional_argument, 0, 'b'},
         {"error",           no_argument, 0, 'e'},
@@ -1059,6 +1062,10 @@ int main(int argc, char *argv[])
                     printf("released %u watts\n", pc.released);
                 }
                 break;
+            case 'M':
+                send_message = true;
+                message = optarg;
+                break;
             case 'e':
                 num_status = ear_cluster_get_status(&my_cluster_conf, &status);
                 process_status(num_status, status, 1, NULL, 0);
@@ -1152,8 +1159,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    if (mail != NULL) 
-    {
+    if (mail != NULL) {
         sprintf(mail_filename, "%s/health_check.txt", my_cluster_conf.install.dir_temp);
         mail_fd = open(mail_filename, O_CREAT|O_WRONLY|O_TRUNC,S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
         if (mail_fd < 1) {
@@ -1165,8 +1171,11 @@ int main(int argc, char *argv[])
         }
     }
 
-    if (set_limit != -2) 
-    {
+    if (send_message) {
+        ear_send_message(&my_cluster_conf, message, nodes, num_nodes);
+    }
+
+    if (set_limit != -2) {
         if (status_type == EAR_TYPE_EARGM_STATUS) {
             eargm_set_powerlimit(&my_cluster_conf, set_limit, nodes, num_nodes);
             status_type = 0;
@@ -1186,8 +1195,7 @@ int main(int argc, char *argv[])
     }
     if ((status_type != EAR_TYPE_EARDBD_STATUS) && (strlen(node_name) > 0)) strcat(node_name, my_cluster_conf.net_ext);
 
-    if (strlen(node_name) > 0 && status_type > 0)
-    {
+    if (strlen(node_name) > 0 && status_type > 0) {
         int num_status = 0;
         int rc = -1;
 

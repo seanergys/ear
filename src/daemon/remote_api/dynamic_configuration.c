@@ -812,6 +812,11 @@ static void log_msg_in_file(char *filename, char *txt)
 }
 #endif
 
+void dyncon_process_message(char *message)
+{
+    verbose(VRAPI, "received EARD message %s", message);
+}
+
 state_t process_remote_requests(int clientfd) {
     request_t command;
     uint req;
@@ -968,8 +973,13 @@ state_t process_remote_requests(int clientfd) {
             dyncon_get_power(clientfd, &command);
             return EAR_SUCCESS;
         case EAR_RC_NODE_PURGE:
-						powermon_purge_old_jobs();
-						return EAR_SUCCESS;
+            powermon_purge_old_jobs();
+            return EAR_SUCCESS;
+        case EAR_RC_SEND_MESSAGE:
+            dyncon_process_message(command.my_req.message);
+            free(command.my_req.message);
+            return EAR_SUCCESS;
+            break;
         default:
             error("Invalid remote command %d\n",req);
             req = NO_COMMAND;

@@ -37,13 +37,13 @@ typedef struct new_job_req{
     job_t job;
     uint8_t is_mpi;
     uint8_t is_learning;
-}new_job_req_t;
+} new_job_req_t;
 
 typedef struct end_job_req{
     job_id jid;
     job_id sid;
     //int status;
-}end_job_req_t;
+} end_job_req_t;
 
 typedef struct new_task_req{
     job_id 		jid;
@@ -51,7 +51,7 @@ typedef struct new_task_req{
     pid_t  		pid;
     cpu_set_t mask;	
     uint      num_cpus;
-}new_task_req_t;
+} new_task_req_t;
 
 typedef struct end_task_req{
     job_id 		jid;
@@ -59,7 +59,7 @@ typedef struct end_task_req{
     pid_t  		pid;
     cpu_set_t mask;	
     uint      num_cpus;
-}end_task_req_t;
+} end_task_req_t;
 
 
 typedef struct new_conf{
@@ -68,28 +68,28 @@ typedef struct new_conf{
     ulong   th;
     uint    p_states;
     uint    p_id;
-}new_conf_t;
+} new_conf_t;
 
 typedef struct eargm_req{
     uint num_nodes;
     uint pc_change;
-}eargm_req_t;
+} eargm_req_t;
 
 typedef struct new_policy_cont{
     char    name[POLICY_NAME_SIZE];
     ulong   def_freq;
     double  settings[MAX_POLICY_SETTINGS];
-}new_policy_cont_t;
+} new_policy_cont_t;
 
 typedef struct power_limit{
     unsigned long   limit;
     unsigned int    type;
-}power_limit_t;
+} power_limit_t;
 
 typedef struct risk_dec{
     unsigned long   target;
     risk_t          level;
-}risk_dec_t;
+} risk_dec_t;
 
 typedef union req_data{
     new_job_req_t       new_job;
@@ -102,8 +102,9 @@ typedef union req_data{
     power_limit_t       pc;
     powercap_opt_t      pc_opt;
     eargm_req_t         eargm_data;
-	int                 release_power;
-}req_data_t;
+    int                 release_power;
+    char                *message;
+} req_data_t;
 
 typedef struct request{
     uint32_t        req;
@@ -115,7 +116,7 @@ typedef struct request{
     int32_t         num_nodes;
     int32_t         *nodes;
     req_data_t  my_req; //all new variables must be specified after time_code so the first portion aligns with internal_request_t
-}request_t;
+} request_t;
 
 typedef struct internal_request {
     uint32_t    req;
@@ -219,6 +220,7 @@ typedef struct power_check {
 #define EAR_RC_APP_MASTER_STATUS    602
 #define EAR_RC_POLICY_STATUS        603
 #define EAR_RC_NODE_PURGE           604
+#define EAR_RC_SEND_MESSAGE         605
 
 /* New functions for power limits */
 #define EAR_RC_RED_POWER            700
