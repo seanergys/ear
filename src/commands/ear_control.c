@@ -334,6 +334,7 @@ void usage(char *app)
             "\n\t--inc-th \t[new_th] [pol_name]\t->increases the threshold for all nodes"\
             "\n\t--set-th \t[new_th] [pol_name]\t->sets the threshold for all nodes"\
             "\n\t--red-def-freq \t[n_pstates]\t\t->reduces the default and max frequency by n pstates"\
+            "\n\t--send-message \t[command]\t\t->sends the command to the daemon to be processed"\
             "\n\t--set-risk \t[level] [target] [node]\t->sends a warning to all nodes or the a specific node (optional)"\
             "\n\t\t\t\t\t\t\t->levels: WARNING1/WARNING2/PANIC \ttarget: ENERGY/POWER");
 

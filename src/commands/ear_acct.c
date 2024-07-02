@@ -801,7 +801,7 @@ void read_events(char *user, query_adds_t *q_a)
 #endif
 }
 
-void print_loops(loop_t *loops, int num_loops)
+void print_loops(loop_t *loops, int num_loops, char *format)
 {
     int i;
     char line[256];
@@ -996,7 +996,7 @@ void read_jobs_from_loops(query_adds_t *q_a)
 
 }
 
-void read_loops(char *user, query_adds_t *q_a) 
+void read_loops(char *user, query_adds_t *q_a, char *format) 
 {
     char query[1024];
 
@@ -1044,7 +1044,7 @@ void read_loops(char *user, query_adds_t *q_a)
             printf("appended %d loops to %s\n", num_loops, csv_path);
         }
     } else {
-        print_loops(loops, num_loops);
+        print_loops(loops, num_loops, format);
     }
     if (loops != NULL) free(loops);
     if (loop_extended) read_jobs_from_loops(q_a);
@@ -1353,7 +1353,9 @@ int main(int argc, char *argv[])
 
     if (verbose) printf("Limit set to %d\n", query_adds.limit);
     if (strlen(format) < 1) {
-        if (full_length)
+        if (is_loops)
+            strcpy(format, "jNDptCgtriMG");
+        else if (full_length)
             strcpy(format, "juapnrtpgCseG");
         else
             strcpy(format, "juapNrtpgCseG");
@@ -1361,7 +1363,7 @@ int main(int argc, char *argv[])
 
     if (file_name != NULL) read_applications_from_files(file_name, format);
     else if (is_events) read_events(user, &query_adds);
-    else if (is_loops) read_loops(user, &query_adds);
+    else if (is_loops) read_loops(user, &query_adds, format);
     else read_applications_from_database(user, &query_adds, format); 
 
 #if COLORS
