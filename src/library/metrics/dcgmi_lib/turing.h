@@ -24,7 +24,7 @@
 #include <library/metrics/dcgmi_lib/common.h>
 
 
-state_t dcgmi_lib_turing_init(uint api, dcgmi_lib_t *dcgmi_data, int **event_info, int event_info_rows, int event_info_cols);
+state_t dcgmi_lib_turing_init(uint api, uint all_events, dcgmi_lib_t *dcgmi_data, int (*event_info)[DCGMI_LIB_SUPPORTED_EVENTS][2]);
 
 
 #endif // _DCGMI_LIB_TURING_H_
