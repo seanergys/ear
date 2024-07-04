@@ -315,7 +315,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 		{
 			strcpy(header_format, "%7s-%-4s %-6s %-10s %-16s %-6s %-5s %-3s/%-3s/%-8s %-10s %-8s %-7s %-5s %-12s %-8s %-7s %-5s");
 			strcpy(line_format, "%7u-%-4u %-6u %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6.2lf %-10.2lf %-8.2lf %-7.2lf %-5.2lf %-12.0lf %-8.4lf %-7.1lf %-5.1lf");
-			strcpy(mpi_line_format, "%7u-%-4u-% 6u %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6s %-10.2lf %-8.2lf %-7s %-5s %-12.0lf %-8s %-7s %-5s");
+			strcpy(mpi_line_format, "%7u-%-4u %-6u %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6s %-10.2lf %-8.2lf %-7s %-5s %-12.0lf %-8s %-7s %-5s");
 			strcpy(sbatch_line_format, "%7u-%-4s %-6u %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6.2lf %-10.2lf %-8.2lf %-7.2lf %-5.2lf %-12.0lf %-8.4lf %-7.1lf %-5.1lf");
 			strcpy(mpi_sbatch_line_format, "%7u-%-4s %-6u %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6s %-10.2lf %-8.2lf %-7s %-5s %-12.0lf %-8s %-7s %-5s");
 		}
