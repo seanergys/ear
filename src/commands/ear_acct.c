@@ -1208,20 +1208,20 @@ void format_loop_query(char *user, char *query, char *base_query, query_adds_t *
 	if (user != NULL) add_string_filter(query, "user_id", user);
 
 	if (q_a->job_id >= 0)
-		add_int_filter(query, "job_id", q_a->job_id);
+		add_int_filter(query, "Loops.job_id", q_a->job_id);
 	else if (strlen(q_a->job_ids) > 0)
-		add_int_list_filter(query, "job_id", q_a->job_ids);
+		add_int_list_filter(query, "Loops.job_id", q_a->job_ids);
 	if (q_a->step_id >= 0)
 		add_int_filter(query, "Loops.step_id", q_a->step_id);
     if (strlen(q_a->step_ids) > 0)
-        add_string_filter_no_quotes(query, "step_id", q_a->step_ids);
+        add_string_filter_no_quotes(query, "Loops.step_id", q_a->step_ids);
 
 	if (q_a->limit > 0 && q_a->job_id < 0)
 	{
-		sprintf(subquery, " ORDER BY job_id desc LIMIT %d", q_a->limit);
+		sprintf(subquery, " ORDER BY Loops.job_id desc LIMIT %d", q_a->limit);
 		strcat(query, subquery);
 	}
-	else strcat(query, " ORDER BY job_id desc");
+	else strcat(query, " ORDER BY Loops.job_id desc");
 
 	if (verbose) printf("QUERY: %s\n", query);
 
