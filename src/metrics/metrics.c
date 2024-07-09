@@ -88,8 +88,8 @@ __attribute__((unused)) static void metrics_init_screen(metrics_info_t *m, topol
     scprintf_divide(&ss, (int[]) { 39,   2}, (int[]) { 40,  39}, &id_ram, "bandwidth");
     scprintf_divide(&ss, (int[]) { 42,   2}, (int[]) { 43,  39}, &id_tmp, "temperature");
     scprintf_divide(&ss, (int[]) { 45,   2}, (int[]) { 46,  39}, &id_pow, "cpupow"   );
-    scprintf_divide(&ss, (int[]) {  1,  41}, (int[]) {  5, 118}, &id_gpu, "gpu"      );
-    scprintf_divide(&ss, (int[]) {  7,  41}, (int[]) { 10,  78}, &id_nod, "nodepow"  );
+    scprintf_divide(&ss, (int[]) {  1,  41}, (int[]) {  9, 118}, &id_gpu, "gpu"      );
+    scprintf_divide(&ss, (int[]) { 11,  41}, (int[]) { 13,  78}, &id_nod, "nodepow"  );
     scprintf_divide(&ss, (int[]) {  1, 154}, (int[]) {  6, 177}, &id_log, "ear-logo" );
     scprintf_divide(&ss, (int[]) {  8, 124}, (int[]) { 18, 177}, &id_api, "api-table");
     scprintf_divide(&ss, (int[]) { 20, 154}, (int[]) { 35, 177}, &id_tpo, "topology" );
