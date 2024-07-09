@@ -51,7 +51,7 @@
 #include <metrics/common/apis.h>
 
 
-#define DCGMI_MET_LVL			2
+#define DCGMI_MET_LVL			1
 
 #define DCGMI_LIB_SAMPLING_PERIOD 2
 
@@ -452,8 +452,12 @@ void dcgmi_lib_compute_gpu_gflops(dcgmi_sig_t *dcgmi_sig, signature_t *metrics)
 		gpu_freq = (float) (metrics->gpu_sig.gpu_data[gpu_idx].GPU_freq / 1000000.0);
 
 		dcgmi_sig->gpu_gflops[gpu_idx] = gflops_cycle * gpu_freq;
+
+		verbose(DCGMI_MET_LVL, "GPU%u GFLOPS: fp16 %f fp32 %f fp64 %f tensor %f gflops_cycle %f gpu_f %f: %f",
+						gpu_idx, fp16, fp32, fp64, tensor, gflops_cycle, gpu_freq, dcgmi_sig->gpu_gflops[gpu_idx]);
 #if WF_SUPPORT
 		metrics->gpu_sig.gpu_data[gpu_idx].GPU_GFlops = gflops_cycle * gpu_freq;
+		verbose(DCGMI_MET_LVL, "Storing GPU GFLOPS into GPU signature (%f)", metrics->gpu_sig.gpu_data[gpu_idx].GPU_GFlops);
 #endif
 	}
 

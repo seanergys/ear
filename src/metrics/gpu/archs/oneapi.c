@@ -6,16 +6,16 @@
 * Energy management. It has been developed in the context of the
 * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
 *
-* 
+*
 * BSC Contact   mailto:ear-support@bsc.es
-* 
+*
 *
 * EAR is an open source software, and it is licensed under both the BSD-3 license
 * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <dlfcn.h>
 #include <stdio.h>
@@ -81,7 +81,8 @@ void gpu_oneapi_load(gpu_ops_t *ops, int force_api)
     apis_set(ops->init,                gpu_oneapi_init);
     apis_set(ops->dispose,             gpu_oneapi_dispose);
     apis_set(ops->set_monitoring_mode, gpu_oneapi_set_monitoring_mode);
-    apis_pin(ops->read,                gpu_oneapi_read, ok_pool);
+//    apis_pin(ops->read,                gpu_oneapi_read, ok_pool);
+    apis_set(ops->read,                gpu_oneapi_read);
     apis_set(ops->read_raw,            gpu_oneapi_read_raw);
 }
 
@@ -375,9 +376,14 @@ state_t gpu_oneapi_pool(void *p)
 		pool[dv].energy_j  = current.energy_j;
 		pool[dv].working   = current.working;
 		pool[dv].correct   = 1;
-		
+	    // Correcting initial power inf/nan
+        if (pool[dv].samples == 1) {
+            pool[dv].power_w = 0.0;
+        }
+
 		debug("dev | metric   | value    ");
 		debug("--- | -------- | -----    ");
+        debug("%d   | time     | %0.2lf s", dv, time_diff        );
 		debug("%d   | samps    | %lu     ", dv, pool[dv].samples );
 		debug("%d   | freq_gpu | %lu MHz ", dv, pool[dv].freq_gpu);
 		debug("%d   | freq_mem | %lu MHz ", dv, pool[dv].freq_mem);
@@ -386,6 +392,7 @@ state_t gpu_oneapi_pool(void *p)
 		debug("%d   | temp_gpu | %lu cels", dv, pool[dv].temp_gpu);
 		debug("%d   | temp_mem | %lu cels", dv, pool[dv].temp_mem);
 		debug("%d   | energy   | %0.2lf J", dv, pool[dv].energy_j);
+		debug("%d   | power    | %0.2lf W", dv, pool[dv].power_w);
 		debug("%d   | working  | %d      ", dv, pool[dv].working );
 	}
 	// Copying time
@@ -398,6 +405,7 @@ state_t gpu_oneapi_pool(void *p)
 
 state_t gpu_oneapi_read(ctx_t *c, gpu_t *data)
 {
+    gpu_oneapi_pool(NULL);
 	while (pthread_mutex_trylock(&lock));
 	memcpy(data, pool, devs_count * sizeof(gpu_t));
 	pthread_mutex_unlock(&lock);
