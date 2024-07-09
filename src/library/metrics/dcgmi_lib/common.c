@@ -15,6 +15,8 @@
  */
 
 
+// #define SHOW_DEBUGS 1
+
 
 #include <library/metrics/dcgmi_lib/common.h>
 
@@ -41,6 +43,7 @@ state_t dcgmi_lib_data_alloc(dcgmi_lib_t *dcgmi_lib_data, int set_count)
 		dcgmi_lib_data->gpuprof_read2 			= NULL;
 		dcgmi_lib_data->gpuprof_diff				= NULL;
 		dcgmi_lib_data->gpuprof_agg					= NULL;
+		// dcgmi_lib_data->dcgm_event_mask			= NULL;
 
 		// Set sizes array
 		dcgmi_lib_data->dcgmi_set_sizes = (int *) malloc(set_count * sizeof(int));
@@ -57,13 +60,17 @@ state_t dcgmi_lib_data_alloc(dcgmi_lib_t *dcgmi_lib_data, int set_count)
 		dcgmi_lib_data->gpuprof_diff	= (gpuprof_t **) malloc(set_count * sizeof(gpuprof_t *));
 		dcgmi_lib_data->gpuprof_agg		= (gpuprof_t **) malloc(set_count * sizeof(gpuprof_t *));
 
+		// Event sets mask array
+		// dcgmi_lib_data->dcgm_event_mask = (uint **) malloc(set_count * sizeof(uint *));
+
 		if (dcgmi_lib_data->dcgmi_set_sizes &&
 				dcgmi_lib_data->dcgmi_event_ids &&
 				dcgmi_lib_data->dcgmi_event_ids_csv &&
 				dcgmi_lib_data->gpuprof_read1 &&
 				dcgmi_lib_data->gpuprof_read2 &&
 				dcgmi_lib_data->gpuprof_diff &&
-				dcgmi_lib_data->gpuprof_agg
+				dcgmi_lib_data->gpuprof_agg /* &&
+				dcgmi_lib_data->dcgm_event_mask */
 				)
 		{
 			return EAR_SUCCESS;
@@ -79,6 +86,8 @@ state_t dcgmi_lib_data_alloc(dcgmi_lib_t *dcgmi_lib_data, int set_count)
 			free(dcgmi_lib_data->gpuprof_diff);
 			free(dcgmi_lib_data->gpuprof_agg);
 
+			// free(dcgmi_lib_data->dcgm_event_mask);
+
 			dcgmi_lib_data->dcgmi_set_sizes			= NULL;
 			dcgmi_lib_data->dcgmi_event_ids			= NULL;
 			dcgmi_lib_data->dcgmi_event_ids_csv	= NULL;
@@ -86,6 +95,7 @@ state_t dcgmi_lib_data_alloc(dcgmi_lib_t *dcgmi_lib_data, int set_count)
 			dcgmi_lib_data->gpuprof_read2 			= NULL;
 			dcgmi_lib_data->gpuprof_diff				= NULL;
 			dcgmi_lib_data->gpuprof_agg					= NULL;
+			// dcgmi_lib_data->dcgm_event_mask			= NULL;
 
 			return_msg(EAR_ERROR, Generr.alloc_error);
 		}

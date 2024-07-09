@@ -12,7 +12,9 @@ comm_BINS = \
     $(SRCDIR)/daemon/remote_api/eard_rapi.o \
     $(SRCDIR)/daemon/remote_api/eard_rapi_internals.o \
     $(SRCDIR)/common/libdb.a \
+	$(SRCDIR)/report/report.o \
     $(SRCDIR)/common/libcommon.a 
+	
 
 
 eargmd_OBJS = \

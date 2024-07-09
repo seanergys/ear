@@ -142,7 +142,6 @@ int print_application_fd(int fd, application_t *app, int new_line, char is_exten
     if (app->signature.time == 0) app->signature.time = app->power_sig.time;
 
     signature_print_fd(fd, &app->signature, is_extended, single_column,',');
-        
 
     if (new_line) {
         dprintf(fd, "\n");
@@ -154,57 +153,90 @@ int print_application_fd(int fd, application_t *app, int new_line, char is_exten
 
 int create_app_header(char * header, char *path, uint num_gpus, char is_extended, int single_column)
 {
-#if WF_SUPPORT
-    char *HEADER_BASE = "NODENAME;JOBID;STEPID;APPID;USERID;GROUPID;JOBNAME;USER_ACC;ENERGY_TAG;POLICY;POLICY_TH;START_TIME;END_TIME;START_DATE;END_DATE;"\
-                        "AVG_CPUFREQ_KHZ;AVG_IMCFREQ_KHZ;DEF_FREQ_KHZ;TIME_SEC;CPI;TPI;MEM_GBS;IO_MBS;PERC_MPI;DC_NODE_POWER_W;DRAM_POWER_W;"\
-                        "PCK_POWER_W;CYCLES;INSTRUCTIONS;CPU-GFLOPS";
-#else
-    char *HEADER_BASE = "NODENAME;JOBID;STEPID;USERID;GROUPID;JOBNAME;USER_ACC;ENERGY_TAG;POLICY;POLICY_TH;START_TIME;END_TIME;START_DATE;END_DATE;"\
-                        "AVG_CPUFREQ_KHZ;AVG_IMCFREQ_KHZ;DEF_FREQ_KHZ;TIME_SEC;CPI;TPI;MEM_GBS;IO_MBS;PERC_MPI;DC_NODE_POWER_W;DRAM_POWER_W;"\
-                        "PCK_POWER_W;CYCLES;INSTRUCTIONS;CPU-GFLOPS";
-#endif
-		char HEADER[4096];
-
 		/* If file already exists we will not add the header */
 		if (file_is_regular(path)) return EAR_SUCCESS;
 
-		if (header != NULL){ 
-			strncpy(HEADER, header, sizeof(HEADER) - 1);
-			strncat(HEADER, HEADER_BASE, sizeof(HEADER) - strlen(HEADER) - 1);
-		}else{
-			strncpy(HEADER, HEADER_BASE, sizeof(HEADER));
+#if WF_SUPPORT
+		char *HEADER_JOB = "NODENAME;JOBID;STEPID;APPID";
+#else
+		char *HEADER_JOB = "NODENAME;JOBID;STEPID";
+#endif // WF_SUPPORT
+
+    char *HEADER_BASE = ";USERID;GROUPID;JOBNAME;USER_ACC;"\
+												 "ENERGY_TAG;POLICY;POLICY_TH;START_TIME;"\
+												 "END_TIME;START_DATE;END_DATE;AVG_CPUFREQ_KHZ;"\
+												 "AVG_IMCFREQ_KHZ;DEF_FREQ_KHZ;TIME_SEC;CPI;TPI;MEM_GBS;"\
+												 "IO_MBS;PERC_MPI;DC_NODE_POWER_W;DRAM_POWER_W;PCK_POWER_W;"\
+												 "CYCLES;INSTRUCTIONS;CPU-GFLOPS";
+
+#if USE_GPUS
+#if WF_SUPPORT
+		char *HEADER_GPU_SIG = ";GPU%d_POWER_W;GPU%d_FREQ_KHZ;GPU%d_MEM_FREQ_KHZ;"\
+														"GPU%d_UTIL_PERC;GPU%d_MEM_UTIL_PERC;GPU%d_GFLOPS";
+#else
+		char *HEADER_GPU_SIG = ";GPU%d_POWER_W;GPU%d_FREQ_KHZ;GPU%d_MEM_FREQ_KHZ;"\
+														"GPU%d_UTIL_PERC;GPU%d_MEM_UTIL_PERC";
+#endif // WF_SUPPORT
+#else
+	char HEADER_GPU_SIG[1] = "\0";
+#endif // USE_GPUS
+
+		char ext_header[128] = ";L1_MISSES;L2_MISSES;L3_MISSES;SPOPS_SINGLE;SPOPS_128;"\
+														"SPOPS_256;SPOPS_512;DPOPS_SINGLE;DPOPS_128;DP_256;DPOPS_512";
+		if (!is_extended)
+		{
+			memset(ext_header, 0, sizeof(ext_header));
 		}
 
-    if (is_extended) {
-        char *ext_header = ";L1_MISSES;L2_MISSES;L3_MISSES;SPOPS_SINGLE;SPOPS_128;SPOPS_256;SPOPS_512;DPOPS_SINGLE;"\
-                           "DPOPS_128;DP_256;DPOPS_512";
-        xstrncat(HEADER, ext_header, strlen(ext_header));
-    }
-		debug("Creating header with %d GPUS", num_gpus);
-#if USE_GPUS
     // We force here num_gpus in order to be more robust with other formats.
-    num_gpus = MAX_GPUS_SUPPORTED;
+    num_gpus = MAX_GPUS_SUPPORTED * USE_GPUS; // USE_GPUS can set a zero on num_gpus
+		debug("Creating header with %d GPUS", num_gpus);
+
+		size_t header_len = strlen(HEADER_JOB) + strlen(HEADER_BASE) + num_gpus * USE_GPUS * strlen(HEADER_GPU_SIG) + strlen(ext_header) + 1;
+		if (header)
+		{
+			header_len += strlen(header);
+		}
+
+		char *HEADER = calloc(header_len, sizeof(char));
+
+		if (header)
+		{
+			strncat(HEADER, header, header_len - 1);
+		}
+
+		strncat(HEADER, HEADER_JOB, header_len - strlen(HEADER) - 1);
+		strncat(HEADER, HEADER_BASE, header_len - strlen(HEADER) - 1);
+
+		if (is_extended)
+		{
+			strncat(HEADER, ext_header, header_len - strlen(HEADER) - 1);
+    }
+
+#if USE_GPUS
 	if (single_column) num_gpus = ear_min(num_gpus, 1);
-    for (int i = 0; i < num_gpus; i++){
+	for (int i = 0; i < num_gpus; i++)
+	{
         char gpu_hdr[128];
 #if WF_SUPPORT
-        xsnprintf(gpu_hdr, sizeof(gpu_hdr), ";GPU%d_POWER_W;GPU%d_FREQ_KHZ;GPU%d_MEM_FREQ_KHZ;GPU%d_UTIL_PERC;GPU%d_MEM_UTIL_PERC;GPU%d_GFLOPS",
-                i, i, i, i, i, i);
+        snprintf(gpu_hdr, sizeof(gpu_hdr), HEADER_GPU_SIG, i, i, i, i, i, i);
 #else
-        xsnprintf(gpu_hdr, sizeof(gpu_hdr), ";GPU%d_POWER_W;GPU%d_FREQ_KHZ;GPU%d_MEM_FREQ_KHZ;GPU%d_UTIL_PERC;GPU%d_MEM_UTIL_PERC",
-                i, i, i, i, i);
+        snprintf(gpu_hdr, sizeof(gpu_hdr), HEADER_GPU_SIG, i, i, i, i, i);
 #endif
-        xstrncat(HEADER, gpu_hdr, sizeof(gpu_hdr));
+        strncat(HEADER, gpu_hdr, header_len - strlen(HEADER) - 1);
     }
 #endif
+
 	  int fd = open(path, OPTIONS, PERMISSION);
     if (fd >= 0) {
     	dprintf(fd, "%s\n", HEADER);
     }
-		close(fd);
+	free(HEADER);;
+	close(fd);
 
 	return EAR_SUCCESS;
 }
+
 
 int append_application_text_file(char *path, application_t *app, char is_extended, int add_header, int single_column)
 {

@@ -13,7 +13,10 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+
+// #define SHOW_DEBUGS 1
+
+
 #include <math.h>
 #include <time.h>
 #include <stdio.h>
@@ -23,15 +26,12 @@
 
 #include <common/config.h>
 #include <common/states.h>
-
 #include <common/output/verbose.h>
 #include <common/output/debug.h>
 #include <common/hardware/hardware_info.h>
+
 #include <metrics/common/apis.h>
 #include <metrics/common/perf.h>
-
-
-
 
 
 /* 
@@ -95,10 +95,8 @@ cat /sys/bus/event_source/devices/power/events/energy-ram.unit
 Joules
 cat /sys/bus/event_source/devices/power/events/energy-ram.scale 
 2.3283064365386962890625e-10
-
-
-
 */
+
 
 /* This list must be extended for other CPU models */
 #define POWER_ENERGY_PCK		0x2
@@ -110,60 +108,17 @@ cat /sys/bus/event_source/devices/power/events/energy-ram.scale
 #define EVENTS_PATH			"/sys/bus/event_source/devices/power"
 
 
-
 static pthread_mutex_t perf_rapl_lock = PTHREAD_MUTEX_INITIALIZER;
 static uint           *perf_rapl_socket;
 static state_t         *perf_rapl_core_st;
 static state_t         *perf_rapl_uncore_st;
 static topology_t      my_topo;
-static uint            perf_rapl_num_sockets = 0;
+static uint            perf_rapl_num_sockets = 0; // Used also to check whether the API is loaded
 static perf_t 				 *perf_rapl_core_perf, *perf_rapl_uncore_perf;
 static int 						 perf_type;
 static double 				 pkg_scale, ram_scale;
 
-static state_t perf_rapl_read_conf()
-{
-	char cfile[MAX_PATH_SIZE];
-	FILE *fconfig;
-	
-	/* Event type */
-	snprintf(cfile, sizeof(cfile),"%s/type",EVENTS_PATH);
-	debug("perf_rapl: detecting perf type in %s", cfile);
-	fconfig = fopen(cfile, "r");
-	if (fconfig == NULL){
-		debug("perf_rapl: type file %s cannot be read", cfile);
-		return EAR_ERROR;
-	}
-	fscanf(fconfig,"%d", &perf_type);
-	fclose(fconfig);
-	debug("perf_rapl: type for rapl events detected %d", perf_type);
-
-	/* PCK Scale */
-	snprintf(cfile, sizeof(cfile),"%s/events/energy-pkg.scale",EVENTS_PATH);
-	debug("perf_rapl: detecting pkg scale %s", cfile);
-	fconfig = fopen(cfile,"r");
-	if (fconfig == NULL){
-		debug("perf_rapl: pck scale file cannot be opened");
-		return EAR_ERROR;
-	}
-	fscanf(fconfig,"%lf", &pkg_scale);
-	debug("perf_rapl: scale for pkg %E", pkg_scale);
-	fclose(fconfig);	
-	
-	
-	/* RAM Units */
-	snprintf(cfile, sizeof(cfile),"%s/events/energy-ram.scale",EVENTS_PATH);
-	debug("perf_rapl: detecting ram scale %s", cfile);
-	fconfig = fopen(cfile,"r");
-	if (fconfig == NULL){
-		debug("perf_rapl: ram scale file cannot be opened");
-		return EAR_ERROR;
-	}
-	fscanf(fconfig,"%lf", &ram_scale);
-	debug("perf_rapl: scale for ram %E", ram_scale);
-	fclose(fconfig);
-	return EAR_SUCCESS;
-}
+static state_t perf_rapl_read_conf();
 
 state_t perf_rapl_load(topology_t *tp_in)
 {
@@ -175,14 +130,20 @@ state_t perf_rapl_load(topology_t *tp_in)
 			debug("Warning, Vendor %u Model %u not tested , not loading", tp_in->vendor, tp_in->model);
 			return EAR_ERROR;
 		}
-		if (perf_rapl_num_sockets) return EAR_SUCCESS;
+
+		if (perf_rapl_num_sockets)
+		{
+			return EAR_ERROR;
+		}
 
 		if (state_fail(perf_rapl_read_conf())){ 
 			debug("perf_rapl: Configuration failed");
+      pthread_mutex_unlock(&perf_rapl_lock);
 			return EAR_ERROR;
 		}
 
     /* If it is not initialized, I do it, else, I get the ids */
+
     pthread_mutex_lock(&perf_rapl_lock);
 
     if (state_fail(s = topology_select(tp_in, &my_topo, TPSelect.socket, TPGroup.merge, 0))) {
@@ -190,28 +151,38 @@ state_t perf_rapl_load(topology_t *tp_in)
         pthread_mutex_unlock(&perf_rapl_lock);
         return s;
     }
+
 		/* To detect socket is enabled */
     perf_rapl_socket = calloc(my_topo.cpu_count, sizeof(uint));
     if (perf_rapl_socket == NULL) {
-        pthread_mutex_unlock(&perf_rapl_lock); return EAR_ERROR;
+        pthread_mutex_unlock(&perf_rapl_lock);
+				return EAR_ERROR;
     }
+
 		/* Status of  perf access */
     perf_rapl_core_st = calloc(my_topo.cpu_count, sizeof(state_t));
     if (perf_rapl_core_st == NULL) {
-        pthread_mutex_unlock(&perf_rapl_lock); return EAR_ERROR;
+        pthread_mutex_unlock(&perf_rapl_lock);
+				return EAR_ERROR;
     }
+
     perf_rapl_uncore_st = calloc(my_topo.cpu_count, sizeof(state_t));
     if (perf_rapl_uncore_st == NULL) {
         pthread_mutex_unlock(&perf_rapl_lock); return EAR_ERROR;
     }
+
 		/* Perf data */
 		perf_rapl_core_perf 	= calloc(my_topo.cpu_count, sizeof(perf_t));
 		if (perf_rapl_core_perf == NULL){
-			pthread_mutex_unlock(&perf_rapl_lock);return EAR_ERROR;
+			pthread_mutex_unlock(&perf_rapl_lock);
+			return EAR_ERROR;
 		}
+
 		perf_rapl_uncore_perf	= calloc(my_topo.cpu_count, sizeof(perf_t));
-		if (perf_rapl_uncore_perf == NULL){
-			pthread_mutex_unlock(&perf_rapl_lock);return EAR_ERROR;
+		if (perf_rapl_uncore_perf == NULL)
+		{
+			pthread_mutex_unlock(&perf_rapl_lock);
+			return EAR_ERROR;
 		}
 
     debug("perf_rapl: Using %d sockets. All memory allocated", my_topo.cpu_count);
@@ -226,7 +197,9 @@ state_t perf_rapl_load(topology_t *tp_in)
 			perf_rapl_num_sockets = perf_rapl_num_sockets + (state_ok(perf_rapl_core_st[j]) || state_ok(perf_rapl_uncore_st[j]));
 			perf_rapl_socket[j]   = state_ok(perf_rapl_core_st[j]) || state_ok(perf_rapl_uncore_st[j]);
     }
+
     pthread_mutex_unlock(&perf_rapl_lock);
+
 		#if SHOW_DEBUGS
 		debug("perf_rapl: %u sockets with events detected", perf_rapl_num_sockets);
 		if (perf_rapl_num_sockets){
@@ -235,9 +208,16 @@ state_t perf_rapl_load(topology_t *tp_in)
 			}
 		}
 		#endif
-    if (perf_rapl_num_sockets) return EAR_SUCCESS;
-    return EAR_ERROR;
+
+		if (perf_rapl_num_sockets)
+		{
+			return EAR_SUCCESS;
+		} else
+		{
+			return EAR_ERROR;
+		}
 }
+
 
 state_t perf_rapl_init(ctx_t *c)
 {
@@ -248,53 +228,117 @@ state_t perf_rapl_init(ctx_t *c)
 state_t perf_rapl_dispose(ctx_t *c)
 {
 		if (!perf_rapl_num_sockets) return EAR_SUCCESS;
-    for (uint s = 0; s < my_topo.cpu_count; s++) {
+
+    for (uint s = 0; s < my_topo.cpu_count; s++)
+		{
         if (perf_rapl_socket[s]) {
             if (state_ok(perf_rapl_core_st[s])) perf_close(&perf_rapl_core_perf[s]);
             if (state_ok(perf_rapl_uncore_st[s])) perf_close(&perf_rapl_uncore_perf[s]);
         }
     }
-		/* In case it comes from ear_finalize */
+
+		/* In case it comes from ear_finalize
+		 * TODO: This call yields to undefined behaviour. */
 		pthread_mutex_unlock(&perf_rapl_lock);
     return EAR_SUCCESS;
 }
 
 state_t perf_rapl_count_devices(ctx_t *c, uint *devs_count_in)
 {
-    *devs_count_in = my_topo.cpu_count;
+	if (perf_rapl_num_sockets)
+	{
+		*devs_count_in = my_topo.cpu_count;
     return EAR_SUCCESS;
+	}
+	return EAR_ERROR;
 }
 
 /* Data is stored DRAM0 DRAM1 PCK0 PCK1 */
 /* Data is reported in nano J */
 state_t perf_rapl_read(ctx_t *c, ullong *values)
 {
+	if (perf_rapl_num_sockets)
+	{
 		llong local_energy = 0;
 		pthread_mutex_lock(&perf_rapl_lock);
-    for (uint s = 0; s < my_topo.cpu_count; s++) {
-        if (perf_rapl_socket[s]) {
-            /* Reading core energy in socket s */
-            if (state_ok(perf_rapl_core_st[s])) {
-								local_energy = 0;
-								if (state_fail(perf_read(&perf_rapl_core_perf[s], &local_energy))){
-									debug("perf_rapl: socket[%u] read pck error", s);
-								}
-								debug("perf_rapl: socket[%u] read core %lld", s, local_energy);
-                values[my_topo.cpu_count + s] = (ullong) local_energy * pkg_scale * 1000000000;
-                debug("CORE energy[%d]  %llu nJ", s, values[my_topo.cpu_count + s]);
-            }
-            /* Reading uncore energy in socket s */
-            if (state_ok(perf_rapl_uncore_st[s])) {
-								local_energy = 0;
-								if (state_fail(perf_read(&perf_rapl_uncore_perf[s], &local_energy))){
-                  debug("perf_rapl: socket[%u] read ram error", s);
-                }
-								debug("perf_rapl: socket[%u] read uncore %lld", s, local_energy);
-                values[s] = (ullong) local_energy * pkg_scale * 1000000000;
-                debug("UNCORE enrgy[%d] %llu nJ", s, values[s]);
-            }
-        }
-    }
+		for (uint s = 0; s < my_topo.cpu_count; s++) {
+			if (perf_rapl_socket[s]) {
+				/* Reading core energy in socket s */
+				if (state_ok(perf_rapl_core_st[s])) {
+					local_energy = 0;
+					if (state_fail(perf_read(&perf_rapl_core_perf[s], &local_energy))){
+						debug("perf_rapl: socket[%u] read pck error", s);
+					}
+					debug("perf_rapl: socket[%u] read core %lld", s, local_energy);
+					values[my_topo.cpu_count + s] = (ullong) local_energy * pkg_scale * 1000000000;
+					debug("CORE energy[%d]  %llu nJ", s, values[my_topo.cpu_count + s]);
+				}
+				/* Reading uncore energy in socket s */
+				if (state_ok(perf_rapl_uncore_st[s])) {
+					local_energy = 0;
+					if (state_fail(perf_read(&perf_rapl_uncore_perf[s], &local_energy))){
+						debug("perf_rapl: socket[%u] read ram error", s);
+					}
+					debug("perf_rapl: socket[%u] read uncore %lld", s, local_energy);
+					values[s] = (ullong) local_energy * pkg_scale * 1000000000;
+					debug("UNCORE enrgy[%d] %llu nJ", s, values[s]);
+				}
+			}
+		}
 		pthread_mutex_unlock(&perf_rapl_lock);
-    return EAR_SUCCESS;
+		return EAR_SUCCESS;
+	}
+
+	return EAR_ERROR;
+}
+
+
+// Thread-safety sured by the caller of this function
+static state_t perf_rapl_read_conf()
+{
+	char cfile[MAX_PATH_SIZE];
+	FILE *fconfig;
+	
+	/* Event type */
+	snprintf(cfile, sizeof(cfile),"%s/type",EVENTS_PATH);
+	debug("perf_rapl: detecting perf type in %s", cfile);
+	fconfig = fopen(cfile, "r");
+	if (fconfig == NULL){
+		debug("perf_rapl: type file %s cannot be read", cfile);
+		return EAR_ERROR;
+	}
+
+	pthread_mutex_lock(&perf_rapl_lock);
+
+	fscanf(fconfig,"%d", &perf_type);
+	fclose(fconfig);
+	debug("perf_rapl: type for rapl events detected %d", perf_type);
+
+	/* PCK Scale */
+	snprintf(cfile, sizeof(cfile),"%s/events/energy-pkg.scale",EVENTS_PATH);
+	debug("perf_rapl: detecting pkg scale %s", cfile);
+	fconfig = fopen(cfile,"r");
+	if (fconfig == NULL){
+		debug("perf_rapl: pck scale file cannot be opened");
+		pthread_mutex_unlock(&perf_rapl_lock);
+		return EAR_ERROR;
+	}
+	fscanf(fconfig,"%lf", &pkg_scale);
+	debug("perf_rapl: scale for pkg %E", pkg_scale);
+	fclose(fconfig);	
+	
+	/* RAM Units */
+	snprintf(cfile, sizeof(cfile),"%s/events/energy-ram.scale",EVENTS_PATH);
+	debug("perf_rapl: detecting ram scale %s", cfile);
+	fconfig = fopen(cfile,"r");
+	if (fconfig == NULL){
+		debug("perf_rapl: ram scale file cannot be opened");
+		pthread_mutex_unlock(&perf_rapl_lock);
+		return EAR_ERROR;
+	}
+	fscanf(fconfig,"%lf", &ram_scale);
+	debug("perf_rapl: scale for ram %E", ram_scale);
+	fclose(fconfig);
+	pthread_mutex_unlock(&perf_rapl_lock);
+	return EAR_SUCCESS;
 }

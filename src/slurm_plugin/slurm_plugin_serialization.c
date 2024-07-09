@@ -312,11 +312,11 @@ int plug_print_items(spank_t sp)
             plug_verbose(sp, 2, #word " = '" format "'", item); \
         }
     #endif
-		#if !ERUN
+    #if !ERUN
     char  *itemStr;
     ullong item64u;
     uint   item32u;
-		#endif
+    #endif
 
     print_item(S_JOB_UID             ,    (uid_t *), item32u, "%d");
     print_item(S_JOB_GID             ,    (gid_t *), item32u, "%d");

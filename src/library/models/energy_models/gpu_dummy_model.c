@@ -228,23 +228,23 @@ state_t energy_model_project_power(signature_t *signature, ulong from_ps, ulong 
 			/* Sets where each data is placed. Could be the same. */
 
 			int fp64_info[2];
-			dcgmi_lib_get_event_info(fp64_active, fp64_info);
+			dcgmi_lib_get_event_info(fp64_active, &fp64_info);
 			gpuprof_t *dcgmis_data_64 = dcgmis->event_metrics_sets[fp64_info[event_info_set]];
 
 			int fp32_info[2];
-			dcgmi_lib_get_event_info(fp32_active, fp32_info);
+			dcgmi_lib_get_event_info(fp32_active, &fp32_info);
 			gpuprof_t *dcgmis_data_32 = dcgmis->event_metrics_sets[fp32_info[event_info_set]];
 
 			int fp16_info[2];
-			dcgmi_lib_get_event_info(fp16_active, fp16_info);
+			dcgmi_lib_get_event_info(fp16_active, &fp16_info);
 			gpuprof_t *dcgmis_data_16   = dcgmis->event_metrics_sets[fp16_info[event_info_set]];
 
 			int tensor_info[2];
-			dcgmi_lib_get_event_info(tensor_active, tensor_info);
+			dcgmi_lib_get_event_info(tensor_active, &tensor_info);
 			gpuprof_t *dcgmis_data_ten  = dcgmis->event_metrics_sets[tensor_info[event_info_set]];
 
 			int dram_info[2];
-			dcgmi_lib_get_event_info(dram_active, dram_info);
+			dcgmi_lib_get_event_info(dram_active, &dram_info);
 			gpuprof_t *dcgmis_data_dram = dcgmis->event_metrics_sets[dram_info[event_info_set]];
 
 			if (!dcgmis_data_64 || !dcgmis_data_32 || !dcgmis_data_16

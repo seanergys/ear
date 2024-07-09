@@ -45,7 +45,7 @@ static char nodename[128];
 
 static void create_semaphore(uint ID, char *node)
 {
-    /* This sem void simultaneous access to files */
+    /* This sem avoid simultaneous access to files */
     xsnprintf(sem_file_app_path, sizeof(sem_file_app_path), "%s.sem_app", node);
     xsnprintf(sem_file_loop_path, sizeof(sem_file_loop_path), "%s.sem_loop",node);
     debug("Using sem_app %s", sem_file_app_path);

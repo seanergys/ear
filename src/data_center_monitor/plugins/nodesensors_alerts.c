@@ -21,7 +21,7 @@
 
 
 static cluster_sensors_t *edcmon_info;
-static ullong zero = 0LLU;
+//static ullong zero = 0LLU;
 
 static char alert_action[128];
 

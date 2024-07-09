@@ -176,13 +176,12 @@ state_t report_applications(report_id_t *id,application_t *apps, uint count)
 			debug("Using %d GPUS", num_gpus);
 #endif
 
-#if DCGMI
+      #if DCGMI
 			dcgmi_lib_dcgmi_sig_csv_header(extra_header_app, sizeof(extra_header_app));
-      strcpy(app_header, extra_header_app);
-      strcat(app_header, ";");
-#endif
+      strcat(extra_header_app, ";");
+      #endif
     
-      //strcpy(app_header, extra_header_app);
+      strcpy(app_header, extra_header_app);
       /* Headers for phases */
       for (uint ph = 1; ph < EARL_MAX_PHASES; ph++){
         strcat(app_header, phase_to_str(ph));
@@ -256,7 +255,7 @@ state_t report_loops(report_id_t *id, loop_t *loops, uint count)
 	dcgmi_sig_t *dcgmis;
 
 	// TODO: we could return EAR_ERROR
-	if ((loops == NULL) || (count == 0)) return EAR_SUCCESS;
+	if ((loops == NULL) || (count == 0)) return EAR_ERROR;
 
 	uint num_gpus = MAX_GPUS_SUPPORTED;
 

@@ -23,7 +23,6 @@
 #include <common/types.h>
 #include <common/types/signature.h>
 
-// #include <metrics/gpu/archs/dcgmi.h>
 #include <metrics/gpu/gpuprof.h>
 
 #include <library/metrics/dcgmi_lib/common.h>
@@ -42,8 +41,6 @@ typedef struct dcgmi_sig
 {
 	uint			set_cnt;								/**< The total number of sets. */
 	uint			gpu_cnt;								/**< The number of GPUs supported by DCGMI module. */
-	uint			event_cnt;							/**< The total number of events supported. */
-	uint			**event_list_sets;			/**< The event index list for each set. */
 	uint			*set_instances_cnt;			/**< The number of instances for each set. */
 	float			*gpu_gflops;						/**< The GFLOPS rate for each GPU. */
 	gpuprof_t	**event_metrics_sets;		/**< For each set, and for each GPU, the event metrics list. */
@@ -95,6 +92,7 @@ state_t dcgmi_lib_get_global_metrics(dcgmi_sig_t *dcgmi_sig);
 
 void dcgmi_lib_reset_instances(dcgmi_sig_t *dcgmi_sig);
 
+
 void dcgmi_lib_compute_gpu_gflops(dcgmi_sig_t *dcgmi_sig, signature_t *metrics);
 
 
@@ -115,7 +113,7 @@ void dcgmi_lib_compute_gpu_gflops(dcgmi_sig_t *dcgmi_sig, signature_t *metrics);
  * \return EAR_ERROR \ref event_info_dst is a NULL pointer.
  * \return EAR_SUCCESS Otherwise.
  */
-state_t dcgmi_lib_get_event_info(dcgm_event_idx_t event_id, int *event_info_dst);
+state_t dcgmi_lib_get_event_info(dcgm_event_idx_t event_id, int (*event_info_dst)[2]);
 
 
 float gflops_cycle(dcgmi_sig_t *dcgmi_sig, uint gpu_idx);
