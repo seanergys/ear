@@ -229,7 +229,7 @@ bool print_power_signature_format(application_t *app, char f)
             }
             break;
         case GPU: //GPUs
-            print_format_custom(" %-7.2s/%-7.2s %-7.3s %s%%/%-s%% ", "---","---","---","---","---");
+            print_format_custom("%-7.2s/%-7.2s %-7.3s %s%%/%-s%% ", "---","---","---","---","---");
             break;
         case ALL_FREQS: //all frequencies
             print_format_custom("%-3s/%-3s/%-8s ", "---", "---", "---");
@@ -264,7 +264,7 @@ bool print_power_signature_format(application_t *app, char f)
     return true;
 }
 
-bool print_signature_format(signature_t *sig, char f)
+bool print_signature_format(signature_t *sig, char f, int32_t time_length)
 {
     //this improves warnings by the compiler
     signature_format_type fmt = f;
@@ -282,7 +282,7 @@ bool print_signature_format(signature_t *sig, char f)
             print_format(GBS_WIDTH, sig->GBS, 2);
             break;
         case TPI: //TPI
-            print_format(TPI_WIDTH, sig->TPI, 2j);
+            print_format(TPI_WIDTH, sig->TPI, 2);
             break;
         case CPI: //CPI
             print_format(CPI_WIDTH, sig->CPI, 2);
@@ -291,7 +291,7 @@ bool print_signature_format(signature_t *sig, char f)
             print_format(GFLOPS_WIDTH, sig->Gflops/sig->DC_power, 2);
             break;
         case TIME: //time
-            print_format(TIME_WIDTH, sig->time, 0);
+            print_format(TIME_WIDTH, sig->time, time_length);
             break;
         case FLOPS: //FLOPS
             for (int i = 0; i < FLOPS_EVENTS; i++)
@@ -364,7 +364,7 @@ bool print_signature_format(signature_t *sig, char f)
                         gpu_mem_util /= num_gpus;
                         char mem_util_buf[16] = { 0 };
                         snprintf(mem_util_buf, 16, "%6lu%%", gpu_mem_util);
-                        print_format_custom(" %-7.2lf/%-7.2lf %-7.3lf %7lu%%/%-6s ", gpu_total_power,
+                        print_format_custom("%-7.2lf/%-7.2lf %-7.3lf %4lu%%/%-6s ", gpu_total_power,
                                 gpu_power, (double)gpu_freq/1000000, gpu_util, mem_util_buf);
                     }
                     else {
@@ -392,7 +392,7 @@ void print_app_format(application_t *app, char *fmt, int num_nodes)
     for (i = 0; i < strlen(fmt); i++) { //this is preferable to a while loop because of the use of continues
                                         
         //is_consumed is 1 only if that format char corresponds to signature/power signature
-        if (app->is_mpi) is_consumed = print_signature_format(&app->signature, fmt[i]);
+        if (app->is_mpi) is_consumed = print_signature_format(&app->signature, fmt[i], 0);
         else is_consumed = print_power_signature_format(app, fmt[i]);
 
         if (is_consumed) continue;
@@ -450,13 +450,13 @@ void print_header_format(char *fmt)
 { 
     while (*fmt) {
         switch(*fmt) {
-            case 'a': //application id
+            case APP_ID: //application id
                 print_format(APP_WIDTH, "APPLICATION");
                 break;
-            case 'j': //jobid
+            case JOB_WSTEP: //jobid
                 print_format_custom("%8s-%-4s ", "JOB", "STEP");
                 break;
-            case 'u': //user id
+            case USER_ID: //user id
                 print_format(OTHER_WIDTH, "USER");
                 break;
             case LOCAL_ID:
@@ -469,76 +469,76 @@ void print_header_format(char *fmt)
                 print_format(OTHER_WIDTH, "ITER.");
 #endif
                 break;
-            case 'n': //node id
+            case NODE_ID: //node id
                 print_format(OTHER_WIDTH, "NODE ID");
                 break;
-            case 'N': //num nodes
+            case NUM_NODES: //num nodes
                 print_format(OTHER_WIDTH, "NODES");
                 break;
-            case 'p': //DC power
+            case DC_POWER: //DC power
                 print_format(POWER_WIDTH, "POWER(W)");
                 break;
-            case 'G': //GPUs
-                print_format_custom("%s %s %s", "G-POW (T/U)", "G-FREQ","G-UTIL(G/MEM)");
+            case GPU: //GPUs
+                print_format_custom("%-15s %-8s %-14s", "G-POW (T/U)", "G-FREQ","G-UTIL(G/MEM)");
                 break;
-            case 'D': //DRAM power
+            case DRAM_POWER: //DRAM power
                 print_format(DRAM_POWER_WIDTH, "DRAM POW(W)");
                 break;
-            case 'P': //PCK power
+            case PCK_POWER: //PCK power
                 print_format(PCK_POWER_WIDTH, "PKG POW(W)");
                 break;
-            case 'g': //GBS
+            case GBS: //GBS
                 print_format(GBS_WIDTH, "GBS");
                 break;
-            case 'T': //TPI
+            case TPI: //TPI
                 print_format(TPI_WIDTH, "TPI");
                 break;
-            case 'C': //CPI
+            case CPI: //CPI
                 print_format(CPI_WIDTH, "CPI");
                 break;
-            case 's': //gflops
+            case GFLOPS: //gflops
                 print_format(GFLOPS_WIDTH, "GFLOPS/W");
                 break;
-            case 't': //time
+            case TIME: //time
                 print_format(TIME_WIDTH, "TIME(s)");
                 break;
-            case 'F': //FLOPS
+            case FLOPS: //FLOPS
                 for (int i = 0; i < FLOPS_EVENTS; i++) 
                     print_format_custom("%-*s%-*d ", FLOPS_WIDTH/2, "FLOPS", FLOPS_WIDTH/2, i+1);
                 break;
-            case 'L': //L1/2/3 misses
+            case CACHE_MISSES: //L1/2/3 misses
                 print_format(CACHE_WIDTH, "L1_misses");
                 print_format(CACHE_WIDTH, "L2_misses");
                 print_format(CACHE_WIDTH, "L3_misses");
                 break;
-            case 'I': //instructions
+            case INSTRUCTIONS: //instructions
                 print_format(INSTRUCTIONS_WIDTH, "INSTRUCT");
                 break;
-            case 'y': //cycles
+            case CYCLES: //cycles
                 print_format(CYCLES_WIDTH, "CYCLES");
                 break;
-            case 'r': //all three freqs in format
+            case ALL_FREQS: //all three freqs in format
                 print_format_custom("%-3s/%-3s/%-8s ", "AVG", "DEF", "IMC(GHz)");
                 break;
-            case 'f': //frequency
+            case FREQUENCY: //frequency
                 print_format(FREQ_WIDTH, "AVG(GHz)");
                 break;
-            case 'i': //img freq
+            case IMC_FREQ: //imc freq
                 print_format(FREQ_WIDTH, "IMC(GHz)");
                 break;
-            case 'd': //def_f
+            case DEF_FREQ: //def_f
                 print_format(FREQ_WIDTH, "DEF(GHz)");
                 break;
-            case 'm': //MPI perc
+            case MPI_PERC: //MPI perc
                 print_format(MPI_WIDTH, "MPI(%)");
                 break;
-            case 'o': //IO_MBGS
+            case IO_MBS: //IO_MBGS
                 print_format(IO_WIDTH, "IO(MBs)");
                 break;
-            case 'v': //vpi
+            case VPI: //vpi
                 print_format(VPI_WIDTH, "VPI(%)");
                 break;
-            case 'e': //energy
+            case ENERGY: //energy
                 print_format(ENERGY_WIDTH, "ENERGY(J)");
                 break;
             default:
@@ -588,7 +588,7 @@ void print_loop_format(loop_t *loop, char *fmt)
     for (uint32_t i = 0; i < strlen(fmt); i++) { //this is preferable to a while loop because of the use of continues
                                         
         //is_consumed is 1 only if that format char corresponds to signature/power signature
-        if (print_signature_format(&loop->signature, fmt[i])) continue;
+        if (print_signature_format(&loop->signature, fmt[i], 3)) continue;
 
 
         //this improves warnings by the compiler
@@ -980,20 +980,20 @@ void format_loop_query(char *user, char *query, char *base_query, query_adds_t *
     if (user != NULL) add_string_filter(query, "user_id", user);
 
     if (q_a->job_id >= 0)
-        add_int_filter(query, "job_id", q_a->job_id);
+        add_int_filter(query, "Loops.job_id", q_a->job_id);
     else if (strlen(q_a->job_ids) > 0)
-        add_int_list_filter(query, "job_id", q_a->job_ids);
+        add_int_list_filter(query, "Loops.job_id", q_a->job_ids);
     if (q_a->step_id >= 0)
         add_int_filter(query, "Loops.step_id", q_a->step_id);
     if (strlen(q_a->step_ids) > 0)
-        add_string_filter_no_quotes(query, "step_id", q_a->step_ids);
+        add_string_filter_no_quotes(query, "Loops.step_id", q_a->step_ids);
 
     if (q_a->limit > 0 && q_a->job_id < 0)
     {
-        sprintf(subquery, " ORDER BY job_id desc LIMIT %d", q_a->limit);
+        sprintf(subquery, " ORDER BY Loops.job_id desc LIMIT %d", q_a->limit);
         strcat(query, subquery);
     }
-    else strcat(query, " ORDER BY job_id desc");
+    else strcat(query, " ORDER BY Loops.job_id desc");
 
     if (verbose) printf("QUERY: %s\n", query);
 
@@ -1130,7 +1130,10 @@ void read_loops(char *user, query_adds_t *q_a, char *format)
             printf("appended %d loops to %s\n", num_loops, csv_path);
         }
     } else {
-        print_loops(loops, num_loops, format);
+        print_header_format(format);
+        for (int32_t i = 0; i < num_loops; i++)
+            print_loop_format(&loops[i], format);
+        //print_loops(loops, num_loops, format);
     }
     if (loops != NULL) free(loops);
     if (loop_extended) read_jobs_from_loops(q_a);
@@ -1440,7 +1443,7 @@ int main(int argc, char *argv[])
     if (verbose) printf("Limit set to %d\n", query_adds.limit);
     if (strlen(format) < 1) {
         if (is_loops)
-            strcpy(format, "jNDptCgtriMG");
+            strcpy(format, "jnXpgTCstrimG");
         else if (full_length)
             strcpy(format, "juapnrtpgCseG");
         else

@@ -26,13 +26,13 @@
 #define IMC_WIDTH          8
 #define GBS_WIDTH          7
 #define IO_WIDTH           7
-#define MPI_WIDTH          5
+#define MPI_WIDTH          8
 #define CPI_WIDTH          5
 #define TIME_WIDTH         10
 #define FLOPS_WIDTH        10 //must be divisible by 2
 #define POWER_WIDTH        10
 #define CACHE_WIDTH        10
-#define TPI_WIDTH          10
+#define TPI_WIDTH          8
 #define GFLOPS_WIDTH       10
 #define CYCLES_WIDTH       10
 #define INSTRUCTIONS_WIDTH 10
@@ -47,36 +47,36 @@
 
 /* Format values */
 typedef enum signature_format_type {
-    FREQUENCY  = 'f',
-    TIME = 't',
-    ENERGY = 'e',
-    DC_POWER = 'p',
-    DRAM_POWER = 'D',
-    PCK_POWER = 'P',
-    IMC_FREQ  = 'i',
-    GBS = 'g',
-    MPI_PERC = 'm',
-    IO_MBS = 'o',
-    FLOPS = 'F',
-    GPU = 'G',
-    ALL_FREQS = 'r',
+      FREQUENCY  = 'f',
+            TIME = 't',
+          ENERGY = 'e',
+        DC_POWER = 'p',
+      DRAM_POWER = 'D',
+       PCK_POWER = 'P',
+        IMC_FREQ = 'i',
+             GBS = 'g',
+        MPI_PERC = 'm',
+          IO_MBS = 'o',
+           FLOPS = 'F',
+             GPU = 'G',
+       ALL_FREQS = 'r',
     CACHE_MISSES = 'L',
-    CPI = 'C',
-    DEF_FREQ = 'd',
-    TPI = 'T',
-    GFLOPS = 's',
-    CYCLES = 'y',
+             CPI = 'C',
+        DEF_FREQ = 'd',
+             TPI = 'T',
+          GFLOPS = 's',
+          CYCLES = 'y',
     INSTRUCTIONS = 'I',
-    VPI = 'v',
+             VPI = 'v',
 } signature_format_type;
 
 typedef enum job_format_type {
-    APP_ID = 'a',
+       APP_ID = 'a',
     JOB_WSTEP = 'j',
-    USER_ID = 'u',
-    NODE_ID = 'n',
+      USER_ID = 'u',
+      NODE_ID = 'n',
     NUM_NODES = 'N',
-    LOCAL_ID = 'x',
+     LOCAL_ID = 'x',
     DATE_ITER = 'X',
 } job_format_type;
 
