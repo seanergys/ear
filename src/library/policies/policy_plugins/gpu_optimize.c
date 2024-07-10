@@ -255,7 +255,7 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
 
       avg_gpu_freq = avg_gpu_freq/my_sig->gpu_sig.num_gpus;
       ps_from = closet_gpu_def_freq(avg_gpu_freq);
-      debug("ps_from %lu avg_gpu_freq %lf def_gpu_freq %lu ",ps_from, avg_gpu_freq, gpu_def_freq[ps_from]);
+      debug("ps_from %lu avg_gpu_freq %lf def_gpu_freq %lu ",ps_from, avg_gpu_freq, gpuf_list[0][ps_from]);
       best_pstate = ps_from;
       
       time_ref = sig_aux.time;
@@ -280,7 +280,7 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
             }
             // evaluate the min_gpu_energy conditions
             energy_proj = power_proj * time_proj;
-            debug("power_proj %lf time_proj %lf, ",energy_proj, time_proj);
+            debug("power_proj %lf time_proj %lf ",power_proj, time_proj);
             if ((energy_proj < best_solution) && (time_proj < time_max)) 
             {
               best_pstate = ps_to;

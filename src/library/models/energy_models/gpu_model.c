@@ -224,7 +224,7 @@ state_t energy_model_project_time(signature_t *signature, ulong from_ps, ulong t
       dram_act = dram_act + dcgmis_data_dram[g].values[dram_info[event_info_pos]]/num_gpus;
     }
     double fp_act = fp16 + fp32 + fp64 + tensor;
-    if(fp_act == 0 && dram_act ==0){
+    if(fp_act == 0 && dram_act == 0){
       proj_time[0] = ctime;
     }else{
       proj_time[0] = project_time(coeff, ctime, fp_act, dram_act, coeff->pstate);
