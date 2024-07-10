@@ -23,6 +23,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <assert.h>
+#include <math.h>
 
 #include <common/config.h>
 #include <common/states.h>
@@ -50,22 +51,20 @@ extern unsigned long ext_def_freq;
 #define DEF_FREQ(f) f
 #endif
 
+#define FLAG_GPU_METRIC_TO_OPTIMIZE "EAR_GPU_METRIC_TO_OPTIMIZE"
 
-#define FLAG_GPU_METRIC_TO_OPTIMIZE   "EAR_GPU_METRIC_TO_OPTIMIZE"
-
-#define metric_is(x)    (x == MAX_GFLOPS_WATT?"MAX_GFLOPS_WATT":(x == MIN_GPU_ENERGY?"MIN_GPU_ENERGY":(x == EDP?"EDP":"UNDEF")))
+#define metric_is(x) (x == MAX_GPU_GFLOPS_W?"MAX_GPU_GFLOPS_W":(x == MIN_GPU_ENERGY?"MIN_GPU_ENERGY":"UNDEF"))
 
 
 /* Configuration */
 typedef enum {
-	MAX_GFLOPS_WATT = 0,
-  MIN_GPU_ENERGY,
-	EDP
+  MIN_GPU_ENERGY = 0,
+	MAX_GPU_GFLOPS_W
 } gpu_opt_metric_t;
 
 typedef enum {
-	max_value = 0,
-  min_value
+  min_value = 0,
+	max_value
 } gpu_opt_type_t;
 
 extern gpu_state_t last_gpu_state;
@@ -90,9 +89,9 @@ static gpu_opt_metric_t metric_to_optimize = MIN_GPU_ENERGY;
 static gpu_opt_type_t   metric_strategy    = min_value;
 static char optimize_criteria[1024];
 
-static void update_optimize_options(char *metric);
+static double time_penalty;
 
-static void GPU_get_metric(uint gpu_idx, signature_t *signature, float *curr);
+static void update_optimize_options(char *metric);
 
 static uint GPU_metric_ready(signature_t *sig);
 
@@ -100,141 +99,123 @@ static void GPU_metric_ready_update(signature_t *signature);
 
 static uint GPU_ok(uint gpu_idx, signature_t *signature, float curr, float last);
 
-// TODO to be replaced by the dcgmi_lib function gflops_cycle or use direcrly the gflops from signature
-static float get_gflops_cycle(signature_t *signature, uint gpu_idx);
+static ulong closet_gpu_def_freq(double avg_gpu_freq);
+
 
 state_t policy_init(polctx_t *c)
 {
 	debug("gpu_optimize: policy_init");
-  int dram_info[2];
-  int fp16_info[2];
-  int fp32_info[2];
-  int fp64_info[2];
-  int tensor_info[2];
-	int dram_set, fp16_set, fp32_set, fp64_set, tensor_set;
 
-	if (c)
-	{
-		ulong g_freq = 0;
+	if (!c) return EAR_ERROR;
+
+	ulong g_freq = 0;
 #if 0
-		char *gpu_freq = ear_getenv(FLAG_GPU_DEF_FREQ);
-		if (gpu_freq && c->app->user_type == AUTHORIZED)
-		{
-			g_freq = atol(gpu_freq);
-		}
+  char *gpu_freq = ear_getenv(FLAG_GPU_DEF_FREQ);
+  if (gpu_freq && c->app->user_type == AUTHORIZED) g_freq = atol(gpu_freq);
 #endif
-		gpuf_list       = (const ulong **) metrics_gpus_get(MGT_GPU)->avail_list;
-		gpuf_list_items = (const uint *)   metrics_gpus_get(MGT_GPU)->avail_count;
 
-		mgt_gpu_data_alloc(&gpu_def_freq);
-		mgt_gpu_data_alloc(&last_gpufreq_set);
+  gpuf_list       = (const ulong **) metrics_gpus_get(MGT_GPU)->avail_list;
+  gpuf_list_items = (const uint *)   metrics_gpus_get(MGT_GPU)->avail_count;
 
-		gpu_count = c->num_gpus;
+  mgt_gpu_data_alloc(&gpu_def_freq);
+  mgt_gpu_data_alloc(&last_gpufreq_set);
 
-		for (int i = 0; i < gpu_count; i++)
-		{
-			/* The size of our projection matrix is determined bu the maximum number of frequencies. 
-        This procedure is not much useful since we are assumming later all GPUs have the same clock list. 
-      */
-			if (VERB_ON(3))
-			{
-				verbose_master(3, "#Freqs. in GPU%d: %u", i, gpuf_list_items[i]);
-				for (int j = 0; j < gpuf_list_items[i]; j++)
-				{
-					verbose_master(3, "GPU%d[%d]: %.2f", i, j, (float) gpuf_list[i][j] / 1000000.0);
-				}
-			}
+  gpu_count = c->num_gpus;
 
-			if (g_freq) gpu_def_freq[i] = g_freq;
-			else 				gpu_def_freq[i] = gpuf_list[i][0];
-
-			last_gpufreq_set[i] = gpu_def_freq[i];
-
-			verbose_master(2, "Default GPU%d frequency: %.2f", i, (float) gpu_def_freq[i] / 1000000.0);
-		}
-
-    dcgmi_lib_get_event_info(dram_active, dram_info);
-	  dcgmi_lib_get_event_info(fp16_active, fp16_info);
-	  dcgmi_lib_get_event_info(fp32_active, fp32_info);
-	  dcgmi_lib_get_event_info(fp64_active, fp64_info);
-	  dcgmi_lib_get_event_info(tensor_active, tensor_info);
-    dram_set = dram_info[event_info_set];
-    fp16_set = fp16_info[event_info_set];
-    fp32_set = fp32_info[event_info_set];
-    fp64_set = fp64_info[event_info_set];
-    tensor_set = tensor_info[event_info_set];
+  for (int i = 0; i < gpu_count; i++)
+  {
+    /* The size of our projection matrix is determined bu the maximum number of frequencies. 
+    This procedure is not much useful since we are assumming later all GPUs have the same clock list. 
+    */
+    if (VERB_ON(3))
+    {
+      verbose_master(3, "#Freqs. in GPU%d: %u", i, gpuf_list_items[i]);
+      for (int j = 0; j < gpuf_list_items[i]; j++)
+      {
+        verbose_master(3, "GPU%d[%d]: %.2f", i, j, (float) gpuf_list[i][j] / 1000000.0);
+      }
+    }
     
-    dcgmi_ref_set = ear_max(ear_max(ear_max(ear_max(fp16_set, fp32_set), fp64_set), tensor_set), dram_set);
+    if (g_freq) gpu_def_freq[i] = g_freq;
+    else 				gpu_def_freq[i] = gpuf_list[i][0];
+    
+    last_gpufreq_set[i] = gpu_def_freq[i];
+    
+    verbose_master(2, "Default GPU%d frequency: %.2f", i, (float) gpu_def_freq[i] / 1000000.0);
+  }
 
-		mgt_gpu_freq_limit_set(no_ctx, gpu_def_freq);
+  int fp16_info[2];
+  dcgmi_lib_get_event_info(fp16_active, &fp16_info);
+  int fp16_set = fp16_info[event_info_set];
 
-		verbose_master(2, "GPU optimization during GPU comp: %s", (gpu_optimize ? "Enabled" : "Disabled"));
+  int fp32_info[2];
+  dcgmi_lib_get_event_info(fp32_active, &fp32_info);
+  int fp32_set = fp32_info[event_info_set];
 
-		if (gpu_optimize)
-		{
+  int fp64_info[2];
+  dcgmi_lib_get_event_info(fp64_active, &fp64_info);
+  int fp64_set = fp64_info[event_info_set];
 
-			gpu_energy_model = energy_model_load_gpu_model(c->app->user_type, &c->app->installation, &arch_desc);
+  int tensor_info[2];
+  dcgmi_lib_get_event_info(tensor_active, &tensor_info);
+  int tensor_set = tensor_info[event_info_set];
 
-			if (gpu_energy_model)
-			{
-				char *cmetric_to_optimize   = ear_getenv(FLAG_GPU_METRIC_TO_OPTIMIZE);
+  int dram_info[2];
+  dcgmi_lib_get_event_info(dram_active, &dram_info);
+  int dram_set = dram_info[event_info_set];
+  
+  dcgmi_ref_set = ear_max(ear_max(ear_max(ear_max(fp16_set, fp32_set), fp64_set), tensor_set), dram_set);
 
-				/* This function checks the metric */
-				update_optimize_options(cmetric_to_optimize);
-				// Warning: We are assuming all GPUs in the node hav the same frequency list
-				power_projections = (double **) malloc(gpuf_list_items[0] * sizeof(double *));
-				time_projections = (double **) malloc(gpuf_list_items[0] * sizeof(double *));
-				for (int i = 0; i < gpuf_list_items[0]; i++)
-				{
-					power_projections[i] = (double *) calloc(c->num_gpus, sizeof(double));
-				  time_projections[i] = (double *) calloc(1, sizeof(double *));
-				}
+  mgt_gpu_freq_limit_set(no_ctx, gpu_def_freq);
 
-			} else
-			{
-				error_lib("Loading GPU energy model.");
-				gpu_optimize = 0;
+  verbose_master(2, "GPU optimization during GPU comp: %s", (gpu_optimize ? "Enabled" : "Disabled"));
 
-				return EAR_ERROR;
-			}
-		} else
-		{
-			gpu_energy_model = NULL;
-		}
+  if (gpu_optimize)
+  {
+    gpu_energy_model = energy_model_load_gpu_model(c->app->user_type, &c->app->installation, &arch_desc);
 
-		return EAR_SUCCESS;
+    if (gpu_energy_model)
+    {
+      char *cmetric_to_optimize   = ear_getenv(FLAG_GPU_METRIC_TO_OPTIMIZE);
 
-	} else
-	{
-		return EAR_ERROR;
-	}
+      /* This function checks the metric */
+      update_optimize_options(cmetric_to_optimize);
+      // Warning: We are assuming all GPUs in the node hav the same frequency list
+      power_projections = (double **) malloc(gpuf_list_items[0] * sizeof(double *));
+      time_projections = (double **) malloc(gpuf_list_items[0] * sizeof(double *));
+      for (int i = 0; i < gpuf_list_items[0]; i++)
+      {
+        power_projections[i] = (double *) calloc(c->num_gpus, sizeof(double));
+        time_projections[i] = (double *) calloc(1, sizeof(double *));
+      }
+    } 
+    else
+    {
+      error_lib("Loading GPU energy model.");
+      gpu_optimize = 0;
+      return EAR_ERROR;
+    }
+  }
+  else
+  {
+    gpu_energy_model = NULL;
+  }
+  return EAR_SUCCESS;
 }
 
 
 state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int *ready)
 {
   // min_gpu_energy
-  int i, j, best_pstate;
-  uint metric_ready, total_ready, tutil;
-  ulong util;
-  double power_ref, time_ref, energy_ref;
+  int i;
+  uint metric_ready;
+  ulong ps_from, best_pstate;
+  double power_ref, time_ref;
   double power_proj, time_proj, energy_proj;
-  double time_max, penalty, best_solution;
-  
+  double time_max, best_solution, avg_gpu_freq;
   
   ulong *new_freq=freqs->gpu_freq;
-  *ready = EAR_POLICY_READY;
   
-  // The min_gpu_energy threashold 
-  char *gpu_min_energy_pen = ear_getenv(HACK_GPU_POLICY_PENALTY);
-  if (gpu_min_energy_pen!=NULL) 
-  {
-    penalty = atof(gpu_min_energy_pen);
-  }else{
-	  penalty = 0.5;
-  }
-
-	debug("PENALTY %lf",penalty);
 
 #if USE_GPUS
 	verbose_master(2, "%s GPU Optimize start ....%s %s", COL_BLU, optimize_criteria, COL_CLR);
@@ -257,49 +238,57 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
 	signature_copy(&sig_aux, my_sig);
 
   metric_ready = 0;
-	
+
+  // 	MIN_GPU_ENERGY Policy (applied to all used GPU globally)
   if (gpu_optimize)
   {
     if(GPU_metric_ready(my_sig))
     {
 	    metric_ready = 1;
-      best_pstate = 0;
       power_ref = 0;
-      time_ref = sig_aux.time;
-      time_max = time_ref + (time_ref * penalty);
-      
+      avg_gpu_freq = 0;
       for(i=0; i<my_sig->gpu_sig.num_gpus; i++)
       {
         power_ref += sig_aux.gpu_sig.gpu_data[i].GPU_power;
+        avg_gpu_freq += (double) sig_aux.gpu_sig.gpu_data[i].GPU_freq;
       }
+
+      avg_gpu_freq = avg_gpu_freq/my_sig->gpu_sig.num_gpus;
+      ps_from = closet_gpu_def_freq(avg_gpu_freq);
+      debug("ps_from %lu avg_gpu_freq %lf def_gpu_freq %lu ",ps_from, avg_gpu_freq, gpu_def_freq[ps_from]);
+      best_pstate = ps_from;
       
+      time_ref = sig_aux.time;
+      time_max = time_ref + (time_ref * time_penalty);
       best_solution = power_ref*time_ref;
       debug("power_ref %lf time_ref %lf time_max %lf ",power_ref, time_ref, time_max);
       
-      for (j=1; j<gpuf_list_items[0]; j++)
+      for (ulong ps_to=0; ps_to < gpuf_list_items[0]; ps_to++)
       {
-        if (energy_model_projection_available(gpu_energy_model, 0, j))
-        {
-          // get the projections
-          energy_model_project_power(gpu_energy_model, my_sig, 0, j, power_projections[j]);
-          energy_model_project_time(gpu_energy_model, my_sig, 0, j, time_projections[j]);
-          
-          time_proj = time_projections[j][0];
-          power_proj = 0;
-          for(i=0; i<my_sig->gpu_sig.num_gpus; i++)
+        if(ps_from != ps_to){
+          if (energy_model_projection_available(gpu_energy_model, ps_from, ps_to))
           {
-            power_proj = power_proj + power_projections[j][i];
-          }
-          // evaluate the min_gpu_energy conditions
-          energy_proj = power_proj * time_proj;
-          debug("power_proj %lf time_proj %lf, ",energy_proj, time_proj);
-          if ((energy_proj < best_solution) && (time_proj < time_max)) 
-          {
-            best_pstate = j;
-            best_solution = energy_proj;
-            debug("new best solution found %d",best_pstate);
-          }
-        } //if proj available
+            // get the projections
+            energy_model_project_power(gpu_energy_model, my_sig, ps_from, ps_to, power_projections[ps_to]);
+            energy_model_project_time(gpu_energy_model, my_sig, ps_from, ps_to, time_projections[ps_to]);
+            
+            time_proj = time_projections[ps_to][0];
+            power_proj = 0;
+            for(i=0; i<my_sig->gpu_sig.num_gpus; i++)
+            {
+              power_proj = power_proj + power_projections[ps_to][i];
+            }
+            // evaluate the min_gpu_energy conditions
+            energy_proj = power_proj * time_proj;
+            debug("power_proj %lf time_proj %lf, ",energy_proj, time_proj);
+            if ((energy_proj < best_solution) && (time_proj < time_max)) 
+            {
+              best_pstate = ps_to;
+              best_solution = energy_proj;
+              debug("new best solution found %lu ",best_pstate);
+            }
+          } //if proj available
+        } //if ps_from != ps_to
       }// loop over j=1->gpuf_list_items
       
       // set the selected freq
@@ -307,21 +296,15 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
       {
         new_freq[i] = gpuf_list[i][best_pstate];
 	      last_gpufreq_set[i] = new_freq[i];
-        debug("GPU[%d] Best P-State %u, freq %lu",i, best_pstate, new_freq[i]);
+        debug("GPU[%d] Best P-State %lu, freq %lu",i, best_pstate, new_freq[i]);
       }
-
-      *ready = EAR_POLICY_TRY_AGAIN;
     }
     else // GPU metric not ready
     {
-      for(i=0; i<my_sig->gpu_sig.num_gpus; i++)
-      {
-        util = my_sig->gpu_sig.gpu_data[i].GPU_util;
-        debug("GPU[%d] optimize metric NOT ready instances %d, util %lf", i, set_instances_cnt, util);
-        //new_freq[i] = last_gpufreq_set[i];
-        *ready = EAR_POLICY_TRY_AGAIN;
-      }
+      debug("GPU optimize metric NOT ready instances %d", set_instances_cnt);
+      //new_freq[i] = last_gpufreq_set[i];
     }
+    *ready = EAR_POLICY_TRY_AGAIN;
   }
   else // gpu not optimize
   {
@@ -330,22 +313,24 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
     {
 	    new_freq[i] = gpu_def_freq[i];
     }
+    *ready = EAR_POLICY_READY;
   }
 
-	if (metric_ready) GPU_metric_ready_update(my_sig);
+  if (metric_ready) GPU_metric_ready_update(my_sig);
 	
-  tutil = 0;
-	for (int i = 0; i < my_sig->gpu_sig.num_gpus; i++)
-	{
-	  tutil += my_sig->gpu_sig.gpu_data[i].GPU_util;
-	}
-	if (tutil > 0) last_gpu_state = _GPU_Comp;
+// ulong tutil = 0;
+// for (int i = 0; i < my_sig->gpu_sig.num_gpus; i++)
+//	{
+//	  tutil += my_sig->gpu_sig.gpu_data[i].GPU_util;
+//	}
+//	if (tutil > 0) last_gpu_state = _GPU_Comp;
 
 	verbose_master(2,"%sGPU Optimize end.%s %s", COL_BLU, optimize_criteria, COL_CLR);
 #endif // USE_GPUS
 
 	return EAR_SUCCESS;
 }
+
 
 state_t policy_restore_settings(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs)
 {
@@ -436,110 +421,77 @@ state_t policy_get_default_freq(polctx_t *c, node_freqs_t *freq_set, signature_t
 	}
 }
 
+
 static void update_optimize_options(char *metric)
 {
 	if (metric != NULL)
 	{
-		if (strcmp(metric, "MAX_GFLOPS_WATT") == 0)  metric_to_optimize = MAX_GFLOPS_WATT;
-		if (strcmp(metric, "MIN_GPU_ENERGY") == 0)
+	  if (strcmp(metric, "MAX_GPU_GFLOPS_W") == 0)
+    {
+      metric_to_optimize = MAX_GPU_GFLOPS_W;
+      metric_strategy = max_value;
+    }
+
+	  if (strcmp(metric, "MIN_GPU_ENERGY") == 0)
     {
       metric_to_optimize = MIN_GPU_ENERGY;
-      metric_strategy = 2;
-    }
-		if (strcmp(metric, "EDP") == 0)
-    {
-      metric_to_optimize = EDP;
       metric_strategy = min_value;
+      char *gpu_min_energy_pen = ear_getenv(HACK_GPU_POLICY_PENALTY);
+      if (gpu_min_energy_pen!=NULL) 
+      {
+        time_penalty = atof(gpu_min_energy_pen);
+      }
+      else
+      {
+        time_penalty = 0.5;
+      }
+      debug("TIME_PENALTY %lf", time_penalty);
     }
 	}
 
 	sprintf(optimize_criteria,"GPU Metric=%s", metric_is(metric_to_optimize));
 }
 
-static void GPU_get_metric(uint gpu_idx, signature_t *signature, float *curr)
-{
-  float gpu_freq;
-  float gpu_power;
-  float gpu_gflops;
-  
-  // TODO in CPU_GFLOPS_W use total gpu_power (from all used GPUs) ?
-  *curr = 0;
-  switch(metric_to_optimize)
-  {
-#if DCGMI
-    case MAX_GFLOPS_WATT: 
-    {
-      gpu_gflops = get_gflops_cycle(signature, gpu_idx);
-      gpu_freq = (float)(signature->gpu_sig.gpu_data[gpu_idx].GPU_freq/1000000.0);
-      gpu_power = (float) signature->gpu_sig.gpu_data[gpu_idx].GPU_power;
-      float node_power = (float) signature->DC_power;
-		  float cpu_gflops = (float) signature->Gflops;    
-      
-      debug("GPU[%d] GPU_FREQ %f CPU_GFLOPS %f GPU_GFLOPS %f", gpu_idx, gpu_freq, cpu_gflops, gpu_gflops*gpu_freq); 
-      debug("GPU[%d] CPU_GFLOPS_W %f GPU_GFLOPS_W %f", gpu_idx, cpu_gflops/node_power, (gpu_gflops*gpu_freq)/gpu_power); 
-      
-      *curr = cpu_gflops/node_power + (gpu_gflops*gpu_freq)/gpu_power; 
-      break;
-    }
-    // TODO EDP and/or ED2P once the time model is ready
-#endif
-    default: *curr = (float) 0;
-  }
-}
 
 static uint GPU_metric_ready(signature_t *sig)
 {
-	switch(metric_to_optimize)
-	{
-		case EDP :return 1;
-    case MIN_GPU_ENERGY:
-		case MAX_GFLOPS_WATT :
-		{
 #if DCGMI
-      sig_ext_t *sigex;
-      dcgmi_sig_t *dcgmis;
-      if (sig == NULL) return 0;
-      sigex = (sig_ext_t *)sig->sig_ext;
-      if (sigex == NULL)  return 0;
-      dcgmis = (dcgmi_sig_t *)&sigex->dcgmis;
-      if (dcgmis == NULL) return 0;
-      int current_instanes = dcgmis->set_instances_cnt[dcgmi_ref_set];
-      if ( current_instanes > set_instances_cnt) {
-	      debug("GPU optimize metric ready, instances %d ", current_instanes);
-        return 1;
-      }
-      else return 0;
-#endif
-		}
-	}
+  sig_ext_t *sigex;
+  dcgmi_sig_t *dcgmis;
+  if (sig == NULL) return 0;
+  sigex = (sig_ext_t *)sig->sig_ext;
+  if (sigex == NULL)  return 0;
+  dcgmis = (dcgmi_sig_t *)&sigex->dcgmis;
+  if (dcgmis == NULL) return 0;
+  int current_instanes = dcgmis->set_instances_cnt[dcgmi_ref_set];
+  if ( current_instanes > set_instances_cnt) {
+    debug("GPU optimize metric ready, instances %d ", current_instanes);
+    return 1;
+  }
+  else return 0;
+#else
 	return 0;
+#endif
 }
+
 
 static void GPU_metric_ready_update(signature_t *signature)
 {
-  switch(metric_to_optimize){
-	  case EDP            : return;
-    case MIN_GPU_ENERGY :
-	  case MAX_GFLOPS_WATT:
-    {
 #if DCGMI
-      sig_ext_t *sigex;
-			dcgmi_sig_t *dcgmis;
-			if (signature == NULL) return;
-			sigex = (sig_ext_t *)signature->sig_ext;
-			if (sigex == NULL)  return ;
-			dcgmis = (dcgmi_sig_t *)&sigex->dcgmis;
-			if (dcgmis == NULL) return ;
-			
-      debug("Updating DCGMI number of instances to %d", dcgmis->set_instances_cnt[dcgmi_ref_set]);
-			set_instances_cnt = dcgmis->set_instances_cnt[dcgmi_ref_set];
+  sig_ext_t *sigex;
+  dcgmi_sig_t *dcgmis;
+  if (signature == NULL) return;
+  sigex = (sig_ext_t *)signature->sig_ext;
+  if (sigex == NULL)  return ;
+  dcgmis = (dcgmi_sig_t *)&sigex->dcgmis;
+  if (dcgmis == NULL) return ;
+  debug("Updating DCGMI number of instances to %d", dcgmis->set_instances_cnt[dcgmi_ref_set]);
+  set_instances_cnt = dcgmis->set_instances_cnt[dcgmi_ref_set];
 #endif
-		}
-	}
 	return;
 }
 
-// optimanl gpu freq selection (min ed2p or max flops/w)
+
 static uint GPU_ok(uint gpu_idx, signature_t *signature, float curr, float last)
 {
 	//debug("GPU ok validation curr %f last %f", curr, last);
@@ -552,45 +504,26 @@ static uint GPU_ok(uint gpu_idx, signature_t *signature, float curr, float last)
 	return 0;
 }
 
-// Return FP activies by second for each GPU
-static float get_gflops_cycle(signature_t *signature, uint gpu_idx)
+
+static ulong closet_gpu_def_freq(double avg_gpu_freq)
 {
-	if (signature == NULL) return 0;
-	
-  sig_ext_t *sigex = (sig_ext_t *) signature->sig_ext;
-  if (sigex == NULL)  return 0;
-
-#if DCGMI
-  dcgmi_sig_t * dcgmis = (dcgmi_sig_t *) &sigex->dcgmis;
-	if (dcgmis == NULL) return 0;
+  double current_diff, smallest_diff;
   
-  int fp64_info[2];
-	dcgmi_lib_get_event_info(fp64_active, fp64_info);
-	gpuprof_t *dcgmis_data_64 = dcgmis->event_metrics_sets[fp64_info[event_info_set]];
-
-	int fp32_info[2];
-	dcgmi_lib_get_event_info(fp32_active, fp32_info);
-	gpuprof_t *dcgmis_data_32 = dcgmis->event_metrics_sets[fp32_info[event_info_set]];
-
-	int fp16_info[2];
-	dcgmi_lib_get_event_info(fp16_active, fp16_info);
-	gpuprof_t *dcgmis_data_16 = dcgmis->event_metrics_sets[fp16_info[event_info_set]];
-
-  int tensor_info[2];
-	dcgmi_lib_get_event_info(tensor_active, tensor_info);
-	gpuprof_t *dcgmis_data_ten = dcgmis->event_metrics_sets[tensor_info[event_info_set]];
-
-  float fp16 = (float)(dcgmis_data_16[gpu_idx].values[fp16_info[event_info_pos]]);
-  float fp32 = (float)(dcgmis_data_32[gpu_idx].values[fp32_info[event_info_pos]]);
-  float fp64 = (float)(dcgmis_data_64[gpu_idx].values[fp64_info[event_info_pos]]);
-  float tensor = (float)(dcgmis_data_ten[gpu_idx].values[tensor_info[event_info_pos]]);
-
-	debug("GPU[%u] data for optimization: fp64 %f fp32 %f fp16 %f tensor %f", gpu_idx, fp64, fp32, fp16, tensor);
+  smallest_diff = fabs(avg_gpu_freq - (double)gpuf_list[0][0]);
+  ulong closest = 0; 
   
-  //return 6912*fp64 + 13824*fp32 + 55296*fp16 + 110592*tensor; //A100
-  return (16384*fp64 + 32768*fp32 + 65536*fp16 + 32768*tensor)/100; //H100
-
-#else
-	return 0;
-#endif
+  for (ulong i = 1; i < gpuf_list_items[0]; i++) 
+  {
+    current_diff = fabs(avg_gpu_freq - (double)gpuf_list[0][i]);
+    if (current_diff < smallest_diff) 
+    {
+      smallest_diff = current_diff;
+      closest = i;
+    }
+    else
+    {
+      break;
+    }
+  }
+  return closest;
 }

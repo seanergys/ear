@@ -201,7 +201,7 @@ state_t energy_model_project_time(signature_t *signature, ulong from_ps, ulong t
 		gpuprof_t *dcgmis_data_ten  = dcgmis->event_metrics_sets[tensor_info[event_info_set]];
     
     int dram_info[2];
-    dcgmi_lib_get_event_info(dram_active, dram_info);
+    dcgmi_lib_get_event_info(dram_active, &dram_info);
     gpuprof_t *dcgmis_data_dram = dcgmis->event_metrics_sets[dram_info[event_info_set]];
 
     if (!dcgmis_data_64 || !dcgmis_data_32 || !dcgmis_data_16
