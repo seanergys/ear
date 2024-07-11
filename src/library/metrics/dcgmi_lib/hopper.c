@@ -23,9 +23,9 @@
 #include <library/metrics/dcgmi_lib/common.h>
 
 
-state_t dcgmi_lib_hopper_init(uint api, dcgmi_lib_t *dcgmi_data, int **event_info, int event_info_rows, int event_info_cols)
+state_t dcgmi_lib_hopper_init(uint api, uint all_events, dcgmi_lib_t *dcgmi_data, int (*event_info)[DCGMI_LIB_SUPPORTED_EVENTS][2])
 {
-	if (dcgmi_data)
+	if (dcgmi_data && event_info)
 	{
 		debug("dcgmi_lib_hopper_init");
 
@@ -34,32 +34,45 @@ state_t dcgmi_lib_hopper_init(uint api, dcgmi_lib_t *dcgmi_data, int **event_inf
 			return_msg(EAR_ERROR, Generr.api_undefined);
 		}
 
-		if (state_ok(dcgmi_lib_data_alloc(dcgmi_data, 1)))
+		if (state_fail(dcgmi_lib_data_alloc(dcgmi_data, 1)))
+		{
+			char err_msg[64];
+			snprintf(err_msg, sizeof(err_msg), "Allocating dcgmi lib data (%s)", state_msg);
+			return_msg(EAR_ERROR, err_msg);
+		}
+
+		if (all_events)
 		{
 			dcgmi_data->dcgmi_set_sizes[0] = DCGMI_LIB_SUPPORTED_EVENTS;
+		} else
+		{
+			dcgmi_data->dcgmi_set_sizes[0] = 5;
+		}
 
-			// clean first all pointers to then safetely call free func. in case of error.
+		// clean first all pointers to then safetely call free func. in case of error.
+		dcgmi_data->dcgmi_event_ids[0]		 = NULL;
+		dcgmi_data->dcgmi_event_ids_csv[0] = NULL;
+
+		// Allocate memory for event set array and event set string
+		dcgmi_data->dcgmi_event_ids[0] = (uint *) malloc(dcgmi_data->dcgmi_set_sizes[0] * sizeof(uint));
+		dcgmi_data->dcgmi_event_ids_csv[0] = (char *) calloc(dcgmi_data->dcgmi_set_sizes[0], ID_SIZE);
+
+		if (!dcgmi_data->dcgmi_event_ids[0] || !dcgmi_data->dcgmi_event_ids_csv[0])
+		{
+			debug("Allocating events, string and mask data");
+
+			free(dcgmi_data->dcgmi_event_ids[0]);
+			free(dcgmi_data->dcgmi_event_ids_csv[0]);
+
 			dcgmi_data->dcgmi_event_ids[0]		 = NULL;
 			dcgmi_data->dcgmi_event_ids_csv[0] = NULL;
 
-			// Allocate memory for event set array and event set string
-			dcgmi_data->dcgmi_event_ids[0] = (uint *) malloc(dcgmi_data->dcgmi_set_sizes[0] * sizeof(uint));
-			dcgmi_data->dcgmi_event_ids_csv[0] = (char *) calloc(dcgmi_data->dcgmi_set_sizes[0], ID_SIZE);
+			return_msg(EAR_ERROR, Generr.alloc_error);
+		}
 
-			if (!dcgmi_data->dcgmi_event_ids[0] || !dcgmi_data->dcgmi_event_ids_csv[0])
-			{
-				debug("Allocating events and string data");
-
-				free(dcgmi_data->dcgmi_event_ids[0]);
-				free(dcgmi_data->dcgmi_event_ids_csv[0]);
-
-				dcgmi_data->dcgmi_event_ids[0]		 = NULL;
-				dcgmi_data->dcgmi_event_ids_csv[0] = NULL;
-
-				return_msg(EAR_ERROR, Generr.alloc_error);
-			}
-
-			// Set 1
+		// Set 1
+		if (all_events)
+		{
 			dcgmi_data->dcgmi_event_ids[0][0]		= (API_IS(API_NVML, api)) ? nvml_gr_engine_active : dcgm_gr_engine_active;
 			dcgmi_data->dcgmi_event_ids[0][1] 	= (API_IS(API_NVML, api)) ? nvml_sm_active				: dcgm_sm_active;
 			dcgmi_data->dcgmi_event_ids[0][2] 	= (API_IS(API_NVML, api)) ? nvml_sm_occupancy			: dcgm_sm_occupancy;
@@ -72,38 +85,63 @@ state_t dcgmi_lib_hopper_init(uint api, dcgmi_lib_t *dcgmi_data, int **event_inf
 			dcgmi_data->dcgmi_event_ids[0][9] 	= (API_IS(API_NVML, api)) ? nvml_pcie_rx_bytes		: dcgm_pcie_rx_bytes;
 			dcgmi_data->dcgmi_event_ids[0][10]	= (API_IS(API_NVML, api)) ? nvml_nvlink_tx_bytes	: dcgm_nvlink_tx_bytes;
 			dcgmi_data->dcgmi_event_ids[0][11]	= (API_IS(API_NVML, api)) ? nvml_nvlink_rx_bytes	: dcgm_nvlink_rx_bytes;
-
-			int hopper_event_info[12][2] =
-			{
-				{0, 0}, // gr_engine_active
-				{0, 1}, // sm_active
-				{0, 2}, // sm_occupancy
-				{0, 3}, // tensor_active
-				{0, 4}, // dram_active
-				{0, 5}, // fp64_active
-				{0, 6}, // fp32_active
-				{0, 7}, // fp16_active
-				{0, 8}, // pcie_tx_bytes
-				{0, 9}, // pcie_rx_bytes
-				{0, 10}, // nvlink_tx_bytes
-				{0, 11} //  nvlink_rx_bytes
-			};
-
-			for (int i = 0; i < ear_min(event_info_rows, 12); i++)
-			{
-				for (int j = 0; j < ear_min(event_info_cols, 2); j++)
-				{
-					event_info[i][j] = hopper_event_info[i][j];
-				}
-			}
-
-			return EAR_SUCCESS;
 		} else
 		{
-			char err_msg[64];
-			snprintf(err_msg, sizeof(err_msg), "Allocating dcgmi lib data (%s)", state_msg);
-			return_msg(EAR_ERROR, err_msg);
+			dcgmi_data->dcgmi_event_ids[0][0]		= (API_IS(API_NVML, api)) ? nvml_tensor_active		: dcgm_tensor_active;
+			dcgmi_data->dcgmi_event_ids[0][1] 	= (API_IS(API_NVML, api)) ? nvml_dram_active			: dcgm_dram_active;
+			dcgmi_data->dcgmi_event_ids[0][2] 	= (API_IS(API_NVML, api)) ? nvml_fp64_active			: dcgm_fp64_active;
+			dcgmi_data->dcgmi_event_ids[0][3] 	= (API_IS(API_NVML, api)) ? nvml_fp32_active			: dcgm_fp32_active;
+			dcgmi_data->dcgmi_event_ids[0][4] 	= (API_IS(API_NVML, api)) ? nvml_fp16_active			: dcgm_fp16_active;
 		}
+
+		/* Must follow the mapping set by the enum dcgm_event_id defined at dcgmi_lib.h */
+		int hopper_event_info_all[DCGMI_LIB_SUPPORTED_EVENTS][2] =
+		{
+			{0, 0}, // gr_engine_active
+			{0, 1}, // sm_active
+			{0, 2}, // sm_occupancy
+			{0, 3}, // tensor_active
+			{0, 4}, // dram_active
+			{0, 5}, // fp64_active
+			{0, 6}, // fp32_active
+			{0, 7}, // fp16_active
+			{0, 8}, // pcie_tx_bytes
+			{0, 9}, // pcie_rx_bytes
+			{0, 10}, // nvlink_tx_bytes
+			{0, 11} //  nvlink_rx_bytes
+		};
+
+		int hopper_event_info_partial[DCGMI_LIB_SUPPORTED_EVENTS][2] =
+		{
+			{-1, -1}, // gr_engine_active
+			{-1, -1}, // sm_active
+			{-1, -1}, // sm_occupancy
+			{0, 0}, 	// tensor_active
+			{0, 1}, 	// dram_active
+			{0, 2}, 	// fp64_active
+			{0, 3}, 	// fp32_active
+			{0, 4}, 	// fp16_active
+			{-1, -1}, // pcie_tx_bytes
+			{-1, -1}, // pcie_rx_bytes
+			{-1, -1}, // nvlink_tx_bytes
+			{-1, -1} 	//  nvlink_rx_bytes
+		};
+
+		int (*hopper_event_info)[DCGMI_LIB_SUPPORTED_EVENTS][2] = (all_events) ? &hopper_event_info_all : &hopper_event_info_partial;
+
+#if 0
+		for (int i = 0; i < DCGMI_LIB_SUPPORTED_EVENTS; i++)
+		{
+			for (int j = 0; j < 2; j++)
+			{
+				(*event_info)[i][j] = (*hopper_event_info)[i][j];
+			}
+		}
+#endif
+
+		memcpy((*event_info), (*hopper_event_info), DCGMI_LIB_SUPPORTED_EVENTS * 2 * sizeof(int));
+
+		return EAR_SUCCESS;
 	} else
 	{
 		return_msg(EAR_ERROR, Generr.input_null);

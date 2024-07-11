@@ -82,7 +82,11 @@ state_t dcgmi_lib_data_alloc(dcgmi_lib_t *dcgmi_data, int set_count);
 
 
 /** TODO: Implement this function. */
+#if 0
 state_t dcgmi_lib_data_free(dcgmi_lib_t *dcgmi_data);
+#else
+#define dcgmi_lib_data_free(...)
+#endif
 
 
 #endif // _DCGMI_LIB_COMMON_H_

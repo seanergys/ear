@@ -271,7 +271,7 @@ static gpu_t      *gpu_metrics_read2[2];
 static gpu_t      *gpu_metrics_diff[2];
 static gpu_t      *gpu_metrics_busy;
 static gpu_t      *gpu_metrics_busy_diff;
-char        gpu_str[512];
+char        gpu_str[1024];
 #endif // USE_GPUS
 
 
@@ -1721,28 +1721,6 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		sig_ext->max_mpi = 0;
 		sig_ext->min_mpi = 100;
 
-		/* DCGMI: read only for master */
-#if DCGMI & USE_GPUS
-		if (dcgmi_lib_is_enabled())
-		{
-			if (sign_app_loop_idx == LOO) // Loop signature
-			{
-				if (state_fail(dcgmi_lib_get_current_metrics(&sig_ext->dcgmis)))
-				{
-					error_lib("Getting current DCGMI metrics: %s", state_msg);
-				}
-			} else // App signature
-			{
-				if (state_fail(dcgmi_lib_get_global_metrics(&sig_ext->dcgmis)))
-				{
-					error_lib("Getting global DCGMI metrics: %s", state_msg);
-				}
-			}
-			// If WF_SUPPORT disabled, metrics is not filled.
-			dcgmi_lib_compute_gpu_gflops(&sig_ext->dcgmis, metrics);
-		}
-#endif  // DCGMI & USE_GPUS
-
 		/* MPI statistics */
 		if (module_mpi_is_enabled()) {
 			double mpi_time_perc = 0.0;
@@ -1840,11 +1818,30 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 			      total_gpu_power += metrics->gpu_sig.gpu_data[p].GPU_power;
         }
 #if DCGMI
-				/* If there is no utilization we reset the number of instances.
-				 * Instances are used by policies */
-				if (dcgmi_lib_is_enabled() && total_gpu_util == 0)
+				if (dcgmi_lib_is_enabled())
 				{
-					dcgmi_lib_reset_instances(&sig_ext->dcgmis);
+					/* If there is no utilization we reset the number of instances.
+					 * Instances are used by policies */
+					if (total_gpu_util == 0)
+					{
+						dcgmi_lib_reset_instances(&sig_ext->dcgmis);
+					}
+
+					if (sign_app_loop_idx == LOO) // Loop signature
+					{
+						if (state_fail(dcgmi_lib_get_current_metrics(&sig_ext->dcgmis)))
+						{
+							error_lib("Getting current DCGMI metrics: %s", state_msg);
+						}
+					} else // App signature
+					{
+						if (state_fail(dcgmi_lib_get_global_metrics(&sig_ext->dcgmis)))
+						{
+							error_lib("Getting global DCGMI metrics: %s", state_msg);
+						}
+					}
+					// If WF_SUPPORT disabled, metrics is not filled.
+					dcgmi_lib_compute_gpu_gflops(&sig_ext->dcgmis, metrics);
 				}
 #endif // DCGMI
 #endif // USE_GPUS

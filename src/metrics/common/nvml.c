@@ -87,10 +87,26 @@ static state_t static_open()
         debug("Opening %s", path); \
         if (state_ok(plug_open(path, (void **) &nvml, nvml_names, NVML_N, RTLD_NOW | RTLD_LOCAL))) { \
             return EAR_SUCCESS; \
-        } 
+        }
+
+#define build_path_and_test(base_path) \
+	if (base_path) {\
+		char path[MAX_PATH_SIZE];\
+		strncpy(path, base_path, sizeof(path));\
+		strncat(path, "/lib64/libnvidia-ml.so", sizeof(path) - strlen(path) - 1);\
+		open_test(path);\
+		strncat(path, ".1", sizeof(path) - strlen(path) - 1);\
+		open_test(path);}
 
     // Looking for nvidia library in tipical paths.
     open_test(ear_getenv(HACK_NVML_FILE));
+
+		char *cuda_root = ear_getenv("CUDA_ROOT");
+		char *cuda_home = ear_getenv("CUDA_HOME");
+
+		build_path_and_test(cuda_root);
+		build_path_and_test(cuda_home);
+
     open_test(NVML_PATH "/targets/x86_64-linux/lib/libnvidia-ml.so");
     open_test(NVML_PATH "/targets/x86_64-linux/lib/libnvidia-ml.so.1");
     open_test(NVML_PATH "/lib64/libnvidia-ml.so");
@@ -105,6 +121,8 @@ static state_t static_open()
     open_test("/usr/lib32/libnvidia-ml.so.1");
     open_test("/usr/lib/libnvidia-ml.so");
     open_test("/usr/lib/libnvidia-ml.so.1");
+		open_test("/.singularity.d/libs/libnvidia-ml.so")
+		open_test("/.singularity.d/libs/libnvidia-ml.so.1")
     open_test(EAR_INSTALL_PATH "/lib/deps/libnvidia-ml.so.1");
     open_test(EAR_INSTALL_PATH "/lib/deps/libnvidia-ml.so");
     return_msg(EAR_ERROR, "Can not load libnvidia-ml.so");

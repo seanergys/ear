@@ -315,7 +315,7 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 		{
 			strcpy(header_format, "%7s-%-4s %-6s %-10s %-16s %-6s %-5s %-3s/%-3s/%-8s %-10s %-8s %-7s %-5s %-12s %-8s %-7s %-5s");
 			strcpy(line_format, "%7u-%-4u %-6u %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6.2lf %-10.2lf %-8.2lf %-7.2lf %-5.2lf %-12.0lf %-8.4lf %-7.1lf %-5.1lf");
-			strcpy(mpi_line_format, "%7u-%-4u-% 6u %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6s %-10.2lf %-8.2lf %-7s %-5s %-12.0lf %-8s %-7s %-5s");
+			strcpy(mpi_line_format, "%7u-%-4u %-6u %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6s %-10.2lf %-8.2lf %-7s %-5s %-12.0lf %-8s %-7s %-5s");
 			strcpy(sbatch_line_format, "%7u-%-4s %-6u %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6.2lf %-10.2lf %-8.2lf %-7.2lf %-5.2lf %-12.0lf %-8.4lf %-7.1lf %-5.1lf");
 			strcpy(mpi_sbatch_line_format, "%7u-%-4s %-6u %-10s %-16s %-6s %-5u %-4.2lf/%-4.2lf/%-6s %-10.2lf %-8.2lf %-7s %-5s %-12.0lf %-8s %-7s %-5s");
 		}
@@ -1208,20 +1208,20 @@ void format_loop_query(char *user, char *query, char *base_query, query_adds_t *
 	if (user != NULL) add_string_filter(query, "user_id", user);
 
 	if (q_a->job_id >= 0)
-		add_int_filter(query, "job_id", q_a->job_id);
+		add_int_filter(query, "Loops.job_id", q_a->job_id);
 	else if (strlen(q_a->job_ids) > 0)
-		add_int_list_filter(query, "job_id", q_a->job_ids);
+		add_int_list_filter(query, "Loops.job_id", q_a->job_ids);
 	if (q_a->step_id >= 0)
 		add_int_filter(query, "Loops.step_id", q_a->step_id);
     if (strlen(q_a->step_ids) > 0)
-        add_string_filter_no_quotes(query, "step_id", q_a->step_ids);
+        add_string_filter_no_quotes(query, "Loops.step_id", q_a->step_ids);
 
 	if (q_a->limit > 0 && q_a->job_id < 0)
 	{
-		sprintf(subquery, " ORDER BY job_id desc LIMIT %d", q_a->limit);
+		sprintf(subquery, " ORDER BY Loops.job_id desc LIMIT %d", q_a->limit);
 		strcat(query, subquery);
 	}
-	else strcat(query, " ORDER BY job_id desc");
+	else strcat(query, " ORDER BY Loops.job_id desc");
 
 	if (verbose) printf("QUERY: %s\n", query);
 
