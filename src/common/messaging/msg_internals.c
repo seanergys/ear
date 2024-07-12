@@ -1314,17 +1314,6 @@ request_header_t data_all_nodes(request_t *command, cluster_conf_t *my_cluster_c
                     failed_is[count_failed] = i;
                     failed_js[count_failed] = j;
                     count_failed++;
-#if 0
-                    head = correct_data_prop(j, ip_counts[i], ips[i], command, my_cluster_conf->eard.port, (void **)&temp_data);
-
-                    if (head.size > 0 && head.type != EAR_ERROR)
-                    {
-                        head = process_data(head, (char **)&temp_data, (char **)&all_data, final_size);
-                        free(temp_data);
-                        final_size = head.size;
-                        default_type = head.type;
-                    }
-#endif
                 }
                 else {
                     verbose(VCOMM, "Node %s with distance %d contacted but the message failed!", next_ip, command->node_dist);
@@ -1336,18 +1325,7 @@ request_header_t data_all_nodes(request_t *command, cluster_conf_t *my_cluster_c
                         failed_is[count_failed] = i;
                         failed_js[count_failed] = j;
                         count_failed++;
-#if 0
-                        head = correct_data_prop(j, ip_counts[i], ips[i], command, my_cluster_conf->eard.port, (void **)&temp_data);
-
-                        if (head.size > 0 && head.type != EAR_ERROR)
-                        {
-                            head = process_data(head, (char **)&temp_data, (char **)&all_data, final_size);
-                            free(temp_data);
-                            final_size = head.size;
-                            default_type = head.type;
-                        }
-#endif
-
+                        eards_remote_disconnect_fd(rc);
                     }
                 }
             }
@@ -1382,18 +1360,17 @@ request_header_t data_all_nodes(request_t *command, cluster_conf_t *my_cluster_c
                 if (head.type == EAR_ERROR)
                 {
                     verbose(VCOMM, "Error reading data from node %d in the list", j);
-                    eards_remote_disconnect_fd(sfds[offset_read]);
 
                     failed_is = realloc(failed_is, sizeof(int)*count_failed+1);
                     failed_js = realloc(failed_js, sizeof(int)*count_failed+1);
                     failed_is[count_failed] = i;
                     failed_js[count_failed] = j;
                     count_failed++;
-#if 0
-                    head = correct_data_prop(j, ip_counts[i], ips[i], command, my_cluster_conf->eard.port, (void **)&temp_data);
-#endif
                 }
-                else eards_remote_disconnect_fd(sfds[offset_read]);
+
+                /* Always close the channel if there was a previous connection, independently of whether the data 
+                   was properly read or not. */
+                eards_remote_disconnect_fd(sfds[offset_read]);
 
                 if (head.size > 0 && head.type != EAR_ERROR)
                 {

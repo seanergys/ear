@@ -15,6 +15,8 @@
 * and COPYING.EPL files.
 */
 
+// #define SHOW_DEBUGS 1
+
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>  
@@ -27,8 +29,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-
-// #define SHOW_DEBUGS 1
 
 #include <common/config.h>
 #include <common/system/time.h>
@@ -177,33 +177,60 @@ int append_loop_text_file(char *path, loop_t *loop,job_t *job, int add_header, i
 
 int create_loop_header(char * header, char *path, int ts, uint num_gpus, int single_column)
 {
-    char *HEADER_NOTS = "JOBID;STEPID;APPID;NODENAME;AVG_CPUFREQ_KHZ;AVG_IMCFREQ_KHZ;DEF_FREQ_KHZ;" \
-                         "ITER_TIME_SEC;CPI;TPI;MEM_GBS;IO_MBS;PERC_MPI;DC_NODE_POWER_W;DRAM_POWER_W;PCK_POWER_W;CYCLES;INSTRUCTIONS;GFLOPS;L1_MISSES;" \
-                         "L2_MISSES;L3_MISSES;SPOPS_SINGLE;SPOPS_128;SPOPS_256;SPOPS_512;DPOPS_SINGLE;DPOPS_128;DPOPS_256;" \
-                         "DPOPS_512";
+#if WF_SUPPORT
+	char *HEADER_JOB = "JOBID;STEPID;APPID";
+#else
+	char *HEADER_JOB = "JOBID;STEPID";
+#endif // WF_SUPPORT
 
+	char *HEADER_NOTS = ";NODENAME;AVG_CPUFREQ_KHZ;AVG_IMCFREQ_KHZ;DEF_FREQ_KHZ;"\
+											 "ITER_TIME_SEC;CPI;TPI;MEM_GBS;IO_MBS;PERC_MPI;DC_NODE_POWER_W;"\
+											 "DRAM_POWER_W;PCK_POWER_W;CYCLES;INSTRUCTIONS;GFLOPS;L1_MISSES;"\
+											 "L2_MISSES;L3_MISSES;SPOPS_SINGLE;SPOPS_128;SPOPS_256;"\
+											 "SPOPS_512;DPOPS_SINGLE;DPOPS_128;DPOPS_256;DPOPS_512";
 #if USE_GPUS
     char gpu_header[512];
 #if WF_SUPPORT
-    char *HEADER_GPU_SIG = ";GPU%d_POWER_W;GPU%d_FREQ_KHZ;GPU%d_MEM_FREQ_KHZ;GPU%d_UTIL_PERC;GPU%d_MEM_UTIL_PERC;GPU%d_GFLOPS";
+    char *HEADER_GPU_SIG = ";GPU%d_POWER_W;GPU%d_FREQ_KHZ;GPU%d_MEM_FREQ_KHZ;"\
+														"GPU%d_UTIL_PERC;GPU%d_MEM_UTIL_PERC;GPU%d_GFLOPS";
 #else
-    char *HEADER_GPU_SIG = ";GPU%d_POWER_W;GPU%d_FREQ_KHZ;GPU%d_MEM_FREQ_KHZ;GPU%d_UTIL_PERC;GPU%d_MEM_UTIL_PERC";
+    char *HEADER_GPU_SIG = ";GPU%d_POWER_W;GPU%d_FREQ_KHZ;GPU%d_MEM_FREQ_KHZ;"\
+														"GPU%d_UTIL_PERC;GPU%d_MEM_UTIL_PERC";
+#endif // WF_SUPPORT
+#else
+		char HEADER_GPU_SIG[1] = "\0";
 #endif
-#endif
+
 #if REPORT_TIMESTAMP
     char *HEADER_LOOP = ";LOOPID;LOOP_NEST_LEVEL;LOOP_SIZE;TIMESTAMP";
 #else
     char *HEADER_LOOP = ";LOOPID;LOOP_NEST_LEVEL;LOOP_SIZE;ITERATIONS";
 #endif
-    char HEADER[2048] = "";
+
+		char HEADER_TS[16] = ";ELAPSED;DATE";
+    if (!ts) {
+			memset(HEADER_TS, 0, sizeof(HEADER_TS));
+    }
+
+		// Be careful if some day the number of GPUs has more than two digits :) .
+		size_t header_len = strlen(HEADER_JOB) + strlen(HEADER_NOTS) + strlen(HEADER_GPU_SIG) * num_gpus + strlen(HEADER_LOOP) + strlen(HEADER_TS) + 1;
+		if (header)
+		{
+			header_len += strlen(header);
+		}
+
+		// Allocate exactly what we need
+    char *HEADER = calloc(header_len, sizeof(char));
 
     if (file_is_regular(path)) {
         debug("%s is a regular file", path);
+				free(HEADER);
         return EAR_SUCCESS;
     }
 
-    if (header != NULL) strncpy(HEADER, header, sizeof(HEADER) - 1);
-    strncat(HEADER, HEADER_NOTS, sizeof(HEADER) - strlen(HEADER) - 1);
+    if (header != NULL) strncpy(HEADER, header, header_len - 1);
+    strncat(HEADER, HEADER_JOB, header_len - strlen(HEADER) - 1);
+    strncat(HEADER, HEADER_NOTS, header_len - strlen(HEADER) - 1);
 
 #if USE_GPUS
     if (single_column) num_gpus = ear_min(1, num_gpus);
@@ -213,23 +240,26 @@ int create_loop_header(char * header, char *path, int ts, uint num_gpus, int sin
 #else
         sprintf(gpu_header,HEADER_GPU_SIG,j,j,j,j,j);
 #endif
-        strncat(HEADER, gpu_header,  sizeof(HEADER) - strlen(HEADER) - 1);
+        strncat(HEADER, gpu_header,  header_len - strlen(HEADER) - 1);
     }
-#endif
+#endif // USE_GPUS
 
-    strncat(HEADER, HEADER_LOOP, sizeof(HEADER) - strlen(HEADER) - 1);
+    strncat(HEADER, HEADER_LOOP, header_len - strlen(HEADER) - 1);
 
     if (ts) {
-        xstrncat(HEADER, ";ELAPSED;DATE", sizeof(HEADER));
+        strncat(HEADER, HEADER_TS, header_len - strlen(HEADER) - 1);
     }
 
     int fd = open(path, OPTIONS, PERMISSION);
     if (fd < 0) {
         debug("File %s could not be opened: %d", path, errno);
+				free(HEADER);
         return EAR_ERROR;
     }
 
     int ret = dprintf(fd, "%s\n", HEADER);
+
+		free(HEADER);
 
     close(fd);
 

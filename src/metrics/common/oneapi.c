@@ -6,16 +6,16 @@
 * Energy management. It has been developed in the context of the
 * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
 *
-* 
+*
 * BSC Contact   mailto:ear-support@bsc.es
-* 
+*
 *
 * This file is licensed under both the BSD-3 license for individual/non-commercial
 * use and EPL-1.0 license for commercial use. Full text of both licenses can be
 * found in COPYING.BSD and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -268,7 +268,7 @@ static state_t static_sysman_init()
     if_fail(ze.sInit(0), reterr);
     // Discovering all drivers
     if_fail(ze.sDriverGet(&drivers_count, NULL), reterr);
-    printf("#drivers %u\n", drivers_count);
+    debug("#drivers %u", drivers_count);
     drivers = calloc(drivers_count, sizeof(zes_driver_handle_t));
     if_fail(ze.sDriverGet(&drivers_count, drivers), reterr);
 

@@ -264,6 +264,7 @@ bool print_power_signature_format(application_t *app, char f)
     return true;
 }
 
+
 bool print_signature_format(signature_t *sig, char f, int32_t time_length)
 {
     //this improves warnings by the compiler
@@ -898,11 +899,11 @@ void print_loops(loop_t *loops, int num_loops, char *format)
 #endif
 
 #if REPORT_TIMESTAMP
-    strcpy(line, "%6s-%-4s\t %-10s %-9s %-8s %-7s %-8s %-8s %-8s %-8s %-5s %-7s %-5s ");
-    printf(line, "JOB", "STEP", "NODE ID", "DATE", "POWER(W)", "GBS/TPI", "CPI", "GFLOPS/W", "TIME(s)", "AVG_F/F", "IMC_F", "IO(MBS)", "MPI%");
+	strcpy(line, "%6s-%-4s %-6s %-10s %-9s %-8s %-7s %-8s %-8s %-8s %-8s %-5s %-7s %-5s ");
+	printf(line, "JOB", "STEP", "AID", "NODE ID", "DATE", "POWER(W)", "GBS/TPI", "CPI", "GFLOPS/W", "TIME(s)", "AVG_F/F", "IMC_F", "IO(MBS)", "MPI%");
 #else
-    strcpy(line, "%6s-%-4s\t %-10s %-6s %-8s %-8s %-8s %-8s %-8s %-8s %-5s %-7s %-5s ");
-    printf(line, "JOB", "STEP", "NODE ID", "ITER.", "POWER(W)", "GBS", "CPI", "GFLOPS/W", "TIME(s)", "AVG_F/F", "IMC_F", "IO(MBS)", "MPI%");
+	strcpy(line, "%6s-%-4s %-6s %-10s %-6s %-8s %-8s %-8s %-8s %-8s %-8s %-5s %-7s %-5s ");
+	printf(line, "JOB", "STEP", "AID", "NODE ID", "ITER.", "POWER(W)", "GBS", "CPI", "GFLOPS/W", "TIME(s)", "AVG_F/F", "IMC_F", "IO(MBS)", "MPI%");
 #endif
 #if USE_GPUS
     //GPU variable declaration
@@ -918,11 +919,11 @@ void print_loops(loop_t *loops, int num_loops, char *format)
 #endif
     printf("\n");
 
-    strcpy(line, "%6u-%-4u\t %-10s %-9s %-8.1lf %-3.0lf/%-3.0lf %-8.3lf %-8.3lf %-8.3lf %-4.2lf/%-3.1lf %-5.2lf %-7.1lf %-5.1lf ");
-    for (i = 0; i < num_loops; i++)
-    {
-        signature_copy(&sig, &loops[i].signature);
-        select_color_by_phase(sig.CPI, sig.GBS, sig.IO_MBS, sig.Gflops);
+	strcpy(line, "%6u-%-4u %-6u %-10s %-9s %-8.1lf %-3.0lf/%-3.0lf %-8.3lf %-8.3lf %-8.3lf %-4.2lf/%-3.1lf %-5.2lf %-7.1lf %-5.1lf ");
+	for (i = 0; i < num_loops; i++)
+	{
+		signature_copy(&sig, &loops[i].signature);
+    select_color_by_phase(sig.CPI, sig.GBS, sig.IO_MBS, sig.Gflops);
 
 #if USE_GPUS
         if (print_gpus)
@@ -953,8 +954,8 @@ void print_loops(loop_t *loops, int num_loops, char *format)
 #else
         sprintf(date_iter,"%lu", loops[i].total_iterations);
 #endif
-        printf(line, loops[i].jid, loops[i].step_id, loops[i].node_id, date_iter,
-                sig.DC_power, sig.GBS, sig.TPI,sig.CPI, sig.Gflops/sig.DC_power, sig.time, (double)(sig.avg_f)/1000000,(double)(sig.def_f)/1000000, (double)(sig.avg_imc_f)/1000000, sig.IO_MBS, sig.perc_MPI);
+		printf(line, loops[i].jid, loops[i].step_id, loops[i].local_id, loops[i].node_id, date_iter,
+				sig.DC_power, sig.GBS, sig.TPI,sig.CPI, sig.Gflops/sig.DC_power, sig.time, (double)(sig.avg_f)/1000000,(double)(sig.def_f)/1000000, (double)(sig.avg_imc_f)/1000000, sig.IO_MBS, sig.perc_MPI);
 #if USE_GPUS
         sprintf(tmp, "%lu%%/%lu%%", gpuu, gpu_mem_util);
         if (print_gpus) printf(gpu_line, gpup, gpupu, (double)gpuf/1000000.0, tmp);
@@ -979,21 +980,21 @@ void format_loop_query(char *user, char *query, char *base_query, query_adds_t *
     strcpy(query, base_query);
     if (user != NULL) add_string_filter(query, "user_id", user);
 
-    if (q_a->job_id >= 0)
-        add_int_filter(query, "Loops.job_id", q_a->job_id);
-    else if (strlen(q_a->job_ids) > 0)
-        add_int_list_filter(query, "Loops.job_id", q_a->job_ids);
-    if (q_a->step_id >= 0)
-        add_int_filter(query, "Loops.step_id", q_a->step_id);
+	if (q_a->job_id >= 0)
+		add_int_filter(query, "Loops.job_id", q_a->job_id);
+	else if (strlen(q_a->job_ids) > 0)
+		add_int_list_filter(query, "Loops.job_id", q_a->job_ids);
+	if (q_a->step_id >= 0)
+		add_int_filter(query, "Loops.step_id", q_a->step_id);
     if (strlen(q_a->step_ids) > 0)
         add_string_filter_no_quotes(query, "Loops.step_id", q_a->step_ids);
 
-    if (q_a->limit > 0 && q_a->job_id < 0)
-    {
-        sprintf(subquery, " ORDER BY Loops.job_id desc LIMIT %d", q_a->limit);
-        strcat(query, subquery);
-    }
-    else strcat(query, " ORDER BY Loops.job_id desc");
+	if (q_a->limit > 0 && q_a->job_id < 0)
+	{
+		sprintf(subquery, " ORDER BY Loops.job_id desc LIMIT %d", q_a->limit);
+		strcat(query, subquery);
+	}
+	else strcat(query, " ORDER BY Loops.job_id desc");
 
     if (verbose) printf("QUERY: %s\n", query);
 
@@ -1160,7 +1161,7 @@ void read_applications_from_database(char *user, query_adds_t *q_a, char *format
         printf("Preparing query statement\n");
     }
 
-    sprintf(query, "SELECT Applications.* FROM Applications join Jobs on Applications.job_id=Jobs.job_id and Applications.step_id = Jobs.step_id where Jobs.job_id in (select job_id from (select job_id, end_time from Jobs" );
+    sprintf(query, "SELECT Applications.* FROM Applications join Jobs on Applications.job_id=Jobs.job_id and Applications.step_id = Jobs.step_id and Jobs.local_id = Applications.local_id where Jobs.job_id in (select job_id from (select job_id, end_time from Jobs" );
     application_t *apps;
     if (q_a->job_id >= 0)
         add_int_filter(query, "job_id", q_a->job_id);

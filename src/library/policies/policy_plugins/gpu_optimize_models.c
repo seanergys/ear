@@ -503,19 +503,19 @@ static float gflops_cycle(signature_t *signature, uint gpu_idx)
 	if (dcgmis == NULL) return 0;
   
   int fp64_info[2];
-	dcgmi_lib_get_event_info(fp64_active, fp64_info);
+	dcgmi_lib_get_event_info(fp64_active, &fp64_info);
 	gpuprof_t *dcgmis_data_64 = dcgmis->event_metrics_sets[fp64_info[event_info_set]];
 
 	int fp32_info[2];
-	dcgmi_lib_get_event_info(fp32_active, fp32_info);
+	dcgmi_lib_get_event_info(fp32_active, &fp32_info);
 	gpuprof_t *dcgmis_data_32 = dcgmis->event_metrics_sets[fp32_info[event_info_set]];
 
 	int fp16_info[2];
-	dcgmi_lib_get_event_info(fp16_active, fp16_info);
+	dcgmi_lib_get_event_info(fp16_active, &fp16_info);
 	gpuprof_t *dcgmis_data_16 = dcgmis->event_metrics_sets[fp16_info[event_info_set]];
 
   int tensor_info[2];
-	dcgmi_lib_get_event_info(tensor_active, tensor_info);
+	dcgmi_lib_get_event_info(tensor_active, &tensor_info);
 	gpuprof_t *dcgmis_data_ten = dcgmis->event_metrics_sets[tensor_info[event_info_set]];
 
   verbose_master(2, "GPU[%u] computing CPU gflops...", gpu_idx);

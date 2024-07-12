@@ -15,7 +15,7 @@
  * and COPYING.EPL files.
  */
 #define _GNU_SOURCE
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #include <errno.h>
 #include <stdio.h>

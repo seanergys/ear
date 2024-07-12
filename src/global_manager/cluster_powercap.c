@@ -24,6 +24,7 @@
 // #define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/colors.h>
+#include <common/types/log.h>
 #include <common/system/execute.h>
 #include <common/output/verbose.h>
 #include <common/types/generic.h>
@@ -33,9 +34,9 @@
 #include <daemon/remote_api/eard_rapi.h>
 
 #include <global_manager/cluster_powercap.h>
-#include <common/types/log.h>
-#include <common/database/db_helper.h>
 #include <global_manager/log_eargmd.h>
+
+#include <report/report.h>
 
 
 
@@ -92,7 +93,8 @@ void eargm_report_event(uint event_type, ulong value)
 
     event.event     = event_type;
     event.value     = value;
-    db_insert_ear_event(&event);
+    report_events(NULL, &event, 1);
+    //db_insert_ear_event(&event);
 }
 
 

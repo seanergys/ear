@@ -64,8 +64,9 @@ state_t policy_init(polctx_t *c)
 	/* MGT_GPU API might be DUMMY, so device count can be different with respect to 
 	 * c->num_gpus (value taken from MET_GPU, which most of times is well loaded). */
 	uint gpu_count = metrics_gpus_get(MGT_GPU)->devs_count;
+	verbose_master(2, "%d GPUs detected, assuming all the GPUs have the same list of freqs we show only 1", gpu_count);
 
-    for (int i = 0; i < gpu_count; i++)
+    for (int i = 0; i < ear_min(gpu_count,1); i++)
 	{
         verbose_master(2, "Frequency list in GPU %d (%u items)", i, gpuf_list_items[i]);
         for (int j = 0; j < gpuf_list_items[i]; j++)

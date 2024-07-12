@@ -271,7 +271,7 @@ static gpu_t      *gpu_metrics_read2[2];
 static gpu_t      *gpu_metrics_diff[2];
 static gpu_t      *gpu_metrics_busy;
 static gpu_t      *gpu_metrics_busy_diff;
-char        gpu_str[512];
+char        gpu_str[1024];
 #endif // USE_GPUS
 
 
@@ -876,6 +876,8 @@ static void metrics_global_start()
 	strcpy(app_energy_saving.node_id, application.node_id);
 	strcpy(app_phase_summary.node_id, application.node_id);
 
+	metrics_usecs[APP] = 0 ;
+
 	if (master)
 	{
 		/* Avg CPU freq */
@@ -1162,6 +1164,7 @@ static void metrics_partial_start()
 	metrics_usecs[LOO] = aux_time;
 	last_elap_sec = 0;
 
+
 	/* Per-process IO data */
 	debug("starting IO for process");
   io_copy(&metrics_io_init[LOO], &metrics_io_end[LOO]);
@@ -1234,10 +1237,9 @@ static int metrics_partial_stop(uint where)
 	long long c_time;
 	float c_power;
 	long long aux_time_stop;
-	char stop_energy_str[256], start_energy_str[256];
+	char stop_energy_str[1024], start_energy_str[1024];
 	state_t s;
 
-	debug("metrics_partial_stop %u", my_node_id);
 
     if (!eards_connected() && (master)) {
         if (!EARL_LIGHT)
@@ -1309,6 +1311,7 @@ static int metrics_partial_stop(uint where)
 
 	/* energy is computed in node_energy_units and time in usecs */
 	c_power=(float)(c_energy*(1000000.0/(double)node_energy_units))/(float)c_time;
+	verbose_master(2, "EARL[%d][%d] %f = %lu mJ (units = %d) / %lf usecs", ear_my_rank, getpid(), c_power, c_energy, node_energy_units, (float)c_time);
 
   #if FAKE_POWER_READING
   c_power = 1000000;
@@ -1385,7 +1388,7 @@ static int metrics_partial_stop(uint where)
 
 	//  Manual time accumulation
 	metrics_usecs[LOO] = c_time;
-	metrics_usecs[APP] += metrics_usecs[LOO];
+	metrics_usecs[APP] = metrics_usecs[APP] + metrics_usecs[LOO];
 
 	// Daemon metrics
 	if (master) {
@@ -1446,23 +1449,6 @@ static int metrics_partial_stop(uint where)
 			debug("AVG IMC frequency %.2f",(float)imcfreq_avrg[LOO]/1000000.0);
 		}
 
-    #if 0
-		/* Per node IO data */
-		if (state_ok(metrics_compute_total_io(&metrics_io_end[LOO_NODE]))) {
-
-			// Diff
-			io_diff(&metrics_io_diff[LOO_NODE],
-					&metrics_io_init[LOO_NODE], &metrics_io_end[LOO_NODE]);
-
-			// Accumulate
-			io_accum(no_ctx, &metrics_io_diff[APP_ACUM], &metrics_io_diff[LOO_NODE]);
-		} else {
-			memset(&metrics_io_diff[LOO_NODE], 0, sizeof(io_data_t));
-
-			verbose_master(ERROR_VERB, "%sWarning%s Node total I/O could not be read (%s). Assuming"
-					" no I/O data for this loop.", COL_RED, COL_CLR, state_msg);
-		}
-    #endif
     
 
 		/* Only the master read RAPL because is not per-process metric */
@@ -1735,28 +1721,6 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 		sig_ext->max_mpi = 0;
 		sig_ext->min_mpi = 100;
 
-		/* DCGMI: read only for master */
-#if DCGMI & USE_GPUS
-		if (dcgmi_lib_is_enabled())
-		{
-			if (sign_app_loop_idx == LOO) // Loop signature
-			{
-				if (state_fail(dcgmi_lib_get_current_metrics(&sig_ext->dcgmis)))
-				{
-					error_lib("Getting current DCGMI metrics: %s", state_msg);
-				}
-			} else // App signature
-			{
-				if (state_fail(dcgmi_lib_get_global_metrics(&sig_ext->dcgmis)))
-				{
-					error_lib("Getting global DCGMI metrics: %s", state_msg);
-				}
-			}
-			// If WF_SUPPORT disabled, metrics is not filled.
-			dcgmi_lib_compute_gpu_gflops(&sig_ext->dcgmis, metrics);
-		}
-#endif  // DCGMI & USE_GPUS
-
 		/* MPI statistics */
 		if (module_mpi_is_enabled()) {
 			double mpi_time_perc = 0.0;
@@ -1854,11 +1818,30 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 			      total_gpu_power += metrics->gpu_sig.gpu_data[p].GPU_power;
         }
 #if DCGMI
-				/* If there is no utilization we reset the number of instances.
-				 * Instances are used by policies */
-				if (dcgmi_lib_is_enabled() && total_gpu_util == 0)
+				if (dcgmi_lib_is_enabled())
 				{
-					dcgmi_lib_reset_instances(&sig_ext->dcgmis);
+					/* If there is no utilization we reset the number of instances.
+					 * Instances are used by policies */
+					if (total_gpu_util == 0)
+					{
+						dcgmi_lib_reset_instances(&sig_ext->dcgmis);
+					}
+
+					if (sign_app_loop_idx == LOO) // Loop signature
+					{
+						if (state_fail(dcgmi_lib_get_current_metrics(&sig_ext->dcgmis)))
+						{
+							error_lib("Getting current DCGMI metrics: %s", state_msg);
+						}
+					} else // App signature
+					{
+						if (state_fail(dcgmi_lib_get_global_metrics(&sig_ext->dcgmis)))
+						{
+							error_lib("Getting global DCGMI metrics: %s", state_msg);
+						}
+					}
+					// If WF_SUPPORT disabled, metrics is not filled.
+					dcgmi_lib_compute_gpu_gflops(&sig_ext->dcgmis, metrics);
 				}
 #endif // DCGMI
 #endif // USE_GPUS
@@ -2063,9 +2046,10 @@ int metrics_init(topology_t *topo)
 	/* We should create a data_alloc for enerrgy and a set_null */
 	energy_data_alloc(&aux_energy);
 	energy_data_alloc(&aux_energy_stop);
-	energy_data_alloc(&metrics_ipmi[0]);
-	energy_data_alloc(&metrics_ipmi[1]);
-	acum_ipmi[0]=0;acum_ipmi[1]=0;
+	energy_data_alloc(&metrics_ipmi[LOO]);
+	energy_data_alloc(&metrics_ipmi[APP]);
+	acum_ipmi[LOO] = 0;acum_ipmi[APP] = 0;
+	total_acum_time = 0;
 
 	if (master) {
 

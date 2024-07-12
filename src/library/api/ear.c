@@ -2032,34 +2032,40 @@ void ear_init()
                     if (ear_affinity_is_set) {
                         sig_shared_region[my_node_id].cpu_mask = ear_process_mask;
                         sig_shared_region[my_node_id].affinity = 1;
-                        sig_shared_region[my_node_id].num_cpus = num_cpus_in_mask(&ear_process_mask);
+                        sig_shared_region[my_node_id].num_cpus = cpumask_count(&ear_process_mask);
                     } else { 
                         sig_shared_region[my_node_id].affinity = 0;
                         verbose_master(2,"Affinity mask not defined for rank %d",masters_info.my_master_rank);
-                    } 
+                    }
                 }
 #endif
 #ifdef SHOW_DEBUGS
 				print_arch_desc(&arch_desc);
 #endif
-                if (!sched_getaffinity(my_pid, sizeof(cpu_set_t), &ear_process_mask))
-                {
-                    int proc_mask_cpu_count = num_cpus_in_mask(&ear_process_mask);
-                    if (proc_mask_cpu_count > 0)
-                    {
-                        ear_affinity_is_set = 1;
-                        sig_shared_region[my_node_id].cpu_mask = ear_process_mask;
-                        sig_shared_region[my_node_id].num_cpus = proc_mask_cpu_count;
-                    } else {
-                        verbose(VPROC_INIT, "%sWARNING%s CPU mask for thread ID %d has no CPUs.",
-                                COL_YLW, COL_CLR, my_pid);
-                    }
+#if 1
+				if (state_ok(cpumask_get_processmask(&ear_process_mask, my_pid)))
+#else
+        if (!sched_getaffinity(my_pid, sizeof(cpu_set_t), &ear_process_mask))
+#endif
+				{
+					int proc_mask_cpu_count = cpumask_count(&ear_process_mask);
+					if (proc_mask_cpu_count > 0)
+					{
+						ear_affinity_is_set = 1;
+						sig_shared_region[my_node_id].cpu_mask = ear_process_mask;
+						sig_shared_region[my_node_id].num_cpus = proc_mask_cpu_count;
+					} else
+					{
+						verbose(VPROC_INIT, "%sWARNING%s CPU mask for thread ID %d has no CPUs.",
+								COL_YLW, COL_CLR, my_pid);
+					}
 
-                    sig_shared_region[my_node_id].affinity = ear_affinity_is_set;
-                } else {
-                    verbose(1, "%sERROR%s Getting affinity mask for thread ID %d: %s",
-                            COL_RED, COL_CLR, my_pid, strerror(errno));
-                }
+					sig_shared_region[my_node_id].affinity = ear_affinity_is_set;
+				} else
+				{
+					verbose(1, "%sERROR%s Getting affinity mask for thread ID %d: %s",
+							COL_RED, COL_CLR, my_pid, strerror(errno));
+				}
 
                 sig_shared_region[my_node_id].ready = 1;
 
@@ -2467,14 +2473,22 @@ void ear_finalize(int exit_status)
 								end_job(&application.job);
 								end_mpi(&application.job);
 								verbose(2, "EARL[%d][%d] Application report (type %s)", ear_my_rank,getpid(),( first_application? "Regular App":"WF App"));
-								if (first_application && report_applications(&rep_id,&application,1) != EAR_SUCCESS){
-												verbose_master(1,"Error reporting application");
-								}else{
+								if (first_application)
+								{
+									if (state_fail(report_applications(&rep_id, &application, 1)))
+									{
+												verbose_master(1, "Error reporting application");
+									}
+								} else
+								{
 									fill_basic_sig(&application);
 									report_misc(&rep_id, WF_APPLICATION, &application,1);
 								}
+
                 if (masters_info.my_master_rank == 0){
 								  report_mpi_application_data(1, &application);
+									// This version prints more details
+									// verbose_application_data(1, &application);
                 }else{
 								  report_mpi_application_data(2, &application);
                 }

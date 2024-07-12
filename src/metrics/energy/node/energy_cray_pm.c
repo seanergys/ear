@@ -73,6 +73,7 @@ state_t energy_dispose(void **c) {
 	if (cray_pm_energy_init) cray_pm_dispose();
 	return EAR_SUCCESS;
 }
+
 state_t energy_datasize(size_t *size)
 {
 	verbose(VCRAY_PM_VL,"CRAY PM: datasize");
@@ -121,19 +122,25 @@ state_t energy_accumulated(unsigned long *e, edata_t init, edata_t end) {
 }
 
 
-/* These two functions are pending to use a lock and update the energy since the last reading */
+/* TODO: These two functions are pending to use a lock and update the energy since the last reading */
 state_t energy_dc_read(void *c, edata_t energy_mj) {
 	verbose(VCRAY_PM_VL,"CRAY PM: energy read");
 	state_t st = EAR_ERROR;
 	if (!cray_pm_energy_init) return st;
+
 	ulong energy;
 	ulong *penergy_mj = (ulong *)energy_mj;
+
+	// TODO: I don't know why we should lock
+	// while (pthread_mutex_trylock(&elock)){};
 
 	if (state_ok(cray_pm_get("energy", &energy))){
 		energy = energy *1000;
 		*penergy_mj = energy;
 		st = EAR_SUCCESS;
 	}
+
+	// pthread_mutex_unlock(&elock);
 
 	return st;
 }
@@ -143,8 +150,12 @@ state_t energy_dc_time_read(void *c, edata_t energy_mj, ulong *time_ms)
 	verbose(VCRAY_PM_VL,"CRAY PM: energy & time read");
 	state_t st = EAR_ERROR;
 	if (!cray_pm_energy_init) return st;
+
   ulong *penergy_mj = (ulong *)energy_mj;
 	ulong energy;
+
+	// TODO: I don't know why we should lock
+	// while (pthread_mutex_trylock(&elock)){};
 
 	if (state_ok(cray_pm_get("energy", &energy))){
     energy = energy *1000;
@@ -152,11 +163,14 @@ state_t energy_dc_time_read(void *c, edata_t energy_mj, ulong *time_ms)
     st = EAR_SUCCESS;
   }
 
+	// pthread_mutex_unlock(&elock);
+
   debug("energy_dc_read: %lu \n", *penergy_mj);
 	*time_ms = (ulong)time(NULL) * 1000;
 
   return st;
 }
+
 uint energy_data_is_null(edata_t e)
 {
 	verbose(VCRAY_PM_VL,"CRAY PM: data is null");	
@@ -168,6 +182,7 @@ state_t energy_not_privileged_init()
 {
 	return static_energy_init();
 }
+
 uint energy_is_privileged()
 {
 				// This function needs more robustness. 
