@@ -130,6 +130,8 @@ double avg_power_t2,avg_power_t1;
 static int fd_my_log=2;
 char host[GENERIC_NAME];
 
+bool use_first_eargm_if_failed = false;
+
 
 void create_tmp(char *tmp_dir) {
         int ret;
@@ -238,8 +240,20 @@ void update_eargm_configuration(cluster_conf_t *conf)
         e_def = get_eargm_conf(conf, host);
     }
     if (e_def == NULL) {
-        error("Couldn't find node in EARGMs list in ear.conf, exiting\n");
-        exit(1);
+        if (use_first_eargm_if_failed) {
+            if (conf->eargm.num_eargms == 0) {
+                error("At least one EARGM definition must be set in ear.conf for a local EARGM to be usabel. Exiting.\n");
+                exit(1);
+            }
+            e_def = &conf->eargm.eargms[0];
+            if (e_def->num_subs > 0) {
+                free(e_def->subs);
+                e_def->num_subs = 0;
+            }
+        } else {
+            error("Couldn't find node in EARGMs list in ear.conf, exiting\n");
+            exit(1);
+        }
     }
     char *nnodes = ear_getenv("EARGM_NODES");
     if (nnodes != NULL)
@@ -625,6 +639,10 @@ typedef struct eargm_preconf {
 
 void update_eargm_with_preconf(cluster_conf_t *conf, eargm_preconf_t *preconf)
 {
+
+    /* Set energy budget to 0 for this use case */
+    energy_budget = 0;
+
     if (preconf->powercap_policy >= 0) conf->eargm.powercap_mode = preconf->powercap_policy;
     if (preconf->powercap > 0) default_cluster_powercap = preconf->powercap;
     if (preconf->powercap_period > 0) cluster_powercap_period = preconf->powercap_period;
@@ -784,6 +802,9 @@ int main(int argc, char *argv[])
     }
     TIMESTAMP_SET_EN(my_cluster_conf.eargm.use_log);
 
+    /* Mark that the port to be used by the EARGM is the one in the first definition if we are using
+     * CLI arguments for a local EARGM. */
+    use_first_eargm_if_failed = preconf_read;
     update_eargm_configuration(&my_cluster_conf);
 
     if (preconf_read) {
