@@ -3110,7 +3110,7 @@ static void  reset_earl_environment()
 
 void ear_fork_new_child()
 {
-  verbose(2,"EAR: New process %d!", getpid());
+  verbose(2,"EAR[%d] : New process %d!", getppid(), getpid());
   reset_earl_environment();
   ear_init();
 
