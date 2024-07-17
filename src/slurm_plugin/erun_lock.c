@@ -40,14 +40,16 @@ int lock_master(char *path_tmp, int job_id)
     if ((access(path_tmp, W_OK) != 0) && (errno == ENOENT)) {
         if ((mkdir(path_tmp, PERMS(111,110,110)) != 0) && (errno != EEXIST)) {
             plug_error(_sp, "while creating TMP folder: %s", strerror(errno));
-            exit(0);
+            //exit(0);
+            return -1;
         }
     }
     // Creating job folder
     sprintf(path_job, "%s/erun%d", path_tmp, job_id);
     if ((mkdir(path_job, PERMS(111,110,110)) != 0) && (errno != EEXIST)) {
         plug_error(_sp, "while creating job folder: %s", strerror(errno));
-        exit(0);
+        //exit(0);
+        return -1;
     }
     // Setting the paths
     xsprintf(path_master_lock, "%s/master.lock", path_job);
