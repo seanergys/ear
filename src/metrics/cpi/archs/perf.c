@@ -81,11 +81,10 @@ state_t cpi_perf_init(ctx_t *c)
 
 state_t cpi_perf_dispose(ctx_t *c)
 {
-  if (ins_en) perf_close(&perf_ins);
-  if (cyc_en) perf_close(&perf_cyc);
-  if (sta_en) perf_close(&perf_sta);
-  started = 0;
-
+    if (ins_en) perf_close(&perf_ins);
+    if (cyc_en) perf_close(&perf_cyc);
+    if (sta_en) perf_close(&perf_sta);
+    started = 0;
 	return EAR_SUCCESS;
 }
 

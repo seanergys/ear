@@ -27,15 +27,21 @@
 #define pf_pin	0x0002		 
 
 typedef struct perf_s {
-	struct perf_event_attr attr;
-	void *group;
-	int fd;
+	struct  perf_event_attr attr;
+	void   *group;
+	int     fd;
+    double  scale; // Used in files
+    char    unit[16]; // Used in files
+    char    event_name[64]; // Used as meta
+    char    pmu_name[64]; // Used as meta
 } perf_t;
 
 /* For per-process events */
 state_t perf_open(perf_t *perf, perf_t *group, pid_t pid, uint type, ulong event);
 // Perf open extended/extra. With more options. Using cpu > 0 will imply system wide configuration
 state_t perf_open_cpu(perf_t *perf, perf_t *group, pid_t pid, uint type, ulong event, uint options, int cpu);
+
+state_t perf_open_files(perf_t **perfs, char *pmu, char *event, uint *perfs_count);
 
 state_t perf_reset(perf_t *perf);
 

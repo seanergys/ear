@@ -70,7 +70,10 @@ char **strtoa(const char *string, char separator, char ***rows, uint *rows_count
     if (string == NULL) {
         return NULL;
     }
-    if ((str_length = strlen(string)) <= 1) {
+    if ((str_length = strlen(string)) < 1) {
+        return NULL;
+    }
+    if (strlen(string) == 1 && string[0] == separator) {
         return NULL;
     }
     // Allocating space for the new separated string (and copying)
@@ -78,8 +81,8 @@ char **strtoa(const char *string, char separator, char ***rows, uint *rows_count
     strcpy(pstring, string);
     // Counting
     for (prows_count = i = 0; i < strlen(pstring)+1; ++i) {
-        debug("%c", pstring[i]);
-        if (pstring[i] == separator || pstring[i] == '\0') {
+        debug("'%c'", pstring[i]);
+        if (pstring[i] == separator || pstring[i] == '\n' || pstring[i] == '\0') {
             prows_count += (char_count > 0);
             char_count = 0;
         } else {
@@ -97,10 +100,10 @@ char **strtoa(const char *string, char separator, char ***rows, uint *rows_count
     prows    = prows+1;
     // Setting new references
     for (prows_count = char_count = i = 0; i < str_length+1; ++i) {
-        if (pstring[i] == separator || pstring[i] == '\0') {
+        if (pstring[i] == separator || pstring[i] == '\n' || pstring[i] == '\0') {
             if (char_count > 0) {
                 prows[prows_count] = &pstring[i-char_count];
-                debug("R%d: %s", prows_count, prows[prows_count]);
+                debug("R%d: '%s'", prows_count, prows[prows_count]);
                 // Passing to next row
                 prows_count += 1;
             }
@@ -134,6 +137,9 @@ void *strtoat(const char *string, char separator, void **list, uint *list_count,
     int i;
 
     if ((alist = strtoa(string, separator, NULL, &plist_count)) == NULL) {
+        if (list != NULL) {
+            *list = NULL;
+        }
         return NULL;
     }
     // We are adding
@@ -160,12 +166,11 @@ void *strtoat(const char *string, char separator, void **list, uint *list_count,
     strtoa_free(alist);
 
     if (list != NULL) {
-        list = plist;
+        *list = plist;
     }
     if (list_count != NULL) {
         *list_count = plist_count;
     }
-
     return plist;
 }
 
@@ -200,7 +205,7 @@ int rantoa(char *string, uint *array, uint array_length)
             return 0;
         }
         array[a] = 1;
-        return 0;
+        return 1;
     }
     for (i = 0; i < list_count; ++i) {
         if ((c = strchr(list[i], '-')) != NULL) {

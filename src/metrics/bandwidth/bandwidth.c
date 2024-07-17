@@ -25,6 +25,7 @@
 #include <metrics/common/apis.h>
 #include <metrics/bandwidth/bandwidth.h>
 #include <metrics/bandwidth/archs/eard.h>
+#include <metrics/bandwidth/archs/perf.h>
 #include <metrics/bandwidth/archs/dummy.h>
 #include <metrics/bandwidth/archs/likwid.h>
 #include <metrics/bandwidth/archs/amd19.h>
@@ -59,6 +60,7 @@ void bwidth_load(topology_t *tp, int force_api)
     bwidth_intel106_load(tp, &ops);
     bwidth_intel143_load(tp, &ops);
     bwidth_likwid_load  (tp, &ops);
+    bwidth_perf_load    (tp, &ops);
 dummy:
     bwidth_dummy_load   (tp, &ops);
     // Bandiwdth wants to know more about the loaded API. This is safe because at 
@@ -253,7 +255,7 @@ char *bwidth_data_tostr(ullong cas, double gbs, char *buffer, size_t length)
 double bwidth_help_castogbs(ullong cas, double secs)
 {
     double gbs = (double) cas;
-    gbs = (gbs / secs);
+    //gbs = (gbs / secs);
     gbs = (gbs * line_size);
     gbs = (gbs / ((double) 1E9));
     return gbs;
@@ -263,4 +265,25 @@ double bwidth_help_castotpi(ullong cas, ullong instructions)
 {
     return (((double) cas) * line_size) / ((double) instructions);
 
+}
+
+static topology_t tp;
+static apinfo_t   info;
+static bwidth_t   bw2[16];
+static bwidth_t   bw1[16];
+static double     gbs;
+
+int main (int argc, char *argv[])
+{
+    topology_init(&tp);
+    bwidth_load(&tp, NO_EARD);
+    bwidth_get_info(&info);
+    apinfo_tostr(&info);
+    printf("BANDWIDTH API: %s\n", info.api_str);
+    bwidth_init(no_ctx);
+    bwidth_read(no_ctx, bw1);
+    system("/usr/lib/linux-tools/5.14.0-1055-oem/perf bench mem memcpy --size 10GB");
+    bwidth_read_diff(no_ctx, bw2, bw1, NULL, NULL, &gbs);
+    printf("GBS: %lf\n", gbs);
+    return 0;
 }
