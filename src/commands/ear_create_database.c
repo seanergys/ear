@@ -515,7 +515,7 @@ void create_tables(void *connection)
     sprintf(query, "CREATE TABLE IF NOT EXISTS Applications ("
             "job_id INT  NOT NULL, "
             "step_id INT  NOT NULL, "
-            "local_idINT  NOT NULL, "
+            "local_id INT  NOT NULL, "
             "node_id VARCHAR(64), "
             "signature_id BIGINT , "
             "power_signature_id INT , "

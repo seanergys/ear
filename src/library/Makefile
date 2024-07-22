@@ -59,6 +59,7 @@ libs_PATH  = $(DESTDIR)/lib
 libs_OBJS  = libear.so
 libs_PERM  = 0755
 
+
 ######## FILES
 
 comm_OBJS = \
@@ -122,14 +123,14 @@ endif
 
 ######## RULES
 
-all: all.components $(libs_OBJS)
+all: all.components $(libs_OBJS) 
 
 %.so: $(mpix_OBJS) $(core_OBJS) $(comm_OBJS)
 	$(LIBCC) $(LIBCC_FLAGS) $(DLB_LDFLAGS) -o $*.$(ext) $^ $(LDFLAGS) $(DLB_LIBS)
 
 ######## OPTIONS
 
-install: install.components libs.ginstall;
+install: install.components libs.ginstall ;
 
 %.install: ;
 

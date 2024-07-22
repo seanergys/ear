@@ -45,6 +45,7 @@
 #include <common/system/execute.h>
 #include <common/output/verbose.h>
 #include <common/database/db_helper.h>
+#include <common/utils/sched_support.h>
 
 #include <common/types/generic.h>
 #include <common/types/gm_warning.h>
@@ -129,6 +130,8 @@ double perc_energy,perc_time,perc_power;
 double avg_power_t2,avg_power_t1;
 static int fd_my_log=2;
 char host[GENERIC_NAME];
+
+bool use_first_eargm_if_failed = false;
 
 
 void create_tmp(char *tmp_dir) {
@@ -238,8 +241,20 @@ void update_eargm_configuration(cluster_conf_t *conf)
         e_def = get_eargm_conf(conf, host);
     }
     if (e_def == NULL) {
-        error("Couldn't find node in EARGMs list in ear.conf, exiting\n");
-        exit(1);
+        if (use_first_eargm_if_failed) {
+            if (conf->eargm.num_eargms == 0) {
+                error("At least one EARGM definition must be set in ear.conf for a local EARGM to be usabel. Exiting.\n");
+                exit(1);
+            }
+            e_def = &conf->eargm.eargms[0];
+            if (e_def->num_subs > 0) {
+                free(e_def->subs);
+                e_def->num_subs = 0;
+            }
+        } else {
+            error("Couldn't find node in EARGMs list in ear.conf, exiting\n");
+            exit(1);
+        }
     }
     char *nnodes = ear_getenv("EARGM_NODES");
     if (nnodes != NULL)
@@ -611,8 +626,7 @@ void usage(char *app)
 }
 
 typedef struct eargm_preconf {
-    char **hosts;
-    int32_t num_hosts;
+    char *hosts;
     int32_t powercap_period;
     uint32_t powercap;
     int32_t powercap_policy;
@@ -625,6 +639,10 @@ typedef struct eargm_preconf {
 
 void update_eargm_with_preconf(cluster_conf_t *conf, eargm_preconf_t *preconf)
 {
+
+    /* Set energy budget to 0 for this use case */
+    energy_budget = 0;
+
     if (preconf->powercap_policy >= 0) conf->eargm.powercap_mode = preconf->powercap_policy;
     if (preconf->powercap > 0) default_cluster_powercap = preconf->powercap;
     if (preconf->powercap_period > 0) cluster_powercap_period = preconf->powercap_period;
@@ -632,8 +650,10 @@ void update_eargm_with_preconf(cluster_conf_t *conf, eargm_preconf_t *preconf)
     verbose(VGM, "Final powercap mode %lu. Final powercap %lu, final powercap period %u", 
             conf->eargm.powercap_mode, default_cluster_powercap, cluster_powercap_period);
 
-    if (preconf->hosts != NULL && preconf->num_hosts > 0) {
-        nodes = preconf->hosts;
+    if (preconf->hosts != NULL) {
+        char *expanded_hosts = NULL;
+        expand_list_alloc(preconf->hosts, &expanded_hosts);
+        str_cut_list(expanded_hosts, &nodes, &num_eargm_nodes, ",");
         verbose(VGM, "Set new nodelist to contact");
     }
 
@@ -684,7 +704,7 @@ bool parse_args(int32_t argc, char *argv[], eargm_preconf_t *preconf)
                 verbose_arg = atoi(optarg);
                 break;
             case 'n':
-                str_cut_list(optarg, &preconf->hosts, &preconf->num_hosts, ",");
+                preconf->hosts = optarg;
                 read = true;
                 break;
             case 'c':
@@ -784,6 +804,9 @@ int main(int argc, char *argv[])
     }
     TIMESTAMP_SET_EN(my_cluster_conf.eargm.use_log);
 
+    /* Mark that the port to be used by the EARGM is the one in the first definition if we are using
+     * CLI arguments for a local EARGM. */
+    use_first_eargm_if_failed = preconf_read;
     update_eargm_configuration(&my_cluster_conf);
 
     if (preconf_read) {

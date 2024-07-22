@@ -271,7 +271,7 @@ static gpu_t      *gpu_metrics_read2[2];
 static gpu_t      *gpu_metrics_diff[2];
 static gpu_t      *gpu_metrics_busy;
 static gpu_t      *gpu_metrics_busy_diff;
-char        gpu_str[512];
+char        gpu_str[1024];
 #endif // USE_GPUS
 
 

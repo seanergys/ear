@@ -58,7 +58,7 @@ int main(int argc,char *argv[])
     read_cluster_conf(ear_path, &conf);
 
     //db init
-    st = report_load("/home/void/ear_install/lib/plugins", "mysql.so");
+    st = report_load("/home/void/ear_install/lib/plugins", "psql.so");
     if (st != EAR_SUCCESS) {
         printf("Error loading report libraries\n");
         goto exit;

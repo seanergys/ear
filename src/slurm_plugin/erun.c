@@ -379,9 +379,8 @@ int main(int argc, char *argv[])
 	}
 
     // Error pipeline
-	if (_error)
-	{
-		if (_error == 1) {
+	if (_error) {
+		if (_error == 1) { // Environment variable missing
 			if ((sd.erun.is_master = lock_master(path_tmp, sd.erun.job_id))) {
 				plug_verbose(_sp, 0, "missing environment vars, is the EAR module loaded? (only master prints this message)");
 				//
@@ -391,7 +390,7 @@ int main(int argc, char *argv[])
 			}
 			return 0;	
 		}
-		if (_error == 2) {
+		if (_error == 2) { // Going inactive because detected SRUN
 			if ((sd.erun.is_master = lock_master(path_tmp, sd.erun.job_id))) {
 				plug_verbose(_sp, 0, "detected SRUN, going inactive (only master prints this message)");	
 			}
@@ -403,26 +402,31 @@ int main(int argc, char *argv[])
 			}
 			return 0;	
 		}
-	}
+	} // _error
 
-	// Simulating the single pipeline, take the lock.master
-	if ((sd.erun.is_master = lock_master(path_tmp, sd.erun.job_id))) {
-		plug_verbose(_sp, 2, "subject '%d' is erun master? '%d' (got the lock file)",
-            getpid(), sd.erun.is_master);
-		// Read old step id in master.step.id
-		sd.erun.step_id = master_getstep(sd.erun.job_id, sd.erun.step_id);
-	} else {
-		plug_verbose(_sp, 3, "subject '%d' is erun master? '%d' (missed the lock file and then spinlock)",
-            getpid(), sd.erun.is_master);
-		// Spinlock over lock.slave
-		spinlock_slave(sd.erun.job_id);
-        // Get slave.step.id
-		sd.erun.step_id = slave_getstep(sd.erun.job_id, sd.erun.step_id);
-	}
+    // Is master?
+    switch ((sd.erun.is_master = lock_master(path_tmp, sd.erun.job_id))) {
+        case 1: // Case master
+            plug_verbose(_sp, 2, "subject '%d' is erun master? '%d' (got the lock file)",
+                         getpid(), sd.erun.is_master);
+            // Read old step id in master.step.id
+            sd.erun.step_id = master_getstep(sd.erun.job_id, sd.erun.step_id);
+            break;
+        case 0: // Case not master
+            plug_verbose(_sp, 3, "subject '%d' is erun master? '%d' (missed the lock file and then spinlock)",
+                         getpid(), sd.erun.is_master);
+            // Spinlock over lock.slave
+            spinlock_slave(sd.erun.job_id);
+            // Get slave.step.id
+            sd.erun.step_id = slave_getstep(sd.erun.job_id, sd.erun.step_id);
+            break;
+        case -1: // Case some error with lock files
+            execute(_argc, _argv);
+            return 0;
+    }
 
 	// Creating step
 	step(_argc, _argv);
-
 	// Local context initialization
 	pipeline(_argc, _argv, Context.srun, Action.init);
 	// Remote context initialization
