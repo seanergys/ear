@@ -45,6 +45,7 @@
 #include <common/system/execute.h>
 #include <common/output/verbose.h>
 #include <common/database/db_helper.h>
+#include <common/utils/sched_support.h>
 
 #include <common/types/generic.h>
 #include <common/types/gm_warning.h>
@@ -625,8 +626,7 @@ void usage(char *app)
 }
 
 typedef struct eargm_preconf {
-    char **hosts;
-    int32_t num_hosts;
+    char *hosts;
     int32_t powercap_period;
     uint32_t powercap;
     int32_t powercap_policy;
@@ -650,8 +650,10 @@ void update_eargm_with_preconf(cluster_conf_t *conf, eargm_preconf_t *preconf)
     verbose(VGM, "Final powercap mode %lu. Final powercap %lu, final powercap period %u", 
             conf->eargm.powercap_mode, default_cluster_powercap, cluster_powercap_period);
 
-    if (preconf->hosts != NULL && preconf->num_hosts > 0) {
-        nodes = preconf->hosts;
+    if (preconf->hosts != NULL) {
+        char *expanded_hosts = NULL;
+        expand_list_alloc(preconf->hosts, &expanded_hosts);
+        str_cut_list(expanded_hosts, &nodes, &num_eargm_nodes, ",");
         verbose(VGM, "Set new nodelist to contact");
     }
 
@@ -702,7 +704,7 @@ bool parse_args(int32_t argc, char *argv[], eargm_preconf_t *preconf)
                 verbose_arg = atoi(optarg);
                 break;
             case 'n':
-                str_cut_list(optarg, &preconf->hosts, &preconf->num_hosts, ",");
+                preconf->hosts = optarg;
                 read = true;
                 break;
             case 'c':
