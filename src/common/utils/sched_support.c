@@ -526,6 +526,7 @@ int32_t expand_list_alloc(const char *source, char **target)
 
     int32_t cut_nodes = 0;
     size_t alloc_size = 1; //start at 1 for the emtpy space at the end
+	size_t prev_alloc = 0;
 
     char *buff = calloc(buff_length, sizeof(char));
     char *final_buffer = NULL;
@@ -551,6 +552,8 @@ int32_t expand_list_alloc(const char *source, char **target)
         }
         alloc_size += current_size;
         final_buffer = realloc(final_buffer, sizeof(char)*alloc_size);
+		memset(&final_buffer[prev_alloc], 0, sizeof(char)*alloc_size - prev_alloc);
+		prev_alloc = alloc_size;
         if (add_comma) strcat(final_buffer, ",");
         strcat(final_buffer, buff);
     }

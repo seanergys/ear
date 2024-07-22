@@ -610,6 +610,7 @@ void usage(char *app)
     verbose(0, "--nodes [host1,host2]\t\t Specifies which nodes the EARGM will monitor.");
     verbose(0, "--powercap [limit]\t\t Sets the total power budget for the EARGM to distribute");
     verbose(0, "--powercap-policy [pol]\t\t Selects the distribution policy [hard, soft, monitor]");
+    verbose(0, "--powercap-period [seconds]\t\t Time between checks of power status");
     verbose(0, "--suspend-perc [90]\t\t Percentage of power that triggers the suspend_action");
     verbose(0, "--suspend-action [/path/to/action]\t\t Program to be executed when suspend_perc is reached (once)");
     verbose(0, "--resume-perc [60]\t\t Percentage of power that triggers the suspend_action");
