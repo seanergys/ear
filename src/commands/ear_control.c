@@ -29,6 +29,7 @@
 #include <arpa/inet.h>
 #include <common/config.h>
 #include <common/config/config_sched.h>
+#include <common/utils/sched_support.h>
 #include <common/states.h>
 #include <common/system/user.h>
 #include <common/system/execute.h>
@@ -759,6 +760,8 @@ int main(int argc, char *argv[])
 
     char *mail = NULL;
     char **nodes = NULL;
+    char *preparsed_nodes = NULL;
+    char *expanded_list = NULL;
     char *message = NULL;
 
     strcpy(node_name,"");
@@ -898,8 +901,7 @@ int main(int argc, char *argv[])
                 ear_cluster_set_th(&my_cluster_conf, arg, arg2);
                 break;
             case 6:
-                str_cut_list(optarg, &nodes, &num_nodes, ",");
-                //no_error = 1; //temporary workaround
+                preparsed_nodes = optarg;
                 break;
             case 7:
                 if (optarg)
@@ -1172,6 +1174,11 @@ int main(int argc, char *argv[])
         }
     }
 
+    if (preparsed_nodes != NULL) {
+        expand_list_alloc(preparsed_nodes, &expanded_list);
+        str_cut_list(expanded_list, &nodes, &num_nodes, ",");
+    }
+
     if (send_message) {
         ear_send_message(&my_cluster_conf, message, nodes, num_nodes);
     }
@@ -1321,6 +1328,11 @@ int main(int argc, char *argv[])
     {
         snprintf(mail_command, strlen(mail_command)-1, "mailx -s \"EAR health check report\" %s < %s", mail, mail_filename);
         execute(mail_command); 
+    }
+
+    if (preparsed_nodes) {
+        free(expanded_list);
+        free(nodes);
     }
 
     free_cluster_conf(&my_cluster_conf);
