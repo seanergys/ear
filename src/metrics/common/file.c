@@ -139,7 +139,7 @@ int filemagic_word_write(int fd, char *word, int len, int line_break)
         word[len-1] = '\0';
     }
     if (r == -1) {
-        return_print(0, "while writing '%s' in cpufreq file (%s)", word, strerror(errno));
+        return_print(0, "%s when writing '%s' in cpufreq file", strerror(errno), word);
     }
     return 1;
 }

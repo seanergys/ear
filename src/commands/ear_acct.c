@@ -1000,7 +1000,7 @@ void format_loop_query(char *user, char *query, char *base_query, query_adds_t *
 
 }
 
-#define NUM_HEADER_NAMES 16
+#define NUM_HEADER_NAMES 17
 
 void read_jobs_from_loops(query_adds_t *q_a)
 {
@@ -1009,112 +1009,122 @@ void read_jobs_from_loops(query_adds_t *q_a)
     int columns, rows;
     int fd = STDOUT_FILENO, ret;
 
-    if (strlen(csv_path) > 0 && strcmp(csv_path, "no_file")) {
-        sprintf(tmp_path, "out_jobs.%s", csv_path);
-        fd = open(tmp_path, O_WRONLY | O_CREAT | O_TRUNC , S_IRUSR|S_IWUSR|S_IRGRP);
-    }
+	if (strlen(csv_path) > 0 && strcmp(csv_path, "no_file")) {
+		char *aux = strrchr(csv_path, '/');
+		if (aux != NULL) {
+			aux++; //move the pointer from the '/' to the next part
+			strncpy(tmp_path, csv_path, strlen(csv_path)-strlen(aux));
+			strcat(tmp_path, "out_jobs.");
+			strcat(tmp_path, aux);
+		} else {
+			sprintf(tmp_path, "out_jobs.%s", csv_path);
+		}
+		fd = open(tmp_path, O_WRONLY | O_CREAT | O_TRUNC , S_IRUSR|S_IWUSR|S_IRGRP);
+	}
 
-    ret = db_run_query_string_results("DESCRIBE Jobs", &values, &columns, &rows);
-    if (verbose) printf("running query DESCRIBE Jobs\n");
-    if (ret != EAR_SUCCESS) {
-        printf("Error reading Loop description from database.\n");
-        return;
-    }
-    const char *header_names[NUM_HEADER_NAMES] = { "JOBID",
-        "STEPID",
-        "USERID",
-        "APPID",
-        "START_TIME",
-        "END_TIME",
-        "START_MPI_TIME",
-        "END_MPI_TIME",
-        "POLICY",
-        "POLICY_TH",
-        "PROCS",
-        "JOB_TYPE",
-        "DEF_FREQ_KHZ",
-        "USER_ACC",
-        "USER_GROUP",
-        "ENERGY_TAG",
-    };
-    if (rows!= NUM_HEADER_NAMES) {
-        printf("Warning! number of fields does not correspond with nubmer of headers\n");
-    }
-    dprintf(fd, "%s", header_names[0]);
-    for (int32_t i = 1; i < NUM_HEADER_NAMES; i++) {
-        dprintf(fd, ";%s", header_names[i]);
-    }
-    //print_header(fd, values, columns, rows);
-    dprintf(fd, "\n"); //print_header does not print a new_line
-    db_free_results(values, columns, rows);
+	ret = db_run_query_string_results("DESCRIBE Jobs", &values, &columns, &rows);
+	if (verbose) printf("running query DESCRIBE Jobs\n");
+	if (ret != EAR_SUCCESS) {
+		printf("Error reading Loop description from database.\n");
+		return;
+	}
+	const char *header_names[NUM_HEADER_NAMES] = { 
+		"JOBID",
+		"STEPID",
+		"LOCALID",
+		"USERID",
+		"APPID",
+		"START_TIME",
+		"END_TIME",
+		"START_MPI_TIME",
+		"END_MPI_TIME",
+		"POLICY",
+		"POLICY_TH",
+		"PROCS",
+		"JOB_TYPE",
+		"DEF_FREQ_KHZ",
+		"USER_ACC",
+		"USER_GROUP",
+		"ENERGY_TAG",
+	};
+	if (rows != NUM_HEADER_NAMES) {
+		printf("Warning! number of fields does not correspond with nubmer of headers\n");
+	}
+	dprintf(fd, "%s", header_names[0]);
+	for (int32_t i = 1; i < NUM_HEADER_NAMES; i++) {
+		dprintf(fd, ";%s", header_names[i]);
+	}
+	//print_header(fd, values, columns, rows);
+	dprintf(fd, "\n"); //print_header does not print a new_line
+	db_free_results(values, columns, rows);
 
-    // reset filters
-    reset_query_filters();
-    strcpy(query, "SELECT * FROM Jobs ");
+	// reset filters
+	reset_query_filters();
+	strcpy(query, "SELECT * FROM Jobs ");
 
-    if (q_a->job_id >= 0)
-        add_int_filter(query, "job_id", q_a->job_id);
-    else if (strlen(q_a->job_ids) > 0)
-        add_int_list_filter(query, "job_id", q_a->job_ids);
-    else printf("WARNING: -o option is meant to be used with a -j specification\n\n");
-    if (q_a->step_id >= 0)
-        add_int_filter(query, "step_id", q_a->step_id);
-    if (q_a->start_time > 0)
-        add_int_filter(query, "start_time", q_a->step_id);
-    if (q_a->end_time > 0)
-        add_int_filter(query, "end_time", q_a->step_id);
+	if (q_a->job_id >= 0)
+		add_int_filter(query, "job_id", q_a->job_id);
+	else if (strlen(q_a->job_ids) > 0)
+		add_int_list_filter(query, "job_id", q_a->job_ids);
+	else printf("WARNING: -o option is meant to be used with a -j specification\n\n");
+	if (q_a->step_id >= 0)
+		add_int_filter(query, "step_id", q_a->step_id);
+	if (q_a->start_time > 0)
+		add_int_filter(query, "start_time", q_a->step_id);
+	if (q_a->end_time > 0)
+		add_int_filter(query, "end_time", q_a->step_id);
 
-    if (q_a->limit > 0 && q_a->job_id < 0)
-    {
-        sprintf(subquery, " ORDER BY job_id desc LIMIT %d", q_a->limit);
-        strcat(query, subquery);
-    }
-    else strcat(query, " ORDER BY job_id desc");
+	if (q_a->limit > 0 && q_a->job_id < 0)
+	{
+		sprintf(subquery, " ORDER BY job_id desc LIMIT %d", q_a->limit);
+		strcat(query, subquery);
+	}
+	else strcat(query, " ORDER BY job_id desc");
 
-    if (verbose) printf("\nQUERY: %s\n", query);
-    ret = db_run_query_string_results(query, &values, &columns, &rows);
-    if (ret != EAR_SUCCESS) {
-        printf("Error reading Jobs from database\n");
-        return;
-    }
+	if (verbose) printf("\nQUERY: %s\n", query);
+	ret = db_run_query_string_results(query, &values, &columns, &rows);
+	if (ret != EAR_SUCCESS) {
+		printf("Error reading Jobs from database\n");
+		return;
+	}
 
-    print_values(fd, values, columns, rows);
-    db_free_results(values, columns, rows);
+	print_values(fd, values, columns, rows);
+	db_free_results(values, columns, rows);
 
 }
 
 void read_loops(char *user, query_adds_t *q_a, char *format) 
 {
-    char query[1024];
+	char query[1024];
 
-    if (strlen(my_conf.database.user_commands) < 1) 
-    {
-        fprintf(stderr, "Warning: commands' user is not defined in ear.conf\n");
-    }
-    else
-    {
-        strcpy(my_conf.database.user, my_conf.database.user_commands);
-        strcpy(my_conf.database.pass, my_conf.database.pass_commands);
-    }
-    init_db_helper(&my_conf.database);
+	if (strlen(my_conf.database.user_commands) < 1) 
+	{
+		fprintf(stderr, "Warning: commands' user is not defined in ear.conf\n");
+	}
+	else
+	{
+		strcpy(my_conf.database.user, my_conf.database.user_commands);
+		strcpy(my_conf.database.pass, my_conf.database.pass_commands);
+	}
+	init_db_helper(&my_conf.database);
 
-    if (user != NULL) {
-        format_loop_query(user, query, LOOPS_FILTER_QUERY, q_a);
-    } else {
-        format_loop_query(user, query, LOOPS_QUERY, q_a);
-    }
+	if (user != NULL) {
+		format_loop_query(user, query, LOOPS_FILTER_QUERY, q_a);
+	} else {
+		format_loop_query(user, query, LOOPS_QUERY, q_a);
+	}
 
 
-    loop_t *loops = NULL;
-    int num_loops;
+	loop_t *loops = NULL;
+	int num_loops;
 
-    num_loops = db_read_loops_query(&loops, query);
+	num_loops = db_read_loops_query(&loops, query);
 
-    if (num_loops < 1)
-    {
-        printf("No loops retrieved\n");
-        return;
-    }
+	if (num_loops < 1)
+	{
+		printf("No loops retrieved\n");
+		return;
+	}
 
     if (verbose) printf("retrieved %d loops\n", num_loops);
     if (strlen(csv_path) > 0)
@@ -1138,7 +1148,6 @@ void read_loops(char *user, query_adds_t *q_a, char *format)
     }
     if (loops != NULL) free(loops);
     if (loop_extended) read_jobs_from_loops(q_a);
-
 }
 
 void read_applications_from_database(char *user, query_adds_t *q_a, char *format) 
@@ -1157,37 +1166,37 @@ void read_applications_from_database(char *user, query_adds_t *q_a, char *format
     }
     init_db_helper(&my_conf.database);
 
-    if (verbose) {
-        printf("Preparing query statement\n");
-    }
+	if (verbose) {
+		printf("Preparing query statement\n");
+	}
 
-    sprintf(query, "SELECT Applications.* FROM Applications join Jobs on Applications.job_id=Jobs.job_id and Applications.step_id = Jobs.step_id and Jobs.local_id = Applications.local_id where Jobs.job_id in (select job_id from (select job_id, end_time from Jobs" );
-    application_t *apps;
-    if (q_a->job_id >= 0)
-        add_int_filter(query, "job_id", q_a->job_id);
-    else if (strlen(q_a->job_ids) > 0)
-        add_int_list_filter(query, "job_id", q_a->job_ids);
-    if (q_a->step_id >= 0)
-        add_int_filter(query, "step_id", q_a->step_id);
-    else if (strlen(q_a->step_ids) > 0)
-        add_string_filter_no_quotes(query, "step_id", q_a->step_ids);
-    if (user != NULL)
-        add_string_filter(query, "user_id", user);
-    if (strlen(q_a->e_tag) > 0)
-        add_string_filter(query, "e_tag", q_a->e_tag);
-    if (strlen(q_a->app_id) > 0)
-        add_string_filter(query, "app_id", q_a->app_id);
-    if (q_a->start_time != 0)
-        add_int_comp_filter(query, "start_time", q_a->start_time, 1);
-    if (q_a->end_time != 0)
-        add_int_comp_filter(query, "end_time", q_a->end_time, 0);
+	sprintf(query, "SELECT Applications.* FROM Applications join Jobs on Applications.job_id=Jobs.job_id and Applications.step_id = Jobs.step_id and Jobs.local_id = Applications.local_id where Jobs.job_id in (select job_id from (select job_id, end_time from Jobs" );
+	application_t *apps;
+	if (q_a->job_id >= 0)
+		add_int_filter(query, "job_id", q_a->job_id);
+	else if (strlen(q_a->job_ids) > 0)
+		add_int_list_filter(query, "job_id", q_a->job_ids);
+	if (q_a->step_id >= 0)
+		add_int_filter(query, "step_id", q_a->step_id);
+	else if (strlen(q_a->step_ids) > 0)
+		add_string_filter_no_quotes(query, "step_id", q_a->step_ids);
+	if (user != NULL)
+		add_string_filter(query, "user_id", user);
+	if (strlen(q_a->e_tag) > 0)
+		add_string_filter(query, "e_tag", q_a->e_tag);
+	if (strlen(q_a->app_id) > 0)
+		add_string_filter(query, "app_id", q_a->app_id);
+	if (q_a->start_time != 0)
+		add_int_comp_filter(query, "start_time", q_a->start_time, 1);
+	if (q_a->end_time != 0)
+		add_int_comp_filter(query, "end_time", q_a->end_time, 0);
 
-    if (q_a->limit > 0)
-    {
-        sprintf(subquery, " ORDER BY Jobs.end_time desc LIMIT %d", q_a->limit);
-        strcat(query, subquery);
-    }
-    strcat(query, ") as t1");
+	if (q_a->limit > 0)
+	{
+		sprintf(subquery, " ORDER BY Jobs.end_time desc LIMIT %d", q_a->limit);
+		strcat(query, subquery);
+	}
+	strcat(query, ") as t1");
 
     reset_query_filters();
     if (q_a->job_id >= 0)
@@ -1201,42 +1210,42 @@ void read_applications_from_database(char *user, query_adds_t *q_a, char *format
     if (user != NULL)
         add_string_filter(query, "user_id", user);
 
-    strcat(query, ") order by Jobs.job_id desc, Jobs.step_id desc, Jobs.end_time desc");
+	strcat(query, ") order by Jobs.job_id desc, Jobs.step_id desc, Jobs.end_time desc");
 
-    if (verbose) {
-        printf("Retrieving applications\n");
-    }
+	if (verbose) {
+		printf("Retrieving applications\n");
+	}
 
-    if (verbose) {
-        printf("QUERY: %s\n", query);
-    }
+	if (verbose) {
+		printf("QUERY: %s\n", query);
+	}
 
-    num_apps = db_read_applications_query(&apps, query);
+	num_apps = db_read_applications_query(&apps, query);
 
-    if (verbose) {
-        printf("Finalized retrieving applications\n");
-    }
+	if (verbose) {
+		printf("Finalized retrieving applications\n");
+	}
 
-    if (num_apps == EAR_MYSQL_ERROR)
-    {
-        exit(1); //error
-    }
+	if (num_apps == EAR_MYSQL_ERROR)
+	{
+		exit(1); //error
+	}
 
-    if (num_apps < 1)
-    {
-        printf("No jobs found.\n");
-        return;
-    }
+	if (num_apps < 1)
+	{
+		printf("No jobs found.\n");
+		return;
+	}
 
 
-    if (q_a->limit == 20 && strlen(csv_path) < 1)
-        printf("\nBy default only the first 20 jobs are retrieved.\n\n");
+	if (q_a->limit == 20 && strlen(csv_path) < 1)
+		printf("\nBy default only the first 20 jobs are retrieved.\n\n");
 
     bool is_csv = (strlen(csv_path) > 1);
     bool aggregate = !full_length;
     process_and_print_applications(apps, num_apps, is_csv, aggregate, format);
 
-    free(apps);
+	free(apps);
 
 #endif
 }
@@ -1251,46 +1260,46 @@ void read_applications_from_files(char *path, char *format)
 
 int main(int argc, char *argv[])
 {
-    int c;
+	int c;
 
     query_adds_t query_adds = { 0 };
 
-    query_adds.limit = 20;
-    query_adds.job_id = -1;
-    query_adds.step_id = -1;
+	query_adds.limit = 20;
+	query_adds.job_id = -1;
+	query_adds.step_id = -1;
 
-    char is_loops = 0;
-    char is_events = 0;
+	char is_loops = 0;
+	char is_events = 0;
 
     char path_name[256] = { 0 };
     char format[256] = { 0 };
     char *file_name = NULL;
 
-    struct tm tinfo = {0};
+	struct tm tinfo = {0};
 
-    verb_level = -1;
-    verb_enabled = 0;
-    if (get_ear_conf_path(path_name)==EAR_ERROR){
-        fprintf(stderr, "Error getting ear.conf path\n");
-        exit(1);
-    }
+	verb_level = -1;
+	verb_enabled = 0;
+	if (get_ear_conf_path(path_name)==EAR_ERROR){
+		fprintf(stderr, "Error getting ear.conf path\n");
+		exit(1);
+	}
 
-    if (read_cluster_conf(path_name, &my_conf) != EAR_SUCCESS) {
-        fprintf(stderr, "ERROR reading cluster configuration\n");
-    }
+	if (read_cluster_conf(path_name, &my_conf) != EAR_SUCCESS) {
+		fprintf(stderr, "ERROR reading cluster configuration\n");
+	}
 
-    user_t user_info;
-    if (user_all_ids_get(&user_info) != EAR_SUCCESS)
-    {
-        fprintf(stderr, "Failed to retrieve user data\n");
-        exit(1);
-    }
+	user_t user_info;
+	if (user_all_ids_get(&user_info) != EAR_SUCCESS)
+	{
+		fprintf(stderr, "Failed to retrieve user data\n");
+		exit(1);
+	}
 
-    char *user = user_info.ruid_name;
-    if (getuid() == 0 || is_privileged_command(&my_conf))
-    {
-        user = NULL; //by default, privilegd users or root will query all user jobs
-    }
+	char *user = user_info.ruid_name;
+	if (getuid() == 0 || is_privileged_command(&my_conf))
+	{
+		user = NULL; //by default, privilegd users or root will query all user jobs
+	}
 
     char *token;
     int option_idx;
@@ -1318,15 +1327,15 @@ int main(int argc, char *argv[])
     };
 
 #if COLORS
-    print_colors_legend();
+	print_colors_legend();
 #endif
 
     while (1)
     {
         c = getopt_long(argc, argv, "n:u:j:f:t:voma:pbglrs:e:c:hF:x::", long_options, &option_idx);
 
-        if (c == -1)
-            break;
+		if (c == -1)
+			break;
 
         switch (c)
         {
@@ -1457,9 +1466,9 @@ int main(int argc, char *argv[])
     else read_applications_from_database(user, &query_adds, format); 
 
 #if COLORS
-    printf("%s",COL_CLR);
+	printf("%s",COL_CLR);
 #endif
 
-    free_cluster_conf(&my_conf);
-    exit(0);
+	free_cluster_conf(&my_conf);
+	exit(0);
 }
