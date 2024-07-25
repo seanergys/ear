@@ -558,7 +558,7 @@ int32_t expand_list_alloc(const char *source, char **target)
         strcat(final_buffer, buff);
     }
 
-    printf("Final list %s\n", final_buffer);
+    debug("Final list %s\n", final_buffer);
     *target = final_buffer;
 
     free(buff);
