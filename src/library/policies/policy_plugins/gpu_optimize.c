@@ -76,6 +76,7 @@ static const uint *gpuf_list_items;
 static ulong *gpu_def_freq;
 static ulong *last_gpufreq_set;
 static int gpu_count;
+static ulong last_pstate = 0;
 
 static uint set_instances_cnt = 0;
 static uint dcgmi_ref_set; 
@@ -255,7 +256,7 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
 
       avg_gpu_freq = avg_gpu_freq/my_sig->gpu_sig.num_gpus;
       ps_from = closet_gpu_def_freq(avg_gpu_freq);
-      debug("ps_from %lu avg_gpu_freq %lf def_gpu_freq %lu ",ps_from, avg_gpu_freq, gpuf_list[0][ps_from]);
+      debug("ps_from %lu last_pstate %lu avg_gpu_freq %lf def_gpu_freq %lu last_gpu_freq %lu",ps_from, last_pstate, avg_gpu_freq, gpuf_list[0][ps_from], gpuf_list[0][last_pstate]);
       best_pstate = ps_from;
       
       time_ref = sig_aux.time;
@@ -292,6 +293,7 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
       }// loop over j=1->gpuf_list_items
       
       // set the selected freq
+      last_pstate = best_pstate;
       for(i=0; i<my_sig->gpu_sig.num_gpus; i++)
       {
         new_freq[i] = gpuf_list[i][best_pstate];
