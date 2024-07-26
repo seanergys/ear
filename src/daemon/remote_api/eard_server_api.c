@@ -139,6 +139,7 @@ int can_allocate(request_t *command, size_t size, int num_items)
         tmp_size = num_items; 
     }
 #ifdef FAKE_EARD_ALLOC_ERROR
+#warning Compiling with fake allocation errors in EARD ON.
     tmp = NULL;
 #else
     tmp = calloc(tmp_size, size);
