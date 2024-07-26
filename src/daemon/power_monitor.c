@@ -35,6 +35,7 @@
 #include <common/colors.h>
 #include <sys/wait.h>
 #include <sys/syscall.h>
+#include <math.h>
 
 #include <common/config.h>
 #include <common/config/config_sched.h>
@@ -2398,7 +2399,8 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
     current_sample.DRAM_energy = rapl_dram * time_consumed;
     current_sample.PCK_energy  = rapl_pck  * time_consumed;
 #if USE_GPUS
-    current_sample.GPU_energy = gpu_power * time_consumed;
+		if (isnormal(gpu_power)) current_sample.GPU_energy = gpu_power * time_consumed;
+		else                      current_sample.GPU_energy = 0;
 #endif
     current_sample.DC_energy = corrected_power * time_consumed;
     current_sample.temp = (ulong) get_nm_temp(&my_nm_id, nm);
@@ -2443,6 +2445,7 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
 
     /* report periodic metric */
     if (report) {
+				periodic_metric_clean_before_db(&current_sample);
         report_connection_status = report_periodic_metrics(&rid, &current_sample, 1);
         last_power_reported      = corrected_power;
     }

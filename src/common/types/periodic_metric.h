@@ -68,4 +68,7 @@ void init_sample_period(periodic_metric_t *pm);
 /** Sets the end time for the period and the energy */
 void end_sample_period(periodic_metric_t *pm,ulong energy);
 
+/* Cleans pm data to avoid out of range values */
+void periodic_metric_clean_before_db(periodic_metric_t *pm);
+
 #endif

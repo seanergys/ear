@@ -101,6 +101,7 @@ void create_users(void *connection, char *db_name, char *db_user, char *db_user_
 
 #if DB_MYSQL
     sprintf(query, "CREATE USER '%s'@'%%'", db_user);
+    run_query(connection, query);
     sprintf(query, "CREATE USER '%s'@'localhost'", db_user);
 #elif DB_PSQL
     sprintf(query, "CREATE USER %s", db_user);
@@ -110,6 +111,7 @@ void create_users(void *connection, char *db_name, char *db_user, char *db_user_
     {
 #if DB_MYSQL
         sprintf(query, "SET PASSWORD FOR '%s'@'%%' = PASSWORD('%s')", db_user, db_user_pass);
+        run_query(connection, query);
         sprintf(query, "SET PASSWORD FOR '%s'@'localhost' = PASSWORD('%s')", db_user, db_user_pass);
 #elif DB_PSQL
         sprintf(query, "ALTER USER %s WITH ENCRYPTED PASSWORD '%s'", db_user, db_user_pass);
@@ -119,6 +121,7 @@ void create_users(void *connection, char *db_name, char *db_user, char *db_user_
 
 #if DB_MYSQL
     sprintf(query, "GRANT SELECT, INSERT ON %s.* TO '%s'@'%%'", db_name, db_user);
+    run_query(connection, query);
     sprintf(query, "GRANT SELECT, INSERT ON %s.* TO '%s'@'localhost'", db_name, db_user);
 #elif DB_PSQL
     sprintf(query, "GRANT SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO %s", db_user);
@@ -131,6 +134,7 @@ void create_users(void *connection, char *db_name, char *db_user, char *db_user_
     {
 #if DB_MYSQL
         sprintf(query, "CREATE USER '%s'@'%%'", commands_user);
+        run_query(connection, query);
         sprintf(query, "CREATE USER '%s'@'localhost'", commands_user);
 #elif DB_PSQL
         sprintf(query, "CREATE USER %s", commands_user);
@@ -141,6 +145,7 @@ void create_users(void *connection, char *db_name, char *db_user, char *db_user_
         {
 #if DB_MYSQL
             sprintf(query, "SET PASSWORD FOR '%s'@'%%' = PASSWORD('%s')", commands_user, commands_pass);
+			run_query(connection, query);
             sprintf(query, "SET PASSWORD FOR '%s'@'localhost' = PASSWORD('%s')", commands_user, commands_pass);
 #elif DB_PSQL
             sprintf(query, "ALTER USER %s WITH ENCRYPTED PASSWORD '%s'", commands_user, commands_pass);
@@ -150,6 +155,7 @@ void create_users(void *connection, char *db_name, char *db_user, char *db_user_
 
 #if DB_MYSQL
         sprintf(query, "GRANT SELECT ON %s.* TO '%s'@'%%'", db_name, commands_user);
+        run_query(connection, query);
         sprintf(query, "GRANT SELECT ON %s.* TO '%s'@'localhost'", db_name, commands_user);
 #elif DB_PSQL
         sprintf(query, "GRANT SELECT ON ALL TABLES IN SCHEMA public TO %s", commands_user);
@@ -158,6 +164,7 @@ void create_users(void *connection, char *db_name, char *db_user, char *db_user_
 
 #if DB_MYSQL
         sprintf(query, "ALTER USER '%s'@'%%' WITH MAX_USER_CONNECTIONS %d", commands_user, my_cluster.database.max_connections);
+        run_query(connection, query);
         sprintf(query, "ALTER USER '%s'@'localhost' WITH MAX_USER_CONNECTIONS %d", commands_user, my_cluster.database.max_connections);
 #elif DB_PSQL
         sprintf(query, "ALTER USER %s WITH CONNECTION LIMIT %d", commands_user, my_cluster.database.max_connections);

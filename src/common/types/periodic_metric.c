@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <limits.h>
 #include <common/config.h>
 #include <common/math_operations.h>
 #include <common/types/periodic_metric.h>
@@ -72,4 +73,16 @@ void end_sample_period(periodic_metric_t *pm,ulong energy)
 {
 	time(&pm->end_time);
 	pm->DC_energy=energy;
+}
+
+void periodic_metric_clean_before_db(periodic_metric_t *pm)
+{
+	if (pm->DC_energy > INT_MAX) pm->DC_energy = INT_MAX;
+	if (pm->avg_f     > INT_MAX) pm->avg_f     = INT_MAX;
+	if (pm->temp      > INT_MAX) pm->temp      = INT_MAX;
+	if (pm->DRAM_energy > INT_MAX) pm->DRAM_energy = INT_MAX;
+	if (pm->PCK_energy  > INT_MAX) pm->PCK_energy  = INT_MAX;
+#if USE_GPUS
+	if (pm->GPU_energy  > INT_MAX) pm->GPU_energy  = INT_MAX;
+#endif
 }
