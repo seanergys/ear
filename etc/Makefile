@@ -5,6 +5,7 @@ gen_FOLDERS = $(DESTDIR)/bin \
               $(DESTDIR)/bin/tools \
               $(DESTDIR)/include \
               $(DESTDIR)/lib \
+              $(DESTDIR)/lib/deps \
               $(DESTDIR)/lib/pbs \
               $(DESTDIR)/lib/plugins \
               $(DESTDIR)/lib/plugins/eard_policies \

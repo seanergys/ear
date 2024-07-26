@@ -123,6 +123,8 @@ static state_t static_open()
     open_test("/usr/lib/libnvidia-ml.so.1");
 		open_test("/.singularity.d/libs/libnvidia-ml.so")
 		open_test("/.singularity.d/libs/libnvidia-ml.so.1")
+    open_test(EAR_INSTALL_PATH "/lib/deps/libnvidia-ml.so.1");
+    open_test(EAR_INSTALL_PATH "/lib/deps/libnvidia-ml.so");
     return_msg(EAR_ERROR, "Can not load libnvidia-ml.so");
 }
 
