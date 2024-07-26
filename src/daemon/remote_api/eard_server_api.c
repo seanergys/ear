@@ -108,12 +108,12 @@ void close_ips()
 }
 
 
-/* Uncomment too fake the EARD allocation error 
+/* Uncomment to fake the EARD allocation error 
  * Set to 1 to simulate a situation where the "general" allocation fails,
  * but the individual suceeds.
  * Set to 2 to simulate a situation where every allocation, however small, fails.
  */
-#define FAKE_EARD_ALLOC_ERROR 0
+//#define FAKE_EARD_ALLOC_ERROR 0
 
 #define CHECK_ALLOC 1
 
