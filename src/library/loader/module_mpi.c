@@ -166,7 +166,6 @@ static int load_ear_functions(void *handler)
     void **libmpi_f = (void **) &calls_mpi_f;
     void **libear_c = (void **) &ear_mpic;
     void **libear_f = (void **) &ear_mpif;
-    void *handler   = NULL;
     int i;
 
     // Already built MPI structure, we are not going to repeat.
