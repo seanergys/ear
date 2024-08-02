@@ -26,7 +26,6 @@ ifeq ($(FEAT_EAR_OFF), 1)
 CFLAGS += -DEAR_OFF=1
 endif
 
-
 ifeq ($(FEAT_EARL_LIGHT), 1) 
 CFLAGS += -DEARL_LIGHT=1
 else ifeq ($(FEAT_EARL_LITE), 1)
@@ -112,7 +111,6 @@ ifeq ($(FEAT_DLB), 1)
 core_OBJS += metrics/dlb_talp_lib.o
 endif
 
-
 ifeq ($(FEAT_MPI_LIBRARY), 1)
 mpix_OBJS = \
     api/ear_mpi.o \
@@ -139,7 +137,6 @@ clean: clean.components rclean;
 post:
 	@ $(MAKE) -C 'metrics' $@ || exit
 	@ $(MAKE) -C 'policies' $@ || exit
-
 
 ######## SUBFOLDERS
 

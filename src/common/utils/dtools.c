@@ -19,6 +19,7 @@
 #include <dlfcn.h>
 #include <limits.h>
 #include <signal.h>
+#include <execinfo.h>
 #include <common/types.h>
 #include <common/states.h>
 #include <common/utils/dtools.h>
@@ -83,3 +84,17 @@ void free(void *ptr)
     next_free(ptr);
 }
 #endif
+
+char *dtools_get_calling_library(char *buffer, int calls_count)
+{
+    void* callstack[32];
+    Dl_info info;
+
+    if (backtrace(callstack, 32) < calls_count+1) {
+        return NULL;
+    }
+    if (dladdr(callstack[calls_count+1], &info) == 0) {
+        return NULL;
+    }
+    return strcpy(buffer, info.dli_fname);
+}

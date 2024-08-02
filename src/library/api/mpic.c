@@ -120,7 +120,7 @@ static mpic_t next_mpic = {
 void ear_mpic_setnext(mpic_t *_next_mpic)
 {
 	debug(">> C setnext...............");
-	if (module_mpi_is_detected()) memcpy(&next_mpic, _next_mpic, sizeof(mpic_t));
+    memcpy(&next_mpic, _next_mpic, sizeof(mpic_t));
 	debug("<< C setnext...............");
 }
 

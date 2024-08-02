@@ -20,16 +20,12 @@
 
 int module_mpi(char *path_lib_so, char *libhack);
 
+int load_mpi_and_ear(char *libmpi_path);
+
 void module_mpi_destructor();
 
 int module_mpi_is_enabled();
 
-int module_mpi_is_intel();
-
 int module_mpi_is_open();
-
-int module_mpi_is_detected();
-
-void module_mpi_set_forced();
 
 #endif //LIBRARY_LOADER_MPI_H

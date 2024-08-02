@@ -25,4 +25,6 @@
 // Set the address to control by dtools.
 void dtools_set_address(void *address);
 
+char *dtools_get_calling_library(char *buffer, int calls_count);
+
 #endif

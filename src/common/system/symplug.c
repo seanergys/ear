@@ -27,11 +27,9 @@ state_t plug_join(void *handle, void *calls[], const char *names[], uint n)
     uint i, counter;
     char *error;
 
-    for (counter = i = 0; i < n; ++i)
-    {
+    for (counter = i = 0; i < n; ++i) {
         calls[i] = dlsym(handle, names[i]);
         error    = dlerror();
-
         if ((calls[i] != NULL) && (error == NULL)) {
             debug("symbol %s found (%p)", names[i], calls[i]);
             counter++;
@@ -43,7 +41,6 @@ state_t plug_join(void *handle, void *calls[], const char *names[], uint n)
     if (counter == 0) {
         return_msg(EAR_ERROR, "No symbols loaded");
     }
-
     return EAR_SUCCESS;
 }
 
