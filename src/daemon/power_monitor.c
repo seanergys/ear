@@ -2749,6 +2749,11 @@ void powermon_get_policy_status(policy_status_t *status)
     }
 }
 
+char powermon_get_node_state()
+{
+    return STATUS_OK;
+}
+
 void powermon_get_status(status_t *my_status) {
     /* Current app info */
     my_status->app.job_id = current_ear_app[max_context_created]->app.job.id;
@@ -2760,6 +2765,9 @@ void powermon_get_status(status_t *my_status) {
     my_status->node.rep_power = (ulong) last_power_reported;
     my_status->node.max_freq = (ulong) frequency_pstate_to_freq(my_node_conf->max_pstate);
     my_status->eardbd_connected = (report_connection_status == EAR_SUCCESS);
+
+    /* State info */
+    my_status->ok = powermon_get_node_state();
 }
 
 
