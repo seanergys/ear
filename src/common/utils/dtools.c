@@ -85,7 +85,7 @@ void free(void *ptr)
 }
 #endif
 
-char *dtools_get_calling_library(char *buffer, int calls_count)
+char *dtools_get_backtrace_library(char *buffer, int calls_count)
 {
     void* callstack[32];
     Dl_info info;
@@ -94,6 +94,9 @@ char *dtools_get_calling_library(char *buffer, int calls_count)
         return NULL;
     }
     if (dladdr(callstack[calls_count+1], &info) == 0) {
+        return NULL;
+    }
+    if (strcmp(&info.dli_fname[strlen(info.dli_fname)-3], ".so") != 0) {
         return NULL;
     }
     return strcpy(buffer, info.dli_fname);

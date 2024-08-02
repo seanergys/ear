@@ -15,6 +15,8 @@
 * and COPYING.EPL files.
 */
 
+//#define SHOW_DEBUGS 1
+
 #include <common/plugins.h>
 #include <common/output/debug.h>
 #include <library/api/mpic.h>

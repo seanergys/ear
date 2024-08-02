@@ -166,7 +166,6 @@ static int load_ear_functions(void *handler)
     void **libmpi_f = (void **) &calls_mpi_f;
     void **libear_c = (void **) &ear_mpic;
     void **libear_f = (void **) &ear_mpif;
-    void *handler   = NULL;
     int i;
 
     // Already built MPI structure, we are not going to repeat.
@@ -181,11 +180,15 @@ static int load_ear_functions(void *handler)
     // Loading EAR "setnext" functions
     libear_setnext_c = dlsym(handler, "ear_mpic_setnext");
     libear_setnext_f = dlsym(handler, "ear_mpif_setnext");
+    printf("LOADER: address ear_mpic_setnext: %p\n", libear_setnext_c);
+    printf("LOADER: address ear_mpif_setnext: %p\n", libear_setnext_f);
     // Disabling Fortran symbols for intel
     if (_found_intel) libear_setnext_f = NULL;
     // Loading LIBEAR MPI functions
     if (libear_setnext_c != NULL) plug_join(handler, libear_c, ear_mpic_names, MPIC_N);
     if (libear_setnext_f != NULL) plug_join(handler, libear_f, ear_mpif_names, MPIF_N);
+    printf("LOADER: address ear_mpic_Init: %p\n", ear_mpic.Init);
+    printf("LOADER: address ear_mpif_init: %p\n", ear_mpif.init);
     // Loading LIBEAR constructor/destructor
     call_constructor = dlsym(handler, "ear_constructor");
     call_destructor  = dlsym(handler, "ear_destructor" );
@@ -194,8 +197,8 @@ override:
     for (i = 0; i < MPIC_N; ++i) if (libear_c[i] == NULL) libear_c[i] = libmpi_c[i];
     for (i = 0; i < MPIF_N; ++i) if (libear_f[i] == NULL) libear_f[i] = libmpi_f[i];
     // Passing MPI functions to LIBEAR MPI functions
-    if (libear_setnext_c != NULL) libear_setnext_c((mpic_t *) libear_c);
-    if (libear_setnext_f != NULL) libear_setnext_f((mpif_t *) libear_f);
+    if (libear_setnext_c != NULL) libear_setnext_c((mpic_t *) libmpi_c);
+    if (libear_setnext_f != NULL) libear_setnext_f((mpif_t *) libmpi_f);
     built_mpi_structure = 1;
     return 1;
 }
@@ -216,7 +219,6 @@ int load_mpi_and_ear(char *libmpi_path)
 {
     void *call_mpi_version = NULL;
     char *libear_path = NULL;
-
     printf("LOADER: Entering loader (%s)\n", libmpi_path);
     // Load libmpi.so functions. Protected against multiple calls.
     if (!load_mpi_functions(RTLD_NEXT, &calls_mpi_c, &calls_mpi_f)) {
@@ -227,7 +229,7 @@ int load_mpi_and_ear(char *libmpi_path)
             }
         } else return 0;
     }
-    // Looking for otherMPI Fortran symbols
+    // Looking for PMPI_Get_library_version function
     if ((call_mpi_version = load_mpi_version(RTLD_DEFAULT)) == NULL) {
          call_mpi_version = load_mpi_version(get_libmpi_handler(libmpi_path));
     }

@@ -203,14 +203,14 @@ int MPI_Finalize(void)
 int MPI_Init(int *argc, char ***argv)
 {
     char buffer[256];
-    load_mpi_and_ear(dtools_get_calling_library(buffer, 1));
+    load_mpi_and_ear(dtools_get_backtrace_library(buffer, 1));
 	return ear_mpic.Init(argc, argv);
 }
 
 int MPI_Init_thread(int *argc, char ***argv, int required, int *provided)
 {
     char buffer[256];
-    load_mpi_and_ear(dtools_get_calling_library(buffer, 1));
+    load_mpi_and_ear(dtools_get_backtrace_library(buffer, 1));
 	return ear_mpic.Init_thread(argc, argv, required, provided);
 }
 
