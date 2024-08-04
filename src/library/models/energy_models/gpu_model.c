@@ -173,63 +173,77 @@ state_t energy_model_project_time(signature_t *signature, ulong from_ps, ulong t
 		coeff = &coefficients[from_ps][to_ps];
 		if (coeff->available)
 		{
-		sig_ext_t *sigex;
-  	dcgmi_sig_t *dcgmis;
-		/* SIgnature Extended */
-		sigex = (sig_ext_t *)signature->sig_ext;
-		if (sigex == NULL)  return EAR_ERROR;
-		/* DCGMI data */
-		dcgmis = (dcgmi_sig_t *)&sigex->dcgmis;
-		if (dcgmis == NULL) return EAR_ERROR;
+      sig_ext_t *sigex;
+      dcgmi_sig_t *dcgmis;
+      /* SIgnature Extended */
+      sigex = (sig_ext_t *)signature->sig_ext;
+      if (sigex == NULL)  return EAR_ERROR;
+      /* DCGMI data */
+      dcgmis = (dcgmi_sig_t *)&sigex->dcgmis;
+      if (dcgmis == NULL) return EAR_ERROR;
 
-		/* Sets where each data is placed. Could be the same */
+      /* Sets where each data is placed. Could be the same */
 
-		int fp64_info[2];
-		dcgmi_lib_get_event_info(fp64_active, &fp64_info);
-		gpuprof_t *dcgmis_data_64 = dcgmis->event_metrics_sets[fp64_info[event_info_set]];
+      int fp64_info[2];
+      dcgmi_lib_get_event_info(fp64_active, &fp64_info);
+      gpuprof_t *dcgmis_data_64 = dcgmis->event_metrics_sets[fp64_info[event_info_set]];
 
-		int fp32_info[2];
-		dcgmi_lib_get_event_info(fp32_active, &fp32_info);
-		gpuprof_t *dcgmis_data_32 = dcgmis->event_metrics_sets[fp32_info[event_info_set]];
+      int fp32_info[2];
+      dcgmi_lib_get_event_info(fp32_active, &fp32_info);
+      gpuprof_t *dcgmis_data_32 = dcgmis->event_metrics_sets[fp32_info[event_info_set]];
 
-		int fp16_info[2];
-		dcgmi_lib_get_event_info(fp16_active, &fp16_info);
-		gpuprof_t *dcgmis_data_16   = dcgmis->event_metrics_sets[fp16_info[event_info_set]];
+      int fp16_info[2];
+      dcgmi_lib_get_event_info(fp16_active, &fp16_info);
+      gpuprof_t *dcgmis_data_16   = dcgmis->event_metrics_sets[fp16_info[event_info_set]];
 
-		int tensor_info[2];
-		dcgmi_lib_get_event_info(tensor_active, &tensor_info);
-		gpuprof_t *dcgmis_data_ten  = dcgmis->event_metrics_sets[tensor_info[event_info_set]];
-    
-    int dram_info[2];
-    dcgmi_lib_get_event_info(dram_active, &dram_info);
-    gpuprof_t *dcgmis_data_dram = dcgmis->event_metrics_sets[dram_info[event_info_set]];
+      int tensor_info[2];
+      dcgmi_lib_get_event_info(tensor_active, &tensor_info);
+      gpuprof_t *dcgmis_data_ten  = dcgmis->event_metrics_sets[tensor_info[event_info_set]];
+      
+      int dram_info[2];
+      dcgmi_lib_get_event_info(dram_active, &dram_info);
+      gpuprof_t *dcgmis_data_dram = dcgmis->event_metrics_sets[dram_info[event_info_set]];
 
-    if (!dcgmis_data_64 || !dcgmis_data_32 || !dcgmis_data_16
-        || !dcgmis_data_ten || !dcgmis_data_dram)
-      return EAR_ERROR;
+      if (!dcgmis_data_64 || !dcgmis_data_32 || !dcgmis_data_16
+          || !dcgmis_data_ten || !dcgmis_data_dram)
+        return EAR_ERROR;
 
-    double ctime = signature->time;
-    double fp16 = 0;
-    double fp32 = 0;
-    double fp64 = 0;
-    double tensor = 0;
-    double dram_act = 0;
-    
-    for (uint g = 0; g < num_gpus; g++)
-    {
-      fp16 = fp16 + dcgmis_data_16[g].values[fp16_info[event_info_pos]]/num_gpus;
-      fp32 = fp32 + dcgmis_data_32[g].values[fp32_info[event_info_pos]]/num_gpus;
-      fp64 = fp64 + dcgmis_data_64[g].values[fp64_info[event_info_pos]]/num_gpus;
-      tensor = tensor + dcgmis_data_ten[g].values[tensor_info[event_info_pos]]/num_gpus;
-      dram_act = dram_act + dcgmis_data_dram[g].values[dram_info[event_info_pos]]/num_gpus;
-    }
-    double fp_act = fp16 + fp32 + fp64 + tensor;
-    if(fp_act == 0 && dram_act == 0){
-      proj_time[0] = ctime;
-    }else{
-      proj_time[0] = project_time(coeff, ctime, fp_act, dram_act, coeff->pstate);
-    }
-		}
+      double ctime = signature->time;
+      double fp16 = 0;
+      double fp32 = 0;
+      double fp64 = 0;
+      double tensor = 0;
+      double dram_act = 0;
+      int used_gpus = 0; 
+      for (uint g = 0; g < num_gpus; g++)
+      {
+        if(signature->gpu_sig.gpu_data[g].GPU_util != 0){
+          fp16 = fp16 + dcgmis_data_16[g].values[fp16_info[event_info_pos]];
+          fp32 = fp32 + dcgmis_data_32[g].values[fp32_info[event_info_pos]];
+          fp64 = fp64 + dcgmis_data_64[g].values[fp64_info[event_info_pos]];
+          tensor = tensor + dcgmis_data_ten[g].values[tensor_info[event_info_pos]];
+          dram_act = dram_act + dcgmis_data_dram[g].values[dram_info[event_info_pos]];
+          used_gpus++;
+         }
+      }
+      if(used_gpus >0)
+      {
+        double fp_act = fp16 + fp32 + fp64 + tensor;
+        if(fp_act == 0 && dram_act == 0)
+        {
+          proj_time[0] = ctime;
+        }
+        else
+        {
+          proj_time[0] = project_time(coeff, ctime, fp_act/used_gpus, dram_act/used_gpus, coeff->pstate);
+        }
+      }
+	  }// coeff av.    
+    else
+	  {
+	    debug("Coeffs from %lu to %lu not available",from_ps, to_ps);
+	    st = EAR_ERROR;
+	  }
 	} else st = EAR_ERROR;
 
 	return st;
@@ -249,7 +263,13 @@ state_t energy_model_project_power(signature_t *signature, ulong from_ps, ulong 
 
 	if (from_ps == to_ps)
 	{
-		for (uint g = 0; g < num_gpus; g++) proj_power[g] = signature->gpu_sig.gpu_data[g].GPU_power;
+		for (uint g = 0; g < num_gpus; g++)
+    {
+      if(signature->gpu_sig.gpu_data[g].GPU_util != 0)
+      {
+        proj_power[g] = signature->gpu_sig.gpu_data[g].GPU_power;
+      }
+    }
 		return st;
 	}
 
@@ -307,26 +327,32 @@ state_t energy_model_project_power(signature_t *signature, ulong from_ps, ulong 
 			for (uint g = 0; g < num_gpus; g++)
 			{
 				//debug("Going to project the power for the GPU %d...", g);
-				cpower = signature->gpu_sig.gpu_data[g].GPU_power;
-				fp16 = dcgmis_data_16[g].values[fp16_info[event_info_pos]];
-				fp32 = dcgmis_data_32[g].values[fp32_info[event_info_pos]];
-				fp64 = dcgmis_data_64[g].values[fp64_info[event_info_pos]];
-				tensor = dcgmis_data_ten[g].values[tensor_info[event_info_pos]];
-				dram_act = dcgmis_data_dram[g].values[dram_info[event_info_pos]];
-        fp_act = fp16 + fp32 + fp64 + tensor;
-
-        if(fp_act == 0 && dram_act ==0){
-          proj_power[g] =  cpower;
-        }else{
-				  proj_power[g] = project_power(coeff, cpower, fp_act, dram_act, coeff->pstate);
+        if(signature->gpu_sig.gpu_data[g].GPU_util != 0)
+        {
+          cpower = signature->gpu_sig.gpu_data[g].GPU_power;
+          fp16 = dcgmis_data_16[g].values[fp16_info[event_info_pos]];
+          fp32 = dcgmis_data_32[g].values[fp32_info[event_info_pos]];
+          fp64 = dcgmis_data_64[g].values[fp64_info[event_info_pos]];
+          tensor = dcgmis_data_ten[g].values[tensor_info[event_info_pos]];
+          dram_act = dcgmis_data_dram[g].values[dram_info[event_info_pos]];
+          fp_act = fp16 + fp32 + fp64 + tensor;
+          if(fp_act == 0 && dram_act ==0)
+          {
+            proj_power[g] =  cpower;
+          }
+          else
+          {
+            proj_power[g] = project_power(coeff, cpower, fp_act, dram_act, coeff->pstate);
+          }
         }
 			}
-		} else
+		}// coeffs av
+    else
 		{
 			debug("Coeffs from %lu to %lu not available",from_ps, to_ps);
 			st = EAR_ERROR;
 		}
-	} else st = EAR_ERROR;
+	} else st = EAR_ERROR; //valid range
 
 	return st;
 }
