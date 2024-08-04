@@ -115,11 +115,11 @@ state_t report_init(report_id_t *id, cluster_conf_t *conf)
     strcpy(query, "SELECT * FROM Signatures LIMIT 5");
     num_sig_args = postgresql_get_num_columns(query);
     if (num_sig_args == EAR_ERROR)
-        set_signature_simple(db_config->report_sig_detail);
+        set_signature_detail(db_config->report_sig_detail);
     else if (num_sig_args < 20)
-        set_signature_simple(0);
+        set_signature_detail(0);
     else 
-        set_signature_simple(1);
+        set_signature_detail(1);
 
     strcpy(query, "SELECT * FROM Periodic_metrics LIMIT 5");
     num_per_args = postgresql_get_num_columns(query);

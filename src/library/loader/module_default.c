@@ -84,7 +84,7 @@ int module_constructor(char *path_lib_so,char *libhack)
 {
 	static char path_so[4096];
 
-	verbose(3, "LOADER: loading module default (constructor)");
+	verbose(2, "LOADER: loading module default (constructor) for process %d", getpid());
 
 	if (!module_constructor_dlsym(path_lib_so,libhack,path_so, sizeof(path_so))) {
 		return 0;
@@ -92,6 +92,7 @@ int module_constructor(char *path_lib_so,char *libhack)
 	if (atexit(module_destructor) != 0) {
 		verbose(0, "LOADER: cannot set exit function");
 	}
+	verbose(2, "LOADER: loading atexit defined for process %d", getpid());
 	if (func_con != NULL) {
 		func_con();
 	}
@@ -101,7 +102,7 @@ int module_constructor(char *path_lib_so,char *libhack)
 
 void module_destructor()
 {
-	verbose(1, "LOADER: loading module default (destructor)");
+	verbose(1, "LOADER: loading module default (destructor) for process %d", getpid());
 
 	if (func_des != NULL) {
 		func_des();

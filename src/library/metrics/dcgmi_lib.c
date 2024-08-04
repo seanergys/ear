@@ -51,7 +51,7 @@
 #include <metrics/common/apis.h>
 
 
-#define DCGMI_MET_LVL			1
+#define DCGMI_MET_LVL			3
 
 #define DCGMI_LIB_SAMPLING_PERIOD 2
 
