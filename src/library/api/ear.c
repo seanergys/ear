@@ -1386,6 +1386,29 @@ static int get_ear_application_id(uint can_synch)
 static struct sigaction term_action, int_action, segv_action;
 static void configure_sigactions()
 {
+	/* Now EARL can be configured to not configure sighandlers to avoid conflicts
+	 * in the case the application wants to handle them. */
+
+	char *py_multiproc_str = ear_getenv(FLAG_PYTHON_MULTIPROC);
+	char *no_sighandle_str = ear_getenv(FLAG_NO_SIGHANDLER);
+
+	long py_multiproc = 0;
+	if (py_multiproc_str) {
+		py_multiproc = strtol(py_multiproc_str, NULL, 10);
+	}
+
+	long no_sighandle = 0;
+	if (no_sighandle_str) {
+		no_sighandle = strtol(no_sighandle_str, NULL, 10);
+	}
+
+	/* In the case some of the above env vars were exported,
+	 * we return and no signal handling is performed. */
+
+	if (py_multiproc || no_sighandle) {
+		return;
+	}
+
 	// SIGTERM action for job cancellation
 	sigemptyset(&term_action.sa_mask);
 	term_action.sa_handler = ear_lib_sig_handler;
@@ -1402,7 +1425,7 @@ static void configure_sigactions()
   sigaction(SIGPIPE, &int_action, NULL);
 
 
-  verbose(VPROC_INIT,"EARL[%d] SIGSEGV and SIGBUS sig handler defined", getpid());
+  verbose(VPROC_INIT, "EARL[%d] SIGSEGV and SIGBUS sig handler defined", getpid());
   // SIGSEGV
   sigemptyset(&segv_action.sa_mask);
   segv_action.sa_handler = ear_lib_sig_handler;
