@@ -687,7 +687,7 @@ void create_shared_regions()
 		sched_local_barrier(path_barrier, ear_my_size);
 	}
 #endif
-  verbose(VPROC_INIT,"EARL[%d ][%d] My node ID is %d/%d", ear_my_rank, getpid(), my_node_id, lib_shared_region->num_processes);
+  verbose(VPROC_INIT,"EARL[%d][%d] My node ID is %d/%d", ear_my_rank, getpid(), my_node_id, lib_shared_region->num_processes);
 
   /* This region is for processes in the same node */
 
@@ -1469,7 +1469,7 @@ void ear_init()
 
   main_pid = syscall(SYS_gettid);
 
-	verbose(VPROC_INIT, "%s EAR [%d] init .......................................%s", COL_BLU, main_pid, COL_CLR);
+	verbose(VPROC_INIT, "%s EAR [%d][%d] init .......................................%s", COL_BLU, getpid(), main_pid, COL_CLR);
 
   if (ear_lib_initialized)
 	{
@@ -2366,7 +2366,8 @@ void ear_finalize(int exit_status)
 
 				if (fake_error) verbose_master(0, "Warning, executing fake errors in ear_finalize : %u", fake_error);
 		
-				if (fake_error){	
+				if (fake_error)
+				{
 				/* This use case forces sintheticaly a master proces exiting because an error. The
  				 * objective is to test the EARL is not blocking. We just mark all the masters as 
  				 * cancelled */ 	
@@ -3096,21 +3097,30 @@ void ear_fork_epilog()
 
 static void  reset_earl_environment()
 {
-  ear_lib_initialized = 0;
-	/* This lock is used per-process, we unlock just in case it was already locked */
-	ear_unlock(&earl_th_locks);
-	first_application = 0;
-  monitor_dispose();
-  metrics_lib_reset();
-  report_dispose(&rep_id);
-  release_shared_memory_areas();
-	eards_new_process_disconnect();
+	verbose(0, "[%d] Resetting env", getpid());
+	if (ear_lib_initialized)
+	{
+		ear_lib_initialized = 0;
+		/* This lock is used per-process, we unlock just in case it was already locked */
+		ear_unlock(&earl_th_locks);
+		first_application = 0;
+		verbose(0, "[%d] monitor dispose", getpid());
+		monitor_dispose();
+		verbose(0, "[%d] metrics lib reset", getpid());
+		metrics_lib_reset();
+		verbose(0, "[%d] report dispose", getpid());
+		report_dispose(&rep_id);
+		verbose(0, "[%d] release shared mem", getpid());
+		release_shared_memory_areas();
+		verbose(0, "[%d] disconnect", getpid());
+		eards_new_process_disconnect();
+	}
 }
 
 
 void ear_fork_new_child()
 {
-  verbose(2,"EAR[%d] : New process %d!", getppid(), getpid());
+  verbose(0, "EAR[%d]: New process %d!", getppid(), getpid());
   reset_earl_environment();
   ear_init();
 
@@ -3118,8 +3128,8 @@ void ear_fork_new_child()
 
 void ear_constructor()
 {
-    debug("Calling ear_init in ear_constructor %d",getpid());
-    //verbose(WF_SUPPORT_VERB,"Calling ear_init in ear_constructor %d",getpid());
+    debug("Calling ear_init in ear_constructor %d", getpid());
+    verbose(WF_SUPPORT_VERB,"Calling ear_init in ear_constructor %d", getpid());
     ear_init();
     pthread_atfork(ear_fork_prolog, ear_fork_epilog, ear_fork_new_child);
 }
