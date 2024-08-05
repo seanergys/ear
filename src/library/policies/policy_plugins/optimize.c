@@ -186,6 +186,74 @@ state_t policy_restore_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *fr
 }
 
 
+state_t policy_cpu_gpu_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
+{
+  if (c == NULL) return EAR_ERROR;
+#if USE_GPUS
+  verbose_master(2,"%sCPU-GPU  phase%s",COL_BLU,COL_CLR);
+  
+  if (gpus.cpu_gpu_settings != NULL)
+  {
+    return gpus.cpu_gpu_settings(c, my_sig, freqs);
+  }
+  else
+  {
+    gpu_ready = EAR_POLICY_READY;
+  }
+  return EAR_SUCCESS;
+#else
+  gpu_ready = EAR_POLICY_READY;
+#endif
+
+  return EAR_SUCCESS;
+}
+
+
+state_t policy_io_settings(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs)
+{
+	if (c == NULL) return EAR_ERROR;
+
+#if USE_GPUS
+	if (gpus.io_settings != NULL)
+  {
+		return gpus.io_settings(c, my_sig, freqs);
+  }
+  else
+  {
+		gpu_ready = EAR_POLICY_READY;
+	}
+	return EAR_SUCCESS;
+#else
+	gpu_ready = EAR_POLICY_READY;
+#endif
+
+	return EAR_SUCCESS;
+}
+
+
+state_t policy_busy_wait_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
+{
+	if (c == NULL)
+	{
+		return EAR_ERROR;
+	}
+
+#if USE_GPUS
+	if (gpus.busy_wait_settings != NULL)
+  {
+		return gpus.busy_wait_settings(c, my_sig, freqs);
+	}
+  else
+  {
+		gpu_ready = EAR_POLICY_READY;
+	}
+#else
+	gpu_ready = EAR_POLICY_READY;
+#endif
+	
+  return EAR_SUCCESS;
+}
+
 state_t policy_get_default_freq(polctx_t *c, node_freqs_t *freq_set, signature_t *s)
 {
     // TODO: The behaviour is the same done by policy.c
