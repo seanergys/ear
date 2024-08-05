@@ -23,11 +23,16 @@
 #include <unistd.h>
 #include <string.h>
 #include <pthread.h>
+#include <math.h>
+#include <common/config.h>
 #include <common/output/debug.h>
 #include <common/system/monitor.h>
 #include <common/system/symplug.h>
 #include <metrics/common/oneapi.h>
 #include <metrics/gpu/archs/oneapi.h>
+
+#define ONE_API_RELAX 5000
+#define ONE_API_BURST 3000
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static gpu_t          *pool; // change to sysmans_pool
@@ -40,6 +45,7 @@ static ze_handlers_t  *devs;
 static ze_t            ze;
 static int             mode;
 static uint            initialized;
+static double          last_valid_power[MAX_GPUS_SUPPORTED];
 
 #define if_fail(function, action) \
     if ((z = function) != ZE_RESULT_SUCCESS) { \
@@ -117,6 +123,7 @@ state_t gpu_oneapi_init(ctx_t *c)
     if (initialized) {
         return s;
     }
+		memset(last_valid_power, 0, sizeof(double) * MAX_GPUS_SUPPORTED);
     // Initializing pool (pool at 0 is not incorrect)
     timestamp_getfast(&time);
     for (i = 0; i < devs_count; ++i) {
@@ -127,8 +134,8 @@ state_t gpu_oneapi_init(ctx_t *c)
     // Monitor suscription
 	sus = suscription();
 	sus->call_main  = gpu_oneapi_pool;
-	sus->time_relax = 5000;
-	sus->time_burst = 3000;
+	sus->time_relax = ONE_API_RELAX;
+	sus->time_burst = ONE_API_BURST;
 	// Initializing monitoring thread.
 	if (state_ok(s = sus->suscribe(sus))) {
         initialized = 1;
@@ -151,9 +158,11 @@ void gpu_oneapi_set_monitoring_mode(int mode_in)
     mode = mode_in;
 
     if (mode == MONITORING_MODE_IDLE && ok_pool) {
+				debug("GPU:monitor_relax");
         monitor_relax(sus);
     }
     if (mode == MONITORING_MODE_RUN && ok_pool) {
+				debug("GPU:monitor_burst");
         monitor_burst(sus, 0);
     }
 }
@@ -358,10 +367,18 @@ state_t gpu_oneapi_pool(void *p)
     // Time operations
     timestamp_getfast(&time);
     time_diff = (double) timestamp_diff(&time, &pool[0].time, TIME_USECS);
+
+		/* The API can be in relax or burst mode but we use burst as reference to make it easy */
+		/* If time is not enough we just return . time_diff is in usecs*/
+		if (time_diff < (ONE_API_BURST*1000)/2){
+			pthread_mutex_unlock(&lock);
+			return EAR_SUCCESS;
+		}
     time_diff = time_diff / 1000000.0;
 	// Adding to the pool
 	for (dv = 0; dv < devs_count; ++dv)
 	{
+		double gpower;
 		read_single(dv, &current);
 
 		pool[dv].time      = time;
@@ -372,7 +389,17 @@ state_t gpu_oneapi_pool(void *p)
 		pool[dv].util_gpu += current.util_gpu;
 		pool[dv].temp_gpu += current.temp_gpu;
 		pool[dv].temp_mem += current.temp_mem;
-        pool[dv].power_w  += ((current.energy_j - pool[dv].energy_j) / time_diff);
+		gpower             = ((current.energy_j - pool[dv].energy_j) / time_diff);
+		// To add extra robustness
+		if (pool[dv].samples > 1){
+		if (!isnan(gpower) && !isinf(gpower)){
+			// Valid power
+      pool[dv].power_w    += gpower;
+			last_valid_power[dv] = gpower;
+		}else{
+			pool[dv].power_w   += last_valid_power[dv];
+		}
+		}
 		pool[dv].energy_j  = current.energy_j;
 		pool[dv].working   = current.working;
 		pool[dv].correct   = 1;
