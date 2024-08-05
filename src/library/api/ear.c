@@ -1623,16 +1623,14 @@ void ear_init()
 
 		if (is_already_connected(get_ear_tmp(), my_job_id, my_step_id, AID, my_pid))
 		{
-			verbose_master(VEAR_INIT,
-										 "%sWARNING%s (Job/step/process) (%d/%d/%d) already conncted.\n",
-										 COL_RED, COL_CLR, my_job_id, my_step_id, my_pid);
-			return;
+			verbose_info_master("%sWARNING%s (Job/step/process) (%d/%d/%d) seems to be already conncted. Did the process mutate?", COL_RED, COL_CLR, my_job_id, my_step_id, my_pid);
+			my_id = 0;
+		} else {
+			// Getting if the local process is the master or not
+			/* my_id reflects whether we are the master or no my_id == 0 means we are the master *****/
+			/* This function uses a lock only gathered by the master */
+			my_id = get_local_id(node_name);
 		}
-
-		// Getting if the local process is the master or not
-		/* my_id reflects whether we are the master or no my_id == 0 means we are the master *****/
-		/* This function uses a lock only gathered by the master */
-		my_id = get_local_id(node_name);
 	} else
 	{
 		my_id = 0;
