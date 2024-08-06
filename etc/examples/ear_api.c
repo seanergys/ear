@@ -1,27 +1,12 @@
-/*  */
-
-
-#include <ear.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <time.h>
-
-int main(int argc,char *argv[])
-{
- 	unsigned long e_mj=0,t_ms=0,e_mj_init,t_ms_init,e_mj_end,t_ms_end=0;
- 	unsigned long ej,emj,ts,tms,os,oms;
- 	unsigned long ej_e,emj_e,ts_e,tms_e,os_e,oms_e;
-	int i=0;
- 	struct tm *tstamp,*tstamp2,*tstamp3,*tstamp4;
-	char s[128],s2[128],s3[128],s4[128];
-	char node_name[256];
-
-
-	printf("This code has to be executed in a node with EARD running, please, execute with sbatch, srun or equivalent\n");
-	gethostname(node_name, sizeof(node_name));
-	printf("Running in %s\n", node_name);
-	/* Connecting with ear */
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 	if (ear_connect() != EAR_SUCCESS)
  	{
  		printf("error connecting eard\n");
