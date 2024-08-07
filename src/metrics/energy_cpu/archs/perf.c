@@ -1,17 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* * This program has been developped by Energy Aware Solutions S.L. 
-*
-* Copyright © 2024-present Energy Aware Solutions S.L.
-* Contact: support@eas4dc.com
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/*********************************************************************
+ * Copyright (c) 2024 Energy Aware Solutions, S.L
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **********************************************************************/
 
 
 // #define SHOW_DEBUGS 1
