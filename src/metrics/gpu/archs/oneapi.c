@@ -9,6 +9,7 @@
  **************************************************************************/
 
 #define SHOW_DEBUGS 1
+#define VGPU_DATA   3
 
 #include <dlfcn.h>
 #include <stdio.h>
