@@ -37,7 +37,7 @@ static void load_atfork()
 void gpu_nvml_load(gpu_ops_t *ops, int force_api)
 {
     debug("Received API %d", force_api);
-    if (API_IS(force_api, API_NVML)) {
+    if (API_IS(force_api, API_DEFAULT)) {
         ok_pool = 1;
     } else if (API_IS(force_api, API_FREE)) {
         ok_pool = nvml_is_privileged();

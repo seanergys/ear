@@ -56,7 +56,7 @@ void gpu_oneapi_load(gpu_ops_t *ops, int force_api)
 {
     debug("Received API %d", force_api);
     // If api is API_EARD, then EARD provides the gpu_t reading.
-    if (API_IS(force_api, API_ONEAPI)) {
+    if (API_IS(force_api, API_DEFAULT)) {
         ok_pool = 1;
     } else if (API_IS(force_api, API_FREE)) {
         ok_pool = oneapi_is_privileged();
@@ -80,8 +80,7 @@ void gpu_oneapi_load(gpu_ops_t *ops, int force_api)
     apis_set(ops->init,                gpu_oneapi_init);
     apis_set(ops->dispose,             gpu_oneapi_dispose);
     apis_set(ops->set_monitoring_mode, gpu_oneapi_set_monitoring_mode);
-//    apis_pin(ops->read,                gpu_oneapi_read, ok_pool);
-    apis_set(ops->read,                gpu_oneapi_read);
+    apis_pin(ops->read,                gpu_oneapi_read, ok_pool);
     apis_set(ops->read_raw,            gpu_oneapi_read_raw);
 }
 
@@ -224,6 +223,8 @@ static state_t oneapi_read_frequency(int dv, gpu_t *data)
     }
     if (gpu_count > 1) data->freq_gpu /= gpu_count;
     if (mem_count > 1) data->freq_mem /= mem_count;
+		data->freq_gpu = data->freq_gpu * 1000LU; // KHZ
+		data->freq_mem = data->freq_mem * 1000LU; // KHZ
     return EAR_SUCCESS;
 }
 
@@ -299,6 +300,7 @@ static state_t oneapi_read_utilization(int dv, gpu_t *data)
     if (data->util_gpu > 0) {
         data->working = 1;
     }
+		data->util_gpu = ear_min(data->util_gpu, 100);
 	return EAR_SUCCESS;
 }
 
@@ -331,6 +333,19 @@ static state_t oneapi_read_temperature(int dv, gpu_t *data)
         debug("DEV%d PSU DOMAIN%d: %d celsius", dv, s, state.temperature);
     }
     return EAR_SUCCESS;
+}
+
+static void verbose_single(int vl, int dv, gpu_t *gpu)
+{
+
+	verbose(vl, "GPU[%d] energy    %lf", dv, gpu->energy_j);
+	verbose(vl, "GPU[%d] power     %lf", dv, gpu->power_w);
+	verbose(vl, "GPU[%d] util      %lu", dv, gpu->util_gpu);
+	verbose(vl, "GPU[%d] mem util  NA", dv);
+	verbose(vl, "GPU[%d] temp_gpu  %lu",dv, gpu->temp_gpu);
+	verbose(vl, "GPU[%d] temp_mgpu %lu",dv, gpu->temp_mem);
+	verbose(vl, "GPU[%d] freq_gpu   %lu", dv, gpu->freq_gpu);
+	verbose(vl, "GPU[%d] freq_mem   %lu", dv, gpu->freq_mem);
 }
 
 static void read_single(int dv, gpu_t *gpu)
@@ -373,6 +388,8 @@ state_t gpu_oneapi_pool(void *p)
 	{
 		double gpower;
 		read_single(dv, &current);
+
+		verbose_single(VGPU_DATA, dv, &current);
 
 		pool[dv].time      = time;
 		pool[dv].samples  += 1;

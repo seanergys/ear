@@ -1877,6 +1877,10 @@ void powermon_new_job(powermon_app_t *pmapp, ehandler_t *eh, application_t *appI
     pmapp->pc_app_info->num_gpus_used = gpu_mgr_num_gpus();
     for (uint gpuid = 0; gpuid < pmapp->pc_app_info->num_gpus_used ;gpuid++)
         pmapp->pc_app_info->req_gpu_f[gpuid] = my_node_conf->gpu_def_freq;
+
+
+		verbose(VCONF, "GPU set to active monitor mode");
+		gpu_set_monitoring_mode(MONITORING_MODE_RUN);
 #endif
 
     powercap_set_app_req_freq();
@@ -1973,6 +1977,10 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job) {
     {
         if (powermon_is_idle())
         {
+#if USE_GPUS
+					verbose(VCONF, "GPU set to idle monitor mode");
+						gpu_set_monitoring_mode(MONITORING_MODE_IDLE);
+#endif
             powercap_run_to_idle();
 
 #if !NAIVE_SETTINGS_SAVE

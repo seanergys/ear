@@ -33,7 +33,7 @@ static void load_atfork()
 
 void gpu_rsmi_load(gpu_ops_t *ops, int force_api)
 {
-    if (API_IS(force_api, API_RSMI)) {
+    if (API_IS(force_api, API_DEFAULT)) {
         ok_pool = 1;
     } else if (API_IS(force_api, API_FREE)) {
         ok_pool = rsmi_is_privileged();
