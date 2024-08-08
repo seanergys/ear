@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 
 #define _GNU_SOURCE
@@ -687,7 +680,7 @@ void create_shared_regions()
 		sched_local_barrier(path_barrier, ear_my_size);
 	}
 #endif
-  verbose(VPROC_INIT,"EARL[%d ][%d] My node ID is %d/%d", ear_my_rank, getpid(), my_node_id, lib_shared_region->num_processes);
+  verbose(VPROC_INIT,"EARL[%d][%d] My node ID is %d/%d", ear_my_rank, getpid(), my_node_id, lib_shared_region->num_processes);
 
   /* This region is for processes in the same node */
 
@@ -1386,6 +1379,29 @@ static int get_ear_application_id(uint can_synch)
 static struct sigaction term_action, int_action, segv_action;
 static void configure_sigactions()
 {
+	/* Now EARL can be configured to not configure sighandlers to avoid conflicts
+	 * in the case the application wants to handle them. */
+
+	char *py_multiproc_str = ear_getenv(FLAG_PYTHON_MULTIPROC);
+	char *no_sighandle_str = ear_getenv(FLAG_NO_SIGHANDLER);
+
+	long py_multiproc = 0;
+	if (py_multiproc_str) {
+		py_multiproc = strtol(py_multiproc_str, NULL, 10);
+	}
+
+	long no_sighandle = 0;
+	if (no_sighandle_str) {
+		no_sighandle = strtol(no_sighandle_str, NULL, 10);
+	}
+
+	/* In the case some of the above env vars were exported,
+	 * we return and no signal handling is performed. */
+
+	if (py_multiproc || no_sighandle) {
+		return;
+	}
+
 	// SIGTERM action for job cancellation
 	sigemptyset(&term_action.sa_mask);
 	term_action.sa_handler = ear_lib_sig_handler;
@@ -1402,7 +1418,7 @@ static void configure_sigactions()
   sigaction(SIGPIPE, &int_action, NULL);
 
 
-  verbose(VPROC_INIT,"EARL[%d] SIGSEGV and SIGBUS sig handler defined", getpid());
+  verbose(VPROC_INIT, "EARL[%d] SIGSEGV and SIGBUS sig handler defined", getpid());
   // SIGSEGV
   sigemptyset(&segv_action.sa_mask);
   segv_action.sa_handler = ear_lib_sig_handler;
@@ -1469,7 +1485,7 @@ void ear_init()
 
   main_pid = syscall(SYS_gettid);
 
-	verbose(VPROC_INIT, "%s EAR [%d] init .......................................%s", COL_BLU, main_pid, COL_CLR);
+	verbose(VPROC_INIT, "%s EAR [%d][%d] init .......................................%s", COL_BLU, getpid(), main_pid, COL_CLR);
 
   if (ear_lib_initialized)
 	{
@@ -2366,7 +2382,8 @@ void ear_finalize(int exit_status)
 
 				if (fake_error) verbose_master(0, "Warning, executing fake errors in ear_finalize : %u", fake_error);
 		
-				if (fake_error){	
+				if (fake_error)
+				{
 				/* This use case forces sintheticaly a master proces exiting because an error. The
  				 * objective is to test the EARL is not blocking. We just mark all the masters as 
  				 * cancelled */ 	
@@ -3096,21 +3113,30 @@ void ear_fork_epilog()
 
 static void  reset_earl_environment()
 {
-  ear_lib_initialized = 0;
-	/* This lock is used per-process, we unlock just in case it was already locked */
-	ear_unlock(&earl_th_locks);
-	first_application = 0;
-  monitor_dispose();
-  metrics_lib_reset();
-  report_dispose(&rep_id);
-  release_shared_memory_areas();
-	eards_new_process_disconnect();
+	verbose(0, "[%d] Resetting env", getpid());
+	if (ear_lib_initialized)
+	{
+		ear_lib_initialized = 0;
+		/* This lock is used per-process, we unlock just in case it was already locked */
+		ear_unlock(&earl_th_locks);
+		first_application = 0;
+		verbose(0, "[%d] monitor dispose", getpid());
+		monitor_dispose();
+		verbose(0, "[%d] metrics lib reset", getpid());
+		metrics_lib_reset();
+		verbose(0, "[%d] report dispose", getpid());
+		report_dispose(&rep_id);
+		verbose(0, "[%d] release shared mem", getpid());
+		release_shared_memory_areas();
+		verbose(0, "[%d] disconnect", getpid());
+		eards_new_process_disconnect();
+	}
 }
 
 
 void ear_fork_new_child()
 {
-  verbose(2,"EAR[%d] : New process %d!", getppid(), getpid());
+  verbose(0, "EAR[%d]: New process %d!", getppid(), getpid());
   reset_earl_environment();
   ear_init();
 
@@ -3118,8 +3144,8 @@ void ear_fork_new_child()
 
 void ear_constructor()
 {
-    debug("Calling ear_init in ear_constructor %d",getpid());
-    //verbose(WF_SUPPORT_VERB,"Calling ear_init in ear_constructor %d",getpid());
+    debug("Calling ear_init in ear_constructor %d", getpid());
+    verbose(WF_SUPPORT_VERB,"Calling ear_init in ear_constructor %d", getpid());
     ear_init();
     pthread_atfork(ear_fork_prolog, ear_fork_epilog, ear_fork_new_child);
 }

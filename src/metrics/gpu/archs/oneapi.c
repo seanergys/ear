@@ -1,21 +1,15 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-*
-* BSC Contact   mailto:ear-support@bsc.es
-*
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 #define SHOW_DEBUGS 1
+#define VGPU_DATA   3
 
 #include <dlfcn.h>
 #include <stdio.h>
@@ -23,11 +17,16 @@
 #include <unistd.h>
 #include <string.h>
 #include <pthread.h>
+#include <math.h>
+#include <common/config.h>
 #include <common/output/debug.h>
 #include <common/system/monitor.h>
 #include <common/system/symplug.h>
 #include <metrics/common/oneapi.h>
 #include <metrics/gpu/archs/oneapi.h>
+
+#define ONE_API_RELAX 5000
+#define ONE_API_BURST 3000
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static gpu_t          *pool; // change to sysmans_pool
@@ -40,6 +39,7 @@ static ze_handlers_t  *devs;
 static ze_t            ze;
 static int             mode;
 static uint            initialized;
+static double          last_valid_power[MAX_GPUS_SUPPORTED];
 
 #define if_fail(function, action) \
     if ((z = function) != ZE_RESULT_SUCCESS) { \
@@ -57,7 +57,7 @@ void gpu_oneapi_load(gpu_ops_t *ops, int force_api)
 {
     debug("Received API %d", force_api);
     // If api is API_EARD, then EARD provides the gpu_t reading.
-    if (API_IS(force_api, API_ONEAPI)) {
+    if (API_IS(force_api, API_DEFAULT)) {
         ok_pool = 1;
     } else if (API_IS(force_api, API_FREE)) {
         ok_pool = oneapi_is_privileged();
@@ -81,8 +81,7 @@ void gpu_oneapi_load(gpu_ops_t *ops, int force_api)
     apis_set(ops->init,                gpu_oneapi_init);
     apis_set(ops->dispose,             gpu_oneapi_dispose);
     apis_set(ops->set_monitoring_mode, gpu_oneapi_set_monitoring_mode);
-//    apis_pin(ops->read,                gpu_oneapi_read, ok_pool);
-    apis_set(ops->read,                gpu_oneapi_read);
+    apis_pin(ops->read,                gpu_oneapi_read, ok_pool);
     apis_set(ops->read_raw,            gpu_oneapi_read_raw);
 }
 
@@ -117,6 +116,7 @@ state_t gpu_oneapi_init(ctx_t *c)
     if (initialized) {
         return s;
     }
+		memset(last_valid_power, 0, sizeof(double) * MAX_GPUS_SUPPORTED);
     // Initializing pool (pool at 0 is not incorrect)
     timestamp_getfast(&time);
     for (i = 0; i < devs_count; ++i) {
@@ -127,8 +127,8 @@ state_t gpu_oneapi_init(ctx_t *c)
     // Monitor suscription
 	sus = suscription();
 	sus->call_main  = gpu_oneapi_pool;
-	sus->time_relax = 5000;
-	sus->time_burst = 3000;
+	sus->time_relax = ONE_API_RELAX;
+	sus->time_burst = ONE_API_BURST;
 	// Initializing monitoring thread.
 	if (state_ok(s = sus->suscribe(sus))) {
         initialized = 1;
@@ -151,9 +151,11 @@ void gpu_oneapi_set_monitoring_mode(int mode_in)
     mode = mode_in;
 
     if (mode == MONITORING_MODE_IDLE && ok_pool) {
+				debug("GPU:monitor_relax");
         monitor_relax(sus);
     }
     if (mode == MONITORING_MODE_RUN && ok_pool) {
+				debug("GPU:monitor_burst");
         monitor_burst(sus, 0);
     }
 }
@@ -222,6 +224,8 @@ static state_t oneapi_read_frequency(int dv, gpu_t *data)
     }
     if (gpu_count > 1) data->freq_gpu /= gpu_count;
     if (mem_count > 1) data->freq_mem /= mem_count;
+		data->freq_gpu = data->freq_gpu * 1000LU; // KHZ
+		data->freq_mem = data->freq_mem * 1000LU; // KHZ
     return EAR_SUCCESS;
 }
 
@@ -297,6 +301,7 @@ static state_t oneapi_read_utilization(int dv, gpu_t *data)
     if (data->util_gpu > 0) {
         data->working = 1;
     }
+		data->util_gpu = ear_min(data->util_gpu, 100);
 	return EAR_SUCCESS;
 }
 
@@ -331,6 +336,19 @@ static state_t oneapi_read_temperature(int dv, gpu_t *data)
     return EAR_SUCCESS;
 }
 
+static void verbose_single(int vl, int dv, gpu_t *gpu)
+{
+
+	verbose(vl, "GPU[%d] energy    %lf", dv, gpu->energy_j);
+	verbose(vl, "GPU[%d] power     %lf", dv, gpu->power_w);
+	verbose(vl, "GPU[%d] util      %lu", dv, gpu->util_gpu);
+	verbose(vl, "GPU[%d] mem util  NA", dv);
+	verbose(vl, "GPU[%d] temp_gpu  %lu",dv, gpu->temp_gpu);
+	verbose(vl, "GPU[%d] temp_mgpu %lu",dv, gpu->temp_mem);
+	verbose(vl, "GPU[%d] freq_gpu   %lu", dv, gpu->freq_gpu);
+	verbose(vl, "GPU[%d] freq_mem   %lu", dv, gpu->freq_mem);
+}
+
 static void read_single(int dv, gpu_t *gpu)
 {
 	// Cleanin
@@ -358,11 +376,21 @@ state_t gpu_oneapi_pool(void *p)
     // Time operations
     timestamp_getfast(&time);
     time_diff = (double) timestamp_diff(&time, &pool[0].time, TIME_USECS);
+
+		/* The API can be in relax or burst mode but we use burst as reference to make it easy */
+		/* If time is not enough we just return . time_diff is in usecs*/
+		if (time_diff < (ONE_API_BURST*1000)/2){
+			pthread_mutex_unlock(&lock);
+			return EAR_SUCCESS;
+		}
     time_diff = time_diff / 1000000.0;
 	// Adding to the pool
 	for (dv = 0; dv < devs_count; ++dv)
 	{
+		double gpower;
 		read_single(dv, &current);
+
+		verbose_single(VGPU_DATA, dv, &current);
 
 		pool[dv].time      = time;
 		pool[dv].samples  += 1;
@@ -372,7 +400,17 @@ state_t gpu_oneapi_pool(void *p)
 		pool[dv].util_gpu += current.util_gpu;
 		pool[dv].temp_gpu += current.temp_gpu;
 		pool[dv].temp_mem += current.temp_mem;
-        pool[dv].power_w  += ((current.energy_j - pool[dv].energy_j) / time_diff);
+		gpower             = ((current.energy_j - pool[dv].energy_j) / time_diff);
+		// To add extra robustness
+		if (pool[dv].samples > 1){
+		if (!isnan(gpower) && !isinf(gpower)){
+			// Valid power
+      pool[dv].power_w    += gpower;
+			last_valid_power[dv] = gpower;
+		}else{
+			pool[dv].power_w   += last_valid_power[dv];
+		}
+		}
 		pool[dv].energy_j  = current.energy_j;
 		pool[dv].working   = current.working;
 		pool[dv].correct   = 1;
