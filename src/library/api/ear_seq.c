@@ -8,12 +8,12 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-
 #include <stdio.h>
 void ear_init()
 {
 	printf("NO_FUNCIONA\n");
 }
+
 void ear_finalize()
 {
 	printf("NO_FUNCIONA\n");

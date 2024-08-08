@@ -8,5 +8,5 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-void __attribute__((weak))  ear_init();
-void __attribute__((weak))  ear_finalize();
+void __attribute__((weak)) ear_init();
+void __attribute__((weak)) ear_finalize();
