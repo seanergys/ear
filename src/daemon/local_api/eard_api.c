@@ -53,6 +53,13 @@
 
 #define VPROC_LAPI	3
 
+/* Below macros define the indices to store/recover fds to/from the saved array used in eards_save_connection and eards_recover_connection. */
+#define ear_fd_req_global_idx 0
+#define ear_fd_req_idx 1
+#define ear_fd_ack_idx 2
+
+#define FDS_FILENAME ".eard_connection_info"
+
 static int connecting = 0;
 
 /* These pipes are used for local communication between ear library and eard */
@@ -338,8 +345,8 @@ int eards_connect(application_t *my_app, ulong lid)
      return_print(EAR_ERROR, "Error when building the EAR communicator directory path name.");
 	}
 	#if 0
-
-
+	// TODO: Remove as we didn't annotate why we left below code
+	// disabled.
 	/* We must first create the directory of this application */
 	if (state_fail(create_app_directory(base_path)))
 	{
@@ -518,6 +525,48 @@ void eards_disconnect()
 
 }
 
+state_t eards_save_connection(char *tmp, application_t *my_app, ulong lid)
+{
+	int my_id = create_ID(my_app->job.id,my_app->job.step_id);
+
+	// Create the base path for storing the connection info, i.e., tmp/id/local_id
+	char base_path[SZ_PATH_INCOMPLETE];
+	if (state_fail(create_base_path(base_path, sizeof(base_path), tmp, (uint) my_id, (uint) my_app->job.local_id)))
+	{
+		return_msg(EAR_ERROR, "Creating the base path.");
+	}
+
+	// Store the communication channels.
+	int fds[3];
+	fds[ear_fd_req_global_idx] = ear_fd_req_global;
+	fds[ear_fd_req_idx] = ear_fd_req;
+	fds[ear_fd_ack_idx] = ear_fd_ack;
+	
+	// Open the storage file
+	char fds_file_pathname[SZ_PATH];
+	snprintf(fds_file_pathname, sizeof(fds_file_pathname), "%s/%s", base_path, FDS_FILENAME);
+
+	int fd_flags = O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC;
+	int fd_mode = S_IRUSR | S_IWUSR | S_IRGRP;
+	int fds_file = open(fds_file_pathname,  fd_flags, fd_mode);
+	if (fds_file < 0)
+	{
+		verbose(2, "%sWarning%s FDs file couldn't be opened: %d (%s)", COL_YLW, COL_CLR, errno, strerror(errno));
+		return_msg(EAR_ERROR, "FDs file could not be opened.");
+	}
+
+	// Write the communication info
+	if (write(fds_file, fds, sizeof(fds)) < 0) {
+		verbose(2, "%sWarning%s FDs file couldn't be opened: %d (%s)", COL_YLW, COL_CLR, errno, strerror(errno));
+		close(fds_file);
+		return_msg(EAR_ERROR, "FDs file could not be opened.");
+	}
+
+	close(fds_file);
+
+	return EAR_SUCCESS;
+}
+
 //////////////// SYSTEM REQUESTS
 ulong sendack(char *send_buf, size_t send_size, char *ack_buf, size_t ack_size, const char *description, int retsuc)
 {
@@ -676,11 +725,6 @@ int eards_read_rapl(unsigned long long *values)
     init_service(READ_RAPL);
     return (int) sendack((char *) &req, sizeof(req), (char *) values, rapl_size, "RAPL read", 1);
 }
-
-
-
-
-
 
 static state_t create_base_path(char *base_path, size_t base_path_sz, char *tmp_path, uint job_step_id, uint app_local_id)
 {

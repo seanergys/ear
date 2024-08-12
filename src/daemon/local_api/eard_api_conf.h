@@ -20,6 +20,7 @@
 
 #define _GNU_SOURCE
 #include <sched.h>
+#include <common/states.h>
 #include <common/types/job.h>
 #include <common/types/loop.h>
 #include <common/types/generic.h>
@@ -91,5 +92,8 @@ void eards_disconnect();
 
 // Closes the FDs and sets the status to not connected. To be used only with multiprocess
 void eards_new_process_disconnect();
+
+/** Saves EARD connection info to be restored in the case the client lose this info. */
+state_t eards_save_connection(char *tmp, application_t *my_app, ulong lid);
 
 #endif //EARD_LOCAL_API_INTERNS_H
