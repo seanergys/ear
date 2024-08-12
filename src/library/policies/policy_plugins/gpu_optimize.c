@@ -190,7 +190,7 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
   
   ulong *new_freq=freqs->gpu_freq;
 
-#if USE_GPUS if 
+#if USE_GPUS 
 
 #if SHOW_DEBUGS
 	debug("apply: num_gpus %d",my_sig->gpu_sig.num_gpus);
