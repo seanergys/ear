@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 #include <errno.h>
 #include <netdb.h>
@@ -284,8 +277,7 @@ void usage(char *app)
 			"\n\t--set-max-freq \t[newfreq]\t\t->sets the maximum frequency"\
 			"\n\t--set-powercap \t[new_cap]\t\t->sets the powercap of all nodes to the given value. A node can be specified"\
 			"\n\t\t\t\t\t\t\t after the value to only target said node."\
-			"\n\t--hosts \t[hostlist]\t\t->sends the command only to the specified hosts. Only works with status, power_status,"
-			"\n\t\t\t\t\t\t\t --power and --set-powercap"\
+			"\n\t--hosts \t[hostlist]\t\t->sends the command only to the specified hosts."\
 			"\n\t--conf-path \t[path_name]\t\t->specifies the ear.conf path. [default: $EAR_ETC/ear/ear.conf]"
 			"\n\t--restore-conf \t\t\t\t->restores the configuration for all nodes"\
 			"\n\t--active-only \t\t\t\t->supresses inactive nodes from the output in hardware status."\

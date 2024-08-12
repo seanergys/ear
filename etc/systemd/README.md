@@ -1,3 +1,8 @@
+# eard.service
+
+Definitions of fields in `eard.service.in` file.
+
+```
 [Unit]
 Description=EARD - Energy Aware Runtime node daemon # OK
 ConditionPathExists=@tmpdir@ # OK
@@ -6,6 +11,7 @@ ConditionPathExists=@tmpdir@ # OK
 Type=simple # OK, hay un tipo socket que también es de lo más interesante, aunque no sería para este	
 EnvironmentFile=@destdir@/etc/slurm/ear.conf # Provisional, hasta que tengamos el nuevo ear.conf
 EnvironmentFile=@destdir@/etc/slurm/ear.link # Deprecado
+
 ExecStart=@destdir@/sbin/eard 1 $EAR_TMP 0 # Provisional, cuando tengamos el nuevo ear.conf los parámetros no serán necesarios
 ExecReload=/bin/kill -HUP $MAINPID # OK
 ExecStop=/bin/kill -TERM $MAINPID # OK
@@ -30,4 +36,4 @@ After=slurmd.service # Para arrancar después de SLURMD.
 OnFailure= #
 Documentation= #
 NotifyAccess= #
-
+```

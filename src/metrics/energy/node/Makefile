@@ -9,7 +9,6 @@ ener_OBJS = \
     energy_dcmi.o \
     energy_sd650.o \
     energy_inm_power.o \
-    energy_SD650N_V2.o \
     energy_dummy.o \
     energy_cpu_gpu.o \
     energy_sd650_power.o \
@@ -37,7 +36,6 @@ ener_BINS = \
     energy_dcmi.so \
     energy_sd650.so \
     energy_inm_power.so \
-    energy_SD650N_V2.so \
     energy_cpu_gpu.so \
     energy_dummy.so \
     energy_sd650_power.so  \

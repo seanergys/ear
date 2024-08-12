@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 
 #define _GNU_SOURCE
@@ -1884,6 +1877,10 @@ void powermon_new_job(powermon_app_t *pmapp, ehandler_t *eh, application_t *appI
     pmapp->pc_app_info->num_gpus_used = gpu_mgr_num_gpus();
     for (uint gpuid = 0; gpuid < pmapp->pc_app_info->num_gpus_used ;gpuid++)
         pmapp->pc_app_info->req_gpu_f[gpuid] = my_node_conf->gpu_def_freq;
+
+
+		verbose(VCONF, "GPU set to active monitor mode");
+		gpu_set_monitoring_mode(MONITORING_MODE_RUN);
 #endif
 
     powercap_set_app_req_freq();
@@ -1980,6 +1977,10 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job) {
     {
         if (powermon_is_idle())
         {
+#if USE_GPUS
+					verbose(VCONF, "GPU set to idle monitor mode");
+						gpu_set_monitoring_mode(MONITORING_MODE_IDLE);
+#endif
             powercap_run_to_idle();
 
 #if !NAIVE_SETTINGS_SAVE
