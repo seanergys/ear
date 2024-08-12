@@ -36,17 +36,15 @@ typedef struct coefficient_gpu
     ulong pstate;
     uint available;
     /* For power projection */
-    double A;
-    double B;
-    double C;
-    double D;
-    double E;
+    double A0;
+    double A1;
+    double A2;
+    double A3;
     /* For time projection */
-    double F;
-    double G;
-    double H;
-    double I;
-    double J;
+    double B0;
+    double B1;
+    double B2;
+    double B3;
 } coefficient_gpu_t;
 
 

@@ -110,4 +110,6 @@ void dcgmi_lib_compute_gpu_gflops(dcgmi_sig_t *dcgmi_sig, signature_t *metrics);
 state_t dcgmi_lib_get_event_info(dcgm_event_idx_t event_id, int (*event_info_dst)[2]);
 
 
+float gflops_cycle(dcgmi_sig_t *dcgmi_sig, uint gpu_idx);
+
 #endif // _DCGMI_LIB_H_
