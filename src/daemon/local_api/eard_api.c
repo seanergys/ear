@@ -1,4 +1,3 @@
-/* *INDENT-OFF* */
 /*
 *
 * This program is part of the EAR software.
@@ -54,14 +53,12 @@
 
 #define VPROC_LAPI	3
 
-/* *INDENT-ON* */
 /* Below macros define the indices to store/recover fds to/from the saved array used in eards_save_connection and eards_recover_connection. */
 #define ear_fd_req_global_idx 0
 #define ear_fd_req_idx 1
 #define ear_fd_ack_idx 2
 
 #define FDS_FILENAME ".eard_connection_info"
-/* *INDENT-OFF* */
 
 static int connecting = 0;
 
@@ -528,7 +525,6 @@ void eards_disconnect()
 
 }
 
-/* *INDENT-ON* */
 state_t eards_save_connection(char *tmp, application_t * my_app, ulong lid)
 {
 	int my_id = create_ID(my_app->job.id, my_app->job.step_id);
@@ -562,17 +558,59 @@ state_t eards_save_connection(char *tmp, application_t * my_app, ulong lid)
 	}
 	// Write the communication info
 	if (write(fds_file, fds, sizeof(fds)) < 0) {
-		verbose(2, "%sWarning%s FDs file couldn't be opened: %d (%s)",
+		verbose(2, "%sWarning%s FDs file couldn't be written: %d (%s)",
 			COL_YLW, COL_CLR, errno, strerror(errno));
 		close(fds_file);
-		return_msg(EAR_ERROR, "FDs file could not be opened.");
+		return_msg(EAR_ERROR, "FDs file could not be written.");
 	}
 
 	close(fds_file);
 
 	return EAR_SUCCESS;
 }
-/* *INDENT-OFF* */
+
+state_t eards_recover_connection(char *tmp, application_t * my_app, ulong lid)
+{
+	int my_id = create_ID(my_app->job.id, my_app->job.step_id);
+
+	// Create the base path for recovering the connection info, i.e., tmp/id/local_id
+	char base_path[SZ_PATH_INCOMPLETE];
+	if (state_fail
+	    (create_base_path
+	     (base_path, sizeof(base_path), tmp, (uint) my_id,
+	      (uint) my_app->job.local_id))) {
+		return_msg(EAR_ERROR, "Creating the base path.");
+	}
+	// Open the storage file
+	char fds_file_pathname[SZ_PATH];
+	snprintf(fds_file_pathname, sizeof(fds_file_pathname), "%s/%s",
+		 base_path, FDS_FILENAME);
+
+	int fd_flags = O_RDONLY | O_CLOEXEC;
+	int fds_file = open(fds_file_pathname, fd_flags, 0);
+	if (fds_file < 0) {
+		verbose(2, "%sWarning%s FDs file couldn't be opened: %d (%s)",
+			COL_YLW, COL_CLR, errno, strerror(errno));
+		return_msg(EAR_ERROR, "FDs file could not be opened.");
+	}
+	// Read the communication info
+	int fds[3];
+	if (read(fds_file, fds, sizeof(fds)) < 0) {
+		verbose(2, "%sWarning%s FDs file couldn't be read: %d (%s)",
+			COL_YLW, COL_CLR, errno, strerror(errno));
+		close(fds_file);
+		return_msg(EAR_ERROR, "FDs file could not be read.");
+	}
+	// Store communication info
+	ear_fd_req_global = fds[ear_fd_req_global_idx];
+	ear_fd_req = fds[ear_fd_req_idx];
+	ear_fd_ack = fds[ear_fd_ack_idx];
+
+	app_connected = 1;
+
+	close(fds_file);
+	return EAR_SUCCESS;
+}
 
 //////////////// SYSTEM REQUESTS
 ulong sendack(char *send_buf, size_t send_size, char *ack_buf, size_t ack_size, const char *description, int retsuc)
