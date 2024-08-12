@@ -277,8 +277,7 @@ void usage(char *app)
 			"\n\t--set-max-freq \t[newfreq]\t\t->sets the maximum frequency"\
 			"\n\t--set-powercap \t[new_cap]\t\t->sets the powercap of all nodes to the given value. A node can be specified"\
 			"\n\t\t\t\t\t\t\t after the value to only target said node."\
-			"\n\t--hosts \t[hostlist]\t\t->sends the command only to the specified hosts. Only works with status, power_status,"
-			"\n\t\t\t\t\t\t\t --power and --set-powercap"\
+			"\n\t--hosts \t[hostlist]\t\t->sends the command only to the specified hosts."\
 			"\n\t--conf-path \t[path_name]\t\t->specifies the ear.conf path. [default: $EAR_ETC/ear/ear.conf]"
 			"\n\t--restore-conf \t\t\t\t->restores the configuration for all nodes"\
 			"\n\t--active-only \t\t\t\t->supresses inactive nodes from the output in hardware status."\
