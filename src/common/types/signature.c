@@ -95,21 +95,32 @@ void signature_print_fd(int fd, signature_t *sig, char is_extended, int single_c
     	for (int j = 0; j < num_gpu-1; ++j) dprintf(fd, "%lu%c", sig->gpu_sig.gpu_data[j].GPU_mem_util, sep);
 			dprintf(fd, "%lu", sig->gpu_sig.gpu_data[num_gpu-1].GPU_mem_util);
 #if WF_SUPPORT
+			// GPU Flops
 			dprintf(fd, ";");
     	for (int j = 0; j < num_gpu-1; ++j) dprintf(fd, "%f%c", sig->gpu_sig.gpu_data[j].GPU_GFlops, sep);
 			dprintf(fd, "%f", sig->gpu_sig.gpu_data[num_gpu-1].GPU_GFlops);
+			// GPU temp
+			dprintf(fd, ";");
+    	for (int j = 0; j < num_gpu-1; ++j) dprintf(fd, "%lu%c", sig->gpu_sig.gpu_data[j].GPU_temp, sep);
+			dprintf(fd, "%f", sig->gpu_sig.gpu_data[num_gpu-1].GPU_temp);
+			// GPU temp mem
+			dprintf(fd, ";");
+    	for (int j = 0; j < num_gpu-1; ++j) dprintf(fd, "%lu%c", sig->gpu_sig.gpu_data[j].GPU_temp_mem, sep);
+			dprintf(fd, "%f", sig->gpu_sig.gpu_data[num_gpu-1].GPU_temp_mem);
 #endif
         } else {
 
             for (int j = 0; j < num_gpu; ++j) {
 #if WF_SUPPORT
-                dprintf(fd, ";%lf;%lu;%lu;%lu;%lu;%f",
+                dprintf(fd, ";%lf;%lu;%lu;%lu;%lu;%f;%lu;%lu",
                         sig->gpu_sig.gpu_data[j].GPU_power,
                         sig->gpu_sig.gpu_data[j].GPU_freq,
                         sig->gpu_sig.gpu_data[j].GPU_mem_freq,
                         sig->gpu_sig.gpu_data[j].GPU_util,
                         sig->gpu_sig.gpu_data[j].GPU_mem_util,
-                        sig->gpu_sig.gpu_data[j].GPU_GFlops);
+                        sig->gpu_sig.gpu_data[j].GPU_GFlops,
+												sig->gpu_sig.gpu_data[j].GPU_temp,
+												sig->gpu_sig.gpu_data[j].GPU_temp_mem);
 #else
                 dprintf(fd, ";%lf;%lu;%lu;%lu;%lu",
                         sig->gpu_sig.gpu_data[j].GPU_power,
@@ -257,6 +268,8 @@ void acum_sig_metrics(signature_t *dst,signature_t *src)
         dst->gpu_sig.gpu_data[i].GPU_mem_util += src->gpu_sig.gpu_data[i].GPU_mem_util;
 #if WF_SUPPORT
         dst->gpu_sig.gpu_data[i].GPU_GFlops 	+= src->gpu_sig.gpu_data[i].GPU_GFlops;
+        dst->gpu_sig.gpu_data[i].GPU_temp 	  += src->gpu_sig.gpu_data[i].GPU_temp;
+        dst->gpu_sig.gpu_data[i].GPU_temp_mem += src->gpu_sig.gpu_data[i].GPU_temp_mem;
 #endif
     }
 #endif
@@ -336,6 +349,8 @@ state_t ssig_accumulate(ssig_t *dst_ssig, ssig_t *src_ssig)
         dst_ssig->gpu_sig.gpu_data[i].GPU_mem_util += src_ssig->gpu_sig.gpu_data[i].GPU_mem_util;
 #if WF_SUPPORT
         dst_ssig->gpu_sig.gpu_data[i].GPU_GFlops   += src_ssig->gpu_sig.gpu_data[i].GPU_GFlops;
+        dst_ssig->gpu_sig.gpu_data[i].GPU_temp     += src_ssig->gpu_sig.gpu_data[i].GPU_temp;
+        dst_ssig->gpu_sig.gpu_data[i].GPU_temp_mem += src_ssig->gpu_sig.gpu_data[i].GPU_temp_mem;
 #endif
     }
 #endif
@@ -414,6 +429,8 @@ void compute_avg_sig(signature_t *dst,signature_t *src,int nums)
         dst->gpu_sig.gpu_data[i].GPU_mem_util = src->gpu_sig.gpu_data[i].GPU_mem_util/nums;
 #if WF_SUPPORT
         dst->gpu_sig.gpu_data[i].GPU_GFlops   = src->gpu_sig.gpu_data[i].GPU_GFlops/nums;
+        dst->gpu_sig.gpu_data[i].GPU_temp     = src->gpu_sig.gpu_data[i].GPU_temp/nums;
+        dst->gpu_sig.gpu_data[i].GPU_temp_mem = src->gpu_sig.gpu_data[i].GPU_temp_mem/nums;
 #endif
     }
 #endif
@@ -572,6 +589,8 @@ static void gpu_signature_serialize(serial_buffer_t *b, gpu_signature_t *gpu_sig
         serial_dictionary_push_auto(b, gpu_data->GPU_mem_util);
 #if WF_SUPPORT
         serial_dictionary_push_auto(b, gpu_data->GPU_GFlops);
+        serial_dictionary_push_auto(b, gpu_data->GPU_temp);
+        serial_dictionary_push_auto(b, gpu_data->GPU_temp_mem);
 #endif
     }
 }
@@ -618,6 +637,8 @@ static void gpu_signature_deserialize(serial_buffer_t *b, gpu_signature_t *gpu_s
         serial_dictionary_pop_auto(b, gpu_data->GPU_mem_util);
 #if WF_SUPPORT
         serial_dictionary_pop_auto(b, gpu_data->GPU_GFlops);
+        serial_dictionary_pop_auto(b, gpu_data->GPU_temp);
+        serial_dictionary_pop_auto(b, gpu_data->GPU_temp_mem);
 #endif
     }
 }

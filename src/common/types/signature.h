@@ -35,6 +35,8 @@ typedef struct gpu_app {
   ulong  GPU_mem_util;
 #if WF_SUPPORT
 	float  GPU_GFlops;
+	ulong  GPU_temp;
+	ulong  GPU_temp_mem;
 #endif
 } gpu_app_t;
 

@@ -165,7 +165,7 @@ int create_app_header(char * header, char *path, uint num_gpus, char is_extended
 #if USE_GPUS
 #if WF_SUPPORT
 		char *HEADER_GPU_SIG = ";GPU%d_POWER_W;GPU%d_FREQ_KHZ;GPU%d_MEM_FREQ_KHZ;"\
-														"GPU%d_UTIL_PERC;GPU%d_MEM_UTIL_PERC;GPU%d_GFLOPS";
+														"GPU%d_UTIL_PERC;GPU%d_MEM_UTIL_PERC;GPU%d_GFLOPS;GPU%d_TEMP;GPU%d_MEMTEMP";
 #else
 		char *HEADER_GPU_SIG = ";GPU%d_POWER_W;GPU%d_FREQ_KHZ;GPU%d_MEM_FREQ_KHZ;"\
 														"GPU%d_UTIL_PERC;GPU%d_MEM_UTIL_PERC";

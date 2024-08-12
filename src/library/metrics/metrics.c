@@ -1807,6 +1807,10 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
             metrics->gpu_sig.gpu_data[p].GPU_mem_freq = gpu_metrics_diff[sign_app_loop_idx][p].freq_mem;
             metrics->gpu_sig.gpu_data[p].GPU_util     = gpu_metrics_diff[sign_app_loop_idx][p].util_gpu;
             metrics->gpu_sig.gpu_data[p].GPU_mem_util = gpu_metrics_diff[sign_app_loop_idx][p].util_mem;
+#if WF_SUPPORT
+            metrics->gpu_sig.gpu_data[p].GPU_temp     = gpu_metrics_diff[sign_app_loop_idx][p].temp_gpu;
+            metrics->gpu_sig.gpu_data[p].GPU_temp_mem = gpu_metrics_diff[sign_app_loop_idx][p].temp_mem;
+#endif
 						total_gpu_util  += metrics->gpu_sig.gpu_data[p].GPU_util;
 			      total_gpu_power += metrics->gpu_sig.gpu_data[p].GPU_power;
         }
@@ -2658,6 +2662,10 @@ state_t metrics_new_iteration(signature_t *sig)
             sig->gpu_sig.gpu_data[i].GPU_mem_freq = gpu_metrics_busy_diff[i].freq_mem;
             sig->gpu_sig.gpu_data[i].GPU_util     = gpu_metrics_busy_diff[i].util_gpu;
             sig->gpu_sig.gpu_data[i].GPU_mem_util = gpu_metrics_busy_diff[i].util_mem;
+#if WF_SUPPORT
+						sig->gpu_sig.gpu_data[i].GPU_temp     = gpu_metrics_busy_diff[i].temp_gpu;
+						sig->gpu_sig.gpu_data[i].GPU_temp_mem = gpu_metrics_busy_diff[i].temp_mem;
+#endif
         }
     }
 #endif // USE_GPUS
