@@ -86,10 +86,7 @@ void eards_disconnect();
 // Closes the FDs and sets the status to not connected. To be used only with multiprocess
 void eards_new_process_disconnect();
 
-/** Saves EARD connection info to be restored in the case the client lose this info. */
-state_t eards_save_connection(char *tmp, application_t * my_app, ulong lid);
-
 /** Recovers EARD connection info in the case the client lose this info. */
-state_t eards_recover_connection(char *tmp, application_t * my_app, ulong lid);
+state_t eards_recover_connection(char *tmp, ulong job_id, ulong step_id, ulong local_id);
 
 #endif				//EARD_LOCAL_API_INTERNS_H

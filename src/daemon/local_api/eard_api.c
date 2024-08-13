@@ -89,6 +89,9 @@ static serial_buffer_t b;
 static state_t create_base_path(char *base_path, size_t base_path_sz, char *tmp_path, uint job_step_id, uint app_local_id);
 // static state_t create_app_directory(char *path);
 
+/** Saves EARD connection info to be restored in the case the client lose this info. */
+static state_t eards_save_connection(char *tmp, ulong job_id, ulong step_id, ulong local_id);
+
 int eards_read(int fd,char *buff,int size, uint wait_mode)
 {
 #if USE_NON_BLOCKING_IO
@@ -474,6 +477,11 @@ int eards_connect(application_t *my_app, ulong lid)
     serial_alloc(&b, SIZE_8KB);
 		connecting = 0;
 
+		if (state_fail(eards_save_connection(ear_tmp, my_app->job.id, my_app->job.step_id, my_app->job.local_id))) {
+			verbose(2, "%sWarning%s Connection info saving failed: %s",
+							COL_YLW, COL_CLR, state_msg);
+		}
+
     return EAR_SUCCESS;
 }
 
@@ -518,16 +526,15 @@ void eards_disconnect()
 
 }
 
-state_t eards_save_connection(char *tmp, application_t * my_app, ulong lid)
+static state_t eards_save_connection(char *tmp, ulong job_id, ulong step_id, ulong local_id)
 {
-	int my_id = create_ID(my_app->job.id, my_app->job.step_id);
+	int my_id = create_ID(job_id, step_id);
 
 	// Create the base path for storing the connection info, i.e., tmp/id/local_id
 	char base_path[SZ_PATH_INCOMPLETE];
 	if (state_fail
 	    (create_base_path
-	     (base_path, sizeof(base_path), tmp, (uint) my_id,
-	      (uint) my_app->job.local_id))) {
+	     (base_path, sizeof(base_path), tmp, (uint) my_id, (uint) local_id))) {
 		return_msg(EAR_ERROR, "Creating the base path.");
 	}
 	// Store the communication channels.
@@ -562,16 +569,16 @@ state_t eards_save_connection(char *tmp, application_t * my_app, ulong lid)
 	return EAR_SUCCESS;
 }
 
-state_t eards_recover_connection(char *tmp, application_t * my_app, ulong lid)
+state_t eards_recover_connection(char *tmp, ulong job_id, ulong step_id, ulong local_id)
 {
-	int my_id = create_ID(my_app->job.id, my_app->job.step_id);
+	int my_id = create_ID(job_id, step_id);
 
 	// Create the base path for recovering the connection info, i.e., tmp/id/local_id
 	char base_path[SZ_PATH_INCOMPLETE];
 	if (state_fail
 	    (create_base_path
 	     (base_path, sizeof(base_path), tmp, (uint) my_id,
-	      (uint) my_app->job.local_id))) {
+	      (uint) local_id))) {
 		return_msg(EAR_ERROR, "Creating the base path.");
 	}
 	// Open the storage file
