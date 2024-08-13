@@ -97,6 +97,9 @@ enode_info: ear_node_info.c $(comm_OBJS) $(SRCDIR)/daemon/local_api/libeard.a $(
 cluster_ping: cluster_ping.c $(comm_OBJS) $(rapi_OBJS)
 	$(CCC) -o $@ $< $(rapi_OBJS) $(comm_OBJS) -lm
 
+list_folders: list_folders.c $(comm_OBJS)
+	$(CCC) -I$(SRCDIR) -o $@ $< $(comm_OBJS)
+
 node_manager_info: node_manager_info.c $(comm_OBJS)
 	$(CCC) -o $@ $<  $(SRCDIR)/daemon/local_api/libeard.a $(SRCDIR)/daemon/shared_configuration.o $(SRCDIR)/daemon/shared_pmon.o $(comm_OBJS)
 
