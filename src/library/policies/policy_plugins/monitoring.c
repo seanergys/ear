@@ -75,7 +75,8 @@ state_t policy_init(polctx_t *c)
             if (policy_gpu_load(c->app, &gpus) != EAR_SUCCESS) {
                 verbose(MON_ERROR_LVL, "%sError%s Loading GPU policy.", COL_RED, COL_CLR);
             }
-
+            // to delete this verbose message 
+            verbose(2, "Initialzing GPU policy part");
             if (gpus.init != NULL) {
                 gpus.init(c);
             }
@@ -101,13 +102,13 @@ state_t policy_end(polctx_t *c)
 
 state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int *ready)
 {
-    ulong *new_freq = freqs->cpu_freq;
-    *new_freq = DEF_FREQ(c->app->def_freq);
+  ulong *new_freq = freqs->cpu_freq;
+  *new_freq = DEF_FREQ(c->app->def_freq);
 
-    for (uint i = 0 ; i < lib_shared_region->num_processes; i++) {
-      sig_shared_region[i].new_freq = new_freq[0];
+  for (uint i = 0 ; i < lib_shared_region->num_processes; i++) {
+    sig_shared_region[i].new_freq = new_freq[0];
 #if MPI_OPTIMIZED
-      sig_shared_region[i].mpi_freq = new_freq[0];
+    sig_shared_region[i].mpi_freq = new_freq[0];
 #endif
     }
     // TODO: Should the below code be inside USE_GPUS?
@@ -116,10 +117,19 @@ state_t policy_apply(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, int 
         gpus.node_policy_apply(c, my_sig, freqs, (int *) &gpu_ready);
     }
 
-    cpu_ready = EAR_POLICY_READY; // TODO: This variable is not used.
-    *ready = EAR_POLICY_READY;
+#if USE_GPUS
+  if (gpus.node_policy_apply != NULL) {
+    /* Basic support for GPUS */
+    gpus.node_policy_apply(c, my_sig, freqs, (int *) &gpu_ready);
+  }else{
+    gpu_ready = EAR_POLICY_READY;
+  }
+  *ready = gpu_ready;
+#else
+  *ready = EAR_POLICY_READY;
+#endif
 
-    return EAR_SUCCESS;
+  return EAR_SUCCESS;
 }
 
 
@@ -130,6 +140,21 @@ state_t policy_ok(polctx_t *c, signature_t *curr_sig, signature_t *prev_sig, int
     }
     *ok = 1;
     return EAR_SUCCESS;
+}
+
+
+state_t policy_restore_settings(polctx_t *c,signature_t *my_sig,node_freqs_t *freqs)
+{
+  state_t st = EAR_SUCCESS;
+
+#if USE_GPUS
+    if (gpus.restore_settings != NULL) {
+      /* Basic support for GPUS */
+      verbose(2, "%sRestore:GPU%s ",COL_GRE,COL_CLR);
+      st = gpus.restore_settings(c, my_sig, freqs);
+    }
+#endif
+  return st;
 }
 
 
