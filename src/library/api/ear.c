@@ -1319,17 +1319,11 @@ static void read_hack_env(char **tmp)
 	}
 }
 
-static int get_ear_application_id(uint can_synch)
+static int get_ear_application_id_multiprocess(int app_multi)
 {
   int master_pid = getpid();
-#if MPI
-	if (can_synch)
-	{
-		PMPI_Bcast(&master_pid, 1, MPI_INT, 0, MPI_COMM_WORLD);
-	}
-#else
 	// If multiprocess, we must get a single AID
-	if (app_node_multiprocess)
+	if (app_multi)
 	{
 		char AID_number_file[1024];	
 		int fd, tries = 0;
@@ -1354,30 +1348,42 @@ static int get_ear_application_id(uint can_synch)
 		} else
 		{
 			verbose(VPROC_INIT, "EARL[%d] reading AID from (%s)", ear_my_rank, AID_number_file);
-
-			fd = open(AID_number_file, O_RDONLY);
-			while((fd < 0) && (tries < 10000))
-			{
-				usleep(100);
-				tries++;
-				fd = open(AID_number_file,O_RDONLY);
-			}
-			if (fd >= 0)
-			{
-				if (read(fd, &master_pid, sizeof(int)) < 0)
-				{
-					error_lib("Reading the master PID from fd %d: %s", fd, strerror(errno));
+			state_t st;
+			do{
+				st = ear_file_read(AID_number_file, (char *)&master_pid, sizeof(master_pid));
+				if (st != EAR_SUCCESS){
+					usleep(100);
+					tries++;
 				}
-				close(fd);
+			}while((st != EAR_SUCCESS) && (tries < 1000));
+			/* AID read or timeout . Timeout can generated blocks later*/
+			if (st == EAR_SUCCESS){
 				verbose(VPROC_INIT, "EARL[%d] master_id detected %d", ear_my_rank, master_pid);
-			} else
-			{
-				error("Synchronization for AID failed");
+			} else {
+				verbose(0, "EARL[%d] Synchronization for AID failed ", ear_my_rank);
 			}
 		}
 	}
+	return master_pid;
+}
+
+static int get_ear_application_id(uint can_synch)
+{
+  int master_pid;
+#if MPI
+	if (can_synch)
+	{
+		master_pid = getpid();
+		PMPI_Bcast(&master_pid, 1, MPI_INT, 0, MPI_COMM_WORLD);
+	}else{
+		// This case applies to MPI apps where there is some issue with
+		// the synchronization
+		master_pid = get_ear_application_id_multiprocess(app_node_multiprocess);
+	}
+#else
+	master_pid = get_ear_application_id_multiprocess(app_node_multiprocess);
 #endif
-  return master_pid;
+	return master_pid;
 }
 
 static struct sigaction term_action, int_action, segv_action;
