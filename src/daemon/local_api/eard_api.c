@@ -298,6 +298,7 @@ int eards_connect(application_t *my_app, ulong lid)
     return_print(EAR_ERROR, "FAKE_EAR_NOT_INSTALLED applied");
     #endif
     // These files connect EAR with EAR_COMM
+		// TODO: Should we use get_ear_tmp()?
     ear_tmp=ear_getenv(ENV_PATH_TMP);
     if (ear_tmp == NULL) {
         ear_tmp=ear_getenv("TMP");

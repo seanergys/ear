@@ -1109,11 +1109,11 @@ static int get_local_id(char *node_name)
 		}
 	}
 #if SHOW_DEBUGS
-	if (lid == 0) {
-		debug("EARL[%d] Rank %d is not the master in node %s", getpid(), ear_my_rank, node_name);
+	if (lid) {
+		debug("EARL[%d] Rank %d is the master in node %s", getpid(), ear_my_rank, node_name);
 	}else
 	{
-		debug("EARL[%d] Rank %d is the master in node %s", getpid(), ear_my_rank, node_name);
+		debug("EARL[%d] Rank %d is not the master in node %s", getpid(), ear_my_rank, node_name);
 	}
 #endif
 		return lid;
