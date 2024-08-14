@@ -155,6 +155,7 @@
 
 #define FLAG_PYTHON_MULTIPROC "EARL_PYTHON_MULTIPROC" // Enables features supporting applications which use Python's multiprocessing module. Currently, this variable has the same effect as FLAG_NO_SIGHANDLER
 #define FLAG_NO_SIGHANDLER 				"EARL_NO_SIGHANDLER" 		// Configures EARL to not configure any signal handler. This is useful to avoid conflicts with applications which want to handle signals.
+#define FLAG_GPU_MASTER_OPTIMIZE 	"EARL_GPU_MASTER_OPTIMIZE" // Enforces just the first master process to apply the GPU optimization. This flag is useful in multiprocess applications when you don't know the process-GPU mapping, or when all processes see all GPU devices.
 
 /** @} */
 
