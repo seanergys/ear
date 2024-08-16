@@ -82,6 +82,8 @@ static serial_buffer_t b;
   ear_fd_req_global = -1;   \
   close(ear_fd_ack);        \
   ear_fd_ack = -1;          \
+  close(ear_fd_req);        \
+  ear_fd_req = -1;          \
   unlink(ear_commack);      \
   unlink(ear_commreq);
 
@@ -570,7 +572,7 @@ static state_t eards_save_connection(char *tmp, ulong job_id, ulong step_id, ulo
 	return EAR_SUCCESS;
 }
 
-state_t eards_recover_connection(char *tmp, ulong job_id, ulong step_id, ulong local_id)
+state_t eards_recover_connection(char *tmp, ulong job_id, ulong step_id, ulong local_id, int rank_id)
 {
 	int my_id = create_ID(job_id, step_id);
 
@@ -590,8 +592,8 @@ state_t eards_recover_connection(char *tmp, ulong job_id, ulong step_id, ulong l
 	int fd_flags = O_RDONLY | O_CLOEXEC;
 	int fds_file = open(fds_file_pathname, fd_flags, 0);
 	if (fds_file < 0) {
-		verbose(2, "%sWarning%s FDs file couldn't be opened: %d (%s)",
-			COL_YLW, COL_CLR, errno, strerror(errno));
+		verbose(2, "%sWarning%s FDs file %s couldn't be opened: %d (%s)",
+			COL_YLW, COL_CLR, fds_file_pathname, errno, strerror(errno));
 		return_msg(EAR_ERROR, "FDs file could not be opened.");
 	}
 	// Read the communication info
@@ -610,6 +612,14 @@ state_t eards_recover_connection(char *tmp, ulong job_id, ulong step_id, ulong l
 	app_connected = 1;
 
 	close(fds_file);
+
+	/* Pipe full paths. They're stored at base_path as well. */
+  sprintf(ear_commreq,"%s/.ear_comm.req_0.%d.%lu", base_path, my_id, (ulong)rank_id);
+  sprintf(ear_commack,"%s/.ear_comm.ack_0.%d.%lu", base_path, my_id, (ulong)rank_id);
+
+
+	eards_disconnect();
+
 	return EAR_SUCCESS;
 }
 

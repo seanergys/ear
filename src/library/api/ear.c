@@ -1628,7 +1628,7 @@ void ear_init()
 		{
 			verbose_info_master("%sWARNING%s (Job/step/process) (%d/%d/%d) seems to be already conncted. Did the process mutate? Recovering EARD connection info...", COL_RED, COL_CLR, my_job_id, my_step_id, my_pid);
 
-			eards_recover_connection(get_ear_tmp(), my_job_id, my_step_id, AID);
+			eards_recover_connection(get_ear_tmp(), my_job_id, my_step_id, AID, ear_my_rank);
 			my_id = 0;
 		} else {
 			// Getting if the local process is the master or not

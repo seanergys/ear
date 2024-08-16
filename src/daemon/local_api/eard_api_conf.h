@@ -87,6 +87,6 @@ void eards_disconnect();
 void eards_new_process_disconnect();
 
 /** Recovers EARD connection info in the case the client lose this info. */
-state_t eards_recover_connection(char *tmp, ulong job_id, ulong step_id, ulong local_id);
+state_t eards_recover_connection(char *tmp, ulong job_id, ulong step_id, ulong local_id, int rank_id);
 
 #endif				//EARD_LOCAL_API_INTERNS_H

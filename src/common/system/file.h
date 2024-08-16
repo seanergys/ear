@@ -56,13 +56,13 @@ int file_lock_master(char *lock_file_name);
 int file_lock_master_perm(char *lock_file_name, int flag, mode_t mode);
 
 /** Closes and removes the lock file */
-void file_lock_clean(int fd,char *lock_file_name);
+void file_lock_clean(int fd, char *lock_file_name);
 
 /** Unlocks the file */
 int file_unlock(int fd);
 
 /** Releases a lock file */
-int file_unlock_master(int fd,char *lock_file_name);
+int file_unlock_master(int fd, char *lock_file_name);
 
 /** */
 int file_is_regular(const char *path);
@@ -82,20 +82,16 @@ state_t ear_file_write(const char *path, const char *buffer, size_t size);
 /** */
 state_t ear_file_clean(const char *path);
 
-
 /* Changes the limit of files open , use ULONG_MAX to set the maximum*/
-void   set_no_files_limit(ulong new_limit);
-
+void set_no_files_limit(ulong new_limit);
 
 /* Returns the current limit of files open */
-ulong  get_no_files_limit();
-
+ulong get_no_files_limit();
 
 /* Returns the current limit of stack size */
 ulong get_stack_size_limit();
 
-
 /* Changes the limit of stack size, use ULONG_MAX to set the maximum*/
-void  set_stack_size_limit(ulong new_limit);
+void set_stack_size_limit(ulong new_limit);
 
 #endif
