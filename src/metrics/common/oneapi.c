@@ -1,21 +1,14 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-*
-* BSC Contact   mailto:ear-support@bsc.es
-*
-*
-* This file is licensed under both the BSD-3 license for individual/non-commercial
-* use and EPL-1.0 license for commercial use. Full text of both licenses can be
-* found in COPYING.BSD and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -176,8 +169,36 @@ static void print_sysman_device_info(int h)
     debug("modelName    : '%s'", hs[h].sdevice_props.modelName);
     debug("serials      : '%s' '%s'", hs[h].sdevice_props.serialNumber, hs[h].sdevice_props.boardNumber);
     debug("uuid         : '%llu' (PCI based)", hs[h].uuid);
+		debug("domain:bus:device:function %x:%x:%x:%x",hs[h].spci_props.address.domain,hs[h].spci_props.address.bus, hs[h].spci_props.address.device, hs[h].spci_props.address.function);
     debug("numSubdevices: %u", hs[h].sdevice_props.numSubdevices);
     debug("#domains PFET: %u/%u/%u/%u", hs[hs_count].spowers_count, hs[hs_count].sfreqs_count, hs[hs_count].sengines_count, hs[hs_count].stemps_count);
+}
+
+static void oneapi_reorder_by_pci(uint devices_count, zes_device_handle_t *devices_tmp, zes_device_handle_t *devices, ze_handlers_t *hs)
+{
+	uint dv, dvaux;
+	uint *gpu_done = calloc(devices_count, sizeof(uint));
+	uint min_pci;
+
+	for (dv = 0; dv < devices_count; dv ++){
+		debug("GPU [%u] domain:bus:device:function %x:%x:%x:%x",dv, hs[dv].spci_props.address.domain,hs[dv].spci_props.address.bus, hs[dv].spci_props.address.device, hs[dv].spci_props.address.function);
+	}
+	// Reordering
+
+	for (dv = 0; dv < devices_count; dv ++){
+		min_pci = 0;
+		// reference is the first not already ordered
+		while(gpu_done[min_pci] && min_pci < devices_count) min_pci++;
+		debug("Current min pci element %u", min_pci);
+		// Comparing with the others
+		for (dvaux = 0; dvaux < devices_count; dvaux ++){
+			if ((gpu_done[dvaux] == 0) && (hs[dvaux].spci_props.address.bus < hs[min_pci].spci_props.address.bus)) min_pci = dvaux;
+		}
+		gpu_done[min_pci] = 1;
+		debug("Moving GPU handler in %u to %u", min_pci, dv);
+		memcpy(&devices[dv], &devices_tmp[min_pci], sizeof(zes_device_handle_t));
+	}
+
 }
 
 static state_t static_core_init()
@@ -253,6 +274,7 @@ static state_t static_sysman_init()
 {
     zes_driver_handle_t   *drivers;
     zes_device_handle_t   *devices;
+    zes_device_handle_t   *devices_tmp;
     uint                   drivers_count = 0;
     uint                   devices_count = 0;
     ze_result_t            z;
@@ -284,7 +306,8 @@ static state_t static_sysman_init()
     }
     // Allocating all the devices
     debug("#devices %u", hs_count);
-    devices  = calloc(hs_count, sizeof(zes_device_handle_t));
+    devices      = calloc(hs_count, sizeof(zes_device_handle_t));
+    devices_tmp  = calloc(hs_count, sizeof(zes_device_handle_t));
     hs       = calloc(hs_count, sizeof(ze_handlers_t));
     hs_count = 0;
     // Filling
@@ -292,7 +315,18 @@ static state_t static_sysman_init()
         devices_count = 0;
         // Discovering all devices
         if_fail(ze.sDeviceGet(drivers[dr], &devices_count, NULL), reterr);
-        if_fail(ze.sDeviceGet(drivers[dr], &devices_count, devices), reterr);
+        if_fail(ze.sDeviceGet(drivers[dr], &devices_count, devices_tmp), reterr);
+
+				// We have to reorder devices based on pci addresses. We will ask for pci info,
+				// reorder in devices vector and uses devices. devices_tmp will be released
+				for (dv = 0; dv < devices_count; ++dv) {
+					// Getting PCI properties
+					ze.sDevicePciGetProperties(devices_tmp[dv], &hs[dv].spci_props);
+				}
+				// Sort using pci
+				oneapi_reorder_by_pci(devices_count, devices_tmp, devices, hs);
+				// Release
+				free(devices_tmp);
 
         for (dv = 0; dv < devices_count; ++dv) {
             debug("-- DEVICE%d -----------------------------", dv);

@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 //#define SHOW_DEBUGS 1
 
@@ -108,12 +101,12 @@ void close_ips()
 }
 
 
-/* Uncomment too fake the EARD allocation error 
+/* Uncomment to fake the EARD allocation error 
  * Set to 1 to simulate a situation where the "general" allocation fails,
  * but the individual suceeds.
  * Set to 2 to simulate a situation where every allocation, however small, fails.
  */
-#define FAKE_EARD_ALLOC_ERROR 0
+//#define FAKE_EARD_ALLOC_ERROR 0
 
 #define CHECK_ALLOC 1
 
@@ -139,6 +132,7 @@ int can_allocate(request_t *command, size_t size, int num_items)
         tmp_size = num_items; 
     }
 #ifdef FAKE_EARD_ALLOC_ERROR
+#warning Compiling with fake allocation errors in EARD ON.
     tmp = NULL;
 #else
     tmp = calloc(tmp_size, size);
