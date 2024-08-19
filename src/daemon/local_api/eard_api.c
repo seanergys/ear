@@ -480,10 +480,12 @@ int eards_connect(application_t *my_app, ulong lid)
     serial_alloc(&b, SIZE_8KB);
 		connecting = 0;
 
+#if WF_SUPPORT
 		if (state_fail(eards_save_connection(ear_tmp, my_app->job.id, my_app->job.step_id, my_app->job.local_id))) {
 			verbose(2, "%sWarning%s Connection info saving failed: %s",
 							COL_YLW, COL_CLR, state_msg);
 		}
+#endif
 
     return EAR_SUCCESS;
 }
