@@ -74,14 +74,17 @@ $(document).ready(function(){initNavTree('df/dde/md_Architecture.html','../../')
 <li class="level1"><a href="#the-ear-library">The EAR Library (Job Manager)</a><ul><li class="level2"><a href="#autotoc_md72">Overview</a></li>
 <li class="level2"><a href="#autotoc_md73">Configuration</a></li>
 <li class="level2"><a href="#autotoc_md74">Usage</a></li>
-<li class="level2"><a href="#autotoc_md75">Policies</a></li>
+<li class="level2"><a href="#autotoc_md75">Policies</a><ul><li class="level3"><a href="#autotoc_md76">&lt;tt&gt;min_energy&lt;/tt&gt;</a></li>
+<li class="level3"><a href="#autotoc_md77">&lt;tt&gt;min_time&lt;/tt&gt;</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="level1"><a href="#ear-loader">EAR Loader</a></li>
-<li class="level1"><a href="#ear-slurm-plugin">EAR SLURM plugin</a><ul><li class="level2"><a href="#autotoc_md76">Configuration</a></li>
-<li class="level2"><a href="#autotoc_md77">EAR application API</a></li>
+<li class="level1"><a href="#ear-slurm-plugin">EAR SLURM plugin</a><ul><li class="level2"><a href="#autotoc_md78">Configuration</a></li>
 </ul>
 </li>
+<li class="level1"><a href="#autotoc_md79">EAR application API</a></li>
 </ul>
 </div>
 <div class="textblock"><h1><a class="anchor" id="ear-node-manager"></a>
@@ -210,10 +213,12 @@ Usage</h2>
 Policies</h2>
 <p>EAR offers three energy policies plugins: <code>min_energy</code>, <code>min_time</code> and <code>monitoring</code>. The last one is not a power policy, is used just for application monitoring where CPU frequency is not modified (neither memory or GPU frequency). For application analysis <code>monitoring</code>can be used with specific CPU, memory and/or GPU frequencies.</p>
 <p>The energy policy is selected by setting the <code>--ear-policy=policy</code> option when submitting a SLURM job. A policy parameter, which is a particular value or threshold depending on the policy, can be set using the flag <code>--ear-policy-th=value</code>. Its default value is defined in the configuration file, for more information check the <a class="el" href="../../d2/d00/md_Configuration.html">configuration page</a> for more information.</p>
-<h3><code>min_energy</code></h3>
+<h3><a class="anchor" id="autotoc_md76"></a>
+&lt;tt&gt;min_energy&lt;/tt&gt;</h3>
 <p>The goal of this policy is to minimise the energy consumed with a limit to the performance degradation. This limit is is set in the SLURM <code>--ear-policy-th</code> option or the configuration file. The <code>min_energy</code> policy will select the optimal frequency that minimizes energy enforcing (performance degradation &lt;= parameter). When executing with this policy, applications starts at default frequency(specified at ear.conf).</p>
 <div class="fragment"><div class="line">PerfDegr = (CurrTime - PrevTime) / (PrevTime)</div>
-</div><!-- fragment --><h3><code>min_time</code></h3>
+</div><!-- fragment --><h3><a class="anchor" id="autotoc_md77"></a>
+&lt;tt&gt;min_time&lt;/tt&gt;</h3>
 <p>The goal of this policy is to improve the execution time while guaranteeing a minimum ratio between performance benefit and frequency increment that justifies the increased energy consumption from this frequency increment. The policy uses the SLURM parameter option mentioned above as a minimum efficiency threshold.</p>
 <p><b>Example:</b> if <code>--ear-policy-th=0.75</code>, EAR will prevent scaling to upper frequencies if the ratio between performance gain and frequency gain do not improve at least 75% (PerfGain &gt;= (FreqGain * threshold).</p>
 <div class="fragment"><div class="line">PerfGain=(PrevTime-CurrTime)/PrevTime</div>
@@ -233,12 +238,12 @@ EAR Loader</h1>
 <h1><a class="anchor" id="ear-slurm-plugin"></a>
 EAR SLURM plugin</h1>
 <p>EAR SLURM plugin allows to dynamically load and configure the EAR library for the SLURM jobs (and steps), if the flag <code>--ear=on</code> is set or if it is enabled by default. Additionally, it reports any jobs that start or end to the nodes' EARDs for accounting and monitoring purposes.</p>
-<h2><a class="anchor" id="autotoc_md76"></a>
+<h2><a class="anchor" id="autotoc_md78"></a>
 Configuration</h2>
 <p>Visit the <a class="el" href="../../d2/d00/md_Configuration.html#slurm-spank-plugin-configuration-file">SLURM SPANK plugin section</a> on the configuration page to set up properly the SLURM <code>/etc/slurm/plugstack.conf</code> file.</p>
 <p>You can find the complete list of EAR SLURM plugin accpeted parameters in the <a class="el" href="../../d6/d86/md_User_guide.html#ear-job-submission-flags">user guide</a>.</p>
-<h2><a class="anchor" id="autotoc_md77"></a>
-EAR application API</h2>
+<h1><a class="anchor" id="autotoc_md79"></a>
+EAR application API</h1>
 <p>EAR offers a user API for applications. The current EAR version only offers two sets of functions:</p>
 <ul>
 <li>To measure the energy consumption</li>
