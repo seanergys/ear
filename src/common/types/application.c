@@ -194,7 +194,6 @@ int create_app_header(char * header, char *path, uint num_gpus, char is_extended
 			snprintf(temp_hdr, sizeof(temp_hdr), ";TEMP%u", s);
 			strcat(cpu_sig_hdr, temp_hdr);
 		}
-		strcat(cpu_sig_hdr,";");
 	
 #else
 	char *cpu_sig_hdr = "";
@@ -227,9 +226,9 @@ int create_app_header(char * header, char *path, uint num_gpus, char is_extended
 	if (single_column) num_gpus = ear_min(num_gpus, 1);
 	for (int i = 0; i < num_gpus; i++)
 	{
-        char gpu_hdr[128];
+        char gpu_hdr[256];
 #if WF_SUPPORT
-        snprintf(gpu_hdr, sizeof(gpu_hdr), HEADER_GPU_SIG, i, i, i, i, i, i);
+        snprintf(gpu_hdr, sizeof(gpu_hdr), HEADER_GPU_SIG, i, i, i, i, i, i, i, i);
 #else
         snprintf(gpu_hdr, sizeof(gpu_hdr), HEADER_GPU_SIG, i, i, i, i, i);
 #endif

@@ -8,8 +8,10 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
+#define SHOW_DEBUGS 1
 #include <errno.h>
 #include <stdlib.h>
+#include <common/output/debug.h>
 #include <metrics/temperature/archs/dummy.h>
 
 static uint socket_count;
@@ -43,6 +45,7 @@ TEMP_F_DISPOSE(dummy)
 
 TEMP_F_READ(dummy)
 {
+		debug("temp dummy read");
     if (temp != NULL) {
         memset((void *) temp, 0, sizeof(llong)*socket_count);
     }

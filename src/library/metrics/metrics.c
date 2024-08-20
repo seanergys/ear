@@ -1660,7 +1660,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 #if WF_SUPPORT
 	/* Temperature data */
 	metrics->cpu_sig.devs_count = metrics_get(MET_TEMP)->devs_count;
-	temp_data_copy(&metrics->cpu_sig.temp, &temp_diff[sign_app_loop_idx]);
+	temp_data_copy(metrics->cpu_sig.temp, temp_diff[sign_app_loop_idx]);
 #endif
 
 	
