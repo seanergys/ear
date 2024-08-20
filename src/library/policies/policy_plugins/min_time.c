@@ -250,11 +250,11 @@ state_t policy_init(polctx_t *c)
 
 		if (c->num_gpus) {
 			if (state_fail(policy_gpu_load(c->app, &gpu_plugin))) {
-				verbose_master(2, "%sError%s Loading GPU policy.", COL_RED, COL_CLR);
+				verbose_error_master("Loading GPU policy.");
 			}
-			verbose_master(2, "%sMIN TIME%s Initializing GPU policy...", COL_BLU, COL_CLR);
 
 			if (gpu_plugin.init != NULL) {
+				verbose_info2_master("[MIN TIME] Initializing GPU policy...");
 				gpu_plugin.init(c);
 			}
 
