@@ -77,6 +77,13 @@ static ulong rapl_size;
 extern pthread_mutex_t lock_rpc;
 static serial_buffer_t b;
 
+#if WF_SUPPORT
+/* Marks whether this API created by itself the application directory. */
+static uint app_directory_created;
+
+static char app_directory_pathname[MAX_PATH_SIZE];
+#endif
+
 #define CLOSE_LOCAL_COMM()    \
   close(ear_fd_req_global); \
   ear_fd_req_global = -1;   \
@@ -89,7 +96,8 @@ static serial_buffer_t b;
 
 
 static state_t create_base_path(char *base_path, size_t base_path_sz, char *tmp_path, uint job_step_id, uint app_local_id);
-// static state_t create_app_directory(char *path);
+
+static state_t create_app_directory(char *path);
 
 /** Saves EARD connection info to be restored in the case the client lose this info. */
 static state_t eards_save_connection(char *tmp, ulong job_id, ulong step_id, ulong local_id);
@@ -343,15 +351,16 @@ int eards_connect(application_t *my_app, ulong lid)
 	{
      return_print(EAR_ERROR, "Error when building the EAR communicator directory path name.");
 	}
-	#if 0
-	// TODO: Remove as we didn't annotate why we left below code
-	// disabled.
-	/* We must first create the directory of this application */
+
+	// Save the application base_path
+	memcpy(app_directory_pathname, base_path, sizeof(app_directory_pathname));
+
+	/* Create the directory of this application if it doesn't exist yet.
+	 * The directory may not exist on anonymous connections. */
 	if (state_fail(create_app_directory(base_path)))
 	{
      return_print(EAR_ERROR, "Error when creating the EAR communicator directory.");
 	}
-	#endif
 
 	/* Pipe full paths. They're stored at base_path as well. */
   sprintf(ear_commreq,"%s/.ear_comm.req_%d.%d.%lu", base_path, i, my_id, lid);
@@ -509,26 +518,32 @@ void eards_new_process_disconnect()
 
 	app_connected = 0;
 }
+
 void eards_disconnect()
 {
   struct daemon_req req;
   req.req_service = DISCONNECT_EARD_NODE_SERVICES;
-  req.sec=create_sec_tag();
+  req.sec = create_sec_tag();
 
-  debug( "Disconnecting");
-  if (!app_connected) return;
+  debug("Disconnecting...");
+
+  if (!app_connected)
+		return;
+
   if (ear_fd_req >= 0) {
     warning_api(eards_write(ear_fd_req, (char *)&req,sizeof(req)), sizeof(req),
-        "witting req in ear_daemon_client_disconnect");
+        "writting req in ear_daemon_client_disconnect");
   }
 
-
   CLOSE_LOCAL_COMM();
-
   AFD_ZERO(&eard_api_client_fd);
 
-  app_connected=0;
+#if WF_SUPPORT
+	if (app_directory_created)
+		folder_remove(app_directory_pathname);
+#endif
 
+  app_connected = 0;
 }
 
 static state_t eards_save_connection(char *tmp, ulong job_id, ulong step_id, ulong local_id)
@@ -767,8 +782,6 @@ state_t eards_get_state(eard_state_t *state)
     return eard_rpc(RPC_GET_STATE, NULL, 0, (char *) state, sizeof(eard_state_t));
 }
 
-
-
 ulong eards_get_data_size_rapl() // size in bytes
 {
     if (!app_connected) return sizeof(ulong);
@@ -793,19 +806,17 @@ static state_t create_base_path(char *base_path, size_t base_path_sz, char *tmp_
 		return EAR_ERROR;
 	}
 }
-#if 0
 
 static state_t create_app_directory(char *path)
 {
 	int ret = mkdir(path, S_IRWXU);
-	if (ret < 0 && errno != EEXIST)
-	{
+	if (ret < 0 && errno != EEXIST) {
 		debug("App directory could not be created: %s", strerror(errno));
 		return EAR_ERROR;
-	} else if (!ret)
-	{
+	} else if (!ret) {
 		debug("Directory created");
+		app_directory_created = 1;
 	}
+
 	return EAR_SUCCESS;
 }
-#endif
