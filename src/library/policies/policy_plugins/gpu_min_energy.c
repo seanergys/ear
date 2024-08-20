@@ -28,6 +28,7 @@
 #include <library/api/clasify.h>
 #include <library/policies/policy_api.h>
 #include <library/policies/policy_state.h>
+#include <library/policies/common/gpu_support.h>
 
 #ifdef EARL_RESEARCH
 extern unsigned long ext_def_freq;
