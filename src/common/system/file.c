@@ -34,10 +34,19 @@ int file_lock(int fd)
 		return -1;
 }
 
+int file_trylock(int fd)
+{
+	if (fd >= 0) {
+		lock.l_type = F_WRLCK;
+		return fcntl(fd, F_SETLK, &lock);
+	} else
+		return -1;
+}
+
 int file_lock_timeout(int fd, ulong timeout)
 {
 	uint tries = 0;
-	while ((file_lock(fd) < 0) && (tries < timeout))
+	while ((file_trylock(fd) < 0) && (tries < timeout))
 		tries++;
 	if (tries >= timeout)
 		return 0;

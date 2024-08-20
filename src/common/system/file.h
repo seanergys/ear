@@ -42,10 +42,16 @@
 #define F_OW 			S_IWOTH
 #define F_OX 			S_IXOTH
 
-/** Locks the file for writting in a fixe dpart */
+/** Locks the file for writting in a fixed part. */
 int file_lock(int fd);
 
-/* Tries to acquire the lock with file_lock with a max a attemps = tiemoput, expressed as loop iterations, not time . Returns true when the lock has been acquired*/
+/** Tries to acquire the lock through the file descriptor `fd`.
+ * If the lock is hold by another process, the function returns immediately and errno can be read.
+ * \return 0 The lock was acquired.
+ * \return -1 Otherwise. */
+int file_trylock(int fd);
+
+/** Tries to acquire the lock with file_trylock with a max a attemps = tiemoput, expressed as loop iterations, not time. Returns true when the lock has been acquired. */
 int file_lock_timeout(int fd, ulong timeout);
 
 /** Creates a file to be used  as lock. It doesn't locks the file */

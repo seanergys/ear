@@ -21,4 +21,7 @@ state_t policy_gpu_load(settings_conf_t * app_settings, polsym_t * psyms);
 
 /** Returns whether the optimization is enabled, so a GPU policy plug-in read its value.  */
 uint policy_gpu_opt_enabled();
+
+/** Unlocks the GPU optimization, letting other processes to acquire it. */
+void policy_gpu_unlock_opt();
 #endif				// _EARL_GPU_SUPPORT_H_

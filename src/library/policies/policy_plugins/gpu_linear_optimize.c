@@ -37,6 +37,7 @@
 #include <library/api/clasify.h>
 #include <library/policies/policy_api.h>
 #include <library/policies/policy_state.h>
+#include <library/policies/common/gpu_support.h>
 
 #ifdef EARL_RESEARCH
 extern unsigned long ext_def_freq;
@@ -146,6 +147,16 @@ state_t policy_init(polctx_t *c)
 
     mgt_gpu_data_alloc(&gfreqs);
 
+		/*
+		 * GPU master optimizer is a new concept introduced because on Workflows
+		 * multiple processes can be masters (from the point of view of EARL) and
+		 * we need to avoid all of them changing all GPU freqs.
+		 * This concept differs from the global variable gpu_optimize, which was
+		 * introduced when doing few tests with GPU optimization policies and it
+		 * is still pending to decide how GPU opt. policies will be loaded.
+		 */
+		int gpu_master_optimizer = policy_gpu_opt_enabled();
+
     last_GPU_pstate   = (uint *)calloc(c->num_gpus, sizeof(uint));
     GPU_policy_state  = (uint *)calloc(c->num_gpus, sizeof(uint));
     last_value        = (float *)calloc(c->num_gpus, sizeof(float));
@@ -155,15 +166,19 @@ state_t policy_init(polctx_t *c)
         if (g_freq) gfreqs[i] = g_freq;
         else 				gfreqs[i] = gpuf_list[i][0];
         GPU_policy_state[i] = FIRST_SELECTION;
-        verbose_master(2,"Setting GPUgreq[%d] = %.2f",i,(float)gfreqs[i]/1000000.0);
+
+				if (gpu_master_optimizer) {
+					verbose_master(2, "Setting GPU%d freq.: %.2f",i,(float)gfreqs[i]/1000000.0);
+				}
     }
 
     /* This must be updated when adding more metrics */
     dcgmi_ref_set = ear_max(ear_max(FP64_SET, FP32_SET), FP16_SET);
 
-    mgt_gpu_freq_limit_set(no_ctx, gfreqs);
-    verbose_master(2,"GPU optimization during GPU comp %s", (gpu_optimize? "Enabled":"Disabled"));
-
+		if (gpu_master_optimizer) {
+			mgt_gpu_freq_limit_set(no_ctx, gfreqs);
+		}
+		verbose_master(2, "GPU optimization during GPU comp %s", ((gpu_optimize && gpu_master_optimizer) ? "Enabled":"Disabled"));
 
     return EAR_SUCCESS;
 }
