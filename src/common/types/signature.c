@@ -73,6 +73,27 @@ void signature_print_fd(int fd, signature_t *sig, char is_extended, int single_c
         }
     }
 
+#if WF_SUPPORT
+    uint num_sockets = MAX_SOCKETS_SUPPORTED;
+    debug("Creating CPU signature with %u sockets", num_sockets);
+    char cpu_sig_str[256] = "";
+    for (uint s = 0 ; s < sig->cpu_sig.devs_count ; s++){
+			char temp_str[16];
+			snprintf(temp_str,  sizeof(temp_str), ";lld", sig->cpu_sig.temp[s]);
+      strcat(cpu_sig_str, temp_str);
+    }
+		for (uint s = sig->cpu_sig.devs_count; s < MAX_SOCKETS_SUPPORTED; s++){
+			strcat(cpu_sig_str, ";0");
+		}
+    strcat(cpu_sig_str,";");
+
+#else
+  char *cpu_sig_str = "";
+
+#endif
+	dprintf(fd,"%s", cpu_sig_str);
+
+
 	debug("Signature with %d GPUS", sig->gpu_sig.num_gpus);
 
 #if USE_GPUS

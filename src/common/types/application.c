@@ -185,7 +185,23 @@ int create_app_header(char * header, char *path, uint num_gpus, char is_extended
     num_gpus = MAX_GPUS_SUPPORTED * USE_GPUS; // USE_GPUS can set a zero on num_gpus
 		debug("Creating header with %d GPUS", num_gpus);
 
-		size_t header_len = strlen(HEADER_JOB) + strlen(HEADER_BASE) + num_gpus * USE_GPUS * strlen(HEADER_GPU_SIG) + strlen(ext_header) + 1;
+#if WF_SUPPORT
+		uint num_sockets = MAX_SOCKETS_SUPPORTED;
+		debug("Creating header for CPU signature with %u sockets", num_sockets);
+		char cpu_sig_hdr[256] = "";
+		for (uint s = 0 ; s < num_sockets ; s++){
+			char temp_hdr[16];
+			snprintf(temp_hdr, sizeof(temp_hdr), ";TEMP%u", s);
+			strcat(cpu_sig_hdr, temp_hdr);
+		}
+		strcat(cpu_sig_hdr,";");
+	
+#else
+	char *cpu_sig_hdr = "";
+	
+#endif
+
+		size_t header_len = strlen(HEADER_JOB) + strlen(HEADER_BASE) + num_gpus * USE_GPUS * strlen(HEADER_GPU_SIG) + strlen(ext_header) + 1 + strlen(cpu_sig_hdr);
 		if (header)
 		{
 			header_len += strlen(header);
@@ -205,6 +221,7 @@ int create_app_header(char * header, char *path, uint num_gpus, char is_extended
 		{
 			strncat(HEADER, ext_header, header_len - strlen(HEADER) - 1);
     }
+		strncat(HEADER, cpu_sig_hdr, header_len - strlen(HEADER) - 1);
 
 #if USE_GPUS
 	if (single_column) num_gpus = ear_min(num_gpus, 1);
