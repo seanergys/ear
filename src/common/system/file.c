@@ -27,24 +27,37 @@ static struct flock lock;
 
 int file_lock(int fd)
 {
-	if (fd>=0){
+	if (fd >= 0) {
 		lock.l_type = F_WRLCK;
 		return fcntl(fd, F_SETLKW, &lock);
-	}else return -1;
+	} else
+		return -1;
+}
+
+int file_trylock(int fd)
+{
+	if (fd >= 0) {
+		lock.l_type = F_WRLCK;
+		return fcntl(fd, F_SETLK, &lock);
+	} else
+		return -1;
 }
 
 int file_lock_timeout(int fd, ulong timeout)
 {
 	uint tries = 0;
-  while((file_lock(fd) < 0 ) && (tries < timeout)) tries++;
-  if (tries >= timeout) return 0;
-	return 1;	
+	while ((file_trylock(fd) < 0) && (tries < timeout))
+		tries++;
+	if (tries >= timeout)
+		return 0;
+	return 1;
 }
 
 int file_lock_create(char *lock_file_name)
 {
 	int fd = open(lock_file_name, O_WRONLY | O_CREAT, S_IWUSR);
-	if (fd < 0) return fd;
+	if (fd < 0)
+		return fd;
 	lock.l_start = 0;
 	lock.l_whence = SEEK_SET;
 	lock.l_len = 0;
@@ -54,19 +67,18 @@ int file_lock_create(char *lock_file_name)
 
 int file_lock_master_perm(char *lock_file_name, int flag, mode_t mode)
 {
-	int fd=open(lock_file_name,flag|O_CREAT|O_EXCL,mode);
+	int fd = open(lock_file_name, flag | O_CREAT | O_EXCL, mode);
 	return fd;
 }
-
 
 int file_lock_master(char *lock_file_name)
 {
 	return file_lock_master_perm(lock_file_name, O_WRONLY, S_IWUSR);
 }
 
-void file_lock_clean(int fd,char *lock_file_name)
+void file_lock_clean(int fd, char *lock_file_name)
 {
-	if (fd>=0){
+	if (fd >= 0) {
 		close(fd);
 		unlink(lock_file_name);
 	}
@@ -74,16 +86,18 @@ void file_lock_clean(int fd,char *lock_file_name)
 
 int file_unlock(int fd)
 {
-	if (fd>=0){
+	if (fd >= 0) {
 		lock.l_type = F_UNLCK;
 		return fcntl(fd, F_SETLKW, &lock);
-	}else return -1;
+	} else
+		return -1;
 }
-int file_unlock_master(int fd,char *lock_file_name)
+
+int file_unlock_master(int fd, char *lock_file_name)
 {
 	close(fd);
-	if (unlink(lock_file_name) < 0){
-		return errno;	
+	if (unlink(lock_file_name) < 0) {
+		return errno;
 	}
 	return 0;
 }
@@ -91,7 +105,8 @@ int file_unlock_master(int fd,char *lock_file_name)
 int file_is_regular(const char *path)
 {
 	struct stat path_stat;
-	if (stat(path, &path_stat) < 0) return 0;
+	if (stat(path, &path_stat) < 0)
+		return 0;
 
 	return S_ISREG(path_stat.st_mode);
 }
@@ -99,7 +114,8 @@ int file_is_regular(const char *path)
 int file_is_directory(const char *path)
 {
 	struct stat buff;
-	if (stat(path, &buff) < 0 ) return 0;
+	if (stat(path, &buff) < 0)
+		return 0;
 	return S_ISDIR(buff.st_mode);
 }
 
@@ -108,8 +124,9 @@ ssize_t ear_file_size(char *path)
 	int fd = open(path, O_RDONLY);
 	ssize_t size;
 
-	if (fd < 0){
-		state_return_msg((ssize_t) EAR_OPEN_ERROR, errno, strerror(errno));
+	if (fd < 0) {
+		state_return_msg((ssize_t) EAR_OPEN_ERROR, errno,
+				 strerror(errno));
 	}
 
 	size = lseek(fd, 0, SEEK_END);
@@ -128,7 +145,7 @@ state_t ear_file_read(const char *path, char *buffer, size_t size)
 		state_return_msg(EAR_OPEN_ERROR, errno, strerror(errno));
 	}
 
-	while ((size > 0) && ((r = read(fd, &buffer[totalr], size)) > 0)){
+	while ((size > 0) && ((r = read(fd, &buffer[totalr], size)) > 0)) {
 		size = size - r;
 		totalr += r;
 	}
@@ -144,7 +161,9 @@ state_t ear_file_read(const char *path, char *buffer, size_t size)
 
 state_t ear_file_write(const char *path, const char *buffer, size_t size)
 {
-	int fd = open(path, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	int fd =
+	    open(path, O_WRONLY | O_CREAT,
+		 S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 	ssize_t w = 0;
 	ssize_t totalw = 0;
 
@@ -174,7 +193,6 @@ state_t ear_file_clean(const char *path)
 	state_return(EAR_SUCCESS);
 }
 
-
 void set_no_files_limit(ulong new_limit)
 {
 	/** Change the open file limit */
@@ -186,14 +204,12 @@ void set_no_files_limit(ulong new_limit)
 	setrlimit(RLIMIT_NOFILE, &rl);
 }
 
-
 ulong get_no_files_limit()
 {
 	struct rlimit rl;
 	getrlimit(RLIMIT_NOFILE, &rl);
 	return rl.rlim_cur;
 }
-
 
 void set_stack_size_limit(ulong new_limit)
 {
@@ -206,7 +222,6 @@ void set_stack_size_limit(ulong new_limit)
 	debug("NEW STACK limit %lu", rl.rlim_cur);
 	setrlimit(RLIMIT_STACK, &rl);
 }
-
 
 ulong get_stack_size_limit()
 {

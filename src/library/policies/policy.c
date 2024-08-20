@@ -343,7 +343,6 @@ static ulong calls_cpufreq = 0;
 timestamp init_last_phase, init_last_comp;
 
 
-
 /** This function loads specific CPU and GPU policy functions and calls the initialization functions. */
 state_t init_power_policy(settings_conf_t *app_settings, resched_t *res)
 {
@@ -1276,6 +1275,9 @@ state_t policy_end()
         policy_restore_cpus_governor();
     }
 
+		// Let other processes acquire the GPU optimize lock.
+		policy_gpu_unlock_opt();
+
     preturn(polsyms_fun.end, c);
 }
 
@@ -1978,7 +1980,7 @@ static state_t policy_freq_selection(polctx_t *c, signature_t *my_sig, node_freq
         if (dom->mem != POL_NOT_SUPPORTED) {
             policy_mem_freq_selection(c, my_sig, freqs, dom, avg_freq);
         }
-        if (dom->gpu != POL_NOT_SUPPORTED) {
+        if (dom->gpu != POL_NOT_SUPPORTED && policy_gpu_opt_enabled()) {
             policy_gpu_freq_selection(c, my_sig, freqs, dom, avg_freq);
         }
         if (dom->gpumem != POL_NOT_SUPPORTED) {

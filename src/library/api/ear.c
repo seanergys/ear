@@ -270,6 +270,10 @@ static state_t check_job_folder();
 
 static uint must_masters_synchronize();
 
+
+/** Make a copy of pathname and store it to a file called pathname.bckp */
+static state_t earl_log_backup(char *pathname, size_t pathname_size);
+
 static state_t check_eard_earl_compatibility(state_t eard_connect_state)
 {
 	state_t st = EAR_SUCCESS;
@@ -1105,11 +1109,11 @@ static int get_local_id(char *node_name)
 		}
 	}
 #if SHOW_DEBUGS
-	if (lid == 0) {
-		debug("EARL[%d] Rank %d is not the master in node %s", getpid(), ear_my_rank, node_name);
+	if (lid) {
+		debug("EARL[%d] Rank %d is the master in node %s", getpid(), ear_my_rank, node_name);
 	}else
 	{
-		debug("EARL[%d] Rank %d is the master in node %s", getpid(), ear_my_rank, node_name);
+		debug("EARL[%d] Rank %d is not the master in node %s", getpid(), ear_my_rank, node_name);
 	}
 #endif
 		return lid;
@@ -1622,16 +1626,16 @@ void ear_init()
 
 		if (is_already_connected(get_ear_tmp(), my_job_id, my_step_id, AID, my_pid))
 		{
-			verbose_master(VEAR_INIT,
-										 "%sWARNING%s (Job/step/process) (%d/%d/%d) already conncted.\n",
-										 COL_RED, COL_CLR, my_job_id, my_step_id, my_pid);
-			return;
-		}
+			verbose_info_master("%sWARNING%s (Job/step/process) (%d/%d/%d) seems to be already conncted. Did the process mutate? Recovering EARD connection info...", COL_RED, COL_CLR, my_job_id, my_step_id, my_pid);
 
-		// Getting if the local process is the master or not
-		/* my_id reflects whether we are the master or no my_id == 0 means we are the master *****/
-		/* This function uses a lock only gathered by the master */
-		my_id = get_local_id(node_name);
+			eards_recover_connection(get_ear_tmp(), my_job_id, my_step_id, AID, ear_my_rank);
+			my_id = 0;
+		} else {
+			// Getting if the local process is the master or not
+			/* my_id reflects whether we are the master or no my_id == 0 means we are the master *****/
+			/* This function uses a lock only gathered by the master */
+			my_id = get_local_id(node_name);
+		}
 	} else
 	{
 		my_id = 0;
@@ -1929,6 +1933,17 @@ void ear_init()
                                     verb_path, lib_shared_region->master_rank,
                                     my_node_id, my_step_id, my_job_id, AID);
                             verbose_master(VEAR_INIT, "EARL log file: %s", file_name);
+
+														// Check first whether the file exists
+														if (file_is_regular(file_name)) {
+															verbose_master(1,
+																	"%sWarning%s EARL log file %s already exists. Backing it up...",
+																	COL_YLW, COL_CLR, file_name);
+															if (state_fail(earl_log_backup(file_name, sizeof(file_name))))
+															{
+																verbose_master(2, "%sWarning%s Error backing up file: %s", COL_YLW, COL_CLR, state_msg);
+															}
+														}
 
                             int fd = open(file_name, O_WRONLY|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR|S_IRGRP);
                             if (fd != -1) {
@@ -3142,8 +3157,26 @@ static void  reset_earl_environment()
 
 void ear_fork_new_child()
 {
-  verbose(0, "EAR[%d]: New process %d!", getppid(), getpid());
+	pid_t pid = getpid();
+	pid_t ppid = getppid();
+  verbose(0, "EAR[%d]: New process %d!", ppid, pid);
   reset_earl_environment();
+
+#if 0
+	Disabled as this approach does not work
+	char *gpu_master_opt_str = ear_getenv(FLAG_GPU_MASTER_OPTIMIZE);
+	if (gpu_master_opt_str)
+	{
+		long gpu_master_opt = strtol(gpu_master_opt_str, NULL, 10);
+		if (gpu_master_opt)
+		{
+			/* Set a 0 value to the environment variable. Last argument means 'overwrite'. */
+			verbose(0, "EAR[%d] Process %d Setting %s to 0", ppid, pid, FLAG_GPU_MASTER_OPTIMIZE);
+			setenv(FLAG_GPU_MASTER_OPTIMIZE, "0", 1);
+		}
+	}
+#endif
+
   ear_init();
 
 }
@@ -3179,3 +3212,49 @@ void ear_destructor()
 {
 }
 #endif
+
+
+static state_t earl_log_backup(char *pathname, size_t pathname_size)
+{
+	state_t st = EAR_SUCCESS;
+	ssize_t file_size = ear_file_size(pathname);
+	if (file_size <= 0)
+	{
+		return st;
+	}
+
+	char *file_buff = (char *) calloc((size_t) file_size, sizeof(char));
+	if (!file_buff)
+	{
+		return_msg(EAR_ERROR, Generr.alloc_error);
+	}
+
+	st = ear_file_read(pathname, file_buff, (size_t) file_size);
+	if (state_fail(st)) {
+		verbose_error("Reading file %s (%d): %s", pathname, intern_error_num, intern_error_str);
+		free(file_buff);
+		return_msg(st, "Backing up: File could not be read.");
+	}
+
+	// Create a copy of the file in <pathname>.bckp
+	char *bckp_pathname = (char *) calloc((size_t) pathname_size + 6, sizeof(char));
+	if (!bckp_pathname)
+	{
+		free(file_buff);
+		return_msg(EAR_ERROR, Generr.alloc_error);
+	}
+
+	snprintf(bckp_pathname, (size_t) pathname_size + 5, "%s.bckp", pathname);
+	st = ear_file_write(bckp_pathname, file_buff, (size_t) file_size);
+	if (state_fail(st)) {
+		verbose_error("Writing to file %s (%d): %s", bckp_pathname, intern_error_num, intern_error_str);
+		free(file_buff);
+		free(bckp_pathname);
+		return_msg(st, "Backing up: File could not be read.");
+	}
+
+	free(file_buff);
+	free(bckp_pathname);
+
+	return st;
+}
