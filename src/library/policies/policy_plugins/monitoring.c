@@ -143,7 +143,7 @@ state_t policy_restore_settings(polctx_t *c, signature_t *my_sig,
 #if USE_GPUS
 	if (gpus.restore_settings != NULL) {
 		/* Basic support for GPUS */
-		verbose(2, "%sRestore:GPU%s ", COL_GRE, COL_CLR);
+		verbose(2, "%sRestoring GPU policy settings%s", COL_GRE, COL_CLR);
 		st = gpus.restore_settings(c, my_sig, freqs);
 	}
 #endif
