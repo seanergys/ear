@@ -776,7 +776,7 @@ int services_met_temp(eard_head_t *head, int req_fd, int ack_fd)
             if (state_fail(s = temp_read(met_read.tmp, NULL))) {
                 serror("Could not get mem frequency");
             }
-            printf("#### met_read %lld\n", met_read.tmp[0]);
+            debug("#### met_read %lld\n", met_read.tmp[0]);
             data = (char *) met_read.tmp;
             size = sizeof(llong) * met.tmp.devs_count;
             break;
