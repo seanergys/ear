@@ -122,11 +122,11 @@ void signature_print_fd(int fd, signature_t *sig, char is_extended, int single_c
 			// GPU temp
 			dprintf(fd, ";");
     	for (int j = 0; j < num_gpu-1; ++j) dprintf(fd, "%lu%c", sig->gpu_sig.gpu_data[j].GPU_temp, sep);
-			dprintf(fd, "%f", sig->gpu_sig.gpu_data[num_gpu-1].GPU_temp);
+			dprintf(fd, "%lu", sig->gpu_sig.gpu_data[num_gpu-1].GPU_temp);
 			// GPU temp mem
 			dprintf(fd, ";");
     	for (int j = 0; j < num_gpu-1; ++j) dprintf(fd, "%lu%c", sig->gpu_sig.gpu_data[j].GPU_temp_mem, sep);
-			dprintf(fd, "%f", sig->gpu_sig.gpu_data[num_gpu-1].GPU_temp_mem);
+			dprintf(fd, "%lu", sig->gpu_sig.gpu_data[num_gpu-1].GPU_temp_mem);
 #endif
         } else {
 

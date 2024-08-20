@@ -347,7 +347,11 @@ void verbose_gpu_app(uint vl,application_t *myapp)
     uint gpui;
     for (gpui=0;gpui<app->gpu_sig.num_gpus;gpui++){
         mys=&app->gpu_sig.gpu_data[gpui];
+#if WF_SUPPORT
+        verbose(vl,"GPU%u [Power %.2lf freq %lu flops %.2f mem_freq %lu util %lu mem_util %lu temp %lu]\n",gpui,mys->GPU_power,mys->GPU_freq,mys->GPU_GFlops, mys->GPU_mem_freq,mys->GPU_util,mys->GPU_mem_util, mys->GPU_temp);
+#else
         verbose(vl,"GPU%u [Power %.2lf freq %lu mem_freq %lu util %lu mem_util %lu]\n",gpui,mys->GPU_power,mys->GPU_freq,mys->GPU_mem_freq,mys->GPU_util,mys->GPU_mem_util);
+#endif
     }
 #endif
 }
@@ -479,9 +483,16 @@ void verbose_application_data(uint vl, application_t *app)
             mys = &app_sig->gpu_sig.gpu_data[gpui];
 
             char gpu_i_sig_buff[256];
+#if WF_SUPPORT
+            snprintf(gpu_i_sig_buff, sizeof(gpu_i_sig_buff),
+                    "GPU%u [Power %.2lf freq %lu flops %.2f mem_freq %lu util %lu mem_util %lu temp %lu]\n",
+                    gpui, mys->GPU_power, mys->GPU_freq, mys->GPU_GFlops, mys->GPU_mem_freq, mys->GPU_util, mys->GPU_mem_util, mys->GPU_temp);
+#else
+
             snprintf(gpu_i_sig_buff, sizeof(gpu_i_sig_buff),
                     "GPU%u [Power %.2lf freq %lu mem_freq %lu util %lu mem_util %lu]\n",
                     gpui, mys->GPU_power, mys->GPU_freq, mys->GPU_mem_freq, mys->GPU_util, mys->GPU_mem_util);
+#endif
 
             remain_gpusig_buff_len -= (strlen(gpu_i_sig_buff) - 1);
 
