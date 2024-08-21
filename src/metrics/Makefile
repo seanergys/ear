@@ -31,6 +31,7 @@ mets_OBJS = \
     $(SRCDIR)/metrics/bandwidth/archs/intel106.o \
     $(SRCDIR)/metrics/bandwidth/archs/intel143.o \
     $(SRCDIR)/metrics/bandwidth/archs/likwid.o \
+    $(SRCDIR)/metrics/bandwidth/archs/perf.o \
     $(SRCDIR)/metrics/cache/cache.o \
     $(SRCDIR)/metrics/cache/archs/dummy.o \
     $(SRCDIR)/metrics/cache/archs/perf.o \

@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <errno.h>
 #include <stdlib.h>
@@ -383,7 +383,7 @@ static uint parse_cpumask(char *buffer, uint **cpus)
     return cpus_count;
 }
 
-state_t perf_open_files(perf_t **perfs, char *pmu_name, char *ev_name, uint *perfs_count)
+static state_t _perf_open_files(perf_t **perfs, char *pmu_name, char *ev_name, uint *perfs_count)
 {
     char    buffer     [512];
     char    path       [512];
@@ -398,12 +398,19 @@ state_t perf_open_files(perf_t **perfs, char *pmu_name, char *ev_name, uint *per
     ulong   umask      = 0;
     double  scale      = 0;
     uint    type       = 0;
+    DIR    *dir        = NULL;
 
     *perfs = NULL;
     //
     if (pmu_name == NULL || ev_name == NULL) {
         return_msg(EAR_ERROR, Generr.input_null);
     }
+    // If folder exists
+    sprintf(path, "/sys/bus/event_source/devices/%s", pmu_name);
+    if ((dir = opendir(path)) == NULL) {
+        return_msg(EAR_ERROR, Generr.not_found);
+    }
+    closedir(dir);
     // Getting cpumask (i.e: 0-79(80) or 0,40(2)
     sprintf(path, "/sys/bus/event_source/devices/%s/cpumask", pmu_name);
     // Reading cpumask format file (this field is used to know the number of perfs to open)
@@ -414,38 +421,43 @@ state_t perf_open_files(perf_t **perfs, char *pmu_name, char *ev_name, uint *per
         }
     }
     *perfs = calloc(cpus_count, sizeof(perf_t));
-    // Getting event (i.e: 'event=0xff,umask=0x10')
-    sprintf(path, "/sys/bus/event_source/devices/%s/events/%s", pmu_name, ev_name);
-    // Reading event file
-    if (state_fail(ear_file_read(path, memset(buffer, 0, sizeof(buffer)), sizeof(buffer)))) {
-        return EAR_ERROR;
-    }
-    //printf("%s: %s\n", path, buffer);
-    event  = (ulong) strtol(parse_value(buffer, "event="), NULL, 16);
-    umask  = (ulong) strtol(parse_value(buffer, "umask="), NULL, 16);
-    // Getting event scale (i.e: 'event=0xff,umask=0x10')
-    sprintf(path, "/sys/bus/event_source/devices/%s/events/%s.scale", pmu_name, ev_name);
-    // Reading event file
-    if (state_ok(ear_file_read(path, memset(buffer, 0, sizeof(buffer)), sizeof(buffer)))) {
-        scale = atof(buffer);
-    }
-    // Getting event unit (i.e: 'event=0xff,umask=0x10')
-    sprintf(path, "/sys/bus/event_source/devices/%s/events/%s.unit", pmu_name, ev_name);
-    // Reading event file
-    if (state_ok(ear_file_read(path, memset(unit, 0, sizeof(buffer)), sizeof(buffer)))) {
-        strclean(unit, '\n');
-    }
-    // Getting event format (i.e: 'config:0-7')
-    sprintf(path, "/sys/bus/event_source/devices/%s/format/event", pmu_name);
-    // Reading event format file
-    if (state_ok(ear_file_read(path, memset(buffer, 0, sizeof(buffer)), sizeof(buffer)))) {
-        config = config | parse_config(buffer, event);
-    }
-    // Getting umask format (i.e: 'config:8-15,32-55')
-    sprintf(path, "/sys/bus/event_source/devices/%s/format/umask", pmu_name);
-    // Reading umask format file
-    if (state_ok(ear_file_read(path, memset(buffer, 0, sizeof(buffer)), sizeof(buffer)))) {
-        config = config | parse_config(buffer, umask);
+    // If the event is not a number
+    if (strncmp(ev_name, "0x", 2) != 0) {
+        // Getting event (i.e: 'event=0xff,umask=0x10')
+        sprintf(path, "/sys/bus/event_source/devices/%s/events/%s", pmu_name, ev_name);
+        // Reading event file
+        if (state_fail(ear_file_read(path, memset(buffer, 0, sizeof(buffer)), sizeof(buffer)))) {
+            return EAR_ERROR;
+        }
+        //printf("%s: %s\n", path, buffer);
+        event  = (ulong) strtol(parse_value(buffer, "event="), NULL, 16);
+        umask  = (ulong) strtol(parse_value(buffer, "umask="), NULL, 16);
+        // Getting event scale (i.e: 'event=0xff,umask=0x10')
+        sprintf(path, "/sys/bus/event_source/devices/%s/events/%s.scale", pmu_name, ev_name);
+        // Reading event file
+        if (state_ok(ear_file_read(path, memset(buffer, 0, sizeof(buffer)), sizeof(buffer)))) {
+            scale = atof(buffer);
+        }
+        // Getting event unit (i.e: 'event=0xff,umask=0x10')
+        sprintf(path, "/sys/bus/event_source/devices/%s/events/%s.unit", pmu_name, ev_name);
+        // Reading event file
+        if (state_ok(ear_file_read(path, memset(unit, 0, sizeof(buffer)), sizeof(buffer)))) {
+            strclean(unit, '\n');
+        }
+        // Getting event format (i.e: 'config:0-7')
+        sprintf(path, "/sys/bus/event_source/devices/%s/format/event", pmu_name);
+        // Reading event format file
+        if (state_ok(ear_file_read(path, memset(buffer, 0, sizeof(buffer)), sizeof(buffer)))) {
+            config = config | parse_config(buffer, event);
+        }
+        // Getting umask format (i.e: 'config:8-15,32-55')
+        sprintf(path, "/sys/bus/event_source/devices/%s/format/umask", pmu_name);
+        // Reading umask format file
+        if (state_ok(ear_file_read(path, memset(buffer, 0, sizeof(buffer)), sizeof(buffer)))) {
+            config = config | parse_config(buffer, umask);
+        }
+    } else {
+        config = (ulong) atoull(ev_name);
     }
     // Getting type (i.e: '17')
     sprintf(path, "/sys/bus/event_source/devices/%s/type", pmu_name);
@@ -468,6 +480,8 @@ state_t perf_open_files(perf_t **perfs, char *pmu_name, char *ev_name, uint *per
             cpus_count -= 1;
             cpu -= 1;
         }
+        strcpy(perfs[cpu]->unit, unit);
+        perfs[cpu]->scale = scale;
     }
     if (perfs_count != NULL) {
         *perfs_count = cpus_count;
@@ -481,7 +495,49 @@ state_t perf_open_files(perf_t **perfs, char *pmu_name, char *ev_name, uint *per
     return EAR_SUCCESS;
 }
 
-#if 0
+state_t perf_open_files(perf_t **_perfs, char *_pmu_name, char *ev_name, uint *_perfs_count)
+{
+    char     pmu_name    [128];
+    perf_t  *perfs       = NULL; // Perfs accumulation
+    uint     perfs_count = 0;
+    perf_t  *allocs      = NULL;
+    uint     allocs_count = 0;
+    int      is_multi    = 0;
+    int      i           = 0;
+    state_t  s           = EAR_SUCCESS;
+
+    *_perfs_count = 0;
+    // Is multi depends if a %d is found
+    is_multi = strstr(_pmu_name, "%d") != NULL;
+    do {
+        perfs = NULL;
+        perfs_count = 0;
+        // Converting pmu_name_%d into pmu_name_0
+        sprintf(pmu_name, _pmu_name, i++);
+        debug("%s trying to open", pmu_name);
+        // Calling original perf_open_files
+        if (state_ok(s = _perf_open_files(&perfs, pmu_name, ev_name, &perfs_count))) {
+            // Counting the accumulation of perfs
+            allocs_count += perfs_count;
+            debug("%s returned %d/%d perfs (%p)", pmu_name, perfs_count, allocs_count, perfs);
+            // Allocating more space if required
+            allocs = realloc(allocs, allocs_count * sizeof(perf_t));
+            // Copying the newly received perfs into the accumulation
+            memcpy(&allocs[allocs_count - perfs_count], perfs, perfs_count * sizeof(perf_t));
+            // Freeing the memory because we already have it copied.
+            free(perfs);
+        }
+    } while(state_ok(s) && is_multi);
+    //
+    if (allocs_count == 0) {
+        return EAR_ERROR;
+    }
+    *_perfs = allocs;
+    *_perfs_count = allocs_count;
+    return EAR_SUCCESS;
+}
+
+#if TEST
 int main (int argc, char *argv[])
 {
     perf_t *p_array = NULL;
@@ -490,7 +546,7 @@ int main (int argc, char *argv[])
     double value_fmt;
     int i;
 
-    if (state_fail(perf_open_files(&p_array, "uncore_imc_free_running_%d", "data_total", &p_count))) {
+    if (state_fail(perf_open_files(&p_array, "uncore_imc_free_running_0", "0x10ff", &p_count))) {
     //if (state_fail(perf_open_files(&p_array, "cpu", "instructions", &p_count))) {
         printf("Error while opening perf: %s\n", state_msg);
         return 0;
@@ -504,7 +560,7 @@ int main (int argc, char *argv[])
     for (i = 0; i < p_count; ++i) {
         perf_read(&p_array[i], &value);
         value_fmt = ((double) value) * 0.000061035156;
-        printf("Value[%d]: %lld (fmt %lf)\n", i, value, value_fmt);
+        printf("Value[%d]: %lld (fmt %lf %s)\n", i, value, value_fmt, p_array[i].unit);
     }
     return 0;
 }

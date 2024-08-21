@@ -58,7 +58,6 @@ state_t bwidth_perf_load(topology_t *tp, bwidth_ops_t *ops)
         // Ice Lake type. 4 IMCs and 2 Channels per IMC. In case of two sockets,
         // you will see 4 IMCs only, and two CPUs in cpumask.
         if (state_fail(perf_open_files(&perfs, "uncore_imc_free_running_0", "data_total", &perfs_count))) {
-        //if (state_fail(perf_open_files(&perfs, "cpu", "instructions", &perfs_count))) {
             debug("perf_open_files returned: %s", state_msg);
         }
     } else if (tp->vendor == VENDOR_ARM) {
