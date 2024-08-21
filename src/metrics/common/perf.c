@@ -426,10 +426,10 @@ static state_t _perf_open_files(perf_t **perfs, char *pmu_name, char *ev_name, u
         // Getting event (i.e: 'event=0xff,umask=0x10')
         sprintf(path, "/sys/bus/event_source/devices/%s/events/%s", pmu_name, ev_name);
         // Reading event file
+        debug("%s reading event file", path);
         if (state_fail(ear_file_read(path, memset(buffer, 0, sizeof(buffer)), sizeof(buffer)))) {
             return EAR_ERROR;
         }
-        //printf("%s: %s\n", path, buffer);
         event  = (ulong) strtol(parse_value(buffer, "event="), NULL, 16);
         umask  = (ulong) strtol(parse_value(buffer, "umask="), NULL, 16);
         // Getting event scale (i.e: 'event=0xff,umask=0x10')
@@ -546,7 +546,8 @@ int main (int argc, char *argv[])
     double value_fmt;
     int i;
 
-    if (state_fail(perf_open_files(&p_array, "uncore_imc_free_running_0", "0x10ff", &p_count))) {
+    if (state_fail(perf_open_files(&p_array, "uncore_imc_%d", "cas_count_read", &p_count))) {
+    //if (state_fail(perf_open_files(&p_array, "uncore_imc_free_running_0", "0x10ff", &p_count))) {
     //if (state_fail(perf_open_files(&p_array, "cpu", "instructions", &p_count))) {
         printf("Error while opening perf: %s\n", state_msg);
         return 0;

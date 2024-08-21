@@ -267,6 +267,7 @@ double bwidth_help_castotpi(ullong cas, ullong instructions)
 
 }
 
+#if TEST
 static topology_t tp;
 static apinfo_t   info;
 static bwidth_t   bw2[16];
@@ -287,3 +288,4 @@ int main (int argc, char *argv[])
     printf("GBS: %lf\n", gbs);
     return 0;
 }
+#endif
