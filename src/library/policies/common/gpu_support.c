@@ -78,6 +78,7 @@ state_t policy_gpu_load(settings_conf_t * app_settings, polsym_t * psyms)
 		xsnprintf(gpupolicy_name, sizeof(gpupolicy_name), "gpu_%s.so",
 			  (GPU_OPT) ? app_settings->policy_name : "monitoring");
 
+		/* Create GPU policy plug-in path */
 		char my_plug_path[SZ_PATH_INCOMPLETE];
 		if (state_fail
 		    (utils_create_plugin_path

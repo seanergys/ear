@@ -38,6 +38,35 @@ state_t utils_create_plugin_path(char *result_path, char *install_path, char *cu
 	return st;
 }
 
+state_t utils_complete_plugin_path(char *result_path, size_t result_path_s, char *plug_name, settings_conf_t *sconf)
+{
+	if (!result_path || !sconf) {
+		return EAR_ERROR;
+	}
+
+	/* Try to load the plug-in from a hacked path if the user is authorized. */
+	int auth_user = sconf->user_type;
+	char *hack_earl_install = NULL;
+	if ((auth_user == AUTHORIZED) || USER_TEST) {
+		hack_earl_install = ear_getenv(HACK_EARL_INSTALL_PATH);
+	}
+
+	snprintf(result_path, result_path_s, "%s/plugins/%s",
+			(hack_earl_install) ? hack_earl_install : sconf->installation.dir_plug, plug_name);
+
+	if (file_is_regular(result_path)) {
+		/* If the plug-in is a regular file return success. */
+		return EAR_SUCCESS;
+	} else if (hack_earl_install) {
+		/* If it doesn't, but the hack path was used, try the official path. */
+		snprintf(result_path, result_path_s, "%s/plugins/%s", sconf->installation.dir_plug, plug_name);
+		return (file_is_regular(result_path)) ? EAR_SUCCESS : EAR_ERROR;
+	}
+
+	/* This code is reached if the base path was not hacked and the plug-in doesn't exist. */
+	return EAR_ERROR;
+}
+
 
 int utils_get_sched_num_nodes()
 {

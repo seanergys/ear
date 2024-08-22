@@ -16,6 +16,7 @@
  * It is basically used for loading EAR plug-ins.
  */
 
+#include <dlfcn.h>
 #include <common/types.h>
 #include <common/states.h>
 #include <common/plugins.h> // Not used
