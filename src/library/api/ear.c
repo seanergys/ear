@@ -47,8 +47,6 @@
 #include <sys/wait.h>
 #include <sys/resource.h>
 
-
-
 #include <common/config.h>
 #include <common/config/config_env.h>
 #include <common/colors.h>
@@ -114,6 +112,12 @@
 
 #include <library/metrics/dlb_talp_lib.h>
 #include <library/metrics/fine_grain_collect.h>
+
+/* Pretty verbose which shows the node name and the TID of the calling process.
+ * Must be used after setting global variables 'node_name' and 'main_pid'. */
+#define earl_early_verb(lvl, msg, ...) do {\
+	verbose(lvl, "[EARL][%s][%d] " msg, node_name, main_pid, ##__VA_ARGS__);\
+} while (0);
 
 
 char shexternal_region_path[GENERIC_NAME];
@@ -1334,7 +1338,8 @@ static int get_ear_application_id_multiprocess(int app_multi)
 
 		if (ear_my_rank == 0)
 		{
-			verbose(VJOB_INIT, "EARL[%d] generating AID %d in (%s)", ear_my_rank, master_pid, AID_number_file);
+			// verbose(VJOB_INIT, "EARL[%d] generating AID %d in (%s)", ear_my_rank, master_pid, AID_number_file);
+			earl_early_verb(VJOB_INIT, "Rank %d generating AID file %s. Writing PID %d", ear_my_rank, AID_number_file, master_pid);
 
 			fd = open(AID_number_file, O_WRONLY|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR);
 			if (fd >= 0)
@@ -1345,22 +1350,22 @@ static int get_ear_application_id_multiprocess(int app_multi)
 				}
 				close(fd);
 			}
-		} else
-		{
-			verbose(VPROC_INIT, "EARL[%d] reading AID from (%s)", ear_my_rank, AID_number_file);
+		} else {
+			// verbose(VPROC_INIT, "EARL[%d] reading AID from (%s)", ear_my_rank, AID_number_file);
+			earl_early_verb(VPROC_INIT, "Rank %d reading AID from %s", ear_my_rank, AID_number_file);
 			state_t st;
-			do{
+			do {
 				st = ear_file_read(AID_number_file, (char *)&master_pid, sizeof(master_pid));
-				if (st != EAR_SUCCESS){
+				if (st != EAR_SUCCESS) {
 					usleep(100);
 					tries++;
 				}
-			}while((st != EAR_SUCCESS) && (tries < 1000));
-			/* AID read or timeout . Timeout can generated blocks later*/
-			if (st == EAR_SUCCESS){
-				verbose(VPROC_INIT, "EARL[%d] master_id detected %d", ear_my_rank, master_pid);
+			} while((st != EAR_SUCCESS) && (tries < 1000));
+			/* AID read or timeout. Timeout can generated blocks later. */
+			if (st == EAR_SUCCESS) {
+				earl_early_verb(VPROC_INIT, "Rank %d master_id detected: %d", ear_my_rank, master_pid);
 			} else {
-				verbose(0, "EARL[%d] Synchronization for AID failed ", ear_my_rank);
+				earl_early_verb(0, "Rank %d synchronization for AID failed.", ear_my_rank);
 			}
 		}
 	}
@@ -1457,7 +1462,7 @@ void ear_init()
   state_t st;
   char *ext_def_freq_str=ear_getenv(HACK_DEF_FREQ);
   int fd_dummy = -1;
-  topology_t earl_topo;
+  topology_t earl_topo; // Just used for printing
 
 #if EAR_OFF
   return;
@@ -1485,7 +1490,7 @@ void ear_init()
 	read_hack_env(&tmp);
 
 	verb_level 		= get_ear_verbose();
-	verb_channel 	= 2;
+	verb_channel 	= 2; // Default: stderr
   char * hack_verb_lv;
 	if ((hack_verb_lv = ear_getenv(HACK_EARL_VERBOSE)) != NULL)
 	{
@@ -1493,21 +1498,25 @@ void ear_init()
 		VERB_SET_LV(verb_level);
 	}
 
+	// Process identification (TID)
   main_pid = syscall(SYS_gettid);
 
-	verbose(VPROC_INIT, "%s EAR [%d][%d] init .......................................%s", COL_BLU, getpid(), main_pid, COL_CLR);
+	// External defined variable
+  gethostname(node_name, sizeof(node_name));
+  strtok(node_name, ".");
+
+	earl_early_verb(VPROC_INIT, "--- EARL init ---");
+	// verbose(VPROC_INIT, "%s EAR [%d][%d] init .......................................%s", COL_BLU, getpid(), main_pid, COL_CLR);
 
   if (ear_lib_initialized)
 	{
-    verbose(1, "[%d] EAR Library already initialized. Exiting...", main_pid);
+    // verbose(1, "[%d] EAR Library already initialized. Exiting...", main_pid);
+		earl_early_verb(1, "%sWarning%s EARL already initialized. Exiting...", COL_YLW, COL_CLR);
     return;
   }
-	exiting = 0;
+	exiting = 0; // TODO: Document what is variable for
 
   timestamp_getfast(&ear_application_time_init);
-
-  gethostname(node_name, sizeof(node_name));
-  strtok(node_name, ".");
 
   // MPI
 #if MPI
@@ -1521,7 +1530,9 @@ void ear_init()
 		if (ear_my_size > 1) app_node_multiprocess = 1;
 		if (app_node_multiprocess)
 		{
-			verbose(1, "EARL[%d][%d] Node multiprocess enabled: %d tasks detected in %s", ear_my_rank, getpid(), ear_my_size, node_name);
+			// verbose(1, "EARL[%d][%d] Node multiprocess enabled: %d tasks detected in %s", ear_my_rank, getpid(), ear_my_size, node_name);
+			earl_early_verb(1, "Node multiprocess enabled. Rank: %d Tasks: %d",
+					ear_my_rank, ear_my_size);
 		}
 	}else{
 		ear_my_rank = 0;
@@ -1529,6 +1540,7 @@ void ear_init()
 		if (get_my_sched_node_rank() > 0) first_application = 0;
 	}
 #endif
+	earl_early_verb(VPROC_INIT, "Rank %d. Tasks %d.", ear_my_rank, ear_my_size);
 
 	// synchronize_masters is declared statically
 	// Provides support for OpenMPI applications launched through mpirun,
@@ -1536,7 +1548,8 @@ void ear_init()
 	synchronize_masters = must_masters_synchronize();
 	if (!synchronize_masters)
 	{
-		verbose(VEARL_INFO2, "%s[%d][%s][INFO2]%s Node detection failed in this OpenMPI workload: masters will not synchronize.", COL_BLU, main_pid, node_name, COL_CLR);
+		// verbose(VEARL_INFO2, "%s[%d][%s][INFO2]%s Node detection failed in this OpenMPI workload: masters will not synchronize.", COL_BLU, main_pid, node_name, COL_CLR);
+		earl_early_verb(VEARL_INFO2, "Node detection failed in this OpenMPI workload: masters will not synchronize.")
 	}
 
 	// This function gets info from the sched env var
@@ -1551,8 +1564,9 @@ void ear_init()
 
 		/* If tmp does not exist ear will be off but we need to set some tmp until we contact with other nodes */
 		/* WARNING The content of this EAR_TMP directory won't be removed. */
-		verbose(1, "%s[%d][%s][WARNING]%s EAR_TMP directory (%s) does not exist in the node. Setting /tmp as the EAR_TMP for this application.",
-						COL_YLW, main_pid, node_name, COL_CLR, tmp);
+		// verbose(1, "%s[%d][%s][WARNING]%s EAR_TMP directory (%s) does not exist in the node. Setting /tmp as the EAR_TMP for this application.",
+						// COL_YLW, main_pid, node_name, COL_CLR, tmp);
+		earl_early_verb(1, "%sWarning%s EAR_TMP directory (%s) does not exist in the node. Setting /tmp as the EAR_TMP for this application.", COL_YLW, COL_CLR, tmp);
 		set_ear_tmp("/tmp");
 		tmp = get_ear_tmp();
 	}
@@ -1563,8 +1577,9 @@ void ear_init()
 	state_t tmp_exists = check_job_folder();
   if (state_fail(tmp_exists))
 	{
-		verbose(1, "%s[%d][%s][WARNING]%s Job-Step directory doesn't exist. Node multiprocess disabled.",
-						COL_YLW, main_pid, node_name, COL_CLR);
+		// verbose(1, "%s[%d][%s][WARNING]%s Job-Step directory doesn't exist. Node multiprocess disabled.",
+		// 				COL_YLW, main_pid, node_name, COL_CLR);
+		earl_early_verb(1, "%sWarning%s Job-Step directory doesn't exist. Node multiprocess disabled.", COL_YLW, COL_CLR);
 
 		app_node_multiprocess = 0; // disable "multiprocess" use case.
 	}
@@ -1574,7 +1589,7 @@ void ear_init()
   /* For non-MPI there is no problem. For MPI, it is possible the case of having two applications
    * at the same time with same jid/stepid where the rank 0 have the same PID (two nodes).
    * If that happen, then we will have a conflict. The probability would be close to 0. */
-  verbose(WF_SUPPORT_VERB, "EAR Application ID is %d", AID);
+  earl_early_verb(WF_SUPPORT_VERB, "Application ID: %d", AID);
 
   load_app_mgr_env(); // TODO: This function is using my_master_rank, and it is not set yet.
 
@@ -1583,23 +1598,12 @@ void ear_init()
   pid_t my_pid = getpid();
   debug("Running in %s process = %d", node_name, my_pid);
 
-  // TODO: We could update the default freq an avoid the macro DEF_FREQ on each policy.
+  // TODO: We could update the default freq and avoid the macro DEF_FREQ on each policy.
   if (ext_def_freq_str)
 	{
     ext_def_freq = (ulong) atol(ext_def_freq_str);
-    verbose_master(VEAR_INIT, "%sWARNING%s Externally defined default freq (kHz): %lu", COL_YLW, COL_CLR, ext_def_freq);
+    earl_early_verb(VEAR_INIT, "%sWarning%s Externally defined default freq (kHz): %lu", COL_YLW, COL_CLR, ext_def_freq);
   }
-
-  // We print here the topology in order to do it only at verbose 2
-  #if PRINT_TOPOLOGY
-  if (VERB_ON(2))
-  {
-    if (ear_my_rank == 0)
-    {
-      topology_print(&earl_topo, verb_channel);
-    }
-  }
-	#endif
 
   set_ear_total_processes(ear_my_size);
 #if FAKE_LEARNING
@@ -1626,7 +1630,9 @@ void ear_init()
 
 		if (is_already_connected(get_ear_tmp(), my_job_id, my_step_id, AID, my_pid))
 		{
-			verbose_info_master("%sWARNING%s (Job/step/process) (%d/%d/%d) seems to be already conncted. Did the process mutate? Recovering EARD connection info...", COL_RED, COL_CLR, my_job_id, my_step_id, my_pid);
+			// verbose_info_master("%sWARNING%s (Job/step/application) (%d/%d/%d) seems to be already conncted. Did the process mutate? Recovering EARD connection info...", COL_RED, COL_CLR, my_job_id, my_step_id, my_pid);
+			earl_early_verb(1, "%sWarning%s (Job/step/application) (%d/%d/%d) seems to be already conncted. Did the process mutate? Recovering EARD connection info...",
+					COL_YLW, COL_CLR, my_job_id, my_step_id, AID);
 
 			eards_recover_connection(get_ear_tmp(), my_job_id, my_step_id, AID, ear_my_rank);
 			my_id = 0;
@@ -1643,14 +1649,13 @@ void ear_init()
 
 	int i_am_master = (my_id == 0);
 	int verb_pid_lvl = i_am_master ? 1 : 2; // UPDATED
-	verbose(verb_pid_lvl, "%sEAR INIT%s [PID: %d] [MASTER: %d] [NODE: %s]",
-					COL_BLU, COL_CLR, my_pid, i_am_master, node_name);
+	earl_early_verb(verb_pid_lvl, "--- EARL INIT [PID: %d] [MASTER: %d] ---", my_pid, i_am_master);
 
 	/* All masters connect in a new MPI communicator */
-	attach_to_master_set(my_id==0, synchronize_masters);
+	attach_to_master_set(i_am_master, synchronize_masters);
 
-	verbose(VPROC_INIT, "EARL[%d][%d] attach_to_master_set done . Sync %d MP %d",
-					ear_my_rank, getpid(), synchronize_masters, app_node_multiprocess);
+	earl_early_verb(VPROC_INIT, "Rank %d attached to master set. Synch %d MP %d.",
+					ear_my_rank, synchronize_masters, app_node_multiprocess);
 
 	if (state_fail(tmp_exists))
 	{
@@ -1660,22 +1665,22 @@ void ear_init()
 		}
 		eard_ok = 0;
 		cancelled = 0;
-		verbose(1, "EARL[%d][%s] EAR_TMP doesn't exists. EARL off.", main_pid, node_name);
+		earl_early_verb(1, "EAR_TMP doesn't exists. EARL off.");
 		return;
 	}
 
 	/* This option is set to 0 when application is MPI and some processes are not running the EARL,
-	 * which is a mesh */
+	 * which is a mess */
 	if ((synchronize_masters == 0) && (!app_node_multiprocess))
 	{
-		verbose(1, "EARL[%d][%d] initialization aborted.", ear_my_rank, getpid());
+		verbose(1, "Rank %d: Masters can't synchronize and not a multiprocess app. Initialization aborted.", ear_my_rank);
 		return;
 	}
 
   ear_lib_initialized = 1; // Here EARL will be initialized, even it can't connect with EARD
 
   debug("Executing EAR library IDs(%d,%d)", ear_my_rank, my_id);
-	verbose(VPROC_INIT,"EARL[%d][%d] Attaching to EARD shared regions...", ear_my_rank, getpid());
+	earl_early_verb(VPROC_INIT, "Rank %d attaching to EARD shared regions...", ear_my_rank);
 
 	/* At this point we haven't connected with EARD yet, but, if these regions don't exist, we can not connect.
 	 * Three potential reasons:
@@ -1683,21 +1688,21 @@ void ear_init()
 	 *	2) there is some version mistmatch between the earl-earplug-eard,
 	 *	3) Paths are not correct and we are looking at incorrect ear_tmp path */
 
-				get_settings_conf_path(get_ear_tmp(),ID,system_conf_path);
+	get_settings_conf_path(get_ear_tmp(),ID,system_conf_path);
 
-        /* resched path must be migrated to EID folder */
-				get_resched_path(get_ear_tmp(),ID, resched_conf_path);
-				debug("[%s.%d] system_conf_path  = %s",node_name, ear_my_rank, system_conf_path);
-				debug("[%s.%d] resched_conf_path = %s",node_name, ear_my_rank, resched_conf_path);
+	/* resched path must be migrated to EID folder */
+	get_resched_path(get_ear_tmp(), ID, resched_conf_path);
+	debug("[%s.%d] system_conf_path  = %s",node_name, ear_my_rank, system_conf_path);
+	debug("[%s.%d] resched_conf_path = %s",node_name, ear_my_rank, resched_conf_path);
 
-        #if FAKE_EAR_NOT_INSTALLED
-        uint first_dummy = 1;
-        #endif
-				do
-				{
-					verbose(VPROC_INIT,"EARL[%d][%d] settings %s", ear_my_rank, getpid(), system_conf_path);
-					system_conf = attach_settings_conf_shared_area(system_conf_path);
-					resched_conf = attach_resched_shared_area(resched_conf_path);
+#if FAKE_EAR_NOT_INSTALLED
+	uint first_dummy = 1;
+#endif
+	do
+	{
+		earl_early_verb(VPROC_INIT, "Rank %d settings path: %s", ear_my_rank, system_conf_path);
+		system_conf = attach_settings_conf_shared_area(system_conf_path);
+		resched_conf = attach_resched_shared_area(resched_conf_path);
 
 #if FAKE_EAR_NOT_INSTALLED
     if (first_dummy){
@@ -1713,7 +1718,7 @@ void ear_init()
 
     if ((system_conf == NULL) && (resched_conf == NULL) && !my_id)
     {
-      verbose(VPROC_INIT, "[%s] Shared memory not present, creating dummy areas", node_name);
+      earl_early_verb(VPROC_INIT, "Shared memory not present, creating dummy areas...");
       create_eard_dummy_shared_regions(get_ear_tmp(), create_ID(my_job_id,my_step_id));
       fd_dummy = file_lock_create(dummy_areas_path);
     } else if ((system_conf == NULL) && (resched_conf == NULL) && my_id)
@@ -1729,7 +1734,7 @@ void ear_init()
   debug("create_ID() = %u", create_ID(my_job_id,my_step_id)); // id*100+sid
   if (fake_eard_error) verbose_master(0, "Warning, executing fake eard errors: %u", fake_eard_error);
 
-	verbose(VPROC_INIT,"EARL[%d][%d]	testing valid ID %u (settings %p resched %p)", ear_my_rank, getpid(), create_ID(my_job_id, my_step_id), system_conf, resched_conf);
+	earl_early_verb(VPROC_INIT, "Rank %d testing valid ID %u (settings %p resched %p)", ear_my_rank, create_ID(my_job_id, my_step_id), system_conf, resched_conf);
 
 				uint valid_ID;
 				if ((system_conf != NULL) && (resched_conf != NULL)){
@@ -1739,13 +1744,13 @@ void ear_init()
 						valid_ID = 0;	
 					}
 					if (fake_eard_error == 2){
-						if (ear_my_rank %2 ) valid_ID = 0;
+						if (ear_my_rank % 2) valid_ID = 0;
 					}
 				}else {
 					valid_ID = 0;
 				}
 
-				verbose(VPROC_INIT,"EARL[%d][%d] JOB/STEP valid %u", ear_my_rank, getpid(), valid_ID);
+				earl_early_verb(VPROC_INIT, "Rank %d JOB/STEP valid: %u", ear_my_rank, valid_ID);
 
 				/* Updating configuration */
 				if (valid_ID){
@@ -1753,9 +1758,9 @@ void ear_init()
 								update_configuration();	
 				}else{
 								eard_ok = 0;
-								verbose_master(2,"EARD not detected");
-								verbose(VPROC_INIT,"EARL[%d][%d] EARD not detected", ear_my_rank, getpid());
-								if (!my_id){ 
+								verbose_master(2, "%sWarning%s EARD not detected.", COL_YLW, COL_CLR);
+								earl_early_verb(VPROC_INIT, "Rank %d: EARD not detected.", ear_my_rank);
+								if (!my_id) {
                         /* This lock file is created in get_local_id function, and it is used to select the master */
 												debug("Application master releasing the lock %d %s", ear_my_rank,master_lock_filename);
 												file_unlock_master(fd_master_lock,master_lock_filename);
@@ -1765,7 +1770,6 @@ void ear_init()
   }
   /* my_id is 0 for the master (for each node) and 1 for the others */
   /* eard_ok reflects the eard connection status, if eard_ok is 0, earl is disabled */
-
 
 				// Application static data and metrics
 				init_application(&application);
@@ -2520,7 +2524,7 @@ void ear_finalize(int exit_status)
 								} else
 								{
 									fill_basic_sig(&application);
-									report_misc(&rep_id, WF_APPLICATION, &application,1);
+									report_misc(&rep_id, WF_APPLICATION, (const char *) &application,1);
 								}
 
                 if (masters_info.my_master_rank == 0){
