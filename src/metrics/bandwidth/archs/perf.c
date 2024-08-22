@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <common/system/time.h>
@@ -55,10 +55,24 @@ static void set_event(ullong event, uint type, cchar *event_name)
 state_t bwidth_perf_load(topology_t *tp, bwidth_ops_t *ops)
 {
     if (tp->vendor == VENDOR_INTEL) {
+	// In Sapphire Rapids (4 IMCs and 2 channels per IMC per socket), we
+	// found the event files cas_count_read and cas_count_write. But
+	// instead of opening two different events per pmu (uncore_imc_0...),
+	// which is possible because there are 4 counters per pmu, we set the
+	// read+write event which we know it is 0xff05.
+	if (tp->model >= MODEL_SAPPHIRE_RAPIDS) {
+            if (state_fail(perf_open_files(&perfs, "uncore_imc_%d", "0xff05", &perfs_count))) {
+	    }
+	} 
         // Ice Lake type. 4 IMCs and 2 Channels per IMC. In case of two sockets,
-        // you will see 4 IMCs only, and two CPUs in cpumask.
-        if (state_fail(perf_open_files(&perfs, "uncore_imc_free_running_0", "data_total", &perfs_count))) {
-            debug("perf_open_files returned: %s", state_msg);
+        // you will see 4 IMCs only, and two CPUs in cpumask. But, Free Running
+	// Counters are per socket, so you can read the total data transferred
+	// just reading a Free Runing Counter.
+	else if (tp->model >= MODEL_ICELAKE_X) {
+	    if (state_fail(perf_open_files(&perfs, "uncore_imc_free_running_0", "0x10ff", &perfs_count))) {
+	    	if (state_fail(perf_open_files(&perfs, "uncore_imc_free_running_0", "data_total", &perfs_count))) {
+	        }
+	    }
         }
     } else if (tp->vendor == VENDOR_ARM) {
         set_alloc(1);
@@ -111,7 +125,7 @@ state_t bwidth_perf_read(ctx_t *c, bwidth_t *bw)
     for (i = 0; i < perfs_count; ++i) {
         if (state_ok(perf_read(&perfs[i], &value))) {
             bw[i].cas = value;
-            printf("CAS: %llu\n", bw[i].cas);
+            debug("CAS: %llu", bw[i].cas);
         }
     }
     return EAR_SUCCESS;

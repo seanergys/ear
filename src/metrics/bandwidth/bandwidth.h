@@ -28,11 +28,11 @@
 
 // The last device is used as a timer for computing the GB/s
 typedef struct bwidth_s {
-	union {
-		timestamp_t time;
+    union {
+        timestamp_t time;
         double secs;
-		ullong cas;
-	};
+	ullong cas;
+    };
 } bwidth_t;
 
 // API building scheme

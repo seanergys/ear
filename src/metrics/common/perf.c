@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <errno.h>
 #include <stdlib.h>
@@ -66,9 +66,9 @@ state_t perf_open_cpu(perf_t *perf, perf_t *group, pid_t pid, uint type, ulong e
 	int gp_flag =  0;	
 	int gp_fd   = -1;
 
-    if (!test_paranoid()) {
-        return_msg(EAR_ERROR, "perf_event_paranoid value is not valid");
-    }
+	if (!test_paranoid()) {
+		return_msg(EAR_ERROR, "perf_event_paranoid value is not valid");
+	}
 	//
 	memset(perf, 0, sizeof(perf_t));
 
@@ -89,9 +89,9 @@ state_t perf_open_cpu(perf_t *perf, perf_t *group, pid_t pid, uint type, ulong e
 		perf->attr.disabled       = 1;
 		#if ESTIMATE_PERF == 0
 		perf->attr.inherit        = 1;
-    	#if PERF_ATTR_SIZE_VER6
+		#if PERF_ATTR_SIZE_VER6
 		perf->attr.inherit_thread = 1;
-    	#endif
+		#endif
 		#endif
 		perf->attr.exclude_kernel = 1;
 		perf->attr.exclude_hv     = 1;
@@ -100,11 +100,11 @@ state_t perf_open_cpu(perf_t *perf, perf_t *group, pid_t pid, uint type, ulong e
 	perf->fd = syscall(__NR_perf_event_open, &perf->attr, pid, cpu, gp_fd, 0);
 
 	#ifdef SHOW_DEBUGS
-    debug("input: event 0x%lx, group %p and fd %d type %u size %u cpu %d group fd %d", event, group, perf->fd, perf->attr.type, perf->attr.size, cpu, gp_fd);
+        debug("input: event 0x%lx, group %p and fd %d type %u size %u cpu %d group fd %d", event, group, perf->fd, perf->attr.type, perf->attr.size, cpu, gp_fd);
 	if (perf->fd == -1) {
-		debug("event 0x%lx returned fd %d (no: %d, str: %s)", event, perf->fd, errno, strerror(errno));
+		debug("error (no: %d, str: %s)", errno, strerror(errno));
 	} else {
-		debug("ok event %lx, group %p and fd %d type %u size %u cpu %d group fd %d", event, group, perf->fd, perf->attr.type, perf->attr.size, cpu, gp_fd);
+		debug("ok");
 	}
 	#endif
 	if (perf->fd == -1) {
@@ -210,8 +210,8 @@ state_t perf_read(perf_t *perf, llong *value)
 
 	memset(&value_s, 0, sizeof(struct read_format_s));
 	ret = read(perf->fd, &value_s, sizeof(struct read_format_s));
-    debug("PERF read val/ret/err: %llu %d %d", value_s.nrval, ret, errno);
-    //
+	debug("PERF read val/ret/err: %llu %d %d", value_s.nrval, ret, errno);
+	//
 	if (ret == -1) {
 		return_msg(EAR_ERROR, strerror(errno));
 	}
@@ -227,7 +227,7 @@ state_t perf_read(perf_t *perf, llong *value)
 		value_d = (double) value_s.nrval;
 		total_d = value_d * time_mul;
 		*value  = (llong) total_d;
-        debug("PERF final value     : %lld", *value);
+		debug("PERF final value     : %lld", *value);
 	}
 	else for (i = 0; i < value_s.nrval && i < 8; ++i) {
 		value_d  = (double) value_s.values[i];
@@ -281,7 +281,7 @@ static char *parse_value(char *buffer, char *key)
         ++p2;
     }
     *p2 = '\0';
-    //printf("buffer_ret: %s\n", buffer_ret);
+    //debug("buffer_ret: %s", buffer_ret);
     return buffer_ret;
 }
 
@@ -319,7 +319,7 @@ static ulong parse_config(char *buffer, ulong value)
             // Getting value
             mask  = (((0x01 << (b_left - b_right + 1)) - 1) << b_right);
             final = final | ((value << b_right) & mask);
-            printf("rank[%d]: %s, mask 0x%lx, value 0x%lx (%lu), final 0x%lx\n",
+            debug("rank[%d]: %s, mask 0x%lx, value 0x%lx (%lu), final 0x%lx",
                    i1, l1[i1], mask, value, value, final);
         }
         free(l2);
@@ -352,7 +352,7 @@ static uint parse_cpumask(char *buffer, uint **cpus)
                 if (min < max) {
                     if (*cpus != NULL) {
                         while (min <= max) {
-                            printf("CPU%u: %u\n", iC, min);
+                            debug("CPU%u: %u", iC, min);
                             (*cpus)[iC] = min;
                             ++min;
                             ++iC;
@@ -365,7 +365,7 @@ static uint parse_cpumask(char *buffer, uint **cpus)
             if (l2_count == 1) {
                 uint val = l2[0];
                 if (*cpus != NULL) {
-                    printf("CPU[%u]: %u\n", iC, val);
+                    debug("CPU[%u]: %u", iC, val);
                     (*cpus)[iC] = val;
                     ++iC;
                 } else {
@@ -378,7 +378,7 @@ static uint parse_cpumask(char *buffer, uint **cpus)
             *cpus = calloc(cpus_count, sizeof(uint));
         }
     } // for iG
-    printf("#CPUS: %u\n", cpus_count);
+    debug("#CPUS: %u", cpus_count);
     strtoa_free(l1);
     return cpus_count;
 }
@@ -396,7 +396,7 @@ static state_t _perf_open_files(perf_t **perfs, char *pmu_name, char *ev_name, u
     ulong   config     = 0;
     ulong   event      = 0;
     ulong   umask      = 0;
-    double  scale      = 0;
+    double  scale      = 0.0;
     uint    type       = 0;
     DIR    *dir        = NULL;
 
@@ -420,7 +420,10 @@ static state_t _perf_open_files(perf_t **perfs, char *pmu_name, char *ev_name, u
             pid = -1;
         }
     }
+    debug("ALLOCATING %d", cpus_count);
     *perfs = calloc(cpus_count, sizeof(perf_t));
+    //
+    sprintf(unit, "?");
     // If the event is not a number
     if (strncmp(ev_name, "0x", 2) != 0) {
         // Getting event (i.e: 'event=0xff,umask=0x10')
@@ -465,23 +468,23 @@ static state_t _perf_open_files(perf_t **perfs, char *pmu_name, char *ev_name, u
     if (state_ok(ear_file_read(path, memset(buffer, 0, sizeof(buffer)), sizeof(buffer)))) {
         type = (uint) atoi(buffer);
     }
-    printf("event  : '0x%02lx'\n", event     );
-    printf("umask  : '0x%02lx'\n", umask     );
-    printf("config : '0x%02lx'\n", config    );
-    printf("type   : '0x%02x' \n", type      );
-    printf("pid    : '%d'     \n", pid       );
-    printf("scale  : '%lf'    \n", scale     );
-    printf("unit   : '%s'     \n", unit      );
-    printf("#cpus  : '%d'     \n", cpus_count);
-    printf("cpu0   : '%d'     \n", cpus[0]   );
+    debug("event  : '0x%02lx'", event     );
+    debug("umask  : '0x%02lx'", umask     );
+    debug("config : '0x%02lx'", config    );
+    debug("type   : '0x%02x' ", type      );
+    debug("pid    : '%d'     ", pid       );
+    debug("scale  : '%lf'    ", scale     );
+    debug("unit   : '%s'     ", unit      );
+    debug("#cpus  : '%d'     ", cpus_count);
+    debug("cpu0   : '%d'     ", cpus[0]   );
     for (cpu = 0; cpu < cpus_count; ++cpu) {
         if (state_fail(perf_open_cpu(&((*perfs)[cpu]), NULL, pid, type, config, 0, cpus[cpu]))) {
-            printf("perf_open_cpu returned: %s\n", state_msg);
+            debug("perf_open_cpu returned: %s", state_msg);
             cpus_count -= 1;
             cpu -= 1;
         }
-        strcpy(perfs[cpu]->unit, unit);
-        perfs[cpu]->scale = scale;
+        strcpy((*perfs)[cpu].unit, unit);
+        (*perfs)[cpu].scale = scale;
     }
     if (perfs_count != NULL) {
         *perfs_count = cpus_count;
@@ -497,17 +500,17 @@ static state_t _perf_open_files(perf_t **perfs, char *pmu_name, char *ev_name, u
 
 state_t perf_open_files(perf_t **_perfs, char *_pmu_name, char *ev_name, uint *_perfs_count)
 {
-    char     pmu_name    [128];
-    perf_t  *perfs       = NULL; // Perfs accumulation
-    uint     perfs_count = 0;
-    perf_t  *allocs      = NULL;
+    char     pmu_name     [128];
+    perf_t  *perfs        = NULL; // Perfs accumulation
+    uint     perfs_count  = 0;
+    perf_t  *allocs       = NULL;
     uint     allocs_count = 0;
-    int      is_multi    = 0;
-    int      i           = 0;
-    state_t  s           = EAR_SUCCESS;
+    int      is_multi     = 0;
+    int      i            = 0;
+    state_t  s            = EAR_SUCCESS;
 
     *_perfs_count = 0;
-    // Is multi depends if a %d is found
+    // Is multi depends if a '%d' is found
     is_multi = strstr(_pmu_name, "%d") != NULL;
     do {
         perfs = NULL;
@@ -536,33 +539,3 @@ state_t perf_open_files(perf_t **_perfs, char *_pmu_name, char *ev_name, uint *_
     *_perfs_count = allocs_count;
     return EAR_SUCCESS;
 }
-
-#if TEST
-int main (int argc, char *argv[])
-{
-    perf_t *p_array = NULL;
-    uint p_count;
-    llong value;
-    double value_fmt;
-    int i;
-
-    if (state_fail(perf_open_files(&p_array, "uncore_imc_%d", "cas_count_read", &p_count))) {
-    //if (state_fail(perf_open_files(&p_array, "uncore_imc_free_running_0", "0x10ff", &p_count))) {
-    //if (state_fail(perf_open_files(&p_array, "cpu", "instructions", &p_count))) {
-        printf("Error while opening perf: %s\n", state_msg);
-        return 0;
-    }
-    for (i = 0; i < p_count; ++i) {
-        perf_start(&p_array[i]);
-        perf_read(&p_array[i], &value);
-        printf("Value[%d]: %lld\n", i, value);
-    }
-    system("/usr/lib/linux-tools/5.14.0-1055-oem/perf bench mem memcpy --size 10GB");
-    for (i = 0; i < p_count; ++i) {
-        perf_read(&p_array[i], &value);
-        value_fmt = ((double) value) * 0.000061035156;
-        printf("Value[%d]: %lld (fmt %lf %s)\n", i, value, value_fmt, p_array[i].unit);
-    }
-    return 0;
-}
-#endif
