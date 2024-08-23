@@ -1987,7 +1987,7 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 }
 
 /**************************** Init function used in ear_init ******************/
-int metrics_init(topology_t *topo)
+int metrics_load(topology_t *topo)
 {
 
     char *cimc_max_khz,*cimc_min_khz;

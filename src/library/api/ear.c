@@ -1981,7 +1981,7 @@ void ear_init()
 
 		// Initializing metrics
 		verbose_master(2, "EARL Metrics initialization");
-                if (metrics_init(&arch_desc.top) != EAR_SUCCESS) {
+                if (metrics_load(&arch_desc.top) != EAR_SUCCESS) {
                     verbose(1, "%sError%s EAR metrics initialization not succeed (%s), turning off EARL...", COL_RED, COL_CLR, state_msg);
                     eard_ok = 0;
                     strcpy(application.job.policy," "); /* Cleaning policy */
