@@ -70,6 +70,9 @@ int file_unlock(int fd);
 /** Releases a lock file */
 int file_unlock_master(int fd, char *lock_file_name);
 
+/** Returns whether the file pointed by \p path exsits. */
+int file_exists(const char *path);
+
 /** */
 int file_is_regular(const char *path);
 

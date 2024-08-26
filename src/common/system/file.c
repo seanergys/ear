@@ -102,6 +102,12 @@ int file_unlock_master(int fd, char *lock_file_name)
 	return 0;
 }
 
+int file_exists(const char *path)
+{
+	struct stat path_stat;
+	return (stat(path, &path_stat) == 0);
+}
+
 int file_is_regular(const char *path)
 {
 	struct stat path_stat;

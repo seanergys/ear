@@ -2834,52 +2834,44 @@ static void read_metrics_options()
 #endif
 }
 
-
-
 static state_t energy_lib_init(settings_conf_t *conf)
 {
-    state_t ret;
+	int read_env = (conf->user_type == AUTHORIZED || USER_TEST);
+	char *hack_energy_plugin_path =
+	    (read_env) ? ear_getenv(HACK_ENERGY_PLUGIN) : NULL;
 
-    char my_plug_path[512];
-    if (state_fail(utils_create_plugin_path(my_plug_path, conf->installation.dir_plug,
-                                            ear_getenv(HACK_EARL_INSTALL_PATH), conf->user_type))) {
-        return_msg(EAR_ERROR, "Plugins path can not be built.");
-    }
+	char my_plug_path[SZ_PATH];
 
-    char *hack_energy_plugin_path = (conf->user_type == AUTHORIZED) ? ear_getenv(HACK_ENERGY_PLUGIN) : NULL;
+	if (hack_energy_plugin_path) {
+		if (state_ok
+		    (utils_build_valid_plugin_path
+		     (my_plug_path, sizeof(my_plug_path), "energy",
+		      hack_energy_plugin_path, conf))) {
+			goto load;
+		}
+	}
 
-    char energy_objc[SZ_PATH];
+	if (state_fail
+	    (utils_build_valid_plugin_path
+	     (my_plug_path, sizeof(my_plug_path), "energy",
+	      conf->installation.obj_ener, conf))) {
+		verbose_error_master("Energy plug-in %s not found.",
+				     conf->installation.obj_ener);
+		return EAR_NOT_FOUND;
+	}
 
-    // If hack, then the energy plugin is a path, otherwise is a shared object file.
-    if (hack_energy_plugin_path != NULL) {
+ load:
+	/* master is defined in metrics_static_init */
+	int eard = (master);
 
-        debug("Using a hack energy plugin path");
+	state_t ret = energy_node_load(my_plug_path, eard);
 
-        strcpy(energy_objc, hack_energy_plugin_path);
+	verbose_master(2, "Energy plugin %s loaded with success: %u",
+		       my_plug_path, state_ok(ret));
 
-    } else if (strlen(conf->installation.obj_ener)) {
-
-        debug("Using the configured energy plugin shared object file");
-
-        sprintf(energy_objc, "%s/energy/%s", my_plug_path, conf->installation.obj_ener);
-
-    } else {
-        return_msg(EAR_NOT_FOUND, "There is no energy plugin configured.");
-    }
-
-    /* master is defined in metrics_static_init */
-    int eard = (master);
-
-
-
-    ret = energy_node_load(energy_objc, eard);
-
-    verbose(3, "Energy plugin %s loaded with success %u", energy_objc, state_ok(ret));
-
-    // TODO: if ret fails, generate dummy path and load that one
-    return ret;
+	// TODO: if ret fails, generate dummy path and load that one
+	return ret;
 }
-
 
 static void metrics_static_dispose()
 {

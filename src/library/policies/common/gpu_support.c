@@ -43,68 +43,64 @@ static void optimization_config(settings_conf_t * app_settings);
 
 state_t policy_gpu_load(settings_conf_t * app_settings, polsym_t * psyms)
 {
+	/* Only a master process can load a GPU policy */
 	if (masters_info.my_master_rank < 0) {
 		return EAR_SUCCESS;
 	}
+
 #if USE_GPUS
-	pid_t pid = getpid();
-	pid_t ppid = getppid();
-
-	debug("PID: %d. PPID: %d", pid, ppid);
-
+	/* Try to load the hacked GPU policy plug-in */
 	int read_env = (app_settings->user_type == AUTHORIZED || USER_TEST);
-	// Hack env var overwrites the entire path
 	char *hack_gpu_policy_plugin =
 	    (read_env) ? ear_getenv(HACK_GPU_POWER_POLICY) : NULL;
 
-	size_t gpupolicy_objc_size = SZ_PATH;
-	char *gpupolicy_objc = (char *)malloc(gpupolicy_objc_size);
-	memset(gpupolicy_objc, 0, gpupolicy_objc_size);
+	char gpupolicy_objc[SZ_PATH];
 
-	// If hack, then the energy plugin is an entire path, otherwise is a shared object file.
 	if (hack_gpu_policy_plugin) {
-		debug("GPU policy hacked via path: %s", hack_gpu_policy_plugin);
-		strncpy(gpupolicy_objc, hack_gpu_policy_plugin,
-			gpupolicy_objc_size - 1);
-		debug("GPU policy object: %s", gpupolicy_objc);
-	} else {
-		char gpupolicy_name[SZ_FILENAME];
-
-		verbose_info2_master
-		    ("GPU optimization %s. GPU policy plug-in base name: %s",
-		     (GPU_OPT) ? "enabled" : "disabled",
-		     (GPU_OPT) ? app_settings->policy_name : "monitoring");
-
-		xsnprintf(gpupolicy_name, sizeof(gpupolicy_name), "gpu_%s.so",
-			  (GPU_OPT) ? app_settings->policy_name : "monitoring");
-
-		/* Create GPU policy plug-in path */
-		char my_plug_path[SZ_PATH_INCOMPLETE];
-		if (state_fail
-		    (utils_create_plugin_path
-		     (my_plug_path, app_settings->installation.dir_plug,
-		      ear_getenv(HACK_EARL_INSTALL_PATH),
-		      app_settings->user_type))) {
-			free(gpupolicy_objc);
-			return_msg(EAR_ERROR, "Plugins path can not be built.");
+		if (state_ok
+		    (utils_build_valid_plugin_path
+		     (gpupolicy_objc, sizeof(gpupolicy_objc), "policies",
+		      hack_gpu_policy_plugin, app_settings))) {
+			goto load;
 		}
-
-		xsnprintf(gpupolicy_objc, gpupolicy_objc_size - 1,
-			  "%s/policies/%s", my_plug_path, gpupolicy_name);
 	}
 
-	verbose_info2_master("[%d] Loading GPU policy plug-in: %s", pid,
+	/* If the above didn't apply, try to load the configured GPU policy plug-in */
+
+	char gpupolicy_name[SZ_FILENAME];
+
+	verbose_info2_master
+	    ("GPU optimization %s. GPU policy plug-in base name: %s",
+	     (GPU_OPT) ? "enabled" : "disabled",
+	     (GPU_OPT) ? app_settings->policy_name : "monitoring");
+
+	/* 
+	 * If GPU_OPT is disabled, gpu_monitoring.so will be loaded.
+	 * Otherwise, 'gpu_'<cpu_policy_name>.so will be loaded.
+	 */
+
+	snprintf(gpupolicy_name, sizeof(gpupolicy_name) - 1, "gpu_%s.so",
+		 (GPU_OPT) ? app_settings->policy_name : "monitoring");
+
+	if (state_fail
+	    (utils_build_valid_plugin_path
+	     (gpupolicy_objc, sizeof(gpupolicy_objc), "policies",
+	      gpupolicy_name, app_settings))) {
+		verbose_warning_master("GPU plug-in %s doesn't exist.",
+				       gpupolicy_name);
+		return EAR_ERROR;
+	}
+
+ load:
+	verbose_info2_master("[%d] Loading GPU policy plug-in: %s", getpid(),
 			     gpupolicy_objc);
 	if (state_fail
 	    (symplug_open
 	     (gpupolicy_objc, (void **)psyms, polsyms_nam, polsyms_n))) {
 		verbose_error_master("Loading file %s (%s)", gpupolicy_objc,
 				     state_msg);
-		free(gpupolicy_objc);
 		return EAR_ERROR;
 	}
-	free(gpupolicy_objc);
-
 	// Decide whether the process has the optimization policy enabled/disabled.
 	optimization_config(app_settings);
 #endif
@@ -123,7 +119,8 @@ uint policy_gpu_opt_enabled()
 	} else if (gpu_opt_enabled == 0) {
 		// Try to get the lock and become the 'master optimizer'
 		if (!file_trylock(fd_gpu_optimize)) {
-			verbose_info("[%d] GPU master optimizer changed!", getpid());
+			verbose_info("[%d] GPU master optimizer changed!",
+				     getpid());
 			gpu_opt_enabled = 1;
 		}
 		return gpu_opt_enabled;
@@ -138,7 +135,8 @@ void policy_gpu_unlock_opt()
 	 * since -1 means 'feature not enabled'. */
 	if (gpu_opt_enabled > 0) {
 		if (file_unlock(fd_gpu_optimize) < 0) {
-			verbose_error("Unlocking GPU optimize lock (%d): %s", errno, strerror(errno));
+			verbose_error("Unlocking GPU optimize lock (%d): %s",
+				      errno, strerror(errno));
 		}
 		file_lock_clean(fd_gpu_optimize, master_lock_file);
 		gpu_opt_enabled = 0;
@@ -170,7 +168,9 @@ static void optimization_config(settings_conf_t * app_settings)
 
 		/* Check whether it exists. */
 		if (!file_is_directory(job_tmp_path)) {
-			verbose_warning("%s does not exist. GPU optimization lock can't be created.", job_tmp_path);
+			verbose_warning
+			    ("%s does not exist. GPU optimization lock can't be created.",
+			     job_tmp_path);
 			return;
 		}
 
@@ -180,7 +180,8 @@ static void optimization_config(settings_conf_t * app_settings)
 
 		if ((fd_gpu_optimize = file_lock_create(master_lock_file)) < 0) {
 			verbose_error
-					("Creating %s lock file: %s", master_lock_file, strerror(errno));
+			    ("Creating %s lock file: %s", master_lock_file,
+			     strerror(errno));
 			return;
 		}
 
@@ -192,8 +193,7 @@ static void optimization_config(settings_conf_t * app_settings)
 		}
 
 		verbose_info2("[%d] GPU optimization %s", getpid(),
-						(gpu_opt_enabled) ? "enabled" :
-						"disabled");
+			      (gpu_opt_enabled) ? "enabled" : "disabled");
 	}
 }
 
