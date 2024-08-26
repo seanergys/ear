@@ -254,9 +254,13 @@ void fill_event(ear_event_t *ev, uint event, llong value);
 static state_t policy_init();
 
 /** Fills \p ret_pol_name with the policy name that must be loaded.
- * If mgt_cpufreq API is correct, \p default_policy_name is used.
- * Otherwise 'monitoring' is used. */
-static void select_policy_name(char *ret_pol_name, size_t pol_name_size, char *default_policy_name);
+ * If mgt_cpufreq, met_cpi and met_bwidth API are correct, \p default_policy_name is used.
+ * Otherwise 'monitoring' is used.
+ * This function also honors FLAG_APP_MGR_POLICIES and prepends 'app_' to the policy object name.
+ * The final policy object name always have '.so' suffixed.
+ */
+static void select_policy_name(char *ret_pol_name, size_t pol_name_size,
+		char *default_policy_name);
 
 static void build_plugin_path(char *policy_plugin_path, size_t plug_path_size, settings_conf_t *app_settings);
 
@@ -1468,7 +1472,24 @@ static void select_policy_name(char *ret_pol_name, size_t pol_name_size, char *d
 		verbose_policy_info("Forcing policy: %s", policy_name);
 	}
 
-	strncpy(ret_pol_name, policy_name, pol_name_size);
+	// App mgr
+	char *app_mgr_policy = ear_getenv(FLAG_APP_MGR_POLICIES);
+
+	int app_mgr = 0;
+	if (app_mgr_policy != NULL)
+	{
+		app_mgr = atoi(app_mgr_policy);
+	}
+
+	// Final path build
+
+	if (!app_mgr)
+	{
+		snprintf(ret_pol_name, pol_name_size - 1, "%s.so", policy_name);
+	} else
+	{
+		snprintf(ret_pol_name, pol_name_size - 1, "app_%s.so", policy_name);
+	}
 }
 
 /** GLOBAL EVENTS */
@@ -2202,49 +2223,21 @@ static void policy_new_phase(uint phase, signature_t *sig)
 static void build_plugin_path(char *policy_plugin_path, size_t plug_path_size, settings_conf_t *app_settings)
 {
 	int read_env = (app_settings->user_type == AUTHORIZED || USER_TEST);
-	// Hack env var overwrites the entire path
 	char *hack_so	= (read_env) ? ear_getenv(HACK_POWER_POLICY) : NULL;
 
-	// No hack set
-	if (!hack_so)
-	{
-		// Policy file selection
-		char my_policy_name[SZ_FILENAME];
-		select_policy_name(my_policy_name, sizeof(my_policy_name), app_settings->policy_name);
+	/* Try to load a hacked CPU policy plug-in */
+	if (hack_so) {
+		if (state_ok(utils_build_valid_plugin_path(policy_plugin_path, plug_path_size,
+						"policies", hack_so, app_settings)))
+			return;
+	}
 
-		// Plug-in path selection
+	/* If the above didn't apply, try to load the configured CPU policy plug-in */
+	char my_policy_name[SZ_FILENAME];
+	select_policy_name(my_policy_name, sizeof(my_policy_name), app_settings->policy_name);
 
-		char *hack_path = ear_getenv(HACK_EARL_INSTALL_PATH);
-
-		char plugin_path[MAX_PATH_SIZE];
-		memset(plugin_path, 0, sizeof(plugin_path));
-
-		conf_install_t *install_data = &app_settings->installation;
-		utils_create_plugin_path(plugin_path, install_data->dir_plug, hack_path, app_settings->user_type);
-
-		// App mgr
-		char *app_mgr_policy = ear_getenv(FLAG_APP_MGR_POLICIES);
-
-		int app_mgr = 0;
-		if (app_mgr_policy != NULL)
-		{
-			app_mgr = atoi(app_mgr_policy);
-		}
-
-		// Final path build
-
-		if (!app_mgr)
-		{
-			snprintf(policy_plugin_path, plug_path_size,
-							 "%s/policies/%s.so", plugin_path, my_policy_name);
-		} else
-		{
-			snprintf(policy_plugin_path, plug_path_size,
-							 "%s/policies/app_%s.so", plugin_path, my_policy_name);
-		}
-	} else
-	{
-		// Hack env var overwrites the entire path
-		snprintf(policy_plugin_path, plug_path_size, "%s", hack_so);
+	if (state_fail(utils_build_valid_plugin_path(policy_plugin_path, plug_path_size,
+					"policies", my_policy_name, app_settings))) {
+		verbose_warning_master("Policy plug-in %s not found", my_policy_name);
 	}
 }
