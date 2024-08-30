@@ -24,8 +24,10 @@ int load_mpi_and_ear(char *libmpi_path);
 
 void module_mpi_destructor();
 
+// It returns if MPI is detected.
 int module_mpi_is_enabled();
 
+// It returns if the MPI version is OpenMPI.
 int module_mpi_is_open();
 
 #endif //LIBRARY_LOADER_MPI_H
