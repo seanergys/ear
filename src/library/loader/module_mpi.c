@@ -57,9 +57,14 @@ static uint   _found_fujitsu = 0;
 static uint   _found_cray    = 0;
 static uint   _found_hack    = 0;
 
-// Legacy getters
-int module_mpi_is_enabled() { return 1; }
-int module_mpi_is_open()    { return _found_open; }
+// Obsolete, clean
+uint MPI_Get_library_version_detected = 0;
+int is_mpi_enabled() { return 1; }
+int is_openmpi() { return _found_open; }
+int module_mpi_is_open() { return _found_open; }
+int module_mpi_is_intel() { return _found_intel; }
+int module_mpi_is_detected() { return _found_intel || _found_open || _found_mvapich || _found_fujitsu || _found_cray; }
+int module_mpi_is_enabled() { return module_mpi_is_detected(); }
 
 static void *load_mpi_version(void *handler)
 {
@@ -81,6 +86,7 @@ static void *get_libear_handler(char *libear_path)
     static void *handler = NULL;
     if (handler == NULL && libear_path != NULL) {
         handler = dlopen(libear_path, RTLD_GLOBAL | RTLD_NOW);
+	printf("LOADER: handler libear: %p (%s)\n", handler, dlerror());
     }
     return handler;
 }
@@ -90,6 +96,7 @@ static void *get_libmpi_handler(char *libmpi_path)
     static void *handler = NULL;
     if (handler == NULL && libmpi_path != NULL) {
         handler = dlopen(libmpi_path, RTLD_NOLOAD | RTLD_LOCAL | RTLD_NOW);
+	printf("LOADER: handler libmpi: %p (%s)\n", handler, dlerror());
     }
     return handler;
 }
@@ -143,6 +150,7 @@ static char *build_libear_path(void *call_mpi_version)
     } else {
         return NULL;
     }
+    printf("LOADER: version string '%s'\n", buffer_version);
     // Passing to lowercase
     strtolow(buffer_version);
     // Comparing the string to get the version
@@ -233,6 +241,7 @@ int load_mpi_and_ear(char *libmpi_path)
     if ((call_mpi_version = load_mpi_version(RTLD_DEFAULT)) == NULL) {
          call_mpi_version = load_mpi_version(get_libmpi_handler(libmpi_path));
     }
+    MPI_Get_library_version_detected = (call_mpi_version != NULL);
     printf("LOADER: address of PMPI_Get_library_version: %p\n", call_mpi_version);
     // Building libear.$ext.so final path. Protected against multiple calls.
     libear_path = build_libear_path(call_mpi_version);
