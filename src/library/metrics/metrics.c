@@ -940,7 +940,7 @@ static void metrics_global_start()
 	debug(" node_dc_energy");
 	ret = energy_read(NULL, aux_energy);
 	if ((ret == EAR_ERROR) || energy_data_is_null(aux_energy)){
-		debug("MR[%d] Error reading Node energy at application start",masters_info.my_master_rank);
+		verbose_error_master("Reading Node energy at application start.");
 	}
 
 	/* RAPL energy metrics */
@@ -1266,8 +1266,8 @@ static int metrics_partial_stop(uint where)
   #if METRICS_OVH
   overhead_stop(id_ovh_dc_energy);
   #endif
-	if (ret == EAR_ERROR){
-		debug("MR[%d] Error reading Node energy at application start",masters_info.my_master_rank);
+	if (ret == EAR_ERROR) {
+		verbose_error_master("Reading Node energy at partial stop.");
 	}
 
 	/* If EARD is present, we wait until the power is computed */
