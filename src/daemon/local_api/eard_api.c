@@ -32,6 +32,7 @@
 #include <common/output/verbose.h>
 #include <common/types/application.h>
 #include <common/utils/serial_buffer.h>
+#include <common/system/folder.h>
 #include <daemon/local_api/eard_api.h>
 #include <metrics/gpu/gpu.h>
 #include <metrics/common/apis.h>
@@ -46,7 +47,14 @@
 
 #define VPROC_LAPI	3
 
-static int connecting;
+/* Below macros define the indices to store/recover fds to/from the saved array used in eards_save_connection and eards_recover_connection. */
+#define ear_fd_req_global_idx 0
+#define ear_fd_req_idx 1
+#define ear_fd_ack_idx 2
+
+#define FDS_FILENAME ".eard_connection_info"
+
+static int connecting = 0;
 
 /* These pipes are used for local communication between ear library and eard */
 static char ear_commreq_global[SZ_PATH]; 		/* This pipe connects with EARD, the same for all the jobs,
@@ -82,6 +90,8 @@ static char app_directory_pathname[MAX_PATH_SIZE];
   ear_fd_req_global = -1;   \
   close(ear_fd_ack);        \
   ear_fd_ack = -1;          \
+  close(ear_fd_req);        \
+  ear_fd_req = -1;          \
   unlink(ear_commack);      \
   unlink(ear_commreq);
 
@@ -89,6 +99,9 @@ static char app_directory_pathname[MAX_PATH_SIZE];
 static state_t create_base_path(char *base_path, size_t base_path_sz, char *tmp_path, uint job_step_id, uint app_local_id);
 
 static state_t create_app_directory(char *path);
+
+/** Saves EARD connection info to be restored in the case the client lose this info. */
+static state_t eards_save_connection(char *tmp, ulong job_id, ulong step_id, ulong local_id);
 
 int eards_read(int fd,char *buff,int size, uint wait_mode)
 {
@@ -296,6 +309,7 @@ int eards_connect(application_t *my_app, ulong lid)
     return_print(EAR_ERROR, "FAKE_EAR_NOT_INSTALLED applied");
     #endif
     // These files connect EAR with EAR_COMM
+		// TODO: Should we use get_ear_tmp()?
     ear_tmp=ear_getenv(ENV_PATH_TMP);
     if (ear_tmp == NULL) {
         ear_tmp=ear_getenv("TMP");
@@ -476,6 +490,13 @@ int eards_connect(application_t *my_app, ulong lid)
     serial_alloc(&b, SIZE_8KB);
 		connecting = 0;
 
+#if WF_SUPPORT
+		if (state_fail(eards_save_connection(ear_tmp, my_app->job.id, my_app->job.step_id, my_app->job.local_id))) {
+			verbose(2, "%sWarning%s Connection info saving failed: %s",
+							COL_YLW, COL_CLR, state_msg);
+		}
+#endif
+
     return EAR_SUCCESS;
 }
 
@@ -524,6 +545,100 @@ void eards_disconnect()
 #endif
 
   app_connected = 0;
+}
+
+static state_t eards_save_connection(char *tmp, ulong job_id, ulong step_id, ulong local_id)
+{
+	int my_id = create_ID(job_id, step_id);
+
+	// Create the base path for storing the connection info, i.e., tmp/id/local_id
+	char base_path[SZ_PATH_INCOMPLETE];
+	if (state_fail
+	    (create_base_path
+	     (base_path, sizeof(base_path), tmp, (uint) my_id, (uint) local_id))) {
+		return_msg(EAR_ERROR, "Creating the base path.");
+	}
+	// Store the communication channels.
+	int fds[3];
+	fds[ear_fd_req_global_idx] = ear_fd_req_global;
+	fds[ear_fd_req_idx] = ear_fd_req;
+	fds[ear_fd_ack_idx] = ear_fd_ack;
+
+	// Open the storage file
+	char fds_file_pathname[SZ_PATH];
+	snprintf(fds_file_pathname, sizeof(fds_file_pathname), "%s/%s",
+		 base_path, FDS_FILENAME);
+
+	int fd_flags = O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC;
+	int fd_mode = S_IRUSR | S_IWUSR | S_IRGRP;
+	int fds_file = open(fds_file_pathname, fd_flags, fd_mode);
+	if (fds_file < 0) {
+		verbose(2, "%sWarning%s FDs file couldn't be opened: %d (%s)",
+			COL_YLW, COL_CLR, errno, strerror(errno));
+		return_msg(EAR_ERROR, "FDs file could not be opened.");
+	}
+	// Write the communication info
+	if (write(fds_file, fds, sizeof(fds)) < 0) {
+		verbose(2, "%sWarning%s FDs file couldn't be written: %d (%s)",
+			COL_YLW, COL_CLR, errno, strerror(errno));
+		close(fds_file);
+		return_msg(EAR_ERROR, "FDs file could not be written.");
+	}
+
+	close(fds_file);
+
+	return EAR_SUCCESS;
+}
+
+state_t eards_recover_connection(char *tmp, ulong job_id, ulong step_id, ulong local_id, int rank_id)
+{
+	int my_id = create_ID(job_id, step_id);
+
+	// Create the base path for recovering the connection info, i.e., tmp/id/local_id
+	char base_path[SZ_PATH_INCOMPLETE];
+	if (state_fail
+	    (create_base_path
+	     (base_path, sizeof(base_path), tmp, (uint) my_id,
+	      (uint) local_id))) {
+		return_msg(EAR_ERROR, "Creating the base path.");
+	}
+	// Open the storage file
+	char fds_file_pathname[SZ_PATH];
+	snprintf(fds_file_pathname, sizeof(fds_file_pathname), "%s/%s",
+		 base_path, FDS_FILENAME);
+
+	int fd_flags = O_RDONLY | O_CLOEXEC;
+	int fds_file = open(fds_file_pathname, fd_flags, 0);
+	if (fds_file < 0) {
+		verbose(2, "%sWarning%s FDs file %s couldn't be opened: %d (%s)",
+			COL_YLW, COL_CLR, fds_file_pathname, errno, strerror(errno));
+		return_msg(EAR_ERROR, "FDs file could not be opened.");
+	}
+	// Read the communication info
+	int fds[3];
+	if (read(fds_file, fds, sizeof(fds)) < 0) {
+		verbose(2, "%sWarning%s FDs file couldn't be read: %d (%s)",
+			COL_YLW, COL_CLR, errno, strerror(errno));
+		close(fds_file);
+		return_msg(EAR_ERROR, "FDs file could not be read.");
+	}
+	// Store communication info
+	ear_fd_req_global = fds[ear_fd_req_global_idx];
+	ear_fd_req = fds[ear_fd_req_idx];
+	ear_fd_ack = fds[ear_fd_ack_idx];
+
+	app_connected = 1;
+
+	close(fds_file);
+
+	/* Pipe full paths. They're stored at base_path as well. */
+  sprintf(ear_commreq,"%s/.ear_comm.req_0.%d.%lu", base_path, my_id, (ulong)rank_id);
+  sprintf(ear_commack,"%s/.ear_comm.ack_0.%d.%lu", base_path, my_id, (ulong)rank_id);
+
+
+	eards_disconnect();
+
+	return EAR_SUCCESS;
 }
 
 //////////////// SYSTEM REQUESTS

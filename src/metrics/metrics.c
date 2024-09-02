@@ -41,7 +41,7 @@ static int             id_log;
 static int             id_api;
 static int             id_tpo;
 
-void metrics_init(metrics_info_t *m, topology_t *tp, char *nodepow_path, ullong mflags)
+void metrics_load(metrics_info_t *m, topology_t *tp, char *nodepow_path, ullong mflags)
 {
     self_tp = tp;
 
@@ -363,7 +363,7 @@ static metrics_diff_t mrD;
 static state_t metrics_apis_init(void *whatever)
 {
     topology_init(&tp);
-    metrics_init(&m, &tp, NULL, EARD);
+    metrics_load(&m, &tp, NULL, EARD);
     metrics_init_screen(&m, &tp);
     metrics_data_alloc(&mr1, &mr2, &mrD);
     metrics_read(&mr1);
