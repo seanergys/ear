@@ -184,7 +184,7 @@ state_t policy_init(polctx_t *c)
 
     if (use_energy_models)
     {
-      cpu_energy_model = energy_model_load_cpu_model(c->app->user_type, &c->app->installation, &arch_desc);
+      cpu_energy_model = energy_model_load_cpu_model(c->app, &arch_desc);
 
       if (!cpu_energy_model)
       {

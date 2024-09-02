@@ -41,7 +41,7 @@ static int             id_log;
 static int             id_api;
 static int             id_tpo;
 
-void metrics_init(metrics_info_t *m, topology_t *tp, char *nodepow_path, ullong mflags)
+void metrics_load(metrics_info_t *m, topology_t *tp, char *nodepow_path, ullong mflags)
 {
     self_tp = tp;
 

@@ -78,7 +78,7 @@ long long metrics_time();
 long long metrics_usecs_diff(long long end, long long init);
 
 /** Initializes local metrics as well as daemon's metrics */
-int metrics_init(topology_t *topo);
+int metrics_load(topology_t *topo);
 
 /** Stops metrics collection and computes the accumulated data*/
 void metrics_dispose(signature_t *metrics, ulong procs);
