@@ -507,7 +507,8 @@ static void metrics_static_init(topology_t *tp)
     sa(mgt_imcfreq_load(tp, eard, NULL));
 
 		debug("temperature load");
-		sa(temp_load(tp, eard));
+		//sa(temp_load(tp, eard));
+		sa(temp_load(tp, API_DUMMY));
 
     debug("energy_cpu_load");
     sa( energy_cpu_load(tp, eard));
@@ -655,7 +656,6 @@ static void metrics_static_init(topology_t *tp)
     // Init
     sa(mgt_cpufreq_init(no_ctx));
     sa(mgt_imcfreq_init(no_ctx));
-		// Does this order makes sense ?
 		sa(       temp_init(      ));
     sa( energy_cpu_init(no_ctx));
     sa(    cpufreq_init(no_ctx));
