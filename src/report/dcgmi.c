@@ -38,7 +38,7 @@ static char path_dir_app[1024], path_dir_loops[1024];
 static ullong my_time = 0;
 
 static uint must_report;
-static uint        dcgmi = DCGMI_DEFAULT;
+static uint        dcgmi = DCGM_DEFAULT;
 
 static char extra_header[8192];
 static char extra_header_app[8192];

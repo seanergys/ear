@@ -57,7 +57,7 @@ typedef state_t (*dcgmi_lib_init_fn) (uint api, uint all_events, dcgmi_lib_t *dc
 
 typedef state_t (*dcgmi_lib_fp_coeffs) (int **coeffs, size_t coeffs_length);
 
-static uint dcgmi_lib_enabled = (USE_GPUS && DCGMI) ? DCGMI_DEFAULT : 0;
+static uint dcgmi_lib_enabled = (USE_GPUS && DCGMI) ? DCGM_DEFAULT : 0;
 
 static dcgmi_lib_t dcgmi_data;
 
@@ -507,7 +507,7 @@ static state_t static_init()
 		return_msg(EAR_ERROR, "Getting device model.");
 	}
 
-	uint all_events = 0;
+	uint all_events = DCGM_ALL_EVENTS_DEFAULT;
 	char *all_events_c = ear_getenv(FLAG_DCGM_ALL_EVENTS);
 	if (all_events_c)
 	{
