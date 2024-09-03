@@ -373,15 +373,19 @@ state_t dcgmi_lib_get_global_metrics(dcgmi_sig_t *dcgmi_sig)
 	dcgmi_monitor_stop = 1;
 
 	// As we are multiplexing profile metrics reading, the elapsed time must be averaged.
-	double elapsed = elapsed_time / dcgmi_data.dcgmi_set_count;
+	// double elapsed = elapsed_time / dcgmi_data.dcgmi_set_count;
 
 	for (uint set = 0; set < dcgmi_data.dcgmi_set_count; set++)
 	{
+		gpuprof_t *agg = dcgmi_data.gpuprof_agg[set];
+
+		// Elapsed time for the set is stored at dev 0
+		double elapsed = agg->time_s;
 		for (uint gpu_idx = 0; gpu_idx < gpuprof_api.devs_count; gpu_idx++)
 		{
 			for (uint event_idx = 0; event_idx < dcgmi_data.dcgmi_set_sizes[set]; event_idx++)
 			{
-				dcgmi_sig->event_metrics_sets[set][gpu_idx].values[event_idx] = dcgmi_data.gpuprof_agg[set][gpu_idx].values[event_idx] / elapsed;
+				dcgmi_sig->event_metrics_sets[set][gpu_idx].values[event_idx] = agg[gpu_idx].values[event_idx] / elapsed;
 			}
 		}
 
