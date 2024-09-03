@@ -34,7 +34,7 @@ void add_periodic_aggregation(peraggr_t *aggr, ulong DC_energy, time_t start_tim
 		aggr->start_time = start_time;
 	}
 }
-void periodic_aggregation_clean_before_db(periodic_aggregation *pa)
+void periodic_aggregation_clean_before_db(periodic_aggregation_t *pa)
 {
 	if (pa->DC_energy > INT_MAX) pa->DC_energy = INT_MAX;
 	if (pa->n_samples > INT_MAX) pa->n_samples = INT_MAX;
