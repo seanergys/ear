@@ -18,6 +18,8 @@
 #define NDEBUG // Disable asserts
 #endif
 
+#define TEMP_VERB 0
+
 
 #include <errno.h>
 #include <stdio.h>
@@ -57,6 +59,7 @@
 #include <metrics/flops/flops.h>
 #include <metrics/cpufreq/cpufreq.h>
 #include <metrics/imcfreq/imcfreq.h>
+#include <metrics/temperature/temperature.h>
 #include <metrics/bandwidth/bandwidth.h>
 #include <metrics/energy_cpu/energy_cpu.h>
 #include <management/cpufreq/cpufreq.h>
@@ -115,6 +118,11 @@
 #if USE_GPUS & USE_CUPTI
 #define EAR_USE_CUPTI "EAR_USE_CUPTI"
 #endif
+
+#define verb_state_fail(action, vl, msg) \
+	if (state_fail(action)){ \
+    	verbose_master(vl,msg); \
+	}
 
 
 #if METRICS_OVH
@@ -238,6 +246,9 @@ static imcfreq_t  *imcfreq_read1[2];
 static imcfreq_t  *imcfreq_read2[2];
 static ulong       imcfreq_avrg[2];
 static ulong      *imcfreq_diff[2];
+static llong      *temp_read1[2];
+static llong      *temp_read2[2];
+static llong      *temp_diff[2];
 static cpufreq_t  *cpufreq_read1[2];
 static cpufreq_t  *cpufreq_read2[2];
        ulong      *cpufreq_diff;
@@ -271,6 +282,7 @@ char        gpu_str[1024];
 /* New metrics */
 static metrics_t         mgt_cpufreq;
 static metrics_t         mgt_imcfreq;
+static metrics_t         met_temp;
 static metrics_t         met_cpufreq;
 static metrics_t         met_imcfreq;
 static metrics_t         met_bwidth;
@@ -341,6 +353,7 @@ const metrics_t *metrics_get(uint api)
     switch(api) {
         case MGT_CPUFREQ: return &mgt_cpufreq;
         case MGT_IMCFREQ: return &mgt_imcfreq;
+        case MET_TEMP   : return &met_temp;
         case MET_CPUFREQ: return &met_cpufreq;
         case MET_IMCFREQ: return &met_imcfreq;
         case MET_BWIDTH:  return &met_bwidth;
@@ -493,6 +506,10 @@ static void metrics_static_init(topology_t *tp)
     debug("mgt_imcfreq_load");
     sa(mgt_imcfreq_load(tp, eard, NULL));
 
+		debug("temperature load");
+		//sa(temp_load(tp, eard));
+		sa(temp_load(tp, API_DUMMY));
+
     debug("energy_cpu_load");
     sa( energy_cpu_load(tp, eard));
 
@@ -562,6 +579,7 @@ static void metrics_static_init(topology_t *tp)
     // Get API
     sa(mgt_cpufreq_get_api(&mgt_cpufreq.api));
     sa(mgt_imcfreq_get_api(&mgt_imcfreq.api));
+		sa(      temp_get_info(&met_temp));
     sa( energy_cpu_get_api(&met_energy.api ));
     sa(    cpufreq_get_api(&met_cpufreq.api));
     sa(    imcfreq_get_api(&met_imcfreq.api));
@@ -588,6 +606,7 @@ static void metrics_static_init(topology_t *tp)
     // Working
     mgt_cpufreq.ok = (mgt_cpufreq.api > API_DUMMY);
     mgt_imcfreq.ok = (mgt_imcfreq.api > API_DUMMY);
+    met_temp.ok    = (met_temp.api    > API_DUMMY);
     met_cpufreq.ok = (met_cpufreq.api > API_DUMMY);
     mgt_cpuprio.ok = (mgt_cpuprio.api > API_DUMMY);
     met_imcfreq.ok = (met_imcfreq.api > API_DUMMY);
@@ -637,6 +656,7 @@ static void metrics_static_init(topology_t *tp)
     // Init
     sa(mgt_cpufreq_init(no_ctx));
     sa(mgt_imcfreq_init(no_ctx));
+		sa(       temp_init(      ));
     sa( energy_cpu_init(no_ctx));
     sa(    cpufreq_init(no_ctx));
     sa(    imcfreq_init(no_ctx));
@@ -675,9 +695,9 @@ static void metrics_static_init(topology_t *tp)
     }
     #endif
 #endif // USE_GPUS
-    debug("metrics_count_device ready\n mgt cpufreq %u\nmgt imcfreq %u\n  mgt gpu %u\n    cpufreq %u\n    imcfreq %u\n     bwidth %u\n        gpu %u",
+    debug("metrics_count_device ready\n mgt cpufreq %u\nmgt imcfreq %u\n  mgt gpu %u\n    cpufreq %u\n    imcfreq %u\n     bwidth %u\n        gpu %u temp %u",
             mgt_cpufreq.devs_count, mgt_imcfreq.devs_count, mgt_gpu.devs_count, met_cpufreq.devs_count,
-            met_imcfreq.devs_count, met_bwidth.devs_count, met_gpu.devs_count);
+            met_imcfreq.devs_count, met_bwidth.devs_count, met_gpu.devs_count, met_temp.devs_count);
 
     // Available lists
     sa(mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &mgt_cpufreq.avail_list,
@@ -720,6 +740,7 @@ static void metrics_static_init(topology_t *tp)
     if (VERB_ON(VEARL_INFO2) && (master)) {
         apis_print(mgt_cpufreq.api, "MGT_CPUFREQ: ");
         apis_print(mgt_imcfreq.api, "MGT_IMCFREQ: ");
+        apis_print(met_temp.api,    "MET_TEMP:    ");
 #if USE_GPUS
         apis_print(mgt_gpu.api    , "MGT_GPU    : ");
         #if USE_CUPTI
@@ -759,6 +780,15 @@ static void metrics_static_init(topology_t *tp)
     imcfreq_data_alloc(&imcfreq_read1[1], empty);
     imcfreq_data_alloc(&imcfreq_read2[0], &imcfreq_diff[0]);
     imcfreq_data_alloc(&imcfreq_read2[1], &imcfreq_diff[1]);
+
+
+    temp_data_alloc(&temp_read1[LOO]);
+    temp_data_alloc(&temp_read1[APP]);
+    temp_data_alloc(&temp_read2[LOO]);
+    temp_data_alloc(&temp_read2[APP]);
+    temp_data_alloc(&temp_diff[LOO]);
+    temp_data_alloc(&temp_diff[APP]);
+
 
     bwidth_data_alloc(&bwidth_read1[0]);
     bwidth_data_alloc(&bwidth_read1[1]);
@@ -889,6 +919,9 @@ static void metrics_global_start()
         imcfreq_data_copy(imcfreq_read2[LOO], imcfreq_read1[APP]);
 		}
 
+
+    verb_state_fail(temp_read(temp_read1[APP], NULL), TEMP_VERB, "Reading APP temperature in global_start");
+
 #if USE_GPUS
         gpu_data_null(gpu_metrics_read1[APP]);
         if (state_ok(gpu_read(no_ctx, gpu_metrics_read1[APP]))) {
@@ -912,6 +945,9 @@ static void metrics_global_start()
     }
     /* To be used in partial_start */
     io_copy(&metrics_io_end[LOO_NODE], &metrics_io_init[APP_NODE]);
+
+  	/* To be used in partial_start */
+  	temp_data_copy(temp_read2[LOO], temp_read1[APP]);
 	}
 
   /* OS procs statistics */
@@ -967,6 +1003,8 @@ static void metrics_global_start()
 	debug("cpi_read ready");
   /* To be used in partial_start */
   cpi_data_copy(&cpi_read2[LOO], &cpi_read1[APP]);
+
+
 
 }
 
@@ -1056,6 +1094,11 @@ static void metrics_global_stop()
                         (float) imc_pstates[imc_max_pstate[0]].khz / 1000000.0);
             }
         }
+
+				/* Temperature */
+    		verb_state_fail(temp_read(temp_read2[APP], NULL), TEMP_VERB, "Reading APP temperature in global stop");
+    		temp_data_diff(temp_read2[APP], temp_read1[APP], temp_diff[APP], NULL);
+
 
 #if USE_GPUS
         /* GPU */
@@ -1200,6 +1243,8 @@ static void metrics_partial_start()
         }
         #endif
 #endif // USE_GPUS
+
+				temp_data_copy(temp_read1[LOO], temp_read2[LOO]);
 
     } // master_rank
 
@@ -1464,6 +1509,9 @@ static int metrics_partial_stop(uint where)
 		  debug("energy CPU: %llu", metrics_rapl[LOO][i]);
 		}
 
+    verb_state_fail(temp_read(temp_read2[LOO], NULL), TEMP_VERB, "Reading LOO temperature in partial stop");
+		temp_data_diff(temp_read2[LOO], temp_read1[LOO], temp_diff[LOO], NULL);
+
 	} //master_rank (metrics collected by node_master)
 
 	/* This code needs to be adapted to read , compute the difference, and copy begin=end 
@@ -1608,6 +1656,14 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 
 	/* Avg IMC frequency */
 	metrics->avg_imc_f = imcfreq_avrg[sign_app_loop_idx];
+
+#if WF_SUPPORT
+	/* Temperature data */
+	metrics->cpu_sig.devs_count = metrics_get(MET_TEMP)->devs_count;
+	temp_data_copy(metrics->cpu_sig.temp, temp_diff[sign_app_loop_idx]);
+#endif
+
+	
 
 	/* Time per iteration */
 	iterations = ear_max(iterations, 1);
@@ -1807,6 +1863,10 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
             metrics->gpu_sig.gpu_data[p].GPU_mem_freq = gpu_metrics_diff[sign_app_loop_idx][p].freq_mem;
             metrics->gpu_sig.gpu_data[p].GPU_util     = gpu_metrics_diff[sign_app_loop_idx][p].util_gpu;
             metrics->gpu_sig.gpu_data[p].GPU_mem_util = gpu_metrics_diff[sign_app_loop_idx][p].util_mem;
+#if WF_SUPPORT
+            metrics->gpu_sig.gpu_data[p].GPU_temp     = gpu_metrics_diff[sign_app_loop_idx][p].temp_gpu;
+            metrics->gpu_sig.gpu_data[p].GPU_temp_mem = gpu_metrics_diff[sign_app_loop_idx][p].temp_mem;
+#endif
 						total_gpu_util  += metrics->gpu_sig.gpu_data[p].GPU_util;
 			      total_gpu_power += metrics->gpu_sig.gpu_data[p].GPU_power;
         }
@@ -2658,6 +2718,10 @@ state_t metrics_new_iteration(signature_t *sig)
             sig->gpu_sig.gpu_data[i].GPU_mem_freq = gpu_metrics_busy_diff[i].freq_mem;
             sig->gpu_sig.gpu_data[i].GPU_util     = gpu_metrics_busy_diff[i].util_gpu;
             sig->gpu_sig.gpu_data[i].GPU_mem_util = gpu_metrics_busy_diff[i].util_mem;
+#if WF_SUPPORT
+						sig->gpu_sig.gpu_data[i].GPU_temp     = gpu_metrics_busy_diff[i].temp_gpu;
+						sig->gpu_sig.gpu_data[i].GPU_temp_mem = gpu_metrics_busy_diff[i].temp_mem;
+#endif
         }
     }
 #endif // USE_GPUS
@@ -2876,6 +2940,7 @@ static state_t energy_lib_init(settings_conf_t *conf)
 static void metrics_static_dispose()
 {
 	energy_node_dispose();
+	temp_dispose();
 }
 
 
