@@ -35,6 +35,8 @@ typedef struct gpu_app {
   ulong  GPU_mem_util;
 #if WF_SUPPORT
 	float  GPU_GFlops;
+	ulong  GPU_temp;
+	ulong  GPU_temp_mem;
 #endif
 } gpu_app_t;
 
@@ -43,6 +45,12 @@ typedef struct gpu_signature {
   int num_gpus;
   gpu_app_t gpu_data[MAX_GPUS_SUPPORTED];
 } gpu_signature_t;
+
+
+typedef struct cpu_signature{
+	uint  devs_count;
+	llong temp[MAX_SOCKETS_SUPPORTED];
+} cpu_signature_t;
 
 
 typedef struct mini_sig
@@ -103,6 +111,9 @@ typedef struct signature
   double perc_MPI;
 #if USE_GPUS
   gpu_signature_t gpu_sig;
+#endif
+#if WF_SUPPORT
+	cpu_signature_t cpu_sig;
 #endif
   void *sig_ext;
 } signature_t;

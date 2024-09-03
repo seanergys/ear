@@ -35,6 +35,7 @@
 #define MET_CPI     8
 #define MGT_GPU     9
 #define MET_GPU     10
+#define MET_TEMP    11
 
 
 /** For each phase */
