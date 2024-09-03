@@ -168,7 +168,7 @@ static state_t build_energy_model_path(char *energy_model_path, size_t energy_mo
 
 	if (em_type == CPU) {
 		/* If the configured energy model is 'default', we'll load avx512_model.so. */
-		if (strncmp(sconf->installation.obj_power_model, "default", strlen("default") == 0)) {
+		if (strncmp(sconf->installation.obj_power_model, "default", strlen("default")) == 0) {
 			snprintf(plug_name, sizeof(plug_name) - 1, "avx512_model.so");
 		} else {
 			strncpy(plug_name, sconf->installation.obj_power_model, sizeof(plug_name));

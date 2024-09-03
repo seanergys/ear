@@ -2906,29 +2906,25 @@ static state_t energy_lib_init(settings_conf_t *conf)
 
 	char my_plug_path[SZ_PATH];
 
+	state_t ret = EAR_ERROR;
+
 	if (hack_energy_plugin_path) {
-		if (state_ok
-		    (utils_build_valid_plugin_path
-		     (my_plug_path, sizeof(my_plug_path), "energy",
-		      hack_energy_plugin_path, conf))) {
-			goto load;
+		ret = utils_build_valid_plugin_path(my_plug_path, sizeof(my_plug_path), "energy", hack_energy_plugin_path, conf);
+	}
+
+	if (state_fail(ret)) {
+		ret = utils_build_valid_plugin_path(my_plug_path, sizeof(my_plug_path), "energy", conf->installation.obj_ener, conf);
+		if (state_fail(ret)) {
+			verbose_error_master("Energy plug-in %s not found.",
+							 conf->installation.obj_ener);
+			return EAR_NOT_FOUND;
 		}
 	}
 
-	if (state_fail
-	    (utils_build_valid_plugin_path
-	     (my_plug_path, sizeof(my_plug_path), "energy",
-	      conf->installation.obj_ener, conf))) {
-		verbose_error_master("Energy plug-in %s not found.",
-				     conf->installation.obj_ener);
-		return EAR_NOT_FOUND;
-	}
-
- load:
 	/* master is defined in metrics_static_init */
-	int eard = (master);
+	// int eard = master;
 
-	state_t ret = energy_node_load(my_plug_path, eard);
+	ret = energy_node_load(my_plug_path, master);
 
 	verbose_master(2, "Energy plugin %s loaded with success: %u",
 		       my_plug_path, state_ok(ret));
