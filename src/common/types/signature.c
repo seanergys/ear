@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 //#define SHOW_DEBUGS 1
 
@@ -80,6 +73,26 @@ void signature_print_fd(int fd, signature_t *sig, char is_extended, int single_c
         }
     }
 
+#if WF_SUPPORT
+    uint num_sockets = MAX_SOCKETS_SUPPORTED;
+    debug("Creating CPU signature with %u sockets", num_sockets);
+    char cpu_sig_str[256] = "";
+    for (uint s = 0 ; s < sig->cpu_sig.devs_count ; s++){
+			char temp_str[16];
+			snprintf(temp_str,  sizeof(temp_str), ";%lld", sig->cpu_sig.temp[s]);
+      strcat(cpu_sig_str, temp_str);
+    }
+		for (uint s = sig->cpu_sig.devs_count; s < MAX_SOCKETS_SUPPORTED; s++){
+			strcat(cpu_sig_str, ";0");
+		}
+
+#else
+  char *cpu_sig_str = "";
+
+#endif
+	dprintf(fd,"%s", cpu_sig_str);
+
+
 	debug("Signature with %d GPUS", sig->gpu_sig.num_gpus);
 
 #if USE_GPUS
@@ -102,21 +115,32 @@ void signature_print_fd(int fd, signature_t *sig, char is_extended, int single_c
     	for (int j = 0; j < num_gpu-1; ++j) dprintf(fd, "%lu%c", sig->gpu_sig.gpu_data[j].GPU_mem_util, sep);
 			dprintf(fd, "%lu", sig->gpu_sig.gpu_data[num_gpu-1].GPU_mem_util);
 #if WF_SUPPORT
+			// GPU Flops
 			dprintf(fd, ";");
     	for (int j = 0; j < num_gpu-1; ++j) dprintf(fd, "%f%c", sig->gpu_sig.gpu_data[j].GPU_GFlops, sep);
 			dprintf(fd, "%f", sig->gpu_sig.gpu_data[num_gpu-1].GPU_GFlops);
+			// GPU temp
+			dprintf(fd, ";");
+    	for (int j = 0; j < num_gpu-1; ++j) dprintf(fd, "%lu%c", sig->gpu_sig.gpu_data[j].GPU_temp, sep);
+			dprintf(fd, "%lu", sig->gpu_sig.gpu_data[num_gpu-1].GPU_temp);
+			// GPU temp mem
+			dprintf(fd, ";");
+    	for (int j = 0; j < num_gpu-1; ++j) dprintf(fd, "%lu%c", sig->gpu_sig.gpu_data[j].GPU_temp_mem, sep);
+			dprintf(fd, "%lu", sig->gpu_sig.gpu_data[num_gpu-1].GPU_temp_mem);
 #endif
         } else {
 
             for (int j = 0; j < num_gpu; ++j) {
 #if WF_SUPPORT
-                dprintf(fd, ";%lf;%lu;%lu;%lu;%lu;%f",
+                dprintf(fd, ";%lf;%lu;%lu;%lu;%lu;%f;%lu;%lu",
                         sig->gpu_sig.gpu_data[j].GPU_power,
                         sig->gpu_sig.gpu_data[j].GPU_freq,
                         sig->gpu_sig.gpu_data[j].GPU_mem_freq,
                         sig->gpu_sig.gpu_data[j].GPU_util,
                         sig->gpu_sig.gpu_data[j].GPU_mem_util,
-                        sig->gpu_sig.gpu_data[j].GPU_GFlops);
+                        sig->gpu_sig.gpu_data[j].GPU_GFlops,
+												sig->gpu_sig.gpu_data[j].GPU_temp,
+												sig->gpu_sig.gpu_data[j].GPU_temp_mem);
 #else
                 dprintf(fd, ";%lf;%lu;%lu;%lu;%lu",
                         sig->gpu_sig.gpu_data[j].GPU_power,
@@ -264,6 +288,8 @@ void acum_sig_metrics(signature_t *dst,signature_t *src)
         dst->gpu_sig.gpu_data[i].GPU_mem_util += src->gpu_sig.gpu_data[i].GPU_mem_util;
 #if WF_SUPPORT
         dst->gpu_sig.gpu_data[i].GPU_GFlops 	+= src->gpu_sig.gpu_data[i].GPU_GFlops;
+        dst->gpu_sig.gpu_data[i].GPU_temp 	  += src->gpu_sig.gpu_data[i].GPU_temp;
+        dst->gpu_sig.gpu_data[i].GPU_temp_mem += src->gpu_sig.gpu_data[i].GPU_temp_mem;
 #endif
     }
 #endif
@@ -343,6 +369,8 @@ state_t ssig_accumulate(ssig_t *dst_ssig, ssig_t *src_ssig)
         dst_ssig->gpu_sig.gpu_data[i].GPU_mem_util += src_ssig->gpu_sig.gpu_data[i].GPU_mem_util;
 #if WF_SUPPORT
         dst_ssig->gpu_sig.gpu_data[i].GPU_GFlops   += src_ssig->gpu_sig.gpu_data[i].GPU_GFlops;
+        dst_ssig->gpu_sig.gpu_data[i].GPU_temp     += src_ssig->gpu_sig.gpu_data[i].GPU_temp;
+        dst_ssig->gpu_sig.gpu_data[i].GPU_temp_mem += src_ssig->gpu_sig.gpu_data[i].GPU_temp_mem;
 #endif
     }
 #endif
@@ -421,6 +449,8 @@ void compute_avg_sig(signature_t *dst,signature_t *src,int nums)
         dst->gpu_sig.gpu_data[i].GPU_mem_util = src->gpu_sig.gpu_data[i].GPU_mem_util/nums;
 #if WF_SUPPORT
         dst->gpu_sig.gpu_data[i].GPU_GFlops   = src->gpu_sig.gpu_data[i].GPU_GFlops/nums;
+        dst->gpu_sig.gpu_data[i].GPU_temp     = src->gpu_sig.gpu_data[i].GPU_temp/nums;
+        dst->gpu_sig.gpu_data[i].GPU_temp_mem = src->gpu_sig.gpu_data[i].GPU_temp_mem/nums;
 #endif
     }
 #endif
@@ -579,6 +609,8 @@ static void gpu_signature_serialize(serial_buffer_t *b, gpu_signature_t *gpu_sig
         serial_dictionary_push_auto(b, gpu_data->GPU_mem_util);
 #if WF_SUPPORT
         serial_dictionary_push_auto(b, gpu_data->GPU_GFlops);
+        serial_dictionary_push_auto(b, gpu_data->GPU_temp);
+        serial_dictionary_push_auto(b, gpu_data->GPU_temp_mem);
 #endif
     }
 }
@@ -625,6 +657,8 @@ static void gpu_signature_deserialize(serial_buffer_t *b, gpu_signature_t *gpu_s
         serial_dictionary_pop_auto(b, gpu_data->GPU_mem_util);
 #if WF_SUPPORT
         serial_dictionary_pop_auto(b, gpu_data->GPU_GFlops);
+        serial_dictionary_pop_auto(b, gpu_data->GPU_temp);
+        serial_dictionary_pop_auto(b, gpu_data->GPU_temp_mem);
 #endif
     }
 }

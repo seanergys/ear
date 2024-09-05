@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 #ifndef METRICS_TEMPERATURE_H
 #define METRICS_TEMPERATURE_H
@@ -22,49 +15,50 @@
 #include <common/plugins.h>
 #include <common/hardware/topology.h>
 
-// The API
-//
-// This API returns a temperature in Celsius degrees per socket.
-//
-// Props:
-//	- Thread safe: yes.
-//	- User mode: just in amd17.
-//	- Type: direct value.
-//
-// Folders:
-//  - archs: different node architectures, such as AMD and Intel.
-//  - tests: examples.
-//
-// Future work:
-//
-// Use example:
-//  - You can find an example in cpufreq/tests folder.
+#define TEMP_F_LOAD(name)     void    temp_ ##name ##_load     (topology_t *tp, temp_ops_t *ops, uint force_api)
+#define TEMP_F_GET_INFO(name) void    temp_ ##name ##_get_info (apinfo_t *info)
+#define TEMP_F_INIT(name)     state_t temp_ ##name ##_init     ()
+#define TEMP_F_DISPOSE(name)  void    temp_ ##name ##_dispose  ()
+#define TEMP_F_READ(name)     state_t temp_ ##name ##_read     (llong *temp, llong *average)
 
-state_t temp_load(topology_t *tp);
+#define TEMP_DEFINES(name) \
+TEMP_F_LOAD     (name); \
+TEMP_F_GET_INFO (name); \
+TEMP_F_INIT     (name); \
+TEMP_F_DISPOSE  (name); \
+TEMP_F_READ     (name);
 
-void temp_get_api(uint *api);
+typedef struct temp_ops_s {
+    void    (*get_info) (apinfo_t *info);
+    state_t (*init)     ();
+    void    (*dispose)  ();
+    state_t (*read)     (llong *temp, llong *average);
+} temp_ops_t;
 
-state_t temp_init(ctx_t *c);
+void temp_load(topology_t *tp, uint force_api);
 
-state_t temp_dispose(ctx_t *c);
-/** It returns the number of devices (normally sockets). */
-state_t temp_count_devices(ctx_t *c, uint *devs_count);
+void temp_get_info(apinfo_t *info);
+
+state_t temp_init();
+
+void temp_dispose();
+
 /** Reads the last temperature value and the average per device. */
-state_t temp_read(ctx_t *c, llong *temp_list, llong *average);
+state_t temp_read(llong *temp_list, llong *average);
 
-state_t temp_read_copy(ctx_t *c, llong *t2, llong *t1, llong *tD, llong *average);
+state_t temp_read_copy(llong *t2, llong *t1, llong *tD, llong *average);
 
 // Data
-state_t temp_data_alloc(llong **temp_list);
+void temp_data_alloc(llong **temp_list);
 
-state_t temp_data_copy(llong *tempD, llong *tempS);
+void temp_data_copy(llong *tempD, llong *tempS);
 
 void temp_data_diff(llong *temp2, llong *temp1, llong *tempD, llong *average);
 
-state_t temp_data_free(llong **temp_list);
-
-void temp_data_print(llong *list, llong avrg, int fd);
+void temp_data_free(llong **temp_list);
 
 char *temp_data_tostr(llong *list, llong avrg, char *buffer, int length);
+
+void temp_data_print(llong *list, llong avrg, int fd);
 
 #endif

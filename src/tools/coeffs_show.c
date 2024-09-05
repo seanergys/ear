@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 #define SHOW_DEBUG 1
 #include <math.h>
@@ -85,14 +78,14 @@ void print_gpu_coefficients(coefficient_gpu_t *avg, int n_pstates)
 	int i;
   coefficient_gpu_t *coeff;
 
-  verbose(2, "FROM\tTO\tA\tB\tC\tD\tE\tF\tG\tH\tI\tJ");
+  verbose(2, "FROM\tTO\tA0\tA1\tA2\tA3\tB0\tB1\tB2\tB3");
 	for (i=0; i<n_pstates; i++){
     coeff = &avg[i];
     if(coeff->available){
-      verbose(2,"%lu\t\t%lu\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf",
+      verbose(2,"%lu\t\t%lu\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf",
                  coeff->pstate_ref, coeff->pstate, 
-                 coeff->A, coeff->B, coeff->C, coeff->D, coeff->E, 
-                 coeff->F, coeff->G, coeff->H, coeff->I, coeff->J);
+                 coeff->A0, coeff->A1, coeff->A2, coeff->A3, 
+                 coeff->B0, coeff->B1, coeff->B2, coeff->B3);
 
     }
 	}

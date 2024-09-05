@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 #ifndef EARD_LOCAL_API_RPCS_H
 #define EARD_LOCAL_API_RPCS_H
@@ -85,6 +78,8 @@
 #define RPC_MET_BWIDTH_GET_API             1121
 #define RPC_MET_BWIDTH_COUNT_DEVICES       1122
 #define RPC_MET_BWIDTH_READ                1123
+#define RPC_MET_TEMP_GET_INFO              1141 //
+#define RPC_MET_TEMP_READ                  1142
 
 struct rpcerr_s {
 	char *answer;

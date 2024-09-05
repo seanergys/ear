@@ -6,6 +6,7 @@
 *.a
 *.so
 *.swp
+*.rej
 */bin/
 */lib/
 src/tests

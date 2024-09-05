@@ -1,29 +1,38 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 #ifndef COMMON_SYSTEM_SYMPLUG_H
 #define COMMON_SYSTEM_SYMPLUG_H
 
+/** \file symplug.h
+ * A module which provides methods for loading symbols from shared object files.
+ * It is basically used for loading EAR plug-ins.
+ */
+
 #include <dlfcn.h>
 #include <common/types.h>
 #include <common/states.h>
-#include <common/plugins.h>
+#include <common/plugins.h> // Not used
 
+/** Reads a set of symbol names from a dynamic loaded shared object.
+ * NULL pointers are not checked.
+ *
+ * \param[in] handle A handle of a dynamic loaded shared object returned by dlopen.
+ * \param[out] calls An address to a pointer to an allocated space of memory to 
+ *	store symbol addresses.
+ * \param[in] names A pointer to a NULL-terminated strings (i.e., symbol names) array.
+ * \param[in] n The number of symbols you are expected to read.
+ *
+ * \return EAR_ERROR If any symbol was found. */
 state_t plug_join(void *handle, void *calls[], const char *names[], uint n);
+
 // Old name
 state_t symplug_open(char *path, void *calls[], const char *names[], uint n);
 
