@@ -626,6 +626,8 @@ state_t eards_recover_connection(char *tmp, ulong job_id, ulong step_id, ulong l
 	ear_fd_req_global = fds[ear_fd_req_global_idx];
 	ear_fd_req = fds[ear_fd_req_idx];
 	ear_fd_ack = fds[ear_fd_ack_idx];
+	
+	debug("[%d] Pipes recovered: req_global %d req %d ack %d", getpid(), ear_fd_req_global, ear_fd_req, ear_fd_ack);
 
 	app_connected = 1;
 

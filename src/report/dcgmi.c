@@ -361,7 +361,7 @@ state_t report_loops(report_id_t *id, loop_t *loops, uint count)
 			continue;
 		}
 		// TODO: we could return EAR_ERROR in case the below functions returns EAR_ERROR
-		if (fd_loops > 0) {
+		if (fd_loops >= 0) {
 #if DCGMI
 			sigex = (sig_ext_t *) loops[i].signature.sig_ext;
 			dcgmis = (dcgmi_sig_t *) & sigex->dcgmis;
