@@ -1416,6 +1416,7 @@ static void configure_sigactions()
 	 * we return and no signal handling is performed. */
 
 	if (py_multiproc || no_sighandle) {
+		earl_early_verb(1, "Sigactions disabled.");
 		return;
 	}
 
@@ -1877,6 +1878,7 @@ void ear_init()
                     if (!EARL_LIGHT) {
                         verbose_master(2,"%s: EARL off because of EARD",node_name);
                         strcpy(application.job.policy," "); /* Cleaning policy */
+												ear_lib_initialized = 0;
                         return;
                     } else {
                         verbose_master(2, "EARD is not running but EARL light version is enabled");
