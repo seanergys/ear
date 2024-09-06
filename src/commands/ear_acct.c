@@ -881,88 +881,6 @@ void read_events(char *user, query_adds_t *q_a)
 #endif
 }
 
-void print_loops(loop_t *loops, int num_loops, char *format)
-{
-    int i;
-    char line[256];
-    signature_t sig;
-    char date_iter[128];
-#if REPORT_TIMESTAMP
-    struct tm *date_info;
-#endif
-
-#if REPORT_TIMESTAMP
-	strcpy(line, "%6s-%-4s %-6s %-10s %-9s %-8s %-7s %-8s %-8s %-8s %-8s %-5s %-7s %-5s ");
-	printf(line, "JOB", "STEP", "AID", "NODE ID", "DATE", "POWER(W)", "GBS/TPI", "CPI", "GFLOPS/W", "TIME(s)", "AVG_F/F", "IMC_F", "IO(MBS)", "MPI%");
-#else
-	strcpy(line, "%6s-%-4s %-6s %-10s %-6s %-8s %-8s %-8s %-8s %-8s %-8s %-5s %-7s %-5s ");
-	printf(line, "JOB", "STEP", "AID", "NODE ID", "ITER.", "POWER(W)", "GBS", "CPI", "GFLOPS/W", "TIME(s)", "AVG_F/F", "IMC_F", "IO(MBS)", "MPI%");
-#endif
-#if USE_GPUS
-    //GPU variable declaration
-    int s;
-    char gpu_line[256], tmp[16];
-    double gpup = 0, gpupu = 0;
-    ulong  gpuf = 0, gpuu = 0, gpuused = 0, gpu_mem_util = 0;
-    strcpy(line, "%-13s %-8s %-13s");
-    if (print_gpus)
-        printf(line, "G-POWER(T/U)","G-FREQ","G-UTIL(G/MEM)");
-    //prepare gpu_line format
-    strcpy(gpu_line, "%-6.1lf/%6.1lf  %-8.2lf %-13s");
-#endif
-    printf("\n");
-
-	strcpy(line, "%6u-%-4u %-6u %-10s %-9s %-8.1lf %-3.0lf/%-3.0lf %-8.3lf %-8.3lf %-8.3lf %-4.2lf/%-3.1lf %-5.2lf %-7.1lf %-5.1lf ");
-	for (i = 0; i < num_loops; i++)
-	{
-		signature_copy(&sig, &loops[i].signature);
-    select_color_by_phase(sig.CPI, sig.GBS, sig.IO_MBS, sig.Gflops);
-
-#if USE_GPUS
-        if (print_gpus)
-        {				
-            for (s=0; s < sig.gpu_sig.num_gpus; s++){
-                gpup += sig.gpu_sig.gpu_data[s].GPU_power;
-                gpuf += sig.gpu_sig.gpu_data[s].GPU_freq;
-                if (sig.gpu_sig.gpu_data[s].GPU_util){
-                    gpupu += sig.gpu_sig.gpu_data[s].GPU_power;
-                    gpuu += sig.gpu_sig.gpu_data[s].GPU_util;
-                    gpu_mem_util += sig.gpu_sig.gpu_data[s].GPU_mem_util;
-                    gpuused++;
-                }
-            }
-            if (sig.gpu_sig.num_gpus)
-                gpuf /= sig.gpu_sig.num_gpus;
-
-            if (gpuused > 0)
-            {
-                gpuu /= gpuused;
-                gpu_mem_util /= gpuused;
-            }
-        }
-#endif
-#if REPORT_TIMESTAMP
-        date_info = localtime( (time_t *)&loops[i].total_iterations);
-        strftime(date_iter, sizeof(date_iter), "%H:%M:%S", date_info );
-#else
-        sprintf(date_iter,"%lu", loops[i].total_iterations);
-#endif
-		printf(line, loops[i].jid, loops[i].step_id, loops[i].local_id, loops[i].node_id, date_iter,
-				sig.DC_power, sig.GBS, sig.TPI,sig.CPI, sig.Gflops/sig.DC_power, sig.time, (double)(sig.avg_f)/1000000,(double)(sig.def_f)/1000000, (double)(sig.avg_imc_f)/1000000, sig.IO_MBS, sig.perc_MPI);
-#if USE_GPUS
-        sprintf(tmp, "%lu%%/%lu%%", gpuu, gpu_mem_util);
-        if (print_gpus) printf(gpu_line, gpup, gpupu, (double)gpuf/1000000.0, tmp);
-        gpu_mem_util = 0;
-        gpuused = 0;
-        gpupu = 0;
-        gpuf = 0;
-        gpuu = 0;
-        gpup = 0;
-#endif
-        printf("\n");
-    }
-}
-
 #define LOOPS_QUERY "SELECT * FROM Loops "
 #define LOOPS_FILTER_QUERY "SELECT Loops.* from Loops INNER JOIN Jobs ON Jobs.job_id = Loops.job_id AND Jobs.step_id = Loops.step_id "
 
@@ -1219,13 +1137,11 @@ void read_applications_from_database(char *user, query_adds_t *q_a, char *format
 		printf("Finalized retrieving applications\n");
 	}
 
-	if (num_apps == EAR_MYSQL_ERROR)
-	{
+	if (num_apps == EAR_MYSQL_ERROR) {
 		exit(1); //error
 	}
 
-	if (num_apps < 1)
-	{
+	if (num_apps < 1) {
 		printf("No jobs found.\n");
 		return;
 	}
@@ -1272,7 +1188,7 @@ int main(int argc, char *argv[])
 
 	verb_level = -1;
 	verb_enabled = 0;
-	if (get_ear_conf_path(path_name)==EAR_ERROR){
+	if (get_ear_conf_path(path_name)==EAR_ERROR) {
 		fprintf(stderr, "Error getting ear.conf path\n");
 		exit(1);
 	}
@@ -1282,15 +1198,13 @@ int main(int argc, char *argv[])
 	}
 
 	user_t user_info;
-	if (user_all_ids_get(&user_info) != EAR_SUCCESS)
-	{
+	if (user_all_ids_get(&user_info) != EAR_SUCCESS) {
 		fprintf(stderr, "Failed to retrieve user data\n");
 		exit(1);
 	}
 
 	char *user = user_info.ruid_name;
-	if (getuid() == 0 || is_privileged_command(&my_conf))
-	{
+	if (getuid() == 0 || is_privileged_command(&my_conf)) {
 		user = NULL; //by default, privilegd users or root will query all user jobs
 	}
 
