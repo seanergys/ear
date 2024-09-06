@@ -3225,9 +3225,9 @@ static void create_earl_verbose_files()
 			} else {
 				using_verb_files = 1;
 
-				char file_name[PATH_MAX];
+				char file_name[SZ_PATH];
 				// Format: <verbose_path>/earl_log.<master_rank>.<local_rank>.<step>.<job>.<appid>
-				sprintf(file_name, "%s/earl-%d-%d-%u-%s-%d.log",
+				snprintf(file_name, sizeof(file_name) - 1, "%s/earl-%d-%d-%u-%s-%d.log",
 						verb_path, my_job_id, my_step_id, AID, node_name, main_pid);
 				verbose_master(VEAR_INIT, "EARL log file: %s", file_name);
 
