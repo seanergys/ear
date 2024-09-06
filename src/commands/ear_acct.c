@@ -104,6 +104,7 @@ void usage(char *app)
 			"\t\t-x\tshows the last EAR events. Users, start and end times, job ids, and step ids can be specified as if were showing job information.\n" \
 			"\t\t-m\tprints power signatures regardless of whether mpi signatures are available or not.\n" \
 			"\t\t-r\tshows the EAR loop signatures. Users, job ids, and step ids can be specified as if were showing job information.\n" \
+			"\t\t-F\tspecifies the format string to be used. See manpage for more information.\n" \
 			"\t\t-o\tmodifies the -r option to also show the corresponding jobs. Should be used with -j.\n", app);
 	printf("\t\t-n\tspecifies the number of jobs to be shown, starting from the most recent one. [default: 20][to get all jobs use -n all]\n" );
 	printf("\t\t-f\tspecifies the file where the user-database can be found. If this option is used, the information will be read from the file and not the database.\n");
