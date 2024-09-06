@@ -536,21 +536,10 @@ void print_header_format(char *fmt)
             case ENERGY: //energy
                 print_format(ENERGY_WIDTH, "ENERGY(J)");
                 break;
-            default:
-                break;
         }
         fmt++;
     }
     printf("\n");
-}
-
-void print_applications(struct avg_apps *apps, int num_apps, char *fmt)
-{
-    int i;
-    print_header_format(fmt);
-    for (i = 0; i < num_apps; i++) {
-        print_app_format(&apps[i].app, fmt, apps[i].num_nodes);
-    }
 }
 
 void print_full_apps(application_t *apps, int num_apps, bool is_csv, char *format)
@@ -654,151 +643,155 @@ void print_short_apps(application_t *apps, int num_apps, bool is_csv, char *form
             }
         }
     } else {
-        print_applications(sorted_apps, new_num_apps, format);
-    }
-    free(sorted_apps);
+		int i;
+		print_header_format(format);
+		for (i = 0; i < num_apps; i++) {
+			print_app_format(&sorted_apps[i].app, format, sorted_apps[i].num_nodes);
+		}
+	}
+	free(sorted_apps);
 }
 #endif 
 
 void process_and_print_applications(application_t *apps, int num_apps, bool is_csv, bool aggregate, char *format) 
 {
-    if (aggregate)
-        print_short_apps(apps, num_apps, is_csv, format);
-    else
-        print_full_apps(apps, num_apps, is_csv, format);
+	if (aggregate)
+		print_short_apps(apps, num_apps, is_csv, format);
+	else
+		print_full_apps(apps, num_apps, is_csv, format);
 
 }
 
 void print_event_type(int type, int fd)
 {
-    char str[64];
-    ear_event_t aux;
-    aux.event = type;
-    event_type_to_str(&aux, str, sizeof(str));
-    dprintf(fd, "%20s ", str);
+	char str[64];
+	ear_event_t aux;
+	aux.event = type;
+	event_type_to_str(&aux, str, sizeof(str));
+	dprintf(fd, "%20s ", str);
 }
 
 #if DB_MYSQL
 void mysql_print_events(MYSQL_RES *result, int fd)
 {
-    if (fd <  0) {
-        fd = 1; // The standard output
-    }
+	if (fd <  0) {
+		fd = 1; // The standard output
+	}
 
-    int i;
-    int num_fields = mysql_num_fields(result);
+	int i;
+	int num_fields = mysql_num_fields(result);
 
-    MYSQL_ROW row;
-    int has_records = 0;
-    while ((row = mysql_fetch_row(result)) != NULL) 
-    {
-        if (!has_records)
-        {
-            dprintf(fd, "%12s %20s %20s %8s %8s %20s %12s\n",
-                    "Event_ID", "Timestamp", "Event_type", "Job_id", "Step_id", "Value", "node_id");
-            has_records = 1;
-        }
+	MYSQL_ROW row;
+	int has_records = 0;
+	while ((row = mysql_fetch_row(result)) != NULL) 
+	{
+		if (!has_records)
+		{
+			dprintf(fd, "%12s %20s %20s %8s %8s %20s %12s\n",
+					"Event_ID", "Timestamp", "Event_type", "Job_id", "Step_id", "Value", "node_id");
+			has_records = 1;
+		}
 
-        int possible_negative = 0; // This variable checks whether the event value can be negative.
-        for(i = 0; i < num_fields; i++) {
-            if (i == 2) {
-                int event_type_int = strtol(row[i], NULL, 10);
+		int possible_negative = 0; // This variable checks whether the event value can be negative.
+		for(i = 0; i < num_fields; i++) {
+			if (i == 2) {
+				int event_type_int = strtol(row[i], NULL, 10);
 
-                print_event_type(event_type_int, fd);  
+				print_event_type(event_type_int, fd);  
 
-                if (event_type_int == ENERGY_SAVING || event_type_int == POWER_SAVING ||
-                        event_type_int == POWER_SAVING_AVG || event_type_int == ENERGY_SAVING_AVG) {
-                    possible_negative = 1;
-                }
-            }
-            else if (i == 1)
-                dprintf(fd, "%20s ", row[i] ? row[i] : "NULL");
-            else if (i == 4 || i == 3)
-                dprintf(fd, "%8s ", row[i] ? row[i] : "NULL");
-            else if (i == 5) {
+				if (event_type_int == ENERGY_SAVING || event_type_int == POWER_SAVING ||
+						event_type_int == POWER_SAVING_AVG || event_type_int == ENERGY_SAVING_AVG) {
+					possible_negative = 1;
+				}
+			}
+			else if (i == 1)
+				dprintf(fd, "%20s ", row[i] ? row[i] : "NULL");
+			else if (i == 4 || i == 3)
+				dprintf(fd, "%8s ", row[i] ? row[i] : "NULL");
+			else if (i == 5) {
 
-                if (row[i] != NULL) {
+				if (row[i] != NULL) {
 
-                    if (possible_negative) {
-                        long int value = atoi(row[i]);
-                        dprintf(fd, "%20ld ", *(long *) &value);
-                    } else {
-                        dprintf(fd, "%20s ", row[i]);
-                    } // Column 5 not possible negative
-                } else {
-                    dprintf(fd, "%20s ", "NULL");
-                } // Column 5 NULL
-            } else {
-                dprintf(fd, "%12s ", row[i] ? row[i] : "NULL");
-            } // Column 0
-        }
-        dprintf(fd, "\n");
-    }
-    if (!has_records)
-    {
-        printf("There are no events with the specified properties.\n\n");
-    }
+					if (possible_negative) {
+						long int value = atoi(row[i]);
+						dprintf(fd, "%20ld ", *(long *) &value);
+					} else {
+						dprintf(fd, "%20s ", row[i]);
+					} // Column 5 not possible negative
+				} else {
+					dprintf(fd, "%20s ", "NULL");
+				} // Column 5 NULL
+			} else {
+				dprintf(fd, "%12s ", row[i] ? row[i] : "NULL");
+			} // Column 0
+		}
+		dprintf(fd, "\n");
+	}
+	if (!has_records)
+	{
+		printf("There are no events with the specified properties.\n\n");
+	}
 }
 #elif DB_PSQL
 void postgresql_print_events(PGresult *res, int fd)
 {
-    if (fd < 0) {
-        fd = 1; // Standard output
-    }
+	if (fd < 0) {
+		fd = 1; // Standard output
+	}
 
-    int i, j, num_fields, has_records = 0;
-    num_fields = PQnfields(res);
+	int i, j, num_fields, has_records = 0;
+	num_fields = PQnfields(res);
 
-    int possible_negative = 0; // This variable checks whether the event value can be negative.
-    for (i = 0; i < PQntuples(res); i++)
-    {
-        if (!has_records)
-        {
-            dprintf(fd, "%12s %22s %20s %8s %8s %20s %12s\n",
-                    "Event_ID", "Timestamp", "Event_type", "Job_id", "Step_id", "Value", "node_id");
-            has_records = 1;
-        }
+	int possible_negative = 0; // This variable checks whether the event value can be negative.
+	for (i = 0; i < PQntuples(res); i++)
+	{
+		if (!has_records)
+		{
+			dprintf(fd, "%12s %22s %20s %8s %8s %20s %12s\n",
+					"Event_ID", "Timestamp", "Event_type", "Job_id", "Step_id", "Value", "node_id");
+			has_records = 1;
+		}
 
-        for (j = 0; j < num_fields; j++) {
-            if (j == 2) {
-                int event_type_int = strtol(PQgetvalue(res, i, j), NULL, 10);
+		for (j = 0; j < num_fields; j++) {
+			if (j == 2) {
+				int event_type_int = strtol(PQgetvalue(res, i, j), NULL, 10);
 
-                print_event_type(event_type_int, fd);
+				print_event_type(event_type_int, fd);
 
-                if (event_type_int == ENERGY_SAVING || event_type_int == POWER_SAVING) {
-                    possible_negative = 1;
-                }
-            }
-            else if (i == 1)
-                dprintf(fd, "%22s ", PQgetvalue(res, i, j) ? PQgetvalue(res, i, j) : "NULL");
-            else if (i == 4 || i == 3)
-                dprintf(fd, "%8s ", PQgetvalue(res, i, j) ? PQgetvalue(res, i, j) : "NULL");
-            else if (i == 5) {
+				if (event_type_int == ENERGY_SAVING || event_type_int == POWER_SAVING) {
+					possible_negative = 1;
+				}
+			}
+			else if (i == 1)
+				dprintf(fd, "%22s ", PQgetvalue(res, i, j) ? PQgetvalue(res, i, j) : "NULL");
+			else if (i == 4 || i == 3)
+				dprintf(fd, "%8s ", PQgetvalue(res, i, j) ? PQgetvalue(res, i, j) : "NULL");
+			else if (i == 5) {
 
-                if (PQgetvalue(res, i, j) != NULL) {
+				if (PQgetvalue(res, i, j) != NULL) {
 
-                    if (possible_negative) {
-                        long int value = atoi(PQgetvalue(res, i, j));
-                        dprintf(fd, "%20ld ", *(long *) &value);
-                    } else {
-                        dprintf(fd, "%20s ", PQgetvalue(res, i, j));
-                    } // Column 5 not possible negative
-                } else {
-                    dprintf(fd, "%20s ", "NULL");
-                } // Column 5 NULL
+					if (possible_negative) {
+						long int value = atoi(PQgetvalue(res, i, j));
+						dprintf(fd, "%20ld ", *(long *) &value);
+					} else {
+						dprintf(fd, "%20s ", PQgetvalue(res, i, j));
+					} // Column 5 not possible negative
+				} else {
+					dprintf(fd, "%20s ", "NULL");
+				} // Column 5 NULL
 
-            }
-            else
-                dprintf(fd, "%12s ", PQgetvalue(res, i, j) ? PQgetvalue(res, i, j) : "NULL");
-        }
+			}
+			else
+				dprintf(fd, "%12s ", PQgetvalue(res, i, j) ? PQgetvalue(res, i, j) : "NULL");
+		}
 
-        dprintf(fd, "\n");
-    }
+		dprintf(fd, "\n");
+	}
 
-    if (!has_records)
-    {
-        printf("There are no events with the specified properties.\n\n");
-    }
+	if (!has_records)
+	{
+		printf("There are no events with the specified properties.\n\n");
+	}
 }
 #endif
 
@@ -812,73 +805,73 @@ void postgresql_print_events(PGresult *res, int fd)
 
 void read_events(char *user, query_adds_t *q_a) 
 {
-    char query[512];
-    char subquery[128];
+	char query[512];
+	char subquery[128];
 
-    if (strlen(my_conf.database.user_commands) < 1) 
-    {
-        fprintf(stderr, "Warning: commands' user is not defined in ear.conf\n");
-    }
-    else
-    {
-        strcpy(my_conf.database.user, my_conf.database.user_commands);
-        strcpy(my_conf.database.pass, my_conf.database.pass_commands);
-    }
-    init_db_helper(&my_conf.database);
+	if (strlen(my_conf.database.user_commands) < 1) 
+	{
+		fprintf(stderr, "Warning: commands' user is not defined in ear.conf\n");
+	}
+	else
+	{
+		strcpy(my_conf.database.user, my_conf.database.user_commands);
+		strcpy(my_conf.database.pass, my_conf.database.pass_commands);
+	}
+	init_db_helper(&my_conf.database);
 
 
-    int fd = -1;
-    if (strlen(csv_path) > 0 && strcmp(csv_path, "no_file")) {
-        fd = open(csv_path, O_WRONLY | O_CREAT | O_TRUNC , S_IRUSR|S_IWUSR|S_IRGRP);
-    }
+	int fd = -1;
+	if (strlen(csv_path) > 0 && strcmp(csv_path, "no_file")) {
+		fd = open(csv_path, O_WRONLY | O_CREAT | O_TRUNC , S_IRUSR|S_IWUSR|S_IRGRP);
+	}
 
-    if (fd > 0) {
-        strcpy(query, EVENTS_QUERY_RAW);
-    } else {
-        strcpy(query, EVENTS_QUERY);
-    }
+	if (fd > 0) {
+		strcpy(query, EVENTS_QUERY_RAW);
+	} else {
+		strcpy(query, EVENTS_QUERY);
+	}
 
-    add_int_comp_filter(query, "event_type", 100, 0);
-    if (q_a->job_id >= 0)
-        add_int_filter(query, "job_id", q_a->job_id);
-    else if (strlen(q_a->job_ids) > 0)
-        add_int_list_filter(query, "job_id", q_a->job_ids);
-    if (q_a->step_id >= 0)
-        add_int_filter(query, "step_id", q_a->step_id);
-    if (strlen(q_a->step_ids) > 0)
-        add_string_filter_no_quotes(query, "step_id", q_a->step_ids);
-    if (user != NULL)
-        add_string_filter(query, "node_id", user);
-    if (q_a->start_time != 0)
-        add_int_comp_filter(query, "timestamp", q_a->start_time, 1);
-    if (q_a->end_time != 0)
-        add_int_comp_filter(query, "timestamp", q_a->end_time, 0);
+	add_int_comp_filter(query, "event_type", 100, 0);
+	if (q_a->job_id >= 0)
+		add_int_filter(query, "job_id", q_a->job_id);
+	else if (strlen(q_a->job_ids) > 0)
+		add_int_list_filter(query, "job_id", q_a->job_ids);
+	if (q_a->step_id >= 0)
+		add_int_filter(query, "step_id", q_a->step_id);
+	if (strlen(q_a->step_ids) > 0)
+		add_string_filter_no_quotes(query, "step_id", q_a->step_ids);
+	if (user != NULL)
+		add_string_filter(query, "node_id", user);
+	if (q_a->start_time != 0)
+		add_int_comp_filter(query, "timestamp", q_a->start_time, 1);
+	if (q_a->end_time != 0)
+		add_int_comp_filter(query, "timestamp", q_a->end_time, 0);
 
-    if (q_a->limit > 0)
-    {
-        sprintf(subquery, " ORDER BY timestamp desc LIMIT %d", q_a->limit);
-        strcat(query, subquery);
-    }
+	if (q_a->limit > 0)
+	{
+		sprintf(subquery, " ORDER BY timestamp desc LIMIT %d", q_a->limit);
+		strcat(query, subquery);
+	}
 
-    if (verbose) printf("QUERY: %s\n", query);
+	if (verbose) printf("QUERY: %s\n", query);
 
 
 #if DB_MYSQL
-    MYSQL_RES *result = db_run_query_result(query);
+	MYSQL_RES *result = db_run_query_result(query);
 #elif DB_PSQL
-    PGresult *result = db_run_query_result(query);
+	PGresult *result = db_run_query_result(query);
 #endif
 
-    if (result == NULL) 
-    {
-        printf("Database error\n");
-        return;
-    }
+	if (result == NULL) 
+	{
+		printf("Database error\n");
+		return;
+	}
 
 #if DB_MYSQL
-    mysql_print_events(result, fd);
+	mysql_print_events(result, fd);
 #elif DB_PSQL
-    postgresql_print_events(result, fd);
+	postgresql_print_events(result, fd);
 #endif
 }
 
@@ -887,10 +880,10 @@ void read_events(char *user, query_adds_t *q_a)
 
 void format_loop_query(char *user, char *query, char *base_query, query_adds_t *q_a)
 {
-    char subquery[128];
+	char subquery[128];
 
-    strcpy(query, base_query);
-    if (user != NULL) add_string_filter(query, "user_id", user);
+	strcpy(query, base_query);
+	if (user != NULL) add_string_filter(query, "user_id", user);
 
 	if (q_a->job_id >= 0)
 		add_int_filter(query, "Loops.job_id", q_a->job_id);
@@ -898,8 +891,8 @@ void format_loop_query(char *user, char *query, char *base_query, query_adds_t *
 		add_int_list_filter(query, "Loops.job_id", q_a->job_ids);
 	if (q_a->step_id >= 0)
 		add_int_filter(query, "Loops.step_id", q_a->step_id);
-    if (strlen(q_a->step_ids) > 0)
-        add_string_filter_no_quotes(query, "Loops.step_id", q_a->step_ids);
+	if (strlen(q_a->step_ids) > 0)
+		add_string_filter_no_quotes(query, "Loops.step_id", q_a->step_ids);
 
 	if (q_a->limit > 0 && q_a->job_id < 0)
 	{
@@ -908,7 +901,7 @@ void format_loop_query(char *user, char *query, char *base_query, query_adds_t *
 	}
 	else strcat(query, " ORDER BY Loops.job_id desc");
 
-    if (verbose) printf("QUERY: %s\n", query);
+	if (verbose) printf("QUERY: %s\n", query);
 
 }
 
@@ -916,10 +909,10 @@ void format_loop_query(char *user, char *query, char *base_query, query_adds_t *
 
 void read_jobs_from_loops(query_adds_t *q_a)
 {
-    char query[256], subquery[256], tmp_path[512];
-    char ***values;
-    int columns, rows;
-    int fd = STDOUT_FILENO, ret;
+	char query[256], subquery[256], tmp_path[512];
+	char ***values;
+	int columns, rows;
+	int fd = STDOUT_FILENO, ret;
 
 	if (strlen(csv_path) > 0 && strcmp(csv_path, "no_file")) {
 		char *aux = strrchr(csv_path, '/');
@@ -1038,45 +1031,45 @@ void read_loops(char *user, query_adds_t *q_a, char *format)
 		return;
 	}
 
-    if (verbose) printf("retrieved %d loops\n", num_loops);
-    if (strlen(csv_path) > 0)
-    {
-        int i;
-        if (!strcmp(csv_path, "no_file"))
-        {
-            for (i = 0; i < num_loops; i++)
-                print_loop_fd(STDOUT_FILENO, &loops[i]);
-        }
-        else {
-            for (i = 0; i < num_loops; i++)
-                append_loop_text_file_no_job(csv_path, &loops[i], 1, 0, ' ');
-            printf("appended %d loops to %s\n", num_loops, csv_path);
-        }
-    } else {
-        print_header_format(format);
-        for (int32_t i = 0; i < num_loops; i++)
-            print_loop_format(&loops[i], format);
-        //print_loops(loops, num_loops, format);
-    }
-    if (loops != NULL) free(loops);
-    if (loop_extended) read_jobs_from_loops(q_a);
+	if (verbose) printf("retrieved %d loops\n", num_loops);
+	if (strlen(csv_path) > 0)
+	{
+		int i;
+		if (!strcmp(csv_path, "no_file"))
+		{
+			for (i = 0; i < num_loops; i++)
+				print_loop_fd(STDOUT_FILENO, &loops[i]);
+		}
+		else {
+			for (i = 0; i < num_loops; i++)
+				append_loop_text_file_no_job(csv_path, &loops[i], 1, 0, ' ');
+			printf("appended %d loops to %s\n", num_loops, csv_path);
+		}
+	} else {
+		print_header_format(format);
+		for (int32_t i = 0; i < num_loops; i++)
+			print_loop_format(&loops[i], format);
+		//print_loops(loops, num_loops, format);
+	}
+	if (loops != NULL) free(loops);
+	if (loop_extended) read_jobs_from_loops(q_a);
 }
 
 void read_applications_from_database(char *user, query_adds_t *q_a, char *format) 
 {
 #if USE_DB
-    int num_apps = 0;
-    char subquery[256];
-    char query[512];
+	int num_apps = 0;
+	char subquery[256];
+	char query[512];
 
-    if (strlen(my_conf.database.user_commands) < 1) {
-        fprintf(stderr, "Warning: commands' user is not defined in ear.conf\n");
-    }
-    else {
-        strcpy(my_conf.database.user, my_conf.database.user_commands);
-        strcpy(my_conf.database.pass, my_conf.database.pass_commands);
-    }
-    init_db_helper(&my_conf.database);
+	if (strlen(my_conf.database.user_commands) < 1) {
+		fprintf(stderr, "Warning: commands' user is not defined in ear.conf\n");
+	}
+	else {
+		strcpy(my_conf.database.user, my_conf.database.user_commands);
+		strcpy(my_conf.database.pass, my_conf.database.pass_commands);
+	}
+	init_db_helper(&my_conf.database);
 
 	if (verbose) {
 		printf("Preparing query statement\n");
@@ -1110,17 +1103,17 @@ void read_applications_from_database(char *user, query_adds_t *q_a, char *format
 	}
 	strcat(query, ") as t1");
 
-    reset_query_filters();
-    if (q_a->job_id >= 0)
-        add_int_filter(query, "job_id", q_a->job_id);
-    else if (strlen(q_a->job_ids) > 0)
-        add_int_list_filter(query, "job_id", q_a->job_ids);
-    if (q_a->step_id >= 0)
-        add_int_filter(query, "Jobs.step_id", q_a->step_id);
-    else if (strlen(q_a->step_ids) > 0)
-        add_string_filter_no_quotes(query, "Jobs.step_id", q_a->step_ids);
-    if (user != NULL)
-        add_string_filter(query, "user_id", user);
+	reset_query_filters();
+	if (q_a->job_id >= 0)
+		add_int_filter(query, "job_id", q_a->job_id);
+	else if (strlen(q_a->job_ids) > 0)
+		add_int_list_filter(query, "job_id", q_a->job_ids);
+	if (q_a->step_id >= 0)
+		add_int_filter(query, "Jobs.step_id", q_a->step_id);
+	else if (strlen(q_a->step_ids) > 0)
+		add_string_filter_no_quotes(query, "Jobs.step_id", q_a->step_ids);
+	if (user != NULL)
+		add_string_filter(query, "user_id", user);
 
 	strcat(query, ") order by Jobs.job_id desc, Jobs.step_id desc, Jobs.end_time desc");
 
@@ -1151,9 +1144,9 @@ void read_applications_from_database(char *user, query_adds_t *q_a, char *format
 	if (q_a->limit == 20 && strlen(csv_path) < 1)
 		printf("\nBy default only the first 20 jobs are retrieved.\n\n");
 
-    bool is_csv = (strlen(csv_path) > 1);
-    bool aggregate = !full_length;
-    process_and_print_applications(apps, num_apps, is_csv, aggregate, format);
+	bool is_csv = (strlen(csv_path) > 1);
+	bool aggregate = !full_length;
+	process_and_print_applications(apps, num_apps, is_csv, aggregate, format);
 
 	free(apps);
 
@@ -1162,17 +1155,17 @@ void read_applications_from_database(char *user, query_adds_t *q_a, char *format
 
 void read_applications_from_files(char *path, char *format)
 {
-    application_t *apps;
-    int num_apps = read_application_text_file(path, &apps, 0);
-    if (full_length) print_full_apps(apps, num_apps, false, format);
-    else print_short_apps(apps, num_apps, false, format);
+	application_t *apps;
+	int num_apps = read_application_text_file(path, &apps, 0);
+	if (full_length) print_full_apps(apps, num_apps, false, format);
+	else print_short_apps(apps, num_apps, false, format);
 }
 
 int main(int argc, char *argv[])
 {
 	int c;
 
-    query_adds_t query_adds = { 0 };
+	query_adds_t query_adds = { 0 };
 
 	query_adds.limit = 20;
 	query_adds.job_id = -1;
@@ -1181,9 +1174,9 @@ int main(int argc, char *argv[])
 	char is_loops = 0;
 	char is_events = 0;
 
-    char path_name[256] = { 0 };
-    char format[256] = { 0 };
-    char *file_name = NULL;
+	char path_name[256] = { 0 };
+	char format[256] = { 0 };
+	char *file_name = NULL;
 
 	struct tm tinfo = {0};
 
@@ -1209,169 +1202,169 @@ int main(int argc, char *argv[])
 		user = NULL; //by default, privilegd users or root will query all user jobs
 	}
 
-    char *token;
-    int option_idx;
-    static struct option long_options [] = {
-        {"help",       no_argument, 0, 'h'},
-        {"version",    no_argument, 0, 'v'},
-        {"no-mpi",     no_argument, 0, 'm'},
-        {"avx",        no_argument, 0, 'p'},
-        {"verbose",    no_argument, 0, 'b'},
-        {"show-gpus",  no_argument, 0, 'g'},
-        {"long-apps",  no_argument, 0, 'l'},
-        {"loops",      no_argument, 0, 'r'},
-        {"ext_loops",  no_argument, 0, 'o'},
-        {"help",       no_argument, 0, 'h'},
-        {"limit",      required_argument, 0, 'n'},
-        {"user",       required_argument, 0, 'u'},
-        {"jobs",       required_argument, 0, 'j'},
-        {"events",     required_argument, 0, 'x'},
-        {"csv",        required_argument, 0, 'c'},
-        {"tag",        required_argument, 0, 't'},
-        {"app-id",     required_argument, 0, 'a'},
-        {"start-time", required_argument, 0, 's'},
-        {"end-time",   required_argument, 0, 'e'},
-        {"format",     required_argument, 0, 'F'},
-    };
+	char *token;
+	int option_idx;
+	static struct option long_options [] = {
+		{"help",       no_argument, 0, 'h'},
+		{"version",    no_argument, 0, 'v'},
+		{"no-mpi",     no_argument, 0, 'm'},
+		{"avx",        no_argument, 0, 'p'},
+		{"verbose",    no_argument, 0, 'b'},
+		{"show-gpus",  no_argument, 0, 'g'},
+		{"long-apps",  no_argument, 0, 'l'},
+		{"loops",      no_argument, 0, 'r'},
+		{"ext_loops",  no_argument, 0, 'o'},
+		{"help",       no_argument, 0, 'h'},
+		{"limit",      required_argument, 0, 'n'},
+		{"user",       required_argument, 0, 'u'},
+		{"jobs",       required_argument, 0, 'j'},
+		{"events",     required_argument, 0, 'x'},
+		{"csv",        required_argument, 0, 'c'},
+		{"tag",        required_argument, 0, 't'},
+		{"app-id",     required_argument, 0, 'a'},
+		{"start-time", required_argument, 0, 's'},
+		{"end-time",   required_argument, 0, 'e'},
+		{"format",     required_argument, 0, 'F'},
+	};
 
 #if COLORS
 	print_colors_legend();
 #endif
 
-    while (1)
-    {
-        c = getopt_long(argc, argv, "n:u:j:f:t:voma:pbglrs:e:c:hF:x::", long_options, &option_idx);
+	while (1)
+	{
+		c = getopt_long(argc, argv, "n:u:j:f:t:voma:pbglrs:e:c:hF:x::", long_options, &option_idx);
 
 		if (c == -1)
 			break;
 
-        switch (c)
-        {
-            case 'n':
-                if (!strcmp(optarg, "all")) query_adds.limit = -1;
-                else query_adds.limit = atoi(optarg);
-                break;
-            case 'r':
-                is_loops = 1;
-                break;
-            case 'u':
-                if (user != NULL) break;
-                user = optarg;
-                break;
-            case 'j':
-                query_adds.limit = query_adds.limit == 20 ? -1 : query_adds.limit; //if the limit is still the default
-                if (strchr(optarg, ','))
-                {
-                    strcpy(query_adds.job_ids, optarg);
-                }
-                else
-                {
-                    query_adds.job_id = atoi(strtok(optarg, "."));
-                    token = strtok(NULL, ".");
-                    if (token != NULL) {
-                        if (!strcmp(token, "sbatch") || !strcmp(token, "sb")) {
-                            sprintf(query_adds.step_ids, "%u", BATCH_STEP);
-                        }
-                        else strcpy(query_adds.step_ids, token);
-                    }
-                    //if (token != NULL) query_adds.step_id = atoi(token);
-                }
-                break;
-            case 'x':
-                is_events = 1;
-                if (optind < argc && strchr(argv[optind], '-') == NULL) {
-                    if (strchr(argv[optind], ',')) {
-                        strcpy(query_adds.job_ids, argv[optind]);
-                    }
-                    else {
-                        query_adds.job_id = atoi(strtok(argv[optind], "."));
-                        token = strtok(NULL, ".");
-                        if (token != NULL) {
-                            if (!strcmp(token, "sbatch") || !strcmp(token, "sb")) {
-                                sprintf(query_adds.step_ids, "%u", BATCH_STEP);
-                            }
-                            else strcpy(query_adds.step_ids, token);
-                        }
-                        //if (token != NULL) query_adds.step_id = atoi(token);
-                    }
-                }
-                else if (verbose) printf("No argument for -x\n");
-                break;
-            case 'o':
-                loop_extended = 1;
-                break;
-            case 'g':
-                print_gpus = 1;
-                break;
-            case 'f':
-                file_name = optarg;
-                break;
-            case 'l':
-                full_length = 1;
-                break;
-            case 'b':
-                verbose = 1;
-                break;
-            case 'v':
-                free_cluster_conf(&my_conf);
-                print_version();
-                exit(0);
-                break;
-            case 'm':
-                all_mpi = 1;
-                break;
-            case 'c':
-                strcpy(csv_path, optarg);
-                break;
-            case 't':
-                strcpy(query_adds.e_tag, optarg);
-                break;
-            case 'p':
-                avx = 1;
-                break;
-            case 'a':
-                strcpy(query_adds.app_id, optarg);
-                break;
-            case 's':
-                if (strptime(optarg, "%Y-%m-%e", &tinfo) == NULL) {
-                    printf("Incorrect time format. Supported format is YYYY-MM-DD\n"); //error
-                    free_cluster_conf(&my_conf);
-                    exit(1);
-                }
-                query_adds.start_time = mktime(&tinfo);
-                break;
-            case 'e':
-                if (strptime(optarg, "%Y-%m-%e", &tinfo) == NULL) {
-                    printf("Incorrect time format. Supported format is YYYY-MM-DD\n"); //error
-                    free_cluster_conf(&my_conf);
-                    exit(1);
-                }
-                query_adds.end_time = mktime(&tinfo);
-                break;
-            case 'F':
-                strncpy(format, optarg, sizeof(format));
-                break;
-            case 'h':
-                free_cluster_conf(&my_conf);
-                usage(argv[0]);
-                break;
-        }
-    }
+		switch (c)
+		{
+			case 'n':
+				if (!strcmp(optarg, "all")) query_adds.limit = -1;
+				else query_adds.limit = atoi(optarg);
+				break;
+			case 'r':
+				is_loops = 1;
+				break;
+			case 'u':
+				if (user != NULL) break;
+				user = optarg;
+				break;
+			case 'j':
+				query_adds.limit = query_adds.limit == 20 ? -1 : query_adds.limit; //if the limit is still the default
+				if (strchr(optarg, ','))
+				{
+					strcpy(query_adds.job_ids, optarg);
+				}
+				else
+				{
+					query_adds.job_id = atoi(strtok(optarg, "."));
+					token = strtok(NULL, ".");
+					if (token != NULL) {
+						if (!strcmp(token, "sbatch") || !strcmp(token, "sb")) {
+							sprintf(query_adds.step_ids, "%u", BATCH_STEP);
+						}
+						else strcpy(query_adds.step_ids, token);
+					}
+					//if (token != NULL) query_adds.step_id = atoi(token);
+				}
+				break;
+			case 'x':
+				is_events = 1;
+				if (optind < argc && strchr(argv[optind], '-') == NULL) {
+					if (strchr(argv[optind], ',')) {
+						strcpy(query_adds.job_ids, argv[optind]);
+					}
+					else {
+						query_adds.job_id = atoi(strtok(argv[optind], "."));
+						token = strtok(NULL, ".");
+						if (token != NULL) {
+							if (!strcmp(token, "sbatch") || !strcmp(token, "sb")) {
+								sprintf(query_adds.step_ids, "%u", BATCH_STEP);
+							}
+							else strcpy(query_adds.step_ids, token);
+						}
+						//if (token != NULL) query_adds.step_id = atoi(token);
+					}
+				}
+				else if (verbose) printf("No argument for -x\n");
+				break;
+			case 'o':
+				loop_extended = 1;
+				break;
+			case 'g':
+				print_gpus = 1;
+				break;
+			case 'f':
+				file_name = optarg;
+				break;
+			case 'l':
+				full_length = 1;
+				break;
+			case 'b':
+				verbose = 1;
+				break;
+			case 'v':
+				free_cluster_conf(&my_conf);
+				print_version();
+				exit(0);
+				break;
+			case 'm':
+				all_mpi = 1;
+				break;
+			case 'c':
+				strcpy(csv_path, optarg);
+				break;
+			case 't':
+				strcpy(query_adds.e_tag, optarg);
+				break;
+			case 'p':
+				avx = 1;
+				break;
+			case 'a':
+				strcpy(query_adds.app_id, optarg);
+				break;
+			case 's':
+				if (strptime(optarg, "%Y-%m-%e", &tinfo) == NULL) {
+					printf("Incorrect time format. Supported format is YYYY-MM-DD\n"); //error
+					free_cluster_conf(&my_conf);
+					exit(1);
+				}
+				query_adds.start_time = mktime(&tinfo);
+				break;
+			case 'e':
+				if (strptime(optarg, "%Y-%m-%e", &tinfo) == NULL) {
+					printf("Incorrect time format. Supported format is YYYY-MM-DD\n"); //error
+					free_cluster_conf(&my_conf);
+					exit(1);
+				}
+				query_adds.end_time = mktime(&tinfo);
+				break;
+			case 'F':
+				strncpy(format, optarg, sizeof(format));
+				break;
+			case 'h':
+				free_cluster_conf(&my_conf);
+				usage(argv[0]);
+				break;
+		}
+	}
 
-    if (verbose) printf("Limit set to %d\n", query_adds.limit);
-    if (strlen(format) < 1) {
-        if (is_loops)
-            strcpy(format, "jnXpgTCstrimG");
-        else if (full_length)
-            strcpy(format, "juapnrtpgCseG");
-        else
-            strcpy(format, "juapNrtpgCseG");
-    }
+	if (verbose) printf("Limit set to %d\n", query_adds.limit);
+	if (strlen(format) < 1) {
+		if (is_loops)
+			strcpy(format, "jnXpgTCstrimG");
+		else if (full_length)
+			strcpy(format, "juapnrtpgCseG");
+		else
+			strcpy(format, "juapNrtpgCseG");
+	}
 
-    if (file_name != NULL) read_applications_from_files(file_name, format);
-    else if (is_events) read_events(user, &query_adds);
-    else if (is_loops) read_loops(user, &query_adds, format);
-    else read_applications_from_database(user, &query_adds, format); 
+	if (file_name != NULL) read_applications_from_files(file_name, format);
+	else if (is_events) read_events(user, &query_adds);
+	else if (is_loops) read_loops(user, &query_adds, format);
+	else read_applications_from_database(user, &query_adds, format); 
 
 #if COLORS
 	printf("%s",COL_CLR);

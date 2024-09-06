@@ -90,6 +90,10 @@ void print_format_dc(int WIDTH, int32_t value) {   dprintf(out_format_fd, "%-*d 
 void print_format_llu(int WIDTH, unsigned long long value) { dprintf(out_format_fd, "%-*llu ", WIDTH, value); }
 void print_format_str(int WIDTH, char *value) {    dprintf(out_format_fd, "%-*s ", WIDTH, value); }
 
+/* Generic print macro. It calls the appropiate function depending on the
+ * type of the 'value' argument, simplifying the process.
+ * __VA_OPT__(,) is compiler dependant, but both GCC and CLANG (and thus ICX) implement it.
+ */
 #define print_format(WIDTH, value, ...) _Generic((value), \
 double: print_format_lf,\
 float: print_format_lf,\
