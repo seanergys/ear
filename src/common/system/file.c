@@ -55,7 +55,7 @@ int file_lock_timeout(int fd, ulong timeout)
 
 int file_lock_create(char *lock_file_name)
 {
-	int fd = open(lock_file_name, O_WRONLY | O_CREAT, S_IWUSR);
+	int fd = open(lock_file_name, O_WRONLY | O_CREAT | O_CLOEXEC, S_IWUSR);
 	if (fd < 0)
 		return fd;
 	lock.l_start = 0;

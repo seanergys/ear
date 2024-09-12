@@ -146,7 +146,7 @@ int dispose=0;
 
 #include <common/system/file.h>
 static char master_lock_filename[MAX_PATH_SIZE];
-static int fd_master_lock;
+static int fd_master_lock = -1;
 
 // Process information
 static int my_id = 1;
@@ -273,6 +273,8 @@ static state_t check_job_folder();
 
 
 static uint must_masters_synchronize();
+
+static void create_earl_verbose_files();
 
 
 /** Make a copy of pathname and store it to a file called pathname.bckp */
@@ -1414,6 +1416,7 @@ static void configure_sigactions()
 	 * we return and no signal handling is performed. */
 
 	if (py_multiproc || no_sighandle) {
+		earl_early_verb(1, "Sigactions disabled.");
 		return;
 	}
 
@@ -1506,11 +1509,9 @@ void ear_init()
   strtok(node_name, ".");
 
 	earl_early_verb(VPROC_INIT, "--- EARL init ---");
-	// verbose(VPROC_INIT, "%s EAR [%d][%d] init .......................................%s", COL_BLU, getpid(), main_pid, COL_CLR);
 
   if (ear_lib_initialized)
 	{
-    // verbose(1, "[%d] EAR Library already initialized. Exiting...", main_pid);
 		earl_early_verb(1, "%sWarning%s EARL already initialized. Exiting...", COL_YLW, COL_CLR);
     return;
   }
@@ -1530,7 +1531,6 @@ void ear_init()
 		if (ear_my_size > 1) app_node_multiprocess = 1;
 		if (app_node_multiprocess)
 		{
-			// verbose(1, "EARL[%d][%d] Node multiprocess enabled: %d tasks detected in %s", ear_my_rank, getpid(), ear_my_size, node_name);
 			earl_early_verb(1, "Node multiprocess enabled. Rank: %d Tasks: %d",
 					ear_my_rank, ear_my_size);
 		}
@@ -1548,7 +1548,6 @@ void ear_init()
 	synchronize_masters = must_masters_synchronize();
 	if (!synchronize_masters)
 	{
-		// verbose(VEARL_INFO2, "%s[%d][%s][INFO2]%s Node detection failed in this OpenMPI workload: masters will not synchronize.", COL_BLU, main_pid, node_name, COL_CLR);
 		earl_early_verb(VEARL_INFO2, "Node detection failed in this OpenMPI workload: masters will not synchronize.")
 	}
 
@@ -1564,8 +1563,6 @@ void ear_init()
 
 		/* If tmp does not exist ear will be off but we need to set some tmp until we contact with other nodes */
 		/* WARNING The content of this EAR_TMP directory won't be removed. */
-		// verbose(1, "%s[%d][%s][WARNING]%s EAR_TMP directory (%s) does not exist in the node. Setting /tmp as the EAR_TMP for this application.",
-						// COL_YLW, main_pid, node_name, COL_CLR, tmp);
 		earl_early_verb(1, "%sWarning%s EAR_TMP directory (%s) does not exist in the node. Setting /tmp as the EAR_TMP for this application.", COL_YLW, COL_CLR, tmp);
 		set_ear_tmp("/tmp");
 		tmp = get_ear_tmp();
@@ -1577,8 +1574,6 @@ void ear_init()
 	state_t tmp_exists = check_job_folder();
   if (state_fail(tmp_exists))
 	{
-		// verbose(1, "%s[%d][%s][WARNING]%s Job-Step directory doesn't exist. Node multiprocess disabled.",
-		// 				COL_YLW, main_pid, node_name, COL_CLR);
 		earl_early_verb(1, "%sWarning%s Job-Step directory doesn't exist. Node multiprocess disabled.", COL_YLW, COL_CLR);
 
 		app_node_multiprocess = 0; // disable "multiprocess" use case.
@@ -1630,7 +1625,6 @@ void ear_init()
 
 		if (is_already_connected(get_ear_tmp(), my_job_id, my_step_id, AID, my_pid))
 		{
-			// verbose_info_master("%sWARNING%s (Job/step/application) (%d/%d/%d) seems to be already conncted. Did the process mutate? Recovering EARD connection info...", COL_RED, COL_CLR, my_job_id, my_step_id, my_pid);
 			earl_early_verb(1, "%sWarning%s (Job/step/application) (%d/%d/%d) seems to be already conncted. Did the process mutate? Recovering EARD connection info...",
 					COL_YLW, COL_CLR, my_job_id, my_step_id, AID);
 
@@ -1653,6 +1647,8 @@ void ear_init()
 
 	/* All masters connect in a new MPI communicator */
 	attach_to_master_set(i_am_master, synchronize_masters);
+
+	create_earl_verbose_files();
 
 	earl_early_verb(VPROC_INIT, "Rank %d attached to master set. Synch %d MP %d.",
 					ear_my_rank, synchronize_masters, app_node_multiprocess);
@@ -1882,6 +1878,7 @@ void ear_init()
                     if (!EARL_LIGHT) {
                         verbose_master(2,"%s: EARL off because of EARD",node_name);
                         strcpy(application.job.policy," "); /* Cleaning policy */
+												ear_lib_initialized = 0;
                         return;
                     } else {
                         verbose_master(2, "EARD is not running but EARL light version is enabled");
@@ -1909,59 +1906,6 @@ void ear_init()
       		topology_print(&earl_topo, verb_channel);
     		}
   		}
-
-
-				/* create verbose file for each job */
-				char *verb_path = ear_getenv(FLAG_EARL_VERBOSE_PATH);
-                if (verb_path != NULL) {
-
-                    /* Use a verbose file per process instead of only master */
-                    char *per_proc_v_file = ear_getenv(HACK_PROCS_VERB_FILES);
-
-                    if (per_proc_v_file != NULL) {
-                        per_proc_verb_file = atoi(per_proc_v_file);
-                        verbose_master(2, "Per-process log: %u", per_proc_verb_file);	
-                    }
-
-                    if (masters_info.my_master_rank >= 0 || per_proc_verb_file) {
-                        if (( mkdir (verb_path, S_IRWXU|S_IRGRP|S_IWGRP) < 0) && (errno != EEXIST)) {
-                            per_proc_verb_file = 0;
-                            error("MR[%d] Verbose files folder cannot be created (%s)",
-                                    masters_info.my_master_rank, strerror(errno));
-                        } else {
-                            using_verb_files = 1;
-
-                            char file_name[128];
-                            // Format: <verbose_path>/earl_log.<master_rank>.<local_rank>.<step>.<job>.<appid>
-                            sprintf(file_name, "%s/earl_log.%d.%d.%d.%d.%u",
-                                    verb_path, lib_shared_region->master_rank,
-                                    my_node_id, my_step_id, my_job_id, AID);
-                            verbose_master(VEAR_INIT, "EARL log file: %s", file_name);
-
-														// Check first whether the file exists
-														if (file_is_regular(file_name)) {
-															verbose_master(1,
-																	"%sWarning%s EARL log file %s already exists. Backing it up...",
-																	COL_YLW, COL_CLR, file_name);
-															if (state_fail(earl_log_backup(file_name, sizeof(file_name))))
-															{
-																verbose_master(2, "%sWarning%s Error backing up file: %s", COL_YLW, COL_CLR, state_msg);
-															}
-														}
-
-                            int fd = open(file_name, O_WRONLY|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR|S_IRGRP);
-                            if (fd != -1) {
-                                VERB_SET_FD(fd);
-                                DEBUG_SET_FD(fd);
-                                ERROR_SET_FD(fd);
-                                WARN_SET_FD(fd);
-                            } else {
-                                verbose_master(VEAR_INIT, "Log file cannot be created (%s)", strerror(errno));
-                            }
-                        }
-                    }
-                }
-
 
 				// Initializing architecture and topology
 				if ((st=get_arch_desc(&arch_desc))!=EAR_SUCCESS){
@@ -3261,4 +3205,44 @@ static state_t earl_log_backup(char *pathname, size_t pathname_size)
 	free(bckp_pathname);
 
 	return st;
+}
+
+static void create_earl_verbose_files()
+{
+	char *verb_path = ear_getenv(FLAG_EARL_VERBOSE_PATH);
+	if (verb_path) {
+		/* Use a verbose file per process instead of only master */
+		char *per_proc_v_file = ear_getenv(HACK_PROCS_VERB_FILES);
+
+		if (per_proc_v_file) {
+			per_proc_verb_file = atoi(per_proc_v_file);
+			verbose_master(VEAR_INIT, "Per-process log: %u", per_proc_verb_file);	
+		}
+
+		if (masters_info.my_master_rank >= 0 || per_proc_verb_file) {
+			if (( mkdir (verb_path, S_IRWXU|S_IRGRP|S_IWGRP) < 0) && (errno != EEXIST)) {
+				per_proc_verb_file = 0;
+				error("MR[%d] Verbose files folder cannot be created (%s)",
+						masters_info.my_master_rank, strerror(errno));
+			} else {
+				using_verb_files = 1;
+
+				char file_name[SZ_PATH];
+				// Format: <verbose_path>/earl_log.<master_rank>.<local_rank>.<step>.<job>.<appid>
+				snprintf(file_name, sizeof(file_name) - 1, "%s/earl-%d-%d-%u-%s-%d.log",
+						verb_path, my_job_id, my_step_id, AID, node_name, main_pid);
+				verbose_master(VEAR_INIT, "EARL log file: %s", file_name);
+
+				int fd = open(file_name, O_WRONLY|O_CREAT|O_APPEND,S_IRUSR|S_IWUSR|S_IRGRP);
+				if (fd != -1) {
+					VERB_SET_FD(fd);
+					DEBUG_SET_FD(fd);
+					ERROR_SET_FD(fd);
+					WARN_SET_FD(fd);
+				} else {
+					verbose_error_master("Log file cannot be created (%s).", strerror(errno));
+				}
+			}
+		}
+	}
 }

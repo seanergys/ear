@@ -98,7 +98,9 @@ static char app_directory_pathname[MAX_PATH_SIZE];
 
 static state_t create_base_path(char *base_path, size_t base_path_sz, char *tmp_path, uint job_step_id, uint app_local_id);
 
+#if WF_SUPPORT
 static state_t create_app_directory(char *path);
+#endif
 
 /** Saves EARD connection info to be restored in the case the client lose this info. */
 static state_t eards_save_connection(char *tmp, ulong job_id, ulong step_id, ulong local_id);
@@ -286,7 +288,9 @@ state_t eards_connection()
     application_t my_dummy_app;
     my_dummy_app.job.id       = 0;
     my_dummy_app.job.step_id  = 0;
+#if WF_SUPPORT
     my_dummy_app.job.local_id = 0; // Create the folder if not exists
+#endif
     return (state_t) eards_connect(&my_dummy_app, getpid());
 }
 
@@ -342,7 +346,7 @@ int eards_connect(application_t *my_app, ulong lid)
     sprintf(ear_commreq_global,"%s/.ear_comm.globalreq",ear_tmp);
 	verbose(VPROC_LAPI,"Opening Global comm pipe %s", ear_commreq_global);
 
-    #if WF_SUPPORT
+#if WF_SUPPORT
 	char base_path[MAX_PATH_SIZE];
 	/* Create the common base path used inside this block ("tmp/id/local_id") */
 	state_t ret_st = create_base_path(base_path, sizeof(base_path),
@@ -364,10 +368,10 @@ int eards_connect(application_t *my_app, ulong lid)
 	/* Pipe full paths. They're stored at base_path as well. */
     sprintf(ear_commreq,"%s/.ear_comm.req_%d.%d.%lu", base_path, i, my_id, lid);
     sprintf(ear_commack,"%s/.ear_comm.ack_%d.%d.%lu", base_path, i, my_id, lid);
-    #else
+#else
     sprintf(ear_commreq, "%s/%u/.ear_comm.req_%d.%d.%lu", ear_tmp, (uint) my_id, i, my_id, lid);
     sprintf(ear_commack, "%s/%u/.ear_comm.ack_%d.%d.%lu", ear_tmp, (uint) my_id, i, my_id, lid);
-    #endif
+#endif
     debug("comreq_global %s comreq %s comack %s",ear_commreq_global,ear_commreq,ear_commack);
     debug("comreq_self  : %s", ear_commreq);
     debug("comack_self  : %s", ear_commack);
@@ -622,6 +626,8 @@ state_t eards_recover_connection(char *tmp, ulong job_id, ulong step_id, ulong l
 	ear_fd_req_global = fds[ear_fd_req_global_idx];
 	ear_fd_req = fds[ear_fd_req_idx];
 	ear_fd_ack = fds[ear_fd_ack_idx];
+	
+	debug("[%d] Pipes recovered: req_global %d req %d ack %d", getpid(), ear_fd_req_global, ear_fd_req, ear_fd_ack);
 
 	app_connected = 1;
 
@@ -801,6 +807,7 @@ static state_t create_base_path(char *base_path, size_t base_path_sz, char *tmp_
 	}
 }
 
+#if WF_SUPPORT
 static state_t create_app_directory(char *path)
 {
 	int ret = mkdir(path, S_IRWXU);
@@ -814,3 +821,4 @@ static state_t create_app_directory(char *path)
 
 	return EAR_SUCCESS;
 }
+#endif

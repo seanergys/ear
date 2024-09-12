@@ -14,6 +14,7 @@ tool_BINS = \
     enode_info \
     node_manager_info \
     list_folders \
+    groups_test \
 	powercap_test
 
 #enode_control
@@ -91,6 +92,9 @@ ear_conf: ear_conf.c $(comm_OBJS)
 enode_control: ear_node_control.c $(comm_OBJS)
 	$(CCC) -o $@ $< $(comm_OBJS)
 
+groups_test: groups_test.c $(comm_OBJS)
+	$(CCC) -o $@ $< $(comm_OBJS)
+
 enode_info: ear_node_info.c $(comm_OBJS) $(SRCDIR)/daemon/local_api/libeard.a $(SRCDIR)/metrics/libmetrics.a $(SRCDIR)/management/libmgt.a
 	$(CCC) -o $@ $< $(SRCDIR)/daemon/local_api/libeard.a  $(SRCDIR)/management/libmgt.a $(SRCDIR)/metrics/libmetrics.a $(comm_OBJS) -pthread -lm -ldl
 
@@ -102,8 +106,6 @@ list_folders: list_folders.c $(comm_OBJS)
 
 node_manager_info: node_manager_info.c $(comm_OBJS)
 	$(CCC) -o $@ $<  $(SRCDIR)/daemon/local_api/libeard.a $(SRCDIR)/daemon/shared_configuration.o $(SRCDIR)/daemon/shared_pmon.o $(comm_OBJS)
-
-
 ######## OPTIONS
 
 install: tool.ginstall;
