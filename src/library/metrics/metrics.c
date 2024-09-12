@@ -507,8 +507,7 @@ static void metrics_static_init(topology_t *tp)
     sa(mgt_imcfreq_load(tp, eard, NULL));
 
 		debug("temperature load");
-		//sa(temp_load(tp, eard));
-		sa(temp_load(tp, API_DUMMY));
+		sa(temp_load(tp, eard));
 
     debug("energy_cpu_load");
     sa( energy_cpu_load(tp, eard));
