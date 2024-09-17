@@ -41,7 +41,7 @@
 cluster_conf_t my_conf;
 #endif
 
-#define IMPROVEMENTS 1
+#define EACCT_USE_GPUS USE_GPUS
 
 #define COLORS 0
 
@@ -177,7 +177,6 @@ void average_applications(application_t *apps, int num_apps, struct avg_apps **s
     *num_sorted_apps = current;
 }
 
-#if IMPROVEMENTS
 bool print_power_signature_format(application_t *app, char f)
 { 
     //this improves warnings by the compiler
@@ -223,7 +222,9 @@ bool print_power_signature_format(application_t *app, char f)
             }
             break;
         case GPU: //GPUs
+#if EACCT_USE_GPUS
             print_format_custom("%-7.2s/%-7.2s %-7.3s %s%%/%-s%% ", "---","---","---","---","---");
+#endif
             break;
         case ALL_FREQS: //all frequencies
             print_format_custom("%-3s/%-3s/%-8s ", "---", "---", "---");
@@ -334,6 +335,7 @@ bool print_signature_format(signature_t *sig, char f, int32_t time_length)
             print_format(ENERGY_WIDTH, sig->DC_power*sig->time, 2);
             break;
         case GPU: //GPUs
+#if EACCT_USE_GPUS
             { // declare a custom scope to avoid compiler complains
                 gpu_signature_t *ptr = &sig->gpu_sig;
                 double gpu_power = 0, gpu_total_power = 0;
@@ -365,284 +367,289 @@ bool print_signature_format(signature_t *sig, char f, int32_t time_length)
                     else {
                         print_format_custom(" %-7.2lf/%-7.2s %-7.3s %s%%/%-s%% ", gpu_total_power, "---", "---", "---", "---"); 
                     }
-                }
-            }
-            break;
-        default:
-            return false; //return false if there isn't any field corresponding to this format
-    }
-    return true;
+				} else {
+					print_format_custom(" %-7.2lf/%-7.2s %-7.3s %s%%/%-s%% ", gpu_total_power, "---", "---", "---", "---"); 
+				}
+			}
+#endif
+			break;
+		default:
+			return false; //return false if there isn't any field corresponding to this format
+	}
+	return true;
 }
 
 void print_app_format(application_t *app, char *fmt, int num_nodes)
 {
-    uint32_t i;
-    char is_sbatch;
-    bool is_consumed;
+	uint32_t i;
+	char is_sbatch;
+	bool is_consumed;
 
-    //print the color legend if possible
-    if (app->is_mpi){ select_color_by_phase(app->signature.CPI, app->signature.GBS, app->signature.IO_MBS, app->signature.Gflops);}
+	//print the color legend if possible
+	if (app->is_mpi){ select_color_by_phase(app->signature.CPI, app->signature.GBS, app->signature.IO_MBS, app->signature.Gflops);}
 
 
-    for (i = 0; i < strlen(fmt); i++) { //this is preferable to a while loop because of the use of continues
-                                        
-        //is_consumed is 1 only if that format char corresponds to signature/power signature
-        if (app->is_mpi) is_consumed = print_signature_format(&app->signature, fmt[i], 0);
-        else is_consumed = print_power_signature_format(app, fmt[i]);
+	for (i = 0; i < strlen(fmt); i++) { //this is preferable to a while loop because of the use of continues
 
-        if (is_consumed) continue;
+		//is_consumed is 1 only if that format char corresponds to signature/power signature
+		if (app->is_mpi) is_consumed = print_signature_format(&app->signature, fmt[i], 0);
+		else is_consumed = print_power_signature_format(app, fmt[i]);
 
-        //this improves warnings by the compiler
-        job_format_type tmp = fmt[i];
+		if (is_consumed) continue;
 
-        switch(tmp) {
-            case APP_ID: //application id
-                if (strlen(app->job.app_id) > APP_WIDTH) {
-                    if (strchr(app->job.app_id, '/') != NULL) {
-                        strcpy(app->job.app_id, strrchr(app->job.app_id, '/')+1);
-                    } else { //dirty, but it works
-                        app->job.app_id[APP_WIDTH] = '\0';
-                    }
-                }
-                print_format(APP_WIDTH, app->job.app_id);
-                break;
-            case JOB_WSTEP: //jobid
-                is_sbatch = (app->job.step_id == (uint32_t)BATCH_STEP) ? 1 : 0;
-                if (is_sbatch) 
-                    print_format_custom("%8lu-%-4s ", app->job.id, "sb");
-                else
-                    print_format_custom("%8lu-%-4lu ", app->job.id, app->job.step_id);
-                break;
-            case LOCAL_ID: //local_id
-                print_format(OTHER_WIDTH, app->job.local_id);
-                break;
-            case USER_ID: //user id
-                print_format(OTHER_WIDTH, app->job.user_id);
-                break;
-            case NODE_ID: //node id
-                print_format(OTHER_WIDTH, app->node_id);
-                break;
-            case NUM_NODES: //num nodes
-                print_format(OTHER_WIDTH, num_nodes);
-                break;
-            case DATE_ITER:
-                print_format_custom("%sDate('%c') format character not supported for jobs%s\n", COL_RED, DATE_ITER, COL_CLR);
-                break;
-            default:
-                print_format_custom("%sunknown format char %c%s\n", COL_RED, fmt[i], COL_CLR);
-                break;
-        }
-    }
-    print_format_custom("\n");
+		//this improves warnings by the compiler
+		job_format_type tmp = fmt[i];
 
-    //reset the color
-    print_format_custom("%s", COL_CLR);
-    fflush(stdout);
+		switch(tmp) {
+			case APP_ID: //application id
+				if (strlen(app->job.app_id) > APP_WIDTH) {
+					if (strchr(app->job.app_id, '/') != NULL) {
+						strcpy(app->job.app_id, strrchr(app->job.app_id, '/')+1);
+					} else { //dirty, but it works
+						app->job.app_id[APP_WIDTH] = '\0';
+					}
+				}
+				print_format(APP_WIDTH, app->job.app_id);
+				break;
+			case JOB_WSTEP: //jobid
+				is_sbatch = (app->job.step_id == (uint32_t)BATCH_STEP) ? 1 : 0;
+				if (is_sbatch) 
+					print_format_custom("%8lu-%-4s ", app->job.id, "sb");
+				else
+					print_format_custom("%8lu-%-4lu ", app->job.id, app->job.step_id);
+				break;
+			case LOCAL_ID: //local_id
+				print_format(OTHER_WIDTH, app->job.local_id);
+				break;
+			case USER_ID: //user id
+				print_format(OTHER_WIDTH, app->job.user_id);
+				break;
+			case NODE_ID: //node id
+				print_format(OTHER_WIDTH, app->node_id);
+				break;
+			case NUM_NODES: //num nodes
+				print_format(OTHER_WIDTH, num_nodes);
+				break;
+			case DATE_ITER:
+				print_format_custom("%sDate('%c') format character not supported for jobs%s\n", COL_RED, DATE_ITER, COL_CLR);
+				break;
+			default:
+				print_format_custom("%sunknown format char %c%s\n", COL_RED, fmt[i], COL_CLR);
+				break;
+		}
+	}
+	print_format_custom("\n");
+
+	//reset the color
+	print_format_custom("%s", COL_CLR);
+	fflush(stdout);
 
 }
 
 void print_header_format(char *fmt)
 { 
-    while (*fmt) {
-        switch(*fmt) {
-            case APP_ID: //application id
-                print_format(APP_WIDTH, "APPLICATION");
-                break;
-            case JOB_WSTEP: //jobid
-                print_format_custom("%8s-%-4s ", "JOB", "STEP");
-                break;
-            case USER_ID: //user id
-                print_format(OTHER_WIDTH, "USER");
-                break;
-            case LOCAL_ID:
-                print_format(OTHER_WIDTH, "AID");
-                break;
-            case DATE_ITER:
+	while (*fmt) {
+		switch(*fmt) {
+			case APP_ID: //application id
+				print_format(APP_WIDTH, "APPLICATION");
+				break;
+			case JOB_WSTEP: //jobid
+				print_format_custom("%8s-%-4s ", "JOB", "STEP");
+				break;
+			case USER_ID: //user id
+				print_format(OTHER_WIDTH, "USER");
+				break;
+			case LOCAL_ID:
+				print_format(OTHER_WIDTH, "AID");
+				break;
+			case DATE_ITER:
 #if REPORT_TIMESTAMP
-                print_format(OTHER_WIDTH, "DATE");
+				print_format(OTHER_WIDTH, "DATE");
 #else
-                print_format(OTHER_WIDTH, "ITER.");
+				print_format(OTHER_WIDTH, "ITER.");
 #endif
-                break;
-            case NODE_ID: //node id
-                print_format(OTHER_WIDTH, "NODE ID");
-                break;
-            case NUM_NODES: //num nodes
-                print_format(OTHER_WIDTH, "NODES");
-                break;
-            case DC_POWER: //DC power
-                print_format(POWER_WIDTH, "POWER(W)");
-                break;
-            case GPU: //GPUs
-                print_format_custom("%-15s %-8s %-14s", "G-POW (T/U)", "G-FREQ","G-UTIL(G/MEM)");
-                break;
-            case DRAM_POWER: //DRAM power
-                print_format(DRAM_POWER_WIDTH, "DRAM POW(W)");
-                break;
-            case PCK_POWER: //PCK power
-                print_format(PCK_POWER_WIDTH, "PKG POW(W)");
-                break;
-            case GBS: //GBS
-                print_format(GBS_WIDTH, "GBS");
-                break;
-            case TPI: //TPI
-                print_format(TPI_WIDTH, "TPI");
-                break;
-            case CPI: //CPI
-                print_format(CPI_WIDTH, "CPI");
-                break;
-            case GFLOPS: //gflops
-                print_format(GFLOPS_WIDTH, "GFLOPS/W");
-                break;
-            case TIME: //time
-                print_format(TIME_WIDTH, "TIME(s)");
-                break;
-            case FLOPS: //FLOPS
-                for (int i = 0; i < FLOPS_EVENTS; i++) 
-                    print_format_custom("%-*s%-*d ", FLOPS_WIDTH/2, "FLOPS", FLOPS_WIDTH/2, i+1);
-                break;
-            case CACHE_MISSES: //L1/2/3 misses
-                print_format(CACHE_WIDTH, "L1_misses");
-                print_format(CACHE_WIDTH, "L2_misses");
-                print_format(CACHE_WIDTH, "L3_misses");
-                break;
-            case INSTRUCTIONS: //instructions
-                print_format(INSTRUCTIONS_WIDTH, "INSTRUCT");
-                break;
-            case CYCLES: //cycles
-                print_format(CYCLES_WIDTH, "CYCLES");
-                break;
-            case ALL_FREQS: //all three freqs in format
-                print_format_custom("%-3s/%-3s/%-8s ", "AVG", "DEF", "IMC(GHz)");
-                break;
-            case FREQUENCY: //frequency
-                print_format(FREQ_WIDTH, "AVG(GHz)");
-                break;
-            case IMC_FREQ: //imc freq
-                print_format(FREQ_WIDTH, "IMC(GHz)");
-                break;
-            case DEF_FREQ: //def_f
-                print_format(FREQ_WIDTH, "DEF(GHz)");
-                break;
-            case MPI_PERC: //MPI perc
-                print_format(MPI_WIDTH, "MPI(%)");
-                break;
-            case IO_MBS: //IO_MBGS
-                print_format(IO_WIDTH, "IO(MBs)");
-                break;
-            case VPI: //vpi
-                print_format(VPI_WIDTH, "VPI(%)");
-                break;
-            case ENERGY: //energy
-                print_format(ENERGY_WIDTH, "ENERGY(J)");
-                break;
-        }
-        fmt++;
-    }
-    printf("\n");
+				break;
+			case NODE_ID: //node id
+				print_format(OTHER_WIDTH, "NODE ID");
+				break;
+			case NUM_NODES: //num nodes
+				print_format(OTHER_WIDTH, "NODES");
+				break;
+			case DC_POWER: //DC power
+				print_format(POWER_WIDTH, "POWER(W)");
+				break;
+			case GPU: //GPUs
+#if EACCT_USE_GPUS
+				print_format_custom("%-15s %-8s %-14s", "G-POW (T/U)", "G-FREQ","G-UTIL(G/MEM)");
+#endif
+				break;
+			case DRAM_POWER: //DRAM power
+				print_format(DRAM_POWER_WIDTH, "DRAM POW(W)");
+				break;
+			case PCK_POWER: //PCK power
+				print_format(PCK_POWER_WIDTH, "PKG POW(W)");
+				break;
+			case GBS: //GBS
+				print_format(GBS_WIDTH, "GBS");
+				break;
+			case TPI: //TPI
+				print_format(TPI_WIDTH, "TPI");
+				break;
+			case CPI: //CPI
+				print_format(CPI_WIDTH, "CPI");
+				break;
+			case GFLOPS: //gflops
+				print_format(GFLOPS_WIDTH, "GFLOPS/W");
+				break;
+			case TIME: //time
+				print_format(TIME_WIDTH, "TIME(s)");
+				break;
+			case FLOPS: //FLOPS
+				for (int i = 0; i < FLOPS_EVENTS; i++) 
+					print_format_custom("%-*s%-*d ", FLOPS_WIDTH/2, "FLOPS", FLOPS_WIDTH/2, i+1);
+				break;
+			case CACHE_MISSES: //L1/2/3 misses
+				print_format(CACHE_WIDTH, "L1_misses");
+				print_format(CACHE_WIDTH, "L2_misses");
+				print_format(CACHE_WIDTH, "L3_misses");
+				break;
+			case INSTRUCTIONS: //instructions
+				print_format(INSTRUCTIONS_WIDTH, "INSTRUCT");
+				break;
+			case CYCLES: //cycles
+				print_format(CYCLES_WIDTH, "CYCLES");
+				break;
+			case ALL_FREQS: //all three freqs in format
+				print_format_custom("%-3s/%-3s/%-8s ", "AVG", "DEF", "IMC(GHz)");
+				break;
+			case FREQUENCY: //frequency
+				print_format(FREQ_WIDTH, "AVG(GHz)");
+				break;
+			case IMC_FREQ: //imc freq
+				print_format(FREQ_WIDTH, "IMC(GHz)");
+				break;
+			case DEF_FREQ: //def_f
+				print_format(FREQ_WIDTH, "DEF(GHz)");
+				break;
+			case MPI_PERC: //MPI perc
+				print_format(MPI_WIDTH, "MPI(%)");
+				break;
+			case IO_MBS: //IO_MBGS
+				print_format(IO_WIDTH, "IO(MBs)");
+				break;
+			case VPI: //vpi
+				print_format(VPI_WIDTH, "VPI(%)");
+				break;
+			case ENERGY: //energy
+				print_format(ENERGY_WIDTH, "ENERGY(J)");
+				break;
+		}
+		fmt++;
+	}
+	printf("\n");
 }
 
 void print_full_apps(application_t *apps, int num_apps, bool is_csv, char *format)
 {
-    if (is_csv) {
-        if (!strcmp(csv_path, "no_file")) {
-            for (int i = 0; i < num_apps; i++)
-                print_application_fd(STDOUT_FILENO, &apps[i], my_conf.database.report_sig_detail, 1, 0);
-        } 
-        else {
-            for (int i = 0; i < num_apps; i++) {
-                append_application_text_file(csv_path, &apps[i], my_conf.database.report_sig_detail, 1, 0);
-            }
-        }
-    }
-    else {
-        print_header_format(format);
-        for (int i = 0; i < num_apps; i++) {
-            print_app_format(&apps[i], format, 1);
-        }
-    }
+	if (is_csv) {
+		if (!strcmp(csv_path, "no_file")) {
+			for (int i = 0; i < num_apps; i++)
+				print_application_fd(STDOUT_FILENO, &apps[i], my_conf.database.report_sig_detail, 1, 0);
+		} 
+		else {
+			for (int i = 0; i < num_apps; i++) {
+				append_application_text_file(csv_path, &apps[i], my_conf.database.report_sig_detail, 1, 0);
+			}
+		}
+	}
+	else {
+		print_header_format(format);
+		for (int i = 0; i < num_apps; i++) {
+			print_app_format(&apps[i], format, 1);
+		}
+	}
 }
 
 void print_loop_format(loop_t *loop, char *fmt)
 {
-    //print the color legend if possible
-    select_color_by_phase(loop->signature.CPI, loop->signature.GBS, loop->signature.IO_MBS, loop->signature.Gflops);
+	//print the color legend if possible
+	select_color_by_phase(loop->signature.CPI, loop->signature.GBS, loop->signature.IO_MBS, loop->signature.Gflops);
 
 
-    for (uint32_t i = 0; i < strlen(fmt); i++) { //this is preferable to a while loop because of the use of continues
-                                        
-        //is_consumed is 1 only if that format char corresponds to signature/power signature
-        if (print_signature_format(&loop->signature, fmt[i], 3)) continue;
+	for (uint32_t i = 0; i < strlen(fmt); i++) { //this is preferable to a while loop because of the use of continues
+
+		//is_consumed is 1 only if that format char corresponds to signature/power signature
+		if (print_signature_format(&loop->signature, fmt[i], 3)) continue;
 
 
-        //this improves warnings by the compiler
-        job_format_type tmp = fmt[i];
+		//this improves warnings by the compiler
+		job_format_type tmp = fmt[i];
 
-        switch(tmp) {
-            case APP_ID: //application id
-                print_format_custom("%sApp_id('%c') format character not supported for jobs%s\n", COL_RED, APP_ID, COL_CLR);
-                break;
-            case JOB_WSTEP: //jobid
-                print_format_custom("%8lu-%-4lu ", loop->jid, loop->step_id);
-                break;
-            case LOCAL_ID: //local_id
-                print_format(OTHER_WIDTH, loop->local_id);
-                break;
-            case USER_ID: //user id
-                print_format_custom("%sUSER_ID('%c') format character not supported for jobs%s\n", COL_RED, USER_ID, COL_CLR);
-                break;
-            case NODE_ID: //node id
-                print_format(OTHER_WIDTH, loop->node_id);
-                break;
-            case NUM_NODES: //num nodes
-                print_format(OTHER_WIDTH, 1);
-                break;
-            case DATE_ITER:
+		switch(tmp) {
+			case APP_ID: //application id
+				print_format_custom("%sApp_id('%c') format character not supported for jobs%s\n", COL_RED, APP_ID, COL_CLR);
+				break;
+			case JOB_WSTEP: //jobid
+				print_format_custom("%8lu-%-4lu ", loop->jid, loop->step_id);
+				break;
+			case LOCAL_ID: //local_id
+				print_format(OTHER_WIDTH, loop->local_id);
+				break;
+			case USER_ID: //user id
+				print_format_custom("%sUSER_ID('%c') format character not supported for jobs%s\n", COL_RED, USER_ID, COL_CLR);
+				break;
+			case NODE_ID: //node id
+				print_format(OTHER_WIDTH, loop->node_id);
+				break;
+			case NUM_NODES: //num nodes
+				print_format(OTHER_WIDTH, 1);
+				break;
+			case DATE_ITER:
 #if REPORT_TIMESTAMP
-                {
-                    struct tm *date_info = localtime( (time_t *)&loop->total_iterations);
-                    char date_iter[128] = { 0 };
-                    strftime(date_iter, sizeof(date_iter), "%H:%M:%S", date_info );
-                    print_format(OTHER_WIDTH, date_iter);
-                }
+				{
+					struct tm *date_info = localtime( (time_t *)&loop->total_iterations);
+					char date_iter[128] = { 0 };
+					strftime(date_iter, sizeof(date_iter), "%H:%M:%S", date_info );
+					print_format(OTHER_WIDTH, date_iter);
+				}
 #else
-                print_format(OTHER_WIDTH, loop->total_iterations);
+				print_format(OTHER_WIDTH, loop->total_iterations);
 #endif
-                break;
-            default:
-                print_format_custom("%sunknown format char %c%s\n", COL_RED, fmt[i], COL_CLR);
-                break;
-        }
-    }
-    print_format_custom("\n");
+				break;
+			default:
+				print_format_custom("%sunknown format char %c%s\n", COL_RED, fmt[i], COL_CLR);
+				break;
+		}
+	}
+	print_format_custom("\n");
 
-    //reset the color
-    print_format_custom("%s", COL_CLR);
-    fflush(stdout);
+	//reset the color
+	print_format_custom("%s", COL_CLR);
+	fflush(stdout);
 }
 
 void print_short_apps(application_t *apps, int num_apps, bool is_csv, char *format)
 {
-    if (format == NULL) { 
-        printf("Format string cannot be null\n");
-        return; 
-    }
-    if (num_apps == 0) 
-        printf("No applications retrieved\n");
-    struct avg_apps *sorted_apps = NULL;
-    int new_num_apps = 0;
-    average_applications(apps, num_apps, &sorted_apps, &new_num_apps);
-    if (is_csv) {
-        if (!strcmp(csv_path, "no_file")) {
-            for (int i = 0; i < new_num_apps; i++)
-                print_application_fd(STDOUT_FILENO, &sorted_apps[i].app, my_conf.database.report_sig_detail, 1, 0);
-        } 
-        else {
-            for (int i = 0; i < new_num_apps; i++) {
-                append_application_text_file(csv_path, &sorted_apps[i].app, my_conf.database.report_sig_detail, 1, 0);
-            }
-        }
-    } else {
+	if (format == NULL) { 
+		printf("Format string cannot be null\n");
+		return; 
+	}
+	if (num_apps == 0) 
+		printf("No applications retrieved\n");
+	struct avg_apps *sorted_apps = NULL;
+	int new_num_apps = 0;
+	average_applications(apps, num_apps, &sorted_apps, &new_num_apps);
+	if (is_csv) {
+		if (!strcmp(csv_path, "no_file")) {
+			for (int i = 0; i < new_num_apps; i++)
+				print_application_fd(STDOUT_FILENO, &sorted_apps[i].app, my_conf.database.report_sig_detail, 1, 0);
+		} 
+		else {
+			for (int i = 0; i < new_num_apps; i++) {
+				append_application_text_file(csv_path, &sorted_apps[i].app, my_conf.database.report_sig_detail, 1, 0);
+			}
+		}
+	} else {
 		int i;
 		print_header_format(format);
 		for (i = 0; i < num_apps; i++) {
@@ -651,7 +658,6 @@ void print_short_apps(application_t *apps, int num_apps, bool is_csv, char *form
 	}
 	free(sorted_apps);
 }
-#endif 
 
 void process_and_print_applications(application_t *apps, int num_apps, bool is_csv, bool aggregate, char *format) 
 {
