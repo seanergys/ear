@@ -41,6 +41,7 @@ typedef struct tags
     char energy_model[GENERIC_NAME];
     char energy_plugin[GENERIC_NAME];
     char powercap_plugin[GENERIC_NAME];
+		char powercap_node_plugin[GENERIC_NAME];
     char powercap_gpu_plugin[GENERIC_NAME];
     char coeffs[GENERIC_NAME];
 	char idle_governor[GENERIC_NAME];

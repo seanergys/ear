@@ -432,9 +432,10 @@ my_node_conf_t *get_my_node_conf(cluster_conf_t *my_conf, char *nodename)
         if (strlen(my_conf->tags[tag_id].energy_model) > 0)
             n->energy_model = my_conf->tags[tag_id].energy_model;
 
-        n->idle_governor = my_conf->tags[tag_id].idle_governor;
-        n->powercap_plugin = my_conf->tags[tag_id].powercap_plugin;
-        n->powercap_gpu_plugin = my_conf->tags[tag_id].powercap_gpu_plugin;
+        n->idle_governor 				= my_conf->tags[tag_id].idle_governor;
+        n->powercap_plugin 			= my_conf->tags[tag_id].powercap_plugin;
+				n->powercap_node_plugin = my_conf->tags[tag_id].powercap_node_plugin;
+        n->powercap_gpu_plugin 	= my_conf->tags[tag_id].powercap_gpu_plugin;
 
         n->coef_file = strlen(my_conf->tags[tag_id].coeffs) > 0 ? my_conf->tags[tag_id].coeffs : "coeffs.default";
 				// There is a specific default_policy , we replace the cluster conf default policy
@@ -834,6 +835,7 @@ void set_default_tag_values(tag_t *tag)
     strcpy(tag->energy_model, "");
     strcpy(tag->energy_plugin, "");
     strcpy(tag->powercap_plugin, "");
+		strcpy(tag->powercap_node_plugin, "");
     strcpy(tag->powercap_gpu_plugin, "");
     strcpy(tag->idle_governor, "default");
 		strcpy(tag->default_policy, "");

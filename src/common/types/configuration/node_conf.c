@@ -174,6 +174,8 @@ void report_my_node_conf(my_node_conf_t *my_node_conf)
         printf("%60.60s", buffer);
         xsnprintf(buffer, sizeof(buffer), "powercap plugin file %s\n", (my_node_conf->powercap_plugin == NULL)?"not defined":my_node_conf->powercap_plugin);
         printf("%60.60s", buffer);
+        xsnprintf(buffer, sizeof(buffer), "powercap_node_plugin %s\n", (my_node_conf->powercap_node_plugin != NULL)?"not defined":my_node_conf->powercap_node_plugin);
+        printf("%60.60s", buffer);
         xsnprintf(buffer, sizeof(buffer), "powercap_gpu_plugin %s\n", (my_node_conf->powercap_gpu_plugin != NULL)?"not defined":my_node_conf->powercap_gpu_plugin);
         for (i=0;i<my_node_conf->num_policies;i++){
           report_policy_conf(&my_node_conf->policies[i]);
@@ -238,6 +240,10 @@ void print_my_node_conf(my_node_conf_t *my_node_conf)
         if (my_node_conf->powercap_plugin != NULL && strlen(my_node_conf->powercap_plugin) > 1) {
             verbose(VCCONF,"powercap_plugin %s ",my_node_conf->powercap_plugin);
         }
+				if (my_node_conf->powercap_node_plugin != NULL && strlen(my_node_conf->powercap_node_plugin) > 1) {
+            verbose(VCCONF,"powercap_node_plugin %s ",my_node_conf->powercap_node_plugin);
+        }
+
         if (my_node_conf->powercap_gpu_plugin != NULL && strlen(my_node_conf->powercap_gpu_plugin) > 1) {
             verbose(VCCONF,"powercap_gpu_plugin %s ",my_node_conf->powercap_gpu_plugin);
         }

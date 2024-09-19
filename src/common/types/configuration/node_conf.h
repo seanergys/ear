@@ -65,6 +65,7 @@ typedef struct my_node_conf
     char          *energy_model;
     char          *idle_governor;
     char          *powercap_plugin;
+		char          *powercap_node_plugin;
     char          *powercap_gpu_plugin;
     uint           num_policies;
     policy_conf_t *policies;
