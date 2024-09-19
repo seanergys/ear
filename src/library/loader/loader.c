@@ -126,9 +126,10 @@ int load_no_official()
 
 int load_no_parallel()
 {
-    if (strstr(program_invocation_name, "python") != NULL) return 1;
+    // This cant be since we have developed a new Loader that works with python
+    if (strstr(program_invocation_name, "python" ) != NULL) return 1;
     if (strstr(program_invocation_name, "python3") != NULL) return 1;
-    if (strstr(program_invocation_name, "julia") != NULL) return 1;
+    if (strstr(program_invocation_name, "julia"  ) != NULL) return 1;
     return 0;
 }
 

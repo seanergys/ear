@@ -1988,12 +1988,6 @@ static state_t policy_master_freq_selection(polctx_t *c, signature_t *my_sig, no
 static state_t policy_freq_selection(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs,
         node_freq_domain_t *dom, node_freqs_t *avg_freq, int process_id)
 {
-#if SINGLE_CONNECTION
-    if (masters_info.my_master_rank < 0 ) {
-        return EAR_SUCCESS;
-    }
-#endif
-
     if (dom->cpu != POL_NOT_SUPPORTED) {
         policy_cpu_freq_selection(c, my_sig, freqs, dom, avg_freq, process_id);
     }
