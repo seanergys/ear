@@ -2196,27 +2196,12 @@ void ear_init()
 				fflush(stderr);
 
 				// Tracing init
-        #if SINGLE_CONNECTION
-                if (masters_info.my_master_rank>=0) {
-                    traces_init(system_conf, application.job.app_id, masters_info.my_master_rank,
-                            my_id, num_nodes, ear_my_size, ppnode);
+				traces_init(system_conf, application.job.app_id, ear_my_rank,
+						my_node_id, num_nodes, ear_my_size, ppnode);
 
-                    traces_start();
-                    traces_frequency(ear_my_rank, my_id, EAR_default_frequency);
-                    traces_stop();
-
-                    traces_mpi_init();
-                }
-                #else
-                    traces_init(system_conf, application.job.app_id, ear_my_rank,
-                            my_node_id, num_nodes, ear_my_size, ppnode);
-
-                    traces_start();
-                    traces_frequency(ear_my_rank, my_node_id, EAR_default_frequency);
-                    traces_stop();
-
-
-                #endif
+				traces_start();
+				traces_frequency(ear_my_rank, my_node_id, EAR_default_frequency);
+				traces_stop();
 
 				// All is OK :D
 				if (masters_info.my_master_rank==0) {
@@ -2404,20 +2389,9 @@ void ear_finalize(int exit_status)
 								mark_as_eard_disconnected(get_ear_tmp(), my_job_id,my_step_id,AID, getpid());
 				}
 
-#if SINGLE_CONNECTION
-        if (masters_info.my_master_rank>=0){
-								verbose_master(2,"Stopping periodic earl thread");	
-								verbose_master(2,"Stopping tracing");
-								traces_stop();
-								traces_end(ear_my_rank, my_id, 0);
-
-								traces_mpi_end();
-				}
-#else
         traces_stop();
         traces_end(ear_my_rank, my_node_id, 0);
         traces_mpi_end();
-#endif
 
 				if (DLB_SUPPORT)
 				{
@@ -2503,17 +2477,10 @@ void ear_finalize(int exit_status)
 
 
 				// C'est fini
-				#if SINGLE_CONNECTION
-				if (!my_id){ 
-								debug("Disconnecting");
-								if (eards_connected()) eards_disconnect();
-				}
-				#else
 				if (eards_connected()){ 
 					verbose(3, "Process %d disconnecting from EARD", my_node_id);
 					eards_disconnect();
 				}
-				#endif
 
         if (masters_info.my_master_rank >= 0) clean_eid_folder();
         //print_resource_usage();
@@ -2627,9 +2594,6 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
                                     //mpi_calls_per_second = (uint)(total_mpi_calls/dynais_timeout);
                                     mpi_calls_per_second = (uint)avg_mpi_calls_per_second();
 
-                                    #if SINGLE_CONNECTION
-                                    if (masters_info.my_master_rank >= 0)
-                                    #endif
                                     traces_start();
 
                                     verbose_master(EARL_GUIDED_LVL, "Going to periodic mode after %lf secs: mpi calls in period %u.\n",
@@ -2730,9 +2694,6 @@ void ear_mpi_call_dynais_on(mpi_call call_type, p2i buf, p2i dest)
 																}
 
 																loop_with_signature=0;
-                                #if SINGLE_CONNECTION
-																if (masters_info.my_master_rank>=0)
-                                #endif
                                 traces_end_period(ear_my_rank, my_node_id);
 																states_end_period(ear_iterations);
 																ear_iterations=0;
@@ -2749,9 +2710,6 @@ void ear_mpi_call_dynais_on(mpi_call call_type, p2i buf, p2i dest)
 																				//debug("new iteration detected for level %u, event %lu, size %u and iterations %u",
 																				//		  ear_loop_level, ear_event_l, ear_loop_size, ear_iterations);
 																}
-                                #if SINGLE_CONNECTION
-																if (masters_info.my_master_rank>=0) 
-                                #endif
                                 traces_new_n_iter(ear_my_rank, my_node_id, ear_event_l, ear_loop_size, ear_iterations);
 																states_new_iteration(my_id, ear_loop_size, ear_iterations, ear_loop_level, ear_event_l, mpi_calls_per_loop,1);
 																mpi_calls_per_loop=1;
@@ -2762,9 +2720,6 @@ void ear_mpi_call_dynais_on(mpi_call call_type, p2i buf, p2i dest)
 																				//debug("loop ends with %d iterations detected", ear_iterations);
 																}
 																loop_with_signature=0;
-                                #if SINGLE_CONNECTION
-																if (masters_info.my_master_rank>=0)  
-                                #endif
                                 traces_end_period(ear_my_rank, my_node_id);
 																states_end_period(ear_iterations);
 																ear_iterations=0;
@@ -2826,9 +2781,6 @@ void ear_mpi_call_dynais_off(mpi_call call_type, p2i buf, p2i dest)
 																				//debug("new iteration detected for level %hu, event %lu, size %u and iterations %u",
 																				//ear_level, ear_event_l, ear_loop_size, ear_iterations);
 																}
-                                #if SINGLE_CONNECTION
-																if (masters_info.my_master_rank>=0)
-                                #endif
                                 traces_new_n_iter(ear_my_rank, my_node_id, ear_event_l, ear_loop_size, ear_iterations);
 																states_new_iteration(my_id, ear_loop_size, ear_iterations, (uint)ear_level, ear_event_l, mpi_calls_per_loop,1);
 																mpi_calls_per_loop=1;
@@ -2868,9 +2820,6 @@ unsigned long ear_new_loop()
                     debug("loop ends with %d iterations detected", ear_iterations);
                 }
                 loop_with_signature=0;
-#if SINGLE_CONNECTION
-                if (masters_info.my_master_rank>=0) 
-#endif
                     traces_end_period(ear_my_rank, my_node_id);
                 states_end_period(ear_iterations);
                 ear_iterations=0;
@@ -2898,9 +2847,6 @@ void ear_end_loop(unsigned long loop_id)
                     }
                     loop_with_signature=0;
                     states_end_period(ear_iterations);
-#if SINGLE_CONNECTION
-                    if (masters_info.my_master_rank>=0) 
-#endif
                         traces_end_period(ear_my_rank, my_node_id);
                     ear_iterations=0;
                     in_loop=0;
@@ -2931,9 +2877,6 @@ void ear_new_iteration(unsigned long loop_id)
                     //debug("new iteration detected for level %u, event %lu, size %u and iterations %u",
                     //1, loop_id,1, ear_iterations);
                 }
-#if SINGLE_CONNECTION
-                if (masters_info.my_master_rank>=0) 
-#endif
                     traces_new_n_iter(ear_my_rank, my_node_id, loop_id, 1, ear_iterations);
                 states_new_iteration(my_id, 1, ear_iterations, 1, loop_id, mpi_calls_per_loop,1);
                 mpi_calls_per_loop=1;
@@ -2964,9 +2907,6 @@ state_t earl_periodic_actions_init(void *no_arg)
     last_mpis = 0;
     if (!module_mpi_is_enabled() || (ear_guided == TIME_GUIDED)) {
         ear_periodic_mode = PERIODIC_MODE_ON;
-#if SINGLE_CONNECTION
-        if (masters_info.my_master_rank>=0) 
-#endif
         traces_start();
         ear_iterations = 0;
         states_begin_period(my_id, 1, (ulong) lib_period,1);
