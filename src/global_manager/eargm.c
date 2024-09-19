@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 //#define PRINT_ONLY 1 //prints config and exits
 #define _XOPEN_SOURCE 700 //to get rid of the warning
@@ -45,6 +38,7 @@
 #include <common/system/execute.h>
 #include <common/output/verbose.h>
 #include <common/database/db_helper.h>
+#include <common/utils/sched_support.h>
 
 #include <common/types/generic.h>
 #include <common/types/gm_warning.h>
@@ -609,6 +603,7 @@ void usage(char *app)
     verbose(0, "--nodes [host1,host2]\t\t Specifies which nodes the EARGM will monitor.");
     verbose(0, "--powercap [limit]\t\t Sets the total power budget for the EARGM to distribute");
     verbose(0, "--powercap-policy [pol]\t\t Selects the distribution policy [hard, soft, monitor]");
+    verbose(0, "--powercap-period [seconds]\t\t Time between checks of power status");
     verbose(0, "--suspend-perc [90]\t\t Percentage of power that triggers the suspend_action");
     verbose(0, "--suspend-action [/path/to/action]\t\t Program to be executed when suspend_perc is reached (once)");
     verbose(0, "--resume-perc [60]\t\t Percentage of power that triggers the suspend_action");
@@ -625,8 +620,7 @@ void usage(char *app)
 }
 
 typedef struct eargm_preconf {
-    char **hosts;
-    int32_t num_hosts;
+    char *hosts;
     int32_t powercap_period;
     uint32_t powercap;
     int32_t powercap_policy;
@@ -650,8 +644,10 @@ void update_eargm_with_preconf(cluster_conf_t *conf, eargm_preconf_t *preconf)
     verbose(VGM, "Final powercap mode %lu. Final powercap %lu, final powercap period %u", 
             conf->eargm.powercap_mode, default_cluster_powercap, cluster_powercap_period);
 
-    if (preconf->hosts != NULL && preconf->num_hosts > 0) {
-        nodes = preconf->hosts;
+    if (preconf->hosts != NULL) {
+        char *expanded_hosts = NULL;
+        expand_list_alloc(preconf->hosts, &expanded_hosts);
+        str_cut_list(expanded_hosts, &nodes, &num_eargm_nodes, ",");
         verbose(VGM, "Set new nodelist to contact");
     }
 
@@ -702,7 +698,7 @@ bool parse_args(int32_t argc, char *argv[], eargm_preconf_t *preconf)
                 verbose_arg = atoi(optarg);
                 break;
             case 'n':
-                str_cut_list(optarg, &preconf->hosts, &preconf->num_hosts, ",");
+                preconf->hosts = optarg;
                 read = true;
                 break;
             case 'c':

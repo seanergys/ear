@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 #define _GNU_SOURCE
 
@@ -22,11 +15,13 @@
 #include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <dlfcn.h>
 // #define SHOW_DEBUGS 1
 #include <common/output/debug.h>
 #include <common/utils/string.h>
 #include <common/string_enhanced.h>
 #include <common/config/config_env.h>
+#include <common/system/execute.h>
 #include <library/loader/loader.h>
 #include <library/loader/module_mpi.h>
 #include <library/loader/module_cuda.h>
@@ -34,6 +29,20 @@
 #include <library/loader/module_openmp.h>
 #include <library/loader/module_oneapi.h>
 #include <library/loader/module_default.h>
+
+/* This code is commented to save an example on
+ * how to intercept a libc call.
+
+static int (*original_close)(int);
+
+int close(int fd) {
+	if (fd == 0) {
+		dprintf(2, "WARNING fd is 0!\n");
+		print_stack(2);
+	}
+	return (*original_close)(fd);
+}
+*/
 
 static int _loaded;
 
@@ -43,6 +52,8 @@ static int init()
     char *task;
     pid_t pid1 = 1;
     pid_t pid2 = 0;
+
+	// original_close = dlsym(RTLD_NEXT, "close");
 
     // Activating verbose
     if ((verb = ear_getenv(FLAG_LOADER_VERBOSE)) != NULL) {

@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 
 #include <stdio.h>
@@ -77,9 +70,9 @@ static uint check_ID(uint ID)
 state_t report_init(report_id_t *id, cluster_conf_t *cconf)
 {
     debug("eard report_init");
-    char nodename[128];
 		if (id->master_rank >= 0 ) must_report = 1;
 		if (!must_report) return EAR_SUCCESS;
+
     gethostname(nodename, sizeof(nodename));
     strtok(nodename, ".");
 
@@ -130,18 +123,15 @@ state_t report_misc(report_id_t *id, uint type, const char *data, uint count)
 
 }
 
-
 state_t report_loops(report_id_t *id,loop_t *loops, uint count)
 {
     int i;
     ullong currtime;
     if (!must_report) return EAR_SUCCESS;
     debug("csv report_loops");
-    // TODO: we could return EAR_ERROR
     if ((loops == NULL) || (count == 0)) return EAR_ERROR;
     ullong sec = timestamp_getconvert(TIME_SECS);
     currtime = sec - my_time;
-
 
     if (!sem_created){
       create_semaphore(create_ID(loops[0].jid, loops[0].step_id), nodename);

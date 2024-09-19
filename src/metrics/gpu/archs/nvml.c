@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 // #define SHOW_DEBUGS 1
 #include <dlfcn.h>
@@ -44,7 +37,7 @@ static void load_atfork()
 void gpu_nvml_load(gpu_ops_t *ops, int force_api)
 {
     debug("Received API %d", force_api);
-    if (API_IS(force_api, API_NVML)) {
+    if (API_IS(force_api, API_DEFAULT)) {
         ok_pool = 1;
     } else if (API_IS(force_api, API_FREE)) {
         ok_pool = nvml_is_privileged();
@@ -77,7 +70,9 @@ void gpu_nvml_get_info(apinfo_t *info)
     info->api         = API_NVML;
     info->devs_count  = devs_count;
 
-    if (nvml.GetArchitecture(devs[0], &info->dev_model) != NVML_SUCCESS) {
+		nvmlReturn_t ret;
+    if ((ret = nvml.GetArchitecture(devs[0], &info->dev_model)) != NVML_SUCCESS) {
+			debug("nvml GetArchitecture returned: %d", ret);
         info->dev_model = NVML_DEVICE_ARCH_UNKNOWN;
     }
 }

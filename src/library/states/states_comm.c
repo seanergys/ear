@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 
 #if MPI
@@ -71,6 +64,7 @@ void state_verbose_signature(loop_t *sig, int master_rank, char *aname, char *nn
 		char gflops_str[128];
 #if WF_SUPPORT
 		float GPU_GFlops = 0;
+		ulong GPU_temp   = 0;
 #endif
 
     if (VERB_GET_LV() == 0) return;
@@ -83,7 +77,7 @@ void state_verbose_signature(loop_t *sig, int master_rank, char *aname, char *nn
     elapsed=timestamp_diff(&end, &ear_application_time_init, TIME_SECS);
 
     float imcf, sel_mem_f;
-    char gpu_buff[256];
+    char gpu_buff[1024];
 
     /* master_rank == 0: The master node rank (is who verboses if verb_level >= 1).
      * using_verb_files: FLAG_EARL_VERBOSE_PATH
@@ -217,11 +211,12 @@ void state_verbose_signature(loop_t *sig, int master_rank, char *aname, char *nn
             for(int i = 0; i < gpu_cnt; i++)
 						{ 
 #if WF_SUPPORT
-                verbose_master(3, "%7d %-9.2f %-8lu %-10lu %-9.2f)", i,
+                verbose_master(3, "%7d %-9.2f %-8lu %-10lu %-9.2f %lu)", i,
                         sig->signature.gpu_sig.gpu_data[i].GPU_power,
                         sig->signature.gpu_sig.gpu_data[i].GPU_util,
                         sig->signature.gpu_sig.gpu_data[i].GPU_freq,
-												sig->signature.gpu_sig.gpu_data[i].GPU_GFlops);
+												sig->signature.gpu_sig.gpu_data[i].GPU_GFlops,
+												sig->signature.gpu_sig.gpu_data[i].GPU_temp);
 #else
                 verbose_master(3, "%7d %-9.2f %-8lu %-10lu)", i,
                         sig->signature.gpu_sig.gpu_data[i].GPU_power,
@@ -241,6 +236,7 @@ void state_verbose_signature(loop_t *sig, int master_rank, char *aname, char *nn
                     GPU_mem_util     += sig->signature.gpu_sig.gpu_data[i].GPU_mem_util; 
 #if WF_SUPPORT
                     GPU_GFlops       += sig->signature.gpu_sig.gpu_data[i].GPU_GFlops; 
+										GPU_temp         += sig->signature.gpu_sig.gpu_data[i].GPU_temp;
 #endif
                 }
             } 
@@ -251,6 +247,9 @@ void state_verbose_signature(loop_t *sig, int master_rank, char *aname, char *nn
                 AVGGPUF = (float) GPU_FREQ / (float) (gpu_used_cnt * 1000000.0); 
                 GPU_UTIL = GPU_UTIL / gpu_used_cnt; 
                 GPU_mem_util = GPU_mem_util / gpu_used_cnt; 
+#if WF_SUPPORT
+								GPU_temp     = GPU_temp / gpu_used_cnt;
+#endif
             }
 
             gpu_freq_sum /= gpu_cnt;
@@ -271,11 +270,13 @@ void state_verbose_signature(loop_t *sig, int master_rank, char *aname, char *nn
 				snprintf(gflops_str, sizeof(gflops_str), "%.2lf", FLOPS);
 
 #if USE_GPUS
+				char gpu_temp_str[128] = "";
         if (gpu_cnt > 0 ){ 
 #if WF_SUPPORT
 					char gpu_glops[64];
 					snprintf(gpu_glops, sizeof(gpu_glops), "/%.2f", GPU_GFlops);
 					strcat(gflops_str, gpu_glops);
+					sprintf(gpu_temp_str,"GPU temp %lu (avg)", GPU_temp);
 #endif
 					verbosen(2,"%s", gpu_buff);
 				}
@@ -284,7 +285,7 @@ void state_verbose_signature(loop_t *sig, int master_rank, char *aname, char *nn
         strcpy(gpu_buff," ");
         if (GPU_UTIL) {
             snprintf(gpu_buff, sizeof(gpu_buff), "\n\t(Used GPUS %lu GPU_power %.2lfW (avg) "
-                    "GPU_freq %.2fGHz (avg) GPU_util %lu (avg) GPU_mem_util %lu (avg))", gpu_used_cnt, GPU_POWER, AVGGPUF, GPU_UTIL, GPU_mem_util);
+                    "GPU_freq %.2fGHz (avg) GPU_util %lu (avg) GPU_mem_util %lu (avg) %s)", gpu_used_cnt, GPU_POWER, AVGGPUF, GPU_UTIL, GPU_mem_util, gpu_temp_str);
         }
 
         debug("%swriting CPI GBS power...%s", COL_YLW, COL_CLR);
@@ -310,36 +311,31 @@ void state_verbose_signature(loop_t *sig, int master_rank, char *aname, char *nn
         verbosen(2,"\n\t IO DATA: %s ",io_info);
 				verbosen(2,"\n\t Proc OS DATA: %s", proc_data_str);
 
+#if WF_SUPPORT
+				verbosen(2,"\n\t Temp data   : ");
+				for (uint s = 0; s < sig->signature.cpu_sig.devs_count; s++){
+					verbosen(2,"CPU[%u].temp = %lld ", s, sig->signature.cpu_sig.temp[s]);
+				}
+#endif
+				
+
         verbose(1,"%s",COL_CLR);
     }
 }
 
 void state_report_traces(int master_rank, int my_rank,int lid, loop_t *lsig,ulong freq,ulong status)
 {
-    #if SINGLE_CONNECTION
-    if (master_rank >= 0 && traces_are_on()) {
-        traces_new_signature(my_rank, lid, &lsig->signature);
-        //if (freq > 0 ) traces_frequency(my_rank, lid, freq); 
-        traces_policy_state(my_rank, lid, status);
-    }
-    #else
     if (traces_are_on()){
         traces_new_signature(my_rank, lid, &lsig->signature);
         //if (freq > 0 ) traces_frequency(my_rank, lid, freq); 
         traces_policy_state(my_rank, lid, status);
       
     }
-    #endif
 }
 
 void state_report_traces_state(int master_rank, int my_rank, int lid, ulong status)
 {
-    #if SINGLE_CONNECTION
-    if (master_rank >= 0 && traces_are_on()) traces_policy_state(my_rank, lid, status);
-    #else
-    if (traces_are_on()) traces_policy_state(my_rank, lid, status);
-    #endif
-
+	if (traces_are_on()) traces_policy_state(my_rank, lid, status);
 }
 
 /* Auxiliary functions */

@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 
 #ifndef _EAR_ENERGY_MODEL_H_
@@ -23,6 +16,7 @@
 #include <common/states.h>
 #include <common/types/types.h>
 #include <common/hardware/architecture.h>
+#include <daemon/shared_configuration.h>
 
 
 /** The handler of an energy model. It must be initialized by calling one of the load functions,
@@ -31,23 +25,21 @@ typedef struct energy_model_s* energy_model_t;
 
 
 /** \brief Loads a CPU energy model.
- * \param[in] user_type A boolean parameter which must indicate whether the calling user is authorized.
- * \param[in] data Current EAR installation info.
+ * \param[in] sconf Current EAR installation info.
  * \param[in] arch_desc
  *
  * \return A NULL pointer on error.
  */
-energy_model_t energy_model_load_cpu_model(uint user_type, conf_install_t *data, architecture_t *arch_desc);
+energy_model_t energy_model_load_cpu_model(settings_conf_t *sconf, architecture_t *arch_desc);
 
 
 /** \brief Loads a GPU energy model.
- * \param[in] user_type
- * \param[in] data
+ * \param[in] sconf
  * \param[in] arch_desc
  *
  * \return A NULL pointer on error.
  */
-energy_model_t energy_model_load_gpu_model(uint user_type, conf_install_t *data, architecture_t *arch_desc);
+energy_model_t energy_model_load_gpu_model(settings_conf_t *sconf, architecture_t *arch_desc);
 
 
 /** Deallocates the memory used by the energy model handler given as input argument.

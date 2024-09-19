@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 // #define SHOW_DEBUGS 1
 
@@ -1507,11 +1500,7 @@ state_t peak_power_mpi_opt_end_optimize(node_freqs_t *freqs, int *process_id)
         if (!in_barrier) return EAR_SUCCESS;
         verbose(2, "EAR-PP: END MPI");
 
-#if SINGLE_CONNECTION
-          if ((MASTER_ID >= 0) && traces_are_on()) {
-#else
           if (traces_are_on()) {
-#endif // SINGLE_CONNECTION
             traces_generic_event(ear_my_rank, my_node_id , TRA_BARRIER, 0);
           }
 

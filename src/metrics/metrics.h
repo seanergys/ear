@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 #ifndef METRICS_H
 #define METRICS_H
@@ -100,15 +93,20 @@ typedef struct metrics_diff_s {
 #define MFLAG_UNZIP(mflag, metric) \
     (int) ((mflag >> metric) & 0xF)
 
-void metrics_init(metrics_info_t *m, topology_t *tp, char *nodepow_path, ullong mflags);
+// This function contains load() and init() functions of the different metrics.
+void metrics_load(metrics_info_t *m, topology_t *tp, char *nodepow_path, ullong mflags);
 
-void metrics_read(metrics_read_t *mr);
-
+// This function is composed by get_info() functions of the different metrics.
+// It is perfectly safe to call metrics_info_get() or single xxx_get_info()
+// functions just after calling load(). It is not required to wait to call
+// init() because the data returned by get_info() is set during load() calling.
 void metrics_info_get(metrics_info_t *m);
 
 char *metrics_info_tostr(metrics_info_t *m, char *buffer);
 
 void metrics_info_print(metrics_info_t *m, int fd);
+
+void metrics_read(metrics_read_t *mr);
 
 void metrics_read_copy(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff_t *mrD);
 

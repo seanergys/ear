@@ -1,19 +1,12 @@
-/*
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
  *
- * This program is part of the EAR software.
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
  *
- * EAR provides a dynamic, transparent and ligth-weigth solution for
- * Energy management. It has been developed in the context of the
- * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
- *
- * 
- * BSC Contact   mailto:ear-support@bsc.es
- * 
- *
- * EAR is an open source software, and it is licensed under both the BSD-3 license
- * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
- * and COPYING.EPL files.
- */
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 #include <errno.h>
 #include <fcntl.h>
@@ -162,7 +155,7 @@ state_t policy_init(polctx_t *c)
 
 		if (use_energy_models)
 		{
-			cpu_energy_model = energy_model_load_cpu_model(c->app->user_type, &c->app->installation, &arch_desc);
+			cpu_energy_model = energy_model_load_cpu_model(c->app, &arch_desc);
 			if (!cpu_energy_model)
 			{
 				error_lib("Loading energy model");
@@ -257,11 +250,11 @@ state_t policy_init(polctx_t *c)
 
 		if (c->num_gpus) {
 			if (state_fail(policy_gpu_load(c->app, &gpu_plugin))) {
-				verbose_master(2, "%sError%s Loading GPU policy.", COL_RED, COL_CLR);
+				verbose_error_master("Loading GPU policy.");
 			}
-			verbose_master(2, "%sMIN TIME%s Initializing GPU policy...", COL_BLU, COL_CLR);
 
 			if (gpu_plugin.init != NULL) {
+				verbose_info2_master("[MIN TIME] Initializing GPU policy...");
 				gpu_plugin.init(c);
 			}
 

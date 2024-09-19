@@ -6,12 +6,12 @@
 *.a
 *.so
 *.swp
+*.rej
 */bin/
 */lib/
 src/tests
 etc/rpms/rpmbuild.sh
 src/tests
-src/tools/list_folders
 etc/rpms/rpmbuild.sh~
 etc/rpms/specs/ear.spec
 /*.sh
@@ -178,6 +178,8 @@ src/tools/learning_validate*
 src/tools/ear_events*
 src/tools/ear_conf
 src/tools/metrics_show
+src/tools/list_folders
+src/tools/groups_test
 src/commands/ear-info
 deployment.sh
 src/tools/node_manager_info

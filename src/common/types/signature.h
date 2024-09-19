@@ -1,19 +1,12 @@
-/*
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
  *
- * This program is part of the EAR software.
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
  *
- * EAR provides a dynamic, transparent and ligth-weigth solution for
- * Energy management. It has been developed in the context of the
- * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
- *
- * 
- * BSC Contact   mailto:ear-support@bsc.es
- * 
- *
- * EAR is an open source software, and it is licensed under both the BSD-3 license
- * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
- * and COPYING.EPL files.
- */
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 #ifndef _EAR_TYPES_SIGNATURE
 #define _EAR_TYPES_SIGNATURE
@@ -42,6 +35,8 @@ typedef struct gpu_app {
   ulong  GPU_mem_util;
 #if WF_SUPPORT
 	float  GPU_GFlops;
+	ulong  GPU_temp;
+	ulong  GPU_temp_mem;
 #endif
 } gpu_app_t;
 
@@ -50,6 +45,12 @@ typedef struct gpu_signature {
   int num_gpus;
   gpu_app_t gpu_data[MAX_GPUS_SUPPORTED];
 } gpu_signature_t;
+
+
+typedef struct cpu_signature{
+	uint  devs_count;
+	llong temp[MAX_SOCKETS_SUPPORTED];
+} cpu_signature_t;
 
 
 typedef struct mini_sig
@@ -110,6 +111,9 @@ typedef struct signature
   double perc_MPI;
 #if USE_GPUS
   gpu_signature_t gpu_sig;
+#endif
+#if WF_SUPPORT
+	cpu_signature_t cpu_sig;
 #endif
   void *sig_ext;
 } signature_t;

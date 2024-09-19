@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 #include <stdio.h>
 #include <string.h>
@@ -89,4 +82,24 @@ void power_signature_deserialize(serial_buffer_t *b, power_signature_t *power_si
     serial_dictionary_pop_auto(b, power_sig->time);
     serial_dictionary_pop_auto(b, power_sig->avg_f);
     serial_dictionary_pop_auto(b, power_sig->def_f);
+}
+
+#define MAX_CPU_FREQ 10000000
+
+void power_signature_clean_before_db(power_signature_t *sig, double pwr_limit)
+{
+    if (!isnormal(sig->time))          sig->time         = 0;
+    if (!isnormal(sig->EDP))           sig->EDP          = 0;
+    if (!isnormal(sig->DC_power)) 	   sig->DC_power     = 0;
+    if (!isnormal(sig->DRAM_power))    sig->DRAM_power   = 0;
+    if (!isnormal(sig->PCK_power))     sig->PCK_power    = 0;
+    if (!isnormal(sig->max_DC_power))  sig->max_DC_power = 0;
+    if (!isnormal(sig->min_DC_power))  sig->min_DC_power = 0;
+
+    if (sig->DC_power   > pwr_limit) sig->DC_power   = pwr_limit;
+    if (sig->DRAM_power > pwr_limit) sig->DRAM_power = 0;
+    if (sig->PCK_power  > pwr_limit) sig->PCK_power  = 0;
+
+    if (sig->avg_f > MAX_CPU_FREQ) sig->avg_f = MAX_CPU_FREQ;
+    if (sig->def_f > MAX_CPU_FREQ) sig->def_f = MAX_CPU_FREQ;
 }

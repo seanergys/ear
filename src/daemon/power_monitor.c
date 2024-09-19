@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 
 #define _GNU_SOURCE
@@ -35,6 +28,7 @@
 #include <common/colors.h>
 #include <sys/wait.h>
 #include <sys/syscall.h>
+#include <math.h>
 
 #include <common/config.h>
 #include <common/config/config_sched.h>
@@ -1883,6 +1877,10 @@ void powermon_new_job(powermon_app_t *pmapp, ehandler_t *eh, application_t *appI
     pmapp->pc_app_info->num_gpus_used = gpu_mgr_num_gpus();
     for (uint gpuid = 0; gpuid < pmapp->pc_app_info->num_gpus_used ;gpuid++)
         pmapp->pc_app_info->req_gpu_f[gpuid] = my_node_conf->gpu_def_freq;
+
+
+		verbose(VCONF, "GPU set to active monitor mode");
+		gpu_set_monitoring_mode(MONITORING_MODE_RUN);
 #endif
 
     powercap_set_app_req_freq();
@@ -1979,6 +1977,10 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job) {
     {
         if (powermon_is_idle())
         {
+#if USE_GPUS
+					verbose(VCONF, "GPU set to idle monitor mode");
+						gpu_set_monitoring_mode(MONITORING_MODE_IDLE);
+#endif
             powercap_run_to_idle();
 
 #if !NAIVE_SETTINGS_SAVE
@@ -2398,7 +2400,8 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
     current_sample.DRAM_energy = rapl_dram * time_consumed;
     current_sample.PCK_energy  = rapl_pck  * time_consumed;
 #if USE_GPUS
-    current_sample.GPU_energy = gpu_power * time_consumed;
+		if (isnormal(gpu_power)) current_sample.GPU_energy = gpu_power * time_consumed;
+		else                      current_sample.GPU_energy = 0;
 #endif
     current_sample.DC_energy = corrected_power * time_consumed;
     current_sample.temp = (ulong) get_nm_temp(&my_nm_id, nm);
@@ -2443,6 +2446,7 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
 
     /* report periodic metric */
     if (report) {
+				periodic_metric_clean_before_db(&current_sample);
         report_connection_status = report_periodic_metrics(&rid, &current_sample, 1);
         last_power_reported      = corrected_power;
     }
@@ -2940,6 +2944,8 @@ static void set_default_powermon_end(powermon_app_t *app, uint idle)
 
   char *cgov = app->governor.name; // Governor before job had started.
   uint gov;
+
+	// TODO: Filter below conditional block if policy_freq true
 
   // Old condition: app->app.job.step_id != (job_id) BATCH_STEP
   if (app->is_job) { // End of a job
