@@ -73,7 +73,23 @@ void flops_perf_load(topology_t *tp, flops_ops_t *ops)
         set_flops(0x80c4, PERF_TYPE_RAW, 6, ((double) tp->sve_bits) / 128.0, "FP_SP_SCALE_OPS_SPEC");
         set_flops(0x80c6, PERF_TYPE_RAW, 7, ((double) tp->sve_bits) / 128.0, "FP_DP_SCALE_OPS_SPEC");
     }
-    else if (tp->vendor == VENDOR_ARM && tp->sve) {
+    else if (tp->vendor == VENDOR_ARM && tp->sve && tp->model == MODEL_NEOVERSE_V2) {
+	debug("ARM CPU model SVE enabled MODEL_NEOVERSE_V2"); 
+	/*
+	 * FLOPS: Floating point operations per second in any precision performed by any
+	*  instruction.
+	*  Fused instructions count as two operations.
+	*  (FP_SCALE_OPS_SPEC + FP_FIXED_OPS_SPEC)/TIME
+	 * FIXED also counts VFP_SPEC operations.
+	 * 0x80C0 FP_SCALE_OPS_SPEC Scalable floating-point element operations speculatively executed
+	 * 0x80C1 FP_FIXED_OPS_SPEC Non-scalable floating-point element operations speculatively executed
+	 */
+        set_flops(0x80C1, PERF_TYPE_RAW, 2,                             1.0, "FP_FIXED_OPS_SPEC");
+        set_flops(0x80c0, PERF_TYPE_RAW, 6, ((double) tp->sve_bits) / 128.0, "FP_SCALE_OPS_SPEC");
+    }
+
+    else if (tp->vendor == VENDOR_ARM && tp->sve & tp->model != MODEL_NEOVERSE_V2) {
+				debug("ARM CPU model SVE enabled not MODEL_NEOVERSE_V2");
         // FIXED also counts VFP_SPEC operations.
         set_flops(0x80c3, PERF_TYPE_RAW, 2,                             1.0, "FP_FIXED_OPS_SPEC");
         set_flops(0x80c2, PERF_TYPE_RAW, 6, ((double) tp->sve_bits) / 128.0, "FP_SCALE_OPS_SPEC");

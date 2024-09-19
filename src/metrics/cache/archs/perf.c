@@ -104,6 +104,21 @@ void cache_perf_load(topology_t *tp, cache_ops_t *ops)
         set_cache(0x430864, PERF_TYPE_RAW     , OFFSET(002), 1, "L2_MISS_FROM_DC" );
         set_cache(0x431f71, PERF_TYPE_RAW     , OFFSET(002), 1, "L2_MISS_FROM_PF1");
         set_cache(0x431f72, PERF_TYPE_RAW     , OFFSET(002), 1, "L2_MISS_FROM_PF2");
+    } else if ((tp->vendor == VENDOR_ARM) && (tp->model == MODEL_NEOVERSE_V2)){
+        /* From Arm® Neoverse™ V2 Core Technical Reference Manual */
+        /* L1 */
+        set_cache(0x39,     PERF_TYPE_RAW , OFFSET(001), 0, "L1D_CACHE_LMISS_RD");
+        set_cache(0x4006,   PERF_TYPE_RAW , OFFSET(001), 0, "L1I_CACHE_LMISS");
+        /* L2 */
+        set_cache(0x4009,   PERF_TYPE_RAW , OFFSET(002), 0, "L2D_CACHE_LMISS_RD");
+        /* LL : If CPUECTLR.EXTLLC is set, then this event counts any cacheable read transaction which
+        * returns a data source of DRAM, remote, or inter-cluster peer.
+        * If CPUECTLR.EXTLLC is not set, then this event is a duplicate of the
+        * L*D_CACHE_REFILL_RD event corresponding to the last level of cache implemented
+        * L2D_CACHE_REFILL_RD if only one is implemented, or L1D_CACHE_REFILL_RD if
+        * neither is implemented.*/
+        set_cache(0x37,   PERF_TYPE_RAW, OFFSET(003), 1, "LLD_CACHE_MISS_RD");
+
     } else if (tp->vendor == VENDOR_ARM) {
         set_cache(L1D_LD  , PERF_TYPE_HW_CACHE, OFFSET(001), 0, "PERF_L1D_MISS_LD");
         set_cache(0x17    , PERF_TYPE_RAW     , OFFSET(002), 1, "L2D_CACHE_REFILL");

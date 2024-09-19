@@ -15,6 +15,10 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#if __ARM_FEATURE_SVE
+#include <arm_sve.h>
+#endif
+
 #include <common/system/time.h>
 #include <common/output/debug.h>
 #include <common/hardware/mrs.h>

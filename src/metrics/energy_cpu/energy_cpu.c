@@ -20,6 +20,8 @@
 #include <metrics/energy_cpu/archs/dummy.h>
 #include <metrics/energy_cpu/archs/cpu_util.h>
 #include <metrics/energy_cpu/archs/linux_powercap.h>
+#include <metrics/energy_cpu/archs/grace_cpu_power.h>
+#include <metrics/energy_cpu/archs/acpi_power.h>
 #include <metrics/energy_cpu/archs/perf.h>
 #include <metrics/energy_cpu/energy_cpu.h>
 
@@ -76,7 +78,21 @@ state_t energy_cpu_load(topology_t *tp, uint force_api)
     ops.count_devices = linux_powercap_count_devices;
     api = API_LINUX_POWERCAP;
     debug("selected linux_powercap (api %u)", api);
-    } 
+    } else if(state_ok(grace_cpu_load(tp))){
+    ops.init          = grace_cpu_init;
+    ops.dispose       = grace_cpu_dispose;
+    ops.read          = grace_cpu_read;
+    ops.count_devices = grace_cpu_count_devices;
+    api = API_GRACE_CPU;
+    debug("selected GRACE_CPU energy_cpu API");
+  }else if (state_ok(acpi_power_meter_load(tp))){
+    ops.init          = acpi_power_meter_init;
+    ops.dispose       = acpi_power_meter_dispose;
+    ops.read          = acpi_power_meter_read;
+    ops.count_devices = acpi_power_meter_count_devices;
+    api = API_ACPI_POWER;
+    debug("selected acpi_power (api %u)", api);
+    }
 		else if (state_ok(perf_rapl_load(tp))){
     ops.init          = perf_rapl_init;
     ops.dispose       = perf_rapl_dispose;

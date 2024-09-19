@@ -12,6 +12,7 @@ ener_OBJS = \
     energy_dummy.o \
     energy_cpu_gpu.o \
     energy_sd650_power.o \
+	  grace_hopper_module_power.o \
     energy_eard_nm.o \
 		energy_cray_pm.o
 
@@ -39,6 +40,7 @@ ener_BINS = \
     energy_cpu_gpu.so \
     energy_dummy.so \
     energy_sd650_power.so  \
+    grace_hopper_module_power.so \
 		energy_cray_pm.so
 
 ifeq ($(SYSTEM_TYPE), 3)

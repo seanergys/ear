@@ -40,6 +40,7 @@
 #define FAMILY_JAGUAR           22
 #define FAMILY_ZEN              0x17 // Also 23
 #define FAMILY_ZEN3             0x19 // Also 25
+
 // ARM family (architecture)
 #define MODEL_A8                0x01
 #define FAMILY_A8               0x01
@@ -48,6 +49,7 @@
 #define MODEL_NEOVERSE_N1       0x41D0C
 #define MODEL_NEOVERSE_N2       0x41D4A 
 #define MODEL_NEOVERSE_V1       0x41D40
+#define MODEL_NEOVERSE_V2       0x41D4F
 #define MODEL_FX1000            0x46001
 #define DUMMY_BASE_FREQ         100000
 

@@ -43,6 +43,10 @@
 #define API_INTEL143          19
 #define API_LINUX_POWERCAP    20
 #define API_DCGMI             21
+#define API_ACPI_POWER        22
+#define API_GRACE_CPU         23
+
+
 #define GRANULARITY_NONE       0
 #define GRANULARITY_DUMMY      1
 #define GRANULARITY_PROCESS    2
