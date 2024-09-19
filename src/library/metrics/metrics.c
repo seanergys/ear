@@ -497,18 +497,13 @@ static void metrics_static_init(topology_t *tp)
     eard   = ((master) ? API_EARD : NO_EARD);
     // Load
     debug("mgt_cpufreq_load");
-#if SINGLE_CONNECTION
-    sa(mgt_cpufreq_load(tp, eard));
-#else
     sa(mgt_cpufreq_load(tp, API_EARD));
-#endif
 
     debug("mgt_imcfreq_load");
     sa(mgt_imcfreq_load(tp, eard, NULL));
 
 		debug("temperature load");
-		//sa(temp_load(tp, eard));
-		sa(temp_load(tp, API_DUMMY));
+		sa(temp_load(tp, eard));
 
     debug("energy_cpu_load");
     sa( energy_cpu_load(tp, eard));
@@ -569,11 +564,7 @@ static void metrics_static_init(topology_t *tp)
 #endif // USE_GPUS
     debug("metics_load ready");
 
-#if SINGLE_CONNECTION
-    frequency_init(eard);
-#else
     frequency_init(1);
-#endif
 
     debug("Asking for APIS");
     // Get API
@@ -760,14 +751,12 @@ static void metrics_static_init(topology_t *tp)
         apis_print(met_gpu.api    , "MET_GPU    : ");
 #endif // USE_GPUS
     }
-#if !SINGLE_CONNECTION
-    if (VERB_ON(2)){
+    if (VERB_ON(2)) {
         apis_print(mgt_cpufreq.api, "MGT_CPUFREQ: ");
-    }
-#endif
-    if (VERB_ON(2) && master){
-      cache_internals_tostr(cache_description, sizeof(cache_description));
-      verbose_master(2, "%s", cache_description);
+				if (master) {
+					cache_internals_tostr(cache_description, sizeof(cache_description));
+					verbose(0, "%s", cache_description);
+				}
     }
 
 

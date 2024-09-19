@@ -12,6 +12,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <semaphore.h>
+#include <string.h>
 
 #define SHOW_DEBUGS 1
 
@@ -59,6 +60,8 @@ static sem_t *report_csv_sem_app;
 static sem_t *report_csv_sem_loop;
 
 static uint current_ID;
+
+static int fd_flags = O_WRONLY | O_APPEND | O_CLOEXEC;
 
 static void create_semaphore(uint ID, char *node);
 
@@ -245,23 +248,32 @@ state_t report_applications(report_id_t *id, application_t *apps, uint count)
 
 		create_app_header(app_header, csv_log_file, num_gpus, 1, 0);
 		// file_app_created = 1;
-		fd_app = open(csv_log_file, O_WRONLY | O_APPEND);
+		fd_app = open(csv_log_file, fd_flags);
+		debug("app csv file: %d", fd_app);
+		if (fd_app < 0) {
+			debug("Error opening csv %s file: %s", csv_log_file, strerror(errno));
+		}
 	}
 
 	/* Open the file if we didn't it yet. */
-	if (fd_app < 0)
-		fd_app = open(csv_log_file, O_WRONLY | O_APPEND);
+	if (fd_app < 0) {
+		fd_app = open(csv_log_file, fd_flags);
+		if (fd_app < 0) {
+			debug("Error opening csv %s file: %s", csv_log_file, strerror(errno));
+		}
+	}
 
 	for (i = 0; i < count; i++) {
 		if (!check_ID(create_ID(apps[i].job.id, apps[i].job.step_id))) {
 			continue;
 		}
 		debug("Reporting app %u", i);
-		if (fd_app > 0) {
+		if (fd_app >= 0) {
 #if DCGMI
 			sigex = (sig_ext_t *) apps[i].signature.sig_ext;
 			dcgmis = (dcgmi_sig_t *) & sigex->dcgmis;
 
+			debug("Set count: %u", dcgmis->set_cnt);
 			if (dcgmis->set_cnt && num_gpus) {
 				dcgmi_lib_dcgmi_sig_to_csv(dcgmis,
 							   extra_metrics,
@@ -336,11 +348,11 @@ state_t report_loops(report_id_t *id, loop_t *loops, uint count)
 		create_loop_header(extra_header, csv_loop_log_file, 1, num_gpus,
 				   0);
 		debug("Header file created");
-		fd_loops = open(csv_loop_log_file, O_WRONLY | O_APPEND);
+		fd_loops = open(csv_loop_log_file, fd_flags);
 	}
 
 	if (fd_loops < 0)
-		fd_loops = open(csv_loop_log_file, O_WRONLY | O_APPEND);
+		fd_loops = open(csv_loop_log_file, fd_flags);
 
 	ullong sec = timestamp_getconvert(TIME_SECS);
 	currtime = sec - my_time;
@@ -349,7 +361,7 @@ state_t report_loops(report_id_t *id, loop_t *loops, uint count)
 			continue;
 		}
 		// TODO: we could return EAR_ERROR in case the below functions returns EAR_ERROR
-		if (fd_loops > 0) {
+		if (fd_loops >= 0) {
 #if DCGMI
 			sigex = (sig_ext_t *) loops[i].signature.sig_ext;
 			dcgmis = (dcgmi_sig_t *) & sigex->dcgmis;

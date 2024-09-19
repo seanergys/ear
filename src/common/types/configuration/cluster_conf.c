@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <netdb.h>
+#include <pwd.h>
 #include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -604,7 +605,6 @@ int get_eardbd_conf_path(char *ear_conf_path)
     return EAR_ERROR;
 }
 
-
 /** CHECKING USER TYPE */
 /* returns true if the username, group and/or accounts is presents in the list of authorized users/groups/accounts */
 int is_privileged(cluster_conf_t *my_conf, char *user,char *group, char *acc)
@@ -612,6 +612,76 @@ int is_privileged(cluster_conf_t *my_conf, char *user,char *group, char *acc)
     int i;
     int found=0;
     if (user!=NULL){
+        // Create user structs
+        struct passwd pwd;
+        struct passwd *result;
+        char *buf;
+        long bufsize;
+        int s;
+
+        // Create buffer limit for passwd structure
+        bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
+        if (bufsize == -1) {         /* Value was indeterminate */
+            bufsize = 16384;        /* Should be more than enough */
+        }
+        buf = malloc(bufsize);
+        
+        if (buf == NULL) {
+            return_msg(EAR_ERROR, "Buffer malloc for user info failed");
+        }
+
+        // Get passwd structure and check for error
+        s = getpwnam_r(user, &pwd, buf, bufsize, &result);
+        if (result == NULL) {
+           if (s == 0) {
+                verbose(0, "User not found\n");
+           }
+           else {
+                verbose(0, "getpwdnam_r failed with exit code %d\n", s);
+                return_msg(EAR_ERROR, "getpwnam_r failed");
+           }
+        }
+
+        // Get user's groups id's
+        int ngroups = 50;
+        gid_t *groups = malloc(ngroups * sizeof(gid_t));
+        if (groups == NULL) {
+            return_msg(EAR_ERROR, "Failed to allocate memory for groups");
+        }
+
+        // Check if user belongs to more than ngroups groups
+        if (getgrouplist(pwd.pw_name, pwd.pw_gid, groups, &ngroups) == -1) {
+            //TODO: Since we now know the number of groups, we can resize the buffer from ngroups variable
+            groups = realloc(groups, ngroups * sizeof(gid_t));
+            if (groups == NULL) { 
+                return_msg(EAR_ERROR, "Failed to reallocate memory for groups");
+            }
+            if (getgrouplist(pwd.pw_name, pwd.pw_gid, groups, &ngroups) == -1){ // Get all the groups which the user belongs
+                return_msg(EAR_ERROR, "getgrouplist failed");
+            }
+        }
+
+
+        // Transform group id's to group names and compare them to the privileged groups list
+        i = 0;
+        while ((i < ngroups) && (!found)) {
+            struct group *gr = getgrgid(groups[i]);
+            if (gr != NULL) {
+                char *gr_name = gr->gr_name;
+                int j = 0;
+                while ((j < my_conf->num_priv_groups) && (!found)) {
+                    char *grpriv_name = my_conf->priv_groups[j];
+                    if ((strcmp(gr_name, grpriv_name) == 0) || (strcmp(grpriv_name, "all") == 0)) {
+                        found = 1;
+                    }
+                    else ++j;
+                }
+            }
+            ++i;
+        }
+        free(groups);
+        free(buf);
+        
         i=0;
         while((i<my_conf->num_priv_users) && (!found)){
             if (strcmp(user,my_conf->priv_users[i])==0) found=1;
@@ -619,19 +689,21 @@ int is_privileged(cluster_conf_t *my_conf, char *user,char *group, char *acc)
             else i++;
         }
     }
-    if (found)	return found;
+    if (found) return found;
     if (group!=NULL){
         i=0;
         while((i<my_conf->num_priv_groups) && (!found)){
             if (strcmp(group,my_conf->priv_groups[i])==0) found=1;
+            else if (strcmp(my_conf->priv_groups[i], "all")==0) found=1;
             else i++;
         }
     }
-    if (found)	return found;
+    if (found) return found;
     if (acc!=NULL){
         i=0;
         while((i<my_conf->num_acc) && (!found)){
             if (strcmp(acc,my_conf->priv_acc[i])==0) found=1;
+            else if (strcmp(my_conf->priv_acc[i], "all")==0) found=1;
             else i++;
         }
     }

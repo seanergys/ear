@@ -2956,6 +2956,8 @@ static void set_default_powermon_end(powermon_app_t *app, uint idle)
   char *cgov = app->governor.name; // Governor before job had started.
   uint gov;
 
+	// TODO: Filter below conditional block if policy_freq true
+
   // Old condition: app->app.job.step_id != (job_id) BATCH_STEP
   if (app->is_job) { // End of a job
 
