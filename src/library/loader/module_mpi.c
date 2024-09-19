@@ -79,6 +79,7 @@ static void *load_mpi_version(void *handler)
 
 static int load_mpi_functions(void *handler, mpic_t *calls_c, mpif_t *calls_f)
 {
+    if (handler       == NULL) return 0;
     if (calls_c->Init == NULL) plug_join(handler, (void **) calls_c, mpic_names , MPIC_N);
     if (calls_f->init == NULL) plug_join(handler, (void **) calls_f, mpif_names , MPIF_N);
     if (calls_f->init == NULL) plug_join(handler, (void **) calls_f, mpif_names_, MPIF_N);
@@ -104,6 +105,17 @@ static void *get_libmpi_handler(char *libmpi_path)
         handler = dlopen(libmpi_path, RTLD_NOLOAD | RTLD_LOCAL | RTLD_NOW);
 	    verbose(2, "LOADER: handler libmpi: %p (%s)\n", handler, dlerror());
     }
+    return handler;
+}
+
+static void *get_libcnt_handler()
+{
+    static void *handler = NULL;
+    #if COUNTDOWN_BASE
+    if (handler == NULL) {
+        handler = dlopen(COUNTDOWN_BASE "/libcntd.so", RTLD_GLOBAL | RTLD_LAZY);
+    }
+    #endif
     return handler;
 }
 
@@ -234,14 +246,17 @@ int load_mpi_and_ear(char *libmpi_path)
     void *call_mpi_version = NULL;
     char *libear_path = NULL;
     verbose(2, "LOADER: Entering loader (%s)\n", libmpi_path);
-    // Load libmpi.so functions. Protected against multiple calls.
-    if (!load_mpi_functions(RTLD_NEXT, &calls_mpi_c, &calls_mpi_f)) {
-        if (libmpi_path != NULL) {
-            if (!load_mpi_functions(get_libmpi_handler(libmpi_path), &calls_mpi_c, &calls_mpi_f)) {
-                // Fail, because if no MPI symbols, we are in trouble.
-                usage_and_exit();
-            }
-        } else return 0;
+    // Load libcntd.so (COUNTDOWN) functions.
+    if (!load_mpi_functions(get_libcnt_handler(), &calls_mpi_c, &calls_mpi_f)) {
+        // Load libmpi.so functions. Protected against multiple calls.
+        if (!load_mpi_functions(RTLD_NEXT, &calls_mpi_c, &calls_mpi_f)) {
+            if (libmpi_path != NULL) {
+                if (!load_mpi_functions(get_libmpi_handler(libmpi_path), &calls_mpi_c, &calls_mpi_f)) {
+                    // Fail, because if no MPI symbols, we are in trouble.
+                    usage_and_exit();
+                }
+            } else return 0;
+        }
     }
     // Looking for PMPI_Get_library_version function
     if ((call_mpi_version = load_mpi_version(RTLD_DEFAULT)) == NULL) {
@@ -266,7 +281,20 @@ int load_mpi_and_ear(char *libmpi_path)
 
 int module_mpi(char *lib_path, char *lib_hack_name)
 {
-    return load_mpi_and_ear(NULL);
+    // This if is obsolete design and must be deleted as soon as possible.
+    if (module_cuda_is()) {
+        ear_cuda_enabled();
+    }
+    // This is the call to a principal function
+    if (load_mpi_and_ear(NULL)) {
+        return 1;
+    }
+    // If one of these variables is active, it means the user wants to load the
+    // MPI symbols. By returning 1 we do not allow other EAR version to be loaded.
+    if (ear_getenv(FLAG_LOAD_MPI) != NULL || ear_getenv(FLAG_LOAD_MPI_VERSION) != NULL) {
+        return 1;
+    }
+    return 0;
 }
 
 void module_mpi_destructor()

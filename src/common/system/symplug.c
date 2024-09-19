@@ -70,7 +70,6 @@ state_t plug_open(char *path, void *calls[], const char *names[], uint n, int fl
     return static_open(path, calls, names, n, flags);
 }
 
-
 state_t plug_test(void *calls[], uint n)
 {
 	uint i;
