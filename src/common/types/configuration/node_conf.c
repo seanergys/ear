@@ -40,11 +40,19 @@ int range_conf_contains_node(node_conf_t *node, char *nodename)
     int i, j;
     for (i = 0; i < node->range_count; i++)
     {
+        //if the first letters of the prefix do not correspond, we can continue
+        if (strncmp(node->range[i].prefix, nodename, strlen(node->range[i].prefix))) {
+            continue;
+        }
         if (node->range[i].end == -1)
         {
+            //no need to check in this case
+            return 1;
+#if 0
             sprintf(aux_name, "%s", node->range[i].prefix);
             if (!strcmp(aux_name, nodename)) return 1;
             else continue;
+#endif
         }
         if (node->range[i].end == node->range[i].start)
         {
@@ -71,11 +79,21 @@ int island_range_conf_contains_node(node_island_t *node, char *nodename)
     int i, j;
     for (i = 0; i < node->num_ranges; i++)
     {
+        //if the first letters of the prefix do not correspond, we can continue
+        if (strncmp(node->ranges[i].prefix, nodename, strlen(node->ranges[i].prefix))) {
+            //debug("node range does not correspond (%s vs %s), continuing\n", node->ranges[i].prefix, nodename);
+            continue;
+        }
         if (node->ranges[i].end == -1)
         {
+            //we don't need to do the comparison in this case, if the prefix is equal to the nodename they are the same
+            //debug("entering comparison with nodenames %s and %s\n", node->ranges[i].prefix, nodename);
+            return i;
+#if 0
             sprintf(aux_name, "%s", node->ranges[i].prefix);
             if (!strcmp(aux_name, nodename)) return i;
             else continue;
+#endif
         }
         if (node->ranges[i].end == node->ranges[i].start)
         {

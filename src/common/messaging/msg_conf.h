@@ -26,163 +26,192 @@
 #include <common/types/risk.h>
 #include <daemon/powercap/powercap_status_conf.h>
 
+/* If set to 1, the structs will be compatible with EAR v5.0 daemons */
+#define V5_COMPAT 1
+
 typedef struct new_job_req{
-    job_t job;
-    uint8_t is_mpi;
-    uint8_t is_learning;
-}new_job_req_t;
+	job_t job;
+	uint8_t is_mpi;
+	uint8_t is_learning;
+} new_job_req_t;
 
 typedef struct end_job_req{
-    job_id jid;
-    job_id sid;
-    //int status;
-}end_job_req_t;
+	job_id jid;
+	job_id sid;
+	//int status;
+} end_job_req_t;
 
 typedef struct new_task_req{
-    job_id 		jid;
-    job_id 		sid;
-    pid_t  		pid;
-    cpu_set_t mask;	
-    uint      num_cpus;
-}new_task_req_t;
+	job_id 		jid;
+	job_id 		sid;
+	pid_t  		pid;
+	cpu_set_t mask;	
+	uint      num_cpus;
+} new_task_req_t;
 
 typedef struct end_task_req{
-    job_id 		jid;
-    job_id 		sid;
-    pid_t  		pid;
-    cpu_set_t mask;	
-    uint      num_cpus;
-}end_task_req_t;
+	job_id 		jid;
+	job_id 		sid;
+	pid_t  		pid;
+	cpu_set_t mask;	
+	uint      num_cpus;
+} end_task_req_t;
 
 
 typedef struct new_conf{
-    ulong   max_freq;
-    ulong   min_freq;
-    ulong   th;
-    uint    p_states;
-    uint    p_id;
-}new_conf_t;
+	ulong   max_freq;
+	ulong   min_freq;
+	ulong   th;
+	uint    p_states;
+	uint    p_id;
+} new_conf_t;
 
 typedef struct eargm_req{
-    uint num_nodes;
-    uint pc_change;
-}eargm_req_t;
+	uint num_nodes;
+	uint pc_change;
+} eargm_req_t;
 
 typedef struct new_policy_cont{
-    char    name[POLICY_NAME_SIZE];
-    ulong   def_freq;
-    double  settings[MAX_POLICY_SETTINGS];
-}new_policy_cont_t;
+	char    name[POLICY_NAME_SIZE];
+	ulong   def_freq;
+	double  settings[MAX_POLICY_SETTINGS];
+} new_policy_cont_t;
 
 typedef struct power_limit{
-    unsigned long   limit;
-    unsigned int    type;
-}power_limit_t;
+	unsigned long   limit;
+	unsigned int    type;
+} power_limit_t;
 
 typedef struct risk_dec{
-    unsigned long   target;
-    risk_t          level;
-}risk_dec_t;
+	unsigned long   target;
+	risk_t          level;
+} risk_dec_t;
 
 typedef union req_data{
-    new_job_req_t       new_job;
-    end_job_req_t       end_job;
-    new_task_req_t      new_task;
-    end_task_req_t      end_task;
-    new_conf_t          ear_conf;
-    new_policy_cont_t   pol_conf;
-    risk_dec_t          risk;
-    power_limit_t       pc;
-    powercap_opt_t      pc_opt;
-    eargm_req_t         eargm_data;
+	new_job_req_t       new_job;
+	end_job_req_t       end_job;
+	new_task_req_t      new_task;
+	end_task_req_t      end_task;
+	new_conf_t          ear_conf;
+	new_policy_cont_t   pol_conf;
+	risk_dec_t          risk;
+	power_limit_t       pc;
+	powercap_opt_t      pc_opt;
+	eargm_req_t         eargm_data;
 	int                 release_power;
-}req_data_t;
+	char                *message;
+} req_data_t;
 
 typedef struct request{
-    uint32_t        req;
-    uint32_t        node_dist;
+	uint32_t        req;
+	uint32_t        node_dist;
 #if USE_SEC_KEY_RC
-    uint32_t        sec_key;
+	uint32_t        sec_key;
 #endif
-    int32_t         time_code;
-    int32_t         num_nodes;
-    int32_t         *nodes;
-    req_data_t  my_req; //all new variables must be specified after time_code so the first portion aligns with internal_request_t
-}request_t;
+	int32_t         time_code;
+	int32_t         num_nodes;
+	int32_t         *nodes;
+	req_data_t  my_req; //all new variables must be specified after time_code so the first portion aligns with internal_request_t
+} request_t;
 
 typedef struct internal_request {
-    uint32_t    req;
-    uint32_t    node_dist;
+	uint32_t    req;
+	uint32_t    node_dist;
 #if USE_SEC_KEY_RC
-    uint32_t    sec_key;
+	uint32_t    sec_key;
 #endif
-    int32_t     time_code; 
-    int32_t     num_nodes;
-    int32_t     *nodes;
+	int32_t     time_code; 
+	int32_t     num_nodes;
+	int32_t     *nodes;
 } internal_request_t; //only the necessary my_req content is sent, and what is sent can be identified by the req code 
 
 typedef struct status_node_info{
-    ulong avg_freq; // In KH
-    ulong temp; // In degres, No creo que haya falta enviar un unsigned long long
-    ulong power; // In Watts 
-    ulong rep_power; // In Watts 
-    ulong max_freq;// in KH
+	uint32_t avg_freq;  // In KH
+	uint32_t max_freq;  // In KH
+	uint16_t temp;      // In degres, 16 bits should be more than enough (temp ranges from 0 to 100 usually, but 16 is safer)
+	uint16_t power;     // In Watts, 16 bits should be more than enough (power should never peak above 65k for a single node)
+	uint16_t rep_power; // In Watts, same as above
 } status_node_info_t;
 
 typedef struct app_info{
-    uint job_id;
-    uint step_id;
+	uint32_t job_id;
+	uint32_t step_id;
 }app_info_t;
 
 typedef struct request_header {
-    int32_t     type;
-    uint32_t    size;
+	int32_t     type;
+	uint32_t    size;
 } request_header_t;
 
 typedef struct eard_policy_info{
-    ulong   freq; /* default freq in KH, divide by 1000000 to show Ghz */
-    uint    th;     /* th x 100, divide by 100 */
-    uint    id; /* policy id */
+	ulong   freq; /* default freq in KH, divide by 1000000 to show Ghz */
+	uint    th;     /* th x 100, divide by 100 */
+	uint    id; /* policy id */
 }eard_policy_info_t;
 
-typedef struct status{
-    unsigned int        ip;
-    char                ok;
-    status_node_info_t  node;
-    app_info_t          app;
-    uint                eardbd_connected;
-    unsigned int        num_policies;
-    eard_policy_info_t  policy_conf[TOTAL_POLICIES];
+#ifdef V5_COMPAT
+// Based on the old status, notice the different ordering
+typedef struct full_status {
+	unsigned int        ip;
+	char                ok;
+	status_node_info_t  node;
+	app_info_t          app;
+	uint                eardbd_connected;
+	unsigned int        num_policies;
+	eard_policy_info_t  policy_conf[TOTAL_POLICIES];
 } status_t;
 
 typedef struct app_status{
-    unsigned int ip;
-    long job_id, step_id; //need to be signed so we can set an invalid job_id (-1) to know when there is no job
-    unsigned int nodes, master_rank;
-    signature_t signature;
+	unsigned int ip;
+	long job_id, step_id; //need to be signed so we can set an invalid job_id (-1) to know when there is no job
+	unsigned int nodes, master_rank;
+	signature_t signature;
+}app_status_t;
+#else 
+typedef struct status{
+	int32_t             ip;
+	status_node_info_t  node;
+	app_info_t          app;
+	char                eardbd_connected;
+	char                ok;
+} status_t;
+
+typedef struct app_status{
+	int32_t      ip;
+	int32_t      job_id, step_id; //need to be signed so we can set an invalid job_id (-1) to know when there is no job
+	uint32_t     nodes, master_rank;
+	signature_t signature;
 }app_status_t;
 
+#endif
+
+typedef struct policy_status{
+	int32_t        ip;
+	uint32_t       num_policies;
+	eard_policy_info_t  policy_conf[TOTAL_POLICIES];
+} policy_status_t;
+
 typedef struct performance{
-    float cpi;
-    float gbs;
-    float gflops_watt;
+	float cpi;
+	float gbs;
+	float gflops_watt;
 } performance_t;
 
 typedef struct eargm_status {
-    int id;
-    char  status;
-    ulong def_power;
-    ulong current_power;
-    ulong current_powercap;
-    ulong requested;
-    ulong freeable_power;
-    ulong extra_power;
-    ulong energy;
+	int id;
+	char  status;
+	ulong def_power;
+	ulong current_power;
+	ulong current_powercap;
+	ulong requested;
+	ulong freeable_power;
+	ulong extra_power;
+	ulong energy;
 } eargm_status_t;
 
 typedef struct power_check {
-    uint64_t power;
-    int64_t  num_nodes;
+	uint64_t power; //this is a cluster-wide accumulator, hence the 64 bits size
+	int64_t  num_nodes; //this could be smaller, but the compiler will add padding anyway so best be safe
 } power_check_t;
 
 
@@ -206,7 +235,9 @@ typedef struct power_check {
 #define EAR_RC_STATUS               600
 #define EAR_RC_APP_NODE_STATUS      601
 #define EAR_RC_APP_MASTER_STATUS    602
-#define EAR_RC_NODE_PURGE           603
+#define EAR_RC_POLICY_STATUS        603
+#define EAR_RC_NODE_PURGE           604
+#define EAR_RC_SEND_MESSAGE         605
 
 /* New functions for power limits */
 #define EAR_RC_RED_POWER            700
@@ -238,7 +269,8 @@ typedef struct power_check {
 #define EAR_TYPE_POWER_CHECK    2003
 #define EAR_TYPE_RELEASED       2004
 #define EAR_TYPE_APP_STATUS     2005
-#define EAR_TYPE_EARGM_STATUS   2006
+#define EAR_TYPE_POLICY_STATUS  2006
+#define EAR_TYPE_EARGM_STATUS   2007
 ///  |||||
 ///  vvvvv
 /******************* IMPORTANT ***********************/

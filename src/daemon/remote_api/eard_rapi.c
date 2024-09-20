@@ -34,6 +34,15 @@ void ear_set_powerlimit(cluster_conf_t *my_cluster_conf, unsigned long limit, ch
 		ear_nodelist_set_powerlimit(my_cluster_conf, limit, nodes, num_nodes);
 }
 
+int ear_get_policy_status(cluster_conf_t *conf, policy_status_t **status, char **nodes, int num_nodes)
+{
+	if (nodes == NULL || num_nodes < 1)
+		return ear_cluster_get_policy_status(conf, status);
+	else
+		return ear_nodelist_get_policy_status(conf, status, nodes, num_nodes);
+}
+
+
 int ear_get_status(cluster_conf_t *conf, status_t **status, char **nodes, int num_nodes)
 {
 	if (nodes == NULL || num_nodes < 1)
@@ -80,5 +89,13 @@ int ear_set_powercap_opt(cluster_conf_t *my_cluster_conf, powercap_opt_t *pc_opt
 		return ear_cluster_set_powercap_opt(my_cluster_conf, pc_opt);
 	else
 		return ear_nodelist_set_powercap_opt(my_cluster_conf, pc_opt, nodes, num_nodes);
+}
+
+void ear_send_message(cluster_conf_t *conf, char *message, char **nodes, int num_nodes)
+{
+	if (nodes == NULL || num_nodes < 1)
+		return ear_cluster_send_message(conf, message);
+	else
+		return ear_nodelist_send_message(conf, message, nodes, num_nodes);
 }
 

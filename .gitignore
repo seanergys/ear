@@ -183,7 +183,16 @@ src/tools/metrics_show
 src/tools/list_folders
 src/tools/groups_test
 src/commands/ear-info
-deployment.sh
 src/tools/node_manager_info
+deployment.sh
+
+
+#Other
+gmon.out
+tags
+gmon.out
+compile_commands.json
+.cache
+.cache/*
 tmp.txt
 *.plist
