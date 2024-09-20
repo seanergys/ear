@@ -311,6 +311,8 @@ void usage(char *app)
 			"\n\t--restore-conf \t\t\t\t->restores the configuration for all nodes"\
 			"\n\t--active-only \t\t\t\t->supresses inactive nodes from the output in hardware status."\
 			"\n\t--health-check \t\t\t\t->checks all EARDs and EARDBDs for errors and prints all that are unresponsive."\
+			"\n\t--domain [domain:target]\t\t->sends the requested command to the requested targets, effectively filtering"\
+			"\n\t\t\t\t\t\t\twhich nodes receive the message. Available domains are: tag, node, subcluster/eargmid, island."\
 			"\n\t--mail [address] \t\t\t->sends the output of the program to address."\
 			"\n\t--ping	\t\t\t\t->pings all nodes to check whether the nodes are up or not. Additionally,"\
 			"\n\t\t\t\t\t\t\t--ping=node_name pings that node individually."\
@@ -732,6 +734,56 @@ void process_single_status(int num_status, status_t *status, char *node_name, ch
 }
 
 
+#define MAX_DOMAIN_LEN 128
+void _parse_domain(const char *optarg, char ***hosts, int32_t *num_hosts, cluster_conf_t *conf)
+{
+	char domain_type[MAX_DOMAIN_LEN] = { 0 };
+	char domain_name[MAX_DOMAIN_LEN] = { 0 };
+
+	char *current_ptr = domain_type;
+	int32_t current_pos = 0;
+
+	while (*optarg) {
+		if (*optarg == ':') {
+			current_ptr = domain_name;
+			current_pos = 0;
+		} else {
+			if (current_pos >= MAX_DOMAIN_LEN) {
+				printf("Error: domain type or name cannot be longer than %d characters\n", MAX_DOMAIN_LEN);
+				if (!strcasecmp(domain_type, "NODE")) {
+					printf("For domain \"node\" the preferred option is the --hosts argument, which accepts a list of unlimited length\n");
+				}
+				exit(0);
+			}
+			current_ptr[current_pos] = *optarg;
+			current_pos++;
+		}
+		optarg++;
+	}
+
+	debug("domain type %s domain name %s\n", domain_type, domain_name);
+
+	if (!strcasecmp(domain_type, "NODE")) {
+		str_cut_list(domain_name, hosts, num_hosts, ",");
+		return;
+	} else if (!strcasecmp(domain_type, "SUBCLUSTER") || !strcasecmp(domain_type, "EARGMID")) {
+		eargm_def_t tmp = { 0 };
+		tmp.id = atoi(domain_name);
+		remove_islands_by_eargm(conf, &tmp);
+		return;
+	} else if (!strcasecmp(domain_type, "ISLAND")) {
+		int32_t island_id = atoi(domain_name);
+		remove_islands_by_island_id(conf, island_id);
+		return;
+	} else if (!strcasecmp(domain_type, "TAG")) {
+		remove_islands_by_tag(conf, domain_name);
+		return;
+	} else {
+		printf("Error: domain type \"%s\" not supported\n", domain_type);
+		exit(0);
+	}
+
+}
 
 int main(int argc, char *argv[])
 {
@@ -780,41 +832,41 @@ int main(int argc, char *argv[])
         exit(1); //error
     }
 
-    int option_idx = 0;
-    static struct option long_options[] = {
-        {"set-freq",     	required_argument, 0, 0},
-        {"red-def-freq", 	required_argument, 0, 1},
-        {"set-max-freq", 	required_argument, 0, 2},
-        {"inc-th",       	required_argument, 0, 3},
-        {"set-def-freq", 	required_argument, 0, 4},
-        {"set-th",          required_argument, 0, 5},
-        {"hosts",           required_argument, 0, 6},
-        {"restore-conf", 	optional_argument, 0, 7},
-        {"ping", 	     	optional_argument, 0, 'p'},
-        {"status",       	optional_argument, 0, 's'},
-        {"powerstatus",     optional_argument, 0, 'w'},
-        {"power",           optional_argument, 0, 'g'},
-        {"release",         optional_argument, 0, 'l'},
-        {"set-risk",        required_argument, 0, 'r'},
-        {"setopt",          required_argument, 0, 'o'},
-        {"type",            required_argument, 0, 't'},
-        {"set-powercap",    required_argument, 0, 'c'},
-        {"reset-powercap",  required_argument, 0, 'x'},
-        {"inc-powercap",    required_argument, 0, 'i'},
-        {"red-powercap",    required_argument, 0, 'd'},
-        {"mail",            required_argument, 0, 'm'},
-        {"send-message",    required_argument, 0, 'M'},
-        {"conf-path",       required_argument, 0, 'a'},
-        {"verbose",         optional_argument, 0, 'b'},
-        {"error",           no_argument, 0, 'e'},
-        {"health-check",    no_argument, 0, 'k'},
-        {"active-only",     no_argument, 0, 'y'},
-        {"help",         	no_argument, 0, 'h'},
-        {"version",         no_argument, 0, 'v'},
-        {0, 0, 0, 0}
-    };
-    while (1)
-    {
+	int option_idx = 0;
+	static struct option long_options[] = {
+		{"set-freq",     	required_argument, 0, 0},
+		{"red-def-freq", 	required_argument, 0, 1},
+		{"set-max-freq", 	required_argument, 0, 2},
+		{"inc-th",       	required_argument, 0, 3},
+		{"set-def-freq", 	required_argument, 0, 4},
+		{"set-th",          required_argument, 0, 5},
+		{"hosts",           required_argument, 0, 6},
+		{"restore-conf", 	optional_argument, 0, 7},
+		{"ping", 	     	optional_argument, 0, 'p'},
+		{"status",       	optional_argument, 0, 's'},
+		{"powerstatus",     optional_argument, 0, 'w'},
+		{"power",           optional_argument, 0, 'g'},
+		{"release",         optional_argument, 0, 'l'},
+		{"set-risk",        required_argument, 0, 'r'},
+		{"setopt",          required_argument, 0, 'o'},
+		{"type",            required_argument, 0, 't'},
+		{"set-powercap",    required_argument, 0, 'c'},
+		{"reset-powercap",  required_argument, 0, 'x'},
+		{"inc-powercap",    required_argument, 0, 'i'},
+		{"red-powercap",    required_argument, 0, 'd'},
+		{"domain",          required_argument, 0, 'D'},
+		{"mail",            required_argument, 0, 'm'},
+		{"conf-path",       required_argument, 0, 'a'},
+		{"verbose",         optional_argument, 0, 'b'},
+		{"error",           no_argument, 0, 'e'},
+		{"health-check",    no_argument, 0, 'k'},
+		{"active-only",     no_argument, 0, 'y'},
+		{"help",         	no_argument, 0, 'h'},
+		{"version",         no_argument, 0, 'v'},
+		{0, 0, 0, 0}
+	};
+	while (1)
+	{
 
         c = getopt_long(argc, argv, "p::shvb::", long_options, &option_idx);
 
@@ -1136,6 +1188,9 @@ int main(int argc, char *argv[])
                     }
                 }
                 break;
+			case 'D': //domain
+				_parse_domain(optarg, &nodes, &num_nodes, &my_cluster_conf);
+				break;
             case 'm':
                 mail = optarg;
                 break;
