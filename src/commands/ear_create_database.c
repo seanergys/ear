@@ -326,6 +326,7 @@ void create_tables(void *connection)
             "GPU_mem_freq INT unsigned NOT NULL, "
             "GPU_util INT unsigned NOT NULL, "
             "GPU_mem_util INT unsigned NOT NULL, "
+            "GPU_gflops FLOAT NOT NULL, "
             "PRIMARY KEY (id))");
     run_query(connection, query);
 #endif
@@ -622,6 +623,7 @@ void create_tables(void *connection)
             "GPU_mem_freq INT, "
             "GPU_util INT, "
             "GPU_mem_util INT, "
+            "GPU_gflops FLOAT, "
             "PRIMARY KEY (id))");
     run_query(connection, query);
 #endif
