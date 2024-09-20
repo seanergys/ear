@@ -223,7 +223,7 @@ bool print_power_signature_format(application_t *app, char f)
             break;
         case GPU: //GPUs
 #if EACCT_USE_GPUS
-            print_format_custom("%-7.2s/%-7.2s %-7.3s %s%%/%-s%% ", "---","---","---","---","---");
+            print_format_custom("%-7.2s/%-7.2s %-7.3s %6s%%/%-7s %-10s", "---","---","---","---","---%", "---");
 #endif
             break;
         case ALL_FREQS: //all frequencies
@@ -339,6 +339,7 @@ bool print_signature_format(signature_t *sig, char f, int32_t time_length)
             { // declare a custom scope to avoid compiler complains
                 gpu_signature_t *ptr = &sig->gpu_sig;
                 double gpu_power = 0, gpu_total_power = 0;
+				double gpu_gflops = 0;
                 ulong gpu_freq = 0;
                 ulong gpu_util = 0;
                 ulong gpu_mem_util = 0;;
@@ -352,6 +353,7 @@ bool print_signature_format(signature_t *sig, char f, int32_t time_length)
                             gpu_power += ptr->gpu_data[i].GPU_power;
                             gpu_util += ptr->gpu_data[i].GPU_util;
                             gpu_mem_util += ptr->gpu_data[i].GPU_mem_util;
+                            gpu_gflops += ptr->gpu_data[i].GPU_GFlops;
                             num_gpus ++;
                         }
                     }
@@ -359,16 +361,17 @@ bool print_signature_format(signature_t *sig, char f, int32_t time_length)
                     if (num_gpus > 0) {
                         gpu_util /= num_gpus;
                         gpu_mem_util /= num_gpus;
+                        gpu_gflops /= num_gpus;
                         char mem_util_buf[16] = { 0 };
-                        snprintf(mem_util_buf, 16, "%6lu%%", gpu_mem_util);
-                        print_format_custom("%-7.2lf/%-7.2lf %-7.3lf %4lu%%/%-6s ", gpu_total_power,
-                                gpu_power, (double)gpu_freq/1000000, gpu_util, mem_util_buf);
+                        snprintf(mem_util_buf, 16, "%lu%%", gpu_mem_util);
+                        print_format_custom("%-7.2lf/%-7.2lf %-7.3lf %6lu%%/%-7s %-10.2lf", gpu_total_power,
+                                gpu_power, (double)gpu_freq/1000000, gpu_util, mem_util_buf, gpu_gflops);
                     }
                     else {
-                        print_format_custom(" %-7.2lf/%-7.2s %-7.3s %s%%/%-s%% ", gpu_total_power, "---", "---", "---", "---"); 
+                        print_format_custom(" %-7.2lf/%-7.2s %-7.3s %6s%%/%-7s%% %-10s", gpu_total_power, "---", "---", "---", "---", "---"); 
                     }
 				} else {
-					print_format_custom(" %-7.2lf/%-7.2s %-7.3s %s%%/%-s%% ", gpu_total_power, "---", "---", "---", "---"); 
+                    print_format_custom(" %-7.2lf/%-7.2s %-7.3s %6s%%/%-7s%% %-10s", gpu_total_power, "---", "---", "---", "---", "---"); 
 				}
 			}
 #endif
@@ -480,7 +483,7 @@ void print_header_format(char *fmt)
 				break;
 			case GPU: //GPUs
 #if EACCT_USE_GPUS
-				print_format_custom("%-15s %-8s %-14s", "G-POW (T/U)", "G-FREQ","G-UTIL(G/MEM)");
+				print_format_custom("%-15s %-8s %-14s %-10s", "G-POW (T/U)", "G-FREQ","G-UTIL(G/MEM)", "G-GFLOPS");
 #endif
 				break;
 			case DRAM_POWER: //DRAM power
