@@ -47,8 +47,10 @@ int ear_set_powercap_opt(cluster_conf_t *my_cluster_conf, powercap_opt_t *pc_opt
 int ear_get_app_master_status(cluster_conf_t *conf, app_status_t **app_status, char **nodes, int num_nodes);
 /* Gets application status (from every node that has an application running). Returns the number of status allocated on success, or 0 on error */
 int ear_get_app_node_status(cluster_conf_t *conf, app_status_t **app_status, char **nodes, int num_nodes);
+int ear_get_policy_status(cluster_conf_t *conf, policy_status_t **status, char **nodes, int num_nodes);
 
 /* Sets the powercap limit.*/
 void ear_set_powerlimit(cluster_conf_t *my_cluster_conf, unsigned long limit, char **nodes, int num_nodes);
+void ear_send_message(cluster_conf_t *conf, char *message, char **nodes, int num_nodes);
 
 #endif

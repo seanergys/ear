@@ -326,6 +326,7 @@ void create_tables(void *connection)
             "GPU_mem_freq INT unsigned NOT NULL, "
             "GPU_util INT unsigned NOT NULL, "
             "GPU_mem_util INT unsigned NOT NULL, "
+            "GPU_gflops FLOAT NOT NULL, "
             "PRIMARY KEY (id))");
     run_query(connection, query);
 #endif
@@ -622,6 +623,7 @@ void create_tables(void *connection)
             "GPU_mem_freq INT, "
             "GPU_util INT, "
             "GPU_mem_util INT, "
+            "GPU_gflops FLOAT, "
             "PRIMARY KEY (id))");
     run_query(connection, query);
 #endif
@@ -964,8 +966,6 @@ int main(int argc,char *argv[])
         connection = PQconnectdbParams((const char * const *)keys, (const char * const *)values, 0);
     }
 
-    free(keys);
-    free(values);
     if (!print_out && PQstatus(connection) != CONNECTION_OK)
     {
         fprintf(stderr, "ERROR connecting to the database after its creation: %s\n", PQerrorMessage(connection));
@@ -973,6 +973,8 @@ int main(int argc,char *argv[])
         free_cluster_conf(&my_cluster);
         exit(1);
     }
+    free(keys);
+    free(values);
 #endif
 
     create_tables(connection);

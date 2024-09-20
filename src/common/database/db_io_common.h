@@ -52,7 +52,7 @@
 #define SIMPLE_AVG_SIGNATURE_ARGS        15
 
 #if USE_GPUS
-#define GPU_SIGNATURE_ARGS 5
+#define GPU_SIGNATURE_ARGS 6
 #endif
 
 #endif

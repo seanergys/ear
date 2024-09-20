@@ -79,7 +79,7 @@
                                 "time, avg_f, def_f) VALUES "
 
 #if USE_GPUS
-#define GPU_SIGNATURE_PSQL_QUERY    "INSERT INTO GPU_signatures (GPU_power, GPU_freq, GPU_mem_freq, GPU_util, GPU_mem_util) VALUES "
+#define GPU_SIGNATURE_PSQL_QUERY    "INSERT INTO GPU_signatures (GPU_power, GPU_freq, GPU_mem_freq, GPU_util, GPU_mem_util, GPU_gflops) VALUES "
 
 #define PERIODIC_METRIC_QUERY_DETAIL    "INSERT INTO Periodic_metrics (start_time, end_time, DC_energy, node_id, job_id, step_id, avg_f, temp, DRAM_energy, "\
                                         "PCK_energy, GPU_energy) VALUES " 
@@ -514,6 +514,7 @@ int postgresql_retrieve_gpu_signatures(PGconn *connection, char *query, gpu_sign
         base_data.GPU_mem_freq = htonl( *((ulong *)PQgetvalue(res, i, 4)));
         base_data.GPU_util     = htonl( *((ulong *)PQgetvalue(res, i, 5)));
         base_data.GPU_mem_util = htonl( *((ulong *)PQgetvalue(res, i, 6)));
+        base_data.GPU_gflops   = htonl( *((ulong *)PQgetvalue(res, i, 7)));
 
         memcpy(&gpu_sig->gpu_data[i], &base_data, sizeof(gpu_app_t));
     }
@@ -1342,6 +1343,7 @@ int postgresql_batch_insert_gpu_signatures(PGconn *connection, signature_t *sigs
             param_values[2  + offset] = (char *) &sigs[i].gpu_sig.gpu_data[j].GPU_mem_freq;
             param_values[3  + offset] = (char *) &sigs[i].gpu_sig.gpu_data[j].GPU_util;
             param_values[4  + offset] = (char *) &sigs[i].gpu_sig.gpu_data[j].GPU_mem_util;
+            param_values[5  + offset] = (char *) &sigs[i].gpu_sig.gpu_data[j].GPU_Gflops;
 
             /* Parameter sizes */
             param_lengths[0  + offset] = sizeof(sigs[i].gpu_sig.gpu_data[j].GPU_power);
@@ -1349,6 +1351,7 @@ int postgresql_batch_insert_gpu_signatures(PGconn *connection, signature_t *sigs
             param_lengths[2  + offset] = sizeof(sigs[i].gpu_sig.gpu_data[j].GPU_mem_freq);
             param_lengths[3  + offset] = sizeof(sigs[i].gpu_sig.gpu_data[j].GPU_util);
             param_lengths[4  + offset] = sizeof(sigs[i].gpu_sig.gpu_data[j].GPU_mem_util);
+            param_lengths[5  + offset] = sizeof(sigs[i].gpu_sig.gpu_data[j].GPU_Gflops);
 
 
             /* Parameter formats, 1 is binary 0 is string */

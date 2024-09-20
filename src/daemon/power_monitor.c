@@ -2738,19 +2738,27 @@ void *eard_power_monitoring(void *noinfo)
     pthread_exit(0);
 }
 
-
-void powermon_get_status(status_t *my_status) {
+void powermon_get_policy_status(policy_status_t *status) 
+{
     int i;
     int max_p; // More than TOTAL_POLICIES is not yet supported
     /* Policies */
     if (my_node_conf->num_policies > TOTAL_POLICIES) max_p = TOTAL_POLICIES;
     else max_p = my_node_conf->num_policies;
-    my_status->num_policies = max_p;
+    status->num_policies = max_p;
     for (i=0;i<max_p;i++){
-        my_status->policy_conf[i].freq = frequency_pstate_to_freq(my_node_conf->policies[i].p_state);
-        my_status->policy_conf[i].th   = (uint)(my_node_conf->policies[i].settings[0]*100.0);
-        my_status->policy_conf[i].id   = (uint)my_node_conf->policies[i].policy;
+        status->policy_conf[i].freq = frequency_pstate_to_freq(my_node_conf->policies[i].p_state);
+        status->policy_conf[i].th   = (uint)(my_node_conf->policies[i].settings[0]*100.0);
+        status->policy_conf[i].id   = (uint)my_node_conf->policies[i].policy;
     }
+}
+
+char powermon_get_node_state()
+{
+    return STATUS_OK;
+}
+
+void powermon_get_status(status_t *my_status) {
     /* Current app info */
     my_status->app.job_id = current_ear_app[max_context_created]->app.job.id;
     my_status->app.step_id = current_ear_app[max_context_created]->app.job.step_id;
@@ -2761,6 +2769,9 @@ void powermon_get_status(status_t *my_status) {
     my_status->node.rep_power = (ulong) last_power_reported;
     my_status->node.max_freq = (ulong) frequency_pstate_to_freq(my_node_conf->max_pstate);
     my_status->eardbd_connected = (report_connection_status == EAR_SUCCESS);
+
+    /* State info */
+    my_status->ok = powermon_get_node_state();
 }
 
 

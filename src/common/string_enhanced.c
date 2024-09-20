@@ -130,6 +130,30 @@ void remove_chars(char *s, char c)
     s[writer]=0;
 }
 
+void remove_chars_list(char *s, char *removable)
+{ 
+    int writer = 0, reader = 0;
+
+    while (s[reader])
+    {
+        if (strchr(removable, s[reader]) == NULL) //if the current char is not in the list, we keep it
+            s[writer++] = s[reader];
+        
+        reader++;       
+    }
+
+    s[writer]=0;
+}
+
+void replace_char(char *string, char old_char, char new_char)
+{
+    while (*string) {
+        if (*string == old_char) *string = new_char;
+        string++;
+    }
+
+}
+
 void str_cut_list(char *src, char ***elements, int *num_elements, char *separator)
 {
     if (src == NULL) {

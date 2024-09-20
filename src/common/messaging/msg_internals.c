@@ -9,6 +9,8 @@
  **************************************************************************/
 
 //#define SHOW_DEBUGS 1
+
+#define _GNU_SOURCE
 #include <common/output/verbose.h>
 
 #include <math.h>
@@ -286,6 +288,12 @@ int read_command(int s, request_t *command)
             memcpy(command->my_req.pc_opt.greedy_nodes, &tmp_command[aux_size], offset);
             memcpy(command->my_req.pc_opt.extra_power, &tmp_command[aux_size + offset], offset);
         }
+        else if (command->req == EAR_RC_SEND_MESSAGE)
+        {
+            debug("read_command:received send_message");
+            command->my_req.message = calloc(head.size - aux_size, sizeof(char));
+            memcpy(command->my_req.message, &tmp_command[aux_size], head.size - aux_size);
+        }
         else
         {
             debug("read_command:recieved command with additional data: %d", command->req);
@@ -360,6 +368,9 @@ size_t get_command_size(request_t *command, char **data_to_send)
 		case EAR_RC_GET_POWERCAP_STATUS:
 			size += sizeof(int);
 			break;
+        case EAR_RC_SEND_MESSAGE:
+            size += sizeof(char) * (strlen(command->my_req.message) + 1);
+            break;
         case EARGM_NEW_JOB:
         case EARGM_END_JOB:
         case EARGM_INC_PC:
@@ -394,6 +405,9 @@ size_t get_command_size(request_t *command, char **data_to_send)
             //proceed as with fixed size method, copying both arrays
             memcpy(&command_b[aux_size], command->my_req.pc_opt.greedy_nodes, offset);
             memcpy(&command_b[aux_size + offset], command->my_req.pc_opt.extra_power, offset);
+            break;
+        case EAR_RC_SEND_MESSAGE:
+            memcpy(&command_b[aux_size], command->my_req.message, size-aux_size); 
             break;
         default:
             debug("get_command_size: copying additional data, total_size: %lu, already copied %lu", size, aux_size);
@@ -673,7 +687,11 @@ int remote_connect(char *nodename,uint port)
 
     timeout.tv_sec = 1;
 
+	int32_t keep_alive = 1;
+
     setsockopt(sfd, SOL_SOCKET, SO_RCVTIMEO, (void *)(&timeout), sizeof(timeout));
+    setsockopt(sfd, SOL_SOCKET, SO_KEEPALIVE, (void *)(&keep_alive), sizeof(keep_alive));
+    //setsockopt(sfd, SOL_TCP, TCP_KEEPIDLE, (void *)(&keep_alive), sizeof(keep_alive));
     
     if (read(sfd, &conection_ok, sizeof(char)) > 0)
     {

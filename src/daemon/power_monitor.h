@@ -154,8 +154,10 @@ void print_powermon_app(powermon_app_t *app);
 /** \todo Add a description. */
 powermon_app_t *get_powermon_app();
 
+/** Fills the status with the current policies/ */
+void powermon_get_policy_status(policy_status_t *status);
 
-/** \todo Add a description. */
+/** Fills the status with data from the current state of the node. */
 void powermon_get_status(status_t *my_status);
 
 
