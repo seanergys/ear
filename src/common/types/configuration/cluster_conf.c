@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -60,7 +60,7 @@ int get_ip(char *nodename, cluster_conf_t *conf)
     s = getaddrinfo(buff, NULL, &hints, &result);
 
     if (s != 0) {
-        debug("getaddrinfo fails for node %s (%s)", buff, strerror(errno));
+        debug("getaddrinfo fails for node %s (%s)", buff, gai_strerror(s));
         return EAR_ERROR;
     }
 

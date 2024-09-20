@@ -81,18 +81,6 @@ state_t remove_remote_connection(int fd)
     return EAR_SUCCESS;
 }
 
-void check_sockets(afd_set_t *fdlist)
-{
-	int i;
-    for (i = rfds_basic.fd_min; i <= rfds_basic.fd_max; i++) {
-		if (AFD_ISSET(i,fdlist)){
-			debug("Validating socket %d",i);
-			if (!AFD_STAT(i, NULL)){
-				remove_remote_connection(i);
-			}
-		}
-	}
-}
 
 /************* This thread will process the remote requests */
 extern state_t process_remote_requests(int clientfd);
@@ -110,32 +98,36 @@ void *process_remote_req_th(void * arg)
         if (numfds_ready > 0) {
             /* This is the normal use case */
             for (i = rfds_basic.fd_min; i <= rfds_basic.fd_max; i++) {
-                if (AFD_ISSET(i, &rfds_basic)) {
-                    debug("Channel %d ready for reading", i);
-                    if (i == pipe_for_new_conn[0]) {
-                        verbose(VRAPI, "New connection received in RemoteAPI thread");
-                        add_new_connection();
-                    } else {
-                        verbose(VRAPI, "New request received in RemoteAPI thread");
-                        ret = process_remote_requests(i);
-                        if (ret != EAR_SUCCESS) remove_remote_connection(i);
-                    }
-                }
-            }
-        } else if (numfds_ready == 0) {
-            /* This shouldn't happen since we are not using timeouts*/
-            debug("numfds_ready is zero in remote connections activity");
-        } else {
-            /* This should be an error */
-            if (errno == EINTR) {
-                debug("Signal received in remote commads");
-            } else if (errno == EBADF) {
-                debug("EBADF error detected, validating fds");
-                check_sockets(&rfds_basic);
-            } else {
-                error("Unexpected error in processing remote connections %s ", strerror(errno));
-            }
-        }
-    }
-    pthread_exit(0);
+				if (AFD_ISHUP(i, &rfds_basic)) {
+					verbose(VRAPI, "ERROR: socket remote client has disconnected, closing the socket");
+					remove_remote_connection(i);
+				}
+				else if (AFD_ISSET(i, &rfds_basic)) {
+					debug("Channel %d ready for reading", i);
+					if (i == pipe_for_new_conn[0]) {
+						verbose(VRAPI, "New connection received in RemoteAPI thread");
+						add_new_connection();
+					} else {
+						verbose(VRAPI, "New request received in RemoteAPI thread");
+						ret = process_remote_requests(i);
+						if (ret != EAR_SUCCESS) remove_remote_connection(i);
+					}
+				}
+			}
+		} else if (numfds_ready == 0) {
+			/* This shouldn't happen since we are not using timeouts*/
+			debug("numfds_ready is zero in remote connections activity");
+		} else {
+			/* This should be an error */
+			if (errno == EINTR) {
+				debug("Signal received in remote commads");
+			} else if (errno == EBADF) {
+				debug("EBADF error detected, validating fds");
+				afd_check_sockets(&rfds_basic);
+			} else {
+				error("Unexpected error in processing remote connections %s ", strerror(errno));
+			}
+		}
+	}
+	pthread_exit(0);
 }
