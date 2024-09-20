@@ -5,6 +5,9 @@ export EAR_SOURCE_PATH="@abs_top_builddir@"
 export EAR_ETC="@sysconfdir@"
 export EAR_TMP="@localstatedir@"
 
+mkdir -p $HOME/rpmbuild/SOURCES
+tar czf $HOME/rpmbuild/SOURCES/ear-@VERSION_MAJOR@.@VERSION_MINOR@.tar.gz $EAR_INSTALL_PATH
+
 #
 ln -s specs/ear.spec ear.spec
 #ln -s specs/ear.intel.openmpi.spec ear.spec
