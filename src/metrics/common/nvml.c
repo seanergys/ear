@@ -9,7 +9,7 @@
  **************************************************************************/
 
 
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
@@ -114,6 +114,7 @@ static state_t static_open()
     open_test("/usr/lib32/libnvidia-ml.so.1");
     open_test("/usr/lib/libnvidia-ml.so");
     open_test("/usr/lib/libnvidia-ml.so.1");
+    open_test("/usr/lib/aarch64-linux-gnu/libnvidia-ml.so");
 		open_test("/.singularity.d/libs/libnvidia-ml.so")
 		open_test("/.singularity.d/libs/libnvidia-ml.so.1")
     open_test(EAR_INSTALL_PATH "/lib/deps/libnvidia-ml.so.1");
