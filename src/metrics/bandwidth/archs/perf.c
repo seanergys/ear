@@ -55,28 +55,30 @@ static void set_event(ullong event, uint type, cchar *event_name)
 state_t bwidth_perf_load(topology_t *tp, bwidth_ops_t *ops)
 {
     if (tp->vendor == VENDOR_INTEL) {
-	// In Sapphire Rapids (4 IMCs and 2 channels per IMC per socket), we
-	// found the event files cas_count_read and cas_count_write. But
-	// instead of opening two different events per pmu (uncore_imc_0...),
-	// which is possible because there are 4 counters per pmu, we set the
-	// read+write event which we know it is 0xff05.
-	if (tp->model >= MODEL_SAPPHIRE_RAPIDS) {
-            if (state_fail(perf_open_files(&perfs, "uncore_imc_%d", "0xff05", &perfs_count))) {
-	    }
-	} 
+        // In Sapphire Rapids (4 IMCs and 2 channels per IMC per socket), we
+        // found the event files cas_count_read and cas_count_write. But
+        // instead of opening two different events per pmu (uncore_imc_0...),
+        // which is possible because there are 4 counters per pmu, we set the
+        // read+write event which we know it is 0xff05.
+        if (tp->model >= MODEL_SAPPHIRE_RAPIDS) {
+            if (state_fail(perf_open_files(&perfs, "uncore_imc_%d", "0xff05", &perfs_count))) {}
+        }
         // Ice Lake type. 4 IMCs and 2 Channels per IMC. In case of two sockets,
         // you will see 4 IMCs only, and two CPUs in cpumask. But, Free Running
-	// Counters are per socket, so you can read the total data transferred
-	// just reading a Free Runing Counter.
-	else if (tp->model >= MODEL_ICELAKE_X) {
-	    if (state_fail(perf_open_files(&perfs, "uncore_imc_free_running_0", "0x10ff", &perfs_count))) {
-	    	if (state_fail(perf_open_files(&perfs, "uncore_imc_free_running_0", "data_total", &perfs_count))) {
-	        }
-	    }
+        // Counters are per socket, so you can read the total data transferred
+        // just reading a Free Running Counter.
+        else if (tp->model >= MODEL_ICELAKE_X) {
+            if (state_fail(perf_open_files(&perfs, "uncore_imc_free_running_0", "0x10ff", &perfs_count))) {
+                if (state_fail(perf_open_files(&perfs, "uncore_imc_free_running_0", "data_total", &perfs_count))) {}
+            }
         }
     } else if (tp->vendor == VENDOR_ARM) {
-        set_alloc(1);
-        set_event(0x19, PERF_TYPE_RAW, "BUS_ACCESS");
+        if (tp->model == MODEL_NEOVERSE_V2) {
+            if (state_fail(perf_open_files(&perfs, "nvidia_scf_pmu_%d", "cmem_rd_data,cmem_wr_data", &perfs_count))) {}
+        } else {
+            set_alloc(1);
+            set_event(0x19, PERF_TYPE_RAW, "BUS_ACCESS");
+        }
     }
     if (perfs_count == 0) {
         return EAR_ERROR;

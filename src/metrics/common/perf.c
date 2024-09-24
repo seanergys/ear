@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <errno.h>
 #include <stdlib.h>
@@ -420,7 +420,7 @@ static state_t _perf_open_files(perf_t **perfs, char *pmu_name, char *ev_name, u
             pid = -1;
         }
     }
-    debug("ALLOCATING %d", cpus_count);
+    debug("allocating %d CPUs", cpus_count);
     *perfs = calloc(cpus_count, sizeof(perf_t));
     //
     sprintf(unit, "?");
@@ -498,39 +498,54 @@ static state_t _perf_open_files(perf_t **perfs, char *pmu_name, char *ev_name, u
     return EAR_SUCCESS;
 }
 
-state_t perf_open_files(perf_t **_perfs, char *_pmu_name, char *ev_name, uint *_perfs_count)
+state_t perf_open_files(perf_t **_perfs, char *_pmu_name, char *_ev_name, uint *_perfs_count)
 {
-    char     pmu_name     [128];
-    perf_t  *perfs        = NULL; // Perfs accumulation
-    uint     perfs_count  = 0;
-    perf_t  *allocs       = NULL;
-    uint     allocs_count = 0;
-    int      is_multi     = 0;
-    int      i            = 0;
-    state_t  s            = EAR_SUCCESS;
+    char     pmu_name      [128];
+    perf_t  *perfs         = NULL; // Perfs accumulation
+    uint     perfs_count   = 0;
+    perf_t  *allocs        = NULL;
+    uint     allocs_count  = 0;
+    int      is_multi_pmu  = 0;
+    int      is_multi_ev   = 0;
+    int      i             = 0; // pmu iterator
+    int      j             = 0; // ev  iterator
+    char   **ev_list       = NULL;
+    char    *ev_name       = NULL;
+    state_t  s             = EAR_SUCCESS;
 
     *_perfs_count = 0;
     // Is multi depends if a '%d' is found
-    is_multi = strstr(_pmu_name, "%d") != NULL;
+    is_multi_pmu = strstr(_pmu_name, "%d") != NULL;
+    is_multi_ev  = strchr( _ev_name, ',' ) != NULL;
+    //
+    if (is_multi_ev) {
+        strtoa(_ev_name, ',', &ev_list, NULL);
+    }
     do {
-        perfs = NULL;
-        perfs_count = 0;
-        // Converting pmu_name_%d into pmu_name_0
+        // Converting pmu_name_%d into pmu_name_0, pmu_name_1...
         sprintf(pmu_name, _pmu_name, i++);
-        debug("%s trying to open", pmu_name);
-        // Calling original perf_open_files
-        if (state_ok(s = _perf_open_files(&perfs, pmu_name, ev_name, &perfs_count))) {
-            // Counting the accumulation of perfs
-            allocs_count += perfs_count;
-            debug("%s returned %d/%d perfs (%p)", pmu_name, perfs_count, allocs_count, perfs);
-            // Allocating more space if required
-            allocs = realloc(allocs, allocs_count * sizeof(perf_t));
-            // Copying the newly received perfs into the accumulation
-            memcpy(&allocs[allocs_count - perfs_count], perfs, perfs_count * sizeof(perf_t));
-            // Freeing the memory because we already have it copied.
-            free(perfs);
-        }
-    } while(state_ok(s) && is_multi);
+        // Setting event pointer to 0
+        j = 0;
+        do {
+            ev_name = ev_list[j++];
+            // Calling perf section
+            perfs = NULL;
+            perfs_count = 0;
+            debug("%s:%s trying to open", pmu_name, ev_name);
+            // Calling original perf_open_files
+            if (state_ok(s = _perf_open_files(&perfs, pmu_name, ev_name, &perfs_count))) {
+                // Counting the accumulation of perfs
+                allocs_count += perfs_count;
+                debug("%s returned %d/%d perfs (%p)", pmu_name, perfs_count, allocs_count, perfs);
+                // Allocating more space if required
+                allocs = realloc(allocs, allocs_count * sizeof(perf_t));
+                // Copying the newly received perfs into the accumulation
+                memcpy(&allocs[allocs_count - perfs_count], perfs, perfs_count * sizeof(perf_t));
+                // Freeing the memory because we already have it copied.
+                free(perfs);
+            }
+        } while(state_ok(s) && is_multi_ev);
+    } while(is_multi_pmu && (state_ok(s) || (state_fail(s) && j > 1)));
     //
     if (allocs_count == 0) {
         return EAR_ERROR;
