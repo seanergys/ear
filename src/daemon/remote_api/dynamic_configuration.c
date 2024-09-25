@@ -1071,6 +1071,7 @@ void *eard_dynamic_configuration(void *tmp)
                 error("Panic, we cannot create socket for connection again,exiting");
             }
         } else {
+			printf("new connection from %d\n", eards_client);
             if (notify_new_connection(eards_client)!=EAR_SUCCESS){
                 error("Notifying new remote connection for processing");
             }
