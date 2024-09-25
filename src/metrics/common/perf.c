@@ -303,8 +303,8 @@ static ulong parse_config(char *buffer, ulong value)
         return 0;
     }
     for (i1 = 0; i1 < l1_count; ++i1) {
-        uint b_left  = 0;
-        uint b_right = 0;
+        ulong b_left  = 0;
+        ulong b_right = 0;
         if (strtoat(l1[i1], '-', (void **) &l2, &l2_count, ID_UINT) == NULL) {
             continue;
         }
@@ -317,7 +317,7 @@ static ulong parse_config(char *buffer, ulong value)
         }
         if (b_left >= b_right) {
             // Getting value
-            mask  = (((0x01 << (b_left - b_right + 1)) - 1) << b_right);
+            mask  = (((0x01LU << (b_left - b_right + 1LU)) - 1LU) << b_right);
             final = final | ((value << b_right) & mask);
             debug("rank[%d]: %s, mask 0x%lx, value 0x%lx (%lu), final 0x%lx",
                    i1, l1[i1], mask, value, value, final);
@@ -444,7 +444,7 @@ static state_t _perf_open_files(perf_t **perfs, char *pmu_name, char *ev_name, u
         // Getting event unit (i.e: 'event=0xff,umask=0x10')
         sprintf(path, "/sys/bus/event_source/devices/%s/events/%s.unit", pmu_name, ev_name);
         // Reading event file
-        if (state_ok(ear_file_read(path, memset(unit, 0, sizeof(buffer)), sizeof(buffer)))) {
+        if (state_ok(ear_file_read(path, memset(unit, 0, sizeof(unit)), sizeof(unit)))) {
             strclean(unit, '\n');
         }
         // Getting event format (i.e: 'config:0-7')
