@@ -81,26 +81,36 @@ state_t remove_remote_connection(int fd)
     return EAR_SUCCESS;
 }
 
+static void check_all_fds(afd_set_t *fdset)
+{
+	for (int32_t i = fdset->fd_min+1; i <= fdset->fd_max; i++) {
+		if (fdset->fds[i].fd != -1) {
+			if (!is_socket_alive(i)) {
+				remove_remote_connection(i);
+			}
+		}
+	}
+}
 
 /************* This thread will process the remote requests */
 extern state_t process_remote_requests(int clientfd);
 
 void *process_remote_req_th(void * arg)
 {
-    int numfds_ready;
-    state_t ret;
-    int i;
+	int numfds_ready;
+	state_t ret;
+	int i;
 
-    debug("Thread to process remote requests created ");
-    while ((numfds_ready = aselectv(&rfds_basic, NULL)) && (eard_must_exit == 0))
-    {
-        verbose(VRAPI, "RemoteAPI thread new info received (new_conn/new_data)");
-        if (numfds_ready > 0) {
-            /* This is the normal use case */
-            for (i = rfds_basic.fd_min; i <= rfds_basic.fd_max; i++) {
+	debug("Thread to process remote requests created ");
+	while ((numfds_ready = aselectv(&rfds_basic, NULL)) && (eard_must_exit == 0))
+	{
+		verbose(VRAPI, "RemoteAPI thread new info received (new_conn/new_data)");
+		if (numfds_ready > 0) {
+			/* This is the normal use case */
+			for (i = rfds_basic.fd_min; i <= rfds_basic.fd_max; i++) {
 				if (AFD_ISHUP(i, &rfds_basic)) {
 					verbose(VRAPI, "ERROR: socket remote client has disconnected, closing the socket");
-					remove_remote_connection(i);
+					//remove_remote_connection(i);
 				}
 				else if (AFD_ISSET(i, &rfds_basic)) {
 					debug("Channel %d ready for reading", i);
@@ -110,7 +120,7 @@ void *process_remote_req_th(void * arg)
 					} else {
 						verbose(VRAPI, "New request received in RemoteAPI thread");
 						ret = process_remote_requests(i);
-						if (ret != EAR_SUCCESS) remove_remote_connection(i);
+						//if (ret != EAR_SUCCESS) remove_remote_connection(i);
 					}
 				}
 			}
@@ -128,6 +138,7 @@ void *process_remote_req_th(void * arg)
 				error("Unexpected error in processing remote connections %s ", strerror(errno));
 			}
 		}
+		check_all_fds(&rfds_basic);
 	}
 	pthread_exit(0);
 }
