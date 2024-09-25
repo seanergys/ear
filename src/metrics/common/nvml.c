@@ -85,7 +85,7 @@ static state_t static_open()
 #define build_path_and_test(base_path) \
 	if (base_path) {\
 		char path[MAX_PATH_SIZE];\
-		strncpy(path, base_path, sizeof(path));\
+		strncpy(path, base_path, sizeof(path) - 1);\
 		strncat(path, "/lib64/libnvidia-ml.so", sizeof(path) - strlen(path) - 1);\
 		open_test(path);\
 		strncat(path, ".1", sizeof(path) - strlen(path) - 1);\

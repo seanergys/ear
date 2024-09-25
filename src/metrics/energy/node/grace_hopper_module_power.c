@@ -17,6 +17,7 @@
 #include <common/config.h>
 #include <common/sizes.h>
 #include <common/output/debug.h>
+#include <common/math_operations.h>
 #include <metrics/common/hwmon.h>
 #include <common/hardware/hardware_info.h>
 #include <metrics/common/apis.h>
