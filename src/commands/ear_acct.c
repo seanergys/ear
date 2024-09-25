@@ -1251,9 +1251,9 @@ void read_jobs_from_loops(query_adds_t *q_a)
 	const char *header_names[NUM_HEADER_NAMES] = { 
 		"JOBID",
 		"STEPID",
-		"LOCALID",
+		"AID",
 		"USERID",
-		"APPID",
+		"APPLICATION",
 		"START_TIME",
 		"END_TIME",
 		"START_MPI_TIME",
