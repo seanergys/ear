@@ -30,10 +30,10 @@ typedef struct perf_s {
 	struct  perf_event_attr attr;
 	void   *group;
 	int     fd;
-    double  scale; // Used in files
+    double  scale;
     char    unit[16]; // Used in files
-    char    event_name[64]; // Used as meta
-    char    pmu_name[64]; // Used as meta
+    char    event_name[64]; // Used in files
+    char    pmu_name[64]; // Used in files
 } perf_t;
 
 /* For per-process events */
@@ -42,6 +42,8 @@ state_t perf_open(perf_t *perf, perf_t *group, pid_t pid, uint type, ulong event
 state_t perf_open_cpu(perf_t *perf, perf_t *group, pid_t pid, uint type, ulong event, uint options, int cpu);
 
 state_t perf_open_files(perf_t **perfs, char *pmu, char *event, uint *perfs_count);
+
+void perf_set_scale(perf_t *perfs, uint perfs_count, char *event, double scale);
 
 state_t perf_reset(perf_t *perf);
 

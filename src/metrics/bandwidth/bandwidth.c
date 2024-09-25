@@ -59,8 +59,8 @@ void bwidth_load(topology_t *tp, int force_api)
     bwidth_intel63_load (tp, &ops);
     bwidth_intel106_load(tp, &ops);
     bwidth_intel143_load(tp, &ops);
-    bwidth_likwid_load  (tp, &ops);
     bwidth_perf_load    (tp, &ops);
+    bwidth_likwid_load  (tp, &ops);
 dummy:
     bwidth_dummy_load   (tp, &ops);
     // Bandiwdth wants to know more about the loaded API. This is safe because at 
@@ -258,15 +258,22 @@ char *bwidth_data_tostr(ullong cas, double gbs, char *buffer, size_t length)
 
 double bwidth_help_castogbs(ullong cas, double secs)
 {
-    double gbs = (double) cas;
-    gbs = (gbs / secs);
-    gbs = (gbs * line_size);
+    double gbs = 0.0;
+    // CAS to CAS/s
+    gbs = (((double) cas) / secs);
+    // CAS/s to BYTES/s
+    if (ops.castob != NULL) gbs = ops.castob(gbs);
+    else gbs = gbs * line_size;
+    // BYTES/s to GB/s
     gbs = (gbs / ((double) 1E9));
     return gbs;
 }
 
 double bwidth_help_castotpi(ullong cas, ullong instructions)
 {
+    if (ops.castob != NULL) {
+        return ops.castob((double) cas) / ((double) instructions);
+    }
     return (((double) cas) * line_size) / ((double) instructions);
 
 }

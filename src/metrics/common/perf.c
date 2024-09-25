@@ -98,6 +98,8 @@ state_t perf_open_cpu(perf_t *perf, perf_t *group, pid_t pid, uint type, ulong e
 	}
 	perf->attr.read_format = PERF_FORMAT_TOTAL_TIME_ENABLED | PERF_FORMAT_TOTAL_TIME_RUNNING | gp_flag;
 	perf->fd = syscall(__NR_perf_event_open, &perf->attr, pid, cpu, gp_fd, 0);
+    // Used in some cases
+    perf->scale = 1.0;
 
 	#ifdef SHOW_DEBUGS
         debug("input: event 0x%lx, group %p and fd %d type %u size %u cpu %d group fd %d", event, group, perf->fd, perf->attr.type, perf->attr.size, cpu, gp_fd);
@@ -303,8 +305,8 @@ static ulong parse_config(char *buffer, ulong value)
         return 0;
     }
     for (i1 = 0; i1 < l1_count; ++i1) {
-        ulong b_left  = 0;
-        ulong b_right = 0;
+        ulong b_left  = 0LU;
+        ulong b_right = 0LU;
         if (strtoat(l1[i1], '-', (void **) &l2, &l2_count, ID_UINT) == NULL) {
             continue;
         }
@@ -396,7 +398,7 @@ static state_t _perf_open_files(perf_t **perfs, char *pmu_name, char *ev_name, u
     ulong   config     = 0;
     ulong   event      = 0;
     ulong   umask      = 0;
-    double  scale      = 0.0;
+    double  scale      = 1.0;
     uint    type       = 0;
     DIR    *dir        = NULL;
 
@@ -483,6 +485,8 @@ static state_t _perf_open_files(perf_t **perfs, char *pmu_name, char *ev_name, u
             cpus_count -= 1;
             cpu -= 1;
         }
+        strcpy((*perfs)[cpu].event_name, ev_name);
+        strcpy((*perfs)[cpu].pmu_name, pmu_name);
         strcpy((*perfs)[cpu].unit, unit);
         (*perfs)[cpu].scale = scale;
     }
@@ -553,4 +557,14 @@ state_t perf_open_files(perf_t **_perfs, char *_pmu_name, char *_ev_name, uint *
     *_perfs = allocs;
     *_perfs_count = allocs_count;
     return EAR_SUCCESS;
+}
+
+void perf_set_scale(perf_t *perfs, uint perfs_count, char *ev_name, double scale)
+{
+    int i;
+    for (i = 0; i < perfs_count; ++i) {
+        if (strcmp(perfs[i].event_name, ev_name) == 0) {
+            perfs[i].scale = scale;
+        }
+    }
 }
