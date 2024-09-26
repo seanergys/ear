@@ -505,6 +505,7 @@ static state_t _perf_open_files(perf_t **perfs, char *pmu_name, char *ev_name, u
 state_t perf_open_files(perf_t **_perfs, char *_pmu_name, char *_ev_name, uint *_perfs_count)
 {
     char     pmu_name      [128];
+    char   *ev_list_fake   [2];
     perf_t  *perfs         = NULL; // Perfs accumulation
     uint     perfs_count   = 0;
     perf_t  *allocs        = NULL;
@@ -522,8 +523,11 @@ state_t perf_open_files(perf_t **_perfs, char *_pmu_name, char *_ev_name, uint *
     is_multi_pmu = strstr(_pmu_name, "%d") != NULL;
     is_multi_ev  = strchr( _ev_name, ',' ) != NULL;
     //
-    if (is_multi_ev) {
-        strtoa(_ev_name, ',', &ev_list, NULL);
+    ev_list_fake[0] = _ev_name;
+    ev_list_fake[1] = NULL;
+    //
+    if (strtoa(_ev_name, ',', &ev_list, NULL) == NULL) {
+        ev_list = ev_list_fake;
     }
     do {
         // Converting pmu_name_%d into pmu_name_0, pmu_name_1...
@@ -531,7 +535,9 @@ state_t perf_open_files(perf_t **_perfs, char *_pmu_name, char *_ev_name, uint *
         // Setting event pointer to 0
         j = 0;
         do {
+            debug("J %d, ev %s\n", j, ev_list[j]);
             ev_name = ev_list[j++];
+            debug("J++ %d\n", j);
             // Calling perf section
             perfs = NULL;
             perfs_count = 0;
@@ -548,7 +554,7 @@ state_t perf_open_files(perf_t **_perfs, char *_pmu_name, char *_ev_name, uint *
                 // Freeing the memory because we already have it copied.
                 free(perfs);
             }
-        } while(state_ok(s) && is_multi_ev);
+        } while(is_multi_ev && state_ok(s));
     } while(is_multi_pmu && (state_ok(s) || (state_fail(s) && j > 1)));
     //
     if (allocs_count == 0) {
