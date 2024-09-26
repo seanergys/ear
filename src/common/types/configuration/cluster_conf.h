@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 #ifndef _CLUSTER_CONF_H
 #define _CLUSTER_CONF_H
@@ -25,6 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <grp.h>
 #include <common/sizes.h>
 #include <common/config.h>
 #include <common/states.h>
@@ -240,7 +234,13 @@ int get_default_policies(cluster_conf_t *conf, policy_conf_t **policies, int tag
 eargm_def_t *get_eargm_conf(cluster_conf_t *conf, char *host);
 
 /** Given a EARGM definition, removes all islands that do not have said EARGM id */
-void remove_extra_islands(cluster_conf_t *conf, eargm_def_t *e_def);
+void remove_islands_by_eargm(cluster_conf_t conf[static 1], eargm_def_t *e_def);
+
+/** Given an island id, removes all islands that do not have said id */
+void remove_islands_by_island_id(cluster_conf_t conf[static 1], int32_t id);
+
+/** Given a tag, removes all islands that do not have said tag*/
+void remove_islands_by_tag(cluster_conf_t conf[static 1], const char *tag);
 
 /** Given a cluster_conf, checks if all node tags have their powercap set to 1 (unlimited) */
 uint tags_are_unlimited(cluster_conf_t *conf);

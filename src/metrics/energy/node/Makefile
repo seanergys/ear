@@ -1,4 +1,4 @@
-CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC
+CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC -D_GNU_SOURCE
 
 
 ######## FILES
@@ -9,10 +9,10 @@ ener_OBJS = \
     energy_dcmi.o \
     energy_sd650.o \
     energy_inm_power.o \
-    energy_SD650N_V2.o \
     energy_dummy.o \
     energy_cpu_gpu.o \
     energy_sd650_power.o \
+	  grace_hopper_module_power.o \
     energy_eard_nm.o \
 		energy_cray_pm.o
 
@@ -37,10 +37,10 @@ ener_BINS = \
     energy_dcmi.so \
     energy_sd650.so \
     energy_inm_power.so \
-    energy_SD650N_V2.so \
     energy_cpu_gpu.so \
     energy_dummy.so \
     energy_sd650_power.so  \
+    grace_hopper_module_power.so \
 		energy_cray_pm.so
 
 ifeq ($(SYSTEM_TYPE), 3)

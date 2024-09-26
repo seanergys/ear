@@ -1,3 +1,38 @@
+### EAR 5.1
+- CPU temperature read by EARL and reported to csv files.
+- Prevent workflows where all applications see all GPUs and all of them change GPU frequency.
+- Support for Python applications which use multiprocess module.
+- EARL is compiled by default with LITE mode and DCGM metric collection enabled by default.
+- Fix DCGM application-level metrics computation.
+- Prevent closing fd 0 on NTASK_WORKSHARING use case.
+- Avoid collapsing application's channel 2 when earl has high verbosity.
+- Checking for authorized groups fixed.
+- Added a tool for  creating application-level signatures csv file from loop signatures csv file.
+- EARL Loader can detect Python MPI flavour without an environment variable.
+- Fixed an error with EARD remote connections not being properly closed.
+- Add --domain option to econtrol.
+
+### EAR 5.0.1
+- EARD local API creates an application directory if a third-party program connects with it.
+- Fixed a typo in ereport queries.
+- Prevent closing fd 0 on NTASK\_WORKSHARING use cases.
+- Prevent closing fd 0 when initiating earl\_node\_mgr\_info.
+
+### EAR 5.0
+- Workflows support. Automatic detection of applications executed with same jobid/stepid.
+- Fixed Intel PSTATE driver to avoid loading if there is a driver already loaded.
+- Robustness improved.
+- OneAPI support for Intel PVC GPUs.
+- EAR Data Center Monitoring component added.
+- Improved metrics and management APIs.
+- Detect the interactive step on slurm systems >= 20.11 if LaunchParameters contains use\_interactive\_step in slurm.conf.
+- Support for getting NVIDIA DCGM metrics.
+- enode\_info tool added.
+- Process resource usage is now reported by the EAR Library logs.
+- Support for non-MPI multi-task applications, when tasks are spawned at invokation time, not from the application itself.
+- Fixes in EAR Loader to support MPI application when MPI symbols can not be detected.
+- GPU GFLOPS are now estimated and reported when using NVIDIA GPUs.
+
 ### EAR 4.3.1
 - Documentation typos fixed.
 - EAR configuration files templates updated.

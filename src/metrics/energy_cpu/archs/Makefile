@@ -8,6 +8,8 @@ temp_OBJS = \
 	cpu_util.o \
   linux_powercap.o \
 	perf.o \
+  acpi_power.o \
+  grace_cpu_power.o \
 	dummy.o 
 
 ######## RULES

@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 
 #define _GNU_SOURCE
@@ -719,6 +712,20 @@ void  init_earl_node_mgr_info()
   verbose(WF_SUPPORT_VERB+1," EARL[%d]: allocation %d apps", getpid(), total_num_earl_apps);
 
   node_mgr_job_info = calloc(total_num_earl_apps, sizeof(node_mgr_sh_data_t));
+	if (!node_mgr_job_info) {
+		total_num_earl_apps = 0;
+		node_mgr_info_unlock();
+		verbose_error("Allocating node manager info.");
+		return;
+	}
+
+	/* Initialize data */
+	for (int i = 0; i < total_num_earl_apps; i++) {
+		node_mgr_job_info[i].fd_lib          = -1;
+		node_mgr_job_info[i].fd_sig          = -1;
+		node_mgr_job_info[i].libsh           = NULL;
+		node_mgr_job_info[i].shsig           = NULL;
+	}
 
   uint curr_app = 0;
 
@@ -760,8 +767,9 @@ void  init_earl_node_mgr_info()
         appid_folder = strtok(appid_folder_full,".app");
         lid = (job_id)atoi(appid_folder);
         verbose_master(WF_SUPPORT_VERB,"New APP[%d] detected for %lu/%lu/%lu", curr_app,jid, sid, lid);
-        if (curr_app == total_num_earl_apps){
-          verbose_master(WF_SUPPORT_VERB,"EARL error: initialzing node_mgr_earl info. Computed %d runtime based on folders %d. Reallocating memory old address %p", total_num_earl_apps, curr_app, node_mgr_job_info);
+        if (curr_app == total_num_earl_apps)
+				{
+          verbose_warning_master("Initialzing node_mgr_earl info. Current total apps: %d Count based on folders %d. Reallocating memory old address %p", total_num_earl_apps, curr_app, node_mgr_job_info);
 					node_mgr_job_info = realloc(node_mgr_job_info, sizeof(node_mgr_sh_data_t)*(total_num_earl_apps+1));
 					if (node_mgr_job_info == NULL){
 						verbose_master(WF_SUPPORT_VERB,"EARL error!!, memory cannot be reallocated");
@@ -946,10 +954,9 @@ void update_earl_node_mgr_info()
 
 #if WF_SUPPORT
 	uint release = 0;
-
-
 	uint expected_apps = 0;
 	uint earl_apps_in_sh_data = 0;
+
 	/* We check the modification date */
 	for (uint j = 0; j < total_num_earl_apps; j++)
 	{

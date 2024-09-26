@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 #ifndef METRICS_COMMON_HWMON
 #define METRICS_COMMON_HWMON
@@ -23,6 +16,8 @@
 
 typedef const char *hwmon_t;
 
+// Temperature
+//
 struct Hwmon_s
 {
 	hwmon_t temp_input;
@@ -33,6 +28,29 @@ Hwmon __attribute__((weak)) =
     .temp_max   = "/sys/class/hwmon/hwmon%d/temp%d_max",
     .temp_input = "/sys/class/hwmon/hwmon%d/temp%d_input",
 };
+
+// CPU power acpi_power
+//
+struct Hwmon_acpi_power
+{
+	hwmon_t power_avg;
+	hwmon_t power_avg_int;
+}Hwmon_power_meter __attribute__((weak)) =
+{
+	.power_avg 	= "/sys/class/hwmon/hwmon%d/device/power%d_average",
+	.power_avg_int  = "/sys/class/hwmon/hwmon%d/device/power%d_average_interval",
+};
+
+// Intel PVC GPU
+
+struct Hwmon_pvc
+{
+	hwmon_t energy_j;
+}Hwmon_pvc_energy __attribute__((weak)) =
+{
+	.energy_j = "/sys/class/hwmon/hwmon%d/energy%d_input",
+};
+
 
 /* Find a set of drivers by name, also allocates memory for its ids.
  * Remember to free them. */

@@ -1,25 +1,18 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 
 #ifndef _EARL_EXTERNS_ALLOC_H
 #define _EARL_EXTERNS_ALLOC_H
 
-#include <linux/limits.h>
+#include <common/sizes.h>
 #include <common/types/application.h>
 #include <common/types/loop.h>
 #include <common/states.h>
@@ -31,13 +24,13 @@
 application_t application;
 settings_conf_t *system_conf=NULL;
 resched_t *resched_conf=NULL;
-char system_conf_path[PATH_MAX];
-char resched_conf_path[PATH_MAX];
-char node_name[PATH_MAX];
+char system_conf_path[SZ_PATH];
+char resched_conf_path[SZ_PATH];
+char node_name[SZ_NAME_MEDIUM];
 
-char loop_summary_path[PATH_MAX];
-char app_summary_path[PATH_MAX];
-char ear_app_name[PATH_MAX]; // TODO: use application.app_id
+char loop_summary_path[SZ_PATH];
+char app_summary_path[SZ_PATH];
+char ear_app_name[SZ_PATH]; // TODO: use application.app_id
 
 // Common variables
 ulong ear_frequency; 

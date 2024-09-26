@@ -1,37 +1,31 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 //#define SHOW_DEBUGS 1
 
+#include <common/system/symplug.h>
+
 #include <unistd.h>
+#include <dlfcn.h>
+
 #include <common/includes.h>
 #include <common/output/debug.h>
-#include <common/system/symplug.h>
 
 state_t plug_join(void *handle, void *calls[], const char *names[], uint n)
 {
     uint i, counter;
     char *error;
 
-    for (counter = i = 0; i < n; ++i)
-    {
+    for (counter = i = 0; i < n; ++i) {
         calls[i] = dlsym(handle, names[i]);
         error    = dlerror();
-
         if ((calls[i] != NULL) && (error == NULL)) {
             debug("symbol %s found (%p)", names[i], calls[i]);
             counter++;
@@ -43,7 +37,6 @@ state_t plug_join(void *handle, void *calls[], const char *names[], uint n)
     if (counter == 0) {
         return_msg(EAR_ERROR, "No symbols loaded");
     }
-
     return EAR_SUCCESS;
 }
 
@@ -72,7 +65,6 @@ state_t plug_open(char *path, void *calls[], const char *names[], uint n, int fl
 {
     return static_open(path, calls, names, n, flags);
 }
-
 
 state_t plug_test(void *calls[], uint n)
 {

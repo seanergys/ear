@@ -1,18 +1,12 @@
-/*
- * This program is part of the EAR software.
+/*********************************************************************
+ * Copyright (c) 2024 Energy Aware Solutions, S.L
  *
- * EAR provides a dynamic, transparent and ligth-weigth solution for
- * Energy management. It has been developed in the context of the
- * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
  *
- * 
- * BSC Contact   mailto:ear-support@bsc.es
- * 
- *
- * EAR is an open source software, and it is licensed under both the BSD-3 license
- * and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
- * and COPYING.EPL files.
- */
+ * SPDX-License-Identifier: EPL-2.0
+ **********************************************************************/
 
 
 #ifndef _DCGMI_LIB_COMMON_H_

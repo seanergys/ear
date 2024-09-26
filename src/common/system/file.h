@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 #ifndef _FILE_H
 #define _FILE_H
@@ -49,10 +42,16 @@
 #define F_OW 			S_IWOTH
 #define F_OX 			S_IXOTH
 
-/** Locks the file for writting in a fixe dpart */
+/** Locks the file for writting in a fixed part. */
 int file_lock(int fd);
 
-/* Tries to acquire the lock with file_lock with a max a attemps = tiemoput, expressed as loop iterations, not time . Returns true when the lock has been acquired*/
+/** Tries to acquire the lock through the file descriptor `fd`.
+ * If the lock is hold by another process, the function returns immediately and errno can be read.
+ * \return 0 The lock was acquired.
+ * \return -1 Otherwise. */
+int file_trylock(int fd);
+
+/** Tries to acquire the lock with file_trylock with a max a attemps = tiemoput, expressed as loop iterations, not time. Returns true when the lock has been acquired. */
 int file_lock_timeout(int fd, ulong timeout);
 
 /** Creates a file to be used  as lock. It doesn't locks the file */
@@ -63,13 +62,16 @@ int file_lock_master(char *lock_file_name);
 int file_lock_master_perm(char *lock_file_name, int flag, mode_t mode);
 
 /** Closes and removes the lock file */
-void file_lock_clean(int fd,char *lock_file_name);
+void file_lock_clean(int fd, char *lock_file_name);
 
 /** Unlocks the file */
 int file_unlock(int fd);
 
 /** Releases a lock file */
-int file_unlock_master(int fd,char *lock_file_name);
+int file_unlock_master(int fd, char *lock_file_name);
+
+/** Returns whether the file pointed by \p path exsits. */
+int file_exists(const char *path);
 
 /** */
 int file_is_regular(const char *path);
@@ -89,20 +91,16 @@ state_t ear_file_write(const char *path, const char *buffer, size_t size);
 /** */
 state_t ear_file_clean(const char *path);
 
-
-/* Changes the limit of files open , use ULONG_MAX to set the maximum*/
-void   set_no_files_limit(ulong new_limit);
-
+/* Changes the limit of files open , use ULONG_MAX to set the maximum */
+void set_no_files_limit(ulong new_limit);
 
 /* Returns the current limit of files open */
-ulong  get_no_files_limit();
-
+ulong get_no_files_limit();
 
 /* Returns the current limit of stack size */
 ulong get_stack_size_limit();
 
-
 /* Changes the limit of stack size, use ULONG_MAX to set the maximum*/
-void  set_stack_size_limit(ulong new_limit);
+void set_stack_size_limit(ulong new_limit);
 
 #endif

@@ -1,19 +1,12 @@
-/*
+/*********************************************************************
+ * Copyright (c) 2024 Energy Aware Solutions, S.L
  *
- * This program is part of the EAR software.
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
  *
- * EAR provides a dynamic, transparent and ligth-weigth solution for
- * Energy management. It has been developed in the context of the
- * Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
- *
- * 
- * BSC Contact   mailto:ear-support@bsc.es
- * 
- *
- * This file is licensed under both the BSD-3 license for individual/non-commercial
- * use and EPL-1.0 license for commercial use. Full text of both licenses can be
- * found in COPYING.BSD and COPYING.EPL files.
- */
+ * SPDX-License-Identifier: EPL-2.0
+ **********************************************************************/
 
 
 #include <errno.h>
@@ -152,7 +145,7 @@ state_t policy_init(polctx_t *c)
 
 		if (use_energy_models)
 		{
-			cpu_energy_model = energy_model_load_cpu_model(c->app->user_type, &c->app->installation, &arch_desc);
+			cpu_energy_model = energy_model_load_cpu_model(c->app, &arch_desc);
 			if (!cpu_energy_model)
 			{
 				error_lib("Loading energy model");

@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 #ifndef _EARL_VERBOSE_H
 #define _EARL_VERBOSE_H
@@ -53,6 +46,12 @@
 } while (0);
 
 
+#define verbose_info3(msg, ...) do { \
+	verbose(VEARL_DEBUG, COL_BLU "[%s][%d][DEBUG] " COL_CLR msg, \
+					node_name, my_node_id, ##__VA_ARGS__); \
+} while (0);
+
+
 #define verbose_error(msg, ...) do { \
     verbose(VEARL_ERROR, COL_RED "[%s][%d][ERROR] " COL_CLR msg, \
 						node_name, my_node_id, ##__VA_ARGS__); \
@@ -74,6 +73,12 @@
 #define verbose_info2_master(msg, ...) do { \
 	verbose_master(VEARL_INFO2, COL_BLU "[%s][%d][INFO2] " COL_CLR msg, \
 								 node_name, my_node_id, ##__VA_ARGS__); \
+} while (0);
+
+
+#define verbose_info3_master(msg, ...) do { \
+	verbose_master(VEARL_DEBUG, COL_BLU "[%s][%d][DEBUG] " COL_CLR msg, \
+					node_name, my_node_id, ##__VA_ARGS__); \
 } while (0);
 
 

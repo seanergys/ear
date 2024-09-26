@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 #include <fcntl.h>
 #include <stdio.h>
@@ -47,11 +40,19 @@ int range_conf_contains_node(node_conf_t *node, char *nodename)
     int i, j;
     for (i = 0; i < node->range_count; i++)
     {
+        //if the first letters of the prefix do not correspond, we can continue
+        if (strncmp(node->range[i].prefix, nodename, strlen(node->range[i].prefix))) {
+            continue;
+        }
         if (node->range[i].end == -1)
         {
+            //no need to check in this case
+            return 1;
+#if 0
             sprintf(aux_name, "%s", node->range[i].prefix);
             if (!strcmp(aux_name, nodename)) return 1;
             else continue;
+#endif
         }
         if (node->range[i].end == node->range[i].start)
         {
@@ -78,11 +79,21 @@ int island_range_conf_contains_node(node_island_t *node, char *nodename)
     int i, j;
     for (i = 0; i < node->num_ranges; i++)
     {
+        //if the first letters of the prefix do not correspond, we can continue
+        if (strncmp(node->ranges[i].prefix, nodename, strlen(node->ranges[i].prefix))) {
+            //debug("node range does not correspond (%s vs %s), continuing\n", node->ranges[i].prefix, nodename);
+            continue;
+        }
         if (node->ranges[i].end == -1)
         {
+            //we don't need to do the comparison in this case, if the prefix is equal to the nodename they are the same
+            //debug("entering comparison with nodenames %s and %s\n", node->ranges[i].prefix, nodename);
+            return i;
+#if 0
             sprintf(aux_name, "%s", node->ranges[i].prefix);
             if (!strcmp(aux_name, nodename)) return i;
             else continue;
+#endif
         }
         if (node->ranges[i].end == node->ranges[i].start)
         {
@@ -181,6 +192,8 @@ void report_my_node_conf(my_node_conf_t *my_node_conf)
         printf("%60.60s", buffer);
         xsnprintf(buffer, sizeof(buffer), "powercap plugin file %s\n", (my_node_conf->powercap_plugin == NULL)?"not defined":my_node_conf->powercap_plugin);
         printf("%60.60s", buffer);
+        xsnprintf(buffer, sizeof(buffer), "powercap_node_plugin %s\n", (my_node_conf->powercap_node_plugin != NULL)?"not defined":my_node_conf->powercap_node_plugin);
+        printf("%60.60s", buffer);
         xsnprintf(buffer, sizeof(buffer), "powercap_gpu_plugin %s\n", (my_node_conf->powercap_gpu_plugin != NULL)?"not defined":my_node_conf->powercap_gpu_plugin);
         for (i=0;i<my_node_conf->num_policies;i++){
           report_policy_conf(&my_node_conf->policies[i]);
@@ -245,6 +258,10 @@ void print_my_node_conf(my_node_conf_t *my_node_conf)
         if (my_node_conf->powercap_plugin != NULL && strlen(my_node_conf->powercap_plugin) > 1) {
             verbose(VCCONF,"powercap_plugin %s ",my_node_conf->powercap_plugin);
         }
+				if (my_node_conf->powercap_node_plugin != NULL && strlen(my_node_conf->powercap_node_plugin) > 1) {
+            verbose(VCCONF,"powercap_node_plugin %s ",my_node_conf->powercap_node_plugin);
+        }
+
         if (my_node_conf->powercap_gpu_plugin != NULL && strlen(my_node_conf->powercap_gpu_plugin) > 1) {
             verbose(VCCONF,"powercap_gpu_plugin %s ",my_node_conf->powercap_gpu_plugin);
         }

@@ -1,25 +1,17 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 //#define SHOW_DEBUGS 1
 
 #define _GNU_SOURCE
 #include <sched.h>
-#include <fcntl.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
@@ -83,31 +75,65 @@ static state_t build_frequencies_list()
     return EAR_SUCCESS;
 }
 
-void mgt_acpi_cpufreq_load(topology_t *tp, mgt_ps_driver_ops_t *ops)
+static int is_userspace_available(char *buffer)
 {
-    char buffer[PATH_MAX];
     int found_userspace =  0;
-    int set_frequency   =  1;
-    int set_governor    =  1;
     int fd_sag0         = -1;
 
-    // This is a userspace driver (based on acpi_cpufreq model).
-    // To DEBUG this class, set SHOW_DEBUGS in metrics/common/file.c.
-    if (!filemagic_can_read(PATH_SAG0, &fd_sag0)) return;
+    if (!filemagic_can_read(PATH_SAG0, &fd_sag0)) return -1;
     // Read if there is userspace governor, if not this is not a valid driver.
     while (!found_userspace && filemagic_word_read(fd_sag0, buffer, 0)) {
-        found_userspace = (strncmp(buffer, "userspace", 9) == 0);
+        found_userspace = (strncmp(buffer, Goverstr.userspace, 9) == 0);
         debug("read the word '%s' (found userspace? %d)", buffer, found_userspace);
     }
     close(fd_sag0);
-    if (!found_userspace) {
-        return_msg(, "Current driver does not have userspace governor.");
-    }
+    return found_userspace;
+}
+
+void mgt_acpi_cpufreq_load(topology_t *tp, mgt_ps_driver_ops_t *ops)
+{
+    char buffer[PATH_MAX];
+    int set_frequency   =  1;
+    int set_governor    =  1;
+    int is_userspace    =  0;
+
     // Testing if frequency/governor set files are accessible
     set_frequency = filemagic_can_mwrite(PATH_SSS, tp->cpu_count, &fds_sss);
     set_governor  = filemagic_can_mwrite(PATH_SGV, tp->cpu_count, &fds_sgv);
     if (!set_frequency && !filemagic_can_mread(PATH_SSS, tp->cpu_count, &fds_sss)) return;
     if (!set_governor  && !filemagic_can_mread(PATH_SGV, tp->cpu_count, &fds_sgv)) return;
+    // This is a userspace driver (based on acpi_cpufreq model).
+    switch(is_userspace_available(buffer)) {
+        case -1:
+            debug("Can not determine if driver have userspace governor");
+            return;
+        case  0:
+            if (!set_governor) {
+                debug("Can not determine if driver have userspace governor");
+                return;
+            }
+            // Saving current CPU0 governor
+            if (!filemagic_word_read(fds_sgv[0], buffer, 1)) {
+                debug("Error when reading current governor");
+                return;
+            }
+            // Some drivers shown a strange behaviour. Only showed that userspace is available
+            // after setting userspace in 'scaling_governor' file.
+            if (!filemagic_word_write(fds_sgv[0], Goverstr.userspace, strlen(Goverstr.userspace), 0)) {
+                debug("Error occurred: %s", state_msg);
+            }
+            // If is not found again...
+            is_userspace = (is_userspace_available(buffer) == 1);
+            // Recovering last governor
+            filemagic_word_write(fds_sgv[0], buffer, strlen(buffer), 0);
+            // Cleaning
+            if (!is_userspace) {
+                debug("Current driver does not have userspace governor");
+                free(fds_sss);
+                free(fds_sgv);
+                return;
+            }
+    }
     // Getting base frequency and boost
     cpufreq_base_init(tp, &bf);
     // Allocating space for current list

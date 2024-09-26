@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 // #define SHOW_DEBUGS 1
 #include <time.h>
@@ -93,7 +86,7 @@ typedef typeof((MYSQL_BIND){0}.is_null) ear_my_bool;
                                 "time, avg_f, def_f) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
 #if USE_GPUS
-#define GPU_SIGNATURE_MYSQL_QUERY   "INSERT INTO GPU_signatures(GPU_power, GPU_freq, GPU_mem_freq, GPU_util, GPU_mem_util) VALUES (?, ?, ?, ?, ?)"
+#define GPU_SIGNATURE_MYSQL_QUERY   "INSERT INTO GPU_signatures(GPU_power, GPU_freq, GPU_mem_freq, GPU_util, GPU_mem_util, GPU_gflops) VALUES (?, ?, ?, ?, ?, ?)"
 #endif
 
 #if USE_GPUS
@@ -1721,7 +1714,7 @@ long long mysql_batch_insert_gpu_signatures(MYSQL *connection, signature_contain
     MYSQL_STMT *statement = mysql_stmt_init(connection);
     if (!statement) return EAR_MYSQL_ERROR;
 
-    char *params = ", (?, ?, ?, ?, ?)";
+    char *params = ", (?, ?, ?, ?, ?, ?)";
     char *query = xmalloc(strlen(GPU_SIGNATURE_MYSQL_QUERY) + strlen(params)*(num_gpu_sigs-1) + 1);
     strcpy(query, GPU_SIGNATURE_MYSQL_QUERY);
     for (i = 1; i < num_gpu_sigs; i++)
@@ -1755,7 +1748,8 @@ long long mysql_batch_insert_gpu_signatures(MYSQL *connection, signature_contain
             }
 
             //double types
-            bind[0+offset].buffer_type = MYSQL_TYPE_DOUBLE;
+            bind[0+offset].buffer_type =  MYSQL_TYPE_DOUBLE;
+            bind[5+offset].buffer_type = MYSQL_TYPE_FLOAT;
 
             //storage variable assignation
             bind[0+offset].buffer = (char *)&gpu_sig->gpu_data[j].GPU_power;
@@ -1763,6 +1757,7 @@ long long mysql_batch_insert_gpu_signatures(MYSQL *connection, signature_contain
             bind[2+offset].buffer = (char *)&gpu_sig->gpu_data[j].GPU_mem_freq;
             bind[3+offset].buffer = (char *)&gpu_sig->gpu_data[j].GPU_util;
             bind[4+offset].buffer = (char *)&gpu_sig->gpu_data[j].GPU_mem_util;
+            bind[5+offset].buffer = (char *)&gpu_sig->gpu_data[j].GPU_GFlops;
 
             offset += GPU_SIGNATURE_ARGS;
         }
@@ -1814,7 +1809,7 @@ int mysql_retrieve_gpu_signatures(MYSQL *connection, char *query, gpu_signature_
 
     if (mysql_stmt_prepare(statement, query, strlen(query))) return mysql_statement_error(statement);
 
-    MYSQL_BIND bind[6];
+    MYSQL_BIND bind[GPU_SIGNATURE_ARGS+1];
     gpu_app_t base_data;
     memset(bind, 0, sizeof(bind));
     memset(&base_data, 0, sizeof(gpu_app_t));
@@ -1829,6 +1824,7 @@ int mysql_retrieve_gpu_signatures(MYSQL *connection, char *query, gpu_signature_
 
     //integer types
     bind[1].buffer_type = MYSQL_TYPE_DOUBLE;
+    bind[6].buffer_type = MYSQL_TYPE_FLOAT;
 
     //storage variable assignation
     bind[0].buffer = &id;
@@ -1837,6 +1833,7 @@ int mysql_retrieve_gpu_signatures(MYSQL *connection, char *query, gpu_signature_
     bind[3].buffer = &base_data.GPU_mem_freq;
     bind[4].buffer = &base_data.GPU_util;
     bind[5].buffer = &base_data.GPU_mem_util;
+    bind[6].buffer = &base_data.GPU_GFlops;
 
     if (mysql_stmt_bind_result(statement, bind)) return mysql_statement_error(statement);
 

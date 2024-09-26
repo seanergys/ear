@@ -1,65 +1,54 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
+// #define SHOW_DEBUGS 1
 #include <errno.h>
 #include <stdlib.h>
+#include <common/output/debug.h>
 #include <metrics/temperature/archs/dummy.h>
 
 static uint socket_count;
 
-state_t temp_dummy_status(topology_t *topo)
+TEMP_F_LOAD(dummy)
 {
-	if (socket_count == 0) {
-		if (topo->socket_count > 0) {
-			socket_count = topo->socket_count;
-		} else {
-			socket_count = 1;
-		}
-	}
-	return EAR_SUCCESS;
+    socket_count = (tp->socket_count > 0) ? tp->socket_count : 1;
+    apis_put(ops->get_info, temp_dummy_get_info);
+    apis_put(ops->init,     temp_dummy_init);
+    apis_put(ops->dispose,  temp_dummy_dispose);
+    apis_put(ops->read,     temp_dummy_read);
 }
 
-state_t temp_dummy_init(ctx_t *c)
+TEMP_F_GET_INFO(dummy)
 {
-	return EAR_SUCCESS;
+    info->api         = API_DUMMY;
+    info->scope       = SCOPE_NODE;
+    info->granularity = GRANULARITY_SOCKET;
+    info->devs_count  = socket_count;
 }
 
-state_t temp_dummy_dispose(ctx_t *c)
+TEMP_F_INIT(dummy)
 {
-	return EAR_SUCCESS;
+    return EAR_SUCCESS;
 }
 
-// Data
-state_t temp_dummy_count_devices(ctx_t *c, uint *count)
+TEMP_F_DISPOSE(dummy)
 {
-	if (count != NULL) {
-		*count = socket_count;
-	}
-	return EAR_SUCCESS;
+    // Empty
 }
 
-// Getters
-state_t temp_dummy_read(ctx_t *c, llong *temp, llong *average)
+TEMP_F_READ(dummy)
 {
-	if (temp != NULL) {
-		if (memset((void *) temp, 0, sizeof(llong)*socket_count) != temp) {
-			return_msg(EAR_ERROR, strerror(errno));
-		}
-	}
+		debug("temp dummy read");
+    if (temp != NULL) {
+        memset((void *) temp, 0, sizeof(llong)*socket_count);
+    }
 	if (average != NULL) {
 		*average = 0;
 	}

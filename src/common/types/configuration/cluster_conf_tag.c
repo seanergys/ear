@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 #define _GNU_SOURCE 
 
@@ -176,6 +169,11 @@ state_t TAG_parse_token(tag_t **tags_i, unsigned int *num_tags_i, char *line)
         {
             strcpy(tags[idx].powercap_plugin, value);
         }
+			  else if (!strcmp(key, "NODE_POWERCAP_PLUGIN"))
+        {
+            strcpy(tags[idx].powercap_node_plugin, value);
+        }
+
         else if (!strcmp(key, "GPU_POWERCAP_PLUGIN"))
         {
             strcpy(tags[idx].powercap_gpu_plugin, value);
@@ -250,6 +248,7 @@ void print_tags_conf(tag_t *tag, int i)
 	verbosen(VCCONF, "\t\timc_max_freq %lu imc_min_freq %lu\n", tag->imc_max_freq, tag->imc_min_freq);
     verbosen(VCCONF, "\t\tidle_governor: %s\tidle_pstate: %d\n", tag->idle_governor, tag->idle_pstate);
     verbosen(VCCONF, "\t\tenergy_model: %s\tenergy_plugin: %s\tpowercap_plugin: %s", tag->energy_model, tag->energy_plugin, tag->powercap_plugin);
+    verbosen(VCCONF, "\t\tpowercap_node_plugin: %s\tpowercap_gpu_plugin: %s", tag->powercap_node_plugin, tag->powercap_gpu_plugin);
 		if (tag->powercap == DEF_POWER_CAP){
 			verbosen(VCCONF,"\t\t powercap set_def\n");
     }

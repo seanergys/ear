@@ -1,21 +1,16 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 //#define SHOW_DEBUGS 1
+
+#define _GNU_SOURCE
 #include <common/output/verbose.h>
 
 #include <math.h>
@@ -293,6 +288,12 @@ int read_command(int s, request_t *command)
             memcpy(command->my_req.pc_opt.greedy_nodes, &tmp_command[aux_size], offset);
             memcpy(command->my_req.pc_opt.extra_power, &tmp_command[aux_size + offset], offset);
         }
+        else if (command->req == EAR_RC_SEND_MESSAGE)
+        {
+            debug("read_command:received send_message");
+            command->my_req.message = calloc(head.size - aux_size, sizeof(char));
+            memcpy(command->my_req.message, &tmp_command[aux_size], head.size - aux_size);
+        }
         else
         {
             debug("read_command:recieved command with additional data: %d", command->req);
@@ -367,6 +368,9 @@ size_t get_command_size(request_t *command, char **data_to_send)
 		case EAR_RC_GET_POWERCAP_STATUS:
 			size += sizeof(int);
 			break;
+        case EAR_RC_SEND_MESSAGE:
+            size += sizeof(char) * (strlen(command->my_req.message) + 1);
+            break;
         case EARGM_NEW_JOB:
         case EARGM_END_JOB:
         case EARGM_INC_PC:
@@ -401,6 +405,9 @@ size_t get_command_size(request_t *command, char **data_to_send)
             //proceed as with fixed size method, copying both arrays
             memcpy(&command_b[aux_size], command->my_req.pc_opt.greedy_nodes, offset);
             memcpy(&command_b[aux_size + offset], command->my_req.pc_opt.extra_power, offset);
+            break;
+        case EAR_RC_SEND_MESSAGE:
+            memcpy(&command_b[aux_size], command->my_req.message, size-aux_size); 
             break;
         default:
             debug("get_command_size: copying additional data, total_size: %lu, already copied %lu", size, aux_size);
@@ -576,6 +583,7 @@ int set_socket_block(int sfd, char blocking)
     return EAR_ERROR;
 }
 
+
 // based on getaddrinfo  man page
 int remote_connect(char *nodename,uint port)
 {
@@ -680,7 +688,11 @@ int remote_connect(char *nodename,uint port)
 
     timeout.tv_sec = 1;
 
+	int32_t keep_alive = 1;
+
     setsockopt(sfd, SOL_SOCKET, SO_RCVTIMEO, (void *)(&timeout), sizeof(timeout));
+    setsockopt(sfd, SOL_SOCKET, SO_KEEPALIVE, (void *)(&keep_alive), sizeof(keep_alive));
+    //setsockopt(sfd, SOL_TCP, TCP_KEEPIDLE, (void *)(&keep_alive), sizeof(keep_alive));
     
     if (read(sfd, &conection_ok, sizeof(char)) > 0)
     {
@@ -1302,17 +1314,6 @@ request_header_t data_all_nodes(request_t *command, cluster_conf_t *my_cluster_c
                     failed_is[count_failed] = i;
                     failed_js[count_failed] = j;
                     count_failed++;
-#if 0
-                    head = correct_data_prop(j, ip_counts[i], ips[i], command, my_cluster_conf->eard.port, (void **)&temp_data);
-
-                    if (head.size > 0 && head.type != EAR_ERROR)
-                    {
-                        head = process_data(head, (char **)&temp_data, (char **)&all_data, final_size);
-                        free(temp_data);
-                        final_size = head.size;
-                        default_type = head.type;
-                    }
-#endif
                 }
                 else {
                     verbose(VCOMM, "Node %s with distance %d contacted but the message failed!", next_ip, command->node_dist);
@@ -1324,18 +1325,7 @@ request_header_t data_all_nodes(request_t *command, cluster_conf_t *my_cluster_c
                         failed_is[count_failed] = i;
                         failed_js[count_failed] = j;
                         count_failed++;
-#if 0
-                        head = correct_data_prop(j, ip_counts[i], ips[i], command, my_cluster_conf->eard.port, (void **)&temp_data);
-
-                        if (head.size > 0 && head.type != EAR_ERROR)
-                        {
-                            head = process_data(head, (char **)&temp_data, (char **)&all_data, final_size);
-                            free(temp_data);
-                            final_size = head.size;
-                            default_type = head.type;
-                        }
-#endif
-
+                        eards_remote_disconnect_fd(rc);
                     }
                 }
             }
@@ -1370,18 +1360,17 @@ request_header_t data_all_nodes(request_t *command, cluster_conf_t *my_cluster_c
                 if (head.type == EAR_ERROR)
                 {
                     verbose(VCOMM, "Error reading data from node %d in the list", j);
-                    eards_remote_disconnect_fd(sfds[offset_read]);
 
                     failed_is = realloc(failed_is, sizeof(int)*count_failed+1);
                     failed_js = realloc(failed_js, sizeof(int)*count_failed+1);
                     failed_is[count_failed] = i;
                     failed_js[count_failed] = j;
                     count_failed++;
-#if 0
-                    head = correct_data_prop(j, ip_counts[i], ips[i], command, my_cluster_conf->eard.port, (void **)&temp_data);
-#endif
                 }
-                else eards_remote_disconnect_fd(sfds[offset_read]);
+
+                /* Always close the channel if there was a previous connection, independently of whether the data 
+                   was properly read or not. */
+                eards_remote_disconnect_fd(sfds[offset_read]);
 
                 if (head.size > 0 && head.type != EAR_ERROR)
                 {

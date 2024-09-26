@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 //#define SHOW_DEBUGS 1
 #include <errno.h>
@@ -672,6 +665,40 @@ void ear_nodelist_set_default_powercap(cluster_conf_t *my_cluster_conf, int *ips
 	send_command_nodelist(&command, my_cluster_conf);
 }
 
+int ear_nodelist_get_policy_status(cluster_conf_t *my_cluster_conf, policy_status_t **status, char **nodes, int num_nodes)
+{
+	request_t command;
+	request_header_t head;
+	int *ips;
+	policy_status_t *temp_status;
+	int num_status = 0;
+
+	get_ip_nodelist(my_cluster_conf, nodes, num_nodes, &ips);
+
+	memset(&command, 0, sizeof(request_t));
+
+	command.req = EAR_RC_POLICY_STATUS;
+	command.nodes = ips;
+	command.num_nodes = num_nodes;
+	command.time_code = time(NULL);
+
+	head = data_nodelist(&command, my_cluster_conf, (void **)&temp_status);
+	num_status = head.size / sizeof(policy_status_t);
+
+	if (head.type != EAR_TYPE_POLICY_STATUS || head.size < sizeof(policy_status_t))
+	{
+		if (head.size > 0) free (temp_status);
+		*status = temp_status;
+		num_status = 0;
+	}
+
+	*status = temp_status;
+
+	free(ips);
+	return num_status;
+}
+
+
 int ear_nodelist_get_status(cluster_conf_t *my_cluster_conf, status_t **status, char **nodes, int num_nodes)
 {
 	request_t command;
@@ -837,6 +864,36 @@ void ear_cluster_reset_default_powercap(cluster_conf_t *my_cluster_conf)
 	send_command_all(command, my_cluster_conf);
 }
 
+int ear_cluster_get_policy_status(cluster_conf_t *my_cluster_conf, policy_status_t **status)
+{
+	request_t command;
+	memset(&command, 0, sizeof(request_t));
+	policy_status_t *temp_status;
+	request_header_t head;
+	time_t ctime = time(NULL);
+	int num_status = 0;
+
+	command.time_code = ctime;
+	command.req = EAR_RC_POLICY_STATUS;
+	command.node_dist = 0;
+
+	head = data_all_nodes(&command, my_cluster_conf, (void **)&temp_status);
+	num_status = head.size / sizeof(policy_status_t);
+
+	if (head.type != EAR_TYPE_POLICY_STATUS || head.size < sizeof(policy_status_t))
+	{
+		if (head.size > 0) free (temp_status);
+		*status = temp_status;
+		return 0;
+	}
+
+	*status = temp_status;
+
+	return num_status;
+
+}
+
+
 int ear_cluster_get_status(cluster_conf_t *my_cluster_conf, status_t **status)
 {
 	request_t command;
@@ -970,7 +1027,7 @@ request_header_t send_powercap_status(request_t *command, powercap_status_t **st
 	head = receive_data(eards_sfd, (void**)status);
 	debug("receive_data with type %d and size %u", head.type, head.size);
 	if (head.type != EAR_TYPE_POWER_STATUS) {
-		error("Invalid type error, got type %d expected %d", head.type, EAR_TYPE_STATUS);
+		error("Invalid type error, got type %d expected %d", head.type, EAR_TYPE_POWER_STATUS);
 		if (head.size > 0 && head.type != EAR_ERROR) free(status);
 		head.size = 0;
 		head.type = EAR_ERROR;
@@ -1129,6 +1186,31 @@ int ear_nodelist_set_powercap_opt(cluster_conf_t *my_cluster_conf, powercap_opt_
 	return EAR_SUCCESS;
 }
 
+void ear_cluster_send_message(cluster_conf_t *my_cluster_conf, char *message)
+{
+	request_t command = { 0 };
+	command.req = EAR_RC_SEND_MESSAGE;
+	command.my_req.message = message;
+	send_command_all(command, my_cluster_conf);
+}
+
+void ear_nodelist_send_message(cluster_conf_t *my_cluster_conf, char *message, char **nodes, int num_nodes)
+{
+	request_t command = { 0 };
+	int *ips;
+
+	get_ip_nodelist(my_cluster_conf, nodes, num_nodes, &ips);
+
+	debug("ear_node_new_job");
+	command.nodes = ips;
+	command.num_nodes = num_nodes;
+	command.req = EAR_RC_SEND_MESSAGE;
+	command.time_code = time(NULL);
+	command.my_req.message = message;
+	send_command_nodelist(&command, my_cluster_conf);
+	free(ips);
+}
+
 /* pings all nodes */
 void ear_cluster_ping(cluster_conf_t *my_cluster_conf)
 {
@@ -1166,3 +1248,4 @@ void ear_cluster_ping(cluster_conf_t *my_cluster_conf)
 		}
 	}
 }
+

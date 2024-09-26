@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 #include <ctype.h>
 #include <stdio.h>
@@ -135,6 +128,30 @@ void remove_chars(char *s, char c)
     }
 
     s[writer]=0;
+}
+
+void remove_chars_list(char *s, char *removable)
+{ 
+    int writer = 0, reader = 0;
+
+    while (s[reader])
+    {
+        if (strchr(removable, s[reader]) == NULL) //if the current char is not in the list, we keep it
+            s[writer++] = s[reader];
+        
+        reader++;       
+    }
+
+    s[writer]=0;
+}
+
+void replace_char(char *string, char old_char, char new_char)
+{
+    while (*string) {
+        if (*string == old_char) *string = new_char;
+        string++;
+    }
+
 }
 
 void str_cut_list(char *src, char ***elements, int *num_elements, char *separator)

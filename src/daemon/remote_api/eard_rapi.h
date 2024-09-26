@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 /**
 *    \file remote_daemon_client.h
@@ -40,13 +33,24 @@
  * Otherwise, the node will be send to the nodes in **nodes. If there is only 1 node
  * calling the function is equivalent to calling remote_connect, the specific function and 
  * remote_disconnect. */
+/* Gets powercap status. Returns the number of status allocated on success (should be 1), or 0 on error */
 int ear_get_powercap_status(cluster_conf_t *conf, powercap_status_t **pc_status, int release_power, char **nodes, int num_nodes);
+/* Gets hardware status. Returns the number of status allocated on success, or 0 on error */
 int ear_get_status(cluster_conf_t *conf, status_t **status, char **nodes, int num_nodes);
+/* Gets accumulated power. Returns 1 on success, 0 on error. */
 int ear_get_power(cluster_conf_t *my_cluster_conf, power_check_t *power, char **nodes, int num_nodes);
-int ear_set_powercap_opt(cluster_conf_t *my_cluster_conf, powercap_opt_t *pc_opt, char **nodes, int num_nodes);
-int ear_get_app_master_status(cluster_conf_t *conf, app_status_t **app_status, char **nodes, int num_nodes);
-int ear_get_app_node_status(cluster_conf_t *conf, app_status_t **app_status, char **nodes, int num_nodes);
 
+
+/* Sets the powercap options. Returns EAR_SUCCESS on success, or EAR_ERROR on errors. */
+int ear_set_powercap_opt(cluster_conf_t *my_cluster_conf, powercap_opt_t *pc_opt, char **nodes, int num_nodes);
+/* Gets application status (only from master nodes). Returns the number of status allocated on success, or 0 on error */
+int ear_get_app_master_status(cluster_conf_t *conf, app_status_t **app_status, char **nodes, int num_nodes);
+/* Gets application status (from every node that has an application running). Returns the number of status allocated on success, or 0 on error */
+int ear_get_app_node_status(cluster_conf_t *conf, app_status_t **app_status, char **nodes, int num_nodes);
+int ear_get_policy_status(cluster_conf_t *conf, policy_status_t **status, char **nodes, int num_nodes);
+
+/* Sets the powercap limit.*/
 void ear_set_powerlimit(cluster_conf_t *my_cluster_conf, unsigned long limit, char **nodes, int num_nodes);
+void ear_send_message(cluster_conf_t *conf, char *message, char **nodes, int num_nodes);
 
 #endif

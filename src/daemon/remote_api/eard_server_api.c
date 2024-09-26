@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 //#define SHOW_DEBUGS 1
 
@@ -89,7 +82,7 @@ int init_ips(cluster_conf_t *my_conf)
     debug("Init_ips_ready=1");	
     init_ips_ready=1;	
     return EAR_SUCCESS;
-  
+
 }
 
 void close_ips()
@@ -108,12 +101,12 @@ void close_ips()
 }
 
 
-/* Uncomment too fake the EARD allocation error 
+/* Uncomment to fake the EARD allocation error 
  * Set to 1 to simulate a situation where the "general" allocation fails,
  * but the individual suceeds.
  * Set to 2 to simulate a situation where every allocation, however small, fails.
  */
-#define FAKE_EARD_ALLOC_ERROR 0
+//#define FAKE_EARD_ALLOC_ERROR 0
 
 #define CHECK_ALLOC 1
 
@@ -139,6 +132,7 @@ int can_allocate(request_t *command, size_t size, int num_items)
         tmp_size = num_items; 
     }
 #ifdef FAKE_EARD_ALLOC_ERROR
+#warning Compiling with fake allocation errors in EARD ON.
     tmp = NULL;
 #else
     tmp = calloc(tmp_size, size);
@@ -190,7 +184,7 @@ char can_propagate(request_t *command)
 
 void propagate_req(request_t *command, uint port)
 {
-     
+
     struct sockaddr_in temp;
 
     int i, rc, off_ip, current_dist, current_idx;
@@ -198,7 +192,7 @@ void propagate_req(request_t *command, uint port)
 
     //if the command can't be propagated we return early
     if (!can_propagate(command)) return;
-   
+
     //if we are propagating via specific nodes we need to remove ours from the list
     if (command->num_nodes > 0)
     {
@@ -263,7 +257,7 @@ void propagate_req(request_t *command, uint port)
         free(command->nodes);
     } 
 
-    
+
 }
 
 int get_self_ip()
@@ -284,18 +278,18 @@ int get_self_ip()
     gethostname(buff, 50);
 
     strtok(buff,".");
-    #if USE_EXT
+#if USE_EXT
     strcat(buff, NW_EXT);
-    #endif
+#endif
 
 
-   	s = getaddrinfo(buff, NULL, &hints, &result);
+    s = getaddrinfo(buff, NULL, &hints, &result);
     if (s != 0) {
-		error("propagate_status:getaddrinfo fails for port %s (%s)",buff,strerror(errno));
-		return EAR_ERROR;
+        error("get_self_ip:getaddrinfo fails for port %s (%s)",buff,strerror(errno));
+        return EAR_ERROR;
     }
 
-   	for (rp = result; rp != NULL; rp = rp->ai_next) {
+    for (rp = result; rp != NULL; rp = rp->ai_next) {
         if (rp->ai_addr->sa_family == AF_INET)
         {
             struct sockaddr_in *saddr = (struct sockaddr_in*) (rp->ai_addr);
@@ -303,7 +297,7 @@ int get_self_ip()
             return saddr->sin_addr.s_addr;
         }
     }
-	return EAR_ERROR;
+    return EAR_ERROR;
 }
 
 request_header_t propagate_data(request_t *command, uint port, void **data)
@@ -317,7 +311,7 @@ request_header_t propagate_data(request_t *command, uint port, void **data)
     current_dist = self_id - self_id%NUM_PROPS;
     off_ip = self_id%NUM_PROPS;
 
-   
+
     //if we are propagating via specific nodes we need to remove ours from the list
     if (command->num_nodes > 0)
     {
@@ -453,7 +447,7 @@ request_header_t propagate_data(request_t *command, uint port, void **data)
     else if (final_size < 1 && (default_type != EAR_TYPE_APP_STATUS || default_type != EAR_ERROR)) head.type = EAR_ERROR;
 
     return head;
-	
+
 }
 
 int propagate_powercap_status(request_t *command, uint port, powercap_status_t **status)
@@ -610,6 +604,15 @@ int propagate_and_cat_data(request_t *command, uint port, void **status, size_t 
 
     return num_status;
 
+}
+
+int propagate_policy_status(request_t *command, uint port, policy_status_t **status)
+{
+    int num_status;
+    policy_status_t *temp_status;
+    num_status = propagate_and_cat_data(command, port, (void **)&temp_status, sizeof(status_t), EAR_TYPE_POLICY_STATUS, 1);
+    *status=temp_status;
+    return num_status;
 }
 
 int propagate_status(request_t *command, uint port, status_t **status)

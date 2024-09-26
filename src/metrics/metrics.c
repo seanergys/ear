@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 //#define SHOW_DEBUGS 1
 
@@ -48,7 +41,7 @@ static int             id_log;
 static int             id_api;
 static int             id_tpo;
 
-void metrics_init(metrics_info_t *m, topology_t *tp, char *nodepow_path, ullong mflags)
+void metrics_load(metrics_info_t *m, topology_t *tp, char *nodepow_path, ullong mflags)
 {
     self_tp = tp;
 
@@ -59,7 +52,7 @@ void metrics_init(metrics_info_t *m, topology_t *tp, char *nodepow_path, ullong 
      bwidth_load(tp, MFLAG_UNZIP(mflags, MET_BWIDTH));
       cache_load(tp, MFLAG_UNZIP(mflags, MET_CACHE));
       flops_load(tp, MFLAG_UNZIP(mflags, MET_FLOPS));
-       temp_load(tp                              );
+       temp_load(tp, MFLAG_UNZIP(mflags, MET_TEMP));
         cpi_load(tp, MFLAG_UNZIP(mflags, MET_CPI));
         gpu_load(    MFLAG_UNZIP(mflags, MET_GPU));
 
@@ -70,7 +63,7 @@ void metrics_init(metrics_info_t *m, topology_t *tp, char *nodepow_path, ullong 
      bwidth_init(no_ctx);
       cache_init(no_ctx);
       flops_init(no_ctx);
-       temp_init(no_ctx);
+       temp_init(      );
         cpi_init(no_ctx);
         gpu_init(no_ctx);
 
@@ -106,6 +99,7 @@ void metrics_info_get(metrics_info_t *m)
     bwidth_get_info(&m->ram);
      cache_get_info(&m->cch);
      flops_get_info(&m->flp);
+      temp_get_info(&m->tmp);
        gpu_get_info(&m->gpu);
 
     m->cpu.layer = "CPUFREQ";
@@ -117,13 +111,11 @@ void metrics_info_get(metrics_info_t *m)
     cpufreq_get_api(&m->cpu.api);
     imcfreq_get_api(&m->imc.api);
      cpupow(get_api,&m->pow.api);
-       temp_get_api(&m->tmp.api);
         cpi_get_api(&m->cpi.api);
 
     cpufreq_count_devices(no_ctx, &m->cpu.devs_count);
     imcfreq_count_devices(no_ctx, &m->imc.devs_count);
      cpupow(count_devices,no_ctx, &m->pow.devs_count);
-       temp_count_devices(no_ctx, &m->tmp.devs_count);
 
     m->cpu.scope = SCOPE_NODE;
     m->imc.scope = SCOPE_NODE;
@@ -252,7 +244,7 @@ void metrics_read(metrics_read_t *mr)
      bwidth_read(no_ctx,  mr->ram);
       cache_read(no_ctx, &mr->cch);
       flops_read(no_ctx, &mr->flp);
-       temp_read(no_ctx,  mr->tmp, NULL);
+       temp_read(         mr->tmp, NULL);
         cpi_read(no_ctx, &mr->cpi);
         gpu_read(no_ctx,  mr->gpu);
 }
@@ -370,7 +362,7 @@ static metrics_diff_t mrD;
 static state_t metrics_apis_init(void *whatever)
 {
     topology_init(&tp);
-    metrics_init(&m, &tp, NULL, EARD);
+    metrics_init(&m, &tp, NULL, atoull(getenv("MFLAGS")));
     metrics_init_screen(&m, &tp);
     metrics_data_alloc(&mr1, &mr2, &mrD);
     metrics_read(&mr1);
@@ -388,7 +380,9 @@ int main(int argc, char *argv[])
 {
     if (argc > 1) {
         if (atoi(argv[1])) {
-            eards_connection();
+            if (state_fail(eards_connection())) {
+                printf("Connection error: %s\n", state_msg);
+            }
         }
     }
 	// Monitoring

@@ -46,6 +46,8 @@ mets_OBJS = \
     $(SRCDIR)/metrics/energy_cpu/archs/linux_powercap.o \
     $(SRCDIR)/metrics/energy_cpu/archs/dummy.o \
     $(SRCDIR)/metrics/energy_cpu/archs/linux_powercap.o \
+    $(SRCDIR)/metrics/energy_cpu/archs/acpi_power.o \
+    $(SRCDIR)/metrics/energy_cpu/archs/grace_cpu_power.o \
     $(SRCDIR)/metrics/energy_cpu/archs/eard.o \
     $(SRCDIR)/metrics/energy_cpu/archs/msr.o \
     $(SRCDIR)/metrics/energy_cpu/archs/perf.o \
@@ -78,10 +80,10 @@ mets_OBJS = \
     $(SRCDIR)/metrics/gpu/archs/gpuprof_dummy.o \
     $(SRCDIR)/metrics/temperature/temperature.o \
     $(SRCDIR)/metrics/temperature/archs/amd17.o \
+    $(SRCDIR)/metrics/temperature/archs/eard.o \
     $(SRCDIR)/metrics/temperature/archs/intel63.o \
     $(SRCDIR)/metrics/temperature/archs/dummy.o \
     $(SRCDIR)/metrics/io/io.o
-
 
 ######## RULES
 
@@ -89,6 +91,7 @@ all: all.components metrics.o libmetrics.a
 
 post: test
 	@ $(MAKE) -C 'gpu' post || exit
+	@ $(MAKE) -C 'common' post || exit
 
 metrics.o: metrics.c
 	$(CC) $(CC_FLAGS) -I$(SRCDIR) -fPIC -c $<

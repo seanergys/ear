@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 #define _XOPEN_SOURCE 700 //to get rid of the warning
 #define AGGREGATED 1
@@ -94,7 +87,7 @@
 /* COMMON QUERIES */
 #define ALL_USERS   "SELECT TRUNCATE(SUM(DC_power*time), 0) as energy, Jobs.user_id FROM " \
                     "Power_signatures INNER JOIN Applications On id=Applications.power_signature_id " \
-                    "INNER JOIN Jobs ON Applciations.job_id = Jobs.job_id AND Applications.step_id = Jobs.step_id " \
+                    "INNER JOIN Jobs ON Applications.job_id = Jobs.job_id AND Applications.step_id = Jobs.step_id " \
                     "WHERE start_time >= %d AND end_time <= %d AND DC_power < %d GROUP BY Jobs.user_id ORDER BY energy"
 
 #if USE_GPUS
@@ -274,7 +267,7 @@ long long get_sum(MYSQL *connection, int start_time, int end_time, unsigned long
         {
             max_power = my_conf.tags[def_id].error_power;
         }   
-        int i;
+        uint32_t i;
         for (i = 0; i < my_conf.num_tags; i++)
             max_power = ear_max(my_conf.tags[i].error_power, max_power);
     }
@@ -882,7 +875,7 @@ void print_mets(int start_time, int end_time, char *nodes, cluster_conf_t *my_co
 void print_all(MYSQL *connection, int start_time, int end_time, char *inc_query, char type)
 {
     char query[512];
-    int i;
+    uint32_t i;
     char all_nodes = 0;
 #if USE_GPUS
     char has_gpus = 0;
@@ -922,7 +915,7 @@ void print_all(MYSQL *connection, int start_time, int end_time, char *inc_query,
         return;
     }
 
-    int num_fields = mysql_num_fields(result);
+    uint32_t num_fields = mysql_num_fields(result);
 
     MYSQL_ROW row;
     if (type == GLOBAL_ENERGY_TYPE)

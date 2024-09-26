@@ -1,24 +1,18 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 #define _GNU_SOURCE
 #include <dlfcn.h>
 #include <limits.h>
 #include <signal.h>
+#include <execinfo.h>
 #include <common/types.h>
 #include <common/states.h>
 #include <common/utils/dtools.h>
@@ -83,3 +77,20 @@ void free(void *ptr)
     next_free(ptr);
 }
 #endif
+
+char *dtools_get_backtrace_library(char *buffer, int calls_count)
+{
+    void* callstack[32];
+    Dl_info info;
+
+    if (backtrace(callstack, 32) < calls_count+1) {
+        return NULL;
+    }
+    if (dladdr(callstack[calls_count+1], &info) == 0) {
+        return NULL;
+    }
+    if (strcmp(&info.dli_fname[strlen(info.dli_fname)-3], ".so") != 0) {
+        return NULL;
+    }
+    return strcpy(buffer, info.dli_fname);
+}

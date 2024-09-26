@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 
 #if MPI
@@ -298,13 +291,7 @@ void states_begin_period(int my_id, ulong event, ulong size, ulong level)
     // comp_N_begin = metrics_time();
     restart_period_time_init(&comp_N_begin);
 
-    #if SINGLE_CONNECTION
-    if (master) {
-        traces_new_period(ear_my_rank, my_id, event);
-    }
-    #else
     traces_new_period(ear_my_rank, my_node_id, event);
-    #endif
 
     loop_with_signature = 0;
 
@@ -475,13 +462,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                 comp_N_begin = comp_N_end;
 
                 EAR_STATE = FIRST_ITERATION;
-#if SINGLE_CONNECTION
-                if (master) {
-                    traces_start();
-                }
-#else
                 traces_start();
-#endif // SINGLE_CONNECTION
             }
 
             break;

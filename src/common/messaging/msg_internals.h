@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 
 
@@ -28,6 +21,7 @@
 #define _REMOTE_CLIENT_API_COMMON_INTERNALS_H
 
 #include <netdb.h>
+#include <stdbool.h>
 #include <sys/socket.h>
 #include <sys/select.h>
 #include <sys/socket.h>
@@ -55,6 +49,10 @@ int remote_disconnect();
 
 /** Sends the command to the currently connected fd */
 int send_command(request_t *command);
+
+/* Given a socket, checks if it's in CLOSE_WAIT state. If it is, returns false,
+ * otherwise returns true */
+bool is_socket_alive(int32_t sockfd);
 
 /** Sends data of size size through the open fd*/
 int send_data(int fd, size_t size, char *data, int type);

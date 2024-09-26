@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 /**
  *    \file remote_daemon_client.h
@@ -199,6 +192,9 @@ int ear_node_get_power(power_check_t *power);
  * */
 int ear_cluster_get_power(cluster_conf_t *my_cluster_conf, power_check_t *power);
 
+int ear_cluster_get_policy_status(cluster_conf_t *my_cluster_conf, policy_status_t **status);
+
+void ear_cluster_send_message(cluster_conf_t *conf, char *message);
 
 /* Nodelist functions, they do the same as their ear_cluster or ear_nodelist counterparts but only to the
  * nodes in the list. */
@@ -211,10 +207,12 @@ void ear_nodelist_restore_conf(cluster_conf_t *my_cluster_conf, int *ips, int nu
 void ear_nodelist_set_powerlimit(cluster_conf_t *my_cluster_conf, unsigned long limit, char **nodes, int num_nodes);
 void ear_nodelist_set_risk(risk_t risk, unsigned long target, cluster_conf_t *my_cluster_conf, int *ips, int num_ips);
 void ear_nodelist_set_default_powercap(cluster_conf_t *my_cluster_conf, int *ips, int num_ips);
+void ear_nodelist_send_message(cluster_conf_t *conf, char *message, char **nodes, int num_nodes);
 
 /* The following functions return the number of status retrieved on success, 0 on error */
 int iplist_status(cluster_conf_t *my_cluster_conf, status_t **status, int *ips, int num_ips);
 int ear_nodelist_get_status(cluster_conf_t *my_cluster_conf, status_t **status, char **nodes, int num_nodes);
+int ear_nodelist_get_policy_status(cluster_conf_t *my_cluster_conf, policy_status_t **status, char **nodes, int num_nodes);
 int ear_nodelist_get_powercap_status(cluster_conf_t *my_cluster_conf, powercap_status_t **pc_status, int release_power, char **nodes, int num_nodes);
 int ear_nodelist_get_power(cluster_conf_t *my_cluster_conf, power_check_t *power, char **nodes, int num_nodes);
 int ear_nodelist_set_powercap_opt(cluster_conf_t *my_cluster_conf, powercap_opt_t *pc_opt, char **nodes, int num_nodes);

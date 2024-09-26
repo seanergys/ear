@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 #include <stdlib.h>
 #include <string.h>
@@ -29,14 +22,14 @@
 #if DB_PSQL
 #include <common/database/postgresql_io_functions.h>
 
-#define APPLICATION_PSQL_QUERY   "INSERT INTO Applications (job_id, step_id, node_id, signature_id, power_signature_id) VALUES "
+#define APPLICATION_PSQL_QUERY   "INSERT INTO Applications (job_id, step_id, local_id, node_id, signature_id, power_signature_id) VALUES "
 
-#define LEARNING_APPLICATION_PSQL_QUERY   "INSERT INTO Learning_applications (job_id, step_id, node_id, signature_id, power_signature_id) VALUES "
+#define LEARNING_APPLICATION_PSQL_QUERY   "INSERT INTO Learning_applications (job_id, step_id, local_id, node_id, signature_id, power_signature_id) VALUES "
 
-#define LOOP_PSQL_QUERY              "INSERT INTO Loops (event, size, level, job_id, step_id, node_id, total_iterations," \
+#define LOOP_PSQL_QUERY              "INSERT INTO Loops (event, size, level, job_id, step_id, local_id, node_id, total_iterations," \
                                 "signature_id) VALUES "
 
-#define CREATE_TEMP_JOBS    "CREATE TEMPORARY TABLE temp_jobs(job_id INT NOT NULL,step_id INT NOT NULL, user_id VARCHAR(128),app_id VARCHAR(128), " \
+#define CREATE_TEMP_JOBS    "CREATE TEMPORARY TABLE temp_jobs(job_id INT NOT NULL,step_id INT NOT NULL, local_id INT NOT NULL, user_id VARCHAR(128),app_id VARCHAR(128), " \
                             "start_time INT NOT NULL,end_time INT NOT NULL,start_mpi_time INT NOT NULL,end_mpi_time INT NOT NULL, "\
                             "policy VARCHAR(256) NOT NULL,threshold FLOAT NOT NULL,procs INT NOT NULL,job_type SMALLINT NOT NULL, def_f INT, "\
                             "user_acc VARCHAR(256), user_group VARCHAR(256), e_tag VARCHAR(256)) ON COMMIT DROP"
@@ -45,19 +38,19 @@
 
 #define LOCK_LEARNING_JOBS_PSQL_QUERY     "LOCK TABLE Learning_jobs IN SHARE ROW EXCLUSIVE MODE"
 
-#define INSERT_NEW_LEARNING_JOBS    "INSERT INTO Learning_jobs SELECT DISTINCT ON (temp_jobs.job_id, temp_jobs.step_id) temp_jobs.job_id, temp_jobs.step_id, temp_jobs.user_id, temp_jobs.app_id, "\
+#define INSERT_NEW_LEARNING_JOBS    "INSERT INTO Learning_jobs SELECT DISTINCT ON (temp_jobs.job_id, temp_jobs.step_id, temp_jobs.local_id) temp_jobs.job_id, temp_jobs.step_id, temp_jobs.local_id temp_jobs.user_id, temp_jobs.app_id, "\
                                     "temp_jobs.start_time, temp_jobs.end_time, temp_jobs.start_mpi_time, temp_jobs.end_mpi_time, temp_jobs.policy, temp_jobs.threshold, "\
                                     "temp_jobs.procs, temp_jobs.job_type, temp_jobs.def_f, temp_jobs.user_acc, temp_jobs.user_group, temp_jobs.e_tag "\
-                                    "FROM temp_jobs LEFT OUTER JOIN Learning_jobs ON (Learning_jobs.id = temp_jobs.job_id AND " \
-                                    "Learning_jobs.step_id = temp_jobs.step_id) WHERE Learning_jobs.id IS NULL"
+                                    "FROM temp_jobs LEFT OUTER JOIN Learning_jobs ON (Learning_jobs.job_id = temp_jobs.job_id AND " \
+                                    "Learning_jobs.step_id = temp_jobs.step_id AND Learning_jobs.local_id = temp_jobs.local_id) WHERE Learning_jobs.id IS NULL"
 
-#define INSERT_NEW_JOBS     "INSERT INTO Jobs SELECT DISTINCT ON (temp_jobs.job_id, temp_jobs.step_id) temp_jobs.job_id, temp_jobs.step_id, temp_jobs.user_id, temp_jobs.app_id, "\
+#define INSERT_NEW_JOBS     "INSERT INTO Jobs SELECT DISTINCT ON (temp_jobs.job_id, temp_jobs.step_id, temp_jobs.local_id) temp_jobs.job_id, temp_jobs.step_id, temp_jobs.local_id, temp_jobs.user_id, temp_jobs.app_id, "\
                             "temp_jobs.start_time, temp_jobs.end_time, temp_jobs.start_mpi_time, temp_jobs.end_mpi_time, temp_jobs.policy, temp_jobs.threshold, "\
                             "temp_jobs.procs, temp_jobs.job_type, temp_jobs.def_f, temp_jobs.user_acc, temp_jobs.user_group, temp_jobs.e_tag "\
                             "FROM temp_jobs LEFT OUTER JOIN Jobs ON (Jobs.job_id = temp_jobs.job_id AND " \
-                            "Jobs.step_id = temp_jobs.step_id) WHERE Jobs.job_id IS NULL"
+                            "Jobs.step_id = temp_jobs.step_id AND Jobs.local_id = temp_jobs.local_id) WHERE Jobs.job_id IS NULL"
 
-#define JOB_PSQL_QUERY               "INSERT INTO temp_jobs (id, step_id, user_id, app_id, start_time, end_time, start_mpi_time," \
+#define JOB_PSQL_QUERY               "INSERT INTO temp_jobs (job_id, step_id, local_id, user_id, app_id, start_time, end_time, start_mpi_time," \
                                 "end_mpi_time, policy, threshold, procs, job_type, def_f, user_acc, user_group, e_tag) VALUES "
 
 #define EAR_WARNING_PSQL_QUERY       "INSERT INTO Global_energy (energy_percent, warning_level, inc_th, p_state, GlobEnergyConsumedT1, "\
@@ -86,7 +79,7 @@
                                 "time, avg_f, def_f) VALUES "
 
 #if USE_GPUS
-#define GPU_SIGNATURE_PSQL_QUERY    "INSERT INTO GPU_signatures (GPU_power, GPU_freq, GPU_mem_freq, GPU_util, GPU_mem_util) VALUES "
+#define GPU_SIGNATURE_PSQL_QUERY    "INSERT INTO GPU_signatures (GPU_power, GPU_freq, GPU_mem_freq, GPU_util, GPU_mem_util, GPU_gflops) VALUES "
 
 #define PERIODIC_METRIC_QUERY_DETAIL    "INSERT INTO Periodic_metrics (start_time, end_time, DC_energy, node_id, job_id, step_id, avg_f, temp, DRAM_energy, "\
                                         "PCK_energy, GPU_energy) VALUES " 
@@ -521,6 +514,7 @@ int postgresql_retrieve_gpu_signatures(PGconn *connection, char *query, gpu_sign
         base_data.GPU_mem_freq = htonl( *((ulong *)PQgetvalue(res, i, 4)));
         base_data.GPU_util     = htonl( *((ulong *)PQgetvalue(res, i, 5)));
         base_data.GPU_mem_util = htonl( *((ulong *)PQgetvalue(res, i, 6)));
+        base_data.GPU_gflops   = htonl( *((ulong *)PQgetvalue(res, i, 7)));
 
         memcpy(&gpu_sig->gpu_data[i], &base_data, sizeof(gpu_app_t));
     }
@@ -1313,7 +1307,7 @@ int postgresql_batch_insert_gpu_signatures(PGconn *connection, signature_t *sigs
 
     num_gpu_sigs = reverse_gpu_signature_bytes(sigs, num_sigs);
 
-    if (num_gpu_sigs < 1) return EAR_ERROR;
+    if (num_gpu_sigs < 1) return EAR_BAD_ARGUMENT;
 
     /* Memory allocation */
     param_values = calloc(GPU_SIGNATURE_ARGS*num_sigs, sizeof(char *));
@@ -1349,6 +1343,7 @@ int postgresql_batch_insert_gpu_signatures(PGconn *connection, signature_t *sigs
             param_values[2  + offset] = (char *) &sigs[i].gpu_sig.gpu_data[j].GPU_mem_freq;
             param_values[3  + offset] = (char *) &sigs[i].gpu_sig.gpu_data[j].GPU_util;
             param_values[4  + offset] = (char *) &sigs[i].gpu_sig.gpu_data[j].GPU_mem_util;
+            param_values[5  + offset] = (char *) &sigs[i].gpu_sig.gpu_data[j].GPU_Gflops;
 
             /* Parameter sizes */
             param_lengths[0  + offset] = sizeof(sigs[i].gpu_sig.gpu_data[j].GPU_power);
@@ -1356,6 +1351,7 @@ int postgresql_batch_insert_gpu_signatures(PGconn *connection, signature_t *sigs
             param_lengths[2  + offset] = sizeof(sigs[i].gpu_sig.gpu_data[j].GPU_mem_freq);
             param_lengths[3  + offset] = sizeof(sigs[i].gpu_sig.gpu_data[j].GPU_util);
             param_lengths[4  + offset] = sizeof(sigs[i].gpu_sig.gpu_data[j].GPU_mem_util);
+            param_lengths[5  + offset] = sizeof(sigs[i].gpu_sig.gpu_data[j].GPU_Gflops);
 
 
             /* Parameter formats, 1 is binary 0 is string */
@@ -1416,12 +1412,16 @@ int postgresql_batch_insert_signatures(PGconn *connection, signature_t *sigs, ch
     query = calloc((strlen(SIGNATURE_QUERY_FULL)+(num_sigs*sig_args*10)+strlen("ON CONFLICT DO NOTHING")), sizeof(char));
 #if USE_GPUS
 
-    long long starter_gpu_sig_id, num_gpu_sigs = 0, *gpu_sig_ids, current_gpu_sig_id = 0;
+    long long starter_gpu_sig_id, num_gpu_sigs = 0, current_gpu_sig_id = 0;
+    long long *gpu_sig_ids = NULL;
     /* Insert gpu signatures */
     starter_gpu_sig_id = postgresql_batch_insert_gpu_signatures(connection, sigs, num_sigs);
     if (starter_gpu_sig_id != EAR_SUCCESS)
     {
-        verbose(VMYSQL, "Error while inserting gpu signatures\n");
+        //we don't need to print an error message if there were no gpu signatures to insert
+        if (starter_gpu_sig_id != EAR_BAD_ARGUMENT) { 
+            verbose(VMYSQL, "Error while inserting gpu signatures\n");
+        }
     }
     else
     {
@@ -1589,7 +1589,8 @@ int postgresql_batch_insert_signatures(PGconn *connection, signature_t *sigs, ch
     PGresult *res = PQexecParams(connection, query, sig_args * num_sigs, NULL, (const char * const *)param_values, param_lengths, param_formats, 1); //0 indicates text mode, 1 is binary
 
 #if USE_GPUS
-    free(gpu_sig_ids);
+    if (gpu_sig_ids != NULL && num_gpu_sigs > 0)
+        free(gpu_sig_ids);
 #endif
     free(param_values);
     free(param_lengths);
@@ -1745,7 +1746,7 @@ int postgresql_batch_insert_jobs(PGconn *connection, application_t *apps, int nu
     if (PQresultStatus(res) != PGRES_COMMAND_OK) verbose(VMYSQL, "ERROR while merging with main table: %s\n", PQresultErrorMessage(res));
     PQclear(res);
 
-    fprintf(stderr, "running query %s\n", "COMMIT");
+    debug("running query %s\n", "COMMIT");
     res = PQexecParams(connection, "COMMIT", 0, NULL, NULL, NULL, NULL, 1); //COMMIT and end transaction block, dropping the table
 
     //reverse_job_bytes(jobs, num_jobs);
@@ -1892,7 +1893,8 @@ int postgresql_batch_insert_applications(PGconn *connection, application_t *apps
 
     char **param_values;
     int i, j, offset, *param_lengths, *param_formats;
-	long long sig_id, pow_sig_id, *sig_ids, *pow_sig_ids;
+	long long sig_id, pow_sig_id, *sig_ids;
+    int32_t *pow_sig_ids = NULL;
     signature_t *sigs;
     power_signature_t *pow_sigs;
     char *query, arg_number[16];
@@ -1903,10 +1905,10 @@ int postgresql_batch_insert_applications(PGconn *connection, application_t *apps
     sigs = calloc(num_apps, sizeof(signature_t));
     pow_sigs = calloc(num_apps, sizeof(power_signature_t));
     sig_ids = calloc(num_apps, sizeof(long long));
-    pow_sig_ids = calloc(num_apps, sizeof(long long));
+    pow_sig_ids = calloc(num_apps, sizeof(int32_t));
     param_values = calloc(APPLICATION_ARGS*num_apps, sizeof(char *));
-    param_lengths = calloc(APPLICATION_ARGS*num_apps, sizeof(int));
-    param_formats = calloc(APPLICATION_ARGS*num_apps, sizeof(int));
+    param_lengths = calloc(APPLICATION_ARGS*num_apps, sizeof(int32_t));
+    param_formats = calloc(APPLICATION_ARGS*num_apps, sizeof(int32_t));
     query = calloc((strlen(LEARNING_APPLICATION_PSQL_QUERY)+(num_apps*APPLICATION_ARGS*10)+strlen("ON CONFLICT DO NOTHING")), sizeof(char));
 
     if (is_learning)
@@ -1974,27 +1976,30 @@ int postgresql_batch_insert_applications(PGconn *connection, application_t *apps
         /* Parameter binding */
         param_values[0  + offset] = (char *) &apps[i].job.id;
         param_values[1  + offset] = (char *) &apps[i].job.step_id;
-        param_values[2  + offset] = (char *) &apps[i].node_id;
+        param_values[2  + offset] = (char *) &apps[i].job.local_id;
+        param_values[3  + offset] = (char *) &apps[i].node_id;
         if (is_mpi)
-            param_values[3  + offset] = (char *) &sig_ids[i];
+            param_values[4  + offset] = (char *) &sig_ids[i];
         else
-            param_values[3  + offset] = (char *) NULL;
+            param_values[4  + offset] = (char *) NULL;
 
-        param_values[4  + offset] = (char *) &pow_sig_ids[i];
+        param_values[5  + offset] = (char *) &pow_sig_ids[i];
 
         /* Parameter sizes */
         param_lengths[0  + offset] = sizeof(int);
         param_lengths[1  + offset] = sizeof(int);
-        param_lengths[2  + offset] = strlen(apps[i].node_id);
-        param_lengths[3  + offset] = sizeof(sig_ids[i]);
-        param_lengths[4  + offset] = sizeof(pow_sig_ids[i]);
+        param_lengths[2  + offset] = sizeof(int);
+        param_lengths[3  + offset] = strlen(apps[i].node_id);
+        param_lengths[4  + offset] = sizeof(sig_ids[i]);
+        param_lengths[5  + offset] = sizeof(pow_sig_ids[i]);
 
         /* Parameter formats, 1 is binary 0 is string */
         param_formats[0  + offset] = 1;
         param_formats[1  + offset] = 1;
-        param_formats[2  + offset] = 0;
-        param_formats[3  + offset] = 1;
+        param_formats[2  + offset] = 1;
+        param_formats[3  + offset] = 0;
         param_formats[4  + offset] = 1;
+        param_formats[5  + offset] = 1;
 
         offset += APPLICATION_ARGS;
     }

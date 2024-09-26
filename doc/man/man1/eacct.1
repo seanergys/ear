@@ -19,13 +19,66 @@ eacct is a simple command to see a jobs' energy accounting information. It can a
     -a      specifies the application names that will be retrieved. [default: all app_ids]
     -c      specifies the file where the output will be stored in CSV format. [default: no file]
     -t      specifies the energy_tag of the jobs that will be retrieved. [default: all tags].
+	-s      specifies the minimum start time of the jobs that will be retrieved in YYYY-MM-DD. [default: no filter].
+	-e      specifies the maximum end time of the jobs that will be retrieved in YYYY-MM-DD. [default: no filter].
     -l      shows the information for each node for each job instead of the global statistics for said job.
     -x      shows the last EAR events. Nodes, job ids, and step ids can be specified as if were showing job information.
     -m      prints power signatures regardless of whether mpi signatures are available or not.
     -r      shows the EAR loop signatures. Nodes, job ids, and step ids can be specified as if were showing job information.
+	-o      modifies the -r option to also show the corresponding jobs. Should be used with -j.
     -n      specifies the number of jobs to be shown, starting from the most recent one. [default: 20][to get all jobs use -n all]
+    -F      specifies the format string to be used.
     -f      specifies the file where the user-database can be found. If this option is used, the information will be read from the file and not the database.
     -b      verbose mode for debugging purposes
+
+.SH Format characters
+
+A format string may be specified, like "janf", to better select what data will be output by the program. As it stands, there are format characters available for all Signatures, Power_signatures, Jobs, Applications and Loop fields. Widely, they are categorised in two sets: Signatures (which includes power_signatures) and Jobs (which include Applications and Loops).
+
+.SS Signatures
+.TS
+tab(@), right, box;
+c | c
+rB | r.
+Variable@Character
+_
+FREQUENCY@f
+TIME@t
+ENERGY@e
+DC_POWER@p
+DRAM_POWER@D
+PCK_POWER@P
+IMC_FREQ@i
+GBS@g
+MPI_PERC@m
+IO_MBS@o
+FLOPS@F
+GPU@G
+ALL_FREQS@r
+CACHE_MISSES@L
+CPI@C
+DEF_FREQ@d
+TPI@T
+GFLOPS@s
+CYCLES@y
+INSTRUCTIONS@I
+VPI@v
+.TE
+.SS Jobs
+.TS
+tab(@), right, box;
+c | c
+rB | r.
+Variable@Character
+_
+APP_ID@a
+JOB_WSTEP@j
+USER_ID@u
+NODE_ID@n
+NUM_NODES@N
+LOCAL_ID@x
+DATE_ITER@X
+.TE
 
 .SH Usage examples
 
@@ -73,7 +126,7 @@ To easily transfer eacct's output, -c option saves it in .csv format. Both aggre
 [user@host EAR]$ eacct -j 175966.1 -c -l test.csv
  Successfully written applications to csv. Only applications with EARL will have its information properly written.
 
-Eacct shows a pre-selected set of columns. Some flags sligthly modifies the set of columns reported:
+eacct shows a pre-selected set of columns. Some flags sligthly modifies the set of columns reported:
 
 - JOB-STEP: JobID and Step ID. sb is shown for the sbatch.
 - USER: Username who executed the job.

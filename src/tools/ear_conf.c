@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -52,7 +45,7 @@ int main(int argc,char *argv[])
         edf = get_eargm_conf(&my_cluster, nodename);
         if (edf != NULL) {
             printf("Found EARGM conf for node %s\n", nodename);
-            remove_extra_islands(&my_cluster, edf);
+            remove_islands_by_eargm(&my_cluster, edf);
             printf("******************************* EARGM CONFIGURATION **********+\n");
             print_eargm_def(edf, 0);
             printf("*********************** EARGM-CLUSTER CONFIGURATION **********+\n");

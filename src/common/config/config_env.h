@@ -1,19 +1,12 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 #ifndef COMMON_CONFIG_ENV_H
 #define COMMON_CONFIG_ENV_H
@@ -94,6 +87,7 @@
 #define HACK_ENERGY_PLUGIN           "HACK_ENERGY_PLUGIN"       // This var forces to load a specific energy plugin.
 #define HACK_POWER_POLICY            "HACK_POWER_POLICY"       // This var forces to load a specific power policy. Replaces (SCHED_PREFIX)_EAR_POWER_POLICY.
 #define HACK_GPU_POWER_POLICY        "HACK_GPU_POWER_POLICY"   // This var forces to load a specific gpu power policy. Replaces (SCHED_PREFIX)_EAR_GPU_POWER_POLICY.
+#define HACK_GPU_POLICY_PENALTY      "HACK_GPU_POLICY_PENALTY" // Sets the threshold penalty tolered by Min-GPU-Ebnergy policy.. Replaces (SCHED_PREFIX)_EAR_GPU_POLICY_PENALTY.
 #define HACK_POWER_MODEL             "HACK_POWER_MODEL"        // This var forces to load a specific power model plugin. Replaces (SCHED_PREFIX)_EAR_POWER_MODEL.
 #define HACK_GPU_ENERGY_MODEL        "HACK_GPU_ENERGY_MODEL"   // This var forces to load a specific GPU energy model plugin. Replaces (SCHED_PREFIX)_EAR_GPU_POWER_MODEL.
 #define HACK_CPU_POWER_MODEL         "HACK_CPU_POWER_MODEL"    // This var forces to load a specific cpu power model plugin.
@@ -120,6 +114,7 @@
 
 #define FLAG_LOADER_APPLICATION      "EAR_LOADER_APPLICATION" // This variable forces to load the NON MPI version of the library for a given application (i.e. SLURM_LOADER_LOAD_NO_MPI_LIB=gromacs).
 #define FLAG_LOAD_MPI_VERSION        "EAR_LOAD_MPI_VERSION"   // This variable is used for not detected MPI application (python) to specify which version it is: intel, ompi, etc
+#define FLAG_LOAD_MPI                "EAR_LOAD_MPI"
 #define FLAG_MAX_IMCFREQ             "EAR_MAX_IMCFREQ"        // Sets the maximum IMC/DF frequency at which the application must run.
 #define FLAG_MIN_IMCFREQ             "EAR_MIN_IMCFREQ"        // Sets the minimum IMC/DF frequency at which the application must run.
 #define FLAG_SET_IMCFREQ             "EAR_SET_IMCFREQ"        // This variable specifies the IMC freq must be selected by the EAR policy.
@@ -159,6 +154,10 @@
 #define FLAG_FORCE_SHARED_NODE       "EARL_FORCE_SHARED_NODE"
 #define FLAG_DISABLE_CNTD            "EAR_DISABLE_CNTD"       // disables automatic CNTD loadin
 #define FLAG_USE_DLB                 "EAR_USE_DLB_TALP"
+
+#define FLAG_PYTHON_MULTIPROC "EARL_PYTHON_MULTIPROC" // Enables features supporting applications which use Python's multiprocessing module. Currently, this variable has the same effect as FLAG_NO_SIGHANDLER
+#define FLAG_NO_SIGHANDLER 				"EARL_NO_SIGHANDLER" 		// Configures EARL to not configure any signal handler. This is useful to avoid conflicts with applications which want to handle signals.
+#define FLAG_GPU_MASTER_OPTIMIZE 	"EARL_GPU_MASTER_OPTIMIZE" // Enforces just the first master process to apply the GPU optimization. This flag is useful in multiprocess applications when you don't know the process-GPU mapping, or when all processes see all GPU devices.
 
 /** @} */
 

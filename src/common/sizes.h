@@ -1,35 +1,29 @@
-/*
-*
-* This program is part of the EAR software.
-*
-* EAR provides a dynamic, transparent and ligth-weigth solution for
-* Energy management. It has been developed in the context of the
-* Barcelona Supercomputing Center (BSC)&Lenovo Collaboration project.
-*
-* 
-* BSC Contact   mailto:ear-support@bsc.es
-* 
-*
-* EAR is an open source software, and it is licensed under both the BSD-3 license
-* and EPL-1.0 license. Full text of both licenses can be found in COPYING.BSD
-* and COPYING.EPL files.
-*/
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
 
 #ifndef EAR_SIZES_H
 #define EAR_SIZES_H
 
 #include <linux/limits.h>
 
-#define SZ_FILENAME			NAME_MAX + 1
-#define SZ_PATH_KERNEL		64
-#define SZ_PATH				PATH_MAX
-#define SZ_PATH_SHORT		1024
+#define SZ_FILENAME					NAME_MAX + 1
+#define SZ_PATH_KERNEL			64
+#define SZ_PATH							PATH_MAX
+#define SZ_PATH_SHORT				1024
 #define SZ_PATH_INCOMPLETE	SZ_PATH - (SZ_PATH_SHORT * 2)
+
 // Buffer and name are abstract concepts, use it with caution
-#define SZ_BUFFER           PATH_MAX
-#define SZ_BUFFER_EXTRA     PATH_MAX * 2
+#define SZ_BUFFER				PATH_MAX
+#define SZ_BUFFER_EXTRA	PATH_MAX * 2
 #define SZ_NAME_SHORT		128
-#define SZ_NAME_MEDIUM		SZ_FILENAME
+#define SZ_NAME_MEDIUM	SZ_FILENAME
 #define SZ_NAME_LARGE		512
 
-#endif //EAR_SIZES_H
+#endif				//EAR_SIZES_H
