@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <pthread.h>
@@ -156,9 +156,9 @@ void bwidth_data_diff(bwidth_t *b2, bwidth_t *b1, bwidth_t *bD, ullong *cas, dou
     if (gbs != NULL) { *gbs = 0.0;  }
     // Ms to seconds (for decimal
     time = timestamp_diff(&b2[api.devs_count-1].time, &b1[api.devs_count-1].time, TIME_MSECS);
-debug("api.devs_count %d", api.devs_count);
-debug("TIMESTAMP B2 %ld_%ld", b2[api.devs_count-1].time.tv_sec, b2[api.devs_count-1].time.tv_nsec);
-debug("TIMESTAMP B1 %ld_%ld", b1[api.devs_count-1].time.tv_sec, b1[api.devs_count-1].time.tv_nsec);
+    debug("devs_count %d", api.devs_count);
+    debug("timestamp B2 %ld_%ld", b2[api.devs_count-1].time.tv_sec, b2[api.devs_count-1].time.tv_nsec);
+    debug("timestamp B1 %ld_%ld", b1[api.devs_count-1].time.tv_sec, b1[api.devs_count-1].time.tv_nsec);
     // If no time, no metrics
     if (time == 0LLU) {
         debug("Time is 0");
@@ -166,7 +166,7 @@ debug("TIMESTAMP B1 %ld_%ld", b1[api.devs_count-1].time.tv_sec, b1[api.devs_coun
     }
     secs = (double) time;
     secs = secs / 1000.0;
-debug("secs %lf", secs);
+    debug("secs %lf", secs);
     if (bD != NULL) {
         bD[api.devs_count-1].secs = secs;
     }

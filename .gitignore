@@ -143,8 +143,10 @@ src/common/config/config.h.in
 src/tools/type_sizes
 src/daemon/commands/ear_check_node_test
 src/database_cache/tmpi
+src/library/policies/p_plugin_test
 src/management/test
 src/metrics/test
+src/metrics/gpu/test/gpuprof_test
 src/tools/coefficients_comparison
 src/tools/coeffs_compare
 src/tools/coeffs_comparison
@@ -183,3 +185,4 @@ deployment.sh
 src/tools/node_manager_info
 tmp.txt
 *.plist
+
