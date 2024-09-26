@@ -41,9 +41,10 @@ state_t perf_open(perf_t *perf, perf_t *group, pid_t pid, uint type, ulong event
 // Perf open extended/extra. With more options. Using cpu > 0 will imply system wide configuration
 state_t perf_open_cpu(perf_t *perf, perf_t *group, pid_t pid, uint type, ulong event, uint options, int cpu);
 
-state_t perf_open_files(perf_t **perfs, char *pmu, char *event, uint *perfs_count);
+state_t perf_open_files(perf_t **perfs, char *pmu_name, char *ev_name, uint *perfs_count);
 
-void perf_set_scale(perf_t *perfs, uint perfs_count, char *event, double scale);
+// Set the perf_t scale variable when the ev_name matches the event_name variable.
+void perf_set_scale(perf_t *perfs, uint perfs_count, char *ev_name, double scale);
 
 state_t perf_reset(perf_t *perf);
 

@@ -15,7 +15,7 @@
 * and COPYING.EPL files.
 */
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <errno.h>
 #include <stdlib.h>
@@ -59,7 +59,6 @@ state_t perf_open(perf_t *perf, perf_t *group, pid_t pid, uint type, ulong event
 {
     return perf_open_cpu(perf, group, pid, type, event, 0, -1);
 }
-
 
 state_t perf_open_cpu(perf_t *perf, perf_t *group, pid_t pid, uint type, ulong event, uint options, int cpu)
 {
@@ -535,9 +534,7 @@ state_t perf_open_files(perf_t **_perfs, char *_pmu_name, char *_ev_name, uint *
         // Setting event pointer to 0
         j = 0;
         do {
-            debug("J %d, ev %s\n", j, ev_list[j]);
             ev_name = ev_list[j++];
-            debug("J++ %d\n", j);
             // Calling perf section
             perfs = NULL;
             perfs_count = 0;
