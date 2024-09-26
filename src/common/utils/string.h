@@ -60,7 +60,7 @@ void *envtoat(const char *var, void **list, uint *list_count, int id_type);
 //        return 0;
 //    }
 
-// To parse a rank enumeration like CPUPOWER ('0', '0,1,2', '0-2,4', etc). Returns an array of 1s and 0s.
+// To parse a rank enumeration like CPUs ('0', '0,1,2', '0-2,4', etc). Returns an array of bits.
 int rantoa(char *string, uint *array, uint array_length);
 // Converts a string to ullong. Is base 10 or base 16 if starts with '0x'.
 ullong atoull(const char *str);

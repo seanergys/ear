@@ -22,15 +22,14 @@ uint random_get()
 	int i = 0;
 	unsigned int v;
 
-	// It is supported in AMD architectures too
-        #if __ARCH_X86
+    #if __ARCH_X86
 	// It is supported in AMD architectures too
 	i =  _rdrand32_step(&v);
 	#endif
-	if (i == 0) {
-		debug("hardware did not generate a random number");
-		clock_t c = clock();
-		v = (unsigned int) c;
+    if (i == 0) {
+        debug("hardware did not generate a random number");
+        clock_t c = clock();
+        v = (unsigned int) c;
 	}
 
 	return v;
