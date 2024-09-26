@@ -15,12 +15,14 @@
 #include <netdb.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <stdbool.h>
 #include <signal.h>
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
+#include <netinet/tcp.h>
 #include <linux/limits.h>
 #include <common/config.h>
 #include <common/states.h>
@@ -81,6 +83,24 @@ state_t remove_remote_connection(int fd)
     return EAR_SUCCESS;
 }
 
+bool is_socket_alive(int32_t socketfd)
+{
+	debug("Entering is_socket_alive with fd %d\n", socketfd);
+	struct tcp_info info = { 0 };
+    socklen_t  optlen = sizeof(info);
+
+	int32_t ret = getsockopt(socketfd, IPPROTO_TCP, TCP_INFO, &info, &optlen);
+	if (ret < 0) {
+		debug("Error getting sockopt %d (%s)\n", errno, strerror(errno));
+		return false;
+	} else if (info.tcpi_state == TCP_CLOSE_WAIT) {
+		debug("Socket opt with TCP_CLOSE_WAIT!\n");
+		return false;
+	}
+	debug("Socket opt got with state %d!\n", info.tcpi_state);
+	return true;
+}
+
 static void check_all_fds(afd_set_t *fdset)
 {
 	for (int32_t i = fdset->fd_min+1; i <= fdset->fd_max; i++) {
@@ -110,7 +130,7 @@ void *process_remote_req_th(void * arg)
 			for (i = rfds_basic.fd_min; i <= rfds_basic.fd_max; i++) {
 				if (AFD_ISHUP(i, &rfds_basic)) {
 					verbose(VRAPI, "ERROR: socket remote client has disconnected, closing the socket");
-					//remove_remote_connection(i);
+					remove_remote_connection(i);
 				}
 				else if (AFD_ISSET(i, &rfds_basic)) {
 					debug("Channel %d ready for reading", i);
@@ -120,7 +140,7 @@ void *process_remote_req_th(void * arg)
 					} else {
 						verbose(VRAPI, "New request received in RemoteAPI thread");
 						ret = process_remote_requests(i);
-						//if (ret != EAR_SUCCESS) remove_remote_connection(i);
+						if (ret != EAR_SUCCESS) remove_remote_connection(i);
 					}
 				}
 			}

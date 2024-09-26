@@ -22,7 +22,6 @@
 #include <netdb.h>
 #include <unistd.h>
 #include <arpa/inet.h>
-#include <linux/tcp.h>
 #include <netinet/ip.h>
 
 #include <sys/types.h>
@@ -584,28 +583,6 @@ int set_socket_block(int sfd, char blocking)
     return EAR_ERROR;
 }
 
-
-#define TCP_CLOSE_WAIT 8 //from tcp.h
-
-bool is_socket_alive(int32_t socketfd)
-{
-	printf("Entering is_socket_alive with fd %d\n", socketfd);
-	struct tcp_info info = { 0 };
-    socklen_t  optlen;
-	char test;
-	int32_t read;
-	if ((read = recv(socketfd, &test, sizeof(char), MSG_DONTWAIT | MSG_PEEK)) > 0) return true;
-	int32_t ret = getsockopt(socketfd, IPPROTO_TCP, TCP_INFO, &info, &optlen);
-	if (ret < 0) {
-		printf("Error getting sockopt %d (%s)\n", errno, strerror(errno));
-		return false;
-	} else if (info.tcpi_state == TCP_CLOSE_WAIT) {
-		printf("Socket opt got!\n");
-		return false;
-	}
-	printf("Socket opt got with state %d!\n", info.tcpi_state);
-	return true;
-}
 
 // based on getaddrinfo  man page
 int remote_connect(char *nodename,uint port)
