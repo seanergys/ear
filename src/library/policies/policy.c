@@ -183,7 +183,6 @@ unsigned long long int total_mpi = 0; // This variable only counts the number of
 
 node_freqs_t nf;     /*!< Nominal frequency */
 node_freqs_t avg_nf;
-node_freqs_t last_nf;
 
 static node_freqs_t per_process_node_freq;
 
@@ -336,6 +335,16 @@ static state_t policy_restore_cpus_governor();
 static void fill_cpus_out_of_cgroup(uint exc);
 
 static void policy_new_phase(uint phase, signature_t *sig);
+
+static state_t policy_cpu_gpu_freq_selection(polctx_t * c, signature_t * my_sig,
+					     node_freqs_t * freqs,
+					     node_freq_domain_t * dom,
+					     node_freqs_t * avg_freq);
+
+static state_t policy_io_freq_selection(polctx_t * c, signature_t * my_sig,
+					node_freqs_t * freqs,
+					node_freq_domain_t * dom,
+					node_freqs_t * avg_freq);
 
 #define DEBUG_CPUFREQ_COST 0
 
@@ -509,29 +518,18 @@ state_t policy_app_apply(ulong *freq_set, int *ready)
 	return st;
 }
 
-
-/* This function confgures freqs for apps consuming lot GPU. */
-state_t policy_cpu_gpu_freq_selection(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, node_freq_domain_t *dom, node_freqs_t *avg_freq)
+/* This function configures freqs based on IO criteria. */
+static state_t policy_io_freq_selection(polctx_t * c, signature_t * my_sig,
+					node_freqs_t * freqs,
+					node_freq_domain_t * dom,
+					node_freqs_t * avg_freq)
 {
-    REPORT_PHASE(APP_CPU_GPU);
-    if (polsyms_fun.cpu_gpu_settings != NULL){
-        polsyms_fun.cpu_gpu_settings(c,my_sig,freqs);
-    }
-    return EAR_SUCCESS;
+	REPORT_PHASE(APP_IO_BOUND);
+	if (polsyms_fun.io_settings != NULL) {
+		polsyms_fun.io_settings(c, my_sig, freqs);
+	}
+	return EAR_SUCCESS;
 }
-
-
-/* This function confgures freqs based on IO criteria. */
-state_t policy_io_freq_selection(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs, node_freq_domain_t *dom, node_freqs_t *avg_freq)
-{
-    REPORT_PHASE(APP_IO_BOUND);
-    if (polsyms_fun.io_settings != NULL)
-    {
-        polsyms_fun.io_settings(c, my_sig, freqs);
-    }
-    return EAR_SUCCESS;
-}
-
 
 /* This function sets again default frequencies after a setting modification */
 state_t policy_restore_comp_configuration(polctx_t *c, signature_t *my_sig, node_freqs_t *freqs,
@@ -659,7 +657,6 @@ static state_t policy_init()
 #endif // USE_GPUS
     node_freqs_alloc(&nf);
     node_freqs_alloc(&avg_nf);
-    node_freqs_alloc(&last_nf);
 
 		if (POLICY_MPI_CALL_ENABLED)
 		{
@@ -1819,20 +1816,11 @@ static state_t policy_cpu_freq_selection(polctx_t *c, signature_t *my_sig,
                             min_cpufreq_sel_khz, max_cpufreq_sel_khz);
        }
 			 uint do_change = 1;
-			 #if 0
-			 if ((process_id != ALL_PROCESSES) && !node_freqs_are_diff(DOM_CPU, freqs, &last_nf)){
-					//verbose(0,"not changing freq because they are the same");
-					do_change = 0;
-				}
-       #endif
         
 
         if (do_change){
           frequency_set_with_list(0, freq_per_core); // Setting the selected CPU frequency
         }
-				#if 0
-				if ((process_id != ALL_PROCESSES) && do_change) node_freqs_copy(&last_nf, freqs);
-				#endif
 
     } else {
         verbose_policy_info("Requesting a CPU frequency (kHz) range of [%lu, %lu] GHz...",
@@ -2234,4 +2222,17 @@ static void build_plugin_path(char *policy_plugin_path, size_t plug_path_size, s
 					"policies", my_policy_name, app_settings))) {
 		verbose_warning_master("Policy plug-in %s not found", my_policy_name);
 	}
+}
+
+/* This function confgures freqs for apps consuming lot GPU. */
+static state_t policy_cpu_gpu_freq_selection(polctx_t * c, signature_t * my_sig,
+					     node_freqs_t * freqs,
+					     node_freq_domain_t * dom,
+					     node_freqs_t * avg_freq)
+{
+	REPORT_PHASE(APP_CPU_GPU);
+	if (polsyms_fun.cpu_gpu_settings != NULL) {
+		polsyms_fun.cpu_gpu_settings(c, my_sig, freqs);
+	}
+	return EAR_SUCCESS;
 }
