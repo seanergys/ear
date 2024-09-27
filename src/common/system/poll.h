@@ -11,7 +11,6 @@
 #ifndef COMMON_SYSTEM_POLL
 #define COMMON_SYSTEM_POLL
 
-#define _GNU_SOURCE
 #include <poll.h>
 #include <sys/stat.h>
 #include <common/states.h>

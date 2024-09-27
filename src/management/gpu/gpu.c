@@ -33,12 +33,16 @@ __attribute__((used)) void mgt_gpu_load(int force_api)
     if (loaded) {
         goto unlock_load;
     }
+    if (API_IS(force_api, API_DUMMY)) {
+        goto dummy;
+    }
     // NVML and ONEAPI can be partially loaded.
     // EARD then can be partially loaded.
     mgt_gpu_nvml_load(&ops);
     mgt_gpu_rsmi_load(&ops);
     mgt_gpu_oneapi_load(&ops);
     mgt_gpu_eard_load(&ops, API_IS(force_api, API_EARD));
+dummy:
     mgt_gpu_dummy_load(&ops);
     loaded = 1;
 unlock_load:

@@ -362,7 +362,7 @@ static metrics_diff_t mrD;
 static state_t metrics_apis_init(void *whatever)
 {
     topology_init(&tp);
-    metrics_init(&m, &tp, NULL, atoull(getenv("MFLAGS")));
+    metrics_load(&m, &tp, NULL, atoull(getenv("MFLAGS")));
     metrics_init_screen(&m, &tp);
     metrics_data_alloc(&mr1, &mr2, &mrD);
     metrics_read(&mr1);

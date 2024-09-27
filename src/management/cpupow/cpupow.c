@@ -21,14 +21,18 @@ static pthread_mutex_t  lock = PTHREAD_MUTEX_INITIALIZER;
 static uint             loaded;
 static mgt_cpupow_ops_t ops;
 
-void mgt_cpupow_load(topology_t *tp, int eard)
+void mgt_cpupow_load(topology_t *tp, int force_api)
 {
 	while (pthread_mutex_trylock(&lock));
 	if (loaded) {
 		goto ret;
 	}
+    if (API_IS(force_api, API_DUMMY)) {
+        goto dummy;
+    }
     mgt_cpupow_intel63_load(tp, &ops);
     mgt_cpupow_amd17_load(tp, &ops);
+dummy:
     mgt_cpupow_dummy_load(tp, &ops);
     loaded = 1;
 ret:

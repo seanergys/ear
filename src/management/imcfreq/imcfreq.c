@@ -25,7 +25,7 @@ static mgt_imcfreq_ops_t ops;
 static uint sockets_count;
 static uint api;
 
-state_t mgt_imcfreq_load(topology_t *tp, int eard, my_node_conf_t *conf)
+state_t mgt_imcfreq_load(topology_t *tp, int force_api, my_node_conf_t *conf)
 {
 	state_t s;
 	while (pthread_mutex_trylock(&lock));
@@ -38,18 +38,22 @@ state_t mgt_imcfreq_load(topology_t *tp, int eard, my_node_conf_t *conf)
 	sockets_count = tp->socket_count;
 	// API load
 	api = API_DUMMY;
+    if (API_IS(force_api, API_DUMMY)) {
+        goto dummy;
+    }
 	if (state_ok(s = mgt_imcfreq_amd17_load(tp, &ops))) {
 		api = API_AMD17;
 		debug("Loaded AMD17");
 	}
-	if (state_ok(s = mgt_imcfreq_intel63_load(tp, &ops, eard, conf))) {
+	if (state_ok(s = mgt_imcfreq_intel63_load(tp, &ops, force_api, conf))) {
 		api = API_INTEL63;
 		debug("Loaded INTEL63");
 	}
-	if (state_ok(s = mgt_imcfreq_eard_load(tp, &ops, eard))) {
+	if (state_ok(s = mgt_imcfreq_eard_load(tp, &ops, force_api))) {
 		api = API_EARD;
 		debug("Loaded EARD");
 	}
+dummy:
 	mgt_imcfreq_dummy_load(tp, &ops);
 	pthread_mutex_unlock(&lock);
 	return EAR_SUCCESS;

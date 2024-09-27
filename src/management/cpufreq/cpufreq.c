@@ -30,7 +30,7 @@ static mgt_ps_driver_ops_t ops_driver;
 static uint                cpu_count;
 static uint                api;
 
-state_t mgt_cpufreq_load(topology_t *tp, int eard)
+state_t mgt_cpufreq_load(topology_t *tp, int force_api)
 {
     state_t s;
     while (pthread_mutex_trylock(&lock));
@@ -44,6 +44,9 @@ state_t mgt_cpufreq_load(topology_t *tp, int eard)
     mgt_intel_pstate_load(tp, &ops_driver);
 	// API load
 	api = API_DUMMY;
+    if (API_IS(force_api, API_DUMMY)) {
+        goto dummy;
+    }
 	// AMD17 loads if MSR test is passed and driver can be initialized. But it
 	// does not add its set functions if driver can't write. Also, AMD17 goes
 	// before because it works with DEFAULT but the AMD17 dedicated API is
@@ -62,16 +65,17 @@ state_t mgt_cpufreq_load(topology_t *tp, int eard)
 	//
 	// But, what happens if is AMD17, but fails, and it enters in default and
 	// in default is OK?
-	if (state_ok(s = mgt_cpufreq_eard_load(tp, &ops, &ops_driver, eard))) {
+	if (state_ok(s = mgt_cpufreq_eard_load(tp, &ops, &ops_driver, force_api))) {
 		api = API_EARD;
 		debug("Loaded EARD");
 	}
+dummy:
 	// DUMMY loads always
 	mgt_cpufreq_dummy_load(tp, &ops);
 	debug("Loaded DUMMY");
     // PRIORITY subsystem
-    mgt_cpufreq_prio_load(tp, eard);
-		debug("API %d", api);
+    mgt_cpufreq_prio_load(tp, force_api);
+    debug("API %d", api);
     // Finishing
     pthread_mutex_unlock(&lock);
     return EAR_SUCCESS;
