@@ -33,7 +33,9 @@ void temp_load(topology_t *tp, uint force_api)
     if (API_IS(force_api, API_DUMMY)) {
         goto dummy;
     }
+#if WF_SUPPORT
     temp_eard_load   (tp, &ops, force_api);
+#endif
     temp_intel63_load(tp, &ops, force_api);
     temp_amd17_load  (tp, &ops, force_api);
 dummy:
