@@ -9,7 +9,7 @@
  **********************************************************************/
 
 
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 
 #include <library/metrics/dcgmi_lib.h>
@@ -530,6 +530,8 @@ static state_t static_init()
 	}
 
 	// Allocate set sample count
+
+	debug("Allocating %d sets", dcgmi_data.dcgmi_set_count);
 	set_instances_cnt = calloc(dcgmi_data.dcgmi_set_count, sizeof(uint));
 
 	if (!set_instances_cnt)

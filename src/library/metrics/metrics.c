@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 
 #define _GNU_SOURCE
@@ -578,13 +578,16 @@ static void metrics_static_init(topology_t *tp)
     sa(        cpi_get_api(&met_cpi.api    ));
     sa(mgt_cpuprio_get_api(&mgt_cpuprio.api));
 		flops_get_info(&met_flops);
+		debug("CPU APIs ready");
 
 		if (met_cpufreq.api == API_DUMMY) estimate_met_cpuf = 1;
 		if (met_bwidth.api  == API_DUMMY) estimate_gbs = 1;
 
     if ((met_bwidth.api == API_DUMMY) || (met_cpi.api == API_DUMMY) || (met_flops.api == API_DUMMY)) validate_cpu_busy = 0;
-
+		
 #if USE_GPUS
+		debug("Asking for GPU apis");
+		debug("mgt_gpu_get_api");
     mgt_gpu_get_api(&mgt_gpu.api);
         gpu_get_api(&met_gpu.api);
 #if USE_CUPTI
@@ -627,6 +630,7 @@ static void metrics_static_init(topology_t *tp)
 		/* Just the master loads DCGMI module. */
     if (master && met_gpu.ok)
     {
+			debug("Loading DCGMI");
 			state_t ret_st = dcgmi_lib_load();
 	    if (state_is(ret_st, EAR_WARNING))
 	    {

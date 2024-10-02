@@ -79,6 +79,7 @@ state_t energy_model_init(char *ear_etc_path, char *ear_tmp_path, architecture_t
     strcpy(coeffs_path,hack_file);
 	}
   debug("Using hck coefficients path %s", coeffs_path);
+  verbose(3, "Using hck coefficients path %s", coeffs_path);
   cfile_size = coeff_file_size(coeffs_path);
   if (cfile_size == 0) num_coeffs = 0;
   else{
@@ -98,7 +99,7 @@ state_t energy_model_init(char *ear_etc_path, char *ear_tmp_path, architecture_t
       i = frequency_closest_pstate(coefficients_sm[ccoeff].pstate);
       if (frequency_is_valid_pstate(ref) && frequency_is_valid_pstate(i)){
 				memcpy(&coefficients[ref][i],&coefficients_sm[ccoeff],sizeof(coefficient_t));
-        debug("initializing coeffs for ref: %d i: %d\n", ref, i);
+        debug( "initializing coeffs for ref: %d i: %d\n", ref, i);
       }
     }
   }
@@ -157,13 +158,14 @@ state_t energy_model_project_power(signature_t *sign, ulong from,ulong to,double
 	return st;
 }
 
-state_t energy_model_projection_available(ulong from,ulong to)
+
+uint energy_model_projection_available(ulong from,ulong to)
 {
-	if (valid_range(from, to) && coefficients[from][to].available) return EAR_SUCCESS;
-	else return EAR_ERROR;
+	if (valid_range(from, to) && coefficients[from][to].available) return 1;
+	else return 0;
 }
 
-state_t energy_model_projections_available()
+uint energy_model_any_projection_available()
 {
   uint ready = 0;
   for (uint ps = 0; ps < num_pstates && !ready; ps++){
@@ -171,7 +173,7 @@ state_t energy_model_projections_available()
       if ((ps != pt) && (energy_model_projection_available(ps, pt) == EAR_SUCCESS)) ready = 1;
     }
   }
-  if (ready) return EAR_SUCCESS;
-  return EAR_ERROR;
+  if (ready) return 1;
+  return 0;
 }
 

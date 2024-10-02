@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <dlfcn.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -48,6 +48,8 @@ void gpu_nvml_load(gpu_ops_t *ops, int force_api)
         debug("nvml_open failed: %s", state_msg);
         return;
     }
+
+		debug("nvml_get_devices");
     if (state_fail(nvml_get_devices(&devs, &devs_count))) {
         debug("nvml_get_devices failed: %s", state_msg);
         return;

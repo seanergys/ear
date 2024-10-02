@@ -1,4 +1,4 @@
-%define _prefix /hpc/base/EAR/ear5.1.JAMMY-Neo2
+%define _prefix /home/xjcorbalan/EAR/ear5.0.a.dev
 
 Name:           ear
 Version:        5.0

@@ -198,8 +198,9 @@ state_t nvml_close()
 
 state_t nvml_get_devices(nvmlDevice_t **devs, uint *devs_count_in)
 {
+		debug("nvml_get_devices using %d devices allocating %d bytes", devs_count, sizeof(nvmlDevice_t)*devs_count);
     if (devs != NULL) {
-        *devs = malloc(sizeof(nvmlDevice_t)*devs_count);
+        *devs = calloc(devs_count,sizeof(nvmlDevice_t));
         memcpy(*devs, devices, sizeof(nvmlDevice_t)*devs_count);
     }
     if (devs_count_in != NULL) {

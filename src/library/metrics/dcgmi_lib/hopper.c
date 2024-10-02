@@ -8,10 +8,12 @@
  * SPDX-License-Identifier: EPL-2.0
  **********************************************************************/
 
-
-#include <library/metrics/dcgmi_lib/hopper.h>
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
+#include <common/output/debug.h>
+#include <library/metrics/dcgmi_lib/hopper.h>
+
 
 #include <metrics/common/apis.h>
 #include <library/metrics/dcgmi_lib/common.h>
@@ -27,7 +29,7 @@ state_t dcgmi_lib_hopper_init(uint api, uint all_events, dcgmi_lib_t *dcgmi_data
 		{
 			return_msg(EAR_ERROR, Generr.api_undefined);
 		}
-
+		debug("dcgmi_lib_data_alloc");
 		if (state_fail(dcgmi_lib_data_alloc(dcgmi_data, 1)))
 		{
 			char err_msg[64];
@@ -47,8 +49,10 @@ state_t dcgmi_lib_hopper_init(uint api, uint all_events, dcgmi_lib_t *dcgmi_data
 		dcgmi_data->dcgmi_event_ids[0]		 = NULL;
 		dcgmi_data->dcgmi_event_ids_csv[0] = NULL;
 
+		debug("Allocating dcgmi_event_ids");
+
 		// Allocate memory for event set array and event set string
-		dcgmi_data->dcgmi_event_ids[0] = (uint *) malloc(dcgmi_data->dcgmi_set_sizes[0] * sizeof(uint));
+		dcgmi_data->dcgmi_event_ids[0] = (uint *) calloc(dcgmi_data->dcgmi_set_sizes[0] , sizeof(uint));
 		dcgmi_data->dcgmi_event_ids_csv[0] = (char *) calloc(dcgmi_data->dcgmi_set_sizes[0], ID_SIZE);
 
 		if (!dcgmi_data->dcgmi_event_ids[0] || !dcgmi_data->dcgmi_event_ids_csv[0])
@@ -67,6 +71,7 @@ state_t dcgmi_lib_hopper_init(uint api, uint all_events, dcgmi_lib_t *dcgmi_data
 		// Set 1
 		if (all_events)
 		{
+			debug("Adding all events");
 			dcgmi_data->dcgmi_event_ids[0][0]		= (API_IS(API_NVML, api)) ? nvml_gr_engine_active : dcgm_gr_engine_active;
 			dcgmi_data->dcgmi_event_ids[0][1] 	= (API_IS(API_NVML, api)) ? nvml_sm_active				: dcgm_sm_active;
 			dcgmi_data->dcgmi_event_ids[0][2] 	= (API_IS(API_NVML, api)) ? nvml_sm_occupancy			: dcgm_sm_occupancy;
@@ -81,6 +86,7 @@ state_t dcgmi_lib_hopper_init(uint api, uint all_events, dcgmi_lib_t *dcgmi_data
 			dcgmi_data->dcgmi_event_ids[0][11]	= (API_IS(API_NVML, api)) ? nvml_nvlink_rx_bytes	: dcgm_nvlink_rx_bytes;
 		} else
 		{
+			debug("Adding specific events");
 			dcgmi_data->dcgmi_event_ids[0][0]		= (API_IS(API_NVML, api)) ? nvml_tensor_active		: dcgm_tensor_active;
 			dcgmi_data->dcgmi_event_ids[0][1] 	= (API_IS(API_NVML, api)) ? nvml_dram_active			: dcgm_dram_active;
 			dcgmi_data->dcgmi_event_ids[0][2] 	= (API_IS(API_NVML, api)) ? nvml_fp64_active			: dcgm_fp64_active;
