@@ -148,6 +148,7 @@ src/database_cache/tmpi
 src/library/policies/p_plugin_test
 src/management/test
 src/metrics/test
+src/metrics/common/nvml_test
 src/metrics/gpu/test/gpuprof_test
 src/tools/coefficients_comparison
 src/tools/coeffs_compare

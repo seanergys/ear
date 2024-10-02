@@ -26,7 +26,7 @@ typedef struct manages_info_s {
     apinfo_t gpu; // gpu
 } manages_info_t;
 
-void management_init(manages_info_t *man, topology_t *tp, ullong force_api);
+void management_load(manages_info_t *man, topology_t *tp, ullong force_api);
 
 void management_info_get(manages_info_t *m);
 

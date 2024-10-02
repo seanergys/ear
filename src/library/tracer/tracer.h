@@ -18,14 +18,18 @@
 
 #ifdef EAR_GUI
 
-/** Executed at application start. */
+/** Loads the trace plug-in by reading FLAG_TRACE_PLUGIN env var.
+ * If a trace plug-in is loaded, call it init method. */
 void traces_init(settings_conf_t *conf, char *app, int global_rank, int local_rank,
         int nodes, int mpis, int ppn);
-/** Executed at application end */
+
+/** Calls trace plug-in end method. */
 void traces_end(int global_rank,int local_rank, unsigned long int total_ener);
-/** **/
+
+/** Calls the trace plug-in start method. */
 void traces_start();
-/** **/
+
+/** Calls the trace plug-in stop method. */
 void traces_stop();
 
 /**@{ Executed when application signature is computed at EVALUATING_SIGNATURE and SIGANTURE_STABLE states */
