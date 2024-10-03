@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <common/config.h>
 #include <common/output/verbose.h>
+#include <common/sizes.h>
 
 int module_file_exists(char *path)
 {
@@ -43,16 +44,16 @@ void module_get_path_libear(char **path_lib, char **hack_lib)
 			}
 		} else {
 			snprintf(path_lib_so, sizeof(path_lib_so), "%s/%s", env_path, REL_PATH_LIBR);
-			*path_lib = malloc(strlen(path_lib_so)+8);
+			*path_lib = malloc(strlen(path_lib_so)+SZ_FILENAME);
 			strcpy(*path_lib, path_lib_so);
 		}
 	} else {
-		*path_lib = malloc(strlen(env_path)+8);
+		*path_lib = malloc(strlen(env_path)+SZ_FILENAME);
 		strcpy(*path_lib, env_path);
 	}
 	verbose(2,"LOADER path_lib_so %s",*path_lib);
 	if (env_hack != NULL){
-		*hack_lib = malloc(strlen(env_hack)+8);
+		*hack_lib = malloc(strlen(env_hack)+SZ_FILENAME);
 		strcpy(*hack_lib, env_hack);
 		verbose(2,"LOADER hack file %s",*hack_lib);
 	}
