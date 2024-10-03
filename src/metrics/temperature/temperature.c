@@ -27,8 +27,12 @@ static temp_ops_t      ops;
 void temp_load(topology_t *tp, uint force_api)
 {
     while (pthread_mutex_trylock(&lock));
-    if (is_loaded) { goto leave; }
-    if (API_IS(force_api, API_DUMMY)) { goto dummy; }
+    if (is_loaded) {
+        goto leave;
+    }
+    if (API_IS(force_api, API_DUMMY)) {
+        goto dummy;
+    }
 #if WF_SUPPORT
     temp_eard_load   (tp, &ops, force_api);
 #endif

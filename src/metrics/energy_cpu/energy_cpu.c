@@ -40,7 +40,6 @@ static struct energy_cpu_ops
 
 state_t energy_cpu_load(topology_t *tp, uint force_api)
 {
-	
 	debug("entering cpu_load with tp->initialized %d", tp->initialized);
 	state_t s;
 	if (state_fail(s = ear_trylock(&lock))) {
@@ -72,37 +71,34 @@ state_t energy_cpu_load(topology_t *tp, uint force_api)
 		api = API_EARD;
 		debug("selected eard energy_cpu (api %u)", api);
 	} else if (state_ok(linux_powercap_load(tp))){
-    ops.init          = linux_powercap_init;
-    ops.dispose       = linux_powercap_dispose;
-    ops.read          = linux_powercap_read;
-    ops.count_devices = linux_powercap_count_devices;
-    api = API_LINUX_POWERCAP;
-    debug("selected linux_powercap (api %u)", api);
+        ops.init          = linux_powercap_init;
+        ops.dispose       = linux_powercap_dispose;
+        ops.read          = linux_powercap_read;
+        ops.count_devices = linux_powercap_count_devices;
+        api = API_LINUX_POWERCAP;
+        debug("selected linux_powercap (api %u)", api);
     } else if(state_ok(grace_cpu_load(tp))){
-    ops.init          = grace_cpu_init;
-    ops.dispose       = grace_cpu_dispose;
-    ops.read          = grace_cpu_read;
-    ops.count_devices = grace_cpu_count_devices;
-    api = API_GRACE_CPU;
-    debug("selected GRACE_CPU energy_cpu API");
-  }else if (state_ok(acpi_power_meter_load(tp))){
-    ops.init          = acpi_power_meter_init;
-    ops.dispose       = acpi_power_meter_dispose;
-    ops.read          = acpi_power_meter_read;
-    ops.count_devices = acpi_power_meter_count_devices;
-    api = API_ACPI_POWER;
-    debug("selected acpi_power (api %u)", api);
-    }
-		else if (state_ok(perf_rapl_load(tp))){
-    ops.init          = perf_rapl_init;
-    ops.dispose       = perf_rapl_dispose;
-    ops.read          = perf_rapl_read;
-    ops.count_devices = perf_rapl_count_devices;
-		api = API_PERF;
-		debug("selected per_rapl (api %u)", api);
-
-		}
-		else if (state_ok(energy_cpu_util_load(tp))) {
+        ops.init          = grace_cpu_init;
+        ops.dispose       = grace_cpu_dispose;
+        ops.read          = grace_cpu_read;
+        ops.count_devices = grace_cpu_count_devices;
+        api = API_GRACE_CPU;
+        debug("selected GRACE_CPU energy_cpu API");
+    } else if (state_ok(acpi_power_meter_load(tp))){
+        ops.init          = acpi_power_meter_init;
+        ops.dispose       = acpi_power_meter_dispose;
+        ops.read          = acpi_power_meter_read;
+        ops.count_devices = acpi_power_meter_count_devices;
+        api = API_ACPI_POWER;
+        debug("selected acpi_power (api %u)", api);
+    } else if (state_ok(perf_rapl_load(tp))){
+        ops.init          = perf_rapl_init;
+        ops.dispose       = perf_rapl_dispose;
+        ops.read          = perf_rapl_read;
+        ops.count_devices = perf_rapl_count_devices;
+        api = API_PERF;
+        debug("selected per_rapl (api %u)", api);
+    } else if (state_ok(energy_cpu_util_load(tp))) {
 		ops.init          = energy_cpu_util_init;
 		ops.dispose       = energy_cpu_util_dispose;
 		ops.read          = energy_cpu_util_read;
@@ -119,9 +115,7 @@ dummy:
 		api = API_DUMMY;
 		debug("selected dummy energy_cpu (api %u)", api);
 	}
-
 	ear_unlock(&lock);
-
 	if (ops.init == NULL) {
 		debug("cannot load energy_cpu");
 		return_msg(EAR_ERROR, Generr.api_incompatible);
@@ -132,7 +126,7 @@ dummy:
 state_t energy_cpu_init(ctx_t *c)
 {
 	int s;
-	if (xtate_fail(s, energy_cpu_count_devices(c, &socket_count))) {
+	if (state_fail(s = energy_cpu_count_devices(c, &socket_count))) {
 		return s;
 	}
 	preturn(ops.init, c);
@@ -266,4 +260,3 @@ double energy_cpu_compute_power(double energy, double elapsed_time)
     }
     return (double)0;
 }
-

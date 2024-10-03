@@ -21,7 +21,7 @@
 #include <daemon/local_api/eard_api.h>
 #include <management/management.h>
 
-void management_init(manages_info_t *m, topology_t *tp, ullong mflags)
+void management_load(manages_info_t *m, topology_t *tp, ullong mflags)
 {
     mgt_cpufreq_load(tp, MFLAG_UNZIP(mflags, MET_CPUFREQ)      );
     mgt_cpuprio_load(tp, MFLAG_UNZIP(mflags, MET_CPUFREQ)      );
@@ -179,7 +179,7 @@ static topology_t     tp;
 static state_t monitor_apis_init(void *whatever)
 {
     topology_init(&tp);
-    management_init(&man, &tp, API_EARD);
+    management_load(&man, &tp, atoull(getenv("MFLAGS")));
     management_init_screen(&man, &tp);
     return EAR_SUCCESS;
 }

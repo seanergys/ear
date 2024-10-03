@@ -31,14 +31,15 @@ static uint cyc_en;
 static uint sta_en;
 static uint started;
 
-state_t cpi_perf_load(topology_t *tp, cpi_ops_t *ops)
+void cpi_perf_load(topology_t *tp, cpi_ops_t *ops)
 {
 	if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_HASWELL_X) {
 	} else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN) {
     } else if (tp->vendor == VENDOR_ARM) {
     } else {
-		return_msg(EAR_ERROR, Generr.api_incompatible);
-	}
+        // API incompatible
+        return;
+    }
 	// Opening events
 	if (state_ok(perf_open(&perf_ins, NULL, 0, gen_ins_tp, gen_ins_ev))) {
 		ins_en = 1;
@@ -47,15 +48,20 @@ state_t cpi_perf_load(topology_t *tp, cpi_ops_t *ops)
 		cyc_en = 1;
 	}
     if (!ins_en && !cyc_en) {
-        return EAR_ERROR;
+        return;
     }
-	replace_ops(ops->init,    cpi_perf_init);
-	replace_ops(ops->dispose, cpi_perf_dispose);
-	replace_ops(ops->read,    cpi_perf_read);
-	return EAR_SUCCESS;
+    apis_put(ops->get_info, cpi_perf_get_info);
+	apis_put(ops->init,     cpi_perf_init);
+	apis_put(ops->dispose,  cpi_perf_dispose);
+	apis_put(ops->read,     cpi_perf_read);
 }
 
-state_t cpi_perf_init(ctx_t *c)
+void cpi_perf_get_info(apinfo_t *info)
+{
+    info->api = API_PERF;
+}
+
+state_t cpi_perf_init()
 {
 	if (!started) {
 		if (ins_en) {
@@ -72,7 +78,7 @@ state_t cpi_perf_init(ctx_t *c)
 	return EAR_SUCCESS;
 }
 
-state_t cpi_perf_dispose(ctx_t *c)
+state_t cpi_perf_dispose()
 {
     if (ins_en) perf_close(&perf_ins);
     if (cyc_en) perf_close(&perf_cyc);
@@ -81,7 +87,7 @@ state_t cpi_perf_dispose(ctx_t *c)
 	return EAR_SUCCESS;
 }
 
-state_t cpi_perf_read(ctx_t *c, cpi_t *ci)
+state_t cpi_perf_read(cpi_t *ci)
 {
 	memset(ci, 0, sizeof(cpi_t));
 	if (ins_en) {

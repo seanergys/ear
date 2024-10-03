@@ -13,12 +13,6 @@
 
 #include <metrics/cpi/cpi.h>
 
-state_t cpi_perf_load(topology_t *tp, cpi_ops_t *ops);
-
-state_t cpi_perf_init(ctx_t *c);
-
-state_t cpi_perf_dispose(ctx_t *c);
-
-state_t cpi_perf_read(ctx_t *c, cpi_t *ci);
+CPI_DEFINES(perf);
 
 #endif //METRICS_CPI_PERF_H

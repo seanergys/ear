@@ -88,7 +88,7 @@ void flops_perf_load(topology_t *tp, flops_ops_t *ops)
         set_flops(0x80c0, PERF_TYPE_RAW, 6, ((double) tp->sve_bits) / 128.0, "FP_SCALE_OPS_SPEC");
     }
 
-    else if (tp->vendor == VENDOR_ARM && tp->sve & tp->model != MODEL_NEOVERSE_V2) {
+    else if (tp->vendor == VENDOR_ARM && tp->sve && tp->model != MODEL_NEOVERSE_V2) {
 				debug("ARM CPU model SVE enabled not MODEL_NEOVERSE_V2");
         // FIXED also counts VFP_SPEC operations.
         set_flops(0x80c3, PERF_TYPE_RAW, 2,                             1.0, "FP_FIXED_OPS_SPEC");

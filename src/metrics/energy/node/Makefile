@@ -12,9 +12,9 @@ ener_OBJS = \
     energy_dummy.o \
     energy_cpu_gpu.o \
     energy_sd650_power.o \
-	  grace_hopper_module_power.o \
+    grace_hopper_module_power.o \
     energy_eard_nm.o \
-		energy_cray_pm.o
+    energy_cray_pm.o
 
 ifdef FREEIPMI_BASE
 ener_OBJS += energy_inm_power_freeipmi.o

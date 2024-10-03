@@ -24,14 +24,18 @@ static uint             init;
 static uint             prios_count;
 static uint             idxs_count;
 
-void mgt_cpufreq_prio_load(topology_t *tp, int eard)
+void mgt_cpufreq_prio_load(topology_t *tp, int force_api)
 {
     while (pthread_mutex_trylock(&lock));
     if (init) {
         goto leave;
     }
+    if (API_IS(force_api, API_DUMMY)) {
+        goto dummy;
+    }
     mgt_prio_isst_load(tp, &ops);
-    mgt_prio_eard_load(tp, &ops, eard);
+    mgt_prio_eard_load(tp, &ops, force_api);
+dummy:
     mgt_prio_dummy_load(tp, &ops);
     init = 1;
 leave:
