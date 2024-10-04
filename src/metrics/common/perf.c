@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #include <errno.h>
 #include <stdlib.h>
@@ -476,11 +476,12 @@ static state_t _perf_open_files(perf_t **perfs, char *pmu_name, char *ev_name, u
             debug("perf_open_cpu returned: %s", state_msg);
             cpus_count -= 1;
             cpu -= 1;
-        }
-        strcpy((*perfs)[cpu].event_name, ev_name);
-        strcpy((*perfs)[cpu].pmu_name, pmu_name);
-        strcpy((*perfs)[cpu].unit, unit);
-        (*perfs)[cpu].scale = scale;
+        } else {
+					strcpy((*perfs)[cpu].event_name, ev_name);
+					strcpy((*perfs)[cpu].pmu_name, pmu_name);
+					strcpy((*perfs)[cpu].unit, unit);
+					(*perfs)[cpu].scale = scale;
+				}
     }
     if (perfs_count != NULL) {
         *perfs_count = cpus_count;
