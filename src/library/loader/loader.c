@@ -91,7 +91,7 @@ int must_load()
 int load_no_official()
 {
     char  *envar = ear_getenv(FLAG_LOADER_APPLICATION);
-    char **list;
+    char  **list;
     uint   list_count;
     int    l;
 
