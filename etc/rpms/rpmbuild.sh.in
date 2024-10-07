@@ -21,6 +21,7 @@ echo "Compressing $PREFIX_BAS into $COMP_DIR..."
 tar czf $COMP_DIR $PREFIX_BAS
 
 echo "Returning back to $SAVEPATH..."
+cd $SAVEPATH
 
 ln -s specs/ear.spec ear.spec
 

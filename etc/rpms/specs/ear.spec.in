@@ -52,14 +52,14 @@ fi
 install -m 0660 etc/ear/defines.log etc/ear/ear.conf* etc/ear/edcmon* %{buildroot}%{_sysconfdir}/ear
 
 # Creating and installing modules
-mkdir -p %{buildroot}%{_sysconfdir}/etc/module
-install -m 0775 etc/module/* %{buildroot}%{_sysconfdir}/etc/module
+mkdir -p %{buildroot}%{_sysconfdir}/module
+install -m 0775 etc/module/* %{buildroot}%{_sysconfdir}/module
 
-mkdir -p %{buildroot}%{_sysconfdir}/etc/slurm
-install -m 0644 etc/slurm/ear.plugstack.conf %{buildroot}%{_sysconfdir}/etc/slurm
+mkdir -p %{buildroot}%{_sysconfdir}/slurm
+install -m 0644 etc/slurm/ear.plugstack.conf %{buildroot}%{_sysconfdir}/slurm
 
-mkdir -p %{buildroot}%{_sysconfdir}/etc/systemd
-install -m 0660 etc/systemd/* %{buildroot}%{_sysconfdir}/etc/systemd
+mkdir -p %{buildroot}%{_sysconfdir}/systemd
+install -m 0660 etc/systemd/* %{buildroot}%{_sysconfdir}/systemd
 
 # Creating and installing include dir
 mkdir -p %{buildroot}%{_includedir}
@@ -70,6 +70,7 @@ mkdir -p %{buildroot}%{_libdir}
 install -m 0664 lib/libearld_dummy.a lib/libear_api.a %{buildroot}%{_libdir}
 install -m 0775 lib/libearld* %{buildroot}%{_libdir}
 install -m 0755 lib/libear*.so %{buildroot}%{_libdir}
+install -m 0755 lib/earplug.so %{buildroot}%{_libdir}
 
 mkdir -p %{buildroot}%{_libdir}/pbs
 install -m 0775 lib/pbs/* %{buildroot}%{_libdir}/pbs

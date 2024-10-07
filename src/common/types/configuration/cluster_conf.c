@@ -497,18 +497,18 @@ my_node_conf_t *get_my_node_conf(cluster_conf_t *my_conf, char *nodename)
     /* If node powercap is -1, and there is a global powercap, power is equally distributed */
     /* If node powercap is 1, we check for powercap missconfigurations*/
     /* If node powercap is N where N > 1, we only print the powercap*/
-    verbose(VCCONF, "--------------------------------------");
-    verbose(VCCONF, "Checking powercap in configuration");
-    verbose(VCCONF, "--------------------------------------");
+    verbose(VCCONF+2, "--------------------------------------");
+    verbose(VCCONF+2, "Checking powercap in configuration");
+    verbose(VCCONF+2, "--------------------------------------");
     switch(n->powercap) {
         case POWER_CAP_DISABLED:
-            verbose(VCCONF, "my_node_conf powercap is DISABLED");
+            verbose(VCCONF+2, "my_node_conf powercap is DISABLED");
             break;
         case POWER_CAP_UNLIMITED:
-            verbose(VCCONF, "my_node_conf powercap is UNLIMITED");
+            verbose(VCCONF+2, "my_node_conf powercap is UNLIMITED");
             if (my_conf->eargm.num_eargms > my_conf->islands[island_idx].ranges[range_id].eargm_id) {
                 if (my_conf->eargm.eargms[my_conf->islands[island_idx].ranges[range_id].eargm_id].power == POWER_CAP_AUTO_CONFIG) {
-                    verbose(VCCONF, "warning: EARGM is set to autoconfigure and node powercap is unlimited, this is unsupported");
+                    verbose(VCCONF+2, "warning: EARGM is set to autoconfigure and node powercap is unlimited, this is unsupported");
                 }
             }
             break;
@@ -562,9 +562,9 @@ my_node_conf_t *get_my_node_conf(cluster_conf_t *my_conf, char *nodename)
         verbose(VCCONF, "WARNING: max powercap is set to a non-valid value (%ld) while the EARGM mode is set to soft powercap. This configuration is not supported and the cluster powercap will not work.", n->max_powercap);
     }
 
-    verbose(VCCONF, "--------------------------------------");
-    verbose(VCCONF, "Finished checking powercap, final powercap value: %ld", n->powercap);
-    verbose(VCCONF, "--------------------------------------");
+    verbose(VCCONF+2, "--------------------------------------");
+    verbose(VCCONF+2, "Finished checking powercap, final powercap value: %ld", n->powercap);
+    verbose(VCCONF+2, "--------------------------------------");
 
     return n;
 }
