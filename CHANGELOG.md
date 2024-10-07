@@ -1,4 +1,4 @@
-### EAR 5.0.1
+### EAR 5.0.3
 - EARD local API creates an application directory if a third-party program connects with it.
 - Fixed a typo in ereport queries.
 - Prevent closing fd 0 on NTASK\_WORKSHARING use cases.
