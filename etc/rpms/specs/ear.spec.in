@@ -70,6 +70,7 @@ mkdir -p %{buildroot}%{_libdir}
 install -m 0664 lib/libearld_dummy.a lib/libear_api.a %{buildroot}%{_libdir}
 install -m 0775 lib/libearld* %{buildroot}%{_libdir}
 install -m 0755 lib/libear*.so %{buildroot}%{_libdir}
+install -m 0755 lib/earplug.so %{buildroot}%{_libdir}
 
 mkdir -p %{buildroot}%{_libdir}/pbs
 install -m 0775 lib/pbs/* %{buildroot}%{_libdir}/pbs
