@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **********************************************************************/
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
@@ -29,7 +29,7 @@ static uint socket_count = 0;
 
 #define GH_MODULE_PERIOD 3000
 #define NUM_DEVICES 1
-#define VGRACE_VL	0
+#define VGRACE_VL	2
 static suscription_t *gh_module_power_sus;
 static state_t gh_module_power_mon_main(void *p);
 static state_t gh_module_power_mon_init(void *p);

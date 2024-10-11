@@ -52,7 +52,7 @@ void bwidth_load(topology_t *tp, int force_api)
     bwidth_intel63_load (tp, &ops);
     bwidth_intel106_load(tp, &ops);
     bwidth_intel143_load(tp, &ops);
-//    bwidth_perf_load    (tp, &ops);
+    bwidth_perf_load    (tp, &ops);
     bwidth_likwid_load  (tp, &ops);
 dummy:
     bwidth_dummy_load   (tp, &ops);
