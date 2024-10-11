@@ -3062,6 +3062,7 @@ static void check_status_of_jobs(job_id current)
 {
 		return; // Disabled
     powermon_app_t *pmapp; 
+		return;
     for (uint cc = 1; cc <= max_context_created; cc++)
     {
         if (current_ear_app[cc] != NULL)

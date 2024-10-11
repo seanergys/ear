@@ -85,6 +85,7 @@ state_t compute_cpu_freq_min_energy(signature_t *signature, energy_model_t energ
   double energy_ref,best_solution,time_max;
   double power_proj,time_proj,energy_proj;
   ulong i,from;
+	uint  proj_av = 0;
 
   ulong best_freq = freq_ref;
 
@@ -96,7 +97,7 @@ state_t compute_cpu_freq_min_energy(signature_t *signature, energy_model_t energ
   compute_sig_vpi(&vpi,signature);
   verbose_master(3, "CPUfreq algorithm for min_energy timeref %lf powerref %lf energy %lf F=%lu VPI %lf. Pstates %lu...%lu", time_ref, power_ref, energy_ref, best_freq, vpi, minp, maxp);
 
-	verbose_master(3, "CPUfreq algorithm for min_energy, projecting from pstate %lu to %lu", minp, maxp);
+	verbose_master(2, "CPUfreq algorithm for min_energy, projecting from pstate %lu to %lu", minp, maxp);
 	if (from == minp) minp++;
   for (i = minp; i < maxp; i++)
   {
@@ -104,6 +105,7 @@ state_t compute_cpu_freq_min_energy(signature_t *signature, energy_model_t energ
 		verbose_master(3, "CPUfreq algorithm testing pstate %lu", i);
     if (energy_model_projection_available(energy_model, from, i))
     {
+			proj_av++;
       // If energy_model is invalid, the above condition is false, so we don't need to check
       // the correctness of the below calls.
       energy_model_project_power(energy_model, signature, from, i, &power_proj);
@@ -116,13 +118,16 @@ state_t compute_cpu_freq_min_energy(signature_t *signature, energy_model_t energ
 
       if ((energy_proj < best_solution) && (time_proj < time_max)) {
         best_freq = frequency_pstate_to_freq(i);
-        verbose(3,"new best solution found %lu",best_freq);
+        verbose_master(2,"Min_energy: new best solution found %lu [time %.2lf Power %.2lf Energy (KJ) %.2lf ",best_freq, time_proj, power_proj, energy_proj/1000);
         best_solution = energy_proj;
-      }
+      }else{
+				verbose_master(3," Min_energy: freq %lu not selected becuase of penalty %.3lf", frequency_pstate_to_freq(i), ((time_proj - time_ref)/time_ref)*100.0);
+			}
     }else{
-			verbose_master(3, "CPUfreq algorithm pstate %lu projection not available", i);
+			verbose_master(3, "Min_energy: CPUfreq  %lu projection not available", frequency_pstate_to_freq(i));
 		}
   }
+	if (!proj_av) verbose_master(2," Min_energy: no frequencies evaluated");
   *newf = best_freq;
   return EAR_SUCCESS;
 }

@@ -8,6 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
+//#define SHOW_DEBUGS 1
 #if !SHOW_DEBUGS
 #define NDEBUG
 #endif

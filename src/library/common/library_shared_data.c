@@ -981,8 +981,11 @@ void update_earl_node_mgr_info()
 			expected_apps += node_mgr_data[j].num_earl_apps;
 		}
 	
-		if (expected_apps != earl_apps_in_sh_data) release = 1;
-		verbose_master(WF_SUPPORT_VERB,"EARL[%d] Num EARL apps have changed expected %u current %u", getpid(), expected_apps, earl_apps_in_sh_data);
+
+		if (expected_apps != earl_apps_in_sh_data){ 
+			release = 1;
+			verbose_master(WF_SUPPORT_VERB,"EARL[%d] Num EARL apps have changed expected %u current %u", getpid(), expected_apps, earl_apps_in_sh_data);
+		}
 	}
 
 
