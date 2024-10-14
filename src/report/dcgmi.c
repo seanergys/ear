@@ -96,13 +96,20 @@ state_t report_init(report_id_t *id, cluster_conf_t *cconf)
 		char *csv_log_file_env = ear_getenv(DCGMI_LOGS_PATH);
 		if (!csv_log_file_env) {
 			csv_log_file_env = getcwd(path_base, sizeof(path_base));
-		}
+			snprintf(csv_log_file, sizeof(csv_log_file) - 1,
+			 "%s/dcgmi_app_%s.csv", csv_log_file_env, nodename);
 
-		snprintf(csv_log_file, sizeof(csv_log_file) - 1,
+			snprintf(csv_loop_log_file, sizeof(csv_loop_log_file) - 1,
+			 "%s/dcgmi_loops_%s.csv", csv_log_file_env, nodename);
+		}else{
+			snprintf(csv_log_file, sizeof(csv_log_file) - 1,
 			 "%s_dcgmi_app_%s.csv", csv_log_file_env, nodename);
 
-		snprintf(csv_loop_log_file, sizeof(csv_loop_log_file) - 1,
+			snprintf(csv_loop_log_file, sizeof(csv_loop_log_file) - 1,
 			 "%s_dcgmi_loops_%s.csv", csv_log_file_env, nodename);
+		}
+
+		dcgmi_verbose(2, "DCGMI paths app`%s loops %s", csv_log_file, csv_loop_log_file);
 
 #if 0
 		/*

@@ -344,6 +344,7 @@ static void print_local_data()
                 system_conf->user_type==AUTHORIZED);
         verbose(1, "%30s: %d ", "EARL on", lib_shared_region->earl_on);
         verbose(1, "%30s: %lu", "Max CPU freq", system_conf->max_freq);
+				verbose(1, "%30s: %s", "TAG", system_conf->tag);
         verbose(1, "-------------------------------------------------------");
     }
 }
@@ -1378,14 +1379,19 @@ static int get_ear_application_id(uint can_synch)
 {
   int master_pid;
 #if MPI
+	verbose(2, "EARL[%d] can synchronize %d", getpid(), can_synch);
 	if (can_synch)
 	{
 		master_pid = getpid();
-		PMPI_Bcast(&master_pid, 1, MPI_INT, 0, MPI_COMM_WORLD);
+		if (PMPI_Bcast(&master_pid, 1, MPI_INT, 0, MPI_COMM_WORLD)  != MPI_SUCCESS){
+			verbose(2, "EARl[%d] MPI_Bcast failed", getpid());
+		}
+		verbose(2, "EARL[%d][rank %d/%d] APP ID from MPI %d", getpid(), ear_my_rank, ear_my_size, master_pid);	
 	}else{
 		// This case applies to MPI apps where there is some issue with
 		// the synchronization
 		master_pid = get_ear_application_id_multiprocess(app_node_multiprocess);
+		verbose(2, "APP ID from MPI multiprocess %d", master_pid);
 	}
 #else
 	master_pid = get_ear_application_id_multiprocess(app_node_multiprocess);
@@ -1456,7 +1462,7 @@ static void configure_sigactions()
 /*****************************************************************************************************************************************************/
 /*****************************************************************************************************************************************************/
 
-#define START_END_OVH 1
+#define START_END_OVH 0
 uint fake_force_shared_node = 0;
 void ear_init()
 {
@@ -1643,7 +1649,7 @@ void ear_init()
 
 	int i_am_master = (my_id == 0);
 	int verb_pid_lvl = i_am_master ? 1 : 2; // UPDATED
-	earl_early_verb(verb_pid_lvl, "--- EARL INIT [PID: %d] [MASTER: %d] ---", my_pid, i_am_master);
+	earl_early_verb(verb_pid_lvl, "--- EARL INIT [PID: %d AID %d] [MASTER: %d] ---", my_pid, AID, i_am_master);
 
 	/* All masters connect in a new MPI communicator */
 	attach_to_master_set(i_am_master, synchronize_masters);

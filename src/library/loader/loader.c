@@ -91,7 +91,7 @@ int must_load()
 int load_no_official()
 {
     char  *envar = ear_getenv(FLAG_LOADER_APPLICATION);
-    char **list;
+    char  **list;
     uint   list_count;
     int    l;
 
@@ -110,6 +110,7 @@ int load_no_official()
     if (envar == NULL) {
         return 0;
     }
+		#if 0
     verbose(2, "LOADER: Using %s = %s as special cases", FLAG_LOADER_APPLICATION, envar);
     if (strtoa((const char *) envar, ',', &list, &list_count) == NULL) {
         return 0;
@@ -121,6 +122,7 @@ int load_no_official()
         }
     }
     strtoa_free(list);
+		#endif
     return 0;
 }
 

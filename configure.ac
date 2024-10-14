@@ -21,7 +21,7 @@ m4_include([m4/ac_countdown.m4])
 
 # INIT
 AC_PREREQ([2.69])
-AC_INIT([EAR], [5.0], [ear-support@bsc.es], [ear-5.0], [https://gitlab.bsc.es/ear_team/ear])
+AC_INIT([EAR], [5.1], [ear-support@bsc.es], [ear-5.1], [https://gitlab.bsc.es/ear_team/ear])
 AC_COPYRIGHT([Copyright © 2017-present BSC])
 AC_LANG(C)
 

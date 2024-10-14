@@ -578,13 +578,16 @@ static void metrics_static_init(topology_t *tp)
     sa(        cpi_get_api(&met_cpi.api    ));
     sa(mgt_cpuprio_get_api(&mgt_cpuprio.api));
 		flops_get_info(&met_flops);
+		debug("CPU APIs ready");
 
 		if (met_cpufreq.api == API_DUMMY) estimate_met_cpuf = 1;
 		if (met_bwidth.api  == API_DUMMY) estimate_gbs = 1;
 
     if ((met_bwidth.api == API_DUMMY) || (met_cpi.api == API_DUMMY) || (met_flops.api == API_DUMMY)) validate_cpu_busy = 0;
-
+		
 #if USE_GPUS
+		debug("Asking for GPU apis");
+		debug("mgt_gpu_get_api");
     mgt_gpu_get_api(&mgt_gpu.api);
         gpu_get_api(&met_gpu.api);
 #if USE_CUPTI
@@ -627,6 +630,7 @@ static void metrics_static_init(topology_t *tp)
 		/* Just the master loads DCGMI module. */
     if (master && met_gpu.ok)
     {
+			debug("Loading DCGMI");
 			state_t ret_st = dcgmi_lib_load();
 	    if (state_is(ret_st, EAR_WARNING))
 	    {
@@ -2510,7 +2514,7 @@ void metrics_app_node_signature(signature_t *master,signature_t *ns)
 	compute_job_node_cycles(sig_shared_region, lib_shared_region->num_processes, &cycles);
 	compute_job_node_io_mbs(sig_shared_region, lib_shared_region->num_processes, &io_mbs);
 
-	ns->CPI = (double) cycles / (double) inst;
+	ns->CPI = (inst ? (double) cycles / (double) inst : 1);
   ns->IO_MBS = io_mbs;
 
 	compute_job_node_flops(sig_shared_region, lib_shared_region->num_processes, FLOPS);
@@ -2544,17 +2548,21 @@ void metrics_app_node_signature(signature_t *master,signature_t *ns)
 		for (uint lp = 0; lp < lib_shared_region->num_processes; lp ++){
 			valid_period    = sig_shared_region[lp].sig.valid_time;
       max_inst        = ear_max(max_inst, sig_shared_region[lp].sig.instructions);
-			ns->DC_power   += sig_shared_region[lp].sig.accum_energy / valid_period;
-			ns->DRAM_power += sig_shared_region[lp].sig.accum_dram_energy / valid_period;
-			ns->PCK_power  += sig_shared_region[lp].sig.accum_pack_energy / valid_period;
-			ns->GBS        += sig_shared_region[lp].sig.accum_mem_access / (valid_period * B_TO_GB);
-			ns->avg_f      += (sig_shared_region[lp].sig.accum_avg_f * sig_shared_region[lp].num_cpus) / (ulong)valid_period;
+			if (valid_period){
+				ns->DC_power   += sig_shared_region[lp].sig.accum_energy / valid_period;
+				ns->DRAM_power += sig_shared_region[lp].sig.accum_dram_energy / valid_period;
+				ns->PCK_power  += sig_shared_region[lp].sig.accum_pack_energy / valid_period;
+				ns->GBS        += sig_shared_region[lp].sig.accum_mem_access / (valid_period * B_TO_GB);
+				ns->avg_f      += (sig_shared_region[lp].sig.accum_avg_f * sig_shared_region[lp].num_cpus) / (ulong)valid_period;
+			}
 			tcpus          += sig_shared_region[lp].num_cpus;
       accesses       += sig_shared_region[lp].sig.accum_mem_access;
+			if (valid_period){
 			debug(" p[%u]: Power %lf GBs %lf avg_f %lu dram %lf pck %lf  period %lf", lp, (double)(sig_shared_region[lp].sig.accum_energy / valid_period), (double)(sig_shared_region[lp].sig.accum_mem_access/ (valid_period * 1024 * 1024 * 1024)), sig_shared_region[lp].sig.accum_avg_f/(ulong)valid_period, ns->DRAM_power, ns->PCK_power, valid_period);
+			}
 		}
-		ns->avg_f /= (double)tcpus;
-    ns->TPI    = (double)accesses / (double)max_inst;
+		ns->avg_f  = (tcpus ? ns->avg_f/ (double)tcpus : ns->avg_f);
+    ns->TPI    = (max_inst ? (double)accesses / (double)max_inst: 1);
     /* TPI should be computed based on total instructions */
 		verbose_master(TPI_DEBUG,"AVG  %lu TPI %.2lf (accesses %llu, inst %llu) ", ns->avg_f, ns->TPI, accesses, inst);
 	}
