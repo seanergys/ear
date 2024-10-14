@@ -477,11 +477,11 @@ static state_t _perf_open_files(perf_t **perfs, char *pmu_name, char *ev_name, u
             cpus_count -= 1;
             cpu -= 1;
         } else {
-					strcpy((*perfs)[cpu].event_name, ev_name);
-					strcpy((*perfs)[cpu].pmu_name, pmu_name);
-					strcpy((*perfs)[cpu].unit, unit);
-					(*perfs)[cpu].scale = scale;
-				}
+            strcpy((*perfs)[cpu].event_name, ev_name);
+            strcpy((*perfs)[cpu].pmu_name, pmu_name);
+            strcpy((*perfs)[cpu].unit, unit);
+            (*perfs)[cpu].scale = scale;
+        }
     }
     if (perfs_count != NULL) {
         *perfs_count = cpus_count;

@@ -116,7 +116,7 @@ state_t gpu_oneapi_init(ctx_t *c)
     if (initialized) {
         return s;
     }
-		memset(last_valid_power, 0, sizeof(double) * MAX_GPUS_SUPPORTED);
+    memset(last_valid_power, 0, sizeof(double) * MAX_GPUS_SUPPORTED);
     // Initializing pool (pool at 0 is not incorrect)
     timestamp_getfast(&time);
     for (i = 0; i < devs_count; ++i) {
@@ -151,11 +151,11 @@ void gpu_oneapi_set_monitoring_mode(int mode_in)
     mode = mode_in;
 
     if (mode == MONITORING_MODE_IDLE && ok_pool) {
-				debug("GPU:monitor_relax");
+        debug("GPU:monitor_relax");
         monitor_relax(sus);
     }
     if (mode == MONITORING_MODE_RUN && ok_pool) {
-				debug("GPU:monitor_burst");
+        debug("GPU:monitor_burst");
         monitor_burst(sus, 0);
     }
 }
