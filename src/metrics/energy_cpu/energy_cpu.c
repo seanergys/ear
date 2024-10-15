@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-// #define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <common/plugins.h>
@@ -78,6 +78,7 @@ state_t energy_cpu_load(topology_t *tp, uint force_api)
         api = API_LINUX_POWERCAP;
         debug("selected linux_powercap (api %u)", api);
     } else if(state_ok(grace_cpu_load(tp))){
+				
         ops.init          = grace_cpu_init;
         ops.dispose       = grace_cpu_dispose;
         ops.read          = grace_cpu_read;

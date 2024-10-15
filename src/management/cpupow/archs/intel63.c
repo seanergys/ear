@@ -451,6 +451,10 @@ CPUPOW_F_POWERCAP_SET(mgt_cpupow_intel63_powercap_set)
         return EAR_ERROR;
     }
     for (i = 0; i < p->tp->cpu_count; ++i) {
+        // Do nothing if asked to do nothing
+        if (watts[i] == POWERCAP_DO_NOTHING) {
+            continue;
+        }
         // Getting base register
         reg = p->pl[i].reg;
         // If is disabling

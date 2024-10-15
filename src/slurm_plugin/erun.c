@@ -338,7 +338,7 @@ static int execute(int argc, char *argv[])
 		waitpid(fpid, &sd.subject.exit_status, 0);
 		plug_verbose(_sp, 2, "program returned with status %d",
 			sd.subject.exit_status);
-	}	
+	}
 
 	return 0;
 }

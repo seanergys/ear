@@ -1,4 +1,4 @@
-/***************************************************************************
+    /***************************************************************************
  * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
  *
  * This program and the accompanying materials are made

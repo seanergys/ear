@@ -99,6 +99,10 @@ state_t proc_stat_load()
 	if((kernel > 3 && major > 3)) {
 		mode = 3;
 	}
+	// > 4.x
+	if (kernel > 4){
+		mode = 3;
+	}
 	if (mode == 0) {
 		return_msg(EAR_ERROR, "Incompatble kernel version");
 	}

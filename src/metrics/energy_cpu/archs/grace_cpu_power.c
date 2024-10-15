@@ -27,7 +27,7 @@ static uint socket_count = 0;
 
 #define GH_CPU_PERIOD 2000
 #define NUM_DEVICES 2 // DRAM and PKG
-#define VGRACE_CPU_VL 3
+#define VGRACE_CPU_VL 2
 static suscription_t *grace_cpu_sus;
 static state_t grace_cpu_mon_main(void *p);
 static state_t grace_cpu_mon_init(void *p);
@@ -88,7 +88,7 @@ state_t grace_cpu_load(topology_t *topo)
 			socket_count = topo->socket_count;
 		}
 	}
-	debug("grace_cpu: %d sockets found", socket_count);
+	verbose(VGRACE_CPU_VL,"grace_cpu: %d sockets found", socket_count);
 	pthread_mutex_unlock(&lock);
 	/* We should try to open the file for reading */
 	return s;
@@ -243,7 +243,6 @@ state_t grace_cpu_count_devices(ctx_t *c, uint *count)
 
 	// TODO: socket_count variable is available once the API is loaded,
 	// so technically a user could call this function before calling grace_cpu_init
-	if (!grace_cpu_initialized) return EAR_ERROR;
 
 	verbose(VGRACE_CPU_VL,"GH CPU: count devices %u", socket_count);
 

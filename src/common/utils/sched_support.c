@@ -49,7 +49,7 @@ uint is_job_step_valid(job_id jid, job_id sid)
   char sep = ' ';
   char *job_sched_state;
 
-	printf("Executing: %s\n", command);
+	debug("Executing: %s\n", command);
 
   if (popen_open(command, no_header, one_shot, &sched_test) != EAR_SUCCESS){
        debug("popen for scheduler test failedfailed\n");
@@ -59,7 +59,7 @@ uint is_job_step_valid(job_id jid, job_id sid)
   uint i = 0;
   while(i < expected_items){
   while(popen_read2(&sched_test, sep,  "s", &job_sched_state)) {
-		printf("Detected state '%s'\n", job_sched_state);
+		debug("Detected state '%s'\n", job_sched_state);
     i++;
   }
   }

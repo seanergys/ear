@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **********************************************************************/
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <common/system/time.h>
@@ -50,6 +50,7 @@ void bwidth_perf_load(topology_t *tp, bwidth_ops_t *ops)
 {
     // Common configuration
     castob = tp->cache_line_size;
+		debug("bwidth_perf_load vendor %d", tp->vendor);
 
     if (tp->vendor == VENDOR_INTEL) {
         // In Sapphire Rapids (4 IMCs and 2 channels per IMC per socket), we
@@ -71,9 +72,11 @@ void bwidth_perf_load(topology_t *tp, bwidth_ops_t *ops)
         }
     } else if (tp->vendor == VENDOR_ARM) {
         if (tp->model == MODEL_NEOVERSE_V2) {
+						debug("MODEL_NEOVERSE_V2");
             if (state_ok(perf_open_files(&perfs, "nvidia_scf_pmu_%d", "cmem_rd_data,cmem_wr_total_bytes", &perfs_count))) {
                 perf_set_scale(perfs, perfs_count, "cmem_wr_total_bytes", 1.0 / 32.0);
                 castob = 32.0;
+								debug("Perf events detected %d ", perfs_count);
             }
         } else {
             set_alloc(1);

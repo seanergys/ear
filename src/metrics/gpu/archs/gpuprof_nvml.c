@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <math.h>
 #include <stdlib.h>
@@ -75,10 +75,12 @@ static int samples_alloc(nvmlGpmMetricsGet_t *sev)
     nvmlReturn_t r;
     
     sev->version = NVML_GPM_METRICS_GET_VERSION;
+		debug("Allocation sample1");
     if ((r = nvml.GpmSampleAlloc(&sev->sample1)) != NVML_SUCCESS) {
         debug("Error while allocating sample1: %s", nvml.ErrorString(r));
         return 0;
     }
+		debug("Allocation sample2");
     if ((r = nvml.GpmSampleAlloc(&sev->sample2)) != NVML_SUCCESS) {
         debug("Error while allocating sample2: %s", nvml.ErrorString(r));
         return 0;
@@ -122,7 +124,7 @@ static int events_fill(nvmlGpmMetricsGet_t *sev, int i)
 GPUPROF_F_LOAD(gpuprof_nvml_load)
 {
     int i = 0;
-
+		debug("gpuprof_nvml_load");
     if (apis_loaded(ops)) {
         return;
     }
@@ -130,17 +132,21 @@ GPUPROF_F_LOAD(gpuprof_nvml_load)
         debug("nvml_open failed: %s", state_msg);
         return;
     }
+		debug("gpuprof_nvml_load get devices");
     if (state_fail(nvml_get_devices(&devs, &devs_count))) {
         debug("nvml_get_devices failed: %s", state_msg);
         return;
     }
+		debug("NVML_dcgmi: %d devices detected", devs_count);
     if (!support_test()) {
         debug("Unsupported NVML profiling functions");
         return;
     }
+		debug("Allocating %d bytes for %d devices in dcgmi ", sizeof(nvmlGpmMetricsGet_t)*(devs_count + 1), devs_count);
     // Allocating space for NVML metrics for all devices + additional for testing
     gpms = calloc(devs_count + 1, sizeof(nvmlGpmMetricsGet_t));
     // Allocating space for our own event list (events)
+		debug("Allocating events %d event bytes %d", NVML_GPM_METRIC_MAX, sizeof(gpuprof_evs_t)*NVML_GPM_METRIC_MAX);
     events = calloc(NVML_GPM_METRIC_MAX, sizeof(gpuprof_evs_t));
     // Allocating samples
     while (i < (devs_count+1)) {
@@ -153,6 +159,7 @@ GPUPROF_F_LOAD(gpuprof_nvml_load)
     gpuprof_nvml_data_alloc(&pool);
     // Getting event names and ids
     i = 1;
+		debug("filling events");
 		while(events_fill(&gpms[devs_count], i++));
 		apis_put(ops->init,							gpuprof_nvml_init);
 		apis_put(ops->get_info,         gpuprof_nvml_get_info);
@@ -401,6 +408,7 @@ GPUPROF_F_DATA_ALLOC(gpuprof_nvml_data_alloc)
 {
     gpuprof_t *aux;
     int d;
+		debug("gpuprof_nvml_data_alloc");
     aux = calloc(devs_count, sizeof(gpuprof_t));
     // We allocate all values contiguously
     aux[0].values = calloc(devs_count*NVML_GPM_METRIC_MAX, sizeof(double));
