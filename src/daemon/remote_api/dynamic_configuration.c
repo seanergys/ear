@@ -970,8 +970,6 @@ state_t process_remote_requests(int clientfd) {
             return EAR_SUCCESS;
         case EAR_RC_SEND_MESSAGE:
             dyncon_process_message(command.my_req.message);
-            free(command.my_req.message);
-            return EAR_SUCCESS;
             break;
         default:
             error("Invalid remote command %d\n",req);
@@ -982,6 +980,8 @@ state_t process_remote_requests(int clientfd) {
         verbose(VRAPI + 1, "command=%d propagated distance=%d", req, command.node_dist);
         propagate_req(&command, my_cluster_conf.eard.port);
     }
+    if (req == EAR_RC_SEND_MESSAGE)
+        free(command.my_req.message);
     return EAR_SUCCESS;
 }
 
