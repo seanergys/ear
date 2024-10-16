@@ -732,37 +732,31 @@ static void metrics_static_init(topology_t *tp)
     pstate_tostr(mgt_imcfreq.avail_list, mgt_imcfreq.avail_count, buffer, SZ_BUFFER_EXTRA);
     verbose_info2_master("IMCFREQ available list of frequencies:\n%s", buffer);
 
-    if (VERB_ON(VEARL_INFO2) && (master)) {
-        apis_print(mgt_cpufreq.api, "MGT_CPUFREQ: ");
-        apis_print(mgt_imcfreq.api, "MGT_IMCFREQ: ");
-        apis_print(met_temp.api,    "MET_TEMP:    ");
+		if (VERB_ON(VEARL_INFO) && (master)) {
+			verbose(0, "--- EARL loaded APIs ---");
+			apis_print(mgt_cpufreq.api, "MGT_CPUFREQ: ");
+			apis_print(mgt_imcfreq.api, "MGT_IMCFREQ: ");
+			apis_print(mgt_cpuprio.api, "MGT_PRIO   : ");
+			apis_print(met_cpufreq.api, "MET_CPUFREQ: ");
+			apis_print(met_imcfreq.api, "MET_IMCFREQ: ");
+			apis_print(met_energy.api , "MET_ENERGY : ");
+			apis_print(met_temp.api,    "MET_TEMP:    ");
+			apis_print(met_bwidth.api , "MET_BWIDTH : ");
+			apis_print(met_flops.api  , "MET_FLOPS  : ");
+			apis_print(met_cpi.api    , "MET_CPI    : ");
 #if USE_GPUS
-        apis_print(mgt_gpu.api    , "MGT_GPU    : ");
-        #if USE_CUPTI
-        if (read_cupti_metrics){
-          apis_print(proc_gpu.api   , "PROC_GPU    : ");
-        }
-        #endif
+			apis_print(mgt_gpu.api    , "MGT_GPU    : ");
+			apis_print(met_gpu.api    , "MET_GPU    : ");
+#if USE_CUPTI
+			if (read_cupti_metrics) {
+				apis_print(proc_gpu.api   , "PROC_GPU    : ");
+			}
+#endif
 #endif // USE_GPUS
-        apis_print(met_cpufreq.api, "MET_CPUFREQ: ");
-        apis_print(met_imcfreq.api, "MET_IMCFREQ: ");
-        apis_print(met_bwidth.api , "MET_BWIDTH : ");
-        apis_print(met_energy.api , "MET_ENERGY : ");
-        apis_print(met_flops.api  , "MET_FLOPS  : ");
-        apis_print(met_cpi.api    , "MET_CPI    : ");
-        apis_print(mgt_cpuprio.api, "MGT_PRIO   : ");
-#if USE_GPUS
-        apis_print(met_gpu.api    , "MET_GPU    : ");
-#endif // USE_GPUS
-    }
-    if (VERB_ON(2)) {
-        apis_print(mgt_cpufreq.api, "MGT_CPUFREQ: ");
-				if (master) {
-					cache_internals_tostr(cache_description, sizeof(cache_description));
-					verbose(0, "%s", cache_description);
-				}
-    }
-
+			cache_internals_tostr(cache_description, sizeof(cache_description));
+			verbose(0, "%s", cache_description);
+			verbose(0, "------------------------");
+		}
 
     cpufreq_data_alloc(&cpufreq_read1[0], empty);
     cpufreq_data_alloc(&cpufreq_read1[1], empty);
@@ -774,14 +768,12 @@ static void metrics_static_init(topology_t *tp)
     imcfreq_data_alloc(&imcfreq_read2[0], &imcfreq_diff[0]);
     imcfreq_data_alloc(&imcfreq_read2[1], &imcfreq_diff[1]);
 
-
     temp_data_alloc(&temp_read1[LOO]);
     temp_data_alloc(&temp_read1[APP]);
     temp_data_alloc(&temp_read2[LOO]);
     temp_data_alloc(&temp_read2[APP]);
     temp_data_alloc(&temp_diff[LOO]);
     temp_data_alloc(&temp_diff[APP]);
-
 
     bwidth_data_alloc(&bwidth_read1[0]);
     bwidth_data_alloc(&bwidth_read1[1]);
@@ -799,17 +791,17 @@ static void metrics_static_init(topology_t *tp)
     gpu_data_alloc(&gpu_metrics_diff[APP]);
     gpu_data_alloc(&gpu_metrics_busy);
     gpu_data_alloc(&gpu_metrics_busy_diff);
-    #if USE_CUPTI
-    if (read_cupti_metrics){
-      gpuproc_data_alloc(&proc_gpu_data_init[LOO]);
-      gpuproc_data_alloc(&proc_gpu_data_init[APP]);
-      gpuproc_data_alloc(&proc_gpu_data_end[LOO]);
-      gpuproc_data_alloc(&proc_gpu_data_end[APP]);
-      gpuproc_data_alloc(&proc_gpu_data_diff[LOO]);
-      gpuproc_data_alloc(&proc_gpu_data_diff[APP]);
-      verbose_master(VERBOSE_CUPTI, "PROC_GPU data allocated");
-    }
-    #endif
+#if USE_CUPTI
+		if (read_cupti_metrics) {
+			gpuproc_data_alloc(&proc_gpu_data_init[LOO]);
+			gpuproc_data_alloc(&proc_gpu_data_init[APP]);
+			gpuproc_data_alloc(&proc_gpu_data_end[LOO]);
+			gpuproc_data_alloc(&proc_gpu_data_end[APP]);
+			gpuproc_data_alloc(&proc_gpu_data_diff[LOO]);
+			gpuproc_data_alloc(&proc_gpu_data_diff[APP]);
+			verbose_master(VERBOSE_CUPTI, "PROC_GPU data allocated");
+		}
+#endif
 #endif // USE_GPUS
 
     energy_cpu_data_alloc(no_ctx, &metrics_rapl[LOO], &rapl_size);

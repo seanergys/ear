@@ -1317,7 +1317,7 @@ void remove_islands_by_eargm(cluster_conf_t conf[static 1], eargm_def_t *e_def)
 }
 
 
-void remove_islands_by_island_id(cluster_conf_t *conf, int32_t id)
+void remove_islands_by_island_id(cluster_conf_t conf[static 1], int32_t id)
 {
 	if (conf == NULL) return;
 	debug("Removing nodes with island id different than %d", id);
