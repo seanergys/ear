@@ -1036,8 +1036,8 @@ void read_loops(char *user, query_adds_t *q_a, char *format)
 
 	if (num_loops < 1)
 	{
-		printf("No loops retrieved\n");
-		return;
+		fprintf(stderr, "No loops retrieved\n");
+		exit(1);
 	}
 
 	if (verbose) printf("retrieved %d loops\n", num_loops);
@@ -1145,10 +1145,9 @@ void read_applications_from_database(char *user, query_adds_t *q_a, char *format
 	}
 
 	if (num_apps < 1) {
-		printf("No jobs found.\n");
-		return;
+		fprintf(stderr, "No jobs found.\n");
+		exit(1);
 	}
-
 
 	if (q_a->limit == 20 && strlen(csv_path) < 1)
 		printf("\nBy default only the first 20 jobs are retrieved.\n\n");
@@ -1376,7 +1375,7 @@ int main(int argc, char *argv[])
 	else read_applications_from_database(user, &query_adds, format); 
 
 #if COLORS
-	printf("%s",COL_CLR);
+	printf("%s", COL_CLR);
 #endif
 
 	free_cluster_conf(&my_conf);
