@@ -18,9 +18,8 @@
 #include <common/string_enhanced.h>
 #include <library/loader/loader.h>
 #include <library/loader/module_mpi.h>
-#include <library/loader/module_mpic.h>
-#include <library/loader/module_mpif.h>
-#include <library/loader/module_cuda.h>
+#include <library/loader/module_mpi_syms_c.h>
+#include <library/loader/module_mpi_syms_f.h>
 #include <library/loader/module_common.h>
 #if FEAT_MPI_LOADER
 #include <library/api/mpi.h>
@@ -272,7 +271,7 @@ int load_mpi_and_ear(char *libmpi_path)
     return 1;
 }
 
-int module_mpi(char *lib_path, char *lib_hack_name)
+int module_mpi()
 {
     // This is the call to a principal function
     if (load_mpi_and_ear(NULL)) {

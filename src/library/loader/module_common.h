@@ -11,8 +11,8 @@
 #ifndef _MODULE_COMMON_H
 #define _MODULE_COMMON_H
 
-int module_file_exists(char *path);
-
 void module_get_path_libear(char **path_lib, char **hack_lib);
+
+int module_other(char *lib_extension, char **syms);
 
 #endif

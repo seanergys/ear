@@ -11,7 +11,7 @@
 #ifndef LIBRARY_LOADER_MPI_H
 #define LIBRARY_LOADER_MPI_H
 
-int module_mpi(char *path_lib_so, char *libhack);
+int module_mpi();
 
 int load_mpi_and_ear(char *libmpi_path);
 
