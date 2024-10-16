@@ -4,7 +4,7 @@
 - Support for Python applications which use multiprocess module.
 - EARL is compiled by default with LITE mode and DCGM metric collection enabled by default.
 - Fix DCGM application-level metrics computation.
-- Prevent closing fd 0 on NTASK_WORKSHARING use case.
+- Prevent closing fd 0 on NTASK\_WORKSHARING use case.
 - Avoid collapsing application's channel 2 when earl has high verbosity.
 - Checking for authorized groups fixed.
 - Added a tool for  creating application-level signatures csv file from loop signatures csv file.
