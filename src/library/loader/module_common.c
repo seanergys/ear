@@ -26,6 +26,9 @@ int is_cuda_enabled()     { return 1;            }
 // Non-deprecated.
 static int syms_present(char *syms[])
 {
+    if (syms == NULL) {
+        return 1;
+    }
     while(*syms != NULL) {
         if (dlsym(RTLD_DEFAULT, *syms) != NULL) {
             return 1;
