@@ -98,6 +98,8 @@
 #define HACK_EARL_VERBOSE            "HACK_EARL_VERBOSE"       // This var forces an EARL verbosity.
 #define HACK_EARL_INSTALL_PATH       "HACK_EARL_INSTALL_PATH"  // This variable HACKS all the library environment, simplifies the utilization of a privatized environment.
 #define HACK_PROCS_VERB_FILES        "HACK_PROCS_VERB_FILES"   // This variable makes all processes having a log verbose file each one.
+#define HACK_ROOFLINE_COEFF_PATH     "HACK_ROOFLINE_COEFF_PATH" // This var forces to load a specific roofline coefficient file
+#define HACK_MEDOIDS_COEFF_PATH      "HACK_MEDOIDS_COEFF_PATH" // This var forces to load a specific medoids coefficient file
 /** @} */
 
 /**
