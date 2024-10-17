@@ -108,11 +108,11 @@ void __attribute__ ((constructor)) loader()
         return;
     }
     if (is_not_an_invalid_program()) {
-        if (module_mpi()) { return; }
-        if (module_other(OPENMP_EXT, syms_openmp)) { return; }
-        if (module_other(  CUDA_EXT, syms_cuda  )) { return; }
+        if (load_libear_mpi()) { return; }
+        if (load_libear_nonspec(OPENMP_EXT, syms_openmp)) { return; }
+        if (load_libear_nonspec(  CUDA_EXT, syms_cuda  )) { return; }
         if (!forced_load()) { return; }
-        if (module_other(   DEF_EXT, NULL       )) { return; }
+        if (load_libear_nonspec(   DEF_EXT, NULL       )) { return; }
     }
     return;
 }

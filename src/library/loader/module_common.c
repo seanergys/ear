@@ -12,13 +12,18 @@
 #include <dlfcn.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <common/config.h>
-#include <common/output/verbose.h>
 #include <common/sizes.h>
+#include <common/config.h>
+#include <common/utils/string.h>
+#include <common/output/verbose.h>
 
 static void (*call_constructor) (void);
 static void (*call_destructor)  (void);
 
+// Deprecated, clean.
+int is_cuda_enabled()     { return 1;            }
+
+// Non-deprecated.
 static int syms_present(char *syms[])
 {
     while(*syms != NULL) {
@@ -35,7 +40,7 @@ static int module_file_exists(char *path)
 	return (access(path, X_OK) == 0);
 }
 
-void module_get_path_libear(char **path_lib, char **hack_lib)
+void loader_get_path_libear(char **path_lib, char **hack_lib)
 {
 	static char path_lib_so[4096];
     char *env_hack = NULL;
@@ -81,7 +86,7 @@ static void module_other_destructor()
     }
 }
 
-int module_other(char *lib_extension, char *syms[])
+int load_libear_nonspec(char *lib_extension, char *syms[])
 {
     char *buffer_path = NULL;
     char *buffer_hack = NULL;
@@ -92,7 +97,7 @@ int module_other(char *lib_extension, char *syms[])
         return 0;
     }
     // Computing library path
-    module_get_path_libear(&buffer_path, &buffer_hack);
+    loader_get_path_libear(&buffer_path, &buffer_hack);
     printf("LOADER: env HACK/EAR_INSTALL_PATH => %s\n", buffer_path);
     printf("LOADER: env HACK_LIBRARY_FILE     => %s\n", buffer_hack);
     if (buffer_path == NULL && buffer_hack == NULL) {

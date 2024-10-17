@@ -24,7 +24,7 @@
 #include <library/api/clasify.h>
 #include <library/states/states_comm.h>
 #include <library/loader/module_mpi.h>
-#include <library/loader/module_cuda.h>
+#include <library/loader/module_common.h>
 #include <library/policies/common/mpi_stats_support.h>
 
 #define WARN_CLASSIFY  1

@@ -56,6 +56,7 @@ int is_mpi_enabled()      { return 1;            }
 int is_openmpi()          { return _found_open;  }
 int module_mpi_is_intel() { return _found_intel; }
 
+// Non-deprecated.
 int module_mpi_is_open() {
     return _found_open;
 }
@@ -135,7 +136,7 @@ static char *build_libear_path(void *call_mpi_version)
         return buffer_path;
     }
     // Getting EAR installation path and/or HACK absolute path
-    module_get_path_libear(&buffer_path, &buffer_hack);
+    loader_get_path_libear(&buffer_path, &buffer_hack);
     verbose(2, "LOADER: env HACK/EAR_INSTALL_PATH => %s", buffer_path);
     verbose(2, "LOADER: env HACK_LIBRARY_FILE     => %s", buffer_hack);
     if (buffer_path == NULL && buffer_hack == NULL) {
@@ -233,7 +234,17 @@ static void usage_and_exit()
     exit(1);
 }
 
-int load_mpi_and_ear(char *libmpi_path)
+void loader_mpi_destructor()
+{
+    verbose(3, "LOADER: loading module mpi (destructor)");
+    if (module_mpi_is_enabled()) {
+        if (call_destructor != NULL) {
+            call_destructor();
+        }
+    }
+}
+
+int load_libear_mpi_given_libmpi(char *libmpi_path)
 {
     void *call_mpi_version = NULL;
     char *libear_path = NULL;
@@ -261,7 +272,7 @@ int load_mpi_and_ear(char *libmpi_path)
     // Loading libear.$ext.so. Protected against multiple calls.
     if (load_ear_functions(get_libear_handler(libear_path))) {
         // Registering destructor and calling constructor
-        if (atexit(module_mpi_destructor) != 0) {
+        if (atexit(loader_mpi_destructor) != 0) {
             verbose(2, "LOADER: cannot set exit function");
         }
         if (call_constructor != NULL) {
@@ -271,14 +282,10 @@ int load_mpi_and_ear(char *libmpi_path)
     return 1;
 }
 
-int module_mpi()
+int load_libear_mpi()
 {
     // This is the call to a principal function
-    if (load_mpi_and_ear(NULL)) {
-        // This if is obsolete design and must be deleted as soon as possible.
-        if (module_cuda_is()) {
-            ear_cuda_enabled();
-        }
+    if (load_libear_mpi_given_libmpi(NULL)) {
         return 1;
     }
     // If one of these variables is active, it means the user wants to load the
@@ -287,14 +294,4 @@ int module_mpi()
         return 1;
     }
     return 0;
-}
-
-void module_mpi_destructor()
-{
-    verbose(3, "LOADER: loading module mpi (destructor)");
-    if (module_mpi_is_enabled()) {
-        if (call_destructor != NULL) {
-            call_destructor();
-        }
-    }
 }

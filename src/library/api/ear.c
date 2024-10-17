@@ -74,6 +74,7 @@
 #include <library/api/eard_dummy.h>
 #include <library/api/mpi_support.h>
 #include <library/loader/module_mpi.h>
+#include <library/loader/module_common.h>
 #include <library/dynais/dynais.h>
 #include <library/tracer/tracer.h>
 #include <library/states/states.h>

@@ -11,8 +11,11 @@
 #ifndef _MODULE_COMMON_H
 #define _MODULE_COMMON_H
 
-void module_get_path_libear(char **path_lib, char **hack_lib);
+void loader_get_path_libear(char **path_lib, char **hack_lib);
 
-int module_other(char *lib_extension, char **syms);
+int load_libear_nonspec(char *lib_extension, char **syms);
+
+// Depcrecated, clean.
+int is_cuda_enabled();
 
 #endif
