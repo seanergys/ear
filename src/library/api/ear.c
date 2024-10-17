@@ -1918,7 +1918,7 @@ void ear_init()
 				}
 
                 /* Based on family and model we set limits for this node */
-                classify_init(&arch_desc.top);
+                classify_init(&arch_desc.top, system_conf);
                 /* Getting limits for this node */
                 get_classify_limits(&phases_limits);
 
