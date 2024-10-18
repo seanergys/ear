@@ -19,10 +19,11 @@
 #include <metrics/common/pci.h>
 #include <metrics/common/hsmp.h>
 
-#define HSMP_NOT_READY   0x00
-#define HSMP_OK          0x01
-#define HSMP_INVALID_ID  0xFE
-#define HSMP_INVALID_ARG 0xFF
+#define HSMP_NOT_READY    0x00
+#define HSMP_OK           0x01
+#define HSMP_INVALID_ID   0xFE
+#define HSMP_INVALID_ARG  0xFF
+#define HSMP_ERR_SMU_BUSY 0xFC //Taken from amd_hsmp.c github driver.
 
 struct smn_s {
 	off_t index;
@@ -47,16 +48,17 @@ static mailbox_t zen2_mailbox = {
 	    .arg0.address = 0x3B109E0,     .arg0.size = 4,     .arg0.name = "argument",
 };
 
-// lspci -d 0x1022:0x1480
+// lspci -d 0x1022:0x1480 (more information on issue 'How to find HSMP device`)
 static ushort  amd_vendor        = 0x1022; // AMD
 static char   *zen2_pci_dfs[2]   = { "00.0", NULL };
-static ushort  zen2_pci_ids[6]   = { 0x1450, 0x15d0, 0x1480, 0x1630, 0x14b5, 0x00 };
-static ushort  zen3_pci_ids[7]   = { 0x14a4, 0x14b5, 0x14d8, 0x14e8, 0x153a, 0x1507, 0x00 };
-static uint    zen2_nbios_count  = 4;
+static ushort  zen5_pci_ids[12]  = { 0x1450, 0x15d0, 0x1480, 0x1630, 0x14b5, //17H
+                                     0x14a4, 0x14d8, 0x14e8, //19H
+                                     0x153a, 0x1507, 0x1122, //1AH
+                                     0x00 };
+static uint    zen2_nbios_count  = 4; // At least until ZEN3
 static char  **mist_pci_dfs;
 static ushort *mist_pci_ids;
 static uint    mist_nbios_count;
-
 //
 static pthread_mutex_t lock0 = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t lock  = PTHREAD_MUTEX_INITIALIZER;
@@ -65,6 +67,7 @@ static uint       sockets_count;
 static uint       pcis_count;
 static pci_t     *pcis;
 static uint       hsmp_failed;
+static char       hsmp_failed_msg[SZ_BUFFER];
 
 static state_t unlock_msg0(state_t s, char *msg)
 {
@@ -91,7 +94,7 @@ state_t hsmp_scan(topology_t *tp)
 	while (pthread_mutex_trylock(&lock0));
 	if (pcis != NULL) {
         if (hsmp_failed) {
-            return unlock_msg0(EAR_ERROR, "HSMP doesn't work");
+            return unlock_msg0(EAR_ERROR, hsmp_failed_msg);
         } else {
             return unlock_msg0(EAR_SUCCESS, "");
         }
@@ -103,36 +106,40 @@ state_t hsmp_scan(topology_t *tp)
         if (tp->family >= FAMILY_ZEN3) {
             debug("ZEN3 detected");
             mist_pci_dfs     = zen2_pci_dfs;
-            mist_pci_ids     = zen3_pci_ids;
+            mist_pci_ids     = zen5_pci_ids;
             mist_nbios_count = zen2_nbios_count;
         } else {
             debug("ZEN2 detected");
             mist_pci_dfs     = zen2_pci_dfs;
-            mist_pci_ids     = zen2_pci_ids;
+            mist_pci_ids     = zen5_pci_ids;
             mist_nbios_count = zen2_nbios_count;
         }
         // Opening PCis
         if (state_fail(s = pci_scan(amd_vendor, mist_pci_ids, mist_pci_dfs, O_RDWR, &pcis, &pcis_count))) {
-            return unlock_msg0(s, state_msg);
+            sprintf(hsmp_failed_msg, "HSMP failed while scanning PCI: %s", state_msg);
+            return unlock_msg0(s, hsmp_failed_msg);
         }
 		if (pcis_count != (sockets_count*mist_nbios_count)) {
-			return unlock_msg0(EAR_ERROR, "Not enough NBIO devices detected");
+            sprintf(hsmp_failed_msg, "HSMP failed: not enough NBIO devices detected (found %u, expected %u)",
+                    pcis_count, sockets_count*mist_nbios_count);
+			return unlock_msg0(EAR_ERROR, hsmp_failed_msg);
 		}
 		mail = &zen2_mailbox;
-		// TODO: test function
+		// Test
         uint args[2] = { 68, -1 };
         uint reps[2] = {  0, -1 };
-        
         if (state_fail(s = hsmp_send(0, HSMP_TEST, args, reps))) {
-            return unlock_msg0(s, "HSMP not enabled");
+            sprintf(hsmp_failed_msg, "HSMP test function failed: %s", state_msg);
+            return unlock_msg0(s, hsmp_failed_msg);
         }
         // Ping checking
         if (reps[0] != 69) {
-            return unlock_msg0(EAR_ERROR, "HSMP not enabled (incorrect ping value)");
+            sprintf(hsmp_failed_msg, "HSMP not enabled (incorrect ping value, expected 69, received %u)", reps[0]);
+            return unlock_msg0(EAR_ERROR, hsmp_failed_msg);
         }
         debug("Ping returned %d", reps[0]);
 	}
-	return unlock_msg0(EAR_SUCCESS, "OK");
+	return unlock_msg0(EAR_SUCCESS, "");
 }
 
 state_t hsmp_close()

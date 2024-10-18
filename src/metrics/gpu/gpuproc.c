@@ -164,7 +164,7 @@ state_t gpuproc_data_alloc(gpuproc_t **data)
 	}
 	*data = calloc(devs_count, sizeof(gpuproc_t));
 	if (*data == NULL) {
-		return_msg(EAR_SYSCALL_ERROR, strerror(errno));
+		return_msg(EAR_ERROR, strerror(errno));
 	}
 	return EAR_SUCCESS;
 }

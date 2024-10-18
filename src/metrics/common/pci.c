@@ -29,13 +29,17 @@ static char *strdfs(uint dfs, char *string)
 
 state_t pci_scan(ushort vendor, ushort *ids, char **dfs, mode_t mode, pci_t **pcis, uint *pcis_count)
 {
-    char path[SZ_PATH];
-    folder_t folder;
-    int b, d, i, fd;
-    ushort rid, vid;
-    uint ids_count;
-    uint dfs_count;
-    char aux[8];
+    uint      ret_n_errs_perms = 0;
+    uint      ret_n_errs_other = 0;
+    uint      ret_n_opened     = 0;
+    char     *ret_err_other    = NULL;
+    char      path[SZ_PATH];
+    folder_t  folder;
+    int       b, d, i, fd;
+    ushort    rid, vid;
+    uint      ids_count;
+    uint      dfs_count;
+    char      aux[8];
 
     // Counting
     *pcis_count = 0;
@@ -71,11 +75,15 @@ state_t pci_scan(ushort vendor, ushort *ids, char **dfs, mode_t mode, pci_t **pc
             if ((fd = open(path, mode)) < 0) {
                 if (errno == EACCES) {
                     debug("Exists '%s', but no permissions", path);
+                    ret_n_errs_perms++;
                 } else {
                     debug("Exists '%s', but error %s", path, strerror(errno));
+                    ret_err_other = strerror(errno);
+                    ret_n_errs_other++;
                 }
                 continue;
             }
+            ret_n_opened++;
             // Taking and comparing vendor
             pread(fd, &vid, sizeof(vid), 0);
             if (vid != vendor) {
@@ -102,7 +110,8 @@ state_t pci_scan(ushort vendor, ushort *ids, char **dfs, mode_t mode, pci_t **pc
             }
         }}
     if (*pcis_count == 0) {
-        return_msg(EAR_ERROR, "No PCIs found");
+        return_print(EAR_ERROR, "No PCIs found (%u permission errors, %u other errors [%s], %u opened but wrong IDs)",
+                     ret_n_errs_perms, ret_n_errs_other, ret_err_other, ret_n_opened);
     }
     return EAR_SUCCESS;
 }
@@ -150,7 +159,7 @@ state_t pci_mwrite32(pci_t *pcis, uint pcis_count, const uint *buffer, off_t *ad
 		for (a = 0; a < addrs_count; ++a) {
 #if SHOW_DEBUGS
 			uint written = pwrite(pcis[p].fd, &buffer[a], sizeof(uint), addrs[a]);
-			debug("PCI%d (fd %d), in address %x written value 0x%x (%ld bytes)",
+			debug("PCI%d (fd %d), in address %lx written value 0x%x (%u bytes)",
 				p, pcis[p].fd, addrs[a], buffer[a], written);
 #else
             pwrite(pcis[p].fd, &buffer[a], sizeof(uint), addrs[a]);
@@ -174,9 +183,9 @@ state_t pci_mmio_map(addr_t addr, void **p)
     *p = (void *) (((addr_t) maddr) + (addr - PAGE_MASK(addr)));
     debug("addr           : %llx", addr);
     debug("PAGE_MASK(addr): %llx", PAGE_MASK(addr));
-    debug("PAGE_SIZE      : %llx", PAGE_SIZE);
-    debug("maddr          : %llx", maddr);
-    debug("p              : %llx", *p);
+    debug("PAGE_SIZE      : %llx", (ullong) PAGE_SIZE);
+    debug("maddr          : %llx", (ullong) maddr);
+    debug("p              : %llx", (ullong) *p);
     #if 0
 	if ((*p = ioremap(addr, size)) == NULL) {
 		return_msg(EAR_ERROR, strerror(errno));

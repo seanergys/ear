@@ -38,8 +38,9 @@
 #define FAMILY_BOBCAT           20
 #define FAMILY_BULLDOZER        21
 #define FAMILY_JAGUAR           22
-#define FAMILY_ZEN              0x17 // Also 23
-#define FAMILY_ZEN3             0x19 // Also 25
+#define FAMILY_ZEN              0x17 // Also 23, includes ZEN2 and ZEN+
+#define FAMILY_ZEN3             0x19 // Also 25, includes ZEN4
+#define FAMILY_ZEN5             0x1A // Also 26
 
 // ARM family (architecture)
 #define MODEL_A8                0x01
