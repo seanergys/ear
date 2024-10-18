@@ -16,6 +16,9 @@
 
 
 
+#define PC_MODE_AUTO   1
+#define PC_MODE_MANUAL 2
+
 #define DEFAULT_CPU_TDP 150
 
 int powercap_init();
@@ -41,6 +44,7 @@ void powercap_reset_default_power();
 void powercap_reduce_def_power(uint power);
 void powercap_increase_def_power(uint power);
 void powercap_set_powercap(uint power);
+void powercap_process_message(char *action, char *mode, char *domain, int32_t num_values, int32_t values[num_values]);
 ulong powercap_elapsed_last_powercap();
 
 void powercap_new_job();

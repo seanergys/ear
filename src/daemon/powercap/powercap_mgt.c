@@ -50,6 +50,7 @@ extern my_node_conf_t *my_node_conf;
 cluster_conf_t my_cluster_conf;
 #endif
 
+extern uint32_t current_mode;
 extern powermon_app_t *current_ear_app[MAX_NESTED_LEVELS];
 extern int max_context_created;
 extern int num_contexts;
@@ -194,7 +195,34 @@ static uint  pck_tdps[MAX_PACKAGES];
 static uint  dram_tdps[MAX_PACKAGES];
 static ulong gpu_tdps[MAX_GPUS_SUPPORTED];
 static ulong gpu_tdps_min[MAX_GPUS_SUPPORTED];
+
+static ulong manual_domain_power[NUM_DOMAINS] = { 0 };
 #define TDP_GPU 250
+
+void pmgt_process_message(char *domain, int32_t num_values, int32_t values[num_values])
+{
+	if (num_values <= 0 || values == NULL) return;
+	if (!strcasecmp(domain, "domain")) {
+		if (num_values < 2) return;
+		manual_domain_power[DOMAIN_CPU] = values[0];	
+		manual_domain_power[DOMAIN_GPU] = values[1];	
+	} else if (!strcasecmp(domain, "cpu")) {
+		manual_domain_power[DOMAIN_CPU] = values[0];	
+	} else if (!strcasecmp(domain, "gpu")) {
+		manual_domain_power[DOMAIN_CPU] = values[0];	
+	} else if (!strcasecmp(domain, "dram")) {
+		manual_domain_power[DOMAIN_DRAM] = values[0];	
+	} else if (!strcasecmp(domain, "node")) {
+		manual_domain_power[DOMAIN_NODE] = values[0];	
+	} else if (!strcasecmp(domain, "device")) {
+		warning("powercap processing for device not implemented");
+		return;
+	}
+    for (int32_t i = 0; i < NUM_DOMAINS; i++){
+#warning PID and DOMAIN are not being properly set
+        freturn(pcsyms_fun[i].set_powercap_value, 0, 0, manual_domain_power[i], current_util[i]);
+	}
+}
 
 void init_tdps()
 {
@@ -275,6 +303,8 @@ uint pmgt_utilization_changed()
 #if USE_GPUS
 static state_t util_detect_main(void *p)
 {
+
+	if (current_mode == PC_MODE_MANUAL) return EAR_SUCCESS;
 
     int i;
     float min,vmin,xvmin;
@@ -577,6 +607,7 @@ state_t pmgt_handler_alloc(pwr_mgt_t **phandler)
 
 state_t pmgt_set_powercap_value(pwr_mgt_t *phandler,uint pid,uint domain,ulong limit)
 {
+	if (current_mode == PC_MODE_MANUAL) return EAR_SUCCESS;
     state_t ret,gret=EAR_SUCCESS;
     uint value;
     int cc;
@@ -609,6 +640,7 @@ static void reallocate_power_between_domains()
 {
 
     if (pmgt_limit == POWER_CAP_UNLIMITED) return;
+	if (current_mode == PC_MODE_MANUAL) return;
     int i;
     char buffer[1024],buffer2[1024];
     uint pid=0, domain=0; // we must manage this

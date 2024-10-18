@@ -787,7 +787,45 @@ static void log_msg_in_file(char *filename, char *txt)
 
 void dyncon_process_message(char *message)
 {
+	char *type = NULL;
+	char *action = NULL;
+	char *mode = NULL;
+	char *domain = NULL;
+	char *values = NULL;
 	verbose(0, "received message %s", message);
+
+	char *key = NULL;
+	char *val = NULL;
+	char *ptr1 = NULL;
+	char *ptr2 = NULL;
+
+	key = strtok_r(message, " ", &ptr1);
+	while (key != NULL) {
+		key = strtok_r(key,  "=", &ptr2);
+		val = strtok_r(NULL, "=", &ptr2);
+		if (!strcasecmp(key, "type"))         type   = val; 
+		else if (!strcasecmp(key, "action"))  action = val; 
+		else if (!strcasecmp(key, "mode"))    mode   = val; 
+		else if (!strcasecmp(key, "domain"))  domain = val; 
+		else if (!strcasecmp(key, "values"))  values = val; 
+	
+		key = strtok_r(NULL, " ", &ptr1);
+	}
+
+	int32_t *int_values = NULL;
+	int32_t  num_values = 0;
+	if (values != NULL) {
+		char *token = strtok(values, ",");
+		while (token) {
+			int_values = realloc(int_values, sizeof(int32_t)*(num_values+1));
+			int_values[num_values] = atoi(token);
+			num_values++;
+			token = strtok(NULL, ",");
+		}
+	}
+	if (type != NULL && (!strcasecmp(type, "powercap") || !strcasecmp(type, "pc"))) {
+		powercap_process_message(action, mode, domain, num_values, int_values);
+	}
 }
 
 
