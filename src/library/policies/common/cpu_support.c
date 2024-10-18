@@ -83,6 +83,7 @@ state_t compute_cpu_freq_min_energy(signature_t *signature, energy_model_t energ
   double energy_ref, best_solution, time_max;
   double power_proj, time_proj, energy_proj;
   ulong i, from;
+	uint proj_av = 0;
 
   ulong best_freq = freq_ref;
 
