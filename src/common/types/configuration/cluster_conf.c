@@ -1236,7 +1236,7 @@ static void _free_island_contents(node_island_t *is)
 void remove_islands_by_tag(cluster_conf_t conf[static 1], const char *tag)
 {
     if (conf == NULL || tag == NULL) return;
-    debug("Removing node with earmg different than %d", e_def->id);
+    // debug("Removing node with earmg different than %d", e_def->id);
 
     int i, j, k;
     for (i = 0; i < conf->num_islands; i++)
