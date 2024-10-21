@@ -12,7 +12,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 #include <common/config.h>
 #include <common/hardware/defines.h>
 #include <common/states.h>
@@ -96,17 +96,23 @@ state_t classify_init(topology_t *tp_in, settings_conf_t *libconf)
   roofline = malloc(sizeof(roofline_t));
   extremes = malloc(sizeof(extremes_t));
   medoids = malloc(sizeof(medoids_t));
-  char *path;
+	char path[256];
+	memset(path, 0, sizeof(path));
+
   // TODO: read env vars when auth_user
-  path = ear_getenv("HACK_ROOFLINE_COEFF_PATH");
-  if (path == NULL)
-    path = ear_getenv("HACK_MEDOIDS_COEFF_PATH");
-  if (path == NULL) { 
-    char path[256] = "";
-    strcat(path, libconf->installation.dir_conf);
-    strcat(path, "/ear/coeffs/");
-  }
+  char *cpath = ear_getenv("HACK_ROOFLINE_COEFF_PATH");
+  if (cpath == NULL)
+    cpath = ear_getenv("HACK_MEDOIDS_COEFF_PATH");
+
+	if (cpath) {
+		strcpy(path, cpath);
+	} else {
+		verbose(0, "Reading default install dir: %s", libconf->installation.dir_conf);
+		snprintf(path, sizeof(path), "%s/ear/coeffs", libconf->installation.dir_conf);
+	}
+
   verbose_master(2, "%s%s %s%s", COL_RED, path, libconf->tag, COL_CLR);
+
   if (load_medoids(path, libconf->tag, medoids) == EAR_SUCCESS && load_extremes(path, libconf->tag, extremes) == EAR_SUCCESS)
   {
     verbose_master(2, "%sMedoids loaded%s", COL_RED, COL_CLR);
