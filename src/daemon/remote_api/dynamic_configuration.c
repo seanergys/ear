@@ -785,14 +785,16 @@ static void log_msg_in_file(char *filename, char *txt)
 }
 #endif
 
+#define debug_if_not_null(value) if (value == NULL) { debug(#value" not set"); } else { debug(#value" set to %s", value); }
+
 void dyncon_process_message(char *message)
 {
 	char *type = NULL;
 	char *action = NULL;
 	char *mode = NULL;
-	char *domain = NULL;
+	char *level = NULL;
 	char *values = NULL;
-	verbose(0, "received message %s", message);
+	debug("received message %s", message);
 
 	char *key = NULL;
 	char *val = NULL;
@@ -803,15 +805,21 @@ void dyncon_process_message(char *message)
 	while (key != NULL) {
 		key = strtok_r(key,  "=", &ptr2);
 		val = strtok_r(NULL, "=", &ptr2);
-		if (!strcasecmp(key, "type"))         type   = val; 
-		else if (!strcasecmp(key, "action"))  action = val; 
-		else if (!strcasecmp(key, "mode"))    mode   = val; 
-		else if (!strcasecmp(key, "domain"))  domain = val; 
-		else if (!strcasecmp(key, "values"))  values = val; 
+		if (!strcasecmp(key, "type"))        type   = val; 
+		else if (!strcasecmp(key, "action")) action = val; 
+		else if (!strcasecmp(key, "mode"))   mode   = val; 
+		else if (!strcasecmp(key, "level"))  level = val; 
+		else if (!strcasecmp(key, "values")) values = val; 
 	
 		key = strtok_r(NULL, " ", &ptr1);
 	}
+	debug_if_not_null(type);
+	debug_if_not_null(action);
+	debug_if_not_null(mode);
+	debug_if_not_null(level);
+	debug_if_not_null(values);
 
+	debug("parsing values");
 	int32_t *int_values = NULL;
 	int32_t  num_values = 0;
 	if (values != NULL) {
@@ -823,8 +831,10 @@ void dyncon_process_message(char *message)
 			token = strtok(NULL, ",");
 		}
 	}
+
+	debug("message fully parsed, calling powercap_process_message");
 	if (type != NULL && (!strcasecmp(type, "powercap") || !strcasecmp(type, "pc"))) {
-		powercap_process_message(action, mode, domain, num_values, int_values);
+		powercap_process_message(action, mode, level, num_values, int_values);
 	}
 }
 

@@ -21,6 +21,13 @@
 
 #define DEFAULT_CPU_TDP 150
 
+typedef enum {
+	DRAM0 = 0,
+	DRAM1,
+	CPU0,
+	CPU1,
+	GPUSTART,
+} powercap_device_types;
 int powercap_init();
 void powercap_end();
 //void get_powercap_status(powercap_status_t *my_status);

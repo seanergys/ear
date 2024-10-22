@@ -9,7 +9,8 @@
  **************************************************************************/
 
 #define _GNU_SOURCE
-#include <errno.h>
+ #define SHOW_DEBUGS 1
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -18,7 +19,6 @@
 #include <assert.h>
 
 #include <sched.h>
-// #define SHOW_DEBUGS 1
 #include <pthread.h>
 #include <common/config.h>
 #include <common/config/config_install.h>
@@ -59,7 +59,7 @@ ulong  pmgt_idle_def_freq;
 typedef struct powercap_symbols {
     state_t (*enable)        (suscription_t *sus);
     state_t (*disable)       ();
-    state_t (*set_powercap_value)(uint pid, uint domain, uint limit, ulong *util);
+    state_t (*set_powercap_value)(uint pid, uint domain, uint *limits, ulong *util);
     state_t (*get_powercap_value)(uint pid, uint *powercap);
     uint    (*is_powercap_policy_enabled)(uint pid);
     void    (*set_status)(uint status);
@@ -199,28 +199,61 @@ static ulong gpu_tdps_min[MAX_GPUS_SUPPORTED];
 static ulong manual_domain_power[NUM_DOMAINS] = { 0 };
 #define TDP_GPU 250
 
-void pmgt_process_message(char *domain, int32_t num_values, int32_t values[num_values])
+void pmgt_process_message(char *level, int32_t num_values, int32_t values[num_values])
 {
 	if (num_values <= 0 || values == NULL) return;
-	if (!strcasecmp(domain, "domain")) {
+	if (!strcasecmp(level, "domain")) {
 		if (num_values < 2) return;
+		debug("Setting CPU domain power to %u", values[0]);
+		debug("Setting GPU domain power to %u", values[1]);
 		manual_domain_power[DOMAIN_CPU] = values[0];	
 		manual_domain_power[DOMAIN_GPU] = values[1];	
-	} else if (!strcasecmp(domain, "cpu")) {
-		manual_domain_power[DOMAIN_CPU] = values[0];	
-	} else if (!strcasecmp(domain, "gpu")) {
-		manual_domain_power[DOMAIN_CPU] = values[0];	
-	} else if (!strcasecmp(domain, "dram")) {
+	} else if (!strcasecmp(level, "cpu")) {
+		if (num_values == 1) {
+			debug("Setting CPU domain power to %u", values[0]);
+			manual_domain_power[DOMAIN_CPU] = values[0];	
+		} else if (num_values == pc_topology_info.cpu_count) {
+			for (int32_t i = 0; i < pc_topology_info.cpu_count; i++)
+				debug("Setting CPU[%d] to %u Watts", i, values[i]);
+        	freturn(pcsyms_fun[DOMAIN_GPU].set_powercap_value, 0, LEVEL_DEVICE, (uint32_t *)values, current_util[DOMAIN_GPU]);
+			return;
+		}
+	} else if (!strcasecmp(level, "gpu")) {
+		if (num_values == 1) {
+			debug("Setting GPU domain power to %u", values[0]);
+			manual_domain_power[DOMAIN_GPU] = values[0];	
+		} else if (num_values == gpu_pc_num_gpus) {
+			for (int32_t i = 0; i < gpu_pc_num_gpus; i++)
+				debug("Setting CPU[%d] to %u Watts", i, values[i]);
+        	freturn(pcsyms_fun[DOMAIN_GPU].set_powercap_value, 0, LEVEL_DEVICE, (uint32_t *)values, current_util[DOMAIN_CPU]);
+			return;
+		}
+	} else if (!strcasecmp(level, "dram")) {
+		debug("Setting DRAM domain power to %u", values[0]);
 		manual_domain_power[DOMAIN_DRAM] = values[0];	
-	} else if (!strcasecmp(domain, "node")) {
+	} else if (!strcasecmp(level, "node")) {
+		debug("Setting NODE domain power to %u", values[0]);
 		manual_domain_power[DOMAIN_NODE] = values[0];	
-	} else if (!strcasecmp(domain, "device")) {
-		warning("powercap processing for device not implemented");
-		return;
+	} else if (!strcasecmp(level, "device")) {
+		if (num_values < gpu_pc_num_gpus+pc_topology_info.cpu_count) {
+			warning("powercap for device must include all CPUs + GPUs (received %d, required %d)", num_values, gpu_pc_num_gpus + pc_topology_info.cpu_count);
+			return;
+		} else {
+			for (int32_t i = 0; i < pc_topology_info.cpu_count; i++)
+				debug("Setting CPU[%d] to %u Watts", i, values[i]);
+			for (int32_t i = 0; i < gpu_pc_num_gpus; i++)
+				debug("Setting CPU[%d] to %u Watts", i, values[i+pc_topology_info.cpu_count]);
+
+			/* Per-device is managed here since there is no possible fallback*/
+        	freturn(pcsyms_fun[DOMAIN_CPU].set_powercap_value, 0, LEVEL_DEVICE, (uint32_t *)values, current_util[DOMAIN_CPU]);
+        	freturn(pcsyms_fun[DOMAIN_GPU].set_powercap_value, 0, LEVEL_DEVICE, (uint32_t *)&values[pc_topology_info.cpu_count], current_util[DOMAIN_GPU]);
+			return;
+		}
 	}
+
+
     for (int32_t i = 0; i < NUM_DOMAINS; i++){
-#warning PID and DOMAIN are not being properly set
-        freturn(pcsyms_fun[i].set_powercap_value, 0, 0, manual_domain_power[i], current_util[i]);
+        freturn(pcsyms_fun[i].set_powercap_value, 0, LEVEL_DOMAIN, (uint32_t *)&manual_domain_power[i], current_util[i]);
 	}
 }
 
@@ -616,7 +649,7 @@ state_t pmgt_set_powercap_value(pwr_mgt_t *phandler,uint pid,uint domain,ulong l
     for (i=0;i<NUM_DOMAINS;i++){
         value = ear_max(limit*pdomains[i], 1);
         debug("Using %f weigth for domain %d: Total %lu allocated %u",pdomains[i],i,limit,value);
-        ret = freturn(pcsyms_fun[i].set_powercap_value, pid, domain, value, current_util[i]);
+        ret = freturn(pcsyms_fun[i].set_powercap_value, pid, LEVEL_NODE, &value, current_util[i]);
 #ifndef SYN_TEST
         for (cc = 0;cc <= max_context_created; cc++){
             if (current_ear_app[cc] != NULL){
@@ -643,13 +676,14 @@ static void reallocate_power_between_domains()
 	if (current_mode == PC_MODE_MANUAL) return;
     int i;
     char buffer[1024],buffer2[1024];
-    uint pid=0, domain=0; // we must manage this
+    uint pid=0; // we must manage this
     state_t ret;
     strcpy(buffer2,"");
     for (i=0;i<NUM_DOMAINS;i++){
         sprintf(buffer,"[DOM=%d W=%.2f Allocated %.1f]",i,pdomains[i],pmgt_limit*pdomains[i]);
         strcat(buffer2,buffer);
-        ret=freturn(pcsyms_fun[i].set_powercap_value,pid,domain,pmgt_limit*pdomains[i],current_util[i]);
+		uint32_t new_limit = pmgt_limit*pdomains[i];
+        ret=freturn(pcsyms_fun[i].set_powercap_value, pid, LEVEL_NODE, &new_limit,current_util[i]);
         if (ret == EAR_ERROR) debug("error when setting powercap value");
     }
     debug("%s",buffer2);
@@ -1075,9 +1109,9 @@ static uint pmgt_powercap_status_per_domain(uint action)
             new_power_recv = cdomain_status[to].current_pc + cdomain_status[from].exceed;
             debug("%u Watts have been moved from domain %u to domain %u. Previous values from %u to %u. New values from: %u to %u",
                     cdomain_status[from].exceed, from, to, cdomain_status[from].current_pc, cdomain_status[to].current_pc, new_power_send, new_power_recv);
-            ret=freturn(pcsyms_fun[from].set_powercap_value, 0, from, new_power_send, current_util[from]); /* Receives less power than before */
+            ret=freturn(pcsyms_fun[from].set_powercap_value, 0, from, &new_power_send, current_util[from]); /* Receives less power than before */
             if (ret == EAR_ERROR) debug("error setting powercap value");
-            ret=freturn(pcsyms_fun[to].set_powercap_value, 0, to, new_power_recv, current_util[to]); /* Receives more power that before */
+            ret=freturn(pcsyms_fun[to].set_powercap_value, 0, to, &new_power_recv, current_util[to]); /* Receives more power that before */
             if (ret == EAR_ERROR) debug("error setting powercap value");
             break;
     }

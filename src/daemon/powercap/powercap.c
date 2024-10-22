@@ -202,28 +202,33 @@ void powercap_end()
     }
 }
 
-void powercap_process_message(char *action, char *mode, char *domain, int32_t num_values, int32_t values[num_values])
+void powercap_process_message(char *action, char *mode, char *level, int32_t num_values, int32_t values[num_values])
 {
 	if (mode != NULL) {
+		debug("mode specified: %s", mode);
 		if (!strcasecmp(mode, "manual")) {
 			current_mode = PC_MODE_MANUAL;
 			if (action != NULL && !strcasecmp(action, "deactivate")) {
+				debug("deactivate action received: deactivating manual mode");
 				current_mode = PC_MODE_AUTO;
 				return; //deactivate should ignore all other arguments
 			}
 		}
 	}
-	if (domain != NULL) {
-		if (!strcasecmp(domain, "node")) {
+	if (level != NULL) {
+		debug("level specified: %s", level);
+		if (!strcasecmp(level, "node")) {
 			current_mode = PC_MODE_AUTO;
+			debug("setting mode to auto");
 		}
-		else if (!strcasecmp(domain, "cpu") || !strcasecmp(domain, "domain") || 
-				 !strcasecmp(domain, "gpu") || !strcasecmp(domain, "device")) {
+		else if (!strcasecmp(level, "cpu") || !strcasecmp(level, "domain") || 
+				 !strcasecmp(level, "gpu") || !strcasecmp(level, "device")) {
 			current_mode = PC_MODE_MANUAL;
+			debug("setting mode to manual");
 		}
 	}
 	if (action != NULL && !strcasecmp(action, "set")) {
-		pmgt_process_message(domain, num_values, values);
+		pmgt_process_message(level, num_values, values);
 	}
 }
 
