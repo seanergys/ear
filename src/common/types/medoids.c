@@ -99,6 +99,9 @@ state_t load_medoids(char *path, char *architecture, medoids_t *final_medoids)
 
 state_t load_extremes(char *path, char *architecture, extremes_t *final_extremes)
 {
+	if (!path || !architecture || !final_extremes) {
+		return EAR_ERROR;
+	}
     char filename[128] = "";
     create_filename(filename, path, "extremes.", architecture);
     FILE *f = fopen(filename, "rb");
