@@ -37,6 +37,10 @@ void roofline_print(roofline_t *roofline, int t)
 
 state_t load_roofline(char *path, char *architecture, roofline_t *final_roofline)
 {
+	if (!path || !architecture || !final_roofline) {
+		return EAR_ERROR;
+	}
+
     char filename[128] = "";
     create_filename(filename, path, "roofline.", architecture);
     FILE *f = fopen(filename, "rb");

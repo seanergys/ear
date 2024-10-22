@@ -100,9 +100,9 @@ state_t classify_init(topology_t *tp_in, settings_conf_t *libconf)
 	memset(path, 0, sizeof(path));
 
   // TODO: read env vars when auth_user
-  char *cpath = ear_getenv("HACK_ROOFLINE_COEFF_PATH");
+  char *cpath = ear_getenv("HACK_MEDOIDS_COEFF_PATH");
   if (cpath == NULL)
-    cpath = ear_getenv("HACK_MEDOIDS_COEFF_PATH");
+    cpath = ear_getenv("HACK_ROOFLINE_COEFF_PATH");
 
 	if (cpath) {
 		strcpy(path, cpath);
