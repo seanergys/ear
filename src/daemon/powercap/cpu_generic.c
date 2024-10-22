@@ -122,7 +122,6 @@ static state_t _set_per_device_powercap_value(uint pid, uint32_t *limit, uint32_
     ret = mgt_cpupow_powercap_set(CPUPOW_SOCKET, cpu_power);
     if (ret == EAR_ERROR) {
         debug("error setting CPU powercap");
-        return ret;
     }
 
     return ret;

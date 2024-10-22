@@ -212,8 +212,8 @@ void pmgt_process_message(char *level, int32_t num_values, int32_t values[num_va
 		if (num_values == 1) {
 			debug("Setting CPU domain power to %u", values[0]);
 			manual_domain_power[DOMAIN_CPU] = values[0];	
-		} else if (num_values == pc_topology_info.cpu_count) {
-			for (int32_t i = 0; i < pc_topology_info.cpu_count; i++)
+		} else if (num_values == pc_topology_info.socket_count) {
+			for (int32_t i = 0; i < pc_topology_info.socket_count; i++)
 				debug("Setting CPU[%d] to %u Watts", i, values[i]);
         	freturn(pcsyms_fun[DOMAIN_GPU].set_powercap_value, 0, LEVEL_DEVICE, (uint32_t *)values, current_util[DOMAIN_GPU]);
 			return;
@@ -235,18 +235,18 @@ void pmgt_process_message(char *level, int32_t num_values, int32_t values[num_va
 		debug("Setting NODE domain power to %u", values[0]);
 		manual_domain_power[DOMAIN_NODE] = values[0];	
 	} else if (!strcasecmp(level, "device")) {
-		if (num_values < gpu_pc_num_gpus+pc_topology_info.cpu_count) {
-			warning("powercap for device must include all CPUs + GPUs (received %d, required %d)", num_values, gpu_pc_num_gpus + pc_topology_info.cpu_count);
+		if (num_values < gpu_pc_num_gpus+pc_topology_info.socket_count) {
+			warning("powercap for device must include all CPUs + GPUs (received %d, required %d)", num_values, gpu_pc_num_gpus + pc_topology_info.socket_count);
 			return;
 		} else {
-			for (int32_t i = 0; i < pc_topology_info.cpu_count; i++)
+			for (int32_t i = 0; i < pc_topology_info.socket_count; i++)
 				debug("Setting CPU[%d] to %u Watts", i, values[i]);
 			for (int32_t i = 0; i < gpu_pc_num_gpus; i++)
-				debug("Setting CPU[%d] to %u Watts", i, values[i+pc_topology_info.cpu_count]);
+				debug("Setting CPU[%d] to %u Watts", i, values[i+pc_topology_info.socket_count]);
 
 			/* Per-device is managed here since there is no possible fallback*/
         	freturn(pcsyms_fun[DOMAIN_CPU].set_powercap_value, 0, LEVEL_DEVICE, (uint32_t *)values, current_util[DOMAIN_CPU]);
-        	freturn(pcsyms_fun[DOMAIN_GPU].set_powercap_value, 0, LEVEL_DEVICE, (uint32_t *)&values[pc_topology_info.cpu_count], current_util[DOMAIN_GPU]);
+        	freturn(pcsyms_fun[DOMAIN_GPU].set_powercap_value, 0, LEVEL_DEVICE, (uint32_t *)&values[pc_topology_info.socket_count], current_util[DOMAIN_GPU]);
 			return;
 		}
 	}
