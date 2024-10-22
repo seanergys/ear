@@ -1,0 +1,162 @@
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
+
+#if DB_MYSQL
+#include <mysql/mysql.h>
+#endif
+
+#include <stdio.h>
+#include <unistd.h>
+#include <termios.h>
+#include <common/sizes.h>
+#include <common/output/verbose.h>
+#include <common/string_enhanced.h>
+#include <common/types/application.h>
+#include <common/types/configuration/cluster_conf.h>
+#include <common/database/db_helper.h>
+
+#include <commands/query_helpers.h>
+
+
+void usage(char *name) 
+{
+    printf("\n");
+    printf("Usage: %s\t [options].\t At least a job id is required.\n", name);
+    printf("Available options:\n"\
+            "\t-j [job_id.step_id] \t Specifies which jobs to retrieve.\n"\
+            "\t-h\t\t\t Shows this message.\n");
+    printf("\n");
+            //"\t-n [node_name1, nn2]\t Specifies from which nodes the learning phase will be deleted from, or all for every entry. [default: all]\n"
+    exit(0);
+}
+
+#define LOOPS_QUERY "SELECT * FROM Loops "
+
+int main(int argc,char *argv[])
+{
+    char node_name[256];
+    char job_ids[256] = "";
+	int job_id = -1, step_id = -1;
+    int opt;
+	char *token;
+	
+	if (argc < 2) {
+        usage(argv[0]);
+    }
+    
+    while ((opt = getopt(argc, argv, "n:j:t:h")) != -1) {
+        switch (opt) {
+            case 'n':
+                /* all_nodes set but not used.
+                   if (!strcmp(optarg, "all")) all_nodes = 1;
+                   else strcpy(node_name, optarg);
+                   */
+                if (strcmp(optarg, "all")) {
+                    strcpy(node_name, optarg);
+                }
+                break;
+            case 'j':
+                strcpy(job_ids, optarg);
+				job_id = atoi(strtok(optarg, "."));
+				token = strtok(NULL, ".");
+				if (token) step_id = atoi(token);
+					
+                break;
+            case 'h':
+                usage(argv[0]);
+                break;
+            default:
+                printf("Unknown argument\n");
+                break;
+        }
+
+    }
+
+	if (job_id < 0) {
+		printf("Warning, a job_id MUST be specified\n");
+		exit(0);
+	}
+
+            
+    char ear_path[256];
+	cluster_conf_t my_conf;
+    if (get_ear_conf_path(ear_path)==EAR_ERROR){
+        printf("Error getting ear.conf path\n");
+        exit(0);
+    }
+    read_cluster_conf(ear_path, &my_conf);
+
+
+	if (strlen(my_conf.database.user_commands) < 1) 
+	{
+		fprintf(stderr, "Warning: commands' user is not defined in ear.conf\n");
+	}
+	else
+	{
+		strcpy(my_conf.database.user, my_conf.database.user_commands);
+		strcpy(my_conf.database.pass, my_conf.database.pass_commands);
+	}
+	init_db_helper(&my_conf.database);
+
+	char query[512];
+
+	strcpy(query, LOOPS_QUERY);
+	add_int_filter(query, "job_id", job_id);
+	if (step_id >= 0) {
+		add_int_filter(query, "step_id", step_id);
+	}
+
+	typedef struct app_summary {
+		application_t app;
+		time_t total_time;
+	} app_summary_t;
+
+
+	loop_t *loops = NULL;
+	app_summary_t *apps = NULL;
+	int32_t num_apps = 0;
+
+	int32_t num_loops = db_read_loops_query(&loops, query);
+
+	for (int32_t i = 0; i < num_loops; i++) {
+		int32_t app_idx = -1;
+		for (int32_t j = 0; j < num_apps; j++) {
+			if (!strcmp(loops[i].node_id, apps[i].app.node_id)) {
+				app_idx = j;
+				break;
+			}
+		}
+
+		if (app_idx < 0) {
+			apps = realloc(apps, sizeof(app_summary_t)*(num_apps+1)); 
+			app_idx = num_apps;
+			num_apps++;
+
+			apps[app_idx] = (app_summary_t){ 0 };
+
+			/* Copy common data between loops of a same node */
+			strcpy(apps[app_idx].app.node_id, loops[i].node_id);
+			apps[app_idx].app.is_mpi = 1;
+			apps[app_idx].app.job.id       = loops[i].jid;
+			apps[app_idx].app.job.step_id  = loops[i].step_id;
+			apps[app_idx].app.job.local_id = loops[i].local_id;
+		}
+
+		/* Aggregate signatures with weights depending on the time */
+		
+	}
+
+	if (num_loops > 0)
+		free(loops);
+
+	free_cluster_conf(&my_conf);
+
+	return 0;
+}
