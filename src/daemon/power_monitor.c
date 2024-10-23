@@ -2171,13 +2171,15 @@ void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
 
                 if (is_job_in_node(pmapp->app.job.id, &alloc)) {
 
-                    cpu_ratio = (float) alloc->num_cpus / (float) tcpus;
+                    // cpu_ratio = (float) alloc->num_cpus / (float) tcpus;
+										cpu_ratio = ((tcpus && alloc->num_cpus) ? (float) alloc->num_cpus / (float) tcpus : 1);
 
                     verbose(VEARD_NMGR, "Job %lu/%lu without node mask, using ratio %f = %u/%lu",
                             pmapp->app.job.id, pmapp->app.job.step_id, cpu_ratio, alloc->num_cpus, tcpus); 
                 } else {
                     verbose(VEARD_NMGR,"Warning, no cpus detected using num_jobs %lu", num_jobs);
-                    cpu_ratio = 1.0 / (float) num_jobs;
+                    //cpu_ratio = 1.0 / (float) num_jobs;
+                    cpu_ratio = (num_jobs ? 1.0 / (float) num_jobs : 1);
                 }
             }
 
