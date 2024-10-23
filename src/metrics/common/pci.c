@@ -119,12 +119,13 @@ state_t pci_scan(ushort vendor, ushort *ids, char **dfs, mode_t mode, pci_t **pc
 state_t pci_scan_close(pci_t **pcis, uint *pcis_count)
 {
 	int p;
+    if (pcis == NULL || *pcis == NULL) {
+        return EAR_ERROR;
+    }
 	for (p = 0; p < *pcis_count; ++p) {
-		debug("%s closed with FD %d", (*pcis)[p].path, (*pcis)[p].fd);
 		close((*pcis)[p].fd);
-		(*pcis)[p].mode = 0;
-		(*pcis)[p].fd = -1;
 	}
+    free(*pcis);
 	*pcis_count = 0;
 	return EAR_SUCCESS;
 }

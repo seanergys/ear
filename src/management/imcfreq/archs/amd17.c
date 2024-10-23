@@ -31,7 +31,7 @@ static uint test_ps(uint ps, uint intent)
     // Arg0 is the P_STATE for the APBDisable function (0x0d).
 	args[0] = ps;
 	// Function APBDisable (0x0d).
-	if (state_fail(s = hsmp_send(0, HSMP_APB_DISABLE, &args[0], &reps[2]))) {
+	if (state_fail(s = hsmp_send(0, HSMP_SET_DF_PSTATE, &args[0], &reps[2]))) {
 		debug("error while sending HSMP: %s", state_msg);
 	}
 	// Waiting 10 miliseconds to change the frequency
@@ -39,7 +39,7 @@ static uint test_ps(uint ps, uint intent)
 	//
 	debug("Sending HSMP Mail of PS%d (intent %d)", args[0], intent);
 	// Function ReadCurrentFclkMemclk (0x0f).
-	if (state_fail(s = hsmp_send(0, HSMP_READ_CURRENT_FCLK_MEMCLK, &args[1], &reps[0]))) {
+	if (state_fail(s = hsmp_send(0, HSMP_GET_FCLK_MCLK, &args[1], &reps[0]))) {
 		debug("error while sending HSMP: %s", state_msg);
 	}
    
@@ -87,7 +87,7 @@ state_t mgt_imcfreq_amd17_load(topology_t *tp, mgt_imcfreq_ops_t *ops)
 	// Setting auto
 	uint args[1] = { -1 };
 	uint reps[1] = { -1 };
-	hsmp_send(0, HSMP_APB_ENABLE, &args[0], &reps[0]);
+	hsmp_send(0, HSMP_SET_DF_PSTATE, &args[0], &reps[0]);
 	//
 	replace_ops(ops->init,             mgt_imcfreq_amd17_init);
 	replace_ops(ops->dispose,          mgt_imcfreq_amd17_dispose);
@@ -155,7 +155,7 @@ state_t mgt_imcfreq_amd17_get_current_list(ctx_t *c, pstate_t *list)
 		// Function ReadCurrentFclkMemclk (0x0f). 0 arguments, 2 answers.
 		//args[0] = 0;
 		//args[1] = 0;
-		if (state_fail(s = hsmp_send(i, HSMP_READ_CURRENT_FCLK_MEMCLK, &args[2], &args[0]))) {
+		if (state_fail(s = hsmp_send(i, HSMP_GET_FCLK_MCLK, &args[2], &args[0]))) {
 			return s;
 		}
 		if (args[0] == 0 || args[0] == -1) {
@@ -177,13 +177,13 @@ static state_t set(uint pstate_index, int socket)
 
 	if (pstate_index == ps_auto) {
 		// Function APBEnable (0x0e)
-		function = HSMP_APB_ENABLE;
+		function = HSMP_SET_DF_PSTATE;
 		i = 1;
 	} else if (pstate_index >= pstate_count) {
 		return_msg(EAR_ERROR, Generr.arg_outbounds);
 	} else {
 		// Function APBDisable (0x0d)
-		function = HSMP_APB_DISABLE;
+		function = HSMP_SET_DF_PSTATE;
 		i = 0;
 	}
 	args[0] = pstate_index;

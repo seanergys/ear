@@ -37,14 +37,14 @@ BWIDTH_F_LOAD(bwidth_amd19_load)
         return;
     }
     // Testing if the function is compatible
-    if (state_fail(hsmp_send(0, HSMP_GET_MAX_DDR_BANDIWDTH, test, test))) {
+    if (state_fail(hsmp_send(0, HSMP_GET_DDR_BANDWIDTH, test, test))) {
         return;
     }
     if (state_fail(topology_select(tpo, &tp, TPSelect.socket, TPGroup.merge, 0))) {
         return;
     }
     // ZEN3
-    fun = HSMP_GET_MAX_DDR_BANDIWDTH;
+    fun = HSMP_GET_DDR_BANDWIDTH;
     line_size = (double) tpo->cache_line_size;
     //
     pool = calloc(tp.cpu_count+1, sizeof(bwidth_t));
