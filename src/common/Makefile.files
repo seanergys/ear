@@ -34,6 +34,8 @@ core_OBJS = \
     $(SRCDIR)/common/types/loop.o \
     $(SRCDIR)/common/types/log.o \
     $(SRCDIR)/common/types/event_type.o \
+    $(SRCDIR)/common/types/medoids.o \
+    $(SRCDIR)/common/types/roofline.o \
     $(SRCDIR)/common/types/periodic_metric.o \
     $(SRCDIR)/common/types/application.o \
     $(SRCDIR)/common/types/projection.o \
