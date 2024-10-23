@@ -185,3 +185,11 @@ deployment.sh
 src/tools/node_manager_info
 tmp.txt
 *.plist
+etc/examples/prolog_epilog/ejob
+etc/examples/prolog_epilog/list
+src/commands/eacct.6.0
+src/commands/ear_acct.6.0.c
+src/commands/ear_acct_auxiliary.h
+src/commands/query_helpers.c
+src/commands/query_helpers.h
+

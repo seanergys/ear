@@ -50,7 +50,7 @@ state_t init_active_connections_list()
 /*********** This function notify a new remote connetion ***************/
 state_t notify_new_connection(int fd)
 {
-	if (write(pipe_for_new_conn[1],&fd,sizeof(int)) < 0){
+	if (ear_fd_write(pipe_for_new_conn[1],&fd,sizeof(int)) != EAR_SUCCESS){
 		error("Error sending new fd for remote command %s",strerror(errno));
 		return EAR_ERROR;
 	}
@@ -61,7 +61,7 @@ state_t add_new_connection()
 {
 	int new_fd;
 	/* New fd will be read from the pipe */
-	if (read(pipe_for_new_conn[0],&new_fd,sizeof(int)) < 0){
+	if (ear_fd_read(pipe_for_new_conn[0],&new_fd,sizeof(int)) != EAR_SUCCESS){
 		error("Error sending new fd for remote command %s",strerror(errno));
 		return EAR_ERROR;
 	}
@@ -105,6 +105,7 @@ static void check_all_fds(afd_set_t *fdset)
 {
 	for (int32_t i = fdset->fd_min+1; i <= fdset->fd_max; i++) {
 		if (fdset->fds[i].fd != -1) {
+			if (i != pipe_for_new_conn[0]) continue;
 			if (!is_socket_alive(i)) {
 				remove_remote_connection(i);
 			}
@@ -128,7 +129,7 @@ void *process_remote_req_th(void * arg)
 		if (numfds_ready > 0) {
 			/* This is the normal use case */
 			for (i = rfds_basic.fd_min; i <= rfds_basic.fd_max; i++) {
-				if (AFD_ISHUP(i, &rfds_basic)) {
+				if ((i != pipe_for_new_conn[0]) && AFD_ISHUP(i, &rfds_basic)) {
 					verbose(VRAPI, "ERROR: socket remote client has disconnected, closing the socket");
 					remove_remote_connection(i);
 				}
