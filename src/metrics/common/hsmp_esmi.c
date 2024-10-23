@@ -13,7 +13,7 @@
 #include <common/hardware/bithack.h>
 #include <common/environment_common.h>
 #include <metrics/common/hsmp.h>
-#include <metrics/common/hsmp_lib.h>
+#include <metrics/common/hsmp_esmi.h>
 
 #if defined __has_include
 #  if __has_include (<e_smi/e_smi.h>)

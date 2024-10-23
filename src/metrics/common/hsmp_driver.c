@@ -9,7 +9,11 @@
  **************************************************************************/
 
 //#define SHOW_DEBUGS 1
+#include <fcntl.h>
 #include <pthread.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/ioctl.h>
 #include <linux/types.h>
 #include <common/output/debug.h>
 #include <metrics/common/hsmp_pci.h>
@@ -41,6 +45,7 @@ static state_t hsmp_driver_open(topology_t *tp)
         debug("HSMP is in user mode");
     }
 	sockets_count = tp->socket_count;
+leave:
     return EAR_SUCCESS;
 }
 
@@ -55,7 +60,7 @@ static state_t hsmp_driver_close()
 
 static state_t hsmp_driver_send(int socket, uint function, uint *args, uint *reps)
 {
-    static hsmp_msg_t msg;
+    hsmp_msg_t msg;
     int ret;
 
     memset(&msg, 0, sizeof(hsmp_msg_t));
