@@ -59,7 +59,8 @@ TEMP_F_INIT(amd17)
     fd_count = calloc(id_count, sizeof(uint));
 	//
 	for (i = 0; i < id_count; ++i) {
-		if (state_fail(s = hwmon_open_files(ids[i], Hwmon.temp_input, &fds[i], &fd_count[i]))) {
+		// Starting at id=3 because 1 is Tctl, 2 is Tdie (if available), used for cooling control.
+		if (state_fail(s = hwmon_open_files(ids[i], Hwmon.temp_input, &fds[i], &fd_count[i], 3))) {
 			return s;
 		}
 	}
