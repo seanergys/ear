@@ -128,7 +128,10 @@ int main(int argc,char *argv[])
 	for (int32_t i = 0; i < num_loops; i++) {
 		int32_t app_idx = -1;
 		for (int32_t j = 0; j < num_apps; j++) {
-			if (!strcmp(loops[i].node_id, apps[i].app.node_id)) {
+			if (!strncmp(loops[i].node_id, apps[j].app.node_id, GENERIC_NAME) &&
+					loops[i].jid      == apps[j].app.job.id &&
+					loops[i].step_id  == apps[j].app.job.step_id &&
+					loops[i].local_id == apps[j].app.job.local_id) {
 				app_idx = j;
 				break;
 			}
@@ -150,13 +153,15 @@ int main(int argc,char *argv[])
 		}
 
 		/* Aggregate signatures with weights depending on the time */
-		signature_apply_weight(&loops[i].signature, &loops[i].signature, loops[i].total_iterations);
+		signature_apply_weight(&loops[i].signature, &loops[i].signature, loops[i].id.size);
 		acum_sig_metrics(&apps[app_idx].app.signature, &loops[i].signature);
-		apps[app_idx].total_time += loops[i].total_iterations;
+		apps[app_idx].total_time += loops[i].id.size;
 	}
 
 	for (int32_t i = 0; i < num_apps; i++) {
 		compute_avg_sig(&apps[i].app.signature, &apps[i].app.signature, apps[i].total_time);
+		apps[i].app.signature.time *= apps[i].total_time; //time is the one that we must accumulate without averaging
+		print_application_fd(STDOUT_FILENO, &apps[i].app, 1, 1, 0);
 	}
 
 		
