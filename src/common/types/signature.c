@@ -417,6 +417,43 @@ state_t ssig_compute_avg_node(ssig_t *ssig, int n)
     return EAR_SUCCESS;
 }
 
+void signature_apply_weight(signature_t *dst,signature_t *src,int nums)
+{
+    int i;
+    dst->DC_power = src->DC_power*nums;
+    dst->DRAM_power = src->DRAM_power*nums;
+    dst->PCK_power = src->PCK_power*nums;
+    dst->EDP = src->EDP*nums;
+    dst->GBS = src->GBS*nums;
+    dst->TPI = src->TPI*nums;
+    dst->CPI = src->CPI*nums;
+    dst->Gflops = src->Gflops*nums;
+    dst->time = src->time*nums;
+    for (i=0;i<FLOPS_EVENTS;i++) dst->FLOPS[i] = src->FLOPS[i]*nums;
+    dst->L1_misses = src->L1_misses*nums;
+    dst->L2_misses = src->L2_misses*nums;
+    dst->L3_misses = src->L3_misses*nums;
+    dst->instructions = src->instructions*nums;
+    dst->cycles = src->cycles*nums;
+    dst->avg_f = src->avg_f*nums;
+    dst->avg_imc_f = src->avg_imc_f*nums;
+    dst->def_f = src->def_f*nums;
+#if USE_GPUS
+    dst->gpu_sig.num_gpus = src->gpu_sig.num_gpus;
+    for (i=0;i<MAX_GPUS_SUPPORTED;i++){
+        dst->gpu_sig.gpu_data[i].GPU_power    = src->gpu_sig.gpu_data[i].GPU_power*nums;
+        dst->gpu_sig.gpu_data[i].GPU_freq     = src->gpu_sig.gpu_data[i].GPU_freq*nums;
+        dst->gpu_sig.gpu_data[i].GPU_mem_freq = src->gpu_sig.gpu_data[i].GPU_mem_freq*nums;
+        dst->gpu_sig.gpu_data[i].GPU_util     = src->gpu_sig.gpu_data[i].GPU_util*nums;
+        dst->gpu_sig.gpu_data[i].GPU_mem_util = src->gpu_sig.gpu_data[i].GPU_mem_util*nums;
+#if WF_SUPPORT
+        dst->gpu_sig.gpu_data[i].GPU_GFlops   = src->gpu_sig.gpu_data[i].GPU_GFlops*nums;
+        dst->gpu_sig.gpu_data[i].GPU_temp     = src->gpu_sig.gpu_data[i].GPU_temp*nums;
+        dst->gpu_sig.gpu_data[i].GPU_temp_mem = src->gpu_sig.gpu_data[i].GPU_temp_mem*nums;
+#endif
+    }
+#endif
+}
 
 void compute_avg_sig(signature_t *dst,signature_t *src,int nums)
 {

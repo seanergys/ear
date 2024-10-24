@@ -150,8 +150,17 @@ int main(int argc,char *argv[])
 		}
 
 		/* Aggregate signatures with weights depending on the time */
-		
+		signature_apply_weight(&loops[i].signature, &loops[i].signature, loops[i].total_iterations);
+		acum_sig_metrics(&apps[app_idx].app.signature, &loops[i].signature);
+		apps[app_idx].total_time += loops[i].total_iterations;
 	}
+
+	for (int32_t i = 0; i < num_apps; i++) {
+		compute_avg_sig(&apps[i].app.signature, &apps[i].app.signature, apps[i].total_time);
+	}
+
+		
+		
 
 	if (num_loops > 0)
 		free(loops);

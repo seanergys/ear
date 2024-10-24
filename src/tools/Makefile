@@ -25,6 +25,7 @@ tool_BINS += \
     learning_show \
     get_periodic \
     metrics_show \
+    loops_average \
     learning_delete
 endif
 ifdef GSL_BASE
@@ -73,6 +74,9 @@ coeffs_default: coeffs_default.c $(comm_OBJS)
 
 learning_show: learning_show.c $(db_OJBS) $(comm_OBJS)
 	$(CCC) -o $@ $< $(db_OJBS) $(comm_OBJS) $(DB_LDFLAGS) -lm
+
+loops_average: loops_average.c $(db_OJBS) $(comm_OBJS) $(SRCDIR)/commands/query_helpers.o
+	$(CCC) -o $@ $< $(db_OJBS) $(SRCDIR)/commands/query_helpers.o $(comm_OBJS) $(DB_LDFLAGS) -lm
 
 metrics_show: metrics_show.c $(db_OJBS) $(comm_OBJS)
 	$(CCC) -o $@ $< $(db_OJBS) $(comm_OBJS) $(DB_LDFLAGS) -lm

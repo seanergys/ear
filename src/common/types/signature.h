@@ -165,6 +165,12 @@ void acum_sig_metrics(signature_t *dst, signature_t *src);
  * If some of the input arguments are NULL, returns EAR_ERROR. */
 state_t ssig_accumulate(ssig_t *dst_ssig, ssig_t *src_ssig);
 
+/* Multiplies the values in src by nums, and saves them in dst.
+ * This applies a weight to each signature, and then one can accumulate
+ * them with acum_sig_metrics and finally divide them by the sum
+ * of weights with compute_avg_sig to ponderate several signatures */
+void signature_apply_weight(signature_t *dst,signature_t *src,int nums);
+
 /** \todo */
 void compute_avg_sig(signature_t *dst, signature_t *src, int nums);
 
