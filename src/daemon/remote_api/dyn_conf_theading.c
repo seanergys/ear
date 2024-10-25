@@ -105,7 +105,7 @@ static void check_all_fds(afd_set_t *fdset)
 {
 	for (int32_t i = fdset->fd_min+1; i <= fdset->fd_max; i++) {
 		if (fdset->fds[i].fd != -1) {
-			if (i != pipe_for_new_conn[0]) continue;
+			if (i == pipe_for_new_conn[0]) continue;
 			if (!is_socket_alive(i)) {
 				remove_remote_connection(i);
 			}
@@ -129,11 +129,14 @@ void *process_remote_req_th(void * arg)
 		if (numfds_ready > 0) {
 			/* This is the normal use case */
 			for (i = rfds_basic.fd_min; i <= rfds_basic.fd_max; i++) {
+				#if 0
 				if ((i != pipe_for_new_conn[0]) && AFD_ISHUP(i, &rfds_basic)) {
 					verbose(VRAPI, "ERROR: socket remote client has disconnected, closing the socket");
 					remove_remote_connection(i);
 				}
-				else if (AFD_ISSET(i, &rfds_basic)) {
+				else 
+				#endif
+				if (AFD_ISSET(i, &rfds_basic)) {
 					debug("Channel %d ready for reading", i);
 					if (i == pipe_for_new_conn[0]) {
 						verbose(VRAPI, "New connection received in RemoteAPI thread");
