@@ -136,7 +136,7 @@ state_t hwmon_open_files(uint id, hwmon_t files, int **fds, uint *n, int i_start
 		*fds = (int *) memset(*fds, -1, c*sizeof(int));
 		*n   = c;
 		// 
-		i = 1;
+		i = i_start;
 		m = 1;
 		c = 0;
 	}
