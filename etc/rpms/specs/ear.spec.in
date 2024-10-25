@@ -3,7 +3,7 @@
 %define _libdir @libdir@
 
 Name:           ear
-Version:        @VERSION_MAJOR@.@VERSION_MINOR@
+Version:        @PACKAGE_VERSION@
 Release:        1%{?dist}
 Summary:        Energy Aware Runtime - %{version} ready to be deployed.
 
