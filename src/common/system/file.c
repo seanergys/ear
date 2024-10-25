@@ -266,17 +266,13 @@ state_t ear_fd_write(int fd, const char *buffer, size_t size)
 	if (fd < 0) {
 		state_return_msg(EAR_OPEN_ERROR, errno, strerror(errno));
 	}
-
 	while ((size > 0) && ((w = write(fd, &buffer[totalw], size)) > 0)) {
 		size = size - w;
 		totalw += w;
 	}
-
-
 	if (w < 0) {
-		state_return_msg(EAR_SYSCALL_ERROR, errno, strerror(errno));
+		state_return_msg(EAR_ERROR, errno, strerror(errno));
 	}
-
 	state_return(EAR_SUCCESS);
 }
 
