@@ -453,7 +453,7 @@ CPUPOW_F_POWERCAP_SET(mgt_cpupow_intel63_powercap_set)
     for (i = 0; i < p->tp->cpu_count; ++i) {
         // Getting base register
         reg = p->pl[i].reg;
-		if (watts[i] == POWERCAP_DO_NODTHING) {
+		if (watts[i] == POWERCAP_DO_NOTHING) {
 			continue;
 		}
         // If is disabling

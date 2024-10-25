@@ -378,7 +378,7 @@ CPUPOW_F_POWERCAP_SET(mgt_cpupow_amd17_powercap_set)
     }
     // Iterating
     for (i = 0; i < d->tp->cpu_count; ++i) {
-        if (watts[i] == POWERCAP_DO_NODTHING) {
+        if (watts[i] == POWERCAP_DO_NOTHING) {
 			continue;
 		}
         if (watts[i] == POWERCAP_DISABLE) {
