@@ -14,20 +14,11 @@
 #include <common/types/pc_app_info.h>
 #include <daemon/powercap/powercap_status_conf.h>
 
-
-
 #define PC_MODE_AUTO   1
 #define PC_MODE_MANUAL 2
 
 #define DEFAULT_CPU_TDP 150
 
-typedef enum {
-	DRAM0 = 0,
-	DRAM1,
-	CPU0,
-	CPU1,
-	GPUSTART,
-} powercap_device_types;
 int powercap_init();
 void powercap_end();
 //void get_powercap_status(powercap_status_t *my_status);
