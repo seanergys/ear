@@ -71,8 +71,8 @@ TEMP_F_INIT(amd17)
 TEMP_F_DISPOSE(amd17)
 {
     int i;
-    if (fds != NULL) {
-        for (i = 0; i < id_count; ++i) {
+	if (fds != NULL) {
+		for (i = 0; i < id_count; ++i) {
             hwmon_close_files(fds[i], fd_count[i]);
         }
         free(fd_count);
@@ -107,28 +107,36 @@ TEMP_F_READ(amd17)
 	char data[SZ_PATH];
     llong aux1 = 0LL;
     llong aux2 = 0LL;
+	llong aux3 = 0LL;
 	int i, j, k;
 	state_t s;
-
 
 	for (k = 0; k < socket_count && temp != NULL; ++k) {
 		temp[k] = 0;
 	}
 	for (i = 0, k = 0; i < id_count && k < socket_count; ++i) {
-		for (j = 0; j < fd_count[i] && k < socket_count; ++j, ++k) {
+		for (j = 0; j < fd_count[i]; ++j)
+		{
 			if (state_fail(s = hwmon_read(fds[i][j], data, SZ_PATH))) {
 				return s;
 			}
 			debug("read %s", data);
 			aux1  = parse(data, 2);
 			aux2 += aux1;
-			if (temp != NULL) {
-				temp[k] = aux1;
-			}
 		}
+		aux2 /= (llong)fd_count[i];
+		debug("avg temperature for socket %d: %lld", i, aux2);
+		if (temp != NULL)
+		{
+			temp[k] = aux2;
+			}
+		++k;
+		aux3 += aux2;
 	}
-	if (average != NULL) {
-		*average = aux2 / (llong) socket_count;
+	if (average != NULL)
+	{
+		*average = aux3 / (llong) socket_count;
+		debug("average temperature of all sockets: %llu", *average);
 	}
 	return EAR_SUCCESS;
 }
