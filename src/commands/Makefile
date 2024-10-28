@@ -17,9 +17,6 @@ ifdef DB_BASE
 com1_BINS += \
     eacct \
     ereport
-## eacct.6.0 
-
-
 
 com2_BINS += \
     edb_create \
@@ -53,10 +50,6 @@ all: $(helper_OBJS) $(com1_BINS) $(com2_BINS)
 
 eacct: ear_acct.c $(db_OBJS) $(comm_OBJS) $(helper_OBJS)
 	$(CCC) $(SLURM_CFLAGS) $(DB_CFLAGS) -o $@ $< $(db_OBJS) $(comm_OBJS) $(helper_OBJS) $(DB_LDFLAGS) $(LDFLAGS)
-
-eacct.6.0: ear_acct.6.0.c $(db_OBJS) $(comm_OBJS) $(helper_OBJS)
-	$(CCC) $(SLURM_CFLAGS) $(DB_CFLAGS) -o $@ $< $(db_OBJS) $(comm_OBJS) $(helper_OBJS) $(DB_LDFLAGS) $(LDFLAGS)
-
 
 econtrol: ear_control.c $(rapi_OBJS) $(comm_OBJS)
 	$(CCC) $(SLURM_CFLAGS)  -o $@ $< $(rapi_OBJS) $(comm_OBJS) $(LDFLAGS)
