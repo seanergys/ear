@@ -722,7 +722,7 @@ int remote_disconnect()
 	return EAR_SUCCESS;
 }
 
-int eards_remote_disconnect_fd(int sfd)
+int remote_disconnect_fd(int sfd)
 {
     debug("targeted disconnect, closing fd %d\n", sfd);
     close(sfd);
@@ -1325,7 +1325,7 @@ request_header_t data_all_nodes(request_t *command, cluster_conf_t *my_cluster_c
                         failed_is[count_failed] = i;
                         failed_js[count_failed] = j;
                         count_failed++;
-                        eards_remote_disconnect_fd(rc);
+                        remote_disconnect_fd(rc);
                     }
                 }
             }
@@ -1370,7 +1370,7 @@ request_header_t data_all_nodes(request_t *command, cluster_conf_t *my_cluster_c
 
                 /* Always close the channel if there was a previous connection, independently of whether the data 
                    was properly read or not. */
-                eards_remote_disconnect_fd(sfds[offset_read]);
+                remote_disconnect_fd(sfds[offset_read]);
 
                 if (head.size > 0 && head.type != EAR_ERROR)
                 {

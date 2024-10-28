@@ -48,10 +48,10 @@ static int plug_rcom_eard_job_sbatch(spank_t sp, plug_serialization_t *sd, int n
 		++i;
 	}
 	if (new_job) {
-		ear_nodelist_ear_node_new_job(&sd->job.app, port, net_ext,
+		ear_nodelist_new_job(&sd->job.app, port, net_ext,
 			sd->job.nodes_list, sd->job.nodes_count);
 	} else {
-		ear_nodelist_ear_node_end_job(sd->job.app.job.id, sd->job.app.job.step_id, port, net_ext,
+		ear_nodelist_end_job(sd->job.app.job.id, sd->job.app.job.step_id, port, net_ext,
 			sd->job.nodes_list, sd->job.nodes_count);
 	}
 	return ESPANK_SUCCESS;
