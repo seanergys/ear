@@ -14,55 +14,39 @@
 #include <common/types.h>
 #include <common/states.h>
 
-typedef const char *hwmon_t;
+/*
+    There is only one value per file, unlike the older /proc specification.
+    The common scheme for files naming is: <type><number>_<item>. Usual
+    types for sensor chips are "in" (voltage), "temp" (temperature) and
+    "fan" (fan). Usual items are "input" (measured value), "max" (high
+    threshold, "min" (low threshold). Numbering usually starts from 1,
+    except for voltages which start from 0 (because most data sheets use
+    this). A number is always used for elements that can be present more
+    than once, even if there is a single element of the given type on the
+    specific chip. Other files do not refer to a specific element, so
+    they have a simple name, and no number.
+ */
 
-// Temperature
-//
-struct Hwmon_s
-{
-	hwmon_t temp_input;
-    hwmon_t temp_max;
-}
-Hwmon __attribute__((weak)) =
-{
-    .temp_max   = "/sys/class/hwmon/hwmon%d/temp%d_max",
-    .temp_input = "/sys/class/hwmon/hwmon%d/temp%d_input",
-};
+#define HWMON_DEV_TEMP   "temp"
+#define HWMON_DEV_POWER  "power"
+#define HWMON_DEV_ENERGY "energy"
 
-// CPU power acpi_power
-//
-struct Hwmon_acpi_power
-{
-	hwmon_t power_avg;
-	hwmon_t power_avg_int;
-}Hwmon_power_meter __attribute__((weak)) =
-{
-	.power_avg 	= "/sys/class/hwmon/hwmon%d/device/power%d_average",
-	.power_avg_int  = "/sys/class/hwmon/hwmon%d/device/power%d_average_interval",
-};
+#define hwmon_add(var) \
+    int   var ##_fd; \
+    char  var[32];     \
+    int   var ##_toint;
 
-// Intel PVC GPU
+typedef struct hwmon_s {
+    hwmon_add(input);
+    hwmon_add(label);
+    hwmon_add(max);
+    hwmon_add(min);
+    hwmon_add(average);
+    hwmon_add(average_interval);
+} hwmon_t;
 
-struct Hwmon_pvc
-{
-	hwmon_t energy_j;
-}Hwmon_pvc_energy __attribute__((weak)) =
-{
-	.energy_j = "/sys/class/hwmon/hwmon%d/energy%d_input",
-};
+state_t hwmon_open(char *chip_name, uint *chips_count, char *devs_name, hwmon_t ***devs, uint **devs_count);
 
-
-/* Find a set of drivers by name, also allocates memory for its ids.
- * Remember to free them. */
-state_t hwmon_find_drivers(const char *name, uint **ids, uint *n);
-
-/* Finds a set of files by driver id, also allocates memory for its fds.
- * Remember to close/free them. Unopened file descriptors value is '-1'. */
-state_t hwmon_open_files(uint id, hwmon_t files, int **fds, uint *n);
-
-/* */
-state_t hwmon_close_files(int *fds, uint n);
-
-state_t hwmon_read(int fd, char *buffer, size_t size);
+state_t hwmon_read(hwmon_t **devs);
 
 #endif //METRICS_COMMON_HWMON
