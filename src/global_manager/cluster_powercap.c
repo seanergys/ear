@@ -55,7 +55,6 @@ uint num_nodes;
 uint actions_executed = 0;
 uint total_req_new,total_req_greedy,req_no_extra,num_no_extra,num_greedy,num_extra,extra_power_alloc,total_extra_power,greedy_allocated;
 cluster_powercap_status_t *my_cluster_power_status;
-int num_power_status;
 powercap_opt_t cluster_options;
 extern uint policy;
 extern char **nodes;
@@ -292,7 +291,6 @@ void print_cluster_power_status(powercap_status_t *my_cluster_power_status)
         return;
     }
     verbose(VGM_PC,"%sTotal %u Idle  %u power (released %u requested %u consumed %u allocated %u allocated_to_idle %u) total_greedy_nodes %u%s",COL_CLR,cs->total_nodes,cs->idle_nodes, cs->released,cs->requested,cs->current_power,cs->total_powercap,cs->num_greedy,cs->total_idle_power,COL_CLR);
-    debug("%d power_status received",num_power_status);
     for (i=0;i<cs->num_greedy;i++){
         verbose(VGM_PC,"%s\t[%d] ip %d greedy_req %u extra_power %u%s", COL_CLR, i, cs->greedy_nodes[i], cs->greedy_data[i].requested, cs->greedy_data[i].extra_power,COL_CLR);
     }
@@ -301,7 +299,7 @@ void print_cluster_power_status(powercap_status_t *my_cluster_power_status)
 pthread_t cluster_powercap_th;
 
 /* Cluster Soft powercap */
-void cluster_only_powercap()
+void cluster_soft_powercap()
 {
 
     power_check_t power;
@@ -317,7 +315,7 @@ void cluster_only_powercap()
     float lower_limit = ((float)(current_cluster_powercap*my_cluster_conf.eargm.defcon_power_lower)/100.0);
 
 
-    verbose(VGM_PC, "cluster_only_powercap, power %ld and nodes %ld", power.power, power.num_nodes);
+    verbose(VGM_PC, "cluster_soft_powercap, power %ld and nodes %ld", power.power, power.num_nodes);
     if (current_cluster_powercap == POWER_CAP_UNLIMITED) {
         verbose(VGM_PC, "cluster_powercap is unlimited, nothing to do");
         write_shared_data(power.power, 0, 0);
@@ -383,10 +381,10 @@ void *eargm_powercap_th(void *noarg)
         if (cluster_power_limited()){
 			switch(my_cluster_conf.eargm.powercap_mode) {
 				case SOFT_POWERCAP:
-					cluster_only_powercap();
+					cluster_soft_powercap();
 					break;
 				case HARD_POWERCAP:
-					cluster_check_powercap();
+					cluster_hard_powercap();
 					break;
 				case MONITOR:
 				default:
@@ -598,9 +596,8 @@ void cluster_power_monitor()
 {
     debug("%sGlobal POWER monitoring INIT----%s",COL_BLU,COL_CLR);
     /* We use this function for now, we must use a new light one */
-    num_power_status = ear_get_powercap_status(&my_cluster_conf, &my_cluster_power_status, 1, nodes, num_eargm_nodes);
-    if (num_power_status==0){
-        verbose(VGM_PC+1,"num_power_status in cluster_check_powercap is 0");
+    if (state_fail(ear_get_powercap_status(&my_cluster_conf, &my_cluster_power_status, 1, nodes, num_eargm_nodes))) {
+        verbose(VGM_PC+1,"ear_get_powercap_status in cluster_power_monitor returns EAR_ERROR");
         write_shared_data(0, 0, 0);
         return;
     }
@@ -621,12 +618,11 @@ void cluster_power_monitor()
 #define CLUSTER_PC_TO_SHARE 0.5
 
 /* Cluster HARD powercap */
-void cluster_check_powercap()
+void cluster_hard_powercap()
 {
     debug("%sSTART cluster_check_powercap---------%s",COL_BLU,COL_CLR);
-    num_power_status = ear_get_powercap_status(&my_cluster_conf, &my_cluster_power_status, 1, nodes, num_eargm_nodes);
-    if (num_power_status==0){
-        verbose(VGM_PC+1,"num_power_status in cluster_check_powercap is 0");
+    if (state_fail(ear_get_powercap_status(&my_cluster_conf, &my_cluster_power_status, 1, nodes, num_eargm_nodes))) {
+        verbose(VGM_PC+1,"ear_get_powercap_status in cluster_hard_powercap returns EAR_ERROR");
         write_shared_data(0, 0, 0); 
         return;
     }
@@ -637,7 +633,7 @@ void cluster_check_powercap()
     aggregate_data(my_cluster_power_status);
     if (powercap_reallocation(my_cluster_power_status, &cluster_options) == 0){
         pc_release_data_t rel_power;
-        if (ear_cluster_release_idle_power(&my_cluster_conf,&rel_power)==0){
+        if (state_fail(ear_cluster_release_idle_power(&my_cluster_conf,&rel_power))){
             error("Error in cluster_release_idle_power");
         } else{
             verbose(VGM_PC,"%s%u Watts from idle nodes released%s",COL_GRE,rel_power.released,COL_CLR);

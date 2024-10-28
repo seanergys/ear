@@ -65,9 +65,9 @@ state_t get_nodes_status(cluster_conf_t my_cluster_conf,uint *nnodes,node_info_t
 	node_info_t *cinfo;
 	int num_n;
 	status_t *my_status;
-	num_n = ear_cluster_get_status(&my_cluster_conf,&my_status);
-	if (num_n<=0){
-		*nnodes=0;
+	state_t ret = ear_get_status(&my_cluster_conf,&my_status, &num_n, NULL, 0);
+	if (ret != EAR_SUCCESS){
+		*nnodes = 0;
 		return EAR_ERROR;
 	}
 	debug("%d nodes have reported their status",num_n);
