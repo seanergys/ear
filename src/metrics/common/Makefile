@@ -9,6 +9,7 @@ comm_OBJS = \
     hsmp.o \
     hsmp_lib.o \
     hwmon.o \
+    hwmon_old.o \
     isst.o \
     likwid.o \
     msr.o \

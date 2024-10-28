@@ -284,7 +284,7 @@ static state_t gh_module_static_read(ctx_t *c, llong *power, llong *acum, state_
 			memset(data, 0 , sizeof(data));
 		//	debug("Reading ID %d,%d  fd=%d", i, k, h->fds[i][k]);
 
-			if (xtate_fail(s, hwmon_read(h->fds[i][k], data, SZ_PATH))) {
+			if (xtate_fail(s, hwmon_read_files(h->fds[i][k], data, SZ_PATH))) {
 				//return s;
 				*st_read = s;
 				debug("read failed with data %s", data);

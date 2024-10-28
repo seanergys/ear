@@ -11,10 +11,9 @@
 #ifndef METRICS_COMMON_HWMON
 #define METRICS_COMMON_HWMON
 
-#include <common/types.h>
-#include <common/states.h>
+#include <metrics/common/hwmon_old.h>
 
-/*
+/*  About HWMON, the HWMON manual says:
     There is only one value per file, unlike the older /proc specification.
     The common scheme for files naming is: <type><number>_<item>. Usual
     types for sensor chips are "in" (voltage), "temp" (temperature) and
@@ -27,26 +26,48 @@
     they have a simple name, and no number.
  */
 
-#define HWMON_DEV_TEMP   "temp"
-#define HWMON_DEV_POWER  "power"
-#define HWMON_DEV_ENERGY "energy"
+#define HWMON_DEV_TYPE_TEMP   "temp"
+#define HWMON_DEV_TYPE_POWER  "power"
+#define HWMON_DEV_TYPE_ENERGY "energy"
 
 #define hwmon_add(var) \
     int   var ##_fd; \
     char  var[32];     \
     int   var ##_toint;
 
-typedef struct hwmon_s {
+typedef struct hwmon_dev_s {
     hwmon_add(input);
     hwmon_add(label);
     hwmon_add(max);
     hwmon_add(min);
     hwmon_add(average);
     hwmon_add(average_interval);
+    uint is_null;
+} hwmon_dev_t;
+
+typedef struct hwmon_s {
+    hwmon_dev_t devs_avg;
+    hwmon_dev_t *devs;
+    uint devs_count;
+    uint is_null;
 } hwmon_t;
 
-state_t hwmon_open(char *chip_name, uint *chips_count, char *devs_name, hwmon_t ***devs, uint **devs_count);
 
-state_t hwmon_read(hwmon_t **devs);
+// It returns an array of hwmon_t structs based on chip name like "coretemp" or
+// "k10temp" and a device type such as "temp", "power" or "energy". In this
+// array there is a position for each chip found: one per hwmon folder whose
+// name is equal the name you passed. In each array position you can find also a
+// list of devices based on the device type you passed (i.e. "temp"), whose
+// variables are the items of the devices (i.e. "input", "max", "label", etc).
+state_t hwmon_open(char *chip_name, char *dev_type, hwmon_t **chips, uint *chips_count);
+
+void hwmon_close(hwmon_t **chips);
+
+void hwmon_read(hwmon_t *chips);
+
+// It calculates the average of the all the devices per chip, based in a label
+// (i.e. "Core"). If label is NULL, all devices items are used to compute the
+// chip average. The values are saved in the devs_avg device.
+int hwmon_calc_average(hwmon_t *chips, char *label);
 
 #endif //METRICS_COMMON_HWMON

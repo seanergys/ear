@@ -115,7 +115,7 @@ TEMP_F_READ(amd17)
 	}
 	for (i = 0, k = 0; i < id_count && k < socket_count; ++i) {
 		for (j = 0; j < fd_count[i] && k < socket_count; ++j, ++k) {
-			if (state_fail(s = hwmon_read(fds[i][j], data, SZ_PATH))) {
+			if (state_fail(s = hwmon_read_files(fds[i][j], data, SZ_PATH))) {
 				return s;
 			}
 			debug("read %s", data);

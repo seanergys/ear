@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <fcntl.h>
 #include <stdlib.h>
@@ -18,9 +18,6 @@
 #include <common/output/debug.h>
 #include <metrics/common/file.h>
 #include <metrics/common/hwmon.h>
-
-#define SET_NULL_DEVICE(dev)  dev.input_fd = -2
-#define  IS_NULL_DEVICE(dev) (dev.input_fd == -2)
 
 static int file_read(char *path, int *fd, int close_on_read, char *buffer, size_t buffer_length)
 {
@@ -44,7 +41,7 @@ static int file_read(char *path, int *fd, int close_on_read, char *buffer, size_
     if (buffer[strlen(buffer)-1] == '\n') {
         buffer[strlen(buffer)-1] =  '\0';
     }
-    debug("HWMON read from '%s': %s", path, buffer);
+    debug("HWMON read from '%s': %s (fd%d)", path, buffer, *fd);
     if (close_on_read) {
         close(*fd);
         *fd = -1;
@@ -97,7 +94,7 @@ static int read_device_item(char *type_path, char *item_name, ullong address, in
     return 1;
 }
 
-static void open_devices(char *folder_path, char *devs_name, hwmon_t **devs, uint *devs_count)
+static void open_devices(char *folder_path, char *devs_name, hwmon_dev_t **devs, uint *devs_count)
 {
     char type_path[SZ_PATH];
     int completed;
@@ -105,13 +102,12 @@ static void open_devices(char *folder_path, char *devs_name, hwmon_t **devs, uin
 
     *devs = NULL;
     *devs_count = 0;
-    *devs = realloc(*devs, sizeof(hwmon_t));
+    *devs = realloc(*devs, sizeof(hwmon_dev_t));
     do {
         completed = 0;
         sprintf(type_path, "%s/%s%d", folder_path, devs_name, d+1);
-        //debug("HWMON testing type %s", type_path);
         // Cleaning
-        memset(&(*devs)[d], 0, sizeof(hwmon_t));
+        memset(&(*devs)[d], 0, sizeof(hwmon_dev_t));
         (*devs)[d].input_fd            = -1;
         (*devs)[d].label_fd            = -1;
         (*devs)[d].max_fd              = -1;
@@ -124,9 +120,11 @@ static void open_devices(char *folder_path, char *devs_name, hwmon_t **devs, uin
         completed += read_device_item(type_path, "max"    , offset(max_fd)    , 1);
         completed += read_device_item(type_path, "average", offset(average_fd), 0);
         completed += read_device_item(type_path, "average_interval", offset(average_interval_fd), 1);
+        #undef offset
         if (completed) {
             // Allocating more space for the next device and its items (+2 because it NULL terminated)
-            *devs = realloc(*devs, sizeof(hwmon_t)*((*devs_count)+2));
+            *devs = realloc(*devs, sizeof(hwmon_dev_t)*((*devs_count)+2));
+            debug("sizeof(hwmon_dev_t)*((*devs_count)+2) %ld", sizeof(hwmon_dev_t)*((*devs_count)+2));
             (*devs_count)++;
             d++;
         } else {
@@ -134,21 +132,17 @@ static void open_devices(char *folder_path, char *devs_name, hwmon_t **devs, uin
         }
     } while(1);
     // Null-terminated list of devices
-    SET_NULL_DEVICE((*devs)[d]);
+    (*devs)[d].is_null = 1;
 }
 
-state_t hwmon_open(char *chip_name, uint *chips_count, char *devs_name, hwmon_t ***devs, uint **devs_count)
+state_t hwmon_open(char *chip_name, char *dev_type, hwmon_t **chips, uint *chips_count)
 {
     char folder_path[SZ_PATH];
     int i = 0;
     int test;
 
-    *devs = NULL;
+    *chips = NULL;
     *chips_count = 0;
-    // [x] -> [a]
-    // [a] -> [] [] []
-    // [b] -> [] [] []
-    // [c] -> [] [] []
     do {
         sprintf(folder_path, "/sys/class/hwmon/hwmon%d", i);
         //debug("HWMON testing chip %s", folder_path);
@@ -166,10 +160,9 @@ state_t hwmon_open(char *chip_name, uint *chips_count, char *devs_name, hwmon_t 
             }
             debug("HWMON new chip found! We found %d already", (*chips_count)+1);
             // Allocating more space for the devices of the newly found chip (+2 because it NULL terminated)
-            *devs = realloc(*devs, sizeof(hwmon_t *)*((*chips_count)+2));
-            *devs_count = realloc(*devs_count, sizeof(uint)*((*chips_count)+1));
+            *chips = realloc(*chips, sizeof(hwmon_t)*((*chips_count)+2));
             // Opening the devices of this chip
-            open_devices(folder_path, devs_name, &(*devs)[*chips_count], &(*devs_count)[*chips_count]);
+            open_devices(folder_path, dev_type, &(*chips)[*chips_count].devs, &(*chips)[*chips_count].devs_count);
             // Increasing the number of devices found
             (*chips_count)++;
         }
@@ -180,46 +173,94 @@ state_t hwmon_open(char *chip_name, uint *chips_count, char *devs_name, hwmon_t 
         return_print(EAR_ERROR, "HWMON failed to find %s chip name", chip_name);
     }
     // Null-terminating
-    (*devs)[*chips_count] = NULL;
+    (*chips)[*chips_count].is_null = 1;
     // Extreme debugging
-    #if 0
+    #if 1
     int j;
     debug("List of opened files:")
     for (i = 0; i < *chips_count; ++i) {
         debug(" - CHIP%d '%s'", i, chip_name);
-        for (j = 0; j < (*devs_count)[i]; ++j) {
-            debug("   - DEV%d %s%d_", j, devs_name, j+1);
+        for (j = 0; j < (*chips)[i].devs_count; ++j) {
+            debug("   - DEV%d %s%d_ fd%d", j, dev_type, j+1, (*chips)->devs[j].input_fd);
         }
     }
     #endif
     return EAR_SUCCESS;
 }
 
-state_t hwmon_read(hwmon_t **devs)
+void hwmon_close(hwmon_t **chips)
+{
+    int c = 0; // c of chip
+    while (!(*chips)[c].is_null) {
+        free((*chips)[c].devs);
+        ++c;
+    }
+    free(*chips);
+    *chips = NULL;
+}
+
+void hwmon_read(hwmon_t *chips)
 {
     int c = 0; // c of chip
     int d = 0; // d of device
-    while (devs[c] != NULL) {
-        while (!IS_NULL_DEVICE(devs[c][d])) {
+    while (!chips[c].is_null) {
+        while (!chips[c].devs[d].is_null) {
+            #define offset(var) (ullong) &chips[c].devs[d].var
             read_device_item(NULL, NULL, offset(input_fd)  , 0);
             read_device_item(NULL, NULL, offset(average_fd), 0);
             ++d;
         }
-        // If fd = -1 do nothing
+        ++c;
+    }
+}
+
+int hwmon_calc_average(hwmon_t *chips, char *label)
+{
+    int c = 0; // c of chip
+    int d = 0; // d of device
+    int m = 0; // m of matches
+
+    debug("List of averages:");
+    while (!chips[c].is_null) {
+        // Cleaning
+        memset(&chips[c].devs_avg, 0, sizeof(hwmon_dev_t));
+        while (!chips[c].devs[d].is_null) {
+            debug("- CHIP%d DEV%d comparing labels '%s' == '%s'", c, d , chips[c].devs[d].label, label);
+            if (label == NULL || strstr(chips[c].devs[d].label, label) != NULL) {
+                debug("   - input: %u += %u", chips[c].devs_avg.input_toint, chips[c].devs[d].input_toint);
+                chips[c].devs_avg.input_toint   += chips[c].devs[d].input_toint;
+                chips[c].devs_avg.max_toint     += chips[c].devs[d].max_toint;
+                chips[c].devs_avg.min_toint     += chips[c].devs[d].min_toint;
+                chips[c].devs_avg.average_toint += chips[c].devs[d].average_toint;
+                chips[c].devs_avg.average_interval_toint += chips[c].devs[d].average_interval_toint;
+                ++m;
+            }
+            ++d;
+        }
+        debug("   - input: %u /= %u", chips[c].devs_avg.input_toint, m);
+        chips[c].devs_avg.input_toint   /= m;
+        chips[c].devs_avg.max_toint     /= m;
+        chips[c].devs_avg.min_toint     /= m;
+        chips[c].devs_avg.average_toint /= m;
+        chips[c].devs_avg.average_interval_toint /= m;
         ++c;
     }
     return EAR_SUCCESS;
 }
 
+#if TEST
 int main(int argc, char *argv[])
 {
     uint chips_count = 0;
-    uint *devs_count = 0;
-    hwmon_t **devs   = NULL;
+    hwmon_t *chips   = NULL;
 
-    if (state_fail(hwmon_open("coretemp", &chips_count, "temp", &devs, &devs_count))) {
+    if (state_fail(hwmon_open("coretemp", "temp", &chips, &chips_count))) {
         debug("Failed: %s", state_msg);
     }
-    hwmon_read(devs);
+    hwmon_read(chips);
+    hwmon_calc_average(chips, "Core");
+    printf("The average Core temperature of Socket 0 is %dº\n", chips[0].devs_avg.input_toint / 1000);
+    hwmon_close(&chips);
     return 0;
 }
+#endif
