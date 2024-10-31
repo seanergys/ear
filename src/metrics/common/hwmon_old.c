@@ -187,6 +187,57 @@ state_t hwmon_open_files(uint id, char *files, int **fds, uint *n, int i_start)
     return EAR_SUCCESS;
 }
 
+state_t hwmon_open_files(uint id, hwmon_t files, int **fds, uint *n, int i_start)
+{
+    char data[SZ_PATH];
+    int i = i_start; // index
+    int c = 0; // count
+    int m = 0; // mode
+    int fd;
+
+    debug("hwmon_open_files................");
+    while(1)
+    {
+        do {
+            sprintf(data, (char *) files, id, i);
+            debug("opening file '%s'", data);
+            //
+            if ((fd = open(data, O_RDONLY)) < 0) {
+                break;
+            }
+            if (m == 0) {
+                close(fd);
+            } else {
+                debug("copying fd %d", fd);
+                (*fds)[c] = fd;
+            }
+            i += 1;
+            c += 1;
+        } while(1);
+
+        if (c == 0) {
+            debug("no files found");
+            return_msg(EAR_ERROR, "no files found");
+        }
+        if (m == 1) {
+            return EAR_SUCCESS;
+        }
+        //
+        debug("Allocating %d fds", c);
+        if ((*fds = calloc(c, sizeof(int))) == NULL) {
+            return_msg(EAR_ERROR, strerror(errno));
+        }
+        *fds = (int *) memset(*fds, -1, c*sizeof(int));
+        *n   = c;
+        //
+        i = i_start;
+        m = 1;
+        c = 0;
+    }
+
+    return EAR_SUCCESS;
+}
+
 state_t hwmon_close_files(int *fds, uint n)
 {
     int i;

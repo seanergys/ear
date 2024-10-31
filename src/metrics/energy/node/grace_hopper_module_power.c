@@ -157,7 +157,7 @@ static state_t gh_module_power_init(ctx_t *c)
 	//
 	verbose(VGRACE_VL,"GH Module: opening devices");
 	for (i = 0; i < h->id_count; ++i) {
-		if (xtate_fail(s, hwmon_open_files(ids[i], Hwmon_power_meter.power_avg, &h->fds[i], &h->fd_count[i]))) {
+		if (xtate_fail(s, hwmon_open_files(ids[i], Hwmon_power_meter.power_avg, &h->fds[i], &h->fd_count[i], 1))) {
 			verbose(VGRACE_VL,"GH Module: opening fails");
 			pthread_mutex_unlock(&lock);
 			return s;

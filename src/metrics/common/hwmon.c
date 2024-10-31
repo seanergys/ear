@@ -198,7 +198,6 @@ void hwmon_close(hwmon_t **chips)
     }
     free(*chips);
     *chips = NULL;
-}
 
 int hwmon_count_items(hwmon_t chips[], char *item_name, char *label)
 {

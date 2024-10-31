@@ -399,14 +399,14 @@ void check_app_status(app_status_t status, ip_table_t *ips, int num_ips, char is
             else if (status.step_id == INTERACT_STEP)
                 sprintf(step_id, "%-8s", "interact");
             else
-                sprintf(step_id, "%-8d", status.step_id);
+                sprintf(step_id, "%-8ld", status.step_id);
             if (is_master)
-                printf("%7d-%-8s %6d %10.2lf %8.2lf %8.2lf %8.2lf %8.2lf %8.2lf", 
+                printf("%7ld-%-8s %6d %10.2lf %8.2lf %8.2lf %8.2lf %8.2lf %8.2lf", 
                         status.job_id, step_id, status.nodes,
                         status.signature.DC_power, status.signature.CPI, status.signature.GBS, 
                         status.signature.Gflops, status.signature.time, (double)status.signature.avg_f/1000000);
             else
-                printf("%15s %7d-%-8s %6d %10.2lf %8.2lf %8.2lf %8.2lf %8.2lf %8.2lf", 
+                printf("%15s %7ld-%-8s %6d %10.2lf %8.2lf %8.2lf %8.2lf %8.2lf %8.2lf", 
                         ips[i].name, status.job_id, step_id, status.master_rank,
                         status.signature.DC_power, status.signature.CPI, status.signature.GBS, 
                         status.signature.Gflops, status.signature.time, (double)status.signature.avg_f/1000000);
@@ -1114,8 +1114,11 @@ int main(int argc, char *argv[])
                 message = optarg;
                 break;
             case 'e':
-                num_status = ear_cluster_get_status(&my_cluster_conf, &status);
-                process_status(num_status, status, 1, NULL, 0);
+                if (state_fail(ear_get_status(&my_cluster_conf, &status, &num_status, NULL, 0))) {
+					printf("Error retrieving status\n");
+				} else {
+                	process_status(num_status, status, 1, NULL, 0);
+				}
                 break;
             case 'k':
                 status_type = EAR_TYPE_HEALTH_CHECK;
@@ -1270,14 +1273,18 @@ int main(int argc, char *argv[])
             switch(status_type)
             {
                 case EAR_TYPE_STATUS:
-                    if ((num_status = ear_node_get_status(&my_cluster_conf, &status)) != 1) 
-                        printf("Error doing status for node %s, returned (%d)\n", node_name, num_status);
-                    process_single_status(num_status, status, node_name, NODE_ONLY);
+                    if (state_fail(ear_node_get_status(&my_cluster_conf, &status, &num_status))) {
+						printf("Error getting status for node %s\n", node_name);
+					} else {
+                    	process_single_status(num_status, status, node_name, NODE_ONLY);
+					}
                     break;
                 case EAR_TYPE_POLICY:
-                    if ((num_status = ear_nodelist_get_policy_status(&my_cluster_conf, &policystatus, &tmp, 1)) != 1) 
-                        printf("Error doing status for node %s, returned (%d)\n", node_name, num_status);
-                    process_single_policy_status(num_status, policystatus, node_name);
+                    if (state_fail(ear_nodelist_get_policy_status(&my_cluster_conf, &policystatus, &num_status, &tmp, 1))) { 
+						printf("Error getting status for node %s\n", node_name);
+					} else {
+                    	process_single_policy_status(num_status, policystatus, node_name);
+					}
                     break;
 #if 0
                 case EAR_TYPE_FULL_STATUS:
@@ -1288,16 +1295,25 @@ int main(int argc, char *argv[])
 #endif
                 case EAR_TYPE_POWER_STATUS:
                     printf("Reading power_status from node %s\n", node_name);
-                    num_status = ear_node_get_powercap_status(&my_cluster_conf, &powerstatus, 0);
-                    process_powercap_status(powerstatus, num_status);
+                    if (state_fail(ear_node_get_powercap_status(&my_cluster_conf, &powerstatus, 0))) {
+						printf("Error getting status for node %s\n", node_name);
+					} else {
+                    	process_powercap_status(powerstatus, num_status);
+					}
                     break;
                 case EAR_TYPE_APP_STATUS_MASTER:
-                    num_status = ear_node_get_app_master_status(&my_cluster_conf, &appstatus);
-                    process_app_status(num_status, appstatus, 1);
+                    if (state_fail(ear_node_get_app_master_status(&my_cluster_conf, &appstatus, &num_status))) {
+						printf("Error retrieving app status\n");
+					} else {
+                    	process_app_status(num_status, appstatus, 1);
+					}
                     break;
                 case EAR_TYPE_APP_STATUS_NODE:
-                    num_status = ear_node_get_app_node_status(&my_cluster_conf, &appstatus);
-                    process_app_status(num_status, appstatus, 0);
+                    if (state_fail(ear_node_get_app_node_status(&my_cluster_conf, &appstatus, &num_status))) {
+						printf("Error retrieving app status\n");
+					} else {
+                    	process_app_status(num_status, appstatus, 0);
+					}
                     break;
                 case EAR_TYPE_EARDBD_STATUS:
                     num_status = eardbd_status(node_name, my_cluster_conf.db_manager.tcp_port, &edbstatus.status);
@@ -1324,12 +1340,18 @@ int main(int argc, char *argv[])
         switch(status_type)
         {
             case EAR_TYPE_STATUS:
-                num_status = ear_get_status(&my_cluster_conf, &status, nodes, num_nodes);
-                process_status(num_status, status, NODE_ONLY, nodes, num_nodes);
+                if (state_fail(ear_get_status(&my_cluster_conf, &status, &num_status, nodes, num_nodes))) {
+					printf("Error retrieving status\n");
+				} else {
+                	process_status(num_status, status, NODE_ONLY, nodes, num_nodes);
+				}
                 break;
             case EAR_TYPE_POLICY:
-                num_status = ear_get_policy_status(&my_cluster_conf, &policystatus, nodes, num_nodes);
-                process_policy_status(num_status, policystatus);
+                if (state_fail(ear_get_policy_status(&my_cluster_conf, &policystatus, &num_status, nodes, num_nodes))) {
+					printf("Error retrieving status\n");
+				} else {
+                	process_policy_status(num_status, policystatus);
+				}
                 break;
 #if 0
             case EAR_TYPE_FULL_STATUS:
@@ -1338,16 +1360,25 @@ int main(int argc, char *argv[])
                 break;
 #endif
             case EAR_TYPE_POWER_STATUS:
-                num_status = ear_get_powercap_status(&my_cluster_conf, &powerstatus, 0, nodes, num_nodes);
-                process_powercap_status(powerstatus,num_status);
+                if(state_fail(ear_get_powercap_status(&my_cluster_conf, &powerstatus, 0, nodes, num_nodes))) {
+					printf("Error retrieving powercap status\n");
+				} else {
+                	process_powercap_status(powerstatus,num_status);
+				}
                 break;
             case EAR_TYPE_APP_STATUS_MASTER:
-                num_status = ear_get_app_master_status(&my_cluster_conf, &appstatus, nodes, num_nodes);
-                process_app_status(num_status, appstatus, 1);
+                if (state_fail(ear_get_app_master_status(&my_cluster_conf, &appstatus, &num_status, nodes, num_nodes))) {
+					printf("Error retrieving status\n");
+				} else {
+                	process_app_status(num_status, appstatus, 1);
+				}
                 break;
             case EAR_TYPE_APP_STATUS_NODE:
-                num_status = ear_get_app_node_status(&my_cluster_conf, &appstatus, nodes, num_nodes);
-                process_app_status(num_status, appstatus, 0);
+                if (state_fail(ear_get_app_node_status(&my_cluster_conf, &appstatus, &num_status, nodes, num_nodes))) {
+					printf("Error retrieving status\n");
+				} else {
+                	process_app_status(num_status, appstatus, 0);
+				}
                 break;
             case EAR_TYPE_EARDBD_STATUS:
                 num_status = eardbd_status_all(&my_cluster_conf, &edbstatus);
@@ -1361,8 +1392,11 @@ int main(int argc, char *argv[])
                 break;
             case EAR_TYPE_HEALTH_CHECK:
                 printf("---------------------\nINACTIVE NODES\n---------------------\n");
-                num_status = ear_get_status(&my_cluster_conf, &status, nodes, num_nodes);
-                process_status(num_status, status, ERR_ONLY, nodes, num_nodes);
+                if (state_fail(ear_get_status(&my_cluster_conf, &status, &num_status, nodes, num_nodes))) {
+					printf("Error retrieving status\n");
+				} else {
+                	process_status(num_status, status, NODE_ONLY, nodes, num_nodes);
+				}
                 printf("---------------------\nINACTIVE EARDBDS\n---------------------\n");
                 num_status = eardbd_status_all(&my_cluster_conf, &edbstatus);
                 process_eardbd_status(num_status, edbstatus, 1);

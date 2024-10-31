@@ -151,7 +151,7 @@ state_t grace_cpu_init(ctx_t *c)
 	}
 	//
 	for (i = 0; i < h->id_count; ++i) {
-		if (xtate_fail(s, hwmon_open_files(ids[i], Hwmon_power_meter.power_avg, &h->fds[i], &h->fd_count[i]))) {
+		if (xtate_fail(s, hwmon_open_files(ids[i], Hwmon_power_meter.power_avg, &h->fds[i], &h->fd_count[i], 1))) {
 			pthread_mutex_unlock(&lock);
 			return s;
 		}

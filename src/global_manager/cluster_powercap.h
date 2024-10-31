@@ -41,7 +41,7 @@ void print_cluster_power_status(cluster_powercap_status_t *my_cluster_power_stat
 uint cluster_get_min_power(cluster_conf_t *conf, char type);
 void cluster_powercap_init(cluster_conf_t *cc);
 int cluster_power_limited();
-void cluster_check_powercap();
+void cluster_hard_powercap();
 void cluster_power_monitor();
 
 void cluster_powercap_red_pc(uint red);
