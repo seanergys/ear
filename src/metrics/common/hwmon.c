@@ -23,7 +23,7 @@ static int file_read(char *path, int *fd, int close_on_read, char *buffer, size_
 {
     int i  =  0;
     int r  =  0;
-    if (*fd == -1) {
+    if (*fd < 0) {
         if ((*fd = open(path, O_RDONLY)) < 0) {
             //debug("Opening '%s' failed: %s", path, strerror(errno));
             return 0;
@@ -44,7 +44,7 @@ static int file_read(char *path, int *fd, int close_on_read, char *buffer, size_
     debug("HWMON read from '%s': %s (fd%d)", path, buffer, *fd);
     if (close_on_read) {
         close(*fd);
-        *fd = -1;
+        *fd = -2; // We are using the -1 to count unopened items
     }
     return 1;
 }
@@ -108,6 +108,7 @@ static void open_devices(char *folder_path, char *devs_name, hwmon_dev_t **devs,
         sprintf(type_path, "%s/%s%d", folder_path, devs_name, d+1);
         // Cleaning
         memset(&(*devs)[d], 0, sizeof(hwmon_dev_t));
+        (*devs)[d].number              = d+1;
         (*devs)[d].input_fd            = -1;
         (*devs)[d].label_fd            = -1;
         (*devs)[d].max_fd              = -1;
@@ -199,6 +200,35 @@ void hwmon_close(hwmon_t **chips)
     *chips = NULL;
 }
 
+int hwmon_count_items(hwmon_t chips[], char *item_name, char *label)
+{
+    int counter = 0;
+    int input   = 0;
+    int c       = 0; // c of chip
+    int d       = 0; // d of device
+
+    int cmp1 = strncmp(item_name, "input"           ,  5) == 0;
+    int cmp2 = strncmp(item_name, "min"             ,  3) == 0;
+    int cmp3 = strncmp(item_name, "max"             ,  3) == 0;
+    int cmp4 = strncmp(item_name, "average"         ,  7) == 0;
+    int cmp5 = strncmp(item_name, "average_interval", 16) == 0;
+
+    while (!chips[c].is_null) {
+        while (!chips[c].devs[d].is_null) {
+            if (label == NULL || strstr(chips[c].devs[d].label, label) != NULL) {
+                if (cmp1) counter += chips[c].devs[d].input_fd != -1;
+                if (cmp2) counter += chips[c].devs[d].min_fd != -1;
+                if (cmp3) counter += chips[c].devs[d].max_fd != -1;
+                if (cmp4) counter += chips[c].devs[d].average_fd != -1;
+                if (cmp5) counter += chips[c].devs[d].average_interval_fd != -1;
+            }
+            ++d;
+        }
+        ++c;
+    }
+    return counter;
+}
+
 void hwmon_read(hwmon_t *chips)
 {
     int c = 0; // c of chip
@@ -214,7 +244,7 @@ void hwmon_read(hwmon_t *chips)
     }
 }
 
-int hwmon_calc_average(hwmon_t *chips, char *label)
+void hwmon_calc_average(hwmon_t *chips, char *label)
 {
     int c = 0; // c of chip
     int d = 0; // d of device
@@ -245,21 +275,81 @@ int hwmon_calc_average(hwmon_t *chips, char *label)
         chips[c].devs_avg.average_interval_toint /= m;
         ++c;
     }
-    return EAR_SUCCESS;
+}
+
+static void set_univisited(hwmon_t chips[], hwmon_dev_t devs[])
+{
+    int e = 0; // of not c nor d
+    while (chips != NULL && !chips[e].is_null) {
+        chips[e].is_visited = 0;
+        ++e;
+    }
+    while (devs != NULL && !devs[e].is_null) {
+        devs[e].is_visited = 0;
+        ++e;
+    }
+}
+
+hwmon_t *hwmon_iter_chips(hwmon_t chips[])
+{
+    int c = 0; // c of chip
+    while (1) {
+        if (chips[c].is_null) {
+            set_univisited(chips, NULL);
+            return NULL;
+        }
+        if (!chips[c].is_visited) {
+            chips[c].is_visited = 1;
+            return &chips[c];
+        }
+        ++c;
+    }
+    return NULL;
+}
+
+hwmon_dev_t *hwmon_iter_devs(hwmon_t *chip, char *label)
+{
+    int d = 0; // de of device
+    while (1) {
+        if (chip->devs[d].is_null) {
+            set_univisited(NULL, chip->devs);
+            return NULL;
+        }
+        if (!chip->devs[d].is_visited && (label == NULL || strstr(chip->devs[d].label, label))) {
+            chip->devs[d].is_visited = 1;
+            return &chip->devs[d];
+        }
+        ++d;
+    }
+    return NULL;
 }
 
 #if TEST
 int main(int argc, char *argv[])
 {
     uint chips_count = 0;
+    uint cores_count = 0;
     hwmon_t *chips   = NULL;
 
     if (state_fail(hwmon_open("coretemp", "temp", &chips, &chips_count))) {
         debug("Failed: %s", state_msg);
     }
+    if (!(cores_count = hwmon_count_items(chips, "input", "Core"))) {
+        hwmon_close(&chips);
+        return 0;
+    }
+    printf("Detected %d Core inputs\n", cores_count);
     hwmon_read(chips);
     hwmon_calc_average(chips, "Core");
     printf("The average Core temperature of Socket 0 is %dº\n", chips[0].devs_avg.input_toint / 1000);
+    // 1 by 1 iteration
+    hwmon_dev_t *dev = NULL;
+    hwmon_t *chip = NULL;
+    while((chip = hwmon_iter_chips(chips)) != NULL) {
+        while((dev = hwmon_iter_devs(chip, NULL)) != NULL) {
+            printf("temp%d_input %d (label %s)\n", dev->number, dev->input_toint, dev->label);
+        }
+    }
     hwmon_close(&chips);
     return 0;
 }

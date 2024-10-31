@@ -42,32 +42,44 @@ typedef struct hwmon_dev_s {
     hwmon_add(min);
     hwmon_add(average);
     hwmon_add(average_interval);
-    uint is_null;
+    char is_visited;
+    char is_null;
+    char number;
 } hwmon_dev_t;
 
 typedef struct hwmon_s {
     hwmon_dev_t devs_avg;
     hwmon_dev_t *devs;
     uint devs_count;
-    uint is_null;
+    char is_visited;
+    char is_null;
 } hwmon_t;
-
 
 // It returns an array of hwmon_t structs based on chip name like "coretemp" or
 // "k10temp" and a device type such as "temp", "power" or "energy". In this
 // array there is a position for each chip found: one per hwmon folder whose
 // name is equal the name you passed. In each array position you can find also a
 // list of devices based on the device type you passed (i.e. "temp"), whose
-// variables are the items of the devices (i.e. "input", "max", "label", etc).
-state_t hwmon_open(char *chip_name, char *dev_type, hwmon_t **chips, uint *chips_count);
+// variables are the items of the devices (i.e. input, max, label, etc).
+state_t hwmon_open(char *chip_name, char *dev_type, hwmon_t *chips[], uint *chips_count);
 
-void hwmon_close(hwmon_t **chips);
+void hwmon_close(hwmon_t *chips[]);
 
-void hwmon_read(hwmon_t *chips);
+void hwmon_read(hwmon_t chips[]);
+
+// This function counts the number of items found (i.e. input). Also you can
+// pass a label to count items per label. It accepts NULL labels.
+int hwmon_count_items(hwmon_t chips[], char *item_name, char *label);
 
 // It calculates the average of the all the devices per chip, based in a label
 // (i.e. "Core"). If label is NULL, all devices items are used to compute the
 // chip average. The values are saved in the devs_avg device.
-int hwmon_calc_average(hwmon_t *chips, char *label);
+void hwmon_calc_average(hwmon_t chips[], char *label);
+
+// The iter functions iterate over all chips and devices until returns NULL.
+// When called again they start from the beginning.
+hwmon_t *hwmon_iter_chips(hwmon_t chips[]);
+
+hwmon_dev_t *hwmon_iter_devs(hwmon_t *chip, char *label);
 
 #endif //METRICS_COMMON_HWMON
