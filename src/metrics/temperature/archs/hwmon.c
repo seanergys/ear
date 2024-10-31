@@ -8,6 +8,8 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
+//#define SHOW_DEBUGS 1
+
 #include <common/output/debug.h>
 #include <metrics/common/hwmon.h>
 #include <metrics/temperature/archs/hwmon.h>
@@ -22,7 +24,7 @@ static char    *driver_name;
 TEMP_F_LOAD(hwmon)
 {
     if (tp->vendor == VENDOR_AMD || tp->family >= FAMILY_ZEN) {
-        items_count = tp->core_count*4;
+        items_count = tp->core_count / 8; // 8 cores * CCD
         driver_name = "k10temp";
         label       = "Tccd";
     } else if (tp->vendor == VENDOR_INTEL || tp->family >= MODEL_ICELAKE_X) {
@@ -35,15 +37,16 @@ TEMP_F_LOAD(hwmon)
     if (state_fail(hwmon_open(driver_name, "temp", &chips, &chips_count))) {
         debug("Failed: %s", state_msg);
     }
+    debug("items to count %u", items_count);
     if (hwmon_count_items(chips, "input", label) != items_count) {
         hwmon_close(&chips);
         return;
     }
     sockets_count = tp->socket_count;
-    apis_set(ops->get_info, temp_hwmon_get_info);
-    apis_set(ops->init,     temp_hwmon_init);
-    apis_set(ops->dispose,  temp_hwmon_dispose);
-    apis_set(ops->read,     temp_hwmon_read);
+    apis_put(ops->get_info, temp_hwmon_get_info);
+    apis_put(ops->init,     temp_hwmon_init);
+    apis_put(ops->dispose,  temp_hwmon_dispose);
+    apis_put(ops->read,     temp_hwmon_read);
 }
 
 TEMP_F_GET_INFO(hwmon)

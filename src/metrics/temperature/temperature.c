@@ -17,6 +17,7 @@
 #include <metrics/temperature/archs/eard.h>
 #include <metrics/temperature/archs/amd17.h>
 #include <metrics/temperature/archs/intel63.h>
+#include <metrics/temperature/archs/hwmon.h>
 #include <metrics/temperature/archs/dummy.h>
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;

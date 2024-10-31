@@ -31,10 +31,10 @@ TEMP_F_LOAD(amd17)
         return;
     }
     socket_count = tp->socket_count;
-    apis_set(ops->get_info, temp_amd17_get_info);
-    apis_set(ops->init,     temp_amd17_init);
-    apis_set(ops->dispose,  temp_amd17_dispose);
-    apis_set(ops->read,     temp_amd17_read);
+    apis_put(ops->get_info, temp_amd17_get_info);
+    apis_put(ops->init,     temp_amd17_init);
+    apis_put(ops->dispose,  temp_amd17_dispose);
+    apis_put(ops->read,     temp_amd17_read);
 }
 
 TEMP_F_GET_INFO(amd17)

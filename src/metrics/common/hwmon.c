@@ -83,6 +83,7 @@ static int read_device_item(char *type_path, char *item_name, ullong address, in
     // Getting full item path
     if (type_path != NULL) {
         sprintf(path, "%s_%s", type_path, item_name);
+        debug("Opening device_item %s", path);
     } else {
         sprintf(path, "fd %d", *item_fd);
     }
@@ -97,8 +98,10 @@ static int read_device_item(char *type_path, char *item_name, ullong address, in
 static void open_devices(char *folder_path, char *devs_name, hwmon_dev_t **devs, uint *devs_count)
 {
     char type_path[SZ_PATH];
-    int completed;
+    int completed = 0;
+    int missing = 0;
     int d = 0;
+    int i = 0;
 
     *devs = NULL;
     *devs_count = 0;
@@ -107,15 +110,15 @@ static void open_devices(char *folder_path, char *devs_name, hwmon_dev_t **devs,
         completed = 0;
         sprintf(type_path, "%s/%s%d", folder_path, devs_name, d+1);
         // Cleaning
-        memset(&(*devs)[d], 0, sizeof(hwmon_dev_t));
-        (*devs)[d].number              = d+1;
-        (*devs)[d].input_fd            = -1;
-        (*devs)[d].label_fd            = -1;
-        (*devs)[d].max_fd              = -1;
-        (*devs)[d].average_fd          = -1;
-        (*devs)[d].average_interval_fd = -1;
+        memset(&(*devs)[i], 0, sizeof(hwmon_dev_t));
+        (*devs)[i].number              = d+1;
+        (*devs)[i].input_fd            = -1;
+        (*devs)[i].label_fd            = -1;
+        (*devs)[i].max_fd              = -1;
+        (*devs)[i].average_fd          = -1;
+        (*devs)[i].average_interval_fd = -1;
         //
-        #define offset(var) (ullong) &((*devs)[d].var)
+        #define offset(var) (ullong) &((*devs)[i].var)
         completed += read_device_item(type_path, "input"  , offset(input_fd)  , 0);
         completed += read_device_item(type_path, "label"  , offset(label_fd)  , 1);
         completed += read_device_item(type_path, "max"    , offset(max_fd)    , 1);
@@ -125,15 +128,19 @@ static void open_devices(char *folder_path, char *devs_name, hwmon_dev_t **devs,
         if (completed) {
             // Allocating more space for the next device and its items (+2 because it NULL terminated)
             *devs = realloc(*devs, sizeof(hwmon_dev_t)*((*devs_count)+2));
-            debug("sizeof(hwmon_dev_t)*((*devs_count)+2) %ld", sizeof(hwmon_dev_t)*((*devs_count)+2));
             (*devs_count)++;
-            d++;
+            missing = 0;
+            i++;
         } else {
-            break;
+            // 4 device holes is too much
+            if (++missing == 4) {
+                break;
+            } 
         }
+        d++;
     } while(1);
     // Null-terminated list of devices
-    (*devs)[d].is_null = 1;
+    (*devs)[i].is_null = 1;
 }
 
 state_t hwmon_open(char *chip_name, char *dev_type, hwmon_t **chips, uint *chips_count)
@@ -182,7 +189,10 @@ state_t hwmon_open(char *chip_name, char *dev_type, hwmon_t **chips, uint *chips
     for (i = 0; i < *chips_count; ++i) {
         debug(" - CHIP%d '%s'", i, chip_name);
         for (j = 0; j < (*chips)[i].devs_count; ++j) {
-            debug("   - DEV%d %s%d_ fd%d", j, dev_type, j+1, (*chips)->devs[j].input_fd);
+            debug("   - DEV%03d fd%2d %s%d_ (%s) [%d]", j,
+                    (*chips)[i].devs[j].input_fd,
+                    dev_type, (*chips)[i].devs[j].number,
+                    (*chips)[i].devs[j].label, (*chips)[i].devs[j].is_null);
         }
     }
     #endif
@@ -213,7 +223,9 @@ int hwmon_count_items(hwmon_t chips[], char *item_name, char *label)
     int cmp5 = strncmp(item_name, "average_interval", 16) == 0;
 
     while (!chips[c].is_null) {
+        d = 0;
         while (!chips[c].devs[d].is_null) {
+        debug("d %d", d);
             if (label == NULL || strstr(chips[c].devs[d].label, label) != NULL) {
                 if (cmp1) counter += chips[c].devs[d].input_fd   != -1;
                 if (cmp2) counter += chips[c].devs[d].min_fd     != -1;
@@ -225,6 +237,7 @@ int hwmon_count_items(hwmon_t chips[], char *item_name, char *label)
         }
         ++c;
     }
+    debug("counted %d '%s' items", counter, label);
     return counter;
 }
 
@@ -251,6 +264,8 @@ void hwmon_calc_average(hwmon_t *chips, char *label)
 
     debug("List of averages:");
     while (!chips[c].is_null) {
+        d = 0;
+        m = 0;
         // Cleaning
         memset(&chips[c].devs_avg, 0, sizeof(hwmon_dev_t));
         while (!chips[c].devs[d].is_null) {
