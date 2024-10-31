@@ -27,6 +27,7 @@
 #include <common/config.h>
 #include <common/states.h>
 #include <common/system/poll.h>
+#include <common/system/file.h>
 #include <common/output/verbose.h>
 
 extern int eard_must_exit;
