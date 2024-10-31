@@ -198,11 +198,11 @@ void hwmon_close(hwmon_t **chips)
     }
     free(*chips);
     *chips = NULL;
+}
 
 int hwmon_count_items(hwmon_t chips[], char *item_name, char *label)
 {
     int counter = 0;
-    int input   = 0;
     int c       = 0; // c of chip
     int d       = 0; // d of device
 
@@ -245,7 +245,6 @@ void hwmon_read(hwmon_t *chips)
 
 void hwmon_calc_average(hwmon_t *chips, char *label)
 {
-    hwmon_dev_t *all_avg;
     int c = 0; // c of chip
     int d = 0; // d of device
     int m = 0; // m of matches

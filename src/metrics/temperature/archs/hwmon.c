@@ -8,6 +8,10 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
+#include <common/output/debug.h>
+#include <metrics/common/hwmon.h>
+#include <metrics/temperature/archs/hwmon.h>
+
 static hwmon_t *chips;
 static uint     chips_count;
 static uint     sockets_count;
@@ -47,12 +51,13 @@ TEMP_F_GET_INFO(hwmon)
     info->api         = API_HWMON;
     info->scope       = SCOPE_NODE;
     info->granularity = GRANULARITY_SOCKET;
-    info->devs_count  = socket_count;
+    info->devs_count  = sockets_count;
 }
 
 TEMP_F_INIT(hwmon)
 {
     // Nothing
+    return EAR_SUCCESS;
 }
 
 TEMP_F_DISPOSE(hwmon)
@@ -62,6 +67,8 @@ TEMP_F_DISPOSE(hwmon)
 
 TEMP_F_READ(hwmon)
 {
+    llong temp_aux;
+    hwmon_t *chip;
     int c = 0;
 
     if (average != NULL) {
@@ -71,11 +78,13 @@ TEMP_F_READ(hwmon)
     hwmon_read(chips);
     hwmon_calc_average(chips, label);
     while((chip = hwmon_iter_chips(chips)) != NULL) {
-        if (temp    != NULL) temp[c]   = (llong) chip->dev_avg.input_toint;
-        if (average != NULL) *average += (llong) chip->dev_avg.input_toint;
+        temp_aux = ((llong) chip->devs_avg.input_toint) / 1000LL;
+        if (temp    != NULL) temp[c]   = temp_aux;
+        if (average != NULL) *average += (llong) chip->devs_avg.input_toint;
         ++c;
     }
     if (average != NULL) {
         *average /= (llong) c;
     }
+    return EAR_SUCCESS;
 }

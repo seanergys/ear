@@ -53,8 +53,9 @@ static char *_apis_tostr(uint api)
     else if (api == API_INTEL143) return "INTEL143";
     else if (api == API_LINUX_POWERCAP) return "LINUX_POWERCAP";
     else if (api == API_DCGMI   ) return "DCGMI";
-    else if (api == API_ACPI_POWER   ) return "ACPI_POWER";
-    else if (api == API_GRACE_CPU   ) return "GRACE_CPU";
+    else if (api == API_ACPI_POWER    ) return "ACPI_POWER";
+    else if (api == API_GRACE_CPU     ) return "GRACE_CPU";
+    else if (api == API_HWMON)    return "HWMON";
 
     return "NONE";
 }

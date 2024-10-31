@@ -8,6 +8,7 @@ mets_OBJS = \
     $(SRCDIR)/metrics/common/file.o \
     $(SRCDIR)/metrics/common/hsmp.o \
     $(SRCDIR)/metrics/common/hwmon.o \
+    $(SRCDIR)/metrics/common/hwmon_old.o \
     $(SRCDIR)/metrics/common/isst.o \
     $(SRCDIR)/metrics/common/likwid.o \
     $(SRCDIR)/metrics/common/nvml.o \

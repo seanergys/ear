@@ -36,6 +36,7 @@ void temp_load(topology_t *tp, uint force_api)
 #if WF_SUPPORT
     temp_eard_load   (tp, &ops, force_api);
 #endif
+    temp_hwmon_load(tp, &ops, force_api);
     temp_intel63_load(tp, &ops, force_api);
     temp_amd17_load  (tp, &ops, force_api);
 dummy:
