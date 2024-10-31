@@ -81,6 +81,6 @@ hwmon_dev_t *hwmon_iter_devs(hwmon_t *chip, char *label);
 // (i.e. "Core"). If label is NULL, all devices are used to compute the chip
 // average. The values are saved in the devs_avg device. The returned device
 // is the average of all devices of all chips.
-hwmon_dev_t *hwmon_calc_average(hwmon_t chips[], char *label);
+void hwmon_calc_average(hwmon_t chips[], char *label);
 
 #endif //METRICS_COMMON_HWMON

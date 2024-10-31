@@ -251,7 +251,6 @@ void hwmon_calc_average(hwmon_t *chips, char *label)
     int d = 0; // d of device
     int m = 0; // m of matches
 
-    all_avg = chips[0].devs[devs_count]
     debug("List of averages:");
     while (!chips[c].is_null) {
         // Cleaning
