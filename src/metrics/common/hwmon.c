@@ -216,9 +216,9 @@ int hwmon_count_items(hwmon_t chips[], char *item_name, char *label)
     while (!chips[c].is_null) {
         while (!chips[c].devs[d].is_null) {
             if (label == NULL || strstr(chips[c].devs[d].label, label) != NULL) {
-                if (cmp1) counter += chips[c].devs[d].input_fd != -1;
-                if (cmp2) counter += chips[c].devs[d].min_fd != -1;
-                if (cmp3) counter += chips[c].devs[d].max_fd != -1;
+                if (cmp1) counter += chips[c].devs[d].input_fd   != -1;
+                if (cmp2) counter += chips[c].devs[d].min_fd     != -1;
+                if (cmp3) counter += chips[c].devs[d].max_fd     != -1;
                 if (cmp4) counter += chips[c].devs[d].average_fd != -1;
                 if (cmp5) counter += chips[c].devs[d].average_interval_fd != -1;
             }
@@ -246,10 +246,12 @@ void hwmon_read(hwmon_t *chips)
 
 void hwmon_calc_average(hwmon_t *chips, char *label)
 {
+    hwmon_dev_t *all_avg;
     int c = 0; // c of chip
     int d = 0; // d of device
     int m = 0; // m of matches
 
+    all_avg = chips[0].devs[devs_count]
     debug("List of averages:");
     while (!chips[c].is_null) {
         // Cleaning

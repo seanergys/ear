@@ -71,15 +71,16 @@ void hwmon_read(hwmon_t chips[]);
 // pass a label to count items per label. It accepts NULL labels.
 int hwmon_count_items(hwmon_t chips[], char *item_name, char *label);
 
-// It calculates the average of the all the devices per chip, based in a label
-// (i.e. "Core"). If label is NULL, all devices items are used to compute the
-// chip average. The values are saved in the devs_avg device.
-void hwmon_calc_average(hwmon_t chips[], char *label);
-
 // The iter functions iterate over all chips and devices until returns NULL.
 // When called again they start from the beginning.
 hwmon_t *hwmon_iter_chips(hwmon_t chips[]);
 
 hwmon_dev_t *hwmon_iter_devs(hwmon_t *chip, char *label);
+
+// It calculates the average of the all the devices per chip, based in a label
+// (i.e. "Core"). If label is NULL, all devices are used to compute the chip
+// average. The values are saved in the devs_avg device. The returned device
+// is the average of all devices of all chips.
+hwmon_dev_t *hwmon_calc_average(hwmon_t chips[], char *label);
 
 #endif //METRICS_COMMON_HWMON

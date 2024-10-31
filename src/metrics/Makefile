@@ -81,6 +81,7 @@ mets_OBJS = \
     $(SRCDIR)/metrics/temperature/temperature.o \
     $(SRCDIR)/metrics/temperature/archs/amd17.o \
     $(SRCDIR)/metrics/temperature/archs/eard.o \
+    $(SRCDIR)/metrics/temperature/archs/hwmon.o \
     $(SRCDIR)/metrics/temperature/archs/intel63.o \
     $(SRCDIR)/metrics/temperature/archs/dummy.o \
     $(SRCDIR)/metrics/io/io.o
