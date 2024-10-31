@@ -13,4 +13,12 @@
 
 #include <metrics/common/hsmp_driver.h>
 
+// It opens HSMP by various methods: contacting amd_hsmp driver, loading e_smi library
+// or opening PCIs directly (in that order).
+state_t hsmp_open(topology_t *tp);
+
+state_t hsmp_close();
+
+state_t hsmp_send(int socket, uint function, uint *args, uint *reps);
+
 #endif

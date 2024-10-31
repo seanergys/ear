@@ -64,7 +64,9 @@ static pci_t     *pcis;
 
 state_t hsmp_pci_open(topology_t *tp)
 {
-	if (tp->vendor == VENDOR_INTEL || tp->family < FAMILY_ZEN) {
+    state_t s;
+
+    if (tp->vendor == VENDOR_INTEL || tp->family < FAMILY_ZEN) {
 		return_msg(EAR_ERROR, Generr.api_incompatible);
 	}
 	if (pcis != NULL) {
@@ -85,7 +87,7 @@ state_t hsmp_pci_open(topology_t *tp)
         }
         // Opening PCis
         if (state_fail(s = pci_scan(amd_vendor, mist_pci_ids, mist_pci_dfs, O_RDWR, &pcis, &pcis_count))) {
-            return_print(EAR_ERROR, "HSMP failed while scanning PCI: %s", state_msg);
+            return_reprint(s, "HSMP failed while scanning PCI: %s", state_msg);
         }
         // Calculating Root Comlex per DataFabric. We will need it to access
         // to different sockets Roots. HSMP driver counts sockets by counting
@@ -99,7 +101,7 @@ state_t hsmp_pci_open(topology_t *tp)
         uint reps[2] = {  0, -1 };
         if (state_fail(s = hsmp_pci_send(0, HSMP_TEST, args, reps))) {
             pci_scan_close(&pcis, &pcis_count);
-            return_print(EAR_ERROR, "HSMP test function failed: %s", state_msg);
+            return_reprint(EAR_ERROR, "HSMP test function failed: %s", state_msg);
         }
         if (reps[0] != 69) {
             pci_scan_close(&pcis, &pcis_count);
@@ -110,7 +112,7 @@ state_t hsmp_pci_open(topology_t *tp)
     return EAR_SUCCESS;
 }
 
-state_t hsmp_close()
+state_t hsmp_pci_close()
 {
     return pci_scan_close(&pcis, &pcis_count);
 }
@@ -120,11 +122,11 @@ static state_t smn_write(pci_t *pci, mailopt_t *opt, uint data)
 	state_t s;
     //debug("smn_write");
 	if (state_fail(s = pci_write(pci, (const void *) &opt->address, sizeof(uint), smn.index))) {
-		debug("pci_write returned: %s (%d)", state_msg, s);
+		debug("pci_write returned: %s", state_msg);
 		return s;
 	}
 	if (state_fail(s = pci_write(pci, &data, opt->size, smn.data))) {
-		debug("pci_write returned: %s (%d)", state_msg, s);
+		debug("pci_write returned: %s", state_msg);
 		return s;
 	}
 	debug("PCI%d: written %u (%lu) in %s (%lx)",
@@ -136,12 +138,12 @@ static state_t smn_read(pci_t *pci, mailopt_t *opt, uint *data)
 {
 	state_t s;
 	if (state_fail(s = pci_write(pci, (const void *) &opt->address, sizeof(uint), smn.index))) {
-		debug("pci_write returned: %s (%d)", state_msg, s);
+		debug("pci_write returned: %s", state_msg);
 		return s;
 	}
 	*data = 0;
 	if (state_fail(s = pci_read(pci, data, opt->size, smn.data))) {
-		debug("pci_write returned: %s (%d)", state_msg, s);
+		debug("pci_write returned: %s", state_msg);
 		return s;
 	}
 	debug("PCI%d: Readed %u (%lu) from %s (%lx)",
@@ -149,7 +151,7 @@ static state_t smn_read(pci_t *pci, mailopt_t *opt, uint *data)
 	return EAR_SUCCESS;
 }
 
-state_t hsmp_send(int socket, uint function, uint *args, uint *reps)
+state_t hsmp_pci_send(int socket, uint function, uint *args, uint *reps)
 {
 	struct timespec one_ms = { 0, 1000 * 1000 };
 	mailopt_t arg;

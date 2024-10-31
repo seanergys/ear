@@ -13,6 +13,8 @@
 
 #include <metrics/common/hsmp.h>
 
+// This class is part of hsmp.h and is not intended to be used alone. This class
+// is not lock protected. It is recommended to use the functions found in hsmp.h.
 state_t hsmp_pci_open(topology_t *tp);
 
 state_t hsmp_pci_close();

@@ -87,7 +87,7 @@ state_t mgt_imcfreq_amd17_load(topology_t *tp, mgt_imcfreq_ops_t *ops)
 	// Setting auto
 	uint args[1] = { -1 };
 	uint reps[1] = { -1 };
-	hsmp_send(0, HSMP_SET_DF_PSTATE, &args[0], &reps[0]);
+	hsmp_send(0, HSMP_SET_AUTO_DF_PSTATE, &args[0], &reps[0]);
 	//
 	replace_ops(ops->init,             mgt_imcfreq_amd17_init);
 	replace_ops(ops->dispose,          mgt_imcfreq_amd17_dispose);
@@ -177,7 +177,7 @@ static state_t set(uint pstate_index, int socket)
 
 	if (pstate_index == ps_auto) {
 		// Function APBEnable (0x0e)
-		function = HSMP_SET_DF_PSTATE;
+		function = HSMP_SET_AUTO_DF_PSTATE;
 		i = 1;
 	} else if (pstate_index >= pstate_count) {
 		return_msg(EAR_ERROR, Generr.arg_outbounds);

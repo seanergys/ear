@@ -9,6 +9,7 @@
  **************************************************************************/
 
 //#define SHOW_DEBUGS 1
+
 #include <fcntl.h>
 #include <pthread.h>
 #include <sys/stat.h>
@@ -16,9 +17,9 @@
 #include <sys/ioctl.h>
 #include <linux/types.h>
 #include <common/output/debug.h>
+#include <metrics/common/hsmp.h>
 #include <metrics/common/hsmp_pci.h>
 #include <metrics/common/hsmp_esmi.h>
-#include <metrics/common/hsmp_driver.h>
 
 #define HSMP_BY_NOTHING   0
 #define HSMP_BY_DRIVER    1
@@ -30,22 +31,37 @@ static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static int             fd   = -1;
 static int             by;
 
-static state_t hsmp_driver_open(topology_t *tp)
+static state_t hsmp_driver_send(int socket, uint function, uint *args, uint *reps)
 {
-	if (tp->vendor == VENDOR_INTEL || tp->family < FAMILY_ZEN) {
-		return_msg(EAR_ERROR, Generr.api_incompatible);
-	}
-    if (fd != -1) {
-        goto leave;
+    struct hsmp_message msg;
+    int ret;
+
+    memset(&msg, 0, sizeof(struct hsmp_message));
+    msg.msg_id      = (__u32) function;
+    msg.sock_ind    = (__u16) socket;
+    debug("msg.msg_id     : %u", msg.msg_id);
+    debug("msg.sock_ind   : %u", msg.sock_ind);
+    // Counting args and reps
+    while(args[msg.num_args] != -1) {
+        msg.args[msg.num_args] = (__u32) args[msg.num_args];
+        debug("msg.args[%d]    : %u", msg.num_args, msg.args[msg.num_args]);
+        msg.num_args++;
     }
-    if ((fd = open("/dev/hsmp", O_RDWR)) < 0) {
-        if ((fd = open("/dev/hsmp", O_RDONLY)) < 0) {
-            return_print(EAR_ERROR, "Error while opening /dev/hsmp driver file: %s", strerror(errno))
-        }
-        debug("HSMP is in user mode");
+    while(reps[msg.response_sz] != -1) {
+        msg.response_sz++;
     }
-	sockets_count = tp->socket_count;
-leave:
+    debug("msg.num_args   : %u", msg.num_args);
+    debug("msg.response_sz: %u", msg.response_sz);
+    // Contacting the driver
+    if ((ret = ioctl(fd, HSMP_IOCTL_CMD, &msg)) == -1) {
+        debug("ioctl failed: %s", strerror(errno));
+        return_print(EAR_ERROR, "Error while sending a command to HSMP driver: %s", strerror(errno));
+    }
+    // Recovering responses
+    while(msg.response_sz > 0) {
+        reps[msg.response_sz-1] = (uint) msg.args[msg.response_sz-1];
+        msg.response_sz--;
+    }
     return EAR_SUCCESS;
 }
 
@@ -58,32 +74,38 @@ static state_t hsmp_driver_close()
 	return EAR_SUCCESS;
 }
 
-static state_t hsmp_driver_send(int socket, uint function, uint *args, uint *reps)
+static state_t hsmp_driver_open(topology_t *tp)
 {
-    hsmp_msg_t msg;
-    int ret;
-
-    memset(&msg, 0, sizeof(hsmp_msg_t));
-    msg.msg_id      = (__u32) function;
-    msg.sock_ind    = (__u16) socket;
-    // Counting args and reps
-    while(args[msg.num_args++] != -1) {
-        msg.args[msg.num_args-1] = (__u32) args[msg.num_args-1];
+    state_t s;
+    if (tp->vendor == VENDOR_INTEL || tp->family < FAMILY_ZEN) {
+		return_msg(EAR_ERROR, Generr.api_incompatible);
+	}
+    if (fd != -1) {
+        goto leave;
     }
-    while(reps[msg.response_sz++] != -1);
-    // Contacting the driver
-    if ((ret = ioctl(fd, HSMP_IOCTL_CMD, msg)) == -1) {
-        return_print(EAR_ERROR, "Error while sending a command to HSMP driver: %s", strerror(errno));
+    if ((fd = open("/dev/hsmp", O_RDWR)) < 0) {
+        if ((fd = open("/dev/hsmp", O_RDONLY)) < 0) {
+            return_print(EAR_ERROR, "Error while opening /dev/hsmp driver file: %s", strerror(errno))
+        }
+        debug("HSMP is in user mode");
+        // Test ping
+        uint args[2] = { 68, -1 };
+        uint reps[2] = {  0, -1 };
+        if (state_fail(s = hsmp_driver_send(0, HSMP_TEST, args, reps))) {
+            hsmp_driver_close();
+            return_print(EAR_ERROR, "HSMP test function failed: %s", state_msg);
+        }
+        if (reps[0] != 69) {
+            hsmp_driver_close();
+            return_print(EAR_ERROR, "HSMP not enabled (incorrect ping value, expected 69, received %u)", reps[0]);
+        }
     }
-    // Recovering responses
-    while(msg.response_sz > 0) {
-        reps[msg.response_sz-1] = (uint) msg.args[msg.response_sz-1];
-        --msg.response_sz;
-    }
+	sockets_count = tp->socket_count;
+leave:
     return EAR_SUCCESS;
 }
 
-state_t hsmp_open()
+state_t hsmp_open(topology_t *tp)
 {
     state_t s = EAR_SUCCESS;
     while (pthread_mutex_trylock(&lock));
@@ -91,11 +113,14 @@ state_t hsmp_open()
         goto leave;
     }
     by = HSMP_BY_DRIVER;
-    if (state_fail(s = hsmp_open_driver(tp))) {
+    if (state_fail(s = hsmp_driver_open(tp))) {
+        debug("HSMP driver not loaded");
         by = HSMP_BY_ESMI;
-        if (state_fail(s = hsmp_open_esmi(tp))) {
+        if (state_fail(s = hsmp_esmi_open(tp))) {
+            debug("HSMP esmi not loaded");
             by = HSMP_BY_PCI;
-            if (state_fail(s = hsmp_open_pci(tp))) {
+            if (state_fail(s = hsmp_pci_open(tp))) {
+                debug("HSMP pci not loaded");
                 by = HSMP_BY_NOTHING;
             }
         }

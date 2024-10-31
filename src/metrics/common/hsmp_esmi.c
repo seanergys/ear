@@ -50,14 +50,14 @@ typedef struct esmi_s {
     esmi_status_t (*socket_power_get)          (uint socket_idx, uint *ppower); //HSMP_GET_SOCKET_POWER
     esmi_status_t (*socket_power_cap_set)      (uint socket_idx, uint pcap); //HSMP_SET_SOCKET_POWER_LIMIT
     esmi_status_t (*socket_power_cap_get)      (uint socket_idx, uint *pcap); //HSMP_GET_SOCKET_POWER_LIMIT
-    esmi_status_t (*socket_power_cap_max_get)  (uint socket_idx, uint *pmax); //HSMP_READ_MAX_SOCKET_POWER_LIMIT
+    esmi_status_t (*socket_power_cap_max_get)  (uint socket_idx, uint *pmax); //HSMP_GET_SOCKET_POWER_LIMIT_MAX
     esmi_status_t (*core_boostlimit_set)       (uint cpu_ind, uint boostlimit); //HSMP_SET_BOOST_LIMIT
     esmi_status_t (*socket_boostlimit_set)     (uint socket_idx, uint boostlimit); //HSMP_SET_BOOST_LIMIT_SOCKET
     esmi_status_t (*core_boostlimit_get)       (uint cpu_ind, uint *pboostlimit); //HSMP_GET_BOOST_LIMIT
     esmi_status_t (*prochot_status_get)        (uint socket_idx, uint *prochot); //HSMP_GET_PROC_HOT
     esmi_status_t (*xgmi_width_set)            (uchar min, uchar max); //HSMP_SET_XGMI_LINK_WIDTH
     esmi_status_t (*apb_disable)               (uint sock_ind, uchar pstate); //HSMP_SET_DF_PSTATE
-    esmi_status_t (*apb_enable)                (uint sock_ind); //HSMP_SET_DF_PSTATE
+    esmi_status_t (*apb_enable)                (uint sock_ind); //HSMP_SET_AUTO_DF_PSTATE
     esmi_status_t (*fclk_mclk_get)             (uint socket_idx, uint *fclk, uint *mclk); //HSMP_GET_FCLK_MCLK
     esmi_status_t (*cclk_limit_get)            (uint socket_idx, uint *cclk); //HSMP_GET_CCLK_THROTTLE_LIMIT
     esmi_status_t (*socket_c0_residency_get)   (uint socket_idx, uint *pc0_residency); //HSMP_GET_C0_PERCENT
@@ -119,7 +119,7 @@ static state_t hsmp_load_library()
     return_msg(EAR_ERROR, "Can not load libe_smi.so");
 }
 
-state_t hsmp_lib_open(topology_t *tp)
+state_t hsmp_esmi_open(topology_t *tp)
 {
     struct smu_fw_version smu;
     state_t s = EAR_SUCCESS;
@@ -139,12 +139,12 @@ ret:
     return s;
 }
 
-state_t hsmp_lib_close()
+state_t hsmp_esmi_close()
 {
     return translate(esmi.exit());
 }
 
-state_t hsmp_lib_send(int socket, uint function, uint *args, uint *reps)
+state_t hsmp_esmi_send(int socket, uint function, uint *args, uint *reps)
 {
     struct ddr_bw_metrics ddr;
     esmi_status_t s;
@@ -165,7 +165,7 @@ state_t hsmp_lib_send(int socket, uint function, uint *args, uint *reps)
             return translate(esmi.socket_power_cap_set(socket, args[0]));
         case HSMP_GET_SOCKET_POWER_LIMIT:
             return translate(esmi.socket_power_cap_get(socket, &reps[0]));
-        case HSMP_READ_MAX_SOCKET_POWER_LIMIT:
+        case HSMP_GET_SOCKET_POWER_LIMIT_MAX:
             return translate(esmi.socket_power_cap_max_get(socket, &reps[0]));
         case HSMP_SET_BOOST_LIMIT:
             return translate(esmi.core_boostlimit_set(getbits32(args[0], 31, 16), getbits32(args[0], 15, 0)));
@@ -180,7 +180,7 @@ state_t hsmp_lib_send(int socket, uint function, uint *args, uint *reps)
             return translate(esmi.xgmi_width_set((uchar) getbits32(args[0], 15, 8), (uchar) getbits32(args[0], 7, 0)));
         case HSMP_SET_DF_PSTATE:
             return translate(esmi.apb_disable(socket, (uchar) args[0]));
-        case HSMP_SET_DF_PSTATE:
+        case HSMP_SET_AUTO_DF_PSTATE:
             return translate(esmi.apb_enable(socket));
         case HSMP_GET_FCLK_MCLK:
             return translate(esmi.fclk_mclk_get(socket, &reps[0], &reps[1]));

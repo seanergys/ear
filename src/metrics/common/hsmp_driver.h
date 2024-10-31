@@ -75,10 +75,5 @@ struct hsmp_message {
 };
 #endif
 
-state_t hsmp_open(topology_t *tp);
-
-state_t hsmp_close();
-
-state_t hsmp_send(int socket, uint function, uint *args, uint *reps);
-
+//
 #endif

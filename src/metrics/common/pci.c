@@ -135,7 +135,7 @@ state_t pci_read(pci_t *pci, void *buffer, size_t size, off_t addr)
 	ssize_t psize;
 	errno = 0;
 	if ((psize = pread(pci->fd, buffer, size, addr)) != size) {
-		debug("%s read %ld bytes but expected %lu (errno %d)", pci->path, psize, size, errno);
+		debug("PCI %s FD%d read %ld bytes but expected %lu: %s (errno %d)", pci->path, pci->fd, size, psize, strerror(errno), errno);
 		if (errno == 0) {
 			return_msg(EAR_ERROR, "undefined error");
 		} else {
@@ -148,6 +148,7 @@ state_t pci_read(pci_t *pci, void *buffer, size_t size, off_t addr)
 state_t pci_write(pci_t *pci, const void *buffer, size_t size, off_t addr)
 {
 	if (pwrite(pci->fd, buffer, size, addr) != size) {
+		debug("PCI %s FD%d failed to write %ld bytes: %s (errno %d)", pci->path, pci->fd, size, strerror(errno), errno);
 		return_msg(EAR_ERROR, strerror(errno));
 	}
 	return EAR_SUCCESS;
