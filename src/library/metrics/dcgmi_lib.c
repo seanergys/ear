@@ -9,7 +9,7 @@
  **********************************************************************/
 
 
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 
 #include <library/metrics/dcgmi_lib.h>

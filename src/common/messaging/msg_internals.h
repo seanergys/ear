@@ -47,6 +47,10 @@ int remote_connect(char *nodename,uint port);
 */
 int remote_disconnect();
 
+/** Disconnect from the connected socket fd
+*/
+int remote_disconnect_fd(int32_t fd);
+
 /** Sends the command to the currently connected fd */
 int send_command(request_t *command);
 
