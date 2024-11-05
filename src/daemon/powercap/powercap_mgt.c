@@ -224,7 +224,7 @@ void pmgt_process_message(char *level, int32_t num_values, int32_t values[num_va
 			manual_domain_power[DOMAIN_GPU] = values[0];	
 		} else if (num_values == gpu_pc_num_gpus) {
 			for (int32_t i = 0; i < gpu_pc_num_gpus; i++)
-				debug("Setting CPU[%d] to %u Watts", i, values[i]);
+				debug("Setting GPU[%d] to %u Watts", i, values[i]);
         	freturn(pcsyms_fun[DOMAIN_GPU].set_powercap_value, 0, LEVEL_DEVICE, (uint32_t *)values, current_util[DOMAIN_CPU]);
 			return;
 		}
@@ -237,7 +237,7 @@ void pmgt_process_message(char *level, int32_t num_values, int32_t values[num_va
 	} else if (!strcasecmp(level, "device")) {
 		// it needs to be total GPUs + total CPUs + total DRAMs (= total CPUs)
 		if (num_values < gpu_pc_num_gpus+pc_topology_info.socket_count*2) {
-			warning("powercap for device must include all CPUs + GPUs (received %d, required %d)", num_values, gpu_pc_num_gpus + pc_topology_info.socket_count);
+			warning("powercap for device must include all DRAMs + CPUs + GPUs (received %d, required %d)", num_values, gpu_pc_num_gpus + pc_topology_info.socket_count*2);
 			return;
 		} else {
 			for (int32_t i = 0; i < pc_topology_info.socket_count; i++)
