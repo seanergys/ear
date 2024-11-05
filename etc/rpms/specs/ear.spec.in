@@ -108,6 +108,7 @@ install -m 0775 lib/plugins/monitoring/* %{buildroot}%{_libdir}/plugins/monitori
 %{_libdir}
 
 %changelog
-* Thu Oct 3  Oriol Vidal <oriol.vidal@bsc.es> - 5.1-1
-* Fri Jun 14 Oriol Vidal <oriol.vidal@bsc.es> - 5.0-1
--
+* Thu Oct 3 2024 Oriol Vidal <oriol.vidal@bsc.es> - 5.1-1
+- Fixes.
+* Fri Jun 14 2024 Oriol Vidal <oriol.vidal@bsc.es> - 5.0-1
+- First ear package.

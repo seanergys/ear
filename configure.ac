@@ -121,7 +121,10 @@ AC_CONFIG_FILES([Makefile
                  etc/systemd/edcmon.service
                  etc/conf/ear.conf.full.template
                  etc/conf/ear.conf.template
-                 etc/rpms/specs/ear.spec])
+                 etc/rpms/specs/ear.spec
+				 etc/rpms/specs/ear_ln.spec
+				 etc/rpms/specs/ear_cn.spec
+				 etc/rpms/specs/ear_sn.spec])
 AC_CONFIG_FILES([etc/rpms/rpmbuild.sh], [chmod +x etc/rpms/rpmbuild.sh])
 AC_OUTPUT
 AX_AFTER_OUTPUT
