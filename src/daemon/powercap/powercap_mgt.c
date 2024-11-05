@@ -245,7 +245,7 @@ void pmgt_process_message(char *level, int32_t num_values, int32_t values[num_va
 			for (int32_t i = 0; i < pc_topology_info.socket_count; i++)
 				debug("Setting DRAM[%d] to %u Watts", i, values[i+pc_topology_info.socket_count]);
 			for (int32_t i = 0; i < gpu_pc_num_gpus; i++)
-				debug("Setting CPU[%d] to %u Watts", i, values[i+pc_topology_info.socket_count*2]);
+				debug("Setting GPU[%d] to %u Watts", i, values[i+pc_topology_info.socket_count*2]);
 
 			/* Per-device is managed here since there is no possible fallback*/
         	if (domains_loaded[DOMAIN_CPU])  freturn(pcsyms_fun[DOMAIN_CPU].set_powercap_value,  0, LEVEL_DEVICE, (uint32_t *)values, current_util[DOMAIN_CPU]);
