@@ -326,12 +326,17 @@ void cluster_soft_powercap()
     uint64_t freeable_power = 0;
     uint64_t requested = 0;
     uint64_t new_limit = 0;
+	uint32_t num_soft_pc_nodes = max_num_nodes;
     if (power.power > upper_limit) {
+		/* If we have a nodelist we only want to divide by that list*/
+		if (num_eargm_nodes != 0) {
+			num_soft_pc_nodes = num_eargm_nodes;
+		}
         /* For heterogeneous clusters we set the max powercap for each node, which should be set by the admin in ear.conf
          * For homogeneous clusters we can simply divide the current power between the number of active nodes. */
-        if (max_num_nodes > 0) {
+        if (num_soft_pc_nodes > 0) {
 #if EARGM_POWERCAP_SOFTPC_HOMOGENEOUS
-            new_limit = current_cluster_powercap/max_num_nodes; 
+            new_limit = current_cluster_powercap/num_soft_pc_nodes; 
 #else
             new_limit = UINT_MAX; 
 #endif
