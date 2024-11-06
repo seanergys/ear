@@ -14,7 +14,6 @@
 #include <pthread.h>
 #include <common/output/debug.h>
 #include <metrics/common/pci.h>
-#include <metrics/common/hsmp.h>
 #include <metrics/common/hsmp_pci.h>
 
 #define HSMP_NOT_READY    0x00

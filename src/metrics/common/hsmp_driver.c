@@ -11,27 +11,34 @@
 //#define SHOW_DEBUGS 1
 
 #include <fcntl.h>
-#include <pthread.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <sys/ioctl.h>
-#include <linux/types.h>
 #include <common/output/debug.h>
-#include <metrics/common/hsmp.h>
-#include <metrics/common/hsmp_pci.h>
-#include <metrics/common/hsmp_esmi.h>
+#include <metrics/common/hsmp_driver.h>
+#if !HAS_AMD_HSMP_H
+#include <asm-generic/types.h>
+#endif
 
-#define HSMP_BY_NOTHING   0
-#define HSMP_BY_DRIVER    1
-#define HSMP_BY_ESMI      2
-#define HSMP_BY_PCI       3
+#define HSMP_BY_NOTHING     0
+#define HSMP_BY_DRIVER      1
+#define HSMP_BY_ESMI        2
+#define HSMP_BY_PCI         3
+#if !HAS_AMD_HSMP_H
+#define HSMP_MAX_MSG_LEN    8
+#define HSMP_BASE_IOCTL_NR  0xF8
+#define HSMP_IOCTL_CMD      _IOWR(HSMP_BASE_IOCTL_NR, 0, struct hsmp_message)
 
-static uint            sockets_count;
-static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-static int             fd   = -1;
-static int             by;
+struct hsmp_message {
+    __u32	msg_id;			/* Message ID */
+    __u16	num_args;		/* Number of input argument words in message */
+    __u16	response_sz;		/* Number of expected output/response words */
+    __u32	args[HSMP_MAX_MSG_LEN];	/* argument/response buffer */
+    __u16	sock_ind;		/* socket number */
+};
+#endif
 
-static state_t hsmp_driver_send(int socket, uint function, uint *args, uint *reps)
+static int fd   = -1;
+
+state_t hsmp_driver_send(int socket, uint function, uint *args, uint *reps)
 {
     struct hsmp_message msg;
     int ret;
@@ -65,7 +72,7 @@ static state_t hsmp_driver_send(int socket, uint function, uint *args, uint *rep
     return EAR_SUCCESS;
 }
 
-static state_t hsmp_driver_close()
+state_t hsmp_driver_close()
 {
     if (fd != -1) {
         close(fd);
@@ -74,7 +81,7 @@ static state_t hsmp_driver_close()
 	return EAR_SUCCESS;
 }
 
-static state_t hsmp_driver_open(topology_t *tp)
+state_t hsmp_driver_open(topology_t *tp)
 {
     state_t s;
     if (tp->vendor == VENDOR_INTEL || tp->family < FAMILY_ZEN) {
@@ -100,61 +107,6 @@ static state_t hsmp_driver_open(topology_t *tp)
             return_print(EAR_ERROR, "HSMP not enabled (incorrect ping value, expected 69, received %u)", reps[0]);
         }
     }
-	sockets_count = tp->socket_count;
 leave:
     return EAR_SUCCESS;
-}
-
-state_t hsmp_open(topology_t *tp)
-{
-    state_t s = EAR_SUCCESS;
-    while (pthread_mutex_trylock(&lock));
-    if (by != HSMP_BY_NOTHING) {
-        goto leave;
-    }
-    by = HSMP_BY_DRIVER;
-    if (state_fail(s = hsmp_driver_open(tp))) {
-        debug("HSMP driver not loaded");
-        by = HSMP_BY_ESMI;
-        if (state_fail(s = hsmp_esmi_open(tp))) {
-            debug("HSMP esmi not loaded");
-            by = HSMP_BY_PCI;
-            if (state_fail(s = hsmp_pci_open(tp))) {
-                debug("HSMP pci not loaded");
-                by = HSMP_BY_NOTHING;
-            }
-        }
-    }
-leave:
-    pthread_mutex_unlock(&lock);
-    return s;
-}
-
-state_t hsmp_close()
-{
-    state_t s = EAR_ERROR;
-    state_msg = Generr.api_uninitialized;
-    while (pthread_mutex_trylock(&lock));
-    if (by == HSMP_BY_DRIVER) s = hsmp_driver_close();
-    if (by == HSMP_BY_ESMI  ) s = hsmp_esmi_close();
-    if (by == HSMP_BY_PCI   ) s = hsmp_pci_close();
-    by = HSMP_BY_NOTHING;
-    pthread_mutex_unlock(&lock);
-    return s;
-}
-
-static state_t unlock(state_t s)
-{
-    pthread_mutex_unlock(&lock);
-    return s;
-}
-
-state_t hsmp_send(int socket, uint function, uint *args, uint *reps)
-{
-    while (pthread_mutex_trylock(&lock));
-    if (by == HSMP_BY_DRIVER) return unlock(hsmp_driver_send(socket, function, args, reps));
-    if (by == HSMP_BY_ESMI  ) return unlock(hsmp_esmi_send(socket, function, args, reps));
-    if (by == HSMP_BY_PCI   ) return unlock(hsmp_pci_send(socket, function, args, reps));
-    pthread_mutex_unlock(&lock);
-    return_msg(EAR_ERROR, Generr.api_uninitialized);
 }

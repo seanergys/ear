@@ -8,11 +8,9 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-#include <pthread.h>
 #include <common/system/symplug.h>
 #include <common/hardware/bithack.h>
 #include <common/environment_common.h>
-#include <metrics/common/hsmp.h>
 #include <metrics/common/hsmp_esmi.h>
 
 #if defined __has_include
