@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <fcntl.h>
 #include <stdlib.h>
@@ -254,6 +254,7 @@ void hwmon_read(hwmon_t *chips)
     int c = 0; // c of chip
     int d = 0; // d of device
     while (!chips[c].is_null) {
+        d = 0;
         while (!chips[c].devs[d].is_null) {
             #define offset(var) (ullong) &chips[c].devs[d].var
             read_device_item(NULL, NULL, NULL, offset(input_fd)  , 0);
@@ -279,7 +280,8 @@ void hwmon_calc_average(hwmon_t *chips, char *label)
         while (!chips[c].devs[d].is_null) {
             debug("- CHIP%d DEV%d comparing labels '%s' == '%s'", c, d , chips[c].devs[d].label, label);
             if (label == NULL || strstr(chips[c].devs[d].label, label) != NULL) {
-                debug("   - input: %u += %u", chips[c].devs_avg.input_toint, chips[c].devs[d].input_toint);
+                debug("   - input  : %u += %u", chips[c].devs_avg.input_toint  , chips[c].devs[d].input_toint  );
+                debug("   - average: %u += %u", chips[c].devs_avg.average_toint, chips[c].devs[d].average_toint);
                 chips[c].devs_avg.input_toint   += chips[c].devs[d].input_toint;
                 chips[c].devs_avg.max_toint     += chips[c].devs[d].max_toint;
                 chips[c].devs_avg.min_toint     += chips[c].devs[d].min_toint;
@@ -289,7 +291,8 @@ void hwmon_calc_average(hwmon_t *chips, char *label)
             }
             ++d;
         }
-        debug("   - input: %u /= %u", chips[c].devs_avg.input_toint, m);
+        debug("   - input  : %u /= %u", chips[c].devs_avg.input_toint, m);
+        debug("   - average: %u /= %u", chips[c].devs_avg.average_toint, m);
         chips[c].devs_avg.input_toint   /= m;
         chips[c].devs_avg.max_toint     /= m;
         chips[c].devs_avg.min_toint     /= m;
@@ -359,7 +362,7 @@ int main(int argc, char *argv[])
         return 0;
     }
     //if (!(cores_count = hwmon_count_items(chips, "input", "Core"))) {
-    if (!(cores_count = hwmon_count_items(chips, "average", NULL))) {
+    if (!(cores_count = hwmon_count_items(chips, "average", "Grace"))) {
         hwmon_close(&chips);
         return 0;
     }
@@ -367,9 +370,9 @@ int main(int argc, char *argv[])
     printf("Detected %d averages\n", cores_count);
     hwmon_read(chips);
     //hwmon_calc_average(chips, "Core");
-    hwmon_calc_average(chips, NULL);
+    hwmon_calc_average(chips, "Grace");
     //printf("The average Core temperature of Socket 0 is %dº\n", chips[0].devs_avg.input_toint / 1000);
-    printf("The average power of Socket 0 is %d xW\n", chips[0].devs_avg.average_toint);
+    printf("The average power is %d xW\n", chips[1].devs_avg.average_toint);
     // 1 by 1 iteration
     hwmon_dev_t *dev = NULL;
     hwmon_t *chip = NULL;
