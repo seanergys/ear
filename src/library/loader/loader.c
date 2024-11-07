@@ -91,7 +91,8 @@ int forced_load()
 void __attribute__ ((constructor)) loader()
 {
     char *syms_openmp[] = {"omp_get_max_threads", "mkl_get_max_threads", NULL};
-    char *syms_cuda[] = {"cudaRuntimeGetVersion", NULL};
+    char *syms_cuda[]   = {"cudaRuntimeGetVersion", NULL};
+    char *libs_oneapi[] = {"libsycl.so", NULL};
 
     // The old load_no_parallel function is not required any more because the
     // new loader is compatible with Python and other scripting languages. But
@@ -109,10 +110,11 @@ void __attribute__ ((constructor)) loader()
     }
     if (is_not_an_invalid_program()) {
         if (load_libear_mpi()) { return; }
-        if (load_libear_nonspec(OPENMP_EXT, syms_openmp)) { return; }
-        if (load_libear_nonspec(  CUDA_EXT, syms_cuda  )) { return; }
+        if (load_libear_nonspec(OPENMP_EXT, syms_openmp, NULL       )) { return; }
+        if (load_libear_nonspec(  CUDA_EXT, syms_cuda  , NULL       )) { return; }
+        if (load_libear_nonspec(ONEAPI_EXT, NULL       , libs_oneapi)) { return; }
         if (!forced_load()) { return; }
-        if (load_libear_nonspec(   DEF_EXT, NULL       )) { return; }
+        if (load_libear_nonspec(   DEF_EXT, NULL       , NULL       )) { return; }
     }
     return;
 }

@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <common/sizes.h>
 #include <common/config.h>
+#include <common/utils/dtools.h>
 #include <common/utils/string.h>
 #include <common/output/verbose.h>
 
@@ -26,14 +27,22 @@ int is_cuda_enabled()     { return 1;            }
 // Non-deprecated.
 static int syms_present(char *syms[])
 {
-    if (syms == NULL) {
-        return 1;
-    }
     while(*syms != NULL) {
         if (dlsym(RTLD_DEFAULT, *syms) != NULL) {
             return 1;
         }
         ++syms;
+    }
+    return 0;
+}
+
+static int libs_present(char *libs[])
+{
+    while(*libs != NULL) {
+        if (dtools_is_ldd_library(*libs)) {
+            return 1;
+        }
+        ++libs;
     }
     return 0;
 }
@@ -89,15 +98,22 @@ static void module_other_destructor()
     }
 }
 
-int load_libear_nonspec(char *lib_extension, char *syms[])
+int load_libear_nonspec(char *lib_extension, char *syms[], char *libs[])
 {
     char *buffer_path = NULL;
     char *buffer_hack = NULL;
     void *libear      = NULL;
     char path[4096];
 
-    if (!syms_present(syms)) {
-        return 0;
+    if (syms != NULL) {
+        if (!syms_present(syms)) {
+            return 0;
+        }
+    }
+    if (libs != NULL) {
+        if (!libs_present(libs)) {
+            return 0;
+        }
     }
     // Computing library path
     loader_get_path_libear(&buffer_path, &buffer_hack);

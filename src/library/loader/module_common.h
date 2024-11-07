@@ -13,7 +13,7 @@
 
 void loader_get_path_libear(char **path_lib, char **hack_lib);
 
-int load_libear_nonspec(char *lib_extension, char **syms);
+int load_libear_nonspec(char *lib_extension, char *syms[], char *libs[]);
 
 // Depcrecated, clean.
 int is_cuda_enabled();
