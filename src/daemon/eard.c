@@ -67,7 +67,7 @@
 	do { \
 		fflush(NULL);\
 		fprintf(stderr, "%s: " msg "\n", program_invocation_name, ##__VA_ARGS__);\
-		_exit(EXIT_FAILURE);\
+		exit(EXIT_FAILURE);\
 	} while (0);
 
 #if APP_API_THREAD
@@ -151,6 +151,8 @@ topology_t node_desc;
 int fd_rapl[MAX_PACKAGES];
 
 #define EARD_RESTORE 1
+
+static void set_sigaction();
 
 
 /*************** To recover hardware settings **************/
@@ -317,52 +319,56 @@ void eard_restart()
  */
 void eard_exit(uint restart)
 {
-				verbose(VCONF, "Exiting");
+	verbose(VCONF, "Exiting...");
 #if EARD_LOCK
-				eard_unlock();
+	eard_unlock();
 #endif
-				// Come disposes
-				//print_rapl_metrics();
-				// Recovering old frequency and governor configurations.
-				verbose(VCONF, "frequency_dispose");
+	// Come disposes
+	// print_rapl_metrics();
+	// Recovering old frequency and governor configurations.
 
-        /* Sets to default CPU freq and IMC freq */
-        set_default_management_exit();
+	/* Sets to default CPU freq and IMC freq */
+	set_default_management_exit();
 
-				frequency_dispose();
-				powercap_end();
-				verbose(VCONF, "Releasing node resources");
-				// More disposes
-				if (state_fail(energy_dispose(&eard_handler_energy))) {
-								error("Error disposing energy for eard");
-				}
-				report_dispose(&rid);
-				verbose(VCONF, "Releasing files");
-				clean_global_connector();
-				// RAM Bandwidth
-                services_dispose();
+	verbose(VCONF, "frequency_dispose");
+	frequency_dispose();
 
-                /* Releasing shared memory */
-				coeffs_shared_area_dispose(coeffs_path);
-				coeffs_default_shared_area_dispose(coeffs_default_path);
-				services_conf_shared_area_dispose(services_conf_path);
-				/* end releasing shared memory */
-				if (restart) {
-								verbose(VCONF, "Restarting EARD\n");
-				} else {
-								verbose(VCONF, "Exiting EARD\n");
-				}
-				if (restart == 0) {
-								end_service("eard");
-								_exit(0);
-				} else if (restart == 2) {
-								end_service("eard");
-								_exit(1);
-				} else {
-								eard_restart();
-				}
+	powercap_end();
+	verbose(VCONF, "Releasing node resources...");
+
+	// More disposes
+	if (state_fail(energy_dispose(&eard_handler_energy))) {
+		error("Disposing energy API.");
+	}
+
+	report_dispose(&rid);
+	verbose(VCONF, "Releasing files");
+	clean_global_connector();
+
+	services_dispose();
+
+	/* Releasing shared memory */
+	coeffs_shared_area_dispose(coeffs_path);
+	coeffs_default_shared_area_dispose(coeffs_default_path);
+	services_conf_shared_area_dispose(services_conf_path);
+
+	/* end releasing shared memory */
+	if (restart) {
+		verbose(VCONF, "Restarting EARD...");
+	} else {
+		verbose(VCONF, "Exiting EARD...");
+	}
+
+	if (restart == 0) {
+		end_service("eard");
+		_exit(0);
+	} else if (restart == 2) {
+		end_service("eard");
+		_exit(1);
+	} else {
+		eard_restart();
+	}
 }
-
 
 void reopen_log()
 {
@@ -378,124 +384,109 @@ void Usage(char *app) {
 				verbose(VEARD_INIT, "usage: %s [verbose_level] [-h | --help]", app);
 				verbose(VEARD_INIT, "\tear.conf file is used to define node settings. It must be available at");
 				verbose(VEARD_INIT, "\t$EAR_ETC/ear/ear.conf");
-				_exit(EXIT_FAILURE);
+				exit(EXIT_FAILURE);
 }
 
-//region SIGNALS
 void signal_handler(int sig) 
 {
-				if (sig == SIGPIPE) { verbose(VCONF, "signal SIGPIPE received. Application terminated abnormally"); }
-				if (sig == SIGTERM) { verbose(VCONF, "signal SIGTERM received. Finishing"); }
-				if (sig == SIGINT) { verbose(VCONF, "signal SIGINT received. Finishing"); }
-        if (sig == SIGSEGV){
-          verbose(VCONF,"signal SIGSEGV received in main EARD thread. Stack.....");
-          print_stack(verb_channel);
-        }
-				if (sig == SIGHUP) {
-								verbose(VCONF, "signal SIGHUP received. Reloading EAR conf");
-								signal_sighup = 1;
-				}
-				if (sig == SIGUSR2){
-								reopen_log();
-								return;
-				}
+	// The PIPE was closed, so the daemon connection ends
+	if (sig == SIGPIPE) {
+		verbose(VCONF, "SIGPIPE received! Closing pipes...\nApplication terminated abnormally.");
+		eard_close_comm(CLOSE_PIPE, CLOSE_PIPE);
+	}
 
-				// The PIPE was closed, so the daemon connection ends
-				if (sig == SIGPIPE) {
-								eard_close_comm(CLOSE_PIPE,CLOSE_PIPE);
-				}
+	// Someone wants EARD to get closed or restarted
+	if (sig == SIGTERM || sig == SIGINT) {
+		if (sig == SIGTERM) {
+			verbosen(VCONF, "SIGTERM received!");
+		} else {
+			verbosen(VCONF, "SIGINT received!");
+		}
+		verbose(VCONF, " Finishing...");
+		eard_must_exit = 1;
+		eard_exit(0);
+	}
 
+	if (sig == SIGSEGV) {
+		verbose(VCONF, "SIGSEGV received in main EARD thread! Stack...");
+		print_stack(verb_channel);
+	}
 
-				// Someone wants EARD to get closed or restarted
-				if ((sig == SIGTERM) || (sig == SIGINT)) {
-								eard_must_exit = 1;
-				}
-				if ((sig == SIGTERM) || (sig == SIGINT)) {
-								eard_exit(0);
-				}
-				if (sig == SIGHUP) {
-								free_cluster_conf(&my_cluster_conf);
-								// Reading the configuration
-								if (read_cluster_conf(my_ear_conf_path, &my_cluster_conf) != EAR_SUCCESS) {
-												error(" Error reading cluster configuration\n");
-								} else {
-												verbose(VCONF, "Loading EAR configuration");
-												verbose(VCONF, "There are %d Nodes in the cluster",my_cluster_conf.num_nodes);
-												compute_default_pstates_per_policy(my_cluster_conf.num_policies, my_cluster_conf.power_policies);
-												print_cluster_conf(&my_cluster_conf);
-												free(my_node_conf);
-												my_node_conf = get_my_node_conf(&my_cluster_conf, nodename);
-												if (my_node_conf == NULL) {
-																error(" Error in cluster configuration, node %s not found\n", nodename);
-																exit(0);
-												} else {
-																check_policy_values(my_node_conf->policies,my_node_conf->num_policies);
-																eard_dyn_conf.nconf = my_node_conf;
-																print_my_node_conf(my_node_conf);
-																copy_my_node_conf(&my_original_node_conf, my_node_conf);
-																set_global_eard_variables();
-																configure_new_values(&my_cluster_conf,my_node_conf);
-																powermon_new_configuration();
-																save_eard_conf(&eard_dyn_conf);
-												}
+	if (sig == SIGUSR2) {
+		verbose(VCONF, "SIGUSR2 received! Reopening log...");
+		reopen_log();
+		return;
+	}
 
-								}
-								verbose(VCONF, "Configuration reloaded");
-								report_dispose(&rid);
-								report_connection_status = report_init(&rid, &my_cluster_conf);
-				}
+	if (sig == SIGHUP) {
+		verbose(VCONF, "SIGHUP received! Reloading EAR configuration file (%s)...", my_ear_conf_path);
+		signal_sighup = 1;
 
+		free_cluster_conf(&my_cluster_conf);
+
+		// Reading the configuration
+		if (read_cluster_conf(my_ear_conf_path, &my_cluster_conf) != EAR_SUCCESS) {
+			error(" Error reading cluster configuration");
+		} else {
+			verbose(VCONF, "Loading EAR configuration... There are %d Nodes in the cluster", my_cluster_conf.num_nodes);
+			print_cluster_conf(&my_cluster_conf);
+
+			compute_default_pstates_per_policy(my_cluster_conf.num_policies, my_cluster_conf.power_policies);
+
+			verbose(VCONF, "Getting my node configuration...");
+			free(my_node_conf);
+			my_node_conf = get_my_node_conf(&my_cluster_conf, nodename);
+
+			if (my_node_conf == NULL) {
+				error(" Error in cluster configuration, node %s not found\n", nodename);
+				exit(EXIT_FAILURE);
+			} else {
+				check_policy_values(my_node_conf->policies,my_node_conf->num_policies);
+				eard_dyn_conf.nconf = my_node_conf;
+				print_my_node_conf(my_node_conf);
+				copy_my_node_conf(&my_original_node_conf, my_node_conf);
+				set_global_eard_variables();
+				configure_new_values(&my_cluster_conf,my_node_conf);
+				powermon_new_configuration();
+				save_eard_conf(&eard_dyn_conf);
+			}
+
+		}
+		verbose(VCONF, "Configuration reloaded!");
+		report_dispose(&rid);
+		report_connection_status = report_init(&rid, &my_cluster_conf);
+	}
 }
 
 void signal_catcher() 
 {
-				struct sigaction action;
-				int signal;
-				sigset_t eard_mask;
+	// Create the mask of blocked signals
+	sigset_t eard_mask;
+	sigfillset(&eard_mask);
+	// Remove the following signals from the block mask
+	sigdelset(&eard_mask, SIGPIPE);
+	sigdelset(&eard_mask, SIGTERM);
+	sigdelset(&eard_mask, SIGINT);
+	sigdelset(&eard_mask, SIGHUP);
+	sigdelset(&eard_mask, SIGUSR2);
+	sigdelset(&eard_mask, SIGSEGV);
 
-				sigfillset(&eard_mask);
-				sigdelset(&eard_mask, SIGPIPE);
-				sigdelset(&eard_mask, SIGTERM);
-				sigdelset(&eard_mask, SIGINT);
-				sigdelset(&eard_mask, SIGHUP);
-				sigdelset(&eard_mask, SIGUSR2);
-				sigdelset(&eard_mask, SIGSEGV);
-				//sigprocmask(SIG_SETMASK,&eard_mask,NULL);
-				pthread_sigmask(SIG_SETMASK, &eard_mask, NULL);
+	// Set the blocked signals list from eard_mask
+	pthread_sigmask(SIG_SETMASK, &eard_mask, NULL);
 
+	// Set the signal action
+	struct sigaction action;
 
-				sigemptyset(&action.sa_mask);
-				action.sa_handler = signal_handler;
-				action.sa_flags = 0;
+	sigemptyset(&action.sa_mask);
+	action.sa_handler = signal_handler;
+	action.sa_flags = 0;
 
-				signal = SIGPIPE;
-				if (sigaction(signal, &action, NULL) < 0) {
-								error("sigaction error on signal s=%d (%s)", signal, strerror(errno));
-				}
-
-				signal = SIGTERM;
-				if (sigaction(signal, &action, NULL) < 0) {
-								error("sigaction error on signal s=%d (%s)", signal, strerror(errno));
-				}
-
-				signal = SIGINT;
-				if (sigaction(signal, &action, NULL) < 0) {
-								error("sigaction error on signal s=%d (%s)", signal, strerror(errno));
-				}
-
-				signal = SIGHUP;
-				if (sigaction(signal, &action, NULL) < 0) {
-								error("sigaction error on signal s=%d (%s)", signal, strerror(errno));
-				}
-				signal = SIGUSR2;
-				if (sigaction(signal, &action, NULL) < 0) {
-								error("sigaction error on signal s=%d (%s)", signal, strerror(errno));
-				}
-				signal = SIGSEGV;
-				if (sigaction(signal, &action, NULL) < 0) {
-								error("sigaction error on signal s=%d (%s)", signal, strerror(errno));
-				}
-
+	set_sigaction(SIGPIPE, (const struct sigaction *) &action);
+	set_sigaction(SIGTERM, (const struct sigaction *) &action);
+	set_sigaction(SIGINT, (const struct sigaction *) &action);
+	set_sigaction(SIGHUP, (const struct sigaction *) &action);
+	set_sigaction(SIGUSR2, (const struct sigaction *) &action);
+	set_sigaction(SIGSEGV, (const struct sigaction *) &action);
 }
 //endregion
 
@@ -902,7 +893,7 @@ int main(int argc, char *argv[])
                 // IMC frequency
                 verbose(VCONF, "Initializing IMCfreq metrics API ");
                 imcfreq_load(&node_desc, NO_EARD);
-                state_assert(s, imcfreq_init(no_ctx), _exit(0));
+                state_assert(s, imcfreq_init(no_ctx), eard_error("Error: imcfreq_init."));
 
     // Services
     //services_init(&node_desc, my_node_conf);
@@ -977,4 +968,11 @@ int main(int argc, char *argv[])
                 eard_close_comm(CLOSE_EARD,CLOSE_EARD);
                 eard_exit(0);
                 return 0;
+}
+
+static void set_sigaction(int signum, const struct sigaction *act)
+{
+	if (sigaction(signum, act, NULL) < 0) {
+		error("Setting action for signal %d (%s)", signum, strerror(errno));
+	}
 }
