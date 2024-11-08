@@ -20,8 +20,6 @@
 #include <common/types/configuration/cluster_conf_eardbd.h>
 #include <common/types/configuration/cluster_conf_generic.h>
 
-
-
 void print_islands_conf(node_island_t *conf)
 {
 	int i, j;
@@ -64,17 +62,14 @@ void print_islands_conf(node_island_t *conf)
 	}
 }
 
-
-
-
 void print_cluster_conf(cluster_conf_t *conf)
 {
-	verbosen(VCCONF, "\n>>>>> Path specifications <<<<<\n");
+	verbose(VCCONF, ">>>>> Paths <<<<<");
+	verbose(VCCONF, "DB file pathname: %s\n%16s: %s\n%16s: %s\n%16s: %s",
+			conf->DB_pathname, "EAR_TMP", conf->install.dir_temp, "EAR_ETC", conf->install.dir_conf, "Plug-ins path", conf->install.dir_plug);
+	verbose(VCCONF, ">>>>> Default plug-ins <<<<<");
+	verbose(VCCONF, "      Energy: %s\nPower models: %s", conf->install.obj_ener, conf->install.obj_power_model);
 
-	verbosen(VCCONF, "\nDB file_pathname: %s\n--->EAR_TMP: %s\n--->EAR_ETC: %s\n",
-			conf->DB_pathname, conf->install.dir_temp, conf->install.dir_conf);
-	verbosen(VCCONF, "\nPlugins_path: %s\n",conf->install.dir_plug);
-	verbosen(VCCONF, "\nDefault plugins: Energy %s power_models %s\n",conf->install.obj_ener,conf->install.obj_power_model);
     if (strlen(conf->net_ext) > 1)
     {
     	verbosen(VCCONF, "\nVerbose: %u\n--->Default_policy: %s\n--->Min_time_perf_acc: %u\n--->Network_extension: %s\n",
@@ -91,19 +86,25 @@ void print_cluster_conf(cluster_conf_t *conf)
 	for (i = 0; i < conf->num_policies; i++)
 		print_policy_conf(&conf->power_policies[i]);
 
-	verbosen(VCCONF, "\n>>>>> Authorization section <<<<<\n");
-	verbosen(VCCONF, "\nUsers \n");
-	for (i = 0; i < conf->num_priv_users; i++)
-		verbosen(VCCONF, "--->user: %s\n", conf->priv_users[i]);
-	verbosen(VCCONF, "\nGroups \n");
-	for (i = 0; i < conf->num_priv_groups; i++)
-		verbosen(VCCONF, "--->groups: %s\n", conf->priv_groups[i]);
-	verbosen(VCCONF, "\nSccounts \n");
-	for (i = 0; i < conf->num_acc; i++)
-		verbosen(VCCONF, "--->acc: %s\n", conf->priv_acc[i]);
+	verbose(VCCONF, "\n>>>>> Authorization section <<<<<");
 
+	verbose(VCCONF, "Users");
+	for (i = 0; i < conf->auth_users_count; i++)
+		verbose(VCCONF, "--->user: %s", conf->auth_users[i]);
 
-	verbosen(VCCONF, "\n>>>>> Specific node configurations section <<<<<\n");
+	verbose(VCCONF, "Groups");
+	for (i = 0; i < conf->auth_groups_count; i++)
+		verbose(VCCONF, "--->groups: %s", conf->auth_groups[i]);
+
+	verbose(VCCONF, "Accounts");
+	for (i = 0; i < conf->auth_acc_count; i++)
+		verbose(VCCONF, "--->acc: %s", conf->auth_accounts[i]);
+
+	verbose(VCCONF, "Admin users");
+	for (i = 0; i < conf->admin_users_count; i++)
+		verbose(VCCONF, "--->admin: %s", conf->admin_users[i]);
+
+	verbosen(VCCONF, ">>>>> Specific node configurations section <<<<<");
 	for (i = 0; i < conf->num_nodes; i++)
 		print_node_conf(&conf->nodes[i]);
 
@@ -119,7 +120,6 @@ void print_cluster_conf(cluster_conf_t *conf)
 	verbosen(VCCONF, "\n>>>>> EARGM: System power manager section <<<<<\n");
 	print_eargm_conf(&conf->eargm);
 
-	
     verbosen(VCCONF, "\n>>>>> TAGS <<<<<<\n");
     for (i = 0; i < conf->num_tags; i++)
 		print_tags_conf(&conf->tags[i],i );

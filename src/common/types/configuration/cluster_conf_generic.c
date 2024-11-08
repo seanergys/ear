@@ -97,32 +97,42 @@ state_t GENERIC_parse_token(cluster_conf_t *conf,char *token,char *def_policy)
 		return EAR_SUCCESS;
 }
 
-
 state_t AUTH_token(char *token)
 {
-  if (strcasestr(token,"AUTHORIZED")!=NULL) return EAR_SUCCESS;
+  if (strcasestr(token, "AUTHORIZED") != NULL) return EAR_SUCCESS;
 	return EAR_ERROR;
 }
-state_t AUTH_parse_token(char *token,unsigned int *num_elemsp,char ***list_elemsp)
+
+state_t ADMIN_token(char *token)
+{
+	if (token && strcasestr(token, "ADMIN")) {
+		return EAR_SUCCESS;
+	} else {
+		return EAR_ERROR;
+	}
+}
+
+state_t AUTH_parse_token(char *token, unsigned int *num_elemsp, char ***list_elemsp)
 {
   token = strtok(NULL, "=");
-	return LIST_parse_token(token,num_elemsp,list_elemsp);
+	return LIST_parse_token(token, num_elemsp, list_elemsp);
 }
-state_t LIST_parse_token(char *token,unsigned int *num_elemsp,char ***list_elemsp)
-{
-	int num_elems=*num_elemsp;
-	char **list_elems=*list_elemsp;
 
-	debug("LIST_parse_token %s",token);
+state_t LIST_parse_token(char *token, unsigned int *num_elemsp, char ***list_elemsp)
+{
+	int num_elems = *num_elemsp;
+	char **list_elems = *list_elemsp;
+
+	debug("LIST_parse_token %s", token);
   token = strtok(token, ",");
   while (token != NULL)
   {
   	num_elems++;
   	list_elems = (char **)realloc(list_elems, sizeof(char *)*num_elems);
-  	if (list_elems == NULL){
-			num_elems=0;
-			*num_elemsp=num_elems;
-			*list_elemsp=list_elems;
+  	if (list_elems == NULL) {
+			num_elems = 0;
+			*num_elemsp = num_elems;
+			*list_elemsp = list_elems;
   		error("NULL pointer reading authorized users list");
   		return EAR_ERROR;
   	}
