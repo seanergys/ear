@@ -119,7 +119,7 @@ void copy_eard_conf(eard_conf_t *dest,eard_conf_t *src)
 void set_default_eard_conf(eard_conf_t *eardc)
 {
     eardc->verbose=1;           /* default 1 */
-    eardc->period_powermon=POWERMON_FREQ;  /* default 30000000 (30secs) */
+    eardc->period_powermon=POWERMON_FREQ;
     eardc->max_pstate=1;       /* default 1 */
     eardc->turbo=USE_TURBO;             /* Fixed to 0 by the moment */
     eardc->port=DAEMON_PORT_NUMBER;              /* mandatory */

@@ -1730,12 +1730,7 @@ void powermon_new_job(powermon_app_t *pmapp, ehandler_t *eh, application_t *appI
 
     /* Given a user type, application, and energy_tag,
      * my_policy is the cofiguration for this user and application. */
-#if CPUFREQ_SET_ALL_USERS
-    if (user_type != AUTHORIZED) appID->is_learning = 0;
-    uint user_type_policy = AUTHORIZED;
-#else
     uint user_type_policy = user_type;
-#endif
 
     policy_conf_t *my_policy = configure_context(pmapp, user_type_policy, my_tag, appID); // Sets CPU and GPU frequency.
 
@@ -1755,8 +1750,11 @@ void powermon_new_job(powermon_app_t *pmapp, ehandler_t *eh, application_t *appI
 
     pmapp->settings->lib_enabled    = (user_type!=ENERGY_TAG);
 
-    verbose(VJOBPMON, "User type %u, etag %u lib_enabled %u",
-            user_type, ENERGY_TAG, pmapp->settings->lib_enabled);
+    verbose(VJOBPMON, "User type %s%s. EARL %s.",
+            (user_type != NORMAL) ? "authorized" : "non-authorized",
+	    (user_type == ENERGY_TAG) ? " (Authorized by energy tag)" : "",
+	    (pmapp->settings->lib_enabled) ? "ON" : "OFF");
+
     pmapp->settings->policy         = my_policy->policy;
 
     strcpy(pmapp->settings->policy_name, my_policy->name);
