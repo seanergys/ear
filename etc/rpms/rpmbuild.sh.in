@@ -32,4 +32,3 @@ rpmbuild -bb ear.spec
 rm ear.spec
 
 echo "Finished!"
-
