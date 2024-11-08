@@ -29,8 +29,10 @@ static int syms_present(char *syms[])
 {
     while(*syms != NULL) {
         if (dlsym(RTLD_DEFAULT, *syms) != NULL) {
+            verbose(2, "LOADER: looking for symbol '%s': found!", *syms);
             return 1;
         }
+        verbose(2, "LOADER: looking for symbol '%s': not found", *syms);
         ++syms;
     }
     return 0;
@@ -40,8 +42,10 @@ static int libs_present(char *libs[])
 {
     while(*libs != NULL) {
         if (dtools_is_ldd_library(*libs)) {
+            verbose(2, "LOADER: looking for library '%s': found!", *libs);
             return 1;
         }
+        verbose(2, "LOADER: looking for library '%s': not found", *libs);
         ++libs;
     }
     return 0;

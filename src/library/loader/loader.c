@@ -45,9 +45,9 @@ static int init()
             return 0;
         }
         pid2 = (pid_t) atoi(task);
-        verbose(4, "LOADER: loader pids: %d/%d", pid1, pid2);
+        verbose(4, "LOADER: Loader pids: %d/%d", pid1, pid2);
     } else {
-        verbose(4, "LOADER: loader pid: %d", pid1);
+        verbose(4, "LOADER: Loader pid: %d", pid1);
     }
     return 1;
     // return pid1 == pid2;
