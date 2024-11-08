@@ -50,7 +50,7 @@ cluster_conf_t my_conf;
 
 int full_length = 0;
 int verbose = 0;
-int all_mpi = 0;
+int all_pow_sig = 0;
 int avx = 0;
 int print_gpus = 1;
 int loop_extended = 0;
@@ -395,7 +395,7 @@ void print_app_format(application_t *app, char *fmt, int num_nodes)
 	for (i = 0; i < strlen(fmt); i++) { //this is preferable to a while loop because of the use of continues
 
 		//is_consumed is 1 only if that format char corresponds to signature/power signature
-		if (app->is_mpi) is_consumed = print_signature_format(&app->signature, fmt[i], 0);
+		if (app->is_mpi && !all_pow_sig) is_consumed = print_signature_format(&app->signature, fmt[i], 0);
 		else is_consumed = print_power_signature_format(app, fmt[i]);
 
 		if (is_consumed) continue;
@@ -1036,8 +1036,8 @@ void read_loops(char *user, query_adds_t *q_a, char *format)
 
 	if (num_loops < 1)
 	{
-		printf("No loops retrieved\n");
-		return;
+		fprintf(stderr, "No loops retrieved\n");
+		exit(1);
 	}
 
 	if (verbose) printf("retrieved %d loops\n", num_loops);
@@ -1145,10 +1145,9 @@ void read_applications_from_database(char *user, query_adds_t *q_a, char *format
 	}
 
 	if (num_apps < 1) {
-		printf("No jobs found.\n");
-		return;
+		fprintf(stderr, "No jobs found.\n");
+		exit(1);
 	}
-
 
 	if (q_a->limit == 20 && strlen(csv_path) < 1)
 		printf("\nBy default only the first 20 jobs are retrieved.\n\n");
@@ -1320,7 +1319,7 @@ int main(int argc, char *argv[])
 				exit(0);
 				break;
 			case 'm':
-				all_mpi = 1;
+				all_pow_sig = 1;
 				break;
 			case 'c':
 				strcpy(csv_path, optarg);
@@ -1376,7 +1375,7 @@ int main(int argc, char *argv[])
 	else read_applications_from_database(user, &query_adds, format); 
 
 #if COLORS
-	printf("%s",COL_CLR);
+	printf("%s", COL_CLR);
 #endif
 
 	free_cluster_conf(&my_conf);

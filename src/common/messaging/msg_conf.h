@@ -152,7 +152,7 @@ typedef struct eard_policy_info{
 #ifdef V5_COMPAT
 // Based on the old status, notice the different ordering
 typedef struct full_status {
-	unsigned int        ip;
+	int        ip;
 	char                ok;
 	status_node_info_t  node;
 	app_info_t          app;

@@ -185,7 +185,7 @@ state_t ear_file_write(const char *path, const char *buffer, size_t size)
 	close(fd);
 
 	if (w < 0) {
-		state_return_msg(EAR_SYSCALL_ERROR, errno, strerror(errno));
+		state_return_msg(EAR_ERROR, errno, strerror(errno));
 	}
 
 	state_return(EAR_SUCCESS);
@@ -235,3 +235,45 @@ ulong get_stack_size_limit()
 	getrlimit(RLIMIT_STACK, &rl);
 	return rl.rlim_cur;
 }
+
+state_t ear_fd_read(int fd, char *buffer, size_t size)
+{
+	ssize_t r = 0;
+	ssize_t totalr = 0;
+
+	if (fd < 0) {
+		state_return_msg(EAR_OPEN_ERROR, errno, strerror(errno));
+	}
+
+	while ((size > 0) && ((r = read(fd, &buffer[totalr], size)) > 0)){
+		size = size - r;
+		totalr += r;
+	}
+
+
+	if (r < 0) {
+		state_return_msg(EAR_READ_ERROR, errno, strerror(errno));
+	}
+
+	state_return(EAR_SUCCESS);
+}
+
+state_t ear_fd_write(int fd, const char *buffer, size_t size)
+{
+	ssize_t w = 0;
+	ssize_t totalw = 0;
+
+	if (fd < 0) {
+		state_return_msg(EAR_OPEN_ERROR, errno, strerror(errno));
+	}
+	while ((size > 0) && ((w = write(fd, &buffer[totalw], size)) > 0)) {
+		size = size - w;
+		totalw += w;
+	}
+	if (w < 0) {
+		state_return_msg(EAR_ERROR, errno, strerror(errno));
+	}
+	state_return(EAR_SUCCESS);
+}
+
+

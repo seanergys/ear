@@ -48,10 +48,10 @@ TEMP_F_LOAD(intel63)
 		}
         debug("IA32_THERM_STATUS of CPU%d bits: 0x%llx", self_tp.cpus[i].id, data);
     }
-    apis_set(ops->get_info, temp_intel63_get_info);
-    apis_set(ops->init,     temp_intel63_init);
-    apis_set(ops->dispose,  temp_intel63_dispose);
-    apis_set(ops->read,     temp_intel63_read);
+    apis_put(ops->get_info, temp_intel63_get_info);
+    apis_put(ops->init,     temp_intel63_init);
+    apis_put(ops->dispose,  temp_intel63_dispose);
+    apis_put(ops->read,     temp_intel63_read);
 }
 
 TEMP_F_GET_INFO(intel63)

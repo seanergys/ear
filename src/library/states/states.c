@@ -900,7 +900,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             /* We must evaluate policy decissions */
             signatures_stables++;
 
-            if (signatures_different(&loop_signature, &policy_sel_signature, 0.2)) {
+            if (default_signatures_different(&loop_signature, &policy_sel_signature, 0.2)) {
 
               /* Reset */
               policy_set_default_freq(&loop_signature);

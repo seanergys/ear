@@ -607,8 +607,7 @@ int get_eardbd_conf_path(char *ear_conf_path)
 }
 
 /** CHECKING USER TYPE */
-/* returns true if the username, group and/or accounts is presents in the list of authorized users/groups/accounts */
-int is_privileged(cluster_conf_t *my_conf, char *user,char *group, char *acc)
+int is_authorized_usr_grp_acc(cluster_conf_t *my_conf, char *user, char *group, char *acc)
 {
     int i;
     int found=0;
@@ -639,6 +638,7 @@ int is_privileged(cluster_conf_t *my_conf, char *user,char *group, char *acc)
            }
            else {
                 verbose(0, "getpwdnam_r failed with exit code %d\n", s);
+								free(buf);
                 return_msg(EAR_ERROR, "getpwnam_r failed");
            }
         }
@@ -670,8 +670,8 @@ int is_privileged(cluster_conf_t *my_conf, char *user,char *group, char *acc)
             if (gr != NULL) {
                 char *gr_name = gr->gr_name;
                 int j = 0;
-                while ((j < my_conf->num_priv_groups) && (!found)) {
-                    char *grpriv_name = my_conf->priv_groups[j];
+                while ((j < my_conf->auth_groups_count) && (!found)) {
+                    char *grpriv_name = my_conf->auth_groups[j];
                     if ((strcmp(gr_name, grpriv_name) == 0) || (strcmp(grpriv_name, "all") == 0)) {
                         found = 1;
                     }
@@ -684,31 +684,48 @@ int is_privileged(cluster_conf_t *my_conf, char *user,char *group, char *acc)
         free(buf);
         
         i=0;
-        while((i<my_conf->num_priv_users) && (!found)){
-            if (strcmp(user,my_conf->priv_users[i])==0) found=1;
-            else if (strcmp(my_conf->priv_users[i],"all")==0) found=1;
+        while((i<my_conf->auth_users_count) && (!found)){
+            if (strcmp(user,my_conf->auth_users[i])==0) found=1;
+            else if (strcmp(my_conf->auth_users[i],"all")==0) found=1;
             else i++;
         }
     }
     if (found) return found;
     if (group!=NULL){
         i=0;
-        while((i<my_conf->num_priv_groups) && (!found)){
-            if (strcmp(group,my_conf->priv_groups[i])==0) found=1;
-            else if (strcmp(my_conf->priv_groups[i], "all")==0) found=1;
+        while((i<my_conf->auth_groups_count) && (!found)){
+            if (strcmp(group,my_conf->auth_groups[i])==0) found=1;
+            else if (strcmp(my_conf->auth_groups[i], "all")==0) found=1;
             else i++;
         }
     }
     if (found) return found;
     if (acc!=NULL){
         i=0;
-        while((i<my_conf->num_acc) && (!found)){
-            if (strcmp(acc,my_conf->priv_acc[i])==0) found=1;
-            else if (strcmp(my_conf->priv_acc[i], "all")==0) found=1;
+        while((i<my_conf->auth_acc_count) && (!found)){
+            if (strcmp(acc,my_conf->auth_accounts[i])==0) found=1;
+            else if (strcmp(my_conf->auth_accounts[i], "all")==0) found=1;
             else i++;
         }
     }
     return found;
+}
+
+int is_admin_usr(cluster_conf_t * my_conf, char *user)
+{
+	if (!my_conf || !user) {
+		return_msg(EAR_ERROR, Generr.input_null);
+	}
+
+	int i = 0;
+	while (i < my_conf->admin_users_count) {
+		if (strcmp(user, my_conf->admin_users[i]) == 0) {
+			return 1;
+		}
+		i++;
+	}
+
+	return 0;
 }
 
 /* returns true if the username, group and/or accounts can use the given energy_tag_t */
@@ -783,31 +800,50 @@ energy_tag_t * energy_tag_exists(cluster_conf_t *my_conf,char *etag)
     return NULL;
 }
 
-/** returns the user type: NORMAL, AUTHORIZED, ENERGY_TAG */
-uint get_user_type(cluster_conf_t *my_conf, char *energy_tag, char *user,char *group, char *acc,energy_tag_t **my_tag)
+/** returns the user type: NORMAL, AUTHORIZED, ENERGY_TAG
+ * Both Authorized and Admins may return AUTHORIZED. */
+uint get_user_type(cluster_conf_t * my_conf, char *energy_tag, char *user,
+		   char *group, char *acc, energy_tag_t ** my_tag)
 {
-    energy_tag_t *is_tag;
-    int flag;
-    *my_tag=NULL;
-    verbose(VPRIV,"Checking user %s group %s acc %s etag %s\n",user,group,acc,energy_tag);
-    /* We first check if it is authorized user */
-    flag=is_privileged(my_conf,user,group,acc);
-    if (flag){
-        if (energy_tag!=NULL){
-            is_tag=energy_tag_exists(my_conf,energy_tag);
-            if (is_tag!=NULL){ *my_tag=is_tag;return ENERGY_TAG;}
-            else return AUTHORIZED;
-        }else return AUTHORIZED;
-    }
-    /* It is an energy tag user ? */
-    is_tag=is_energy_tag_privileged(my_conf, user,group,acc,energy_tag);
-    if (is_tag!=NULL){
-        *my_tag=is_tag;
-        return ENERGY_TAG;
-    } else return NORMAL;
+	energy_tag_t *is_tag;
+	*my_tag = NULL;
+	verbose(VPRIV,
+		"Checking user (%s), group (%s), account (%s) and energy tag (%s)...",
+		user, group, acc, energy_tag);
+
+	/* We first check if it is authorized user */
+	int flag = is_authorized_usr_grp_acc(my_conf, user, group, acc);
+	if (!flag) {
+		/* If it is not an authorized user, we check whether is an admin user */
+		flag = is_admin_usr(my_conf, user);
+		/* The above function may return a negative value.
+		 * Handle it as it isn't an amdin. */
+		if (flag < 0) {
+			flag = 0;
+		}
+	}
+
+	if (flag) {
+		if (energy_tag != NULL) {
+			is_tag = energy_tag_exists(my_conf, energy_tag);
+			if (is_tag != NULL) {
+				*my_tag = is_tag;
+				return ENERGY_TAG;
+			} else
+				return AUTHORIZED;
+		} else
+			return AUTHORIZED;
+	}
+
+	/* It is an energy tag user ? */
+	is_tag =
+	    is_energy_tag_privileged(my_conf, user, group, acc, energy_tag);
+	if (is_tag != NULL) {
+		*my_tag = is_tag;
+		return ENERGY_TAG;
+	} else
+		return NORMAL;
 }
-
-
 
 /*** DEFAULT VALUES ****/
 
@@ -1317,7 +1353,7 @@ void remove_islands_by_eargm(cluster_conf_t conf[static 1], eargm_def_t *e_def)
 }
 
 
-void remove_islands_by_island_id(cluster_conf_t *conf, int32_t id)
+void remove_islands_by_island_id(cluster_conf_t conf[static 1], int32_t id)
 {
 	if (conf == NULL) return;
 	debug("Removing nodes with island id different than %d", id);
@@ -1367,28 +1403,42 @@ state_t serialize_cluster_conf(cluster_conf_t *conf, char **ear_conf_buf, size_t
 	debug("serial + policies: %u policies", conf->num_policies);
 
 	/* Priv users */
-	serial_add_elem(&ear_conf_serial, (char *)&conf->num_priv_users, sizeof(conf->num_priv_users));
-	for (uint auth = 0; auth < conf->num_priv_users; auth ++){
-		uint size_auth = strlen(conf->priv_users[auth]);
+	serial_add_elem(&ear_conf_serial, (char *)&conf->auth_users_count, sizeof(conf->auth_users_count));
+	for (uint auth = 0; auth < conf->auth_users_count; auth ++){
+		uint size_auth = strlen(conf->auth_users[auth]);
 		serial_add_elem(&ear_conf_serial, (char *)&size_auth, sizeof(size_auth));
-		serial_add_elem(&ear_conf_serial, (char *)&conf->priv_users[auth], strlen(conf->priv_users[auth]));
+		serial_add_elem(&ear_conf_serial, (char *)&conf->auth_users[auth], strlen(conf->auth_users[auth]));
 	}
 	/* Priv groups */
-	serial_add_elem(&ear_conf_serial, (char *)&conf->num_priv_groups, sizeof(conf->num_priv_groups));
-	for (uint auth = 0; auth < conf->num_priv_groups; auth ++){
-		uint size_auth = strlen(conf->priv_groups[auth]);
+	serial_add_elem(&ear_conf_serial, (char *)&conf->auth_groups_count, sizeof(conf->auth_groups_count));
+	for (uint auth = 0; auth < conf->auth_groups_count; auth ++){
+		uint size_auth = strlen(conf->auth_groups[auth]);
 		serial_add_elem(&ear_conf_serial, (char *)&size_auth, sizeof(size_auth));
-		serial_add_elem(&ear_conf_serial, (char *)&conf->priv_groups[auth], strlen(conf->priv_groups[auth]));
+		serial_add_elem(&ear_conf_serial, (char *)&conf->auth_groups[auth], strlen(conf->auth_groups[auth]));
 	}
 
 	/* Priv accounts */
-	serial_add_elem(&ear_conf_serial, (char *)&conf->num_acc, sizeof(conf->num_acc));
-	for (uint auth = 0; auth < conf->num_acc; auth ++){
-		uint size_auth = strlen(conf->priv_acc[auth]);
+	serial_add_elem(&ear_conf_serial, (char *)&conf->auth_acc_count, sizeof(conf->auth_acc_count));
+	for (uint auth = 0; auth < conf->auth_acc_count; auth ++){
+		uint size_auth = strlen(conf->auth_accounts[auth]);
 		serial_add_elem(&ear_conf_serial, (char *)&size_auth, sizeof(size_auth));
-		serial_add_elem(&ear_conf_serial, (char *)&conf->priv_acc[auth], strlen(conf->priv_acc[auth]));
+		serial_add_elem(&ear_conf_serial, (char *)&conf->auth_accounts[auth], strlen(conf->auth_accounts[auth]));
 	}
-	debug("serial + authorized: users %u groups %u accounts %u", conf->num_priv_users,conf->num_priv_groups,conf->num_acc);
+
+	/* Admin users */
+	serial_add_elem(&ear_conf_serial, (char *)&conf->admin_users_count,
+			sizeof(conf->admin_users_count));
+
+	for (uint admn = 0; admn < conf->admin_users_count; admn++) {
+		uint size_auth = strlen(conf->admin_users[admn]);
+		serial_add_elem(&ear_conf_serial, (char *)&size_auth, sizeof(size_auth));
+
+		serial_add_elem(&ear_conf_serial, (char *)&conf->admin_users[admn],
+				strlen(conf->admin_users[admn]));
+	}
+
+	debug("serial + authorized: users %u groups %u accounts %u admins %u",
+			conf->auth_users_count,conf->auth_groups_count,conf->auth_acc_count, conf->admin_users_count);
 
 	/* Global data */
 	serial_add_elem(&ear_conf_serial, (char *)&conf->min_time_perf_acc, sizeof(conf->min_time_perf_acc));
@@ -1473,37 +1523,50 @@ state_t deserialize_cluster_conf(cluster_conf_t *conf, char *ear_conf_buf, size_
 	serial_copy_elem(&ear_conf_serial, (char *)&conf->default_policy, NULL);
 
 	/* Priv users */
-	serial_copy_elem(&ear_conf_serial, (char *)&conf->num_priv_users, NULL);
-	if (conf->num_priv_users){
-		conf->priv_users = calloc(sizeof(char *), conf->num_priv_users);
-		for (uint auth = 0; auth < conf->num_priv_users; auth ++){
+	serial_copy_elem(&ear_conf_serial, (char *)&conf->auth_users_count, NULL);
+	if (conf->auth_users_count){
+		conf->auth_users = calloc(sizeof(char *), conf->auth_users_count);
+		for (uint auth = 0; auth < conf->auth_users_count; auth ++){
 			uint size_auth;
 			serial_copy_elem(&ear_conf_serial, (char *)&size_auth, NULL);
-			conf->priv_users[auth] = calloc(1,size_auth+1);	
-			serial_copy_elem(&ear_conf_serial, (char *)&conf->priv_users[auth],NULL);
+			conf->auth_users[auth] = calloc(1,size_auth+1);	
+			serial_copy_elem(&ear_conf_serial, (char *)&conf->auth_users[auth],NULL);
 		}
 	}
 	/* Priv groups */
-	serial_copy_elem(&ear_conf_serial, (char *)&conf->num_priv_groups, NULL);
-	if (conf->num_priv_groups){
-		conf->priv_groups = calloc(sizeof(char *), conf->num_priv_groups);
-		for (uint auth = 0; auth < conf->num_priv_groups; auth ++){
+	serial_copy_elem(&ear_conf_serial, (char *)&conf->auth_groups_count, NULL);
+	if (conf->auth_groups_count){
+		conf->auth_groups = calloc(sizeof(char *), conf->auth_groups_count);
+		for (uint auth = 0; auth < conf->auth_groups_count; auth ++){
 			uint size_auth;
 			serial_copy_elem(&ear_conf_serial, (char *)&size_auth, NULL);
-			conf->priv_groups[auth] = calloc(1,size_auth+1);
-			serial_copy_elem(&ear_conf_serial, (char *)&conf->priv_groups[auth], NULL);
+			conf->auth_groups[auth] = calloc(1,size_auth+1);
+			serial_copy_elem(&ear_conf_serial, (char *)&conf->auth_groups[auth], NULL);
 		}
 	}
 
 	/* Priv accounts */
-	serial_copy_elem(&ear_conf_serial, (char *)&conf->num_acc, NULL);
-	if (conf->num_acc){
-		conf->priv_acc = calloc(sizeof(char *), conf->num_acc);
-		for (uint auth = 0; auth < conf->num_acc; auth ++){
+	serial_copy_elem(&ear_conf_serial, (char *)&conf->auth_acc_count, NULL);
+	if (conf->auth_acc_count){
+		conf->auth_accounts = calloc(sizeof(char *), conf->auth_acc_count);
+		for (uint auth = 0; auth < conf->auth_acc_count; auth ++){
 			uint size_auth;
 			serial_copy_elem(&ear_conf_serial, (char *)&size_auth, NULL);
-			conf->priv_acc[auth] = calloc(1, size_auth+1);
-			serial_copy_elem(&ear_conf_serial, (char *)&conf->priv_acc[auth], NULL);
+			conf->auth_accounts[auth] = calloc(1, size_auth+1);
+			serial_copy_elem(&ear_conf_serial, (char *)&conf->auth_accounts[auth], NULL);
+		}
+	}
+
+	/* Admin users */
+	serial_copy_elem(&ear_conf_serial, (char *)&conf->admin_users_count, NULL);
+	if (conf->admin_users_count) {
+		conf->admin_users = calloc(sizeof(char *), conf->admin_users_count);
+
+		for (uint admn = 0; admn < conf->admin_users_count; admn++) {
+			uint size_auth;
+			serial_copy_elem(&ear_conf_serial, (char *)&size_auth, NULL);
+			conf->admin_users[admn] = calloc(1, size_auth+1);
+			serial_copy_elem(&ear_conf_serial, (char *)&conf->admin_users[admn], NULL);
 		}
 	}
 
