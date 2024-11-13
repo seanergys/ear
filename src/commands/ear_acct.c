@@ -1362,11 +1362,11 @@ int main(int argc, char *argv[])
 	if (verbose) printf("Limit set to %d\n", query_adds.limit);
 	if (strlen(format) < 1) {
 		if (is_loops)
-			strcpy(format, "jnXpgTCstrimG");
+			strcpy(format, "jxnXpgTCstrimG");
 		else if (full_length)
-			strcpy(format, "juapnrtpgCseG");
+			strcpy(format, "jxuapnrtpgCseG");
 		else
-			strcpy(format, "juapNrtpgCseG");
+			strcpy(format, "jxuapNrtpgCseG");
 	}
 
 	if (file_name != NULL) read_applications_from_files(file_name, format);
