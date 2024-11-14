@@ -42,7 +42,6 @@
 #include <library/api/clasify.h>
 #include <library/api/eard_dummy.h>
 #include <library/loader/module_mpi.h>
-#include <library/loader/module_cuda.h>
 #include <library/common/utils.h>
 #include <library/common/externs.h>
 #include <library/common/verbose_lib.h>

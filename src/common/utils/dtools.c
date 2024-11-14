@@ -9,12 +9,9 @@
  **************************************************************************/
 
 #define _GNU_SOURCE
+#include <link.h>
 #include <dlfcn.h>
-#include <limits.h>
-#include <signal.h>
 #include <execinfo.h>
-#include <common/types.h>
-#include <common/states.h>
 #include <common/utils/dtools.h>
 #include <common/output/verbose.h>
 
@@ -93,4 +90,24 @@ char *dtools_get_backtrace_library(char *buffer, int calls_count)
         return NULL;
     }
     return strcpy(buffer, info.dli_fname);
+}
+
+typedef struct cb_data_s {
+    char *library;
+    int found;
+} cb_data_t;
+
+static int dtools_is_ldd_library_callback(struct dl_phdr_info *info, size_t size, void *data)
+{
+    cb_data_t *cb_data = (cb_data_t *) data;
+    cb_data->found = strstr(info->dlpi_name, cb_data->library) != NULL;
+    return cb_data->found;
+}
+
+int dtools_is_ldd_library(char *library)
+{
+    cb_data_t cb_data;
+    cb_data.found = 0;
+    cb_data.library = library;
+    dl_iterate_phdr(dtools_is_ldd_library_callback, (void *) &cb_data);
 }

@@ -223,7 +223,7 @@ void generate_node_ranges(node_island_t *island, char *nodelist)
 
 			//iterate over the big ranges
 			for (i = 0; i < extra_ranges; i++) {
-        		strncpy(island->ranges[island->num_ranges+range_count+i].prefix, start, strlen(start)); //they all have the same prefix
+        		strncpy(island->ranges[island->num_ranges+range_count+i].prefix, start, strlen(start) + 1); //they all have the same prefix
             	island->ranges[island->num_ranges+range_count+i].start = curr_start;
             	island->ranges[island->num_ranges+range_count+i].end = curr_end;
 
@@ -543,180 +543,205 @@ state_t EAR_include(char *token)
 
 #define ADD_CONTENT 		0
 #define CREATE_CONTENT 	1
-void get_cluster_config(FILE *conf_file, cluster_conf_t *conf, uint action)
+
+void get_cluster_config(FILE * conf_file, cluster_conf_t * conf, uint action)
 {
-    char line[512];
-    char def_policy[128];
-    char *token;
+	char line[512];
+	char def_policy[128];
+	char *token;
 
-    //filling the default policies before starting
-    if (action != ADD_CONTENT){
-    	conf->num_policies=0;
-    	conf->num_etags=0;
-    	conf->power_policies = calloc(TOTAL_POLICIES, sizeof(policy_conf_t));
-    	fill_policies(conf);
+	//filling the default policies before starting
+	if (action != ADD_CONTENT) {
+		conf->num_policies = 0;
+		conf->num_etags = 0;
+		conf->power_policies =
+		    calloc(TOTAL_POLICIES, sizeof(policy_conf_t));
+		fill_policies(conf);
+	}
+	while (fgets(line, 512, conf_file) != NULL) {
+		if (line[0] == '#')
+			continue;
+		remove_chars(line, 13);	//carriage return (\n or \r)
+		token = strtok(line, "=");
+		strtoup(token);
+
+		if (EAR_include(token) == EAR_SUCCESS) {
+			char *file_to_include = strtok(NULL, "=");
+			clean_newlines(file_to_include);
+			verbose(VCCONF, "Include file: '%s'", file_to_include);
+			FILE *fd_include = fopen(file_to_include, "r");
+			if (fd_include != NULL)
+				get_cluster_config(fd_include, conf,
+						   ADD_CONTENT);
+			else
+				verbose(VCCONF,
+					"Include file cannot be open %s",
+					strerror(errno));
+			continue;
 		}
-    while (fgets(line, 512, conf_file) != NULL)
-    {
-        if (line[0] == '#') continue;
-        remove_chars(line, 13); //carriage return (\n or \r)
-        token = strtok(line, "=");
-        strtoup(token);
 
+		if (EARGM_token(token) == EAR_SUCCESS) {
+			if (EARGM_parse_token(&conf->eargm, token) ==
+			    EAR_SUCCESS)
+				continue;
+		}
+		if (EARD_token(token) == EAR_SUCCESS) {
+			if (EARD_parse_token(&conf->eard, token) == EAR_SUCCESS)
+				continue;
+		}
+		if (EARDBD_token(token) == EAR_SUCCESS) {
+			if (EARDBD_parse_token(&conf->db_manager, token) ==
+			    EAR_SUCCESS)
+				continue;
+		}
+		if (!strcmp(token, "POLICY")) {
+			if (POLICY_token
+			    (&conf->num_policies, &conf->power_policies,
+			     line) == EAR_SUCCESS)
+				continue;
+		}
+		if (DB_token(token) == EAR_SUCCESS) {
+			if (DB_parse_token(&conf->database, token) ==
+			    EAR_SUCCESS)
+				continue;
+		}
+		if (EARLIB_token(token) == EAR_SUCCESS) {
+			if (EARLIB_parse_token(&conf->earlib, token) ==
+			    EAR_SUCCESS)
+				continue;
+		}
+		if (AUTH_token(token) == EAR_SUCCESS) {
+			if (!strcmp(token, "AUTHORIZEDUSERS")) {
+				AUTH_parse_token(token, &conf->auth_users_count,
+						 &conf->auth_users);
+				continue;
+			} else if (!strcmp(token, "AUTHORIZEDGROUPS")) {
+				AUTH_parse_token(token, &conf->auth_groups_count,
+						 &conf->auth_groups);
+				continue;
+			} else if (!strcmp(token, "AUTHORIZEDACCOUNTS")) {
+				AUTH_parse_token(token, &conf->auth_acc_count,
+						 &conf->auth_accounts);
+				continue;
+			}
+		}
+		if (ADMIN_token(token) == EAR_SUCCESS) {
+			if (!strcmp(token, "ADMINUSERS")) {
+				AUTH_parse_token(token, &conf->admin_users_count,
+						 &conf->admin_users);
+				continue;
+			}
+		}
+		if (ETAG_token(token) == EAR_SUCCESS) {
+			if (ETAG_parse_token
+			    (&conf->num_etags, &conf->e_tags,
+			     line) == EAR_SUCCESS)
+				continue;
+		}
 
+		if (EDCMON_token(token) == EAR_SUCCESS) {
+			line[strlen(line)] = '=';
+			if (EDCMON_parse_token
+			    (&conf->edcmon_tags, &conf->num_edcmons_tags,
+			     line) == EAR_SUCCESS)
+				continue;
+		}
+		//HARDWARE NODE CONFIG
+		else if (!strcmp(token, "NODENAME")) {
+			int i = 0;
+			int num_nodes = 0;
+			int num_cpus = 0;
+			//fully restore the line
+			line[strlen(line)] = '=';
+			char *primary_ptr;
+			char *secondary_ptr;
+			char *coef_file = NULL;
+			token = strtok_r(line, " ", &primary_ptr);
+			while (token != NULL) {
 
-				if (EAR_include(token) == EAR_SUCCESS){
-					char *file_to_include = strtok(NULL, "=");
-					clean_newlines(file_to_include);
-					verbose(VCCONF, "Include file: '%s'", file_to_include);
-					FILE *fd_include = fopen(file_to_include, "r");
-					if (fd_include != NULL) get_cluster_config(fd_include, conf, ADD_CONTENT);
-					else verbose(VCCONF, "Include file cannot be open %s", strerror(errno));
-					continue;
+				//fetches the first half of the pair =
+				token = strtok_r(token, "=", &secondary_ptr);
+				strtoup(token);
+				if (!strcmp(token, "NODENAME")) {
+					//fetches the second half of the pair =
+					token =
+					    strtok_r(NULL, "=", &secondary_ptr);
+					num_nodes = set_nodes_conf(conf, token);
+				} else if (!strcmp(token, "CPUS")) {
+					num_cpus =
+					    atoi(strtok_r
+						 (NULL, "=", &secondary_ptr));
 				}
 
-        if (EARGM_token(token) == EAR_SUCCESS){
-            if (EARGM_parse_token(&conf->eargm,token) == EAR_SUCCESS) continue;
-        }
-        if (EARD_token(token) == EAR_SUCCESS){
-            if (EARD_parse_token(&conf->eard,token) == EAR_SUCCESS) continue;
-        }
-        if (EARDBD_token(token) == EAR_SUCCESS){
-            if (EARDBD_parse_token(&conf->db_manager,token) == EAR_SUCCESS) continue;
-        }
-        if (!strcmp(token, "POLICY"))
-        {
-            if (POLICY_token(&conf->num_policies,&conf->power_policies,line) == EAR_SUCCESS) continue;
-        }
-        if (DB_token(token) == EAR_SUCCESS){
-            if (DB_parse_token(&conf->database,token) == EAR_SUCCESS) continue;
-        }
-        if (EARLIB_token(token) == EAR_SUCCESS){
-            if (EARLIB_parse_token(&conf->earlib,token) == EAR_SUCCESS) continue;
-        }
-        if (AUTH_token(token) == EAR_SUCCESS){
-            if (!strcmp(token, "AUTHORIZEDUSERS")){
-                AUTH_parse_token(token,&conf->num_priv_users,&conf->priv_users);
-                continue;
-            }else if (!strcmp(token, "AUTHORIZEDGROUPS")){
-                AUTH_parse_token(token,&conf->num_priv_groups,&conf->priv_groups);
-                continue;
-            }else if (!strcmp(token, "AUTHORIZEDACCOUNTS")){	
-                AUTH_parse_token(token,&conf->num_acc,&conf->priv_acc);
-                continue;
-            }
-        }
-        if (ETAG_token(token) == EAR_SUCCESS){
-            if (ETAG_parse_token(&conf->num_etags,&conf->e_tags,line) == EAR_SUCCESS) continue;
-        }
-
-				if (EDCMON_token(token) == EAR_SUCCESS){
-						line[strlen(line)] = '=';
-						if (EDCMON_parse_token(&conf->edcmon_tags, &conf->num_edcmons_tags, line) == EAR_SUCCESS) continue;
+				else if (!strcmp(token, "DEFCOEFFICIENTSFILE")) {
+					token =
+					    strtok_r(NULL, "=", &secondary_ptr);
+					strclean(token, '\n');
+					coef_file =
+					    malloc(sizeof(char) *
+						   strlen(token) + 1);
+					remove_chars(token, ' ');
+					strcpy(coef_file, token);
 				}
+				//fetches the second half of the pair =
+				token = strtok_r(NULL, "=", &secondary_ptr);
+				token = strtok_r(NULL, " ", &primary_ptr);
+			}
 
-        //HARDWARE NODE CONFIG
-        else if (!strcmp(token, "NODENAME"))
-        {
-            int i = 0;
-            int num_nodes = 0;
-            int num_cpus = 0;
-            //fully restore the line
-            line[strlen(line)] = '=';
-            char *primary_ptr;
-            char *secondary_ptr;
-            char *coef_file = NULL;
-            token = strtok_r(line, " ", &primary_ptr);
-            while (token != NULL)
-            {
+			//global data for all nodes in that line
+			for (i = 0; i < num_nodes; i++) {
+				conf->nodes[conf->num_nodes + i].cpus =
+				    num_cpus;
+			}
+			if (coef_file != NULL)
+				for (i = 0; i < num_nodes; i++)
+					conf->nodes[conf->num_nodes +
+						    i].coef_file = coef_file;
+			conf->num_nodes += num_nodes;
+		}		// NODENAME END
 
-                //fetches the first half of the pair =
-                token = strtok_r(token, "=", &secondary_ptr);
-                strtoup(token);
-                if (!strcmp(token, "NODENAME"))
-                {
-                    //fetches the second half of the pair =
-                    token = strtok_r(NULL, "=", &secondary_ptr);
-                    num_nodes = set_nodes_conf(conf, token);
-                }
-                else if (!strcmp(token, "CPUS"))
-                {
-                    num_cpus = atoi(strtok_r(NULL, "=", &secondary_ptr));
-                }
+		//TAGS definition
+		else if (!strcmp(token, "TAG")) {
+			line[strlen(line)] = '=';
+			TAG_parse_token(&conf->tags, &conf->num_tags, line);
+		}
+		//ISLES config
+		else if (!strcmp(token, "ISLAND")) {
+			//fully restore the line
+			line[strlen(line)] = '=';
+			parse_island(conf, line);
+		}
+		if (token != NULL)
+			GENERIC_parse_token(conf, token, def_policy);
+	}
 
-                else if (!strcmp(token, "DEFCOEFFICIENTSFILE"))
-                {
-                    token = strtok_r(NULL, "=", &secondary_ptr);
-                    strclean(token, '\n');
-                    coef_file = malloc(sizeof(char)*strlen(token)+1);
-                    remove_chars(token, ' ');
-                    strcpy(coef_file, token);
-                }
+	int i;
+	conf->default_policy = 0;
+	for (i = 0; i < conf->num_policies; i++) {
+		if (!strcmp(def_policy, conf->power_policies[i].name)) {
+			conf->default_policy = i;
+			break;
+		}
+	}
 
-                //fetches the second half of the pair =
-                token = strtok_r(NULL, "=", &secondary_ptr);
-                token = strtok_r(NULL, " ", &primary_ptr);
-            }
+	/* Plugins */
+	if (strlen(conf->eard.plugins) == 0) {
+		strcpy(conf->eard.plugins, "eardbd.so");
+	}
+	if (strlen(conf->db_manager.plugins) == 0) {
+		strcpy(conf->db_manager.plugins, "mysql.so");
+	}
+	if (strlen(conf->eargm.plugins) == 0) {
+		strcpy(conf->eargm.plugins, "mysql.so");
+	}
+	if (strlen(conf->earlib.plugins) == 0) {
+		strcpy(conf->earlib.plugins, "eard.so");
+	}
 
-            //global data for all nodes in that line
-            for (i = 0; i < num_nodes; i++)
-            {
-                conf->nodes[conf->num_nodes+i].cpus = num_cpus;
-            }
-            if (coef_file != NULL)
-                for (i = 0; i < num_nodes; i++)
-                    conf->nodes[conf->num_nodes+i].coef_file = coef_file;
-            conf->num_nodes += num_nodes;
-        } // NODENAME END
+	/* EARGM checks */
 
-
-
-        //TAGS definition
-        else if (!strcmp(token, "TAG"))
-        {
-            line[strlen(line)] = '=';
-            TAG_parse_token(&conf->tags, &conf->num_tags, line);
-        }
-
-        //ISLES config
-        else if (!strcmp(token, "ISLAND"))
-        {
-            //fully restore the line
-            line[strlen(line)] = '=';
-            parse_island(conf, line);
-        }
-        if (token != NULL) GENERIC_parse_token(conf,token,def_policy);
-    }
-
-    int i;
-    conf->default_policy = 0;
-    for (i = 0; i < conf->num_policies; i++)
-    {
-        if (!strcmp(def_policy, conf->power_policies[i].name)) {
-            conf->default_policy = i;
-            break;
-        }
-    }
-
-    /* Plugins */
-    if (strlen(conf->eard.plugins) == 0){
-        strcpy(conf->eard.plugins,"eardbd.so");	
-    }
-    if (strlen(conf->db_manager.plugins) == 0){
-        strcpy(conf->db_manager.plugins,"mysql.so");
-    }
-    if (strlen(conf->eargm.plugins) == 0){
-        strcpy(conf->eargm.plugins,"mysql.so");	
-    }
-    if (strlen(conf->earlib.plugins) == 0){
-        strcpy(conf->earlib.plugins,"eard.so");
-    }
-
-    /* EARGM checks */
-
-    check_cluster_conf_eargm(&conf->eargm);
+	check_cluster_conf_eargm(&conf->eargm);
 }
-
 
 void set_ear_conf_default(cluster_conf_t *my_conf)
 {
@@ -786,18 +811,22 @@ void free_cluster_conf(cluster_conf_t *conf)
         return;
     }
 
-    for (i = 0; i < conf->num_priv_users; i++)
-        free(conf->priv_users[i]);
-    free(conf->priv_users);
+    for (i = 0; i < conf->auth_users_count; i++)
+        free(conf->auth_users[i]);
+    free(conf->auth_users);
 
-    for (i = 0; i < conf->num_priv_groups; i++)
-        free(conf->priv_groups[i]);
-    free(conf->priv_groups);
+    for (i = 0; i < conf->auth_groups_count; i++)
+        free(conf->auth_groups[i]);
+    free(conf->auth_groups);
 
-    for (i = 0; i < conf->num_acc; i++)
-        free(conf->priv_acc[i]);
-    free(conf->priv_acc);
+    for (i = 0; i < conf->auth_acc_count; i++)
+        free(conf->auth_accounts[i]);
+    free(conf->auth_accounts);
 
+		for (i = 0; i < conf->admin_users_count; i++) {
+			free(conf->admin_users[i]);
+		}
+		free(conf->admin_users);
 
     char *prev_file = NULL;
     for (i = 0; i < conf->num_nodes; i++) {

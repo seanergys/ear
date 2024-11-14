@@ -75,5 +75,6 @@ int is_privileged_command(cluster_conf_t *my_conf)
         return 0;
     }
 
-    return is_privileged(my_conf, user_info.ruid_name, user_info.rgid_name, NULL);
+    // return is_authorized_usr_grp_acc(my_conf, user_info.ruid_name, user_info.rgid_name, NULL);
+		return (is_admin_usr(my_conf, user_info.ruid_name) == 1) ? 1 : 0;
 }

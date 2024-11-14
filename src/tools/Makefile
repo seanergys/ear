@@ -26,6 +26,7 @@ tool_BINS += \
     get_periodic \
     metrics_show \
     loops_average \
+	database_size_calculator \
     learning_delete
 endif
 ifdef GSL_BASE
@@ -83,6 +84,9 @@ metrics_show: metrics_show.c $(db_OJBS) $(comm_OBJS)
 
 insert_test: insert_test.c $(comm_OBJS) $(SRCDIR)/report/report.o
 	$(CCC) -o $@ $< $(SRCDIR)/report/report.o $(comm_OBJS) -ldl -lpthread -lm
+
+database_size_calculator: database_size_calculator.c $(db_OJBS) $(comm_OBJS)
+	$(CCC) -o $@ $< $(db_OJBS) $(comm_OBJS) $(DB_LDFLAGS) -lm
 
 get_periodic: get_periodic.c $(db_OJBS) $(comm_OBJS)
 	$(CCC) -o $@ $< $(db_OJBS) $(comm_OBJS) $(DB_LDFLAGS) -lm

@@ -41,7 +41,6 @@
 #include <report/report.h>
 #include <daemon/local_api/eard_api.h>
 #include <library/loader/module_mpi.h>
-#include <library/loader/module_cuda.h>
 #include <library/api/mpi_support.h>
 #include <library/api/clasify.h>
 #include <library/metrics/metrics.h>

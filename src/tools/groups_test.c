@@ -49,7 +49,7 @@ int main(int argc,char *argv[])
     // 2. TEST FOR MY USER, WHICH IS NOT IN THE USER LIST, BUT IN AN AUTHORIZED GROUP
     // 3. TEST FOR MY USER, WHICH IS NOT ANYWHERE
 
-    int res = is_privileged(&my_cluster, "pmorillas", NULL, NULL);
+    int res = is_authorized_usr_grp_acc(&my_cluster, "pmorillas", NULL, NULL);
     if (!res) printf("user not authorized\n");
     else printf("user auhorized!\n");
 
