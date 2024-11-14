@@ -27,71 +27,72 @@
 
 void usage(char *name) 
 {
-    printf("\n");
-    printf("Usage: %s\t [options].\t At least a job id is required.\n", name);
-    printf("Available options:\n"\
-            "\t-j [job_id.step_id] \t Specifies which jobs to retrieve.\n"\
-            "\t-h\t\t\t Shows this message.\n");
-    printf("\n");
-            //"\t-n [node_name1, nn2]\t Specifies from which nodes the learning phase will be deleted from, or all for every entry. [default: all]\n"
-    exit(0);
+	printf("\n");
+	printf("Usage: %s\t [options].\t At least a job id is required.\n", name);
+	printf("Available options:\n"\
+			"\t-j [job_id.step_id] \t Specifies which jobs to retrieve.\n"\
+			"\t-h\t\t\t Shows this message.\n");
+	printf("\n");
+	//"\t-n [node_name1, nn2]\t Specifies from which nodes the learning phase will be deleted from, or all for every entry. [default: all]\n"
+	exit(0);
 }
 
 #define LOOPS_QUERY "SELECT * FROM Loops "
+#define JOBS_QUERY  "SELECT * FROM Jobs "
 
 int main(int argc,char *argv[])
 {
-    char node_name[256];
-    char job_ids[256] = "";
+	char node_name[256];
+	char job_ids[256] = "";
 	int job_id = -1, step_id = -1;
-    int opt;
+	int opt;
 	char *token;
-	
+
 	if (argc < 2) {
-        usage(argv[0]);
-    }
-    
-    while ((opt = getopt(argc, argv, "n:j:t:h")) != -1) {
-        switch (opt) {
-            case 'n':
-                /* all_nodes set but not used.
-                   if (!strcmp(optarg, "all")) all_nodes = 1;
-                   else strcpy(node_name, optarg);
-                   */
-                if (strcmp(optarg, "all")) {
-                    strcpy(node_name, optarg);
-                }
-                break;
-            case 'j':
-                strcpy(job_ids, optarg);
+		usage(argv[0]);
+	}
+
+	while ((opt = getopt(argc, argv, "n:j:t:h")) != -1) {
+		switch (opt) {
+			case 'n':
+				/* all_nodes set but not used.
+				   if (!strcmp(optarg, "all")) all_nodes = 1;
+				   else strcpy(node_name, optarg);
+				   */
+				if (strcmp(optarg, "all")) {
+					strcpy(node_name, optarg);
+				}
+				break;
+			case 'j':
+				strcpy(job_ids, optarg);
 				job_id = atoi(strtok(optarg, "."));
 				token = strtok(NULL, ".");
 				if (token) step_id = atoi(token);
-					
-                break;
-            case 'h':
-                usage(argv[0]);
-                break;
-            default:
-                printf("Unknown argument\n");
-                break;
-        }
 
-    }
+				break;
+			case 'h':
+				usage(argv[0]);
+				break;
+			default:
+				printf("Unknown argument\n");
+				break;
+		}
+
+	}
 
 	if (job_id < 0) {
 		printf("Warning, a job_id MUST be specified\n");
 		exit(0);
 	}
 
-            
-    char ear_path[256];
+
+	char ear_path[256];
 	cluster_conf_t my_conf;
-    if (get_ear_conf_path(ear_path)==EAR_ERROR){
-        printf("Error getting ear.conf path\n");
-        exit(0);
-    }
-    read_cluster_conf(ear_path, &my_conf);
+	if (get_ear_conf_path(ear_path)==EAR_ERROR){
+		printf("Error getting ear.conf path\n");
+		exit(0);
+	}
+	read_cluster_conf(ear_path, &my_conf);
 
 
 	if (strlen(my_conf.database.user_commands) < 1) 
@@ -105,12 +106,20 @@ int main(int argc,char *argv[])
 	}
 	init_db_helper(&my_conf.database);
 
-	char query[512];
+	char loops_query[512] = { 0 };
+	char jobs_query[512]  = { 0 };
 
-	strcpy(query, LOOPS_QUERY);
-	add_int_filter(query, "job_id", job_id);
+	strcpy(loops_query, LOOPS_QUERY);
+	add_int_filter(loops_query, "job_id", job_id);
 	if (step_id >= 0) {
-		add_int_filter(query, "step_id", step_id);
+		add_int_filter(loops_query, "step_id", step_id);
+	}
+
+	reset_query_filters();
+	strcpy(jobs_query,  JOBS_QUERY);
+	add_int_filter(jobs_query, "job_id", job_id);
+	if (step_id >= 0) {
+		add_int_filter(jobs_query, "step_id", step_id);
 	}
 
 	typedef struct app_summary {
@@ -120,10 +129,12 @@ int main(int argc,char *argv[])
 
 
 	loop_t *loops = NULL;
+	job_t *jobs = NULL;
 	app_summary_t *apps = NULL;
 	int32_t num_apps = 0;
 
-	int32_t num_loops = db_read_loops_query(&loops, query);
+	int32_t num_loops = db_read_loops_query(&loops, loops_query);
+	int32_t num_jobs  = db_read_jobs_query(&jobs, jobs_query);
 
 	for (int32_t i = 0; i < num_loops; i++) {
 		int32_t app_idx = -1;
@@ -150,12 +161,18 @@ int main(int argc,char *argv[])
 			apps[app_idx].app.job.id       = loops[i].jid;
 			apps[app_idx].app.job.step_id  = loops[i].step_id;
 			apps[app_idx].app.job.local_id = loops[i].local_id;
+			for (int32_t j = 0; j < num_jobs; j++) {
+				if (jobs[j].id == loops[i].jid) {
+					memcpy(&apps[app_idx].app.job, &jobs[j], sizeof(job_t));
+					break;
+				}
+			}
 		}
 
 		/* Aggregate signatures with weights depending on the time */
-		signature_apply_weight(&loops[i].signature, &loops[i].signature, loops[i].id.size);
+		signature_apply_weight(&loops[i].signature, &loops[i].signature, loops[i].total_iterations);
 		acum_sig_metrics(&apps[app_idx].app.signature, &loops[i].signature);
-		apps[app_idx].total_time += loops[i].id.size;
+		apps[app_idx].total_time += loops[i].total_iterations;
 	}
 
 	for (int32_t i = 0; i < num_apps; i++) {
@@ -164,8 +181,8 @@ int main(int argc,char *argv[])
 		print_application_fd(STDOUT_FILENO, &apps[i].app, 1, 1, 0);
 	}
 
-		
-		
+
+
 
 	if (num_loops > 0)
 		free(loops);
