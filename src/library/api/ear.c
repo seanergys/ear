@@ -1497,7 +1497,6 @@ void ear_init()
 
   // Environment initialization
   ear_lib_environment();
-	read_hack_env(&tmp);
 
 	verb_level 		= get_ear_verbose();
 	verb_channel 	= 2; // Default: stderr
@@ -1507,6 +1506,10 @@ void ear_init()
 		verb_level = atoi(hack_verb_lv);
 		VERB_SET_LV(verb_level);
 	}
+
+	// Hacking environment goes after verbosity configuration since it has
+	// verb 3 messages
+	read_hack_env(&tmp);
 
 	// Process identification (TID)
   main_pid = syscall(SYS_gettid);
