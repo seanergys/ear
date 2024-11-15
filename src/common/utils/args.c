@@ -13,7 +13,7 @@
 #include <common/utils/args.h>
 #include <common/utils/string.h>
 
-int args_get(int argc, char *argv[], const char *arg_in, char *buffer)
+char *args_get(int argc, char *argv[], const char *arg_in, char *buffer)
 {
 	int is_required = 0;
 	int next_value  = 0;
@@ -28,7 +28,7 @@ int args_get(int argc, char *argv[], const char *arg_in, char *buffer)
 	int i;
 
 	if (strlen(arg_in) == 0) {
-		return 0;
+		return NULL;
 	}
 	// Saving the argument in the stack.
 	strcpy(aux, arg_in);
@@ -61,31 +61,42 @@ int args_get(int argc, char *argv[], const char *arg_in, char *buffer)
 					 (strncmp(argv[i+1],  "-", 1) != 0) );
 		// Check if has equal symbol (=)
 		has_equal = (strchr(argv[i], '=') != NULL);
-		//
-		if (is_short && curr_value && !has_equal && buffer) {
-			p = &argv[i][strlen(arg)];
-			strcpy(buffer, p);
-			return 1;
+		// Is type -fValue
+		if (is_short && curr_value && !has_equal) {
+            p = &argv[i][strlen(arg)];
+            if (buffer) {
+                strcpy(buffer, p);
+            }
+			return p;
 		}
-		if (is_short && next_value && buffer) {
-			strcpy(buffer, argv[i+1]);
-			return 1;
+        // Is type -f Value
+		if (is_short && next_value) {
+			if (buffer) {
+                strcpy(buffer, argv[i+1]);
+            }
+			return argv[i+1];
 		}
-		if (is_long && curr_value && has_equal && buffer) {
+        // Is type --flag=Value
+		if (is_long && curr_value && has_equal) {
 			p = &argv[i][strlen(arg)+1];
-			strcpy(buffer, p);
-			return 1;
+            if (buffer) {
+                strcpy(buffer, p);
+            }
+			return p;
 		}
+        // Is type --flag Value
 		if (is_long && next_value) {
-			strcpy(buffer, argv[i+1]);
-			return 1;
+            if (buffer) {
+                strcpy(buffer, argv[i+1]);
+            }
+			return argv[i+1];
 		}
 		if ((is_long || is_short) && !is_required) {
 			// True if value is not mandatory and both flags are completely equal
 			if (strcmp(argv[i], arg) == 0) {
-				return 1;
+				return argv[i];
 			}
 		}
 	}
-	return 0;
+	return NULL;
 }

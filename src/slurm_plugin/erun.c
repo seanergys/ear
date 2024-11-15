@@ -9,6 +9,7 @@
  **************************************************************************/
 
 #include <sys/wait.h>
+#include <common/utils/args.h>
 #include <slurm_plugin/slurm_plugin.h>
 #include <slurm_plugin/slurm_plugin_environment.h>
 #include <slurm_plugin/slurm_plugin_serialization.h>
@@ -29,6 +30,7 @@ char buffer[SZ_PATH];
 //
 static int _inactive;
 static int _error;
+static int _force;
 static int _clean;
 static int _help;
 //
@@ -53,7 +55,9 @@ int help(int argc, char *argv[])
 	printf("\t--program=<arg>\t\tSets the program to run.\n");
 //	printf("\t--plugstack [ARGS]\tSet the SLURM's plugstack arguments. I.e:\n");
 //	printf("\t\t\t\t--plugstack prefix=/hpc/opt/ear default=on...\n");
-	printf("\t--clean\t\t\tRemoves the internal files.\n");
+    printf("\t--force\t\t\tForces the ERUN execution when has already passed by SRUN.\n");
+    printf("\t\t\t\tIt doesn't connect EARD twice.\n");
+    printf("\t--clean\t\t\tRemoves the internal files.\n");
 	printf("SLURM options:\n");
 
 	return 0;
@@ -163,27 +167,17 @@ int job(int argc, char *argv[])
     // Enabling plugin and ERUN components
 	setenv(Var.comp_plug.comp, "1", 1);
 
-	// Clean
-	for (i = 0; i < argc; ++i) {
-		if ((strlen(argv[i]) >= 7) && (strncmp("--clean", argv[i], 7) == 0)) {
-			_clean = 1;
-		}
-	}
-	// Help?
-	for (i = 0; i < argc; ++i) {
-		if ((strlen(argv[i]) >= 6) && (strncmp("--help", argv[i], 6) == 0)) {
-			_help = 1;
-		}
-	}
-	// Setting the program and the job name
-	for (i = 0; i < argc; ++i) {
-		if ((strlen(argv[i]) > 8) && (strncmp("--program=", argv[i], 10) == 0)) {
-			p = &argv[i][10];
-		}
-	}
-
-    // Getting JOB_NAME
-	if (p != NULL) {
+	// Arguments processing
+    if (args_get(argc, argv, "clean", NULL)) {
+        _clean = 1;
+    }
+    if (args_get(argc, argv, "help", NULL)) {
+        _help = 1;
+    }
+    if (args_get(argc, argv, "force", NULL)) {
+        _force = 1;
+    }
+	if ((p = args_get(argc, argv, "program", NULL)) != NULL) {
 		// Setting the job name
 		sprintf(path_app, "%s", p);
         program_parse(path_app, args);
@@ -196,7 +190,6 @@ int job(int argc, char *argv[])
 	// (INSTALL_PATH, ETC, TMP) in input parameters.
 	_argc = argc + 4;
 	_argv = malloc(sizeof(char **) * _argc);
-
 	_argv[argc + 0] = plug_def;
 	_argv[argc + 1] = plug_pfx;
 	_argv[argc + 2] = plug_etc;
@@ -278,11 +271,18 @@ int job(int argc, char *argv[])
 
 	// Input parameters final
 	print_argv(_argc, _argv);
-	
-	// Going inactive?
-	_inactive = isenv_agnostic(_sp, Var.was_srun.mod, "1");
 
-	if (_inactive) {
+	// Going inactive?
+	_inactive = isenv_agnostic(_sp, Var.ctx_was_srun.mod, "1");
+
+    if (_inactive) {
+        if (_force) {
+            sd.erun.avoid_connecting = 1;
+        } else {
+            _error = 2;
+        }
+    }
+	if (_inactive && !_force) {
 		_error = 2;
 	}
 	if (err_pfx | err_etc | err_tmp | err_def) {
