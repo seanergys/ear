@@ -25,10 +25,10 @@
 #include <management/cpupow/archs/amd17.h>
 
 #define NO_REG                         0x00
-#define HSMP_PKG_POWER_STATUS          HSMP_READ_SOCKET_POWER
-#define HSMP_PKG_POWER_LIMIT_READ      HSMP_READ_SOCKET_POWER_LIMIT
-#define HSMP_PKG_POWER_LIMIT_WRITE     HSMP_WRITE_SOCKET_POWER_LIMIT
-#define HSMP_PKG_POWER_INFO            HSMP_READ_MAX_SOCKET_POWER_LIMIT
+#define HSMP_PKG_POWER_STATUS          HSMP_GET_SOCKET_POWER
+#define HSMP_PKG_POWER_LIMIT_READ      HSMP_GET_SOCKET_POWER_LIMIT
+#define HSMP_PKG_POWER_LIMIT_WRITE     HSMP_SET_SOCKET_POWER_LIMIT
+#define HSMP_PKG_POWER_INFO            HSMP_GET_SOCKET_POWER_LIMIT_MAX
 #define HSMP_DRAM_POWER_STATUS         NO_REG
 #define HSMP_DRAM_POWER_LIMIT_READ     NO_REG
 #define HSMP_DRAM_POWER_LIMIT_WRITE    NO_REG
@@ -262,7 +262,7 @@ CPUPOW_F_LOAD(mgt_cpupow_amd17_load)
         }
     }
     // Opening HSMP
-    if (state_fail(s = hsmp_scan(tpo))) {
+    if (state_fail(s = hsmp_open(tpo))) {
         serror("Failed during HSMP open");
         return;
     }

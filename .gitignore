@@ -191,6 +191,7 @@ src/tools/ear_conf
 src/tools/metrics_show
 src/tools/list_folders
 src/tools/groups_test
+src/tools/database_size_calculator
 src/commands/ear-info
 src/tools/node_manager_info
 deployment.sh

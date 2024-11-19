@@ -293,6 +293,7 @@ void print_ips(ip_table_t *ips, int num_ips, char mode)
 void usage(char *app)
 {
 	printf("Usage: %s [options]"\
+			"\nCOMMANDS"
 			"\n\t--status \t\t\t\t->requests the current status for all nodes. The ones responding show the current "\
 			"\n\t\t\t\t\t\t\tpower, IP address and policy configuration. A list with the ones not"\
 			"\n\t\t\t\t\t\t\tresponding is provided with their hostnames and IP address."\
@@ -301,23 +302,25 @@ void usage(char *app)
 			"\n\t\t\t\t\t\t\tpolicy, full (hardware+policy), app_node, app_master, eardbd, eargm or power. [default:hardware]"\
 			"\n\t--power \t\t\t\t->requests the current power for the cluster. "\
 			"\n\t\t\t\t\t\t\t--power=node_name retrieves the current power of that node individually."\
+			"\n\t--ping	\t\t\t\t->pings all nodes to check whether the nodes are up or not. Additionally,"\
+			"\n\t\t\t\t\t\t\t--ping=node_name pings that node individually."\
 			"\n\t--set-freq \t[newfreq]\t\t->sets the frequency of all nodes to the requested one"\
 			"\n\t--set-def-freq \t[newfreq]  [pol_name]\t->sets the default frequency for the selected policy "\
 			"\n\t--set-max-freq \t[newfreq]\t\t->sets the maximum frequency"\
 			"\n\t--set-powercap \t[new_cap]\t\t->sets the powercap of all nodes to the given value. A node can be specified"\
 			"\n\t\t\t\t\t\t\t after the value to only target said node."\
-			"\n\t--hosts \t[hostlist]\t\t->sends the command only to the specified hosts. "\
-			"\n\t--conf-path \t[path_name]\t\t->specifies the ear.conf path. [default: $EAR_ETC/ear/ear.conf]"
 			"\n\t--restore-conf \t\t\t\t->restores the configuration for all nodes"\
-			"\n\t--active-only \t\t\t\t->supresses inactive nodes from the output in hardware status."\
-			"\n\t--health-check \t\t\t\t->checks all EARDs and EARDBDs for errors and prints all that are unresponsive."\
+
+			"\n\nMODIFIERS"
+			"\n\t--hosts \t[hostlist]\t\t->sends the command only to the specified hosts. "\
 			"\n\t--domain [domain:target]\t\t->sends the requested command to the requested targets, effectively filtering"\
 			"\n\t\t\t\t\t\t\twhich nodes receive the message. Available domains are: tag, node, subcluster/eargmid, island."\
+			"\n\t--conf-path \t[path_name]\t\t->specifies the ear.conf path. [default: $EAR_ETC/ear/ear.conf]"
 			"\n\t--mail [address] \t\t\t->sends the output of the program to address."\
-			"\n\t--ping	\t\t\t\t->pings all nodes to check whether the nodes are up or not. Additionally,"\
-			"\n\t\t\t\t\t\t\t--ping=node_name pings that node individually."\
+			"\n\t--active-only \t\t\t\t->supresses inactive nodes from the output in hardware status."\
+			"\n\t--health-check \t\t\t\t->checks all EARDs and EARDBDs for errors and prints all that are unresponsive."\
 			"\n\t--version \t\t\t\t->displays current EAR version."\
-			"\n\t--help \t\t\t\t\t->displays this message.", app);
+			"\n\n\t--help \t\t\t\t\t->displays this message.", app);
 #if EXT_OPT
     printf(""\
             "\n\t--reset-powercap\t\t\t->Resets the powercap value of all nodes to their default one."\
