@@ -7,6 +7,9 @@ mets_OBJS = \
     $(SRCDIR)/metrics/common/cupti.o \
     $(SRCDIR)/metrics/common/file.o \
     $(SRCDIR)/metrics/common/hsmp.o \
+    $(SRCDIR)/metrics/common/hsmp_driver.o \
+    $(SRCDIR)/metrics/common/hsmp_esmi.o \
+    $(SRCDIR)/metrics/common/hsmp_pci.o \
     $(SRCDIR)/metrics/common/hwmon.o \
     $(SRCDIR)/metrics/common/hwmon_old.o \
     $(SRCDIR)/metrics/common/isst.o \
