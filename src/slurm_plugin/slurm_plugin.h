@@ -34,16 +34,10 @@
  * Job data
  */
 
-typedef struct plug_vars {
-	char ld_preload[SZ_BUFFER_EXTRA];
-	char ld_library[SZ_BUFFER_EXTRA];
-} plug_vars_t;
-
 typedef struct plug_user {
 	char user[SZ_NAME_MEDIUM];
 	char group[SZ_NAME_MEDIUM];
 	char account[SZ_NAME_MEDIUM];
-	plug_vars_t env;
 } plug_user_t;
 
 typedef struct plug_job {
@@ -65,9 +59,8 @@ typedef struct plug_freqs {
 typedef struct plug_eard {
 	settings_conf_t setts;
 	services_conf_t servs;
-	plug_freqs_t freqs;
-	uint connected;
-	uint port;
+	plug_freqs_t    freqs;
+	uint            port;
 } plug_eard_t;
 
 typedef struct plug_eargmd {
@@ -80,12 +73,12 @@ typedef struct plug_eargmd {
 } plug_eargmd_t;
 
 typedef struct plug_package {
-	char nodes_excluded[SZ_PATH];
-	char nodes_allowed[SZ_PATH];
-	char path_temp[SZ_PATH];
-	char path_inst[SZ_PATH];
+	char          path_temp[SZ_PATH];
+	char          path_inst[SZ_PATH];
 	plug_eargmd_t eargmd;
-	plug_eard_t eard;
+	plug_eard_t   eard;
+    char          nodes_excluded[SZ_PATH];
+    char          nodes_allowed[SZ_PATH];
 } plug_package_t;
 
 /*
@@ -96,10 +89,11 @@ typedef struct plug_subject {
 	int context_local;
 	int exit_status;
     int is_task_master;
-	int is_master;
+	int is_node_master;
 } plug_subject_t;
 
 typedef struct plug_erun {
+    int avoid_connecting;
     int is_step_id;
 	int is_master;
 	int is_erun;
@@ -108,10 +102,10 @@ typedef struct plug_erun {
 } plug_erun_t;
 
 typedef struct plug_serialization {
-	plug_subject_t subject;
-	plug_package_t pack;
-	plug_erun_t erun;
-	plug_job_t job;
+	plug_subject_t  subject; // Self process
+	plug_package_t  pack; // Paths, addresses and ports
+    plug_job_t      job;
+	plug_erun_t     erun;
 } plug_serialization_t;
 
 #endif

@@ -22,6 +22,7 @@
 // Buffers
 static char buffer1[SZ_BUFFER_EXTRA];
 static char buffer2[SZ_BUFFER_EXTRA];
+static char buffer3[SZ_BUFFER_EXTRA];
 
 /*
  *
@@ -144,9 +145,7 @@ int plug_read_plugstack(spank_t sp, int ac, char **av, plug_serialization_t *sd)
 static int frequency_exists(spank_t sp, ulong *freqs, int n_freqs, ulong freq)
 {
 	int i;
-	
 	plug_verbose(sp, 3, "number of frequencies %d (looking for %lu)", n_freqs, freq);
-
 	for (i = 0; i < n_freqs; ++i) {
 		plug_verbose(sp, 3, "freq #%d: %lu", i, freqs[i]);
 		if (freqs[i] == freq) {
@@ -213,7 +212,6 @@ int plug_read_application(spank_t sp, plug_serialization_t *sd)
 	if (!getenv_agnostic(sp, Var.tag.ear, app->job.energy_tag, ENERGY_TAG_SIZE)) {
 		strcpy(app->job.energy_tag, "");
 	}
-	
     plug_print_application(sp, app);
 
 	return ESPANK_SUCCESS;
@@ -238,27 +236,34 @@ int plug_print_variables(spank_t sp)
     printenv_agnostic(sp, Var.comp_plug.comp);
     printenv_agnostic(sp, Var.plug_verbose.mod);
     printenv_agnostic(sp, Var.hack_loader.mod);
+    printenv_agnostic(sp, Var.ctx_last.mod);
+    printenv_agnostic(sp, Var.ctx_was_sbatch.mod);
+    printenv_agnostic(sp, Var.ctx_was_srun.mod);
+    printenv_agnostic(sp, Var.con_eard_sbatch.mod);
+    printenv_agnostic(sp, Var.con_eard_srun.mod);
+    printenv_agnostic(sp, Var.con_eard_task.mod);
+    printenv_agnostic(sp, Var.con_eargmd.mod);
+    printenv_agnostic(sp, Var.user.mod);
+    printenv_agnostic(sp, Var.group.mod);
+    printenv_agnostic(sp, Var.account.slurm);
+    printenv_agnostic(sp, Var.name_app.slurm);
+    printenv_agnostic(sp, Var.job_id.slurm);
+    printenv_agnostic(sp, Var.job_node_list.slurm);
+    printenv_agnostic(sp, Var.job_node_count.slurm);
+    printenv_agnostic(sp, Var.step_id.slurm);
+    printenv_agnostic(sp, Var.step_node_list.slurm);
+    printenv_agnostic(sp, Var.step_node_count.slurm);
+    printenv_agnostic(sp, Var.local_id.slurm);
+    printenv_agnostic(sp, Var.cpus_node_num.slurm);
     printenv_agnostic(sp, Var.verbose.flag);
     printenv_agnostic(sp, Var.policy.flag);
     printenv_agnostic(sp, Var.policy_th.flag);
     printenv_agnostic(sp, Var.frequency.flag);
     printenv_agnostic(sp, Var.p_state.flag);
     printenv_agnostic(sp, Var.learning.flag);
-    printenv_agnostic(sp, Var.tag.flag);
     printenv_agnostic(sp, Var.path_usdb.flag);
-    printenv_agnostic(sp, Var.cpus_node_num.slurm);
-    printenv_agnostic(sp, Var.gm_secure.mod);
-    printenv_agnostic(sp, Var.user.info);
-    printenv_agnostic(sp, Var.group.info);
-    printenv_agnostic(sp, Var.ctx_last.mod);
-    printenv_agnostic(sp, Var.was_sbatch.mod);
-    printenv_agnostic(sp, Var.was_srun.mod);
-    printenv_agnostic(sp, Var.name_app.slurm);
-    printenv_agnostic(sp, Var.account.slurm);
-    printenv_agnostic(sp, Var.job_node_list.slurm);
-    printenv_agnostic(sp, Var.job_node_count.slurm);
-    printenv_agnostic(sp, Var.step_node_list.slurm);
-    printenv_agnostic(sp, Var.step_node_count.slurm);
+    printenv_agnostic(sp, Var.path_trac.flag);
+    printenv_agnostic(sp, Var.tag.flag);
     printenv_agnostic(sp, Var.verbose.ear);
     printenv_agnostic(sp, Var.policy.ear);
     printenv_agnostic(sp, Var.policy_th.ear);
@@ -272,17 +277,13 @@ int plug_print_variables(spank_t sp)
     printenv_agnostic(sp, Var.eff_gain.ear);
     printenv_agnostic(sp, Var.name_app.ear);
     printenv_agnostic(sp, Var.path_temp.ear);
+    printenv_agnostic(sp, Var.path_install.ear);
+    printenv_agnostic(sp, Var.task_pid.ear);
     printenv_agnostic(sp, Var.ld_preload.ear);
     printenv_agnostic(sp, Var.ld_library.ear);
-    printenv_agnostic(sp, "EAR_INSTALL_PATH");
+    printenv_agnostic(sp, Var.is_erun.ear);
     printenv_agnostic(sp, "EAR_ETC");
     printenv_agnostic(sp, "EAR_TMP");
-    printenv_agnostic(sp, "SLURM_JOBID");
-    printenv_agnostic(sp, "SLURM_JOB_ID");
-    printenv_agnostic(sp, "SLURM_STEPID");
-    printenv_agnostic(sp, "SLURM_STEP_ID");
-    printenv_agnostic(sp, "SLURM_LOCALID");
-
 	return ESPANK_SUCCESS;
 }
 
@@ -379,7 +380,6 @@ int plug_deserialize_components(spank_t sp)
 	if (!plug_component_isenabled(sp, Component.plugin)) {
 		return ESPANK_ERROR;
 	}
-
 	return ESPANK_SUCCESS;
 }
 
@@ -432,17 +432,17 @@ int plug_serialize_remote(spank_t sp, plug_serialization_t *sd)
 	plug_verbose(sp, 2, "function plug_serialize_remote");
 
 	// User
-	setenv_agnostic(sp, Var.user.info,  sd->job.user.user,  1);
-	setenv_agnostic(sp, Var.group.info, sd->job.user.group, 1);
+	setenv_agnostic(sp, Var.user.mod,  sd->job.user.user,  1);
+	setenv_agnostic(sp, Var.group.mod, sd->job.user.group, 1);
 	
 	// Subject
 	if (plug_context_is(sp, Context.srun)) {
 		setenv_agnostic(sp, Var.ctx_last.mod, Constring.srun, 1);
-		setenv_agnostic(sp, Var.was_srun.mod, "1", 1);
+		setenv_agnostic(sp, Var.ctx_was_srun.mod, "1", 1);
 	} else
 	if (plug_context_is(sp, Context.sbatch)) {
 		setenv_agnostic(sp, Var.ctx_last.mod, Constring.sbatch, 1);
-		setenv_agnostic(sp, Var.was_sbatch.mod, "1", 1);
+		setenv_agnostic(sp, Var.ctx_was_sbatch.mod, "1", 1);
 	}
 	
 	return ESPANK_SUCCESS;
@@ -457,20 +457,24 @@ int plug_deserialize_remote(spank_t sp, plug_serialization_t *sd)
 	VERB_SET_EN(0);
 	ERROR_SET_EN(0);
 
-	// Converting option variables to task directly
-	repenv_agnostic(sp, Var.verbose.flag,   Var.verbose.ear);
-	repenv_agnostic(sp, Var.policy.flag,    Var.policy.ear);
+	// Replacing flag variables to EAR variables
+	repenv_agnostic(sp, Var.verbose.flag  , Var.verbose.ear  );
+	repenv_agnostic(sp, Var.policy.flag   , Var.policy.ear   );
 	repenv_agnostic(sp, Var.policy_th.flag, Var.policy_th.ear);
 	repenv_agnostic(sp, Var.frequency.flag, Var.frequency.ear);
-	repenv_agnostic(sp, Var.learning.flag,  Var.learning.ear);
-	repenv_agnostic(sp, Var.tag.flag,       Var.tag.ear);
+	repenv_agnostic(sp, Var.learning.flag , Var.learning.ear );
+	repenv_agnostic(sp, Var.tag.flag      , Var.tag.ear      );
 	repenv_agnostic(sp, Var.path_usdb.flag, Var.path_usdb.ear);
 	//repenv_agnostic(sp, Var.path_trac.flag, Var.path_trac.ear);
 
+    if (getenv_agnostic(sp, Var.name_app.slurm, buffer1, sizeof(buffer1)) == 1) {
+        setenv_agnostic(sp, Var.name_app.ear, buffer1, 1);
+    }
+
 	// User
-	getenv_agnostic(sp, Var.user.info,     sd->job.user.user,    SZ_NAME_MEDIUM);
-	getenv_agnostic(sp, Var.group.info,    sd->job.user.group,   SZ_NAME_MEDIUM);
-	getenv_agnostic(sp, Var.account.slurm,   sd->job.user.account, SZ_NAME_MEDIUM);
+	getenv_agnostic(sp, Var.user.mod,      sd->job.user.user,    SZ_NAME_MEDIUM);
+	getenv_agnostic(sp, Var.group.mod,     sd->job.user.group,   SZ_NAME_MEDIUM);
+	getenv_agnostic(sp, Var.account.slurm, sd->job.user.account, SZ_NAME_MEDIUM);
 
 	// Subject
 	if (isenv_agnostic(sp, Var.ctx_last.mod, Constring.srun)) {
@@ -479,15 +483,13 @@ int plug_deserialize_remote(spank_t sp, plug_serialization_t *sd)
 		sd->subject.context_local = Context.sbatch;
 	} else {
 		sd->subject.context_local = Context.error;
-	}
-	if (sd->subject.context_local == Context.error) {
-		return ESPANK_ERROR;
+        return ESPANK_ERROR;
 	}
 
     // Job/step
     sd->job.app.job.step_id = (ulong) BATCH_STEP;
     sd->job.app.job.id      = (ulong) BATCH_STEP;
-	
+
     if (spank_get_item (sp, S_JOB_ID, (int *) &s1) == ESPANK_SUCCESS) {
         sd->job.app.job.id = (ulong) s1;
     }
@@ -501,9 +503,9 @@ int plug_deserialize_remote(spank_t sp, plug_serialization_t *sd)
 
 	if (plug_context_was(sd, Context.sbatch)) {
 		s1 = getenv_agnostic(sp, Var.job_node_list.slurm , buffer1, SZ_BUFFER_EXTRA);
-		s2 = getenv_agnostic(sp, Var.job_node_count.slurm , buffer2, SZ_BUFFER_EXTRA);
+		s2 = getenv_agnostic(sp, Var.job_node_count.slurm, buffer2, SZ_BUFFER_EXTRA);
 	} else if (plug_context_was(sd, Context.srun)) {
-		s1 = getenv_agnostic(sp, Var.step_node_list.slurm, buffer1, SZ_BUFFER_EXTRA);
+		s1 = getenv_agnostic(sp, Var.step_node_list.slurm , buffer1, SZ_BUFFER_EXTRA);
 		s2 = getenv_agnostic(sp, Var.step_node_count.slurm, buffer2, SZ_BUFFER_EXTRA);
 	}
 	if (s1 && s2) {
@@ -524,7 +526,7 @@ int plug_deserialize_remote(spank_t sp, plug_serialization_t *sd)
 	// "Context was" means if local was.
 	from_sbatch = plug_context_was(sd, Context.sbatch);
 	from_srun   = plug_context_was(sd, Context.srun);
-	sd->subject.is_master = from_sbatch;
+	sd->subject.is_node_master = from_sbatch;
 
 	// If the node list and node count were present
 	if (s1 && s2) {
@@ -539,7 +541,7 @@ int plug_deserialize_remote(spank_t sp, plug_serialization_t *sd)
 				s2 = s1;
 			}
 			// If this node is the master
-			sd->subject.is_master = (strncmp(sd->subject.host, node, s2) == 0);
+			sd->subject.is_node_master = (strncmp(sd->subject.host, node, s2) == 0);
 			plug_verbose(sp, 2, "first node from list of nodes '%s'", node);
 		}
 		// If SBATCH/SALLOC then build a node list
@@ -558,7 +560,7 @@ int plug_deserialize_remote(spank_t sp, plug_serialization_t *sd)
 	}
 
 	plug_verbose(sp, 2, "subject '%s' is node master? '%d'",
-		sd->subject.host, sd->subject.is_master);
+		sd->subject.host, sd->subject.is_node_master);
 
     // CPUs 
     if (getenv_agnostic(sp, Var.cpus_node_num.slurm, buffer1, SZ_BUFFER_EXTRA)) {
@@ -572,23 +574,16 @@ int plug_deserialize_remote(spank_t sp, plug_serialization_t *sd)
 	 * With ERUN in mind we need a small set of variables definitions
 	 * out of APP serialization.
 	 */
-	setenv_agnostic(sp, Var.path_temp.ear, sd->pack.path_temp, 1);
+	setenv_agnostic(sp, Var.path_temp.ear   , sd->pack.path_temp, 1);
 	setenv_agnostic(sp, Var.path_install.ear, sd->pack.path_inst, 1);
-
 	// Cleaning
-	unsetenv_agnostic(sp, Var.user.info);
-	unsetenv_agnostic(sp, Var.group.info);
+	unsetenv_agnostic(sp, Var.user.mod );
+	unsetenv_agnostic(sp, Var.group.mod);
 
 	// Last minute hack, if energy tag is present, disable library
-	if (exenv_agnostic(sp, Var.tag.flag)) {
-		plug_component_setenabled(sp, Component.library, 0);
-	}
-
-	// Last minute hack, if energy tag is present, disable library
-	if (exenv_agnostic(sp, Var.tag.flag)) {
-		plug_component_setenabled(sp, Component.library, 0);
-	}
-
+    if (getenv_agnostic(sp, Var.tag.flag, buffer1, sizeof(buffer1))) {
+        plug_component_setenabled(sp, Component.library, 0);
+    }
 	return ESPANK_SUCCESS;
 }
 
@@ -596,73 +591,59 @@ int plug_serialize_task_settings(spank_t sp, plug_serialization_t *sd)
 {
 	plug_verbose(sp, 2, "function plug_serialize_task_settings");
 	settings_conf_t *setts = &sd->pack.eard.setts;
-
 	// Variable EAR_ENERGY_TAG, unset
 	if (setts->user_type != ENERGY_TAG) {
 		unsetenv_agnostic(sp, Var.tag.ear);
 	}
-
 	// Default P_STATE, frequency (KHz) and threshold (%).
-	snprintf(buffer1, 16, "%u", setts->def_p_state);
-	setenv_agnostic(sp, Var.p_state.ear, buffer1, 1);
-	
-	snprintf(buffer1, 16, "%lu", setts->def_freq);
+	snprintf(buffer1, 16, "%u"   , setts->def_p_state);
+	setenv_agnostic(sp, Var.p_state.ear  , buffer1, 1);
+	snprintf(buffer1, 16, "%lu"  , setts->def_freq);
 	setenv_agnostic(sp, Var.frequency.ear, buffer1, 1);
-	
 	snprintf(buffer1, 16, "%0.2f", setts->settings[0]);
-	setenv_agnostic(sp, Var.eff_gain.ear, buffer1, 1);
-	setenv_agnostic(sp, Var.perf_pen.ear, buffer1, 1);
-
-	// Policy 
-	/*if(policy_id_to_name(setts->policy, buffer1) != EAR_ERROR) {
-		setenv_agnostic(sp, Var.policy.ear, buffer1, 1);
-	}*/
+	setenv_agnostic(sp, Var.eff_gain.ear , buffer1, 1);
+	setenv_agnostic(sp, Var.perf_pen.ear , buffer1, 1);
+	// Policy
 	if (strlen(setts->policy_name) > 0) {
 		setenv_agnostic(sp, Var.policy.ear, setts->policy_name, 1);
 	}
-
 	// If is not learning, P_STATE is canceled.
 	if(!setts->learning) {
 		unsetenv_agnostic(sp, Var.p_state.ear);
 		unsetenv_agnostic(sp, Var.learning.ear);
 	}
-		
 	return ESPANK_SUCCESS;
 }
 
 int plug_serialize_task_preload(spank_t sp, plug_serialization_t *sd)
 {
 	plug_verbose(sp, 2, "function plug_serialize_task_preload");
-	
 	const int bsize = SZ_BUFFER_EXTRA;
 	buffer1[0] = '\0';
 	buffer2[0] = '\0';
 
 	if (getenv_agnostic(sp, Var.hack_loader.mod, buffer2, bsize)) {
+        // Writting $HACK_LOADER_FILE into buffer1
 		xsprintf(buffer1, "%s", buffer2);
-	} else {	
-		// Copying INSTALL_PATH into buffer and adding library and the folder.
-		apenv_agnostic(buffer2, sd->pack.path_inst, bsize);
+	} else {
+        // Writing $EAR_INSTALL_PATH into buffer2
+        xsprintf(buffer2, "%s", sd->pack.path_inst);
+        // Writing $EAR_INSTALL_PATH/lib/libearld.so into buffer1
 		xsprintf(buffer1, "%s/%s", buffer2, REL_PATH_LOAD);
 	}
+
+    // The full path of the LD_PRELOAD file is written in buffer1.
 	plug_verbose(sp, 2, "trying to load file '%s'", buffer1);
 
-	// Testing the access to the library folder.
-    char *ld_buf = sd->job.user.env.ld_preload;
-    // If LD_PRELOAD already exists.
-    if (getenv_agnostic(sp, Var.ld_preload.ear, ld_buf, bsize))
-    {
+    // If LD_PRELOAD already exists, appending our value.
+    if (getenv_agnostic(sp, Var.ld_preload.ear, buffer3, bsize)) {
         xsprintf(buffer2, "%s:", buffer1);
         // Append the current LD_PRELOAD content to our library.
-        xsprintf(buffer1, "%s%s", buffer2, ld_buf);
+        xsprintf(buffer1, "%s%s", buffer2, buffer3);
     }
-    // Setting LD_PRELOAD environment variable.
-    setenv_agnostic(sp, Var.ld_preload.ear, buffer1, 1);
 
-	// These environment variables are required if loader is loaded.	
-	if (getenv_agnostic(sp, Var.name_app.slurm, buffer1, sizeof(buffer1)) == 1) {
-		setenv_agnostic(sp, Var.name_app.ear, buffer1, 1);
-	}
+    // Setting final LD_PRELOAD environment variable.
+    setenv_agnostic(sp, Var.ld_preload.ear, buffer1, 1);
 
 	return ESPANK_SUCCESS;
 }
