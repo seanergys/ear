@@ -6,10 +6,12 @@ comm_OBJS = \
     apis.o \
     cupti.o \
     file.o \
+    hsmp.o \
     hsmp_driver.o \
     hsmp_esmi.o \
     hsmp_pci.o \
     hwmon.o \
+    hwmon_old.o \
     isst.o \
     likwid.o \
     msr.o \

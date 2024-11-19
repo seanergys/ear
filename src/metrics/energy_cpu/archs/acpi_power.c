@@ -134,7 +134,7 @@ state_t acpi_power_meter_init(ctx_t *c)
 	}
 	//
 	for (i = 0; i < h->id_count; ++i) {
-		if (xtate_fail(s, hwmon_open_files(ids[i], Hwmon_power_meter.power_avg, &h->fds[i], &h->fd_count[i]))) {
+		if (xtate_fail(s, hwmon_open_files(ids[i], Hwmon_power_meter.power_avg, &h->fds[i], &h->fd_count[i], 1))) {
 			pthread_mutex_unlock(&lock);
 			return s;
 		}
@@ -247,7 +247,7 @@ static state_t acpi_power_static_read(ctx_t *c, llong *power, llong *acum)
 			memset(data, 0 , sizeof(data));
 		//	debug("Reading ID %d,%d  fd=%d", i, k, h->fds[i][k]);
 
-			if (xtate_fail(s, hwmon_read(h->fds[i][k], data, SZ_PATH))) {
+			if (xtate_fail(s, hwmon_read_files(h->fds[i][k], data, SZ_PATH))) {
 				//return s;
 				debug("read failed with data %s", data);
 			}
@@ -306,4 +306,3 @@ int main(int argc, char *argv[]){
 
 }
 #endif
-

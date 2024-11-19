@@ -102,5 +102,7 @@ ulong get_stack_size_limit();
 
 /* Changes the limit of stack size, use ULONG_MAX to set the maximum*/
 void set_stack_size_limit(ulong new_limit);
+state_t ear_fd_read(int fd, char *buffer, size_t size);
+state_t ear_fd_write(int fd, const char *buffer, size_t size);
 
 #endif

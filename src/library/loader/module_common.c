@@ -12,16 +12,51 @@
 #include <dlfcn.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <common/config.h>
-#include <common/output/verbose.h>
 #include <common/sizes.h>
+#include <common/config.h>
+#include <common/utils/dtools.h>
+#include <common/utils/string.h>
+#include <common/output/verbose.h>
 
-int module_file_exists(char *path)
+static void (*call_constructor) (void);
+static void (*call_destructor)  (void);
+
+// Deprecated, clean.
+int is_cuda_enabled()     { return 1;            }
+
+// Non-deprecated.
+static int syms_present(char *syms[])
+{
+    while(*syms != NULL) {
+        if (dlsym(RTLD_DEFAULT, *syms) != NULL) {
+            verbose(2, "LOADER: looking for symbol '%s': found!", *syms);
+            return 1;
+        }
+        verbose(2, "LOADER: looking for symbol '%s': not found", *syms);
+        ++syms;
+    }
+    return 0;
+}
+
+static int libs_present(char *libs[])
+{
+    while(*libs != NULL) {
+        if (dtools_is_ldd_library(*libs)) {
+            verbose(2, "LOADER: looking for library '%s': found!", *libs);
+            return 1;
+        }
+        verbose(2, "LOADER: looking for library '%s': not found", *libs);
+        ++libs;
+    }
+    return 0;
+}
+
+static int module_file_exists(char *path)
 {
 	return (access(path, X_OK) == 0);
 }
 
-void module_get_path_libear(char **path_lib, char **hack_lib)
+void loader_get_path_libear(char **path_lib, char **hack_lib)
 {
 	static char path_lib_so[4096];
     char *env_hack = NULL;
@@ -58,4 +93,59 @@ void module_get_path_libear(char **path_lib, char **hack_lib)
 		verbose(2,"LOADER hack file %s",*hack_lib);
 	}
 	return;
+}
+
+static void module_other_destructor()
+{
+    if (call_destructor != NULL) {
+        call_destructor();
+    }
+}
+
+int load_libear_nonspec(char *lib_extension, char *syms[], char *libs[])
+{
+    char *buffer_path = NULL;
+    char *buffer_hack = NULL;
+    void *libear      = NULL;
+    char path[4096];
+
+    if (syms != NULL) {
+        if (!syms_present(syms)) {
+            return 0;
+        }
+    }
+    if (libs != NULL) {
+        if (!libs_present(libs)) {
+            return 0;
+        }
+    }
+    // Computing library path
+    loader_get_path_libear(&buffer_path, &buffer_hack);
+    printf("LOADER: env HACK/EAR_INSTALL_PATH => %s\n", buffer_path);
+    printf("LOADER: env HACK_LIBRARY_FILE     => %s\n", buffer_hack);
+    if (buffer_path == NULL && buffer_hack == NULL) {
+        return 0;
+    }
+    if (buffer_hack == NULL) {
+        xsnprintf(path, sizeof(path), "%s/%s.%s", buffer_path, REL_NAME_LIBR, lib_extension);
+    } else {
+        xsnprintf(path, sizeof(path), "%s", buffer_hack);
+    }
+    if (!module_file_exists(path)) {
+        return 0;
+    }
+    // Loading library
+    if ((libear = dlopen(path, RTLD_GLOBAL | RTLD_NOW)) == NULL) {
+        return 0;
+    }
+    call_constructor = dlsym(libear, "ear_constructor");
+    call_destructor  = dlsym(libear, "ear_destructor" );
+    if (atexit(module_other_destructor) != 0) {
+        verbose(2, "LOADER: cannot set exit function");
+    }
+    // module_other_constructor()
+    if (call_constructor != NULL) {
+        call_constructor();
+    }
+    return 1;
 }

@@ -253,6 +253,7 @@ void verbose_jobs_in_node(uint vl)
 
 
 powermon_app_t *current_ear_app[MAX_NESTED_LEVELS];
+static pthread_mutex_t powermon_app_mutex[MAX_NESTED_LEVELS];
 
 /**** Shared data ****/
 
@@ -273,6 +274,7 @@ int num_contexts = 0;
 void init_contexts() {
   int i;
   for (i = 0; i < MAX_NESTED_LEVELS; i++) current_ear_app[i] = NULL;
+  for (i = 0; i < MAX_NESTED_LEVELS; i++) pthread_mutex_init(&powermon_app_mutex[i], NULL);
     init_jobs_in_node();
 
    /* Creating shared region with job list */
@@ -347,14 +349,14 @@ int mark_contexts_to_finish_by_pid()
             if (stat(pid_file, &tmp)) {
 
                 state_t lock_st;
-                if ((lock_st = ear_trylock(&current_ear_app[i]->powermon_app_mutex)) != EAR_SUCCESS) {
+                if ((lock_st = ear_trylock(&powermon_app_mutex[i])) != EAR_SUCCESS) {
                     error("Locking context %d to mark it as FINISHED: %s", i, state_msg);
                     return found_contexts;
                 }
 
                 current_ear_app[i]->state = APP_FINISHED;
 
-                ear_unlock(&current_ear_app[i]->powermon_app_mutex);
+                ear_unlock(&powermon_app_mutex[i]);
 
                 found_contexts++;
             }
@@ -379,7 +381,7 @@ int mark_contexts_to_finish_by_jobid(job_id id, job_id step_id) {
         if (current_ear_app[i] != NULL)
         {
             state_t lock_st;
-            if ((lock_st = ear_trylock(&current_ear_app[i]->powermon_app_mutex)) != EAR_SUCCESS) {
+            if ((lock_st = ear_trylock(&powermon_app_mutex[i])) != EAR_SUCCESS) {
                 error("Locking context %d to mark it as FINISHED: %s", i, state_msg);
                 return found_contexts;
             }
@@ -391,7 +393,7 @@ int mark_contexts_to_finish_by_jobid(job_id id, job_id step_id) {
                 found_contexts++;
             }
 
-            ear_unlock(&current_ear_app[i]->powermon_app_mutex);
+            ear_unlock(&powermon_app_mutex[i]);
         }
     }
 
@@ -432,7 +434,7 @@ int find_context_for_job(job_id id, job_id sid) {
 
 
 /* This function is called at job or step end. TODO: Thread-save here. */
-void end_context(int cc)
+void end_context(int cc, uint get_lock)
 {
     int ID, i;
     int new_max;
@@ -442,7 +444,7 @@ void end_context(int cc)
     if (current_ear_app[cc] != NULL) {
 
         state_t lock_st;
-        if ((lock_st = ear_trylock(&current_ear_app[cc]->powermon_app_mutex)) != EAR_SUCCESS) {
+        if (get_lock && ((lock_st = ear_trylock(&powermon_app_mutex[cc])) != EAR_SUCCESS)) {
             error("Locking context %d at ending: %s", cc, state_msg);
             return;
         }
@@ -487,9 +489,8 @@ void end_context(int cc)
 
             num_contexts--;
 
-            ear_unlock(&current_ear_app[cc]->powermon_app_mutex);
+            if (get_lock) ear_unlock(&powermon_app_mutex[cc]);
 
-            pthread_mutex_destroy(&current_ear_app[cc]->powermon_app_mutex);
 #if USE_PMON_SHARED_AREA
 		/* Releasing self shared area */
 		jobmon_shared_area_dispose(jobpmon_path, current_ear_app[cc], current_ear_app[cc]->fd_shared_areas[SELF]);
@@ -524,7 +525,7 @@ void clean_job_contexts(job_id id) {
     if (current_ear_app[i] != NULL) {
       if (current_ear_app[i]->app.job.id == id) {
         cleaned++;
-        end_context(i);
+        end_context(i, 1);
       }
     }
   }
@@ -540,7 +541,7 @@ void clean_contexts_diff_than(job_id id) {
     if (current_ear_app[i] != NULL) {
       if (current_ear_app[i]->app.job.id != id) {
         debug("Clearning context %d from job %lu", i, current_ear_app[i]->app.job.id);
-        end_context(i);
+        end_context(i, 1);
       }
     }
   }
@@ -577,14 +578,14 @@ void powermon_purge_old_jobs()
     	pmapp = current_ear_app[cc];
 
 			state_t lock_st;
-     	if ((lock_st = ear_trylock(&pmapp->powermon_app_mutex)) != EAR_SUCCESS) {
+	if ((lock_st = ear_trylock(&powermon_app_mutex[cc])) != EAR_SUCCESS) {
      		error("Locking context %lu/%lu for updating its mask: %s",
                       pmapp->app.job.id, pmapp->app.job.step_id, state_msg);
        	return;
      	}
 			/* test application */
 			
-			ear_unlock(&pmapp->powermon_app_mutex);
+			ear_unlock(&powermon_app_mutex[cc]);
 		}
 	}
 }
@@ -624,14 +625,14 @@ int new_context(job_id id, job_id sid, int *cc)
     }
 
     int err_num;
-    if ((err_num = pthread_mutex_init(&current_ear_app[ccontext]->powermon_app_mutex,
+    if ((err_num = pthread_mutex_init(&powermon_app_mutex[ccontext],
                                       NULL)))
     {
         error("Initializing mutex for context %d (%lu/%lu): %s",
               ccontext, id, sid, strerror(err_num));
     }
 
-    if (state_fail(ear_trylock(&current_ear_app[ccontext]->powermon_app_mutex)))
+    if (state_fail(ear_trylock(&powermon_app_mutex[ccontext])))
     {
         error("Locking new context");
         return EAR_ERROR;
@@ -656,7 +657,7 @@ int new_context(job_id id, job_id sid, int *cc)
 		/* Start: Mapping my own data in a shared file */
 		if (get_jobmon_path(ear_tmp, ID, jobpmon_path) != EAR_SUCCESS){
 			error("Error creating jobpmon path");
-			ear_unlock(&current_ear_app[ccontext]->powermon_app_mutex);
+			ear_unlock(&powermon_app_mutex[ccontext]);
 			return EAR_ERROR;
 		}
 		// We use the new shared area rather than the allocated area
@@ -664,7 +665,7 @@ int new_context(job_id id, job_id sid, int *cc)
 		aux1 = current_ear_app[ccontext];
 		if ((aux2 = create_jobmon_shared_area(jobpmon_path, current_ear_app[ccontext], &current_ear_app[ccontext]->fd_shared_areas[SELF])) == NULL){
 			error("Error creating shared memory for pmon for ((%lu,%lu)", id,sid);
-			ear_unlock(&current_ear_app[ccontext]->powermon_app_mutex);
+			ear_unlock(&powermon_app_mutex[ccontext]);
 			return EAR_ERROR;
 		}
 		current_ear_app[ccontext]->sh_self = (void *)aux2;
@@ -684,7 +685,7 @@ int new_context(job_id id, job_id sid, int *cc)
     if (current_ear_app[ccontext]->settings == NULL) {
         error("Error creating shared memory between EARD & EARL for (%lu,%lu)",
               id,sid);
-        ear_unlock(&current_ear_app[ccontext]->powermon_app_mutex);
+        ear_unlock(&powermon_app_mutex[ccontext]);
         return EAR_ERROR;
     }
 
@@ -698,7 +699,7 @@ int new_context(job_id id, job_id sid, int *cc)
 
     if (current_ear_app[ccontext]->resched == NULL) {
         error("Error creating resched shared memory between EARD & EARL for (%lu,%lu)",id,sid);
-        ear_unlock(&current_ear_app[ccontext]->powermon_app_mutex);
+        ear_unlock(&powermon_app_mutex[ccontext]);
         return EAR_ERROR;
     }
 
@@ -716,7 +717,7 @@ int new_context(job_id id, job_id sid, int *cc)
 
     if (current_ear_app[ccontext]->app_info == NULL) {
         error("Error creating shared memory between EARD & EARL for app_mgt (%lu,%lu)",id,sid);
-        ear_unlock(&current_ear_app[ccontext]->powermon_app_mutex);
+        ear_unlock(&powermon_app_mutex[ccontext]);
         return EAR_ERROR;
     }
 
@@ -729,7 +730,7 @@ int new_context(job_id id, job_id sid, int *cc)
     current_ear_app[ccontext]->pc_app_info = create_pc_app_info_shared_area(shmem_path, &current_ear_app[ccontext]->fd_shared_areas[PC_APP_AREA]);
     if (current_ear_app[ccontext]->pc_app_info == NULL){
         error("Error creating shared memory between EARD & EARL for pc_app_infoi (%lu,%lu)",id,sid);
-        ear_unlock(&current_ear_app[ccontext]->powermon_app_mutex);
+        ear_unlock(&powermon_app_mutex[ccontext]);
         return EAR_ERROR;
     }
 
@@ -758,7 +759,7 @@ int new_context(job_id id, job_id sid, int *cc)
 
     num_contexts++;
 
-    ear_unlock(&current_ear_app[ccontext]->powermon_app_mutex);
+    ear_unlock(&powermon_app_mutex[ccontext]);
 
     return EAR_SUCCESS;
 }
@@ -792,6 +793,13 @@ void clean_job_area(uint ID)
 	char job_path[MAX_PATH_SIZE];
     xsnprintf(job_path, sizeof(job_path), "%s/%u", ear_tmp, ID);
 	folder_remove(job_path);
+}
+
+static state_t test_job_folder(uint ID)
+{
+	char job_path[MAX_PATH_SIZE];
+	xsnprintf(job_path, sizeof(job_path), "%s/%u", ear_tmp, ID);
+	return folder_exists(job_path);
 }
 
 
@@ -917,20 +925,12 @@ void powermon_new_configuration()
 
         if (pmapp != NULL) {
             
-            /*
-            state_t lock_st;
-            if ((lock_st = ear_trylock(&pmapp->powermon_app_mutex)) != EAR_SUCCESS) {
-                error("Locking context %d trying set a new configuration: %s", i, state_msg);
-                return;
-            }
-            */
 
             reset_shared_memory(pmapp);
             if (pmapp->app.is_mpi) {
                 pmapp->resched->force_rescheduling = 1; // TODO: Thread-save here.
             }
 
-            // ear_unlock(&pmapp->powermon_app_mutex);
         }
     }
 }
@@ -1098,14 +1098,6 @@ void job_init_powermon_app(powermon_app_t *pmapp, ehandler_t *ceh,
         return;
     }
 
-    /*
-    state_t lock_st;
-    if ((lock_st = ear_trylock(&pmapp->powermon_app_mutex)) != EAR_SUCCESS) {
-        error("Locking context %lu/%lu at init powermon app: %s",
-              pmapp->app.job.id, pmapp->app.job.step_id, state_msg);
-        return;
-    }
-    */
 
     debug("New context for N jobs scenario selected %lu/%lu",
           pmapp->app.job.id,pmapp->app.job.step_id);
@@ -1142,7 +1134,6 @@ void job_init_powermon_app(powermon_app_t *pmapp, ehandler_t *ceh,
     verbose(VJOBPMON, "job_init_powermon_app end %lu/%lu is_mpi %d",
             pmapp->app.job.id,pmapp->app.job.step_id, pmapp->app.is_mpi);
 
-    // ear_unlock(&pmapp->powermon_app_mutex);
 }
 
 
@@ -1162,14 +1153,6 @@ void job_end_powermon_app(powermon_app_t *pmapp, ehandler_t *ceh)
 
     alloc_power_data(&app_power);
 
-    /*
-    state_t lock_st;
-    if ((lock_st = ear_trylock(&pmapp->powermon_app_mutex)) != EAR_SUCCESS) {
-        error("Locking context %lu/%lu at end powermon app: %s",
-              pmapp->app.job.id, pmapp->app.job.step_id, state_msg);
-        return;
-    }
-    */
 
     time(&pmapp->app.job.end_time);
 
@@ -1230,7 +1213,6 @@ void job_end_powermon_app(powermon_app_t *pmapp, ehandler_t *ceh)
 
     pmapp->app.power_sig.time = difftime(app_power.end, app_power.begin);
 
-    // ear_unlock(pmapp->powermon_app_mutex);
 
     // debug("Computed avg cpu %lu for %lu cpus job %lu/%lu", &pmapp->app.power_sig.avg_f, &lcpus, pmapp->app.job.id,pmapp->app.job.step_id);
     // nominal is still pending
@@ -1249,14 +1231,6 @@ void report_powermon_app(powermon_app_t *app) {
         return;
     }
 
-    /*
-    state_t lock_st;
-    if ((lock_st = ear_trylock(&app->powermon_app_mutex)) != EAR_SUCCESS) {
-        error("Locking context %lu/%lu reporting powermon app: %s",
-              app->app.job.id, app->app.job.step_id, state_msg);
-        return;
-    }
-    */
 
     if (app->sig_reported == 0) {
         verbose(VJOBPMON + 1, "Reporting not mpi application");
@@ -1271,7 +1245,6 @@ void report_powermon_app(powermon_app_t *app) {
 
     report_connection_status = report_applications(&rid, &app->app,1);
 
-    // ear_unlock(&app->powermon_app_mutex);
 }
 
 
@@ -1495,7 +1468,7 @@ void powermon_mpi_init(ehandler_t *eh, application_t *appID) {
     pmapp = current_ear_app[cc];
     if (pmapp) {
         state_t lock_st;
-        if ((lock_st = ear_trylock(&pmapp->powermon_app_mutex)) != EAR_SUCCESS) {
+        if ((lock_st = ear_trylock(&powermon_app_mutex[cc])) != EAR_SUCCESS) {
             error("Locking context %lu/%lu updating the number of local ids: %s",
                   pmapp->app.job.id, pmapp->app.job.step_id, state_msg);
             return;
@@ -1508,7 +1481,7 @@ void powermon_mpi_init(ehandler_t *eh, application_t *appID) {
 
         /* The job was already connected, this is only a new local connection */
         if (pmapp->local_ids > 1) {
-            ear_unlock(&pmapp->powermon_app_mutex);
+            ear_unlock(&powermon_app_mutex[cc]);
             return;
         }
 
@@ -1519,7 +1492,7 @@ void powermon_mpi_init(ehandler_t *eh, application_t *appID) {
         verbose(VTASKMON + 1, "powermon_mpi_init FINALIZE job_id %lu step_id %lu (is_mpi %u)",
                 appID->job.id, appID->job.step_id, appID->is_mpi);
 
-        ear_unlock(&pmapp->powermon_app_mutex);
+        ear_unlock(&powermon_app_mutex[cc]);
         // save_eard_conf(&eard_dyn_conf);
     } else {
         error("powermon_mpi_init: Context is NULL");
@@ -1545,7 +1518,7 @@ void powermon_mpi_finalize(ehandler_t *eh, ulong jid,ulong sid)
     pmapp = current_ear_app[cc];
 
     state_t lock_st;
-    if ((lock_st = ear_trylock(&pmapp->powermon_app_mutex)) != EAR_SUCCESS) {
+    if ((lock_st = ear_trylock(&powermon_app_mutex[cc])) != EAR_SUCCESS) {
         error("Locking context %lu/%lu updating the number of local ids: %s",
               pmapp->app.job.id, pmapp->app.job.step_id, state_msg);
         return;
@@ -1553,7 +1526,7 @@ void powermon_mpi_finalize(ehandler_t *eh, ulong jid,ulong sid)
 
     pmapp->local_ids--;
 
-    ear_unlock(&pmapp->powermon_app_mutex);
+    ear_unlock(&powermon_app_mutex[cc]);
 
     if (pmapp->local_ids > 0) return;
 
@@ -1597,7 +1570,7 @@ void powermon_new_task(new_task_req_t *newtask)
   /* ******************************** */
   
   state_t lock_st;
-  if ((lock_st = ear_trylock(&pmapp->powermon_app_mutex)) != EAR_SUCCESS) {
+  if ((lock_st = ear_trylock(&powermon_app_mutex[curr_job_ctx_idx])) != EAR_SUCCESS) {
       error("Locking context %lu/%lu at receiving new task request: %s",
             pmapp->app.job.id, pmapp->app.job.step_id, state_msg);
       return;
@@ -1659,7 +1632,7 @@ void powermon_new_task(new_task_req_t *newtask)
     /* *********************/
   }
 
-  ear_unlock(&pmapp->powermon_app_mutex);
+  ear_unlock(&powermon_app_mutex[curr_job_ctx_idx]);
 }
 
 /*
@@ -1712,7 +1685,7 @@ void powermon_new_job(powermon_app_t *pmapp, ehandler_t *eh, application_t *appI
     }
 
     state_t lock_st;
-    if ((lock_st = ear_trylock(&pmapp->powermon_app_mutex)) != EAR_SUCCESS) {
+    if ((lock_st = ear_trylock(&powermon_app_mutex[ccontext])) != EAR_SUCCESS) {
         error("Locking context %lu/%lu for new job: %s",
               pmapp->app.job.id, pmapp->app.job.step_id, state_msg);
         return;
@@ -1757,12 +1730,7 @@ void powermon_new_job(powermon_app_t *pmapp, ehandler_t *eh, application_t *appI
 
     /* Given a user type, application, and energy_tag,
      * my_policy is the cofiguration for this user and application. */
-#if CPUFREQ_SET_ALL_USERS
-    if (user_type != AUTHORIZED) appID->is_learning = 0;
-    uint user_type_policy = AUTHORIZED;
-#else
     uint user_type_policy = user_type;
-#endif
 
     policy_conf_t *my_policy = configure_context(pmapp, user_type_policy, my_tag, appID); // Sets CPU and GPU frequency.
 
@@ -1782,8 +1750,11 @@ void powermon_new_job(powermon_app_t *pmapp, ehandler_t *eh, application_t *appI
 
     pmapp->settings->lib_enabled    = (user_type!=ENERGY_TAG);
 
-    verbose(VJOBPMON, "User type %u, etag %u lib_enabled %u",
-            user_type, ENERGY_TAG, pmapp->settings->lib_enabled);
+    verbose(VJOBPMON, "User type %s%s. EARL %s.",
+            (user_type != NORMAL) ? "authorized" : "non-authorized",
+	    (user_type == ENERGY_TAG) ? " (Authorized by energy tag)" : "",
+	    (pmapp->settings->lib_enabled) ? "ON" : "OFF");
+
     pmapp->settings->policy         = my_policy->policy;
 
     strcpy(pmapp->settings->policy_name, my_policy->name);
@@ -1826,14 +1797,11 @@ void powermon_new_job(powermon_app_t *pmapp, ehandler_t *eh, application_t *appI
 
     powercap_set_app_req_freq();
 
-    // while (pthread_mutex_trylock(&app_lock));
 
     job_init_powermon_app(pmapp, eh, appID, from_mpi);
 
     /* TODO: We must report the energy beforesetting the job_id: PENDING */
     new_job_for_period(&current_sample, appID->job.id, appID->job.step_id);
-
-    // pthread_mutex_unlock(&app_lock);
 
     // save_eard_conf(&eard_dyn_conf);
 
@@ -1845,7 +1813,7 @@ void powermon_new_job(powermon_app_t *pmapp, ehandler_t *eh, application_t *appI
 
     pmapp->sig_reported = 0;
     
-    ear_unlock(&pmapp->powermon_app_mutex);
+    ear_unlock(&powermon_app_mutex[ccontext]);
 }
 
 
@@ -1870,7 +1838,7 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job) {
     pmapp = current_ear_app[curr_ctx];
 
     state_t lock_st;
-    if ((lock_st = ear_trylock(&pmapp->powermon_app_mutex)) != EAR_SUCCESS) {
+    if ((lock_st = ear_trylock(&powermon_app_mutex[curr_ctx])) != EAR_SUCCESS) {
         error("Locking context %lu/%lu ending the job: %s",
               pmapp->app.job.id, pmapp->app.job.step_id, state_msg);
         return;
@@ -1899,11 +1867,11 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job) {
 
     pcapp_info_end_job(pmapp->pc_app_info);
 
-    ear_unlock(&pmapp->powermon_app_mutex);
+    //ear_unlock(&powermon_app_mutex[curr_ctx]);
 
     powercap_end_job();
 
-    end_context(curr_ctx);
+    end_context(curr_ctx, 0);
 
     if (summary.state != APP_FINISHED)
     {
@@ -1927,6 +1895,7 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job) {
     nodemgr_clean_job(jid, sid);
 
     clean_job_area(ID);
+		ear_unlock(&powermon_app_mutex[curr_ctx]);
 
     verbose(VJOBPMON , "***************************************");
 
@@ -2107,10 +2076,15 @@ void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
             pmapp = current_ear_app[cc];
 
             state_t lock_st;
-            if ((lock_st = ear_trylock(&pmapp->powermon_app_mutex)) != EAR_SUCCESS) {
+            if ((lock_st = ear_trylock(&powermon_app_mutex[cc])) != EAR_SUCCESS) {
                 error("Locking context %lu/%lu for updating its mask: %s",
                       pmapp->app.job.id, pmapp->app.job.step_id, state_msg);
-                return;
+								uint ID;
+								ID = create_ID(pmapp->app.job.id, pmapp->app.job.step_id);
+								if (test_job_folder(ID) != EAR_SUCCESS){
+									error("Application %lu/%lu exists for folder does not", pmapp->app.job.id, pmapp->app.job.step_id);
+								}
+                 continue;
             }
 
             /* We must update the current signature */
@@ -2138,7 +2112,7 @@ void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
                 alloc->num_cpus += pmapp->earl_num_cpus;
             }
 
-            ear_unlock(&pmapp->powermon_app_mutex);
+            ear_unlock(&powermon_app_mutex[cc]);
         }
     }
 
@@ -2153,7 +2127,7 @@ void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
             pmapp = current_ear_app[cc];
 
             state_t lock_st;
-            if ((lock_st = ear_trylock(&pmapp->powermon_app_mutex)) != EAR_SUCCESS) {
+            if ((lock_st = ear_trylock(&powermon_app_mutex[cc])) != EAR_SUCCESS) {
                 error("Locking context %lu/%lu for testing its power: %s",
                       pmapp->app.job.id, pmapp->app.job.step_id, state_msg);
                 return;
@@ -2171,13 +2145,15 @@ void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
 
                 if (is_job_in_node(pmapp->app.job.id, &alloc)) {
 
-                    cpu_ratio = (float) alloc->num_cpus / (float) tcpus;
+                    // cpu_ratio = (float) alloc->num_cpus / (float) tcpus;
+										cpu_ratio = ((tcpus && alloc->num_cpus) ? (float) alloc->num_cpus / (float) tcpus : 1);
 
                     verbose(VEARD_NMGR, "Job %lu/%lu without node mask, using ratio %f = %u/%lu",
                             pmapp->app.job.id, pmapp->app.job.step_id, cpu_ratio, alloc->num_cpus, tcpus); 
                 } else {
                     verbose(VEARD_NMGR,"Warning, no cpus detected using num_jobs %lu", num_jobs);
-                    cpu_ratio = 1.0 / (float) num_jobs;
+                    //cpu_ratio = 1.0 / (float) num_jobs;
+                    cpu_ratio = (num_jobs ? 1.0 / (float) num_jobs : 1);
                 }
             }
 
@@ -2209,7 +2185,7 @@ void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
             float gpu_ratio = 1;
             pmapp->accum_ps.GPU_energy = accum_gpu_power(last_pmon) * gpu_ratio * time_consumed;
 #endif
-            ear_unlock(&pmapp->powermon_app_mutex);
+            ear_unlock(&powermon_app_mutex[cc]);
         }
     }
 
@@ -2462,6 +2438,7 @@ void powermon_mpi_signature(application_t *app) {
 
     signature_copy(&pmapp->app.signature, &app->signature);
 
+		pmapp->app.job.local_id = app->job.local_id;
     pmapp->app.job.def_f = app->job.def_f;
     pmapp->app.job.th = app->job.th;
     pmapp->app.job.procs = app->job.procs;

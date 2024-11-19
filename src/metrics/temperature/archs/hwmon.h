@@ -8,13 +8,11 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-#ifndef LIBRARY_LOADER_ONEAPI_H
-#define LIBRARY_LOADER_ONEAPI_H
+#ifndef METRICS_TEMPERATURE_ARCHS_HWMON
+#define METRICS_TEMPERATURE_ARCHS_HWMON
 
-int module_oneapi_is();
-int module_constructor_oneapi(char *path_lib_so, char *libhack);
-void module_destructor_oneapi();
-int is_oneapi_enabled();
-void ear_oneapi_enabled();
+#include <metrics/temperature/temperature.h>
 
-#endif
+TEMP_DEFINES(hwmon);
+
+#endif //METRICS_TEMPERATURE_ARCHS_HWMON

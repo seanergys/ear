@@ -33,13 +33,12 @@
 extern int eards_sfd;
 
 /** Asks application status for a single node */
-int ear_node_get_app_master_status(cluster_conf_t *my_cluster_conf, app_status_t **status)
+state_t ear_node_get_app_master_status(cluster_conf_t *my_cluster_conf, app_status_t **status, int32_t *num_status)
 {
 	request_t command;
 	memset(&command, 0, sizeof(request_t));
 	request_header_t head;
 
-	debug("ear_node_status");
 	command.req = EAR_RC_APP_MASTER_STATUS;
 	command.node_dist = INT_MAX;
 	command.time_code = time(NULL);
@@ -47,130 +46,134 @@ int ear_node_get_app_master_status(cluster_conf_t *my_cluster_conf, app_status_t
 	send_command(&command);
 
 	head = receive_data(eards_sfd, (void **)status);
+	*num_status = head.size / sizeof(app_status_t);
 	//we don't need to check if size is bigger than app_status since an empty message can be returned (no apps running)
 	if (head.type != EAR_TYPE_APP_STATUS) {
 		debug("Error sending command to node");
 		if (head.size > 0 && head.type != EAR_ERROR) free(status);
-		return 0;
-	}
-
-	return head.size >= sizeof(app_status_t);
-}
-
-int ear_nodelist_get_app_master_status(cluster_conf_t *my_cluster_conf, app_status_t **status, char **nodes, int num_nodes)
-{
-	request_t command;
-	request_header_t head;
-	int *ips;
-	app_status_t *temp_status;
-	int num_status = 0;
-
-	get_ip_nodelist(my_cluster_conf, nodes, num_nodes, &ips);
-
-	memset(&command, 0, sizeof(request_t));
-
-	command.req = EAR_RC_APP_MASTER_STATUS;
-	command.nodes = ips;
-	command.num_nodes = num_nodes;
-	command.time_code = time(NULL);
-
-	head = data_nodelist(&command, my_cluster_conf, (void **)&temp_status);
-	num_status = head.size / sizeof(app_status_t);
-
-	if (head.type != EAR_TYPE_APP_STATUS || head.size < sizeof(app_status_t))
-	{
-		if (head.size > 0) free (temp_status);
-		*status = temp_status;
-		num_status = 0;
-	}
-
-	*status = temp_status;
-
-	free(ips);
-	return num_status;
-}
-
-int ear_nodelist_get_app_node_status(cluster_conf_t *my_cluster_conf, app_status_t **status, char **nodes, int num_nodes)
-{
-	request_t command;
-	request_header_t head;
-	int *ips;
-	app_status_t *temp_status;
-	int num_status = 0;
-
-	get_ip_nodelist(my_cluster_conf, nodes, num_nodes, &ips);
-
-	memset(&command, 0, sizeof(request_t));
-
-	command.req = EAR_RC_APP_NODE_STATUS;
-	command.nodes = ips;
-	command.num_nodes = num_nodes;
-	command.time_code = time(NULL);
-
-	head = data_nodelist(&command, my_cluster_conf, (void **)&temp_status);
-	num_status = head.size / sizeof(app_status_t);
-
-	if (head.type != EAR_TYPE_APP_STATUS || head.size < sizeof(app_status_t))
-	{
-		if (head.size > 0) free (temp_status);
-		*status = temp_status;
-		num_status = 0;
-	}
-
-	*status = temp_status;
-
-	free(ips);
-	return num_status;
-}
-
-/** Asks application status for a single node */
-int ear_node_get_app_node_status(cluster_conf_t *my_cluster_conf, app_status_t **status)
-{
-	request_t command;
-	memset(&command, 0, sizeof(request_t));
-	request_header_t head;
-
-	debug("ear_node_status");
-	command.req = EAR_RC_APP_NODE_STATUS;
-	command.node_dist = INT_MAX;
-	command.time_code = time(NULL);
-
-	send_command(&command);
-
-	head = receive_data(eards_sfd, (void **)status);
-	//we don't need to check if size is bigger than app_status since an empty message can be returned (no apps running)
-	if (head.type != EAR_TYPE_APP_STATUS) {
-		debug("Error sending command to node");
-		if (head.size > 0 && head.type != EAR_ERROR) free(status);
-		return 0;
-	}
-
-	return head.size >= sizeof(app_status_t);
-}
-
-int send_status(request_t *command, status_t **status)
-{
-	request_header_t head;
-	send_command(command);
-	head = receive_data(eards_sfd, (void**)status);
-	debug("receive_data with type %d and size %u", head.type, head.size);
-	if (head.type != EAR_TYPE_STATUS) {
-		error("Invalid type error, got type %d expected %d", head.type, EAR_TYPE_STATUS);
-		if (head.size > 0 && head.type != EAR_ERROR) free(status);
+		*status = NULL;
+		*num_status = 0;
 		return EAR_ERROR;
 	}
 
-	return (head.size/sizeof(status_t));
+	return EAR_SUCCESS;
+}
+
+state_t ear_nodelist_get_app_master_status(cluster_conf_t *my_cluster_conf, app_status_t **status, int32_t *num_status, char **nodes, int num_nodes)
+{
+	state_t ret = EAR_SUCCESS;
+	request_t command = { 0 };
+	request_header_t head = { 0 };
+	int *ips = NULL;
+	app_status_t *temp_status;
+
+	get_ip_nodelist(my_cluster_conf, nodes, num_nodes, &ips);
+
+
+	command.req = EAR_RC_APP_MASTER_STATUS;
+	command.nodes = ips;
+	command.num_nodes = num_nodes;
+	command.time_code = time(NULL);
+
+	head = data_nodelist(&command, my_cluster_conf, (void **)&temp_status);
+
+	*num_status = head.size / sizeof(app_status_t);
+	*status = temp_status;
+	if (head.type != EAR_TYPE_APP_STATUS || head.size < sizeof(app_status_t))
+	{
+		if (head.size > 0) free (temp_status);
+		*status = NULL;
+		*num_status = 0;
+		ret = EAR_ERROR;
+	}
+
+
+	free(ips);
+	return ret;
+}
+
+state_t ear_nodelist_get_app_node_status(cluster_conf_t *my_cluster_conf, app_status_t **status, int32_t *num_status, char **nodes, int num_nodes)
+{
+	request_t command = { 0 };
+	request_header_t head = { 0 };
+	int *ips = NULL;
+	app_status_t *temp_status = NULL;
+	state_t ret = EAR_SUCCESS;
+
+	get_ip_nodelist(my_cluster_conf, nodes, num_nodes, &ips);
+
+	command.req = EAR_RC_APP_NODE_STATUS;
+	command.nodes = ips;
+	command.num_nodes = num_nodes;
+	command.time_code = time(NULL);
+
+	head = data_nodelist(&command, my_cluster_conf, (void **)&temp_status);
+	*num_status = head.size / sizeof(app_status_t);
+	*status = temp_status;
+
+	if (head.type != EAR_TYPE_APP_STATUS || head.size < sizeof(app_status_t))
+	{
+		if (head.size > 0) free (temp_status);
+		*status = NULL;
+		*num_status = 0;
+		ret = EAR_ERROR;
+	}
+
+
+	free(ips);
+	return ret;
+}
+
+/** Asks application status for a single node */
+state_t ear_node_get_app_node_status(cluster_conf_t *my_cluster_conf, app_status_t **status, int32_t *num_status)
+{
+	request_t command = { 0 };
+	request_header_t head = { 0 };
+
+	command.req = EAR_RC_APP_NODE_STATUS;
+	command.node_dist = INT_MAX;
+	command.time_code = time(NULL);
+
+	send_command(&command);
+
+	head = receive_data(eards_sfd, (void **)status);
+	*num_status = head.size / sizeof(app_status_t);
+	//we don't need to check if size is bigger than app_status since an empty message can be returned (no apps running)
+	if (head.type != EAR_TYPE_APP_STATUS || head.size < sizeof(app_status_t)) {
+		debug("Error sending command to node");
+		if (head.size > 0 && head.type != EAR_ERROR) free(status);
+		*status = NULL;
+		*num_status = 0;
+		return EAR_ERROR;
+	}
+
+	return EAR_SUCCESS;
+}
+
+state_t send_status(request_t *command, status_t **status, int32_t *num_status)
+{
+	request_header_t head = { 0 };
+	send_command(command);
+	head = receive_data(eards_sfd, (void**)status);
+	*num_status = head.size / sizeof(status_t);
+	debug("receive_data with type %d and size %u", head.type, head.size);
+	if (head.type != EAR_TYPE_STATUS || head.size < sizeof(status_t)) {
+		error("Invalid type error, got type %d expected %d", head.type, EAR_TYPE_STATUS);
+		if (head.size > 0 && head.type != EAR_ERROR) free(status);
+		*status = NULL;
+		*num_status = 0;
+		return EAR_ERROR;
+	}
+
+	return EAR_SUCCESS;
 
 }
 
-int ear_node_get_status(cluster_conf_t *my_cluster_conf, status_t **status)
+state_t ear_node_get_status(cluster_conf_t *my_cluster_conf, status_t **status, int32_t *num_status)
 {
-	request_t command;
-	memset(&command, 0, sizeof(request_t));
-	request_header_t head;
+	request_t command = { 0 };
+	request_header_t head = { 0 };
 
-	debug("ear_node_status");
 	command.req=EAR_RC_STATUS;
 	command.node_dist = INT_MAX;
 	command.time_code = time(NULL);
@@ -178,13 +181,16 @@ int ear_node_get_status(cluster_conf_t *my_cluster_conf, status_t **status)
 	send_command(&command);
 
 	head = receive_data(eards_sfd, (void **)status);
+	*num_status = head.size / sizeof(status_t);
 	if (head.size < sizeof(status_t) || head.type != EAR_TYPE_STATUS) {
 		debug("Error sending command to node");
 		if (head.size > 0 && head.type != EAR_ERROR) free(status);
-		return 0;
+		*status = NULL;
+		*num_status = 0;
+		return EAR_ERROR;
 	}
 
-	return head.size >= sizeof(status_t);
+	return EAR_SUCCESS;
 }
 
 /** REMOTE FUNCTIONS FOR SINGLE NODE COMMUNICATION */
@@ -263,7 +269,7 @@ int ear_node_end_task(end_task_req_t *end_task)
 	return send_command(&command);
 }
 
-int ear_node_set_def_freq(unsigned long freq)
+int ear_node_set_def_freq(unsigned long freq, int32_t policy)
 {
 	request_t command;
 	memset(&command, 0, sizeof(request_t));
@@ -271,6 +277,7 @@ int ear_node_set_def_freq(unsigned long freq)
 	command.node_dist = INT_MAX;
 	command.time_code = time(NULL);
 	command.my_req.ear_conf.max_freq=freq;
+	command.my_req.ear_conf.p_id = policy;
 	return send_command(&command);
 }
 
@@ -341,16 +348,17 @@ int ear_node_set_powerlimit(unsigned long limit)
 	return send_command(&command);
 }
 
-void ear_cluster_set_powerlimit(cluster_conf_t *my_cluster_conf, unsigned long limit)
+state_t ear_cluster_set_powerlimit(cluster_conf_t *my_cluster_conf, unsigned long limit)
 {
 	request_t command;
 	memset(&command, 0, sizeof(request_t));
 	command.req=EAR_RC_SET_POWER;
 	command.my_req.pc.limit=limit;
 	send_command_all(command, my_cluster_conf);
+	return EAR_SUCCESS;
 }
 
-void ear_nodelist_set_powerlimit(cluster_conf_t *my_cluster_conf, unsigned long limit, char **nodes, int num_nodes)
+state_t ear_nodelist_set_powerlimit(cluster_conf_t *my_cluster_conf, unsigned long limit, char **nodes, int num_nodes)
 {
 	request_t command;
 	int *ips;
@@ -359,7 +367,6 @@ void ear_nodelist_set_powerlimit(cluster_conf_t *my_cluster_conf, unsigned long 
 
 	memset(&command, 0, sizeof(request_t));
 
-	debug("ear_node_new_job");
 	command.nodes = ips;
 	command.num_nodes = num_nodes;
 	command.req=EAR_RC_SET_POWER;
@@ -367,6 +374,7 @@ void ear_nodelist_set_powerlimit(cluster_conf_t *my_cluster_conf, unsigned long 
 	command.my_req.pc.limit = limit;
 	send_command_nodelist(&command, my_cluster_conf);
 	free(ips);
+	return EAR_SUCCESS;
 }
 
 int ear_node_red_powerlimit(unsigned int type, unsigned long limit)
@@ -381,7 +389,7 @@ int ear_node_red_powerlimit(unsigned int type, unsigned long limit)
 	return send_command(&command);
 }
 
-void ear_cluster_red_powerlimit(cluster_conf_t *my_cluster_conf, unsigned int type, unsigned long limit)
+state_t ear_cluster_red_powerlimit(cluster_conf_t *my_cluster_conf, unsigned int type, unsigned long limit)
 {
 	request_t command;
 	memset(&command, 0, sizeof(request_t));
@@ -389,6 +397,7 @@ void ear_cluster_red_powerlimit(cluster_conf_t *my_cluster_conf, unsigned int ty
 	command.my_req.pc.limit=limit;
 	command.my_req.pc.type=type;
 	send_command_all(command, my_cluster_conf);
+	return EAR_SUCCESS;
 }
 
 int ear_node_inc_powerlimit(unsigned int type, unsigned long limit)
@@ -403,7 +412,7 @@ int ear_node_inc_powerlimit(unsigned int type, unsigned long limit)
 	return send_command(&command);
 }   
 
-void ear_cluster_inc_powerlimit(cluster_conf_t *my_cluster_conf, unsigned int type, unsigned long limit)
+state_t ear_cluster_inc_powerlimit(cluster_conf_t *my_cluster_conf, unsigned int type, unsigned long limit)
 {
 	request_t command;
 	memset(&command, 0, sizeof(request_t));
@@ -411,6 +420,7 @@ void ear_cluster_inc_powerlimit(cluster_conf_t *my_cluster_conf, unsigned int ty
 	command.my_req.pc.limit=limit;
 	command.my_req.pc.type=type;
 	send_command_all(command, my_cluster_conf);
+	return EAR_SUCCESS;
 }
 
 
@@ -458,70 +468,67 @@ int ear_node_reset_default_powercap()
  *	SAME FUNCTIONALLITY BUT SENT TO ALL NODES
  */
 /** Asks application status for master nodes */
-int ear_cluster_get_app_master_status(cluster_conf_t *my_cluster_conf, app_status_t **status)
+state_t ear_cluster_get_app_master_status(cluster_conf_t *my_cluster_conf, app_status_t **status, int32_t *num_status)
 {
-	request_t command;
-	memset(&command, 0, sizeof(request_t));
-	app_status_t *temp_status;
-	request_header_t head;
+	request_t command = { 0 };
+	app_status_t *temp_status = NULL;
+	request_header_t head = { 0 };
 	time_t ctime = time(NULL);
-	int num_status = 0;
 
 	command.time_code = ctime;
 	command.req = EAR_RC_APP_MASTER_STATUS;
 	command.node_dist = 0;
 
 	head = data_all_nodes(&command, my_cluster_conf, (void **)&temp_status);
-	num_status = head.size / sizeof(app_status_t);
+	*num_status = head.size / sizeof(app_status_t);
 
 	debug("appstatus: received %d size of %d type", head.size, head.type);
 
 	if (head.type != EAR_TYPE_APP_STATUS || head.size < sizeof(app_status_t))
 	{
 		if (head.size > 0) free (temp_status);
-		*status = temp_status;
-		return 0;
+		*status = NULL;
+		*num_status = 0;
+		return EAR_ERROR;
 	}
 
 	*status = temp_status;
 
-	return num_status;
+	return EAR_SUCCESS;
 
 }
 
 /** Asks application status for all single nodes */
-int ear_cluster_get_app_node_status(cluster_conf_t *my_cluster_conf, app_status_t **status)
+state_t ear_cluster_get_app_node_status(cluster_conf_t *my_cluster_conf, app_status_t **status, int32_t *num_status)
 {
-	request_t command;
-	memset(&command, 0, sizeof(request_t));
-	app_status_t *temp_status;
-	request_header_t head;
+	request_t command = { 0 };
+	app_status_t *temp_status = NULL;
+	request_header_t head = { 0 };
 	time_t ctime = time(NULL);
-	int num_status = 0;
 
 	command.time_code = ctime;
 	command.req = EAR_RC_APP_NODE_STATUS;
 	command.node_dist = 0;
 
 	head = data_all_nodes(&command, my_cluster_conf, (void **)&temp_status);
-	num_status = head.size / sizeof(app_status_t);
+	*num_status = head.size / sizeof(app_status_t);
+	*status = temp_status;
 
 	debug("appstatus: received %d size of %d type", head.size, head.type);
 
 	if (head.type != EAR_TYPE_APP_STATUS || head.size < sizeof(app_status_t))
 	{
 		if (head.size > 0) free (temp_status);
-		*status = temp_status;
-		return 0;
+		*status = NULL;
+		*num_status = 0;
+		return EAR_ERROR;
 	}
 
-	*status = temp_status;
-
-	return num_status;
+	return EAR_SUCCESS;
 
 }
 
-void ear_cluster_set_risk(cluster_conf_t *my_cluster_conf, risk_t risk, unsigned long target)
+state_t ear_cluster_set_risk(cluster_conf_t *my_cluster_conf, risk_t risk, unsigned long target)
 {
 	request_t command;
 	memset(&command, 0, sizeof(request_t));
@@ -530,9 +537,10 @@ void ear_cluster_set_risk(cluster_conf_t *my_cluster_conf, risk_t risk, unsigned
 	command.my_req.risk.level=risk;
 	command.my_req.risk.target=target;
 	send_command_all(command, my_cluster_conf);
+	return EAR_SUCCESS;
 }
 
-void ear_cluster_increase_th(cluster_conf_t *my_cluster_conf, ulong th, ulong p_id)
+state_t ear_cluster_increase_th(cluster_conf_t *my_cluster_conf, ulong th, ulong p_id)
 {
 	request_t command;
 	memset(&command, 0, sizeof(request_t));
@@ -540,9 +548,10 @@ void ear_cluster_increase_th(cluster_conf_t *my_cluster_conf, ulong th, ulong p_
 	command.my_req.ear_conf.th=th;
 	command.my_req.ear_conf.p_id=p_id;
 	send_command_all(command, my_cluster_conf);
+	return EAR_SUCCESS;
 }
 
-void ear_nodelist_ear_node_new_job(new_job_req_t *new_job, uint port, char *net_ext, char **nodes, int num_nodes)
+state_t ear_nodelist_new_job(new_job_req_t *new_job, uint port, char *net_ext, char **nodes, int num_nodes)
 {
 	request_t command;
 	int *ips;
@@ -558,7 +567,7 @@ void ear_nodelist_ear_node_new_job(new_job_req_t *new_job, uint port, char *net_
 
 	memset(&command, 0, sizeof(request_t));
 
-	debug("ear_node_new_job");
+	debug("ear_nodelist_new_job");
 	command.nodes = ips;
 	command.num_nodes = num_nodes;
 	command.req=EAR_RC_NEW_JOB_LIST;
@@ -566,23 +575,10 @@ void ear_nodelist_ear_node_new_job(new_job_req_t *new_job, uint port, char *net_
 	memcpy(&command.my_req.new_job,new_job,sizeof(new_job_req_t));
 	send_command_nodelist(&command, &conf);
 	free(ips);
+	return EAR_SUCCESS;
 }
 
-void ear_iplist_ear_node_new_job(new_job_req_t *new_job, cluster_conf_t *my_cluster_conf, int *ips, int num_ips)
-{
-	request_t command;
-	memset(&command, 0, sizeof(request_t));
-
-	debug("ear_node_new_job");
-	command.nodes = ips;
-	command.num_nodes = num_ips;
-	command.req=EAR_RC_NEW_JOB_LIST;
-	command.time_code = time(NULL);
-	memcpy(&command.my_req.new_job,new_job,sizeof(new_job_req_t));
-	send_command_nodelist(&command, my_cluster_conf);
-}
-
-void ear_nodelist_ear_node_end_job(job_id jid, job_id sid, uint port, char *net_ext, char **nodes, int num_nodes)
+state_t ear_nodelist_end_job(job_id jid, job_id sid, uint port, char *net_ext, char **nodes, int num_nodes)
 {
 	request_t command;
 	int *ips;
@@ -598,7 +594,7 @@ void ear_nodelist_ear_node_end_job(job_id jid, job_id sid, uint port, char *net_
 
 	memset(&command, 0, sizeof(request_t));
 
-	debug("ear_node_end_job");
+	debug("ear_nodelist_end_job");
 	command.nodes = ips;
 	command.num_nodes = num_nodes;
 	command.req=EAR_RC_END_JOB_LIST;
@@ -607,24 +603,10 @@ void ear_nodelist_ear_node_end_job(job_id jid, job_id sid, uint port, char *net_
 	command.my_req.end_job.sid=sid;
 	send_command_nodelist(&command, &conf);
 	free(ips);
+	return EAR_SUCCESS;
 }
 
-void ear_iplist_ear_node_end_job(job_id jid, job_id sid, cluster_conf_t *my_cluster_conf, int *ips, int num_ips)
-{
-	request_t command;
-	memset(&command, 0, sizeof(request_t));
-
-	debug("ear_node_end_job");
-	command.nodes = ips;
-	command.num_nodes = num_ips;
-	command.req=EAR_RC_END_JOB_LIST;
-	command.time_code = time(NULL);
-	command.my_req.end_job.jid=jid;
-	command.my_req.end_job.sid=sid;
-	send_command_nodelist(&command, my_cluster_conf);
-}
-
-void ear_nodelist_increase_th(ulong th, ulong p_id, cluster_conf_t *my_cluster_conf, int *ips, int num_ips)
+state_t ear_nodelist_increase_th(ulong th, ulong p_id, cluster_conf_t *my_cluster_conf, int *ips, int num_ips)
 {
 	request_t command;
 	memset(&command, 0, sizeof(request_t));
@@ -634,48 +616,57 @@ void ear_nodelist_increase_th(ulong th, ulong p_id, cluster_conf_t *my_cluster_c
 	command.my_req.ear_conf.th=th;
 	command.my_req.ear_conf.p_id=p_id;
 	send_command_nodelist(&command, my_cluster_conf);
+	return EAR_SUCCESS;
 }
 
-void ear_nodelist_restore_conf(cluster_conf_t *my_cluster_conf, int *ips, int num_ips)
+state_t ear_nodelist_restore_conf(cluster_conf_t *my_cluster_conf, char **nodes, int num_nodes)
 {
-	request_t command;
+	request_t command = { 0 };
+	int *ips;
+	get_ip_nodelist(my_cluster_conf, nodes, num_nodes, &ips);
 	command.nodes = ips;
-	command.num_nodes = num_ips;
+	command.num_nodes = num_nodes;
 	command.req=EAR_RC_REST_CONF;
 	send_command_nodelist(&command, my_cluster_conf);
+	free(ips);
+	return EAR_SUCCESS;
 }
 
-void ear_nodelist_set_risk(risk_t risk, unsigned long target, cluster_conf_t *my_cluster_conf, int *ips, int num_ips)
+state_t ear_nodelist_set_risk(cluster_conf_t *my_cluster_conf, risk_t risk, unsigned long target, char **nodes, int num_nodes)
 {
-	request_t command;
+	request_t command = { 0 };
+	int *ips;
+	get_ip_nodelist(my_cluster_conf, nodes, num_nodes, &ips);
 	command.nodes = ips;
-	command.num_nodes = num_ips;
+	command.num_nodes = num_nodes;
 	command.req=EAR_RC_SET_RISK;
 	command.my_req.risk.level=risk;
 	command.my_req.risk.target=target;
 	send_command_nodelist(&command, my_cluster_conf);
+	free(ips);
+	return EAR_SUCCESS;
 }
 
-void ear_nodelist_set_default_powercap(cluster_conf_t *my_cluster_conf, int *ips, int num_ips)
+state_t ear_nodelist_set_default_powercap(cluster_conf_t *my_cluster_conf, int *ips, int num_ips)
 {
 	request_t command;
 	command.nodes = ips;
 	command.num_nodes = num_ips;
 	command.req=EAR_RC_DEF_POWERCAP;
 	send_command_nodelist(&command, my_cluster_conf);
+	return EAR_SUCCESS;
 }
 
-int ear_nodelist_get_policy_status(cluster_conf_t *my_cluster_conf, policy_status_t **status, char **nodes, int num_nodes)
+state_t ear_nodelist_get_policy_status(cluster_conf_t *my_cluster_conf, policy_status_t **status, int32_t *num_status, char **nodes, int num_nodes)
 {
-	request_t command;
+	request_t command = { 0 };
 	request_header_t head;
 	int *ips;
 	policy_status_t *temp_status;
-	int num_status = 0;
+	*num_status = 0;
+	state_t ret = EAR_SUCCESS;
 
 	get_ip_nodelist(my_cluster_conf, nodes, num_nodes, &ips);
-
-	memset(&command, 0, sizeof(request_t));
 
 	command.req = EAR_RC_POLICY_STATUS;
 	command.nodes = ips;
@@ -683,33 +674,32 @@ int ear_nodelist_get_policy_status(cluster_conf_t *my_cluster_conf, policy_statu
 	command.time_code = time(NULL);
 
 	head = data_nodelist(&command, my_cluster_conf, (void **)&temp_status);
-	num_status = head.size / sizeof(policy_status_t);
+	*num_status = head.size / sizeof(policy_status_t);
 
 	if (head.type != EAR_TYPE_POLICY_STATUS || head.size < sizeof(policy_status_t))
 	{
 		if (head.size > 0) free (temp_status);
 		*status = temp_status;
-		num_status = 0;
+		*num_status = 0;
+		ret = EAR_ERROR;
 	}
 
 	*status = temp_status;
 
 	free(ips);
-	return num_status;
+	return ret;
 }
 
 
-int ear_nodelist_get_status(cluster_conf_t *my_cluster_conf, status_t **status, char **nodes, int num_nodes)
+state_t ear_nodelist_get_status(cluster_conf_t *my_cluster_conf, status_t **status, int32_t *num_status, char **nodes, int num_nodes)
 {
-	request_t command;
-	request_header_t head;
-	int *ips;
-	status_t *temp_status;
-	int num_status = 0;
+	request_t command = { 0 };
+	request_header_t head = { 0 };
+	int *ips = NULL;
+	status_t *temp_status = NULL;
+	state_t ret = EAR_SUCCESS;
 
 	get_ip_nodelist(my_cluster_conf, nodes, num_nodes, &ips);
-
-	memset(&command, 0, sizeof(request_t));
 
 	command.req = EAR_RC_STATUS;
 	command.nodes = ips;
@@ -717,51 +707,23 @@ int ear_nodelist_get_status(cluster_conf_t *my_cluster_conf, status_t **status, 
 	command.time_code = time(NULL);
 
 	head = data_nodelist(&command, my_cluster_conf, (void **)&temp_status);
-	num_status = head.size / sizeof(status_t);
+	*num_status = head.size / sizeof(status_t);
+	*status = temp_status;
 
 	if (head.type != EAR_TYPE_STATUS || head.size < sizeof(status_t))
 	{
 		if (head.size > 0) free (temp_status);
-		*status = temp_status;
-		num_status = 0;
+		*status = NULL;
+		*num_status = 0;
+		ret = EAR_ERROR;
 	}
 
-	*status = temp_status;
 
 	free(ips);
-	return num_status;
+	return ret;
 }
 
-int ear_iplist_get_status(cluster_conf_t *my_cluster_conf, status_t **status, int *ips, int num_ips)
-{
-	request_header_t head;
-	request_t command;
-	memset(&command, 0, sizeof(request_t));
-	status_t *temp_status;
-	time_t ctime = time(NULL);
-	int num_status = 0;
-
-	command.time_code = ctime;
-	command.req = EAR_RC_STATUS;
-	command.nodes = ips;
-	command.num_nodes = num_ips;
-
-	head = data_nodelist(&command, my_cluster_conf, (void **)&temp_status);
-	num_status = head.size / sizeof(status_t);
-
-	if (head.type != EAR_TYPE_STATUS || head.size < sizeof(status_t))
-	{
-		if (head.size > 0) free (temp_status);
-		*status = temp_status;
-		return 0;
-	}
-
-	*status = temp_status;
-
-	return num_status;
-}
-
-void ear_cluster_set_th(cluster_conf_t *my_cluster_conf, ulong th, ulong p_id)
+state_t ear_cluster_set_th(cluster_conf_t *my_cluster_conf, ulong th, ulong p_id)
 {
 	request_t command;
 	memset(&command, 0, sizeof(request_t));
@@ -769,46 +731,51 @@ void ear_cluster_set_th(cluster_conf_t *my_cluster_conf, ulong th, ulong p_id)
 	command.my_req.ear_conf.th=th;
 	command.my_req.ear_conf.p_id=p_id;
 	send_command_all(command, my_cluster_conf);
+	return EAR_SUCCESS;
 }
 
 
-void ear_cluster_ping_propagated(cluster_conf_t *my_cluster_conf)
+state_t ear_cluster_ping_propagated(cluster_conf_t *my_cluster_conf)
 {
 	request_t command;
 	memset(&command, 0, sizeof(request_t));
 	command.req = EAR_RC_PING;
 	send_command_all(command, my_cluster_conf);
+	return EAR_SUCCESS;
 }
 
-void ear_cluster_set_max_freq(cluster_conf_t *my_cluster_conf, ulong max_freq)
+state_t ear_cluster_set_max_freq(cluster_conf_t *my_cluster_conf, ulong max_freq)
 {
 	request_t command;
 	memset(&command, 0, sizeof(request_t));
 	command.req=EAR_RC_MAX_FREQ;
 	command.my_req.ear_conf.max_freq = max_freq;
 	send_command_all(command, my_cluster_conf);
+	return EAR_SUCCESS;
 }
 
-void ear_cluster_set_freq(cluster_conf_t *my_cluster_conf, ulong freq)
+state_t ear_cluster_set_freq(cluster_conf_t *my_cluster_conf, ulong freq)
 {
 	request_t command;
 	memset(&command, 0, sizeof(request_t));
 	command.req=EAR_RC_SET_FREQ;
 	command.my_req.ear_conf.max_freq = freq;
 	send_command_all(command, my_cluster_conf);
+	return EAR_SUCCESS;
 }
 
-void ear_cluster_red_def_max_pstate(cluster_conf_t *my_cluster_conf, ulong pstate)
+state_t ear_cluster_red_def_max_pstate(cluster_conf_t *my_cluster_conf, ulong pstate)
 {
 	request_t command;
 	memset(&command, 0, sizeof(request_t));
 	command.req=EAR_RC_RED_PSTATE;
 	command.my_req.ear_conf.p_states = pstate;
 	send_command_all(command, my_cluster_conf);
+	return EAR_SUCCESS;
 }
 
 /** Sets the default pstate for a given policy in all nodes */
-void ear_cluster_set_def_pstate(cluster_conf_t *my_cluster_conf, uint pstate, ulong pid)
+state_t ear_cluster_set_def_pstate(cluster_conf_t *my_cluster_conf, uint pstate, ulong pid)
 {
 	request_t command;
 	memset(&command, 0, sizeof(request_t));
@@ -816,37 +783,41 @@ void ear_cluster_set_def_pstate(cluster_conf_t *my_cluster_conf, uint pstate, ul
 	command.my_req.ear_conf.p_states = pstate;
 	command.my_req.ear_conf.p_id = pid;
 	send_command_all(command, my_cluster_conf);
+	return EAR_SUCCESS;
 }
 
 /** Sets the maximum pstate in all the nodes */
-void ear_cluster_set_max_pstate(cluster_conf_t *my_cluster_conf, uint pstate)
+state_t ear_cluster_set_max_pstate(cluster_conf_t *my_cluster_conf, uint pstate)
 {
 	request_t command;
 	memset(&command, 0, sizeof(request_t));
 	command.req=EAR_RC_SET_MAX_PSTATE;
 	command.my_req.ear_conf.p_states = pstate;
 	send_command_all(command, my_cluster_conf);
+	return EAR_SUCCESS;
 }
 
 
-void ear_cluster_reduce_frequencies(cluster_conf_t *my_cluster_conf, ulong freq)
+state_t ear_cluster_reduce_frequencies(cluster_conf_t *my_cluster_conf, ulong freq)
 {
 	request_t command;
 	memset(&command, 0, sizeof(request_t));
 	command.req=EAR_RC_DEF_FREQ;
 	command.my_req.ear_conf.max_freq=freq;
 	send_command_all(command, my_cluster_conf);
+	return EAR_SUCCESS;
 }
 
-void ear_cluster_restore_conf(cluster_conf_t *my_cluster_conf)
+state_t ear_cluster_restore_conf(cluster_conf_t *my_cluster_conf)
 {
 	request_t command;
 	memset(&command, 0, sizeof(request_t));
 	command.req=EAR_RC_REST_CONF;
 	send_command_all(command, my_cluster_conf);
+	return EAR_SUCCESS;
 }
 
-void ear_cluster_set_def_freq(cluster_conf_t *my_cluster_conf, ulong freq, ulong policy)
+state_t ear_cluster_set_def_freq(cluster_conf_t *my_cluster_conf, ulong freq, ulong policy)
 {
 	request_t command;
 	memset(&command, 0, sizeof(request_t));
@@ -854,124 +825,121 @@ void ear_cluster_set_def_freq(cluster_conf_t *my_cluster_conf, ulong freq, ulong
 	command.my_req.ear_conf.max_freq = freq;
 	command.my_req.ear_conf.p_id = policy;
 	send_command_all(command, my_cluster_conf);
+	return EAR_SUCCESS;
 }
 
-void ear_cluster_reset_default_powercap(cluster_conf_t *my_cluster_conf)
+state_t ear_cluster_reset_default_powercap(cluster_conf_t *my_cluster_conf)
 {
 	request_t command;
 	memset(&command, 0, sizeof(request_t));
 	command.req=EAR_RC_DEF_POWERCAP;
 	send_command_all(command, my_cluster_conf);
+	return EAR_SUCCESS;
 }
 
-int ear_cluster_get_policy_status(cluster_conf_t *my_cluster_conf, policy_status_t **status)
+state_t ear_cluster_get_policy_status(cluster_conf_t *my_cluster_conf, policy_status_t **status, int32_t *num_status)
 {
 	request_t command;
 	memset(&command, 0, sizeof(request_t));
 	policy_status_t *temp_status;
 	request_header_t head;
 	time_t ctime = time(NULL);
-	int num_status = 0;
 
 	command.time_code = ctime;
 	command.req = EAR_RC_POLICY_STATUS;
 	command.node_dist = 0;
 
 	head = data_all_nodes(&command, my_cluster_conf, (void **)&temp_status);
-	num_status = head.size / sizeof(policy_status_t);
+	*num_status = head.size / sizeof(policy_status_t);
 
 	if (head.type != EAR_TYPE_POLICY_STATUS || head.size < sizeof(policy_status_t))
 	{
 		if (head.size > 0) free (temp_status);
 		*status = temp_status;
-		return 0;
+		*num_status = 0;
+		return EAR_ERROR;
 	}
 
 	*status = temp_status;
 
-	return num_status;
+	return EAR_SUCCESS;
 
 }
 
 
-int ear_cluster_get_status(cluster_conf_t *my_cluster_conf, status_t **status)
+state_t ear_cluster_get_status(cluster_conf_t *my_cluster_conf, status_t **status, int32_t *num_status)
 {
-	request_t command;
-	memset(&command, 0, sizeof(request_t));
-	status_t *temp_status;
-	request_header_t head;
+	request_t command = { 0 };
+	request_header_t head = { 0 };
+	status_t *temp_status = NULL;
 	time_t ctime = time(NULL);
-	int num_status = 0;
 
 	command.time_code = ctime;
 	command.req = EAR_RC_STATUS;
 	command.node_dist = 0;
 
 	head = data_all_nodes(&command, my_cluster_conf, (void **)&temp_status);
-	num_status = head.size / sizeof(status_t);
+	*num_status = head.size / sizeof(status_t);
+	*status = temp_status;
 
 	if (head.type != EAR_TYPE_STATUS || head.size < sizeof(status_t))
 	{
 		if (head.size > 0) free (temp_status);
-		*status = temp_status;
-		return 0;
+		*status = NULL;
+		*num_status = 0;
+		return EAR_ERROR;
 	}
 
-	*status = temp_status;
-
-	return num_status;
+	return EAR_SUCCESS;
 
 }
 
-int ear_node_get_power(power_check_t *power)
+state_t ear_node_get_power(power_check_t *power)
 {
-	request_t command;
+	request_t command = { 0 };
 	power_check_t *temp_power = NULL;
-	memset(&command, 0, sizeof(request_t));
 
 	command.node_dist = INT_MAX;
 	command.req = EAR_RC_GET_POWER;
 	command.time_code = time(NULL);
-	request_header_t head;
+	request_header_t head = { 0 };
 
 	send_command(&command);
 	head = receive_data(eards_sfd, (void**)&temp_power);
 	if (head.size < sizeof(power_check_t) || head.type != EAR_TYPE_POWER_CHECK) {
 		if (head.size > 0) {
 			free(temp_power);
-			temp_power = NULL;
 		}
 		debug("Error sending command to node");
+		return EAR_ERROR;
 	}
 	if (temp_power != NULL) {
 		*power = *temp_power;
 		free(temp_power);
 	}
 
-	return head.size >= sizeof(power_check_t);
+	return EAR_SUCCESS;
 }
 
-int ear_cluster_get_power(cluster_conf_t *my_cluster_conf, power_check_t *power)
+state_t ear_cluster_get_power(cluster_conf_t *my_cluster_conf, power_check_t *power)
 {
-	request_t command;
-	memset(&command, 0, sizeof(request_t));
+	request_t command = { 0 };
+	request_header_t head = { 0 };
 	power_check_t *temp_power = NULL;
-	request_header_t head;
-	int num_status = 0;
 
 	command.time_code = time(NULL);
 	command.req = EAR_RC_GET_POWER;
 	command.node_dist = 0;
 
 	head = data_all_nodes(&command, my_cluster_conf, (void **)&temp_power);
-	num_status = head.size / sizeof(power_check_t);
-	if (head.type != EAR_TYPE_POWER_CHECK || head.size != sizeof(power_check_t)) //in this case, size is a fixed uint64_t, cannot be higher
-	{
+	//in this case, size is a fixed uint64_t, cannot be higher
+	if (head.type != EAR_TYPE_POWER_CHECK || head.size != sizeof(power_check_t)) { 
+	
 		if (head.size > 0) {
 			free(temp_power);
 		}
 		temp_power = NULL;
-		num_status = 0;
+		return EAR_ERROR;
 	}
 
 	if (temp_power != NULL) {
@@ -979,21 +947,17 @@ int ear_cluster_get_power(cluster_conf_t *my_cluster_conf, power_check_t *power)
 		free(temp_power);
 	}
 
-	return num_status;
-
+	return EAR_SUCCESS;
 }
 
-int ear_nodelist_get_power(cluster_conf_t *my_cluster_conf, power_check_t *power, char **nodes, int num_nodes)
+state_t ear_nodelist_get_power(cluster_conf_t *my_cluster_conf, power_check_t *power, char **nodes, int num_nodes)
 {
-	request_t command;
-	request_header_t head;
+	request_t command = { 0 };
+	request_header_t head = { 0 };
 	int *ips;
 	power_check_t *temp_power;
-	int num_status = 0;
 
 	get_ip_nodelist(my_cluster_conf, nodes, num_nodes, &ips);
-
-	memset(&command, 0, sizeof(request_t));
 
 	command.req = EAR_RC_GET_POWER;
 	command.nodes = ips;
@@ -1001,13 +965,12 @@ int ear_nodelist_get_power(cluster_conf_t *my_cluster_conf, power_check_t *power
 	command.time_code = time(NULL);
 
 	head = data_nodelist(&command, my_cluster_conf, (void **)&temp_power);
-	num_status = head.size / sizeof(power_check_t);
 
-	if (head.type != EAR_TYPE_POWER_CHECK || head.size < sizeof(power_check_t))
+	if (head.type != EAR_TYPE_POWER_CHECK || head.size != sizeof(power_check_t))
 	{
 		if (head.size > 0) free (temp_power);
 		temp_power = NULL;
-		num_status = 0;
+		return EAR_ERROR;
 	}
 
 	if (temp_power != NULL)
@@ -1017,7 +980,7 @@ int ear_nodelist_get_power(cluster_conf_t *my_cluster_conf, power_check_t *power
 	}
 
 	free(ips);
-	return num_status;
+	return EAR_SUCCESS;
 }
 
 request_header_t send_powercap_status(request_t *command, powercap_status_t **status)
@@ -1039,11 +1002,10 @@ request_header_t send_powercap_status(request_t *command, powercap_status_t **st
 
 }
 
-int ear_node_get_powercap_status(cluster_conf_t *my_cluster_conf, powercap_status_t **pc_status, int release_power) 
+state_t ear_node_get_powercap_status(cluster_conf_t *my_cluster_conf, powercap_status_t **pc_status, int release_power) 
 {
-	powercap_status_t *temp_status;
-	request_t command;
-	memset(&command, 0, sizeof(request_t));
+	powercap_status_t *temp_status = NULL;
+	request_t command = { 0 };
 
 	command.node_dist = INT_MAX;
 	command.req = EAR_RC_GET_POWERCAP_STATUS;
@@ -1054,20 +1016,20 @@ int ear_node_get_powercap_status(cluster_conf_t *my_cluster_conf, powercap_statu
 	head = send_powercap_status(&command, &temp_status);
 	if (head.size < sizeof(powercap_status_t) || head.type != EAR_TYPE_POWER_STATUS) {
 		debug("Error sending command to node");
+		if (head.size) free(temp_status);
+		return EAR_ERROR;
 	}
 	*pc_status = temp_status;
 
-	return head.size >= sizeof(powercap_status_t);
+	return EAR_SUCCESS;;
 }
 
 /** Asks for powercap_status for all nodes */
-int ear_cluster_get_powercap_status(cluster_conf_t *my_cluster_conf, powercap_status_t **pc_status, int release_power)
+state_t ear_cluster_get_powercap_status(cluster_conf_t *my_cluster_conf, powercap_status_t **pc_status, int release_power)
 {
-	request_t command;
-	memset(&command, 0, sizeof(request_t));
+	request_t command = { 0 };
+	request_header_t head = { 0 };
 	powercap_status_t *temp_status;
-	request_header_t head;
-	int num_status = 0;
 
 	command.time_code = time(NULL);
 	command.req = EAR_RC_GET_POWERCAP_STATUS;
@@ -1075,32 +1037,28 @@ int ear_cluster_get_powercap_status(cluster_conf_t *my_cluster_conf, powercap_st
 	command.node_dist = 0;
 
 	head = data_all_nodes(&command, my_cluster_conf, (void **)&temp_status);
-	num_status = head.size / sizeof(powercap_status_t);
 
 	if (head.type != EAR_TYPE_POWER_STATUS || head.size < sizeof(powercap_status_t))
 	{
 		if (head.size > 0) free (temp_status);
 		*pc_status = temp_status;
-		num_status = 0;
+		return EAR_ERROR;
 	}
 
 	*pc_status = temp_status;
 
-	return num_status;
+	return EAR_SUCCESS;;
 
 }
 
-int ear_nodelist_get_powercap_status(cluster_conf_t *my_cluster_conf, powercap_status_t **pc_status, int release_power, char **nodes, int num_nodes)
+state_t ear_nodelist_get_powercap_status(cluster_conf_t *my_cluster_conf, powercap_status_t **pc_status, int release_power, char **nodes, int num_nodes)
 {
-	request_t command;
-	request_header_t head;
+	request_t command = { 0 };
+	request_header_t head = { 0 };
 	int *ips;
 	powercap_status_t *temp_status;
-	int num_status = 0;
 
 	get_ip_nodelist(my_cluster_conf, nodes, num_nodes, &ips);
-
-	memset(&command, 0, sizeof(request_t));
 
 	command.req = EAR_RC_GET_POWERCAP_STATUS;
 	command.nodes = ips;
@@ -1109,26 +1067,24 @@ int ear_nodelist_get_powercap_status(cluster_conf_t *my_cluster_conf, powercap_s
 	command.time_code = time(NULL);
 
 	head = data_nodelist(&command, my_cluster_conf, (void **)&temp_status);
-	num_status = head.size / sizeof(powercap_status_t);
 
 	if (head.type != EAR_TYPE_POWER_STATUS || head.size < sizeof(powercap_status_t))
 	{
 		if (head.size > 0) free (temp_status);
 		*pc_status = temp_status;
-		num_status = 0;
+		return EAR_ERROR;
 	}
 
 	*pc_status = temp_status;
 
 	free(ips);
-	return num_status;
+	return EAR_SUCCESS;
 }
 
 /** Asks nodes to release idle power */
-int ear_cluster_release_idle_power(cluster_conf_t *my_cluster_conf, pc_release_data_t *released)
+state_t ear_cluster_release_idle_power(cluster_conf_t *my_cluster_conf, pc_release_data_t *released)
 {
-	request_t command;
-	memset(&command, 0, sizeof(request_t));
+	request_t command = { 0 };
 	request_header_t head;
 	pc_release_data_t *temp_released;
 
@@ -1144,19 +1100,19 @@ int ear_cluster_release_idle_power(cluster_conf_t *my_cluster_conf, pc_release_d
 		if (head.size > 0) free(temp_released);
 		memset(released, 0, sizeof(pc_release_data_t));
 		free(temp_released);
-		return 0;
+		return EAR_ERROR;
 	}
 
 	memcpy(released, temp_released, sizeof(pc_release_data_t));
 	free(temp_released);
 
-	return 1;
+	return EAR_SUCCESS;
 }
 
 /** Send powercap_options to all nodes */
-int ear_cluster_set_powercap_opt(cluster_conf_t *my_cluster_conf, powercap_opt_t *pc_opt)
+state_t ear_cluster_set_powercap_opt(cluster_conf_t *my_cluster_conf, powercap_opt_t *pc_opt)
 {
-	request_t command;
+	request_t command = { 0 };
 	memset(&command, 0, sizeof(request_t));
 	command.req=EAR_RC_SET_POWERCAP_OPT;
 	command.time_code = time(NULL);
@@ -1165,14 +1121,12 @@ int ear_cluster_set_powercap_opt(cluster_conf_t *my_cluster_conf, powercap_opt_t
 	return EAR_SUCCESS;
 }
 
-int ear_nodelist_set_powercap_opt(cluster_conf_t *my_cluster_conf, powercap_opt_t *pc_opt, char **nodes, int num_nodes)
+state_t ear_nodelist_set_powercap_opt(cluster_conf_t *my_cluster_conf, powercap_opt_t *pc_opt, char **nodes, int num_nodes)
 {
-	request_t command;
+	request_t command = { 0 };
 	int *ips;
 
 	get_ip_nodelist(my_cluster_conf, nodes, num_nodes, &ips);
-
-	memset(&command, 0, sizeof(request_t));
 
 	command.req = EAR_RC_SET_POWERCAP_OPT;
 	command.nodes = ips;
@@ -1186,22 +1140,22 @@ int ear_nodelist_set_powercap_opt(cluster_conf_t *my_cluster_conf, powercap_opt_
 	return EAR_SUCCESS;
 }
 
-void ear_cluster_send_message(cluster_conf_t *my_cluster_conf, char *message)
+state_t ear_cluster_send_message(cluster_conf_t *my_cluster_conf, char *message)
 {
 	request_t command = { 0 };
 	command.req = EAR_RC_SEND_MESSAGE;
 	command.my_req.message = message;
 	send_command_all(command, my_cluster_conf);
+	return EAR_SUCCESS;
 }
 
-void ear_nodelist_send_message(cluster_conf_t *my_cluster_conf, char *message, char **nodes, int num_nodes)
+state_t ear_nodelist_send_message(cluster_conf_t *my_cluster_conf, char *message, char **nodes, int num_nodes)
 {
 	request_t command = { 0 };
 	int *ips;
 
 	get_ip_nodelist(my_cluster_conf, nodes, num_nodes, &ips);
 
-	debug("ear_node_new_job");
 	command.nodes = ips;
 	command.num_nodes = num_nodes;
 	command.req = EAR_RC_SEND_MESSAGE;
@@ -1209,10 +1163,11 @@ void ear_nodelist_send_message(cluster_conf_t *my_cluster_conf, char *message, c
 	command.my_req.message = message;
 	send_command_nodelist(&command, my_cluster_conf);
 	free(ips);
+	return EAR_SUCCESS;
 }
 
 /* pings all nodes */
-void ear_cluster_ping(cluster_conf_t *my_cluster_conf)
+state_t ear_cluster_ping(cluster_conf_t *my_cluster_conf)
 {
 	int i, j, k, rc; 
 	char node_name[256];
@@ -1247,5 +1202,6 @@ void ear_cluster_ping(cluster_conf_t *my_cluster_conf)
 			}
 		}
 	}
+	return EAR_SUCCESS;
 }
 
