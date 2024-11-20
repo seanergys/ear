@@ -351,8 +351,9 @@ void parse_island(cluster_conf_t *conf, char *line)
             strcpy(conf->islands[conf->num_islands].power_cap_type,token);
             verbose(0, "Parsing for this option (POWER_CAP_TYPE) in Island configuration will be deprecated in the future, please change it to a TAG structure\n");
         }
-        else if (!strcmp(token, "DBIP"))
+        else if (!strcmp(token, "DBIP") || !strcasecmp(token, "EARDBD_IP"))
         {
+            if (!strcmp(token, "DBIP")) warning("DBIP as an EARDBD specifier for node definitions is deprecated, please use EARDBD_IP");
             contains_ip = 1;
             token = strtok_r(NULL, " ", &first_ptr);
             int ip_id = -1;
@@ -383,8 +384,9 @@ void parse_island(cluster_conf_t *conf, char *line)
                     conf->islands[id_f].ranges[i].db_ip = ip_id;
             }
         }
-        else if (!strcmp(token, "DBSECIP"))
+        else if (!strcmp(token, "DBSECIP") || !strcasecmp(token, "EARDBD_MIRROR_IP"))
         {
+            if (!strcmp(token, "DBSECIP")) warning("DBSECIP as an EARDBD specifier for node definitions is deprecated, please use EARDBD_MIRROR_IP");
             contains_sec_ip = 1;
             token = strtok_r(NULL, " ", &first_ptr);
             debug("entering DBSECIP with token %s\n", token);

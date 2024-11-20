@@ -7,7 +7,7 @@ DBIp=127.0.0.1
 
 # Add a secondary IP for high availability
 # YOU MUST REMOVE OR COMMENT THIS FIELD IF YOU ARE NOT GOING TO USE A SECONDARY DB.
-# DBSECIP=
+# EARDBD_MIRROR_IP=
 
 # Set Database user with write rights.
 DBUser=ear_daemon
@@ -293,17 +293,17 @@ EnergyTag=memory-intensive pstate=4 users=usr1,usr2 groups=grp1,grp2 accounts=ac
 # two types of EARDBDs configurations. 
 #
 
-Island=0 Nodes=node10[01-80] DBIP=node1081 DBSECIP=node1082 EARGMID=1
+Island=0 Nodes=node10[01-80] EARDBD_IP=node1081 EARDBD_MIRROR_IP=node1082 EARGMID=1
 
 # These nodes are in island0 using different DB connections and with a different architecture. 
 # These nodes will use the same EARGM as the previous nodes.
-Island=0 Nodes=node11[01-80] DBIP=node1084 DBSECIP=node1085 tag=CPU
+Island=0 Nodes=node11[01-80] EARDBD_IP=node1084 EARDBD_MIRROR_IP=node1085 tag=CPU
 # These nodes are is island0 and will use default values for DB connection (line 0 for island0) and default tag.
 Island=0 Nodes=node12[01-80] tag=GPU
 
 
 # Will use default tag. 
-Island=1 Nodes=node11[01-80] DBIP=node1181 DBSECIP=node1182 
+Island=1 Nodes=node11[01-80] EARDBD_IP=node1181 EARDBD_MIRROR_IP=node1182 
 
 
 # --------------------------------------------------------------------------------------------------
