@@ -114,6 +114,7 @@ int main(int argc,char *argv[])
 	if (step_id >= 0) {
 		add_int_filter(loops_query, "step_id", step_id);
 	}
+	strcat(loops_query, " ORDER BY job_id, step_id, local_id, total_iterations");
 
 	reset_query_filters();
 	strcpy(jobs_query,  JOBS_QUERY);
@@ -140,16 +141,18 @@ int main(int argc,char *argv[])
 	for (int32_t i = 0; i < num_loops; i++) {
 		int32_t app_idx = -1;
 		for (int32_t j = 0; j < num_apps; j++) {
+			/* Appid/local_id is not used as a filter for now since it causes issues (some Jobs report it as 0
+			 * where the loop reports the pid*/
 			if (!strncmp(loops[i].node_id, apps[j].app.node_id, GENERIC_NAME) &&
 					loops[i].jid      == apps[j].app.job.id &&
-					loops[i].step_id  == apps[j].app.job.step_id &&
-					loops[i].local_id == apps[j].app.job.local_id) {
+					loops[i].step_id  == apps[j].app.job.step_id) {
 				app_idx = j;
 				break;
 			}
 		}
 
 		if (app_idx < 0) {
+			previous_time = 0;
 			apps = realloc(apps, sizeof(app_summary_t)*(num_apps+1)); 
 			app_idx = num_apps;
 			num_apps++;
@@ -159,33 +162,43 @@ int main(int argc,char *argv[])
 			/* Copy common data between loops of a same node */
 			strcpy(apps[app_idx].app.node_id, loops[i].node_id);
 			apps[app_idx].app.is_mpi = 1;
-			apps[app_idx].app.job.id       = loops[i].jid;
-			apps[app_idx].app.job.step_id  = loops[i].step_id;
-			apps[app_idx].app.job.local_id = loops[i].local_id;
+			/* Appid/local_id is not used as a filter for now since it causes issues (some Jobs report it as 0
+			 * where the loop reports the pid*/
+			bool found = false;
 			for (int32_t j = 0; j < num_jobs; j++) {
-				if (jobs[j].id == loops[i].jid) {
+				if (jobs[j].id == loops[i].jid && jobs[j].step_id == loops[i].step_id) {
 					memcpy(&apps[app_idx].app.job, &jobs[j], sizeof(job_t));
                     previous_time = jobs[j].start_mpi_time;
+					found = true;
 					break;
 				}
 			}
+			if (!found) printf("%sWarning: a Job entry for loop with jid %lu and stepid %lu has not been found%s\n", COL_RED, loops[i].jid, loops[i].step_id, COL_CLR); 
 		}
 
-        /* Assume that the first loop is 10 seconds long. */
+        /* Assume that the first loop is 10 seconds long if we did not find a start_time. */
         if (previous_time <= 0) previous_time = loops[i].total_iterations - 10;
 
 		/* Aggregate signatures with weights depending on the time */
 		signature_apply_weight(&loops[i].signature, &loops[i].signature, loops[i].total_iterations - previous_time);
+		/* Workaround for Gflops which should be accumulated, NOT averaged */
+		loops[i].signature.Gflops /= loops[i].total_iterations - previous_time;
 		acum_sig_metrics(&apps[app_idx].app.signature, &loops[i].signature);
-		apps[app_idx].total_time += loops[i].total_iterations - previous_time;
+		/* Workaround for perc_MPI which is not used by acum_sig_metrics */
+		apps[app_idx].app.signature.perc_MPI += loops[i].signature.perc_MPI;
+		apps[app_idx].total_time += (loops[i].total_iterations - previous_time);
 
         previous_time = loops[i].total_iterations;
 	}
 
+	printf("Printing a total of %d applications!\n", num_apps);
 	for (int32_t i = 0; i < num_apps; i++) {
+		/* Workaround so we can use the function compute_avg_sig which averages Gflops and does not compute perc_MPI*/
+		apps[i].app.signature.Gflops *= apps[i].total_time;
+		apps[i].app.signature.perc_MPI /= apps[i].total_time;
 		compute_avg_sig(&apps[i].app.signature, &apps[i].app.signature, apps[i].total_time);
-		apps[i].app.signature.time *= apps[i].total_time; //time is the one that we must accumulate without averaging
-		print_application_fd(STDOUT_FILENO, &apps[i].app, 1, 1, 0);
+		apps[i].app.signature.time = apps[i].total_time; //time is the one that we must accumulate without averaging
+		verbose_application_data(0, &apps[i].app);
 	}
 
 

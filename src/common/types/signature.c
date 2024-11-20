@@ -428,6 +428,7 @@ void signature_apply_weight(signature_t *dst,signature_t *src,int nums)
     dst->TPI = src->TPI*nums;
     dst->CPI = src->CPI*nums;
     dst->Gflops = src->Gflops*nums;
+    dst->perc_MPI = src->perc_MPI*nums;
     dst->time = src->time*nums;
     for (i=0;i<FLOPS_EVENTS;i++) dst->FLOPS[i] = src->FLOPS[i]*nums;
     dst->L1_misses = src->L1_misses*nums;
