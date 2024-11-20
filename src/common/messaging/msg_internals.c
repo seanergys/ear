@@ -53,6 +53,7 @@ uint32_t _get_sec_key()
 }
 #endif
 
+static uint64_t max_socket_tries = MAX_SOCKET_COMM_TRIES;
 
 int _read(int fd, void *data, size_t ssize)
 {
@@ -82,9 +83,9 @@ int _read(int fd, void *data, size_t ssize)
             debug("_read: read returns 0 bytes");
             must_abort = 1;
         }
-	} while ((tries < MAX_SOCKET_COMM_TRIES) && (to_read > 0) && (must_abort == 0)); //still pending to send and hasn't tried more than MAX_TRIES
+	} while ((tries < max_socket_tries) && (to_read > 0) && (must_abort == 0)); //still pending to send and hasn't tried more than MAX_TRIES
 
-	if (tries >= MAX_SOCKET_COMM_TRIES) { 
+	if (tries >= max_socket_tries) { 
         debug("_read: tries reached in read%d", tries); 
     }
 
@@ -125,9 +126,9 @@ int _write(int fd, void *data, size_t ssize)
             debug("_write: send returns 0 bytes");
             must_abort = 1;
         }
-	} while ((tries < MAX_SOCKET_COMM_TRIES) && (to_send > 0) && (must_abort == 0)); //still pending to send and hasn't tried more than MAX_TRIES
+	} while ((tries < max_socket_tries) && (to_send > 0) && (must_abort == 0)); //still pending to send and hasn't tried more than MAX_TRIES
 
-	if (tries >= MAX_SOCKET_COMM_TRIES) { 
+	if (tries >= max_socket_tries) { 
         debug("_write: tries reached in send %d", tries); 
     }
 
@@ -548,7 +549,11 @@ request_header_t receive_data(int fd, void **data)
             head.size = 0;
             return head;
         }
-        else return head;
+        else {
+            //read failed with ret = 0, si the connection works
+            head.type = EAR_TIMEOUT;
+            return head;
+        }
     }
     //write ack should go here if we implement it
     read_data = calloc(head.size, sizeof(char));
@@ -1262,6 +1267,8 @@ void send_command_all(request_t command, cluster_conf_t *my_cluster_conf)
 
 }
 
+#define INCREASE_MAX_TRIES_IF_DATA_READ_FAILS 0
+#define MAX_TRIES_UPPER_LIMIT 3
 #define MAX_CALLER_CONNECTIONS 50
 
 request_header_t data_all_nodes(request_t *command, cluster_conf_t *my_cluster_conf, void **data)
@@ -1357,7 +1364,7 @@ request_header_t data_all_nodes(request_t *command, cluster_conf_t *my_cluster_c
                     else
                         head.type = EAR_ERROR;
                 }
-                if (head.type == EAR_ERROR)
+                if (head.type == EAR_ERROR || head.type == EAR_TIMEOUT)
                 {
                     verbose(VCOMM, "Error reading data from node %d in the list", j);
 
@@ -1366,6 +1373,13 @@ request_header_t data_all_nodes(request_t *command, cluster_conf_t *my_cluster_c
                     failed_is[count_failed] = i;
                     failed_js[count_failed] = j;
                     count_failed++;
+#if INCREASE_MAX_TRIES_IF_DATA_READ_FAILS
+                    /* If the data READ fails (with the message working) we increase the max tries by 10% of the original value, 
+                     * with MAX_TRIES_UPPER_LIMIT * MAX_SOCKET_COMM_TRIES as a ceiling value*/
+                    if (head.type == EAR_TIMEOUT) {
+                        max_socket_tries = (max_socket_tries > MAX_SOCKET_COMM_TRIES * MAX_TRIES_UPPER_LIMIT) ? max_socket_tries : max_socket_tries + MAX_SOCKET_COMM_TRIES/10;
+                    }
+#endif
                 }
 
                 /* Always close the channel if there was a previous connection, independently of whether the data 
