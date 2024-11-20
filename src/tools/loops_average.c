@@ -136,6 +136,7 @@ int main(int argc,char *argv[])
 	int32_t num_loops = db_read_loops_query(&loops, loops_query);
 	int32_t num_jobs  = db_read_jobs_query(&jobs, jobs_query);
 
+    time_t previous_time = 0;
 	for (int32_t i = 0; i < num_loops; i++) {
 		int32_t app_idx = -1;
 		for (int32_t j = 0; j < num_apps; j++) {
@@ -164,15 +165,21 @@ int main(int argc,char *argv[])
 			for (int32_t j = 0; j < num_jobs; j++) {
 				if (jobs[j].id == loops[i].jid) {
 					memcpy(&apps[app_idx].app.job, &jobs[j], sizeof(job_t));
+                    previous_time = jobs[j].start_mpi_time;
 					break;
 				}
 			}
 		}
 
+        /* Assume that the first loop is 10 seconds long. */
+        if (previous_time <= 0) previous_time = loops[i].total_iterations - 10;
+
 		/* Aggregate signatures with weights depending on the time */
-		signature_apply_weight(&loops[i].signature, &loops[i].signature, loops[i].total_iterations);
+		signature_apply_weight(&loops[i].signature, &loops[i].signature, loops[i].total_iterations - previous_time);
 		acum_sig_metrics(&apps[app_idx].app.signature, &loops[i].signature);
-		apps[app_idx].total_time += loops[i].total_iterations;
+		apps[app_idx].total_time += loops[i].total_iterations - previous_time;
+
+        previous_time = loops[i].total_iterations;
 	}
 
 	for (int32_t i = 0; i < num_apps; i++) {
