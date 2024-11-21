@@ -80,6 +80,8 @@ static llong comp_N_begin;
 static llong comp_N_end;
 static llong comp_N_time;
 
+static uint check_affinity_mask = 1;
+
 /* The minimum period time to be elapsed before starting signature computation.
  * Defaults to 10s, but it is initiated at states_begin_job.
  */
@@ -584,14 +586,19 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
             N_iter = iterations - begin_iter;
 
-            /* We update periodically because some jobs change it at runtime. */
-						/* PENDING: Reduce the periodicity */
-            if (masters_info.my_master_rank >= 0){
+            /* We update periodically because some jobs change it at runtime.
+						 * As a process may reach this code multiple times when
+						 * computing the signature, we've added the boolean
+						 * check_affinity_mask to mark that the affinity mask for that
+						 * signature was already updated.
+						 */
+            if (masters_info.my_master_rank >= 0 && check_affinity_mask) {
               if (state_fail(update_job_affinity_mask(lib_shared_region, sig_shared_region)))
              {
                verbose(1, "An error occurred updating the affinity mask: %s", state_msg);
-             }else{
-               verbose(2,"EARL[%d] Affinity mask updated, using %d CPUs", AID, lib_shared_region->num_cpus);
+             }else {
+							 check_affinity_mask = 0;
+							 verbose(2,"EARL[%d] Affinity mask updated, using %d CPUs", AID, lib_shared_region->num_cpus);
              }
             }
 
@@ -772,6 +779,10 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             state_verbose_signature(&curr_loop, masters_info.my_master_rank, ear_app_name,
 																		application.node_id, iterations, prev_cpufreq_khz,
 																		policy_cpufreq_khz, use_case);
+
+						/* If reached, there will be another state on the next iteration, so
+						 * we can enable the affinity mask check. */
+						check_affinity_mask = 1;
 
             overhead_stop(id_ovh_ev_sig);
             break; // EVALUATING_LOCAL_SIGNATURE
