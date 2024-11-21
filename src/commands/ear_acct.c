@@ -155,7 +155,8 @@ void average_applications(application_t *apps, int num_apps, struct avg_apps **s
     //since the first application has been copied, we start at 1
     for (i = 1; i < num_apps; i++) {
         if (avg_apps[current].app.job.id == apps[i].job.id && 
-                avg_apps[current].app.job.step_id == apps[i].job.step_id ) { //existing application
+                avg_apps[current].app.job.step_id == apps[i].job.step_id &&
+				avg_apps[current].app.job.local_id == apps[i].job.local_id) { //existing application
 
             acum_sig_metrics(&avg_apps[current].app.signature, &apps[i].signature);
             avg_apps[current].num_nodes++; //either way, we get a +1 to the nodes counter
@@ -655,7 +656,7 @@ void print_short_apps(application_t *apps, int num_apps, bool is_csv, char *form
 	} else {
 		int i;
 		print_header_format(format);
-		for (i = 0; i < num_apps; i++) {
+		for (i = 0; i < new_num_apps; i++) {
 			print_app_format(&sorted_apps[i].app, format, sorted_apps[i].num_nodes);
 		}
 	}
