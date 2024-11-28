@@ -51,7 +51,7 @@ state_t init_active_connections_list()
 /*********** This function notify a new remote connetion ***************/
 state_t notify_new_connection(int fd)
 {
-	verbose(VRAPI-1,"Accept new connection %d", fd);
+	debug("Accept new connection %d", fd);
 	if (ear_fd_write(pipe_for_new_conn[1],(char *)&fd,sizeof(int)) != EAR_SUCCESS){
 		error("Error sending new fd for remote command %s",strerror(errno));
 		return EAR_ERROR;
