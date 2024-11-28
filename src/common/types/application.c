@@ -174,8 +174,8 @@ int create_app_header(char * header, char *path, uint num_gpus, char is_extended
 	char HEADER_GPU_SIG[1] = "\0";
 #endif // USE_GPUS
 
-		char ext_header[128] = ";L1_MISSES;L2_MISSES;L3_MISSES;SPOPS_SINGLE;SPOPS_128;"\
-														"SPOPS_256;SPOPS_512;DPOPS_SINGLE;DPOPS_128;DP_256;DPOPS_512";
+		char ext_header[128] = ";CPU_UTIL;L1_MISSES;L2_MISSES;L3_MISSES;SPOPS_SINGLE;SPOPS_128;"\
+														"SPOPS_256;SPOPS_512;DPOPS_SINGLE;DPOPS_128;DPOPS_256;DPOPS_512";
 		if (!is_extended)
 		{
 			memset(ext_header, 0, sizeof(ext_header));
@@ -246,7 +246,6 @@ int create_app_header(char * header, char *path, uint num_gpus, char is_extended
 	return EAR_SUCCESS;
 }
 
-
 int append_application_text_file(char *path, application_t *app, char is_extended, int add_header, int single_column)
 {
     //lacking: NODENAME(node_id in loop_t), not linked to any loop
@@ -282,7 +281,7 @@ int scan_application_fd(FILE *fd, application_t *app, char is_extended)
                 "%lf;%lf;%lf;%lf;" \
                 "%lf;%lf;%lf;" \
                 "%llu;%llu;%lf;" \
-                "%llu;%llu;%llu;" \
+                "%u;%llu;%llu;%llu;" \
                 "%llu;%llu;%llu;%llu;"	\
                 "%llu;%llu;%llu;%llu\n",
                 a->node_id, &a->job.id, &a->job.step_id, a->job.user_id,
@@ -291,7 +290,7 @@ int scan_application_fd(FILE *fd, application_t *app, char is_extended)
                 &a->signature.time, &a->signature.CPI, &a->signature.TPI, &a->signature.GBS,
                 &a->signature.DC_power, &a->signature.DRAM_power, &a->signature.PCK_power,
                 &a->signature.cycles, &a->signature.instructions, &a->signature.Gflops,
-                &a->signature.L1_misses, &a->signature.L2_misses, &a->signature.L3_misses,
+                &a->signature.ps_sig.cpu_util, &a->signature.L1_misses, &a->signature.L2_misses, &a->signature.L3_misses,
                 &a->signature.FLOPS[0], &a->signature.FLOPS[1], &a->signature.FLOPS[2], &a->signature.FLOPS[3],
                 &a->signature.FLOPS[4], &a->signature.FLOPS[5], &a->signature.FLOPS[6], &a->signature.FLOPS[7]);
 
@@ -420,12 +419,12 @@ void verbose_application_data(uint vl, application_t *app)
         char mpi_info_txt[512]; // signature details
 
         snprintf(mpi_info_txt, sizeof(mpi_info_txt),
-                "(mpi_sig) Wall time: %0.3lf s, nominal freq.: %0.2f GHz, avg. freq: %0.2f GHz, avg imc freq: %0.2f GHz\n"
-                "          Avg. mpi_time/exec_time %.1lf %%\n\n"
-                "          tasks: %lu\n\n"
-                "          CPI/TPI: %0.3lf/%0.3lf, GB/s: %0.3lf, GFLOPS: %0.3lf, IO: %0.3lf (MB/s)\n"
-                "          DC/DRAM/PCK power (W): %0.3lf/%0.3lf/%0.3lf GFlops/Watt %.3lf\n\n",
-                app->signature.time, def_f, avg_f, avg_imc_f,
+                "(Appl. sign.) Wall time: %0.3lf s, CPU util.: %u %% nominal freq.: %0.2f GHz, avg. freq: %0.2f GHz, avg imc freq: %0.2f GHz\n"
+                "              Avg. mpi_time/exec_time %.1lf %%\n\n"
+                "              tasks: %lu\n\n"
+                "              CPI/TPI: %0.3lf/%0.3lf, GB/s: %0.3lf, GFLOPS: %0.3lf, IO: %0.3lf (MB/s)\n"
+                "              DC/DRAM/PCK power (W): %0.3lf/%0.3lf/%0.3lf GFlops/Watt %.3lf\n\n",
+                app->signature.time, app->signature.ps_sig.cpu_util, def_f, avg_f, avg_imc_f,
                 app->signature.perc_MPI,
                 app->job.procs,
                 app->signature.CPI, app->signature.TPI, app->signature.GBS, app->signature.Gflops, app->signature.IO_MBS,
@@ -547,12 +546,12 @@ void report_mpi_application_data(int vl, application_t *app)
 
     if (app->is_mpi) {
         snprintf(mpi_info_txt, sizeof(mpi_info_txt),
-                "(mpi_sig) Wall time: %0.3lf s, nominal freq.: %0.2f GHz, avg. freq: %0.2f GHz, avg imc freq: %0.2f GHz\n"
-                "          Avg. mpi_time/exec_time %.1lf %%\n\n"
-                "          tasks: %lu\n\n"
-                "          CPI/TPI: %0.3lf/%0.3lf, GB/s: %0.3lf, GFLOPS: %0.3lf, IO: %0.3lf (MB/s)\n"
-                "          DC/DRAM/PCK power: %0.3lf/%0.3lf/%0.3lf (W) GFlops/Watts %.3lf\n\n",
-                app->signature.time, def_f, avg_f, avg_imc_f,
+                "(Appl. sign.) Wall time: %0.3lf s, CPU util.: %u %%, nominal freq.: %0.2f GHz, avg. freq: %0.2f GHz, avg imc freq: %0.2f GHz\n"
+                "              Avg. mpi_time/exec_time %.1lf %%\n\n"
+                "              tasks: %lu\n\n"
+                "              CPI/TPI: %0.3lf/%0.3lf, GB/s: %0.3lf, GFLOPS: %0.3lf, IO: %0.3lf (MB/s)\n"
+                "              DC/DRAM/PCK power: %0.3lf/%0.3lf/%0.3lf (W) GFlops/Watts %.3lf\n\n",
+                app->signature.time, app->signature.ps_sig.cpu_util, def_f, avg_f, avg_imc_f,
                 app->signature.perc_MPI,
                 app->job.procs,
                 app->signature.CPI, app->signature.TPI, app->signature.GBS, app->signature.Gflops, app->signature.IO_MBS,
@@ -616,8 +615,6 @@ void application_deserialize(serial_buffer_t *b, application_t *app)
     power_signature_deserialize(b, &app->power_sig);
     signature_deserialize(b, &app->signature);
 }
-
-
 
 void fill_basic_sig(application_t *app)
 {
