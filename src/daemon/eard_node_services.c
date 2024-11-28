@@ -1328,6 +1328,13 @@ state_t service_close_by_id(ulong jid,ulong sid)
 		if (i >= 0){
 			verbose(VEARD_LAPI,"Cancelling local connection %d",i);
 			eard_local_conn[i].cancelled = 1;
+			/* Closing the fd's */
+			AFD_CLR(eard_local_conn[i].fds[REQ_LOCAL_FD], &rfds_basic);
+			close(eard_local_conn[i].fds[REQ_LOCAL_FD]);
+			close(eard_local_conn[i].fds[ACK_LOCAL_FD]);
+			verbose(VRAPI-1,"From powermon end job: Closing FDS (req %d, ack %d) communication (%lu, %lu)",
+      eard_local_conn[i].fds[REQ_LOCAL_FD], eard_local_conn[i].fds[ACK_LOCAL_FD], eard_local_conn[i].jid, eard_local_conn[i].sid);
+			// Should we do that ?? clean_local_connection(&eard_local_conn[i]);
 		}
 	}while (i>=0);
 	return EAR_SUCCESS;
