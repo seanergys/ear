@@ -102,7 +102,14 @@ int main(int argc,char *argv[])
 	
   num_apps = db_read_applications(&apps, 1, 50, node_name);
   
-
+  strcpy(csv_name, "learning_show.");
+  strcat(csv_name, node_name);
+  strcat(csv_name, ".csv");
+  fd = fopen(csv_name, "w");
+  if (fd == NULL) {
+    verbose(0, "Can't open the outpout file %s, csv will not be generated", csv_name);
+    opt_o = 0; 
+  }
 
 #if USE_GPUS
   if(opt_g){
@@ -139,11 +146,7 @@ int main(int argc,char *argv[])
 
   // to store results on csv file
   if (opt_o){ 
-    strcpy(csv_name, "learning_show.");
-    strcat(csv_name, node_name);
-    strcat(csv_name, ".csv"); 
     // header
-    fd = fopen(csv_name, "w");	
     if(!use_gpu){
 	    fprintf(fd, "node_id\tjob_id\tstep_id\tapp_id\tdef_f\tavg_f\ttime\tDC_power\tDRAM_power\tPCK_power\tGBS\tCPI\tTPI\tGflops\tMPI_perc\tVPI\n");
     }
@@ -232,9 +235,9 @@ int main(int argc,char *argv[])
   }
   
   if (opt_o){
-    printf("\nResults stored in: %s\n", csv_name);
-    fclose(fd);
+    verbose(0, "Results stored in: %s", csv_name);
   }
+  fclose(fd);
 
 	return 0;
 }
