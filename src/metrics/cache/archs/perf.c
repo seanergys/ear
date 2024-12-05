@@ -166,13 +166,9 @@ state_t cache_perf_read(cache_t *ca)
 
 void cache_perf_internals_tostr(char *buffer, int length)
 {
-#if 0
-    cchar *state[] = { "failed", "loaded" };
-    cchar *bwtoo[] = { "", "(also in LBW)" };
     int i, c;
-    for (i = c = 0; i < meta_count; ++i) {
-        c += sprintf(&buffer[c], "%s: %s (event %s) %s\n", OFFSTR(meta[i].offset),
-             state[meta[i].enabled], meta[i].desc, bwtoo[meta[i].used_in_bw]);
+    for (i = c = 0; i < perfs_count; ++i) {
+        c += sprintf(&buffer[c], "%s: %s (event %s) %s\n",
+             perfs[i].event_name, (perfs[i].fd > 0) ? "working": "not-working");
     }
-#endif
 }
