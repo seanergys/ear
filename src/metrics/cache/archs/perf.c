@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <common/system/time.h>
 #include <common/output/debug.h>
@@ -31,8 +31,6 @@ static perf_t  perfs[5];
 static uint    perfs_count;
 static arith_t ariths[3];
 static uint    ariths_count;
-static ulong   ll_offset;
-static double  line_size;
 static uint    started;
 
 static void set_perf(ullong event, uint type, ulong offset, const char *event_desc)
@@ -70,9 +68,6 @@ static void ariths_calc(void *base_addr, arith_t *ariths, uint ariths_count)
 
 void cache_perf_load(topology_t *tp, cache_ops_t *ops)
 {
-    // Saving the last cache level
-    line_size = (double) tp->cache_line_size;
-    //
     if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_TIGERLAKE) {
         set_perf(0x01d1, PERF_TYPE_RAW, O(l1d, hits    ), "MEM_LOAD_RETIRED.L1_HIT       ");
         set_perf(0x08d1, PERF_TYPE_RAW, O(l1d, misses  ), "MEM_LOAD_RETIRED.L1_MISS      ");
@@ -81,6 +76,7 @@ void cache_perf_load(topology_t *tp, cache_ops_t *ops)
         arith_add(O(l1d, accesses), O(l1d, hits    ), O(l1d, misses), '+');
         arith_add(O(l2 , hits    ), O(l2 , accesses), O(l2 , misses), '-');
         arith_add(O(ll , misses  ), O(l2 , misses  ),              0, '=');
+        arith_add(O(lbw, misses  ), O(l2 , misses  ),              0, '=');
     } else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN3) {
         set_perf(0xf064, PERF_TYPE_RAW, O(l2 , hits    ), "PMCx064.1111.0000");
         set_perf(0x0864, PERF_TYPE_RAW, O(l2 , misses  ), "PMCx064.0000.1000");
@@ -88,6 +84,8 @@ void cache_perf_load(topology_t *tp, cache_ops_t *ops)
         arith_add(O(l2 , accesses), O(l2 , misses  ), O(l2 , hits  ), '+');
         arith_add(O(l1d, misses  ), O(l2 , accesses),              0, '=');
         arith_add(O(l1d, hits    ), O(l1d, accesses), O(l1d, misses), '-');
+        arith_add(O(ll , misses  ), O(l2 , misses  ),              0, '=');
+        arith_add(O(lbw, misses  ), O(l2 , misses  ),              0, '=');
     } else {
         return;
     }
@@ -168,7 +166,7 @@ void cache_perf_internals_tostr(char *buffer, int length)
 {
     int i, c;
     for (i = c = 0; i < perfs_count; ++i) {
-        c += sprintf(&buffer[c], "%s: %s (event %s) %s\n",
+        c += sprintf(&buffer[c], "%s: %s\n",
              perfs[i].event_name, (perfs[i].fd > 0) ? "working": "not-working");
     }
 }

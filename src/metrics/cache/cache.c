@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <pthread.h>
 #include <common/output/debug.h>
@@ -17,6 +17,7 @@
 #include <metrics/cache/archs/dummy.h>
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+static double line_size;
 static cache_ops_t ops;
 static uint load;
 
@@ -33,6 +34,7 @@ void cache_load(topology_t *tp, int force_api)
 dummy:
     cache_dummy_load(tp, &ops);
     // Getting cache line, is used to get the bandwidth
+    line_size = (double) tp->cache_line_size;
 	load = 1;
 out:
 	pthread_mutex_unlock(&lock);
@@ -101,7 +103,6 @@ static void level_diff(cache_level_t *l2, cache_level_t *l1, cache_level_t *lD)
 
 void cache_data_diff(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs)
 {
-    ullong time = 0LLU;
     double secs = 0.0;
 
     if (ops.data_diff != NULL) {
@@ -112,8 +113,16 @@ void cache_data_diff(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs)
     level_diff(&ca2->l1d, &ca1->l1d, &caD->l1d);
     level_diff(&ca2->l2 , &ca1->l2 , &caD->l2 );
     level_diff(&ca2->l3 , &ca1->l3 , &caD->l3 );
+    level_diff(&ca2->ll , &ca1->ll , &caD->ll );
+    level_diff(&ca2->lbw, &ca1->lbw, &caD->lbw);
+    if (gbs != NULL) {
+        *gbs = (double) caD->lbw.misses;
+        *gbs = *gbs / secs;
+        *gbs = *gbs * ((double) line_size);
+        *gbs = *gbs / ((double) 1E9);
+    }
     #if SHOW_DEBUGS
-    cache_data_print(caD, 0.0, fderr);
+    cache_data_print(caD, *gbs, fderr);
     #endif
 }
 
@@ -134,10 +143,12 @@ void cache_data_tostr(cache_t *ca, double gbs, char *buffer, size_t length)
     snprintf(buffer, length,
         "L1D: %10llu hits, %10llu misses, %10llu accesses, %0.2lf hit rate, %0.2lf miss rate\n"
         "L2 : %10llu hits, %10llu misses, %10llu accesses, %0.2lf hit rate, %0.2lf miss rate\n"
-        "L3 : %10llu hits, %10llu misses, %10llu accesses, %0.2lf hit rate, %0.2lf miss rate\n",
+        "L3 : %10llu hits, %10llu misses, %10llu accesses, %0.2lf hit rate, %0.2lf miss rate\n"
+        "CAS: %0.2lf GB/s\n",
         ca->l1d.hits, ca->l1d.misses, ca->l1d.accesses, ca->l1d.hit_rate, ca->l1d.miss_rate,
         ca->l2.hits , ca->l2.misses , ca->l2.accesses , ca->l2.hit_rate , ca->l2.miss_rate ,
-        ca->l3.hits , ca->l3.misses , ca->l3.accesses , ca->l3.hit_rate , ca->l3.miss_rate);
+        ca->l3.hits , ca->l3.misses , ca->l3.accesses , ca->l3.hit_rate , ca->l3.miss_rate ,
+        gbs);
 }
 
 void cache_internals_print(int fd)
