@@ -31,12 +31,21 @@
 //  - Thread safe: yes
 //  - Requires root: no
 
+
+typedef struct cache_level_s {
+    ullong accesses;
+    ullong misses;
+    ullong hits;
+    double miss_rate;
+    double hit_rate;
+} cache_level_t;
+
 typedef struct cache_s {
-    ullong lbw_misses;
-    ullong l1d_misses;
-    ullong l2_misses;
-    ullong l3_misses;
-    ullong ll_misses;
+    cache_level_t l1d;
+    cache_level_t l2;
+    cache_level_t l3;
+    cache_level_t ll; // Last level, can be L2 or L3
+    cache_level_t lbw; // The level used to compute the bandwidth
     timestamp_t time;
 } cache_t;
 

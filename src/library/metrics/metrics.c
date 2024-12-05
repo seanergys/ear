@@ -1655,9 +1655,9 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 	metrics->time = time_s / (double) iterations;
 
 	/* Cache misses */
-	metrics->L1_misses = cache_diff[sign_app_loop_idx].l1d_misses;
-	metrics->L2_misses = cache_diff[sign_app_loop_idx].l2_misses;
-	metrics->L3_misses = cache_diff[sign_app_loop_idx].l3_misses;
+	metrics->L1_misses = cache_diff[sign_app_loop_idx].l1d.misses;
+	metrics->L2_misses = cache_diff[sign_app_loop_idx].l2.misses;
+	metrics->L3_misses = cache_diff[sign_app_loop_idx].l3.misses;
 
 	if (metrics->sig_ext == NULL) {
 		metrics->sig_ext = (void *) calloc(1, sizeof(sig_ext_t));

@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <pthread.h>
 #include <common/output/debug.h>
@@ -90,9 +90,31 @@ state_t cache_read_copy(ctx_t *c, cache_t *ca2, cache_t *ca1, cache_t *caD, doub
     return s;
 }
 
+static void level_diff(cache_level_t *l2, cache_level_t *l1, cache_level_t *lD)
+{
+    lD->hits      = l2->hits     - l1->hits;
+    lD->misses    = l2->misses   - l1->misses;
+    lD->accesses  = l2->accesses - l1->accesses;
+    lD->hit_rate  = (lD->accesses) ? ((double) lD->hits  ) / ((double) lD->accesses): 0.0;
+    lD->miss_rate = (lD->accesses) ? ((double) lD->misses) / ((double) lD->accesses): 0.0;
+}
+
 void cache_data_diff(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs)
 {
-    return ops.data_diff(ca2, ca1, caD, gbs);
+    ullong time = 0LLU;
+    double secs = 0.0;
+
+    if (ops.data_diff != NULL) {
+        return ops.data_diff(ca2, ca1, caD, gbs);
+    }
+    memset(caD, 0, sizeof(cache_t));
+    secs = timestamp_fdiff(&ca2->time, &ca1->time, TIME_SECS, TIME_MSECS);
+    level_diff(&ca2->l1d, &ca1->l1d, &caD->l1d);
+    level_diff(&ca2->l2 , &ca1->l2 , &caD->l2 );
+    level_diff(&ca2->l3 , &ca1->l3 , &caD->l3 );
+    #if SHOW_DEBUGS
+    cache_data_print(caD, 0.0, fderr);
+    #endif
 }
 
 void cache_data_copy(cache_t *dst, cache_t *src)
@@ -109,9 +131,13 @@ void cache_data_print(cache_t *ca, double gbs, int fd)
 
 void cache_data_tostr(cache_t *ca, double gbs, char *buffer, size_t length)
 {
-snprintf(buffer, length,
-    "L1D misses: %llu\nL2  misses: %llu\nL3  misses: %llu\nLL  misses: %llu\nLBW misses: %llu (%0.2lf GB/s)\n",
-    ca->l1d_misses, ca->l2_misses, ca->l3_misses, ca->ll_misses, ca->lbw_misses, gbs);
+    snprintf(buffer, length,
+        "L1D: %10llu hits, %10llu misses, %10llu accesses, %0.2lf hit rate, %0.2lf miss rate\n"
+        "L2 : %10llu hits, %10llu misses, %10llu accesses, %0.2lf hit rate, %0.2lf miss rate\n"
+        "L3 : %10llu hits, %10llu misses, %10llu accesses, %0.2lf hit rate, %0.2lf miss rate\n",
+        ca->l1d.hits, ca->l1d.misses, ca->l1d.accesses, ca->l1d.hit_rate, ca->l1d.miss_rate,
+        ca->l2.hits , ca->l2.misses , ca->l2.accesses , ca->l2.hit_rate , ca->l2.miss_rate ,
+        ca->l3.hits , ca->l3.misses , ca->l3.accesses , ca->l3.hit_rate , ca->l3.miss_rate);
 }
 
 void cache_internals_print(int fd)
@@ -125,3 +151,28 @@ void cache_internals_tostr(char *buffer, int length)
 {
     ops.internals_tostr(buffer, length);
 }
+
+#if TEST
+static topology_t tp;
+static apinfo_t   info;
+static cache_t    c1;
+static cache_t    c2;
+static cache_t    cD;
+static double     gbs;
+
+int main(int argc, char *argv[])
+{
+    topology_init(&tp);
+    cache_load(&tp, API_FREE);
+    cache_get_info(&info);
+
+    cache_init(no_ctx);
+    apinfo_tostr(&info);
+    printf("%s\n", info.api_str);
+    cache_read(no_ctx, &c1);
+    sleep(1);
+    cache_read_diff(no_ctx, &c2, &c1, &cD, &gbs);
+
+    return 0;
+}
+#endif
