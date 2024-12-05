@@ -119,12 +119,13 @@ state_t pci_scan(ushort vendor, ushort *ids, char **dfs, mode_t mode, pci_t **pc
 state_t pci_scan_close(pci_t **pcis, uint *pcis_count)
 {
 	int p;
+    if (pcis == NULL || *pcis == NULL) {
+        return EAR_ERROR;
+    }
 	for (p = 0; p < *pcis_count; ++p) {
-		debug("%s closed with FD %d", (*pcis)[p].path, (*pcis)[p].fd);
 		close((*pcis)[p].fd);
-		(*pcis)[p].mode = 0;
-		(*pcis)[p].fd = -1;
 	}
+    free(*pcis);
 	*pcis_count = 0;
 	return EAR_SUCCESS;
 }
@@ -134,7 +135,7 @@ state_t pci_read(pci_t *pci, void *buffer, size_t size, off_t addr)
 	ssize_t psize;
 	errno = 0;
 	if ((psize = pread(pci->fd, buffer, size, addr)) != size) {
-		debug("%s read %ld bytes but expected %lu (errno %d)", pci->path, psize, size, errno);
+		debug("PCI %s FD%d read %ld bytes but expected %lu: %s (errno %d)", pci->path, pci->fd, size, psize, strerror(errno), errno);
 		if (errno == 0) {
 			return_msg(EAR_ERROR, "undefined error");
 		} else {
@@ -147,6 +148,7 @@ state_t pci_read(pci_t *pci, void *buffer, size_t size, off_t addr)
 state_t pci_write(pci_t *pci, const void *buffer, size_t size, off_t addr)
 {
 	if (pwrite(pci->fd, buffer, size, addr) != size) {
+		debug("PCI %s FD%d failed to write %ld bytes: %s (errno %d)", pci->path, pci->fd, size, strerror(errno), errno);
 		return_msg(EAR_ERROR, strerror(errno));
 	}
 	return EAR_SUCCESS;

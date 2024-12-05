@@ -101,9 +101,6 @@
 /** Forces EARD and EARGM to be executed as root. */
 #define RUN_AS_ROOT 0
 
-/** Allows normal users to change the CPU frequency without having to be authorized users. */
-#define CPUFREQ_SET_ALL_USERS 1
-
 /** Maximum number of tries when doing non-blocking communications. */
 #define MAX_SOCKET_COMM_TRIES               1000000
 //
@@ -112,7 +109,7 @@
 
 /* Forces the intel pstate to create the cpufreq list using turbo freq. Used in cases where the turbo
  * is on/off dynamically. It just works when using intel_pstate CPUFreq driver. */
-#define DYNAMIC_BOOST_MGT										0
+#define DYNAMIC_BOOST_MGT										1
 /* When set to 1, frequency is set to default when a new loop starts.
  * Otherwise, the current frequency is used till the policy is applied */
 #define RESET_FREQ                          0
@@ -182,6 +179,8 @@
 #define DEFAULT_ENERGY_PLUGIN "energy_cpu_gpu.so"
 #define DEFAULT_ENERGY_MODEL  "avx512_model.so"
 #endif
+
+#define DEFAULT_GPU_OPT 1 
 
 
 

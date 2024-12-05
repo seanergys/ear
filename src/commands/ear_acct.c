@@ -50,7 +50,7 @@ cluster_conf_t my_conf;
 
 int full_length = 0;
 int verbose = 0;
-int all_mpi = 0;
+int all_pow_sig = 0;
 int avx = 0;
 int print_gpus = 1;
 int loop_extended = 0;
@@ -155,7 +155,8 @@ void average_applications(application_t *apps, int num_apps, struct avg_apps **s
     //since the first application has been copied, we start at 1
     for (i = 1; i < num_apps; i++) {
         if (avg_apps[current].app.job.id == apps[i].job.id && 
-                avg_apps[current].app.job.step_id == apps[i].job.step_id ) { //existing application
+                avg_apps[current].app.job.step_id == apps[i].job.step_id &&
+				avg_apps[current].app.job.local_id == apps[i].job.local_id) { //existing application
 
             acum_sig_metrics(&avg_apps[current].app.signature, &apps[i].signature);
             avg_apps[current].num_nodes++; //either way, we get a +1 to the nodes counter
@@ -395,7 +396,7 @@ void print_app_format(application_t *app, char *fmt, int num_nodes)
 	for (i = 0; i < strlen(fmt); i++) { //this is preferable to a while loop because of the use of continues
 
 		//is_consumed is 1 only if that format char corresponds to signature/power signature
-		if (app->is_mpi) is_consumed = print_signature_format(&app->signature, fmt[i], 0);
+		if (app->is_mpi && !all_pow_sig) is_consumed = print_signature_format(&app->signature, fmt[i], 0);
 		else is_consumed = print_power_signature_format(app, fmt[i]);
 
 		if (is_consumed) continue;
@@ -655,7 +656,7 @@ void print_short_apps(application_t *apps, int num_apps, bool is_csv, char *form
 	} else {
 		int i;
 		print_header_format(format);
-		for (i = 0; i < num_apps; i++) {
+		for (i = 0; i < new_num_apps; i++) {
 			print_app_format(&sorted_apps[i].app, format, sorted_apps[i].num_nodes);
 		}
 	}
@@ -1319,7 +1320,7 @@ int main(int argc, char *argv[])
 				exit(0);
 				break;
 			case 'm':
-				all_mpi = 1;
+				all_pow_sig = 1;
 				break;
 			case 'c':
 				strcpy(csv_path, optarg);
@@ -1362,11 +1363,11 @@ int main(int argc, char *argv[])
 	if (verbose) printf("Limit set to %d\n", query_adds.limit);
 	if (strlen(format) < 1) {
 		if (is_loops)
-			strcpy(format, "jnXpgTCstrimG");
+			strcpy(format, "jxnXpgTCstrimG");
 		else if (full_length)
-			strcpy(format, "juapnrtpgCseG");
+			strcpy(format, "jxuapnrtpgCseG");
 		else
-			strcpy(format, "juapNrtpgCseG");
+			strcpy(format, "jxuapNrtpgCseG");
 	}
 
 	if (file_name != NULL) read_applications_from_files(file_name, format);

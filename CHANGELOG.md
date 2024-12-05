@@ -1,14 +1,31 @@
-### EAR 5.1
-- CPU temperature read by EARL and reported to csv files.
+### EAR 5.1.2
+- Bugs fixed:
+  - Prevent closing eard fd 0 when storing powermon\_app fd into shared memory.
+  - Close folder fd when removing it.
+  - GFLOPS aggregation.
+  - FreeIPMI energy plug-in was managing a dynamically allocated buffer in the wrong way.
+- Check whether new fds are not attended.
+- Now intel\_pstate driver creates the CPUFreq. list using Boost frequency by default.
+
+### EAR 5.1.1
+- Bug fixed: The application local\_id attribute is now copied to the power monitor context when saving the application signature.
+- Per-process CPU utilization fixed.
+- Classify module default verbosity fixed.
+- econtrol's manpage with improved examples.
+- Support for GPU models in the Configuration file.
+
+### EAR 5.1.0
+- CPU temperature monitoring included in application monitoring and reported to csv files.
 - Prevent workflows where all applications see all GPUs and all of them change GPU frequency.
-- Support for Python applications which use multiprocess module.
-- EARL is compiled by default with LITE mode and DCGM metric collection enabled by default.
+- Support for Python multiprocess module.
+- EARL is compiled by default with LITE mode. EAR Library will run in monitor mode if EARD is not present nor detected.
+- Nvidia DCGM metric collection enabled by default.
 - Fix DCGM application-level metrics computation.
-- Prevent closing fd 0 on NTASK\_WORKSHARING use case.
-- Avoid collapsing application's channel 2 when earl has high verbosity.
-- Checking for authorized groups fixed.
+- Prevent closing fd 0 on NTASK_WORKSHARING use case.
+- Avoid collapsing application's stderr channel when EARL has high verbosity.
+- Checking for authorized groups fixed. Support for multiple groups per user included.
 - Added a tool for  creating application-level signatures csv file from loop signatures csv file.
-- EARL Loader can detect Python MPI flavour without an environment variable.
+- EARL Loader extension for detecting Python MPI flavour more automatically.
 - Fixed an error with EARD remote connections not being properly closed.
 - Add --domain option to econtrol.
 

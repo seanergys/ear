@@ -7,8 +7,11 @@ comm_OBJS = \
     cupti.o \
     file.o \
     hsmp.o \
-    hsmp_lib.o \
+    hsmp_driver.o \
+    hsmp_esmi.o \
+    hsmp_pci.o \
     hwmon.o \
+    hwmon_old.o \
     isst.o \
     likwid.o \
     msr.o \
@@ -25,6 +28,9 @@ comm_OBJS = \
 ######## RULES
 
 all: $(comm_OBJS)
+
+hsmp_esmi.o: hsmp_esmi.c hsmp_esmi.h
+	$(CC) $(CFLAGS) $(ESMI_CFLAGS) -c $<
 
 nvml.o: nvml.c nvml.h
 	$(CC) $(CFLAGS) $(CUDA_CFLAGS) -c $<

@@ -8,11 +8,11 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-#ifndef _LIBRARY_LOADER_CONSTURCTOR_H_
-#define _LIBRARY_LOADER_CONSTURCTOR_H_
+#ifndef METRICS_TEMPERATURE_ARCHS_HWMON
+#define METRICS_TEMPERATURE_ARCHS_HWMON
 
-int module_constructor(char *path_lib_so,char *libhack);
+#include <metrics/temperature/temperature.h>
 
-void module_destructor();
+TEMP_DEFINES(hwmon);
 
-#endif // _LIBRARY_LOADER_CONSTURCTOR_H_
+#endif //METRICS_TEMPERATURE_ARCHS_HWMON

@@ -54,16 +54,17 @@ static int unsetenv_remote(spank_t sp, char *var)
 
 static int getenv_local(char *var, char *buf, int len)
 {
-	char *c;
-
+	char *val;
 	if (var == NULL || buf == NULL) {
 		return 0;
 	}
-	if ((c = ear_getenv(var)) == NULL) {
-		return 0;
-	}
-	snprintf(buf, len, "%s", c);
-	return 1;
+	if ((val = ear_getenv(var)) != NULL) {
+        if (strlen(val) > 0) {
+            snprintf(buf, len, "%s", val);
+            return 1;
+        }
+    }
+    return 0;
 }
 
 static int getenv_remote(spank_t sp, char *var, char *buf, int len)
@@ -110,29 +111,6 @@ static int isenv_remote(spank_t sp, char *var, char *val)
     }
 
     return 0;
-}
-
-static int exenv_local(char *var)
-{
-	char *env;
-	if (var == NULL) {
-		return 0;
-	}
-	env = ear_getenv(var);
-	return (env != NULL) && (strlen(env) > 0);
-}
-
-static int exenv_remote(spank_t sp, char *var)
-{
-	spank_err_t serrno;
-
-	if (var == NULL) {
-		return 0;
-	}
-
-	serrno = spank_getenv (sp, var, buffer, SZ_PATH);
-
-	return (serrno == ESPANK_SUCCESS || serrno == ESPANK_NOSPACE) && (strlen(buffer) > 0);
 }
 
 static int repenv_local(char *var_old, char *var_new)
@@ -201,53 +179,6 @@ int repenv_agnostic(spank_t sp, char *var_old, char *var_new)
 	}
 }
 
-int apenv_agnostic(char *dst, char *src, int dst_capacity)
-{
-	char *pointer;
-	int new_cap;
-	int len_src;
-	int len_dst;
-
-	if ((dst == NULL) || (src == NULL) || (strlen(src) == 0)) {
-		return 0;
-	}
-	len_dst = strlen(dst);
-	len_src = strlen(src);
-	new_cap = len_dst + len_src + (len_dst > 0) + 1;
-
-	if (new_cap > dst_capacity) {
-		return 0;
-	}
-	if (len_dst > 0) {
-		strcpy(buffer, dst);
-		pointer = &dst[len_src];
-		strcpy(&pointer[1], buffer);
-		strcpy(dst, src);
-		pointer[0] = ':';
-	} else {
-		strcpy(dst, src);
-	}
-	return 1;
-}
-
-int exenv_agnostic(spank_t sp, char *var)
-{
-	if (sp == NULL_C || plug_context_is(sp, Context.local)) {
-		return exenv_local(var);
-        } else {
-		return exenv_remote(sp, var);
-	}
-}
-
-int valenv_agnostic(spank_t sp, char *var, int *val)
-{
-	*val = 0;
-	if (getenv_agnostic(sp, var, buffer, SZ_PATH)) {
-		*val = atoi(buffer);
-	}
-	return *val;
-}
-
 void printenv_agnostic(spank_t sp, char *var)
 {
 	if (!getenv_agnostic(sp, var, buffer, SZ_PATH)) {
@@ -269,8 +200,11 @@ int plug_component_setenabled(spank_t sp, plug_component_t comp, int enabled)
 
 int plug_component_isenabled(spank_t sp, plug_component_t comp)
 {
-	int var;
-	return valenv_agnostic(sp, comp, &var);
+    int val = 0;
+    if (getenv_agnostic(sp, comp, buffer, SZ_PATH)) {
+        val = atoi(buffer);
+    }
+    return val;
 }
 
 /*
@@ -334,12 +268,6 @@ int plug_verbosity_test(spank_t sp, int level)
 	}
 
 	return verbosity >= level;
-}
-
-int plug_verbosity_silence(spank_t sp)
-{
-	verbosity = 0;
-	return 0;
 }
 
 /*

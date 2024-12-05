@@ -8,13 +8,17 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-#ifndef LIBRARY_LOADER_CUDA_H
-#define LIBRARY_LOADER_CUDA_H
+#ifndef METRICS_COMMON_HSMP_PCI_H
+#define METRICS_COMMON_HSMP_PCI_H
 
-int module_cuda_is();
-int module_constructor_cuda(char *path_lib_so,char *libhack);
-void module_destructor_cuda();
-int is_cuda_enabled();
-void ear_cuda_enabled();
+#include <metrics/common/hsmp.h>
 
-#endif 
+// This class is part of hsmp.h and is not intended to be used alone. This class
+// is not lock protected. It is recommended to use the functions found in hsmp.h.
+state_t hsmp_pci_open(topology_t *tp);
+
+state_t hsmp_pci_close();
+
+state_t hsmp_pci_send(int socket, uint function, uint *args, uint *reps);
+
+#endif

@@ -8,11 +8,15 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-#ifndef LIBRARY_LOADER_OPENMP_H
-#define LIBRARY_LOADER_OPENMP_H
+#ifndef METRICS_COMMON_HSMP_DRIVER_H
+#define METRICS_COMMON_HSMP_DRIVER_H
 
-int module_constructor_openmp(char *path_lib_so,char *libhack);
+#include <metrics/common/hsmp.h>
 
-void module_destructor_openmp();
+state_t hsmp_driver_open(topology_t *tp);
+
+state_t hsmp_driver_close();
+
+state_t hsmp_driver_send(int socket, uint function, uint *args, uint *reps);
 
 #endif

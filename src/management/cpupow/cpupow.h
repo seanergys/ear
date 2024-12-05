@@ -15,6 +15,7 @@
 #include <common/states.h>
 #include <common/hardware/topology.h>
 #include <metrics/common/apis.h>
+#include <metrics/common/pstate.h>
 
 // Domain/device types
 #define CPUPOW_DOMAINS       4
@@ -23,8 +24,8 @@
 #define CPUPOW_CORE          2 //PP0 (#devs = #cores), remember: cores != threads
 #define CPUPOW_UNCORE        3 //PP1 (#devs = ¿#sockets?)
 // Flag to use in powercap_set
-#define POWERCAP_DISABLE     UINT_MAX     //Disables the power cap in the device
-#define POWERCAP_DO_NOTHING (UINT_MAX-1)  //Don't change anything in the device
+#define POWERCAP_DO_NOTHING  ps_nothing  //Don't change anything in the device
+#define POWERCAP_DISABLE     ps_auto     //Disables the power cap in the device
 
 // API building scheme
 #define CPUPOW_F_LOAD(name)                void name (topology_t *tpo, mgt_cpupow_ops_t *ops)

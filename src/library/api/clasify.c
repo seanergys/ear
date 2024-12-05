@@ -24,7 +24,7 @@
 #include <library/api/clasify.h>
 #include <library/states/states_comm.h>
 #include <library/loader/module_mpi.h>
-#include <library/loader/module_cuda.h>
+#include <library/loader/module_common.h>
 #include <library/policies/common/mpi_stats_support.h>
 #include <common/types/configuration/cluster_conf.h> //import AUTHORIZED user_type
 
@@ -107,32 +107,32 @@ state_t classify_init(topology_t *tp_in, settings_conf_t *libconf)
 	if (cpath) {
 		strcpy(path, cpath);
 	} else {
-		verbose(0, "Reading default install dir: %s", libconf->installation.dir_conf);
-		snprintf(path, sizeof(path), "%s/ear/coeffs", libconf->installation.dir_conf);
+		//debug(0, "Reading default install dir: %s", libconf->installation.dir_conf);
+		snprintf(path, sizeof(path), "%s/ear/coeffs/island%d", libconf->installation.dir_conf, libconf->island);
 	}
 
-  verbose_master(2, "%s%s %s%s", COL_RED, path, libconf->tag, COL_CLR);
+  verbose_info2_master("Installation path for the coefficients of the classification: %s", path);
 
   if (load_medoids(path, libconf->tag, medoids) == EAR_SUCCESS && load_extremes(path, libconf->tag, extremes) == EAR_SUCCESS)
   {
-    verbose_master(2, "%sMedoids loaded%s", COL_RED, COL_CLR);
+    verbose_info_master("Loading K-medoids model for the classification");
     STRATEGY = MEDOIDS;
     free(roofline);
-    medoids_print(medoids, INFO_CLASSIFY);
+    medoids_print(medoids);
     goto report_classify;
   }
   else if (load_roofline(path, libconf->tag, roofline) == EAR_SUCCESS)
   {
-    verbose_master(2, "%sRoofline loaded%s", COL_RED, COL_CLR);
+    verbose_info_master("K-medoids strategy not available. Loading roofline model for the classification");
     STRATEGY = ROOFLINE;
     free(extremes);
     free(medoids);
-    roofline_print(roofline, INFO_CLASSIFY);
+    roofline_print(roofline);
     goto report_classify;
   }
   else
   {
-    verbose_master(2, "%sOld strategy loaded%s", COL_RED, COL_CLR);
+    verbose_info_master("K-medoids & roofline strategies not available. Loading default model for the classification");
     switch (tp_in->vendor)
     {
     case VENDOR_INTEL:
@@ -428,11 +428,11 @@ state_t roofline_classify(signature_t *sig, uint num_cpus, uint *cbound, uint *m
   
   if (gflops / gbs >= roofline->threshold) 
   {
-    *cbound = (gflops / num_cpus) / roofline->peak_gflops >= 0.75;
+    *cbound = 1;
   }
   else 
   {
-    *mbound = (gbs / num_cpus) / roofline->peak_bandwidth >= 0.75;
+    *mbound = (gbs / num_cpus) / roofline->peak_bandwidth >= 0.5;
   }
   return EAR_SUCCESS;
 }

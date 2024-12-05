@@ -1010,7 +1010,9 @@ void connect_service(struct daemon_req *new_req)
         error("Opening adding local ack newc");
   }
   debug("New communication FDs created for application FD[%d]=%d,%d",newc,ear_ack_fd,ear_req_fd);
-  AFD_SETT(ear_req_fd, &rfds_basic, "req%lu", new_req->con_id.lid);
+  if (AFD_SETT(ear_req_fd, &rfds_basic, "req%lu", new_req->con_id.lid) == 0) {
+      error("ear_req_fd for local communication is too large (%d, max is %d), rejecting connection", ear_req_fd, AFD_MAX);
+  }
   /* This function notifies the local connection */
   if (!eard_local_conn[newc].anonymous) powermon_mpi_init(&handler_energy, new_app);
   debug("Application %d connected with local API (anonymous %lu)",pid,eard_local_conn[newc].anonymous);
@@ -1326,6 +1328,13 @@ state_t service_close_by_id(ulong jid,ulong sid)
 		if (i >= 0){
 			verbose(VEARD_LAPI,"Cancelling local connection %d",i);
 			eard_local_conn[i].cancelled = 1;
+			/* Closing the fd's */
+			AFD_CLR(eard_local_conn[i].fds[REQ_LOCAL_FD], &rfds_basic);
+			close(eard_local_conn[i].fds[REQ_LOCAL_FD]);
+			close(eard_local_conn[i].fds[ACK_LOCAL_FD]);
+			verbose(VRAPI-1,"From powermon end job: Closing FDS (req %d, ack %d) communication (%lu, %lu)",
+      eard_local_conn[i].fds[REQ_LOCAL_FD], eard_local_conn[i].fds[ACK_LOCAL_FD], eard_local_conn[i].jid, eard_local_conn[i].sid);
+			// Should we do that ?? clean_local_connection(&eard_local_conn[i]);
 		}
 	}while (i>=0);
 	return EAR_SUCCESS;
@@ -1347,7 +1356,7 @@ state_t service_listen(int req_fd, int ack_fd, struct daemon_req *req)
   verbose(VEARD_LAPI, "New request. new connection %d", req_fd == global_req_fd);
 	// Reading the header.
 	if ((size = eards_read(req_fd, (char *) req, sizeof(eard_head_t), NO_WAIT_DATA)) != sizeof(eard_head_t)) {
-		error("when reading the RPC header %ld: expected %lu bytes and received %lu", req->req_service, sizeof(eard_head_t), size);
+		error("when reading the RPC header %ld: expected %lu bytes and received %lu FD=%d", req->req_service, sizeof(eard_head_t), size, req_fd);
 		return EAR_ERROR;
 	}
 	// Reading the union part
