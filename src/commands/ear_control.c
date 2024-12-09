@@ -699,6 +699,7 @@ int main(int argc, char *argv[])
 	int mail_fd = -1;
 	int num_nodes = 0;
 	unsigned long set_limit = -2;
+	bool send_message = false;
 
 
 	char get_power = 0;
@@ -709,6 +710,7 @@ int main(int argc, char *argv[])
 
 	char *mail = NULL;
 	char **nodes = NULL;
+	char *message = NULL;
 
 	strcpy(node_name,"");
     VCCONF = 2;
@@ -758,6 +760,7 @@ int main(int argc, char *argv[])
 		{"red-powercap",    required_argument, 0, 'd'},
 		{"domain",          required_argument, 0, 'D'},
 		{"mail",            required_argument, 0, 'm'},
+		{"send-message",    required_argument, 0, 'M'},
 		{"conf-path",       required_argument, 0, 'a'},
 		{"verbose",         optional_argument, 0, 'b'},
 		{"error",           no_argument, 0, 'e'},
@@ -770,7 +773,7 @@ int main(int argc, char *argv[])
 	while (1)
 	{
 
-		c = getopt_long(argc, argv, "p::shvb::", long_options, &option_idx);
+		c = getopt_long(argc, argv, "p::shvb::M:", long_options, &option_idx);
 
 		if (c == -1)
 			break;
@@ -1012,6 +1015,10 @@ int main(int argc, char *argv[])
                     ear_cluster_release_idle_power(&my_cluster_conf, &pc);
                     printf("released %u watts\n", pc.released);
                 }
+			case 'M':
+				send_message = true;
+				message = optarg;
+				break;
             case 'e':
                 num_status = ear_cluster_get_status(&my_cluster_conf, &status);
                 process_status(num_status, status, 1);
@@ -1134,6 +1141,10 @@ int main(int argc, char *argv[])
             printf("Error duplicating output: %s\n", strerror(errno)); 
         }
     }
+
+	if (send_message) {
+		ear_send_message(&my_cluster_conf, message, nodes, num_nodes);
+	}
 
     if (set_limit != -2) 
     {
