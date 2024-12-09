@@ -136,6 +136,10 @@ int print_application_fd(int fd, application_t *app, int new_line, char is_exten
 
     signature_print_fd(fd, &app->signature, is_extended, single_column,',');
 
+		dprintf(fd, ";");
+
+		print_power_signature_fd(fd, &app->power_sig);
+
     if (new_line) {
         dprintf(fd, "\n");
     }
@@ -174,6 +178,7 @@ int create_app_header(char * header, char *path, uint num_gpus, char is_extended
 	char HEADER_GPU_SIG[1] = "\0";
 #endif // USE_GPUS
 
+	// TODO: CPU_UTIL must be outside ext_header
 		char ext_header[128] = ";CPU_UTIL;L1_MISSES;L2_MISSES;L3_MISSES;SPOPS_SINGLE;SPOPS_128;"\
 														"SPOPS_256;SPOPS_512;DPOPS_SINGLE;DPOPS_128;DPOPS_256;DPOPS_512";
 		if (!is_extended)
@@ -200,7 +205,12 @@ int create_app_header(char * header, char *path, uint num_gpus, char is_extended
 	
 #endif
 
-		size_t header_len = strlen(HEADER_JOB) + strlen(HEADER_BASE) + num_gpus * USE_GPUS * strlen(HEADER_GPU_SIG) + strlen(ext_header) + 1 + strlen(cpu_sig_hdr);
+	// Full version
+	// char *HEADER_POWER_SIG = ";JOB_DC_NODE_POWER_W;JOB_DRAM_POWER_W;JOB_PCK_POWER_W;JOB_EDP;JOB_MAX_DC_POWER_W;JOB_MIN_DC_POWER_W;JOB_TIME_SEC;JOB_AVG_CPUFREQ_KHZ;JOB_DEF_FREQ_KHZ";
+	// Version using fields printed by print_power_signature_fd
+	char *HEADER_POWER_SIG = ";JOB_DC_NODE_POWER_W;JOB_DRAM_POWER_W;JOB_PCK_POWER_W;JOB_TIME_SEC;JOB_AVG_CPUFREQ_KHZ;JOB_DEF_FREQ_KHZ";
+
+		size_t header_len = strlen(HEADER_JOB) + strlen(HEADER_BASE) + num_gpus * USE_GPUS * strlen(HEADER_GPU_SIG) + strlen(ext_header) + 1 + strlen(cpu_sig_hdr) + strlen(HEADER_POWER_SIG);
 		if (header)
 		{
 			header_len += strlen(header);
