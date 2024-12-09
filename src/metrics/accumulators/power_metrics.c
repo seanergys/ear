@@ -99,7 +99,7 @@ static int pm_connect(ehandler_t *my_eh, topology_t *tp)
 	
 	if ((pm_already_connected) && (pm_connected_status==EAR_SUCCESS))
 	{
-		if (state_fail(status_enode = energy_init(NULL, my_eh))) {
+		if (state_fail(status_enode = energy_init(my_eh))) {
 			pm_connected_status=status_enode;
 			return status_enode;
 		}
@@ -118,7 +118,7 @@ static int pm_connect(ehandler_t *my_eh, topology_t *tp)
 	}
 	// Initializing node energy
 	debug("Initializing energy in main power_monitor thread");
-	pm_connected_status  = energy_init(NULL, my_eh);
+	pm_connected_status  = energy_init(my_eh);
 	pm_already_connected = 1;
 
 	if (pm_connected_status != EAR_SUCCESS) {
