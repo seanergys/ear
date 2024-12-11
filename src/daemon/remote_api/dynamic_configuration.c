@@ -805,57 +805,138 @@ static void log_msg_in_file(char *filename, char *txt)
 }
 #endif
 
+#define check_and_set_verbose(domain, val) if (!strcasecmp(level, #domain)) { domain = value; return EAR_SUCCESS; }
+#define check_and_reset_verbose(domain) if (!strcasecmp(level, #domain)) { domain = domain ## _DEF; return EAR_SUCCESS; }
+
+
+state_t _dyncon_reset_verbose(char *level)
+{
+    check_and_reset_verbose(VCONNECT);
+    check_and_reset_verbose(VCONF);
+    check_and_reset_verbose(VEARD);
+    check_and_reset_verbose(VEARD_PC);
+    check_and_reset_verbose(VEARD_INIT);
+    check_and_reset_verbose(VEARD_NMGR);
+    check_and_reset_verbose(VEARD_NMGR_DEBUG);
+    check_and_reset_verbose(VEARD_LAPI);
+    check_and_reset_verbose(VNODEPMON);
+    check_and_reset_verbose(VNODEPMON_BASIC);
+    check_and_reset_verbose(VJOBPMON);
+    check_and_reset_verbose(VJOBPMON_BASIC);
+    check_and_reset_verbose(VPMON_DEBUG);
+    check_and_reset_verbose(VTASKMON);
+    check_and_reset_verbose(VRAPI);
+    check_and_reset_verbose(VAPI);
+    check_and_reset_verbose(VCHCK);
+    check_and_reset_verbose(VGM);
+    check_and_reset_verbose(VGM_PC);
+    check_and_reset_verbose(VCCONF);
+    check_and_reset_verbose(VPRIV);
+    check_and_reset_verbose(VMYSQL);
+    check_and_reset_verbose(VDBH);
+    check_and_reset_verbose(VTYPE);
+    check_and_reset_verbose(VCOMM);
+    return EAR_ERROR;
+}
+
+state_t _dyncon_set_verbose(char *level, int32_t value)
+{
+    check_and_set_verbose(VCONNECT, value);
+    check_and_set_verbose(VCONF,value);
+    check_and_set_verbose(VEARD,value);
+    check_and_set_verbose(VEARD_PC,value);
+    check_and_set_verbose(VEARD_INIT,value);
+    check_and_set_verbose(VEARD_NMGR,value);
+    check_and_set_verbose(VEARD_NMGR_DEBUG,value);
+    check_and_set_verbose(VEARD_LAPI,value);
+    check_and_set_verbose(VNODEPMON,value);
+    check_and_set_verbose(VNODEPMON_BASIC,value);
+    check_and_set_verbose(VJOBPMON,value);
+    check_and_set_verbose(VJOBPMON_BASIC,value);
+    check_and_set_verbose(VPMON_DEBUG,value);
+    check_and_set_verbose(VTASKMON,value);
+    check_and_set_verbose(VRAPI,value);
+    check_and_set_verbose(VAPI,value);
+    check_and_set_verbose(VCHCK,value);
+    check_and_set_verbose(VGM,value);
+    check_and_set_verbose(VGM_PC,value);
+    check_and_set_verbose(VCCONF,value);
+    check_and_set_verbose(VPRIV,value);
+    check_and_set_verbose(VMYSQL,value);
+    check_and_set_verbose(VDBH,value);
+    check_and_set_verbose(VTYPE,value);
+    check_and_set_verbose(VCOMM,value);
+    return EAR_ERROR;
+}
+
 #define debug_if_not_null(value) if (value == NULL) { debug(#value" not set"); } else { debug(#value" set to %s", value); }
 
 void dyncon_process_message(char *message)
 {
-	char *type = NULL;
-	char *action = NULL;
-	char *mode = NULL;
-	char *level = NULL;
-	char *values = NULL;
-	debug("received message %s", message);
+    char *type = NULL;
+    char *action = NULL;
+    char *mode = NULL;
+    char *level = NULL;
+    char *values = NULL;
+    debug("received message %s", message);
 
-	char *key = NULL;
-	char *val = NULL;
-	char *ptr1 = NULL;
-	char *ptr2 = NULL;
+    char *key = NULL;
+    char *val = NULL;
+    char *ptr1 = NULL;
+    char *ptr2 = NULL;
 
-	key = strtok_r(message, " ", &ptr1);
-	while (key != NULL) {
-		key = strtok_r(key,  "=", &ptr2);
-		val = strtok_r(NULL, "=", &ptr2);
-		if (!strcasecmp(key, "type"))        type   = val; 
-		else if (!strcasecmp(key, "action")) action = val; 
-		else if (!strcasecmp(key, "mode"))   mode   = val; 
-		else if (!strcasecmp(key, "level"))  level = val; 
-		else if (!strcasecmp(key, "values")) values = val; 
-	
-		key = strtok_r(NULL, " ", &ptr1);
-	}
-	debug_if_not_null(type);
-	debug_if_not_null(action);
-	debug_if_not_null(mode);
-	debug_if_not_null(level);
-	debug_if_not_null(values);
+    key = strtok_r(message, " ", &ptr1);
+    while (key != NULL) {
+        key = strtok_r(key,  "=", &ptr2);
+        val = strtok_r(NULL, "=", &ptr2);
+        if (!strcasecmp(key, "type"))        type   = val; 
+        else if (!strcasecmp(key, "action")) action = val; 
+        else if (!strcasecmp(key, "mode"))   mode   = val; 
+        else if (!strcasecmp(key, "level"))  level = val; 
+        else if (!strcasecmp(key, "values")) values = val; 
+        else if (!strcasecmp(key, "value"))  values = val; 
 
-	debug("parsing values");
-	int32_t *int_values = NULL;
-	int32_t  num_values = 0;
-	if (values != NULL) {
-		char *token = strtok(values, ",");
-		while (token) {
-			int_values = realloc(int_values, sizeof(int32_t)*(num_values+1));
-			int_values[num_values] = atoi(token);
-			num_values++;
-			token = strtok(NULL, ",");
-		}
-	}
+        key = strtok_r(NULL, " ", &ptr1);
+    }
+    debug_if_not_null(type);
+    debug_if_not_null(action);
+    debug_if_not_null(mode);
+    debug_if_not_null(level);
+    debug_if_not_null(values);
 
-	debug("message fully parsed, calling powercap_process_message");
-	if (type != NULL && (!strcasecmp(type, "powercap") || !strcasecmp(type, "pc"))) {
-		powercap_process_message(action, mode, level, num_values, int_values);
-	}
+    debug("parsing values");
+    int32_t *int_values = NULL;
+    int32_t  num_values = 0;
+    if (values != NULL) {
+        char *token = strtok(values, ",");
+        while (token) {
+            int_values = realloc(int_values, sizeof(int32_t)*(num_values+1));
+            int_values[num_values] = atoi(token);
+            num_values++;
+            token = strtok(NULL, ",");
+        }
+    }
+
+    debug("message fully parsed, calling powercap_process_message");
+    if (type != NULL && (!strcasecmp(type, "powercap") || !strcasecmp(type, "pc"))) {
+        powercap_process_message(action, mode, level, num_values, int_values);
+    } else if (type != NULL && !strcasecmp(type, "verbose")) {
+        if (action != NULL && !strcasecmp(action, "set")) {
+            if (level != NULL && num_values > 0) {
+                if (state_fail(_dyncon_set_verbose(level, int_values[0]))) {
+                    warning("Verbose definition for %s does not exist", level);
+                }
+            }
+        } else if (action != NULL && !strcasecmp(action, "reset")) {
+            if (level != NULL) {
+                if (state_fail(_dyncon_reset_verbose(level))) {
+                    warning("Verbose definition for %s does not exist", level);
+                }
+            }
+        }
+
+    }
+    if (int_values != NULL) free(int_values);
 }
 
 
