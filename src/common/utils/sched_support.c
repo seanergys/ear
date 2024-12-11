@@ -19,6 +19,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <errno.h>
+#include <signal.h>
 
 #include <common/config.h>
 #include <common/output/verbose.h>
