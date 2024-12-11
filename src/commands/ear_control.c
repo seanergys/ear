@@ -790,13 +790,13 @@ void _parse_domain(const char *optarg, char ***hosts, int32_t *num_hosts, cluste
 
 int main(int argc, char *argv[])
 {
-    int32_t c = 0;
-    int32_t num_status = 0;
-    int32_t status_type = 0;
-    int32_t mail_fd = -1;
-    int32_t num_nodes = 0;
-    int64_t set_limit = -2;
-    bool send_message = false;
+	int c = 0;
+	int num_status = 0;
+	int status_type = 0;
+	int mail_fd = -1;
+	int num_nodes = 0;
+	unsigned long set_limit = -2;
+	bool send_message = false;
 
 
     char get_power = 0;
@@ -859,6 +859,7 @@ int main(int argc, char *argv[])
 		{"red-powercap",    required_argument, 0, 'd'},
 		{"domain",          required_argument, 0, 'D'},
 		{"mail",            required_argument, 0, 'm'},
+		{"send-message",    required_argument, 0, 'M'},
 		{"conf-path",       required_argument, 0, 'a'},
 		{"verbose",         optional_argument, 0, 'b'},
 		{"error",           no_argument, 0, 'e'},
@@ -871,7 +872,7 @@ int main(int argc, char *argv[])
 	while (1)
 	{
 
-        c = getopt_long(argc, argv, "p::shvb::", long_options, &option_idx);
+		c = getopt_long(argc, argv, "p::shvb::M:", long_options, &option_idx);
 
         if (c == -1)
             break;

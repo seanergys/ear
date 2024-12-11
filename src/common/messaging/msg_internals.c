@@ -273,7 +273,7 @@ int read_command(int s, request_t *command)
     //there is still data pending to read
     if (head.size > aux_size)
     {
-        if (command->req == EAR_RC_SET_POWERCAP_OPT)
+		if (command->req == EAR_RC_SET_POWERCAP_OPT)
         {
             debug("read_command:received powercap_opt");
             memcpy(&command->my_req, &tmp_command[aux_size], sizeof(powercap_opt_t)); //first we copy the base powercap_opt_t
