@@ -590,7 +590,7 @@ void process_eargm_status(int num_status, eargm_status_t *status, char **hosts, 
         printf("No EARGMs active\n");
         return;
     }
-    inactive = calloc(sizeof(char *), my_cluster_conf.eargm.num_eargms); //prepare for inactive nodes
+    inactive = calloc(my_cluster_conf.eargm.num_eargms, sizeof(char *)); //prepare for inactive nodes
     printf("%3s %10s %6s %10s %10s %10s %10s\n", 
             "ID", "NODE", "Status", "Cur. Power", "Powercap", "Req. Power", "Extra Pow.");
 
@@ -795,7 +795,7 @@ int main(int argc, char *argv[])
 	int status_type = 0;
 	int mail_fd = -1;
 	int num_nodes = 0;
-	unsigned long set_limit = -2;
+	long set_limit = -2;
 	bool send_message = false;
 
 
