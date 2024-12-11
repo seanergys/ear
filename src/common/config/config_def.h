@@ -180,7 +180,8 @@
 #define DEFAULT_ENERGY_MODEL  "avx512_model.so"
 #endif
 
-#define DEFAULT_GPU_OPT 1 
+#define DEFAULT_GPU_OPT 			1 
+#define DEF_TIMEOUT_COMMANDS 	5
 
 
 
