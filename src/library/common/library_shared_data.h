@@ -242,8 +242,6 @@ int select_global_cp(int size,int max,int *ppn,shsignature_t *my_sh_sig,int *nod
 void compute_avg_sh_signatures(int size,int max,int *ppn,shsignature_t *my_sh_sig,signature_t *sig);
 
 double min_perc_mpi_in_node(lib_shared_data_t *data,shsignature_t *sig);
-void compute_per_node_avg_sig_info(lib_shared_data_t *data,shsignature_t *sig,shsignature_t *my_node_sig);
-
 
 void copy_my_mpi_info(lib_shared_data_t *data,shsignature_t *sig,mpi_information_t *my_mpi_info);
 void copy_my_sig_info(lib_shared_data_t *data,shsignature_t *sig,shsignature_t *rem_sig);
@@ -251,44 +249,234 @@ void shsignature_copy(shsignature_t *dst,shsignature_t *src);
 
 int compute_per_node_most_loaded_process(lib_shared_data_t *data,shsignature_t *sig);
 
-/** Computes the total number of instructions of a job where its \p n_procs processses have their signatures
- * at \p sig. The result is stored at the address pointed by \p instructions. */
+/**
+ * @brief Computes the total number of instructions executed by a job in a node.
+ *
+ * This function calculates the total number of instructions executed for a job in the node
+ * by summing the instruction count values from an array of `shsignature_t` structures,
+ * each representing a process. The total instruction count is stored in the `instructions` variable.
+ *
+ * If the signature array (`sig`) or the instructions output pointer (`instructions`) is NULL,
+ * an error code is returned, and the global `state_msg` is set accordingly. If the number of processes
+ * (`n_procs`) is zero, a warning is logged.
+ *
+ * @param[in] sig Pointer to an array of `shsignature_t` structures, each representing a process,
+ *                containing the instruction count of that process.
+ * @param[in] n_procs The number of processes whose instruction counts are to be summed.
+ * @param[out] instructions A pointer to the variable where the total instruction count of the job
+ *                          in the node will be stored.
+ *
+ * @return A status code of type `state_t`:
+ * - `EAR_SUCCESS` if the calculation is successful.
+ * - Error codes if invalid inputs are provided (e.g., `NULL` pointers or zero processes).
+ *
+ * @note This function assumes that the `sig` array is valid and contains at least `n_procs` elements.
+ */
 state_t compute_job_node_instructions(const shsignature_t *sig, int n_procs, ull *instructions);
 
-
-/** Computes the total number of FLOP instructions of a job where its \p n_procs
- * processses have their signatures at \p sig. The result is stored at the
- * address pointed by \p flops.
+/**
+ * @brief Computes the total floating-point operations (FLOPs) of a job in a node.
  *
- * \param flops The address of this pointer must be the first position of an
- * allocated space of size FLOPS_EVENTS * sizeof (unsigned long). Otherwise
- * you will overwrite memory. */
+ * This function calculates the total floating-point operations (FLOPs) for a job in the node
+ * by summing the FLOPs values from an array of `shsignature_t` structures, each representing
+ * a process. The FLOPs values are stored in the `flops` array, with each element corresponding
+ * to a specific FLOPs event type.
+ *
+ * If the signature array (`sig`) or the FLOPs output array (`flops`) is NULL,
+ * an error code is returned, and the global `state_msg` is set accordingly. If the number
+ * of processes (`n_procs`) is zero, an error message is logged.
+ *
+ * @param[in] sig Pointer to an array of `shsignature_t` structures, each representing a process,
+ *                containing the FLOPs values of that process.
+ * @param[in] n_procs The number of processes whose FLOPs values are to be summed.
+ * @param[out] flops An array where the total FLOPs of the job in the node for each event type
+ *                   will be stored. The array must have space for `FLOPS_EVENTS` elements.
+ *
+ * @return A status code of type `state_t`:
+ * - `EAR_SUCCESS` if the calculation is successful.
+ * - Error codes if invalid inputs are provided (e.g., `NULL` pointers or zero processes).
+ *
+ * @note This function assumes that the `sig` array is valid and contains at least `n_procs` elements,
+ *       and that the `flops` array has space for `FLOPS_EVENTS` elements.
+ */
 state_t compute_job_node_flops(const shsignature_t *sig, int n_procs, ull *flops);
 
-/** Computes the accumulated IO MB_S */
+/**
+ * @brief Computes the total I/O throughput (in MB/s) for a job in a node.
+ *
+ * This function calculates the total I/O throughput in megabytes per second (MB/s) for a job
+ * running on the node by summing the I/O values from an array of `shsignature_t` structures,
+ * each representing an individual process. The total I/O throughput is stored in the `io_mbs` variable.
+ *
+ * If the signature array (`sig`) or the I/O throughput output pointer (`io_mbs`) is NULL,
+ * an error code is returned, and the global `state_msg` is set accordingly. If the number of processes
+ * (`n_procs`) is zero, a warning is returned.
+ *
+ * @param[in] sig Pointer to an array of `shsignature_t` structures, each representing a process,
+ *                containing the I/O throughput (in MB/s) of that process.
+ * @param[in] n_procs The number of processes whose I/O throughput is to be summed.
+ * @param[out] io_mbs A pointer to the variable where the total I/O throughput of the job in the node
+ *                    (in MB/s) will be stored.
+ *
+ * @return A status code of type `state_t`:
+ * - `EAR_SUCCESS` if the calculation is successful.
+ * - Error codes if invalid inputs are provided (e.g., `NULL` pointers or zero processes).
+ *
+ * @note This function assumes that the `sig` array is valid and contains at least `n_procs` elements.
+ */
 state_t compute_job_node_io_mbs(const shsignature_t *sig, int n_procs, double *io_mbs);
 
-/** Computes the total number of cycles of a job where its \p n_procs
- * processses have their signatures at \p sig. The result is stored
- * at the address pointed by \p t_cycles. */
+/**
+ * @brief Computes the total CPU cycles of a job in a node.
+ *
+ * This function calculates the total CPU cycles for a job in the node by summing
+ * the cycle values from an array of `shsignature_t` structures, each representing
+ * a process. The total CPU cycles are stored in the `t_cycles` variable.
+ *
+ * If the signature array (`sig`) or the cycles output pointer (`t_cycles`) is NULL,
+ * an error code is returned, and the global `state_msg` is set accordingly. If the number
+ * of processes (`n_procs`) is zero, a warning is returned.
+ *
+ * @param[in] sig Pointer to an array of `shsignature_t` structures, each representing a process,
+ *                containing the cycle values of that process.
+ * @param[in] n_procs The number of processes whose CPU cycles are to be summed.
+ * @param[out] t_cycles A pointer to the variable where the total CPU cycles of the job in the node
+ *                      will be stored.
+ *
+ * @return A status code of type `state_t`:
+ * - `EAR_SUCCESS` if the calculation is successful.
+ * - Error codes if invalid inputs are provided (e.g., `NULL` pointers or zero processes).
+ *
+ * @note This function assumes that the `sig` array is valid and contains at least `n_procs` elements.
+ */
 state_t compute_job_node_cycles(const shsignature_t *sig, int n_procs, ull *t_cycles);
 
-/** Computes the total number of L1 misses of a job where its \p n_procs
- * processses have their signatures at \p sig. The result is stored at
- * the address pointed by \p t_L1. */
+/**
+ * @brief Computes the total L1 cache misses of a job in a node.
+ *
+ * This function calculates the total L1 cache misses for a job in the node by summing
+ * the L1 cache miss values from an array of `shsignature_t` structures, each representing
+ * a process. The total L1 cache misses are stored in the `t_L1` variable.
+ *
+ * If the signature array (`sig`) or the L1 misses output pointer (`t_L1`) is NULL,
+ * an error code is returned, and the global `state_msg` is set accordingly. If the number
+ * of processes (`n_procs`) is zero, a warning is returned.
+ *
+ * @param[in] sig Pointer to an array of `shsignature_t` structures, each representing a process,
+ *                containing the L1 cache miss values of that process.
+ * @param[in] n_procs The number of processes whose L1 cache misses are to be summed.
+ * @param[out] t_L1 A pointer to the variable where the total L1 cache misses of the job in the node
+ *                  will be stored.
+ *
+ * @return A status code of type `state_t`:
+ * - `EAR_SUCCESS` if the calculation is successful.
+ * - Error codes if invalid inputs are provided (e.g., `NULL` pointers or zero processes).
+ *
+ * @note This function assumes that the `sig` array is valid and contains at least `n_procs` elements.
+ */
 state_t compute_job_node_L1_misses(const shsignature_t *sig, int n_procs, ull *t_L1);
 
-/** Computes the total number of L2 misses of a job where its \p n_procs processses have their
- * signatures at \p sig. The result is stored at the address pointed by \p t_L2. */
+/**
+ * @brief Computes the total L2 cache misses for a job in a node.
+ *
+ * This function calculates the total number of L2 cache misses for a job running on the node
+ * by summing the L2 cache misses values from an array of `shsignature_t` structures, where each
+ * structure represents an individual process. The resulting total L2 cache misses is stored in
+ * the `t_L2` variable.
+ *
+ * If the signature array (`sig`) or the L2 misses output pointer (`t_L2`) is NULL, an error
+ * code is returned, and the global `state_msg` is set accordingly. If the number of processes
+ * (`n_procs`) is zero, a warning is returned.
+ *
+ * @param[in] sig Pointer to an array of `shsignature_t` structures, each representing a process,
+ *                containing the L2 cache misses for that process.
+ * @param[in] n_procs The number of processes whose L2 cache misses are to be summed.
+ * @param[out] t_L2 A pointer to the variable where the total L2 cache misses of the job in the node
+ *                  will be stored.
+ *
+ * @return A status code of type `state_t`:
+ * - `EAR_SUCCESS` if the calculation is successful.
+ * - Error codes if invalid inputs are provided (e.g., `NULL` pointers or zero processes).
+ *
+ * @note This function assumes that the `sig` array is valid and contains at least `n_procs` elements.
+ */
 state_t compute_job_node_L2_misses(const shsignature_t *sig, int n_procs, ull *t_L2);
 
-/** Computes the total number of L3 misses of a job where its \p n_procs processses have their
- * signatures at \p sig. The result is stored at the address pointed by \p t_L3. */
+/**
+ * @brief Computes the total L3 cache misses of a job in a node.
+ *
+ * This function calculates the total L3 cache misses for a job in the node by summing
+ * the L3 cache miss values from an array of `shsignature_t` structures, each representing
+ * a process. The total L3 cache misses are stored in the `t_L3` variable.
+ *
+ * If the signature array (`sig`) or the L3 misses output pointer (`t_L3`) is NULL,
+ * an error code is returned, and the global `state_msg` is set accordingly. If the number
+ * of processes (`n_procs`) is zero, a warning is returned.
+ *
+ * @param[in] sig Pointer to an array of `shsignature_t` structures, each representing a process,
+ *                containing the L3 cache miss values of that process.
+ * @param[in] n_procs The number of processes whose L3 cache misses are to be summed.
+ * @param[out] t_L3 A pointer to the variable where the total L3 cache misses of the job in the node
+ *                  will be stored.
+ *
+ * @return A status code of type `state_t`:
+ * - `EAR_SUCCESS` if the calculation is successful.
+ * - Error codes if invalid inputs are provided (e.g., `NULL` pointers or zero processes).
+ *
+ * @note This function assumes that the `sig` array is valid and contains at least `n_procs` elements.
+ */
 state_t compute_job_node_L3_misses(const shsignature_t *sig, int n_procs, ull *t_L3);
 
-/** Compute the total GFlop/s rate of a job where its \p n_procs processes have their signatures
- * at \p sig. The result is stored at the address pointed by \p t_gflops. */
+/**
+ * @brief Computes the total GFLOPS (giga floating-point operations per second) for a job in a node.
+ *
+ * This function calculates the total GFLOPS for a job running on the node by summing the GFLOPS
+ * values from an array of `shsignature_t` structures, where each structure represents an individual
+ * process. The resulting total GFLOPS is stored in the `t_gflops` variable.
+ *
+ * If the signature array (`sig`) or the GFLOPS output pointer (`t_gflops`) is NULL,
+ * an error code is returned, and the global `state_msg` is set accordingly. If the number of processes
+ * (`n_procs`) is zero, a warning is returned.
+ *
+ * @param[in] sig Pointer to an array of `shsignature_t` structures, each representing a process,
+ *                containing the GFLOPS of that process.
+ * @param[in] n_procs The number of processes whose GFLOPS is to be summed.
+ * @param[out] t_gflops A pointer to the variable where the total GFLOPS of the job in the node will
+ *                      be stored.
+ *
+ * @return A status code of type `state_t`:
+ * - `EAR_SUCCESS` if the calculation is successful.
+ * - Error codes if invalid inputs are provided (e.g., `NULL` pointers or zero processes).
+ *
+ * @note This function assumes that the `sig` array is valid and contains at least `n_procs` elements.
+ */
 state_t compute_job_node_gflops(const shsignature_t *sig, int n_procs, double *t_gflops);
+
+/**
+ * @brief Computes cache performance metrics for a job in a node.
+ *
+ * This function calculates various cache performance metrics for a job in the node by
+ * aggregating cache statistics (hits and misses) from an array of `shsignature_t` structures,
+ * each representing a process. The aggregated cache metrics, including hits, misses, and
+ * their respective rates for L1D, L2, L3, and LL (Last Level), are stored in the `cache` structure.
+ *
+ * If the signature array (`sig`) or the cache metrics output pointer (`cache`) is NULL,
+ * an error code is returned, and the global `state_msg` is set accordingly. If the number of processes
+ * (`n_procs`) is zero, a warning is logged.
+ *
+ * @param[in] sig Pointer to an array of `shsignature_t` structures, each representing a process,
+ *                containing cache metrics for that process.
+ * @param[in] n_procs The number of processes whose cache metrics are to be aggregated.
+ * @param[out] cache A pointer to a `cache_signature_t` structure where the aggregated cache
+ *                   metrics, including hits, misses, and rates, will be stored.
+ *
+ * @return A status code of type `state_t`:
+ * - `EAR_SUCCESS` if the calculation is successful.
+ * - Error codes if invalid inputs are provided (e.g., `NULL` pointers or zero processes).
+ *
+ * @note This function assumes that the `sig` array is valid and contains at least `n_procs` elements.
+ */
+state_t compute_job_node_cache_metrics(const shsignature_t *sig, int n_procs, cache_signature_t *cache);
 
 uint compute_max_vpi_idx(const shsignature_t *sig, int n_procs, double *max_vpi);
 
@@ -299,6 +487,29 @@ void compute_total_node_avx_and_avx_fops(lib_shared_data_t *data,shsignature_t *
  * \p data's node_mask attribute and stores it on \p cpus. */
 void compute_job_cpus(lib_shared_data_t *data, uint *cpus);
 
+/**
+ * @brief Computes the total CPU utilization of a job in a node.
+ *
+ * This function calculates the total CPU utilization for a job in the node by summing
+ * the CPU utilization values from an array of `shsignature_t` structures, each representing
+ * a process. The total CPU utilization is stored in the `t_cpuutil` variable.
+ *
+ * If the signature array (`sig`) or the CPU utilization output pointer (`t_cpuutil`) is NULL,
+ * an error code is returned, and the global `state_msg` is set accordingly. If the number of processes
+ * (`n_procs`) is zero, a warning is returned.
+ *
+ * @param[in] sig Pointer to an array of `shsignature_t` structures, each representing a process,
+ *                containing the CPU utilization of that process.
+ * @param[in] n_procs The number of processes whose CPU utilization is to be summed.
+ * @param[out] t_cpuutil A pointer to the variable where the total CPU utilization of the job in the node
+ *                       will be stored.
+ *
+ * @return A status code of type `state_t`:
+ * - `EAR_SUCCESS` if the calculation is successful.
+ * - Error codes if invalid inputs are provided (e.g., `NULL` pointers or zero processes).
+ *
+ * @note This function assumes that the `sig` array is valid and contains at least `n_procs` elements.
+ */
 state_t compute_job_node_cpuutil(const shsignature_t *sig, int n_procs, uint *t_cpuutil);
 
 void load_app_mgr_env();

@@ -8,14 +8,14 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <assert.h>
+#include <stddef.h>
 #include <common/config.h>
 #include <common/output/debug.h>
 #include <common/types/signature.h>
@@ -52,9 +52,13 @@ void signature_print_fd(int fd, signature_t *sig, char is_extended,
 		sig->cycles, sig->instructions, sig->Gflops);
 
 	if (is_extended) {
-		dprintf(fd, ";%u;%llu;%llu;%llu",
+		dprintf(fd, ";%u;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%.2f;%.2f;%.2f;%.2f;%.2f;%.2f;%.2f;%.2f",
 			sig->ps_sig.cpu_util,
-			sig->L1_misses, sig->L2_misses, sig->L3_misses);
+			sig->L1_misses, sig->L2_misses, sig->L3_misses, sig->cache.ll_misses,
+			sig->cache.l1d_hits, sig->cache.l2_hits, sig->cache.l3_hits, sig->cache.ll_hits,
+			sig->cache.l1d_accesses, sig->cache.l2_accesses, sig->cache.l3_accesses, sig->cache.ll_accesses,
+			sig->cache.l1d_miss_rate, sig->cache.l2_miss_rate, sig->cache.l3_miss_rate, sig->cache.ll_miss_rate,
+			sig->cache.l1d_hit_rate, sig->cache.l2_hit_rate, sig->cache.l3_hit_rate, sig->cache.ll_hit_rate);
 
 		for (i = 0; i < FLOPS_EVENTS; ++i) {
 			dprintf(fd, ";%llu", sig->FLOPS[i]);
@@ -354,93 +358,6 @@ void signature_clean_before_db(signature_t *sig, double pwr_limit)
 #endif
 }
 
-state_t ssig_accumulate(ssig_t *dst_ssig, ssig_t *src_ssig)
-{
-	if (dst_ssig == NULL || src_ssig == NULL) {
-		return EAR_ERROR;
-	}
-
-	dst_ssig->time += src_ssig->time;
-	dst_ssig->CPI += src_ssig->CPI;
-	dst_ssig->avg_f += src_ssig->avg_f;
-	dst_ssig->def_f += src_ssig->def_f;
-	dst_ssig->instructions += src_ssig->instructions;
-	dst_ssig->cycles += src_ssig->cycles;
-	dst_ssig->L3_misses += src_ssig->L3_misses;
-	dst_ssig->Gflops += src_ssig->Gflops;
-	dst_ssig->IO_MBS += src_ssig->IO_MBS;
-
-	for (int i = 0; i < FLOPS_EVENTS; i++) {
-		dst_ssig->FLOPS[i] += src_ssig->FLOPS[i];
-	}
-
-#if USE_GPUS
-	dst_ssig->gpu_sig.num_gpus = src_ssig->gpu_sig.num_gpus;
-
-	for (int i = 0; i < MAX_GPUS_SUPPORTED; i++) {
-		dst_ssig->gpu_sig.gpu_data[i].GPU_power +=
-		    src_ssig->gpu_sig.gpu_data[i].GPU_power;
-		dst_ssig->gpu_sig.gpu_data[i].GPU_freq +=
-		    src_ssig->gpu_sig.gpu_data[i].GPU_freq;
-		dst_ssig->gpu_sig.gpu_data[i].GPU_mem_freq +=
-		    src_ssig->gpu_sig.gpu_data[i].GPU_mem_freq;
-		dst_ssig->gpu_sig.gpu_data[i].GPU_util +=
-		    src_ssig->gpu_sig.gpu_data[i].GPU_util;
-		dst_ssig->gpu_sig.gpu_data[i].GPU_mem_util +=
-		    src_ssig->gpu_sig.gpu_data[i].GPU_mem_util;
-#if WF_SUPPORT
-		dst_ssig->gpu_sig.gpu_data[i].GPU_GFlops +=
-		    src_ssig->gpu_sig.gpu_data[i].GPU_GFlops;
-		dst_ssig->gpu_sig.gpu_data[i].GPU_temp +=
-		    src_ssig->gpu_sig.gpu_data[i].GPU_temp;
-		dst_ssig->gpu_sig.gpu_data[i].GPU_temp_mem +=
-		    src_ssig->gpu_sig.gpu_data[i].GPU_temp_mem;
-#endif
-	}
-#endif
-
-	return EAR_SUCCESS;
-}
-
-void ssig_set_node_metrics(ssig_t *avg_sig, ssig_t *s)
-{
-	avg_sig->GBS = s->GBS;
-	avg_sig->TPI = s->TPI;
-	avg_sig->DC_power = s->DC_power;
-	avg_sig->time = 0;
-	avg_sig->CPI = 0;
-	avg_sig->avg_f = 0;
-	avg_sig->def_f = 0;
-	avg_sig->Gflops = 0;
-	memset(avg_sig->FLOPS, 0, sizeof(ull) * FLOPS_EVENTS);
-}
-
-state_t ssig_compute_avg_node(ssig_t *ssig, int n)
-{
-	if (ssig == NULL || n <= 0) {
-		return EAR_ERROR;
-	}
-
-	ssig->time /= n;
-
-	ssig->cycles /= n;
-	ssig->instructions /= n;
-	ssig->CPI /= n;
-
-	ssig->avg_f /= n;
-	ssig->def_f /= n;
-
-	ssig->L3_misses /= n;
-
-	ssig->IO_MBS /= n;
-
-	for (int i = 0; i < FLOPS_EVENTS; i++) {
-		ssig->FLOPS[i] /= n;
-	}
-
-	return EAR_SUCCESS;
-}
-
 /** TODO: This function is called by a function on lib_shared_data which is
  * called by a global_comm function which is not called anywhere. */
 void compute_avg_sig(signature_t *dst, signature_t *src, int nums)
@@ -527,6 +444,24 @@ state_t signature_from_ssig(signature_t *dst_sig, ssig_t *src_ssig)
 	memcpy(&dst_sig->gpu_sig, &src_ssig->gpu_sig, sizeof(gpu_signature_t));
 #endif
 
+	dst_sig->cache.l1d_misses = src_ssig->cache.l1d_misses;
+	dst_sig->cache.l2_misses = src_ssig->cache.l2_misses;
+	dst_sig->cache.l3_misses = src_ssig->cache.l3_misses;
+	dst_sig->cache.ll_misses = src_ssig->cache.ll_misses;
+
+	dst_sig->cache.l1d_hits = src_ssig->cache.l1d_hits;
+	dst_sig->cache.l2_hits = src_ssig->cache.l2_hits;
+	dst_sig->cache.l3_hits = src_ssig->cache.l3_hits;
+	dst_sig->cache.ll_hits = src_ssig->cache.ll_hits;
+
+	dst_sig->cache.l1d_accesses = src_ssig->cache.l1d_accesses;
+	dst_sig->cache.l2_accesses = src_ssig->cache.l2_accesses;
+	dst_sig->cache.l3_accesses = src_ssig->cache.l3_accesses;
+	dst_sig->cache.ll_accesses = src_ssig->cache.ll_accesses;
+
+	/* Set to zero the rest of dst_sig's cache signature attributes. */
+	memset(&dst_sig->cache.l1d_miss_rate, 0, sizeof(cache_signature_t) - offsetof(cache_signature_t, l1d_miss_rate));
+
 	return EAR_SUCCESS;
 }
 
@@ -560,16 +495,27 @@ state_t ssig_from_signature(ssig_t *dst_ssig, signature_t *src_sig)
 	memcpy(&dst_ssig->gpu_sig, &src_sig->gpu_sig, sizeof(gpu_signature_t));
 #endif
 
-	return EAR_SUCCESS;
-}
+	dst_ssig->cache.l1d_misses = src_sig->cache.l1d_misses;
+	dst_ssig->cache.l2_misses = src_sig->cache.l2_misses;
+	dst_ssig->cache.l3_misses = src_sig->cache.l3_misses;
+	dst_ssig->cache.ll_misses = src_sig->cache.ll_misses;
 
-void copy_mini_sig(ssig_t *dst, ssig_t *src)
-{
-	memcpy(dst, src, sizeof(ssig_t));
+	dst_ssig->cache.l1d_hits = src_sig->cache.l1d_hits;
+	dst_ssig->cache.l2_hits = src_sig->cache.l2_hits;
+	dst_ssig->cache.l3_hits = src_sig->cache.l3_hits;
+	dst_ssig->cache.ll_hits = src_sig->cache.ll_hits;
+
+	dst_ssig->cache.l1d_accesses = src_sig->cache.l1d_accesses;
+	dst_ssig->cache.l2_accesses = src_sig->cache.l2_accesses;
+	dst_ssig->cache.l3_accesses = src_sig->cache.l3_accesses;
+	dst_ssig->cache.ll_accesses = src_sig->cache.ll_accesses;
+
+	return EAR_SUCCESS;
 }
 
 void ssig_tostr(ssig_t *ssig, char *dst_str, size_t n)
 {
+	// TODO: Add other interesting metrics
 	snprintf(dst_str, n,
 		 "[dc power %.2f GB/s %.2f CPI %.3f GFlop/s %.2f I/O %.2f time %.3f avgf %lu deff %lu]",
 		 ssig->DC_power, ssig->GBS, ssig->CPI, ssig->Gflops,

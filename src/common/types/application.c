@@ -174,11 +174,16 @@ int create_app_header(char * header, char *path, uint num_gpus, char is_extended
 	char HEADER_GPU_SIG[1] = "\0";
 #endif // USE_GPUS
 
-		char ext_header[128] = ";CPU_UTIL;L1_MISSES;L2_MISSES;L3_MISSES;SPOPS_SINGLE;SPOPS_128;"\
-														"SPOPS_256;SPOPS_512;DPOPS_SINGLE;DPOPS_128;DPOPS_256;DPOPS_512";
+		char *ext_header = ";CPU_UTIL;L1_MISSES;L2_MISSES;L3_MISSES;LL_MISSES;"\
+												"L1_HITS;L2_HITS;L3_HITS;LL_HITS;"\
+												"L1_ACCESSES;L2_ACCESSES;L3_ACCESSES;LL_ACCESSES;"\
+												"L1_MISSRATE;L2_MISSRATE;L3_MISSRATE;LL_MISSRATE;"\
+												"L1_HITRATE;L2_HITRATE;L3_HITRATE;LL_HITRATE;"\
+												"SPOPS_SINGLE;SPOPS_128;SPOPS_256;SPOPS_512;"\
+												"DPOPS_SINGLE;DPOPS_128;DPOPS_256;DPOPS_512";
 		if (!is_extended)
 		{
-			memset(ext_header, 0, sizeof(ext_header));
+			memset(ext_header, 0, strlen(ext_header));
 		}
 
     // We force here num_gpus in order to be more robust with other formats.
