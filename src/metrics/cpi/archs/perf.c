@@ -8,46 +8,37 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-// #define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <common/output/debug.h>
 #include <metrics/common/perf.h>
 #include <metrics/cpi/archs/perf.h>
 
 // Generic
-static ullong gen_ins_ev   = PERF_COUNT_HW_INSTRUCTIONS;
-static ullong gen_cyc_ev   = PERF_COUNT_HW_CPU_CYCLES;
-static uint   gen_ins_tp   = PERF_TYPE_HARDWARE;
-static uint   gen_cyc_tp   = PERF_TYPE_HARDWARE;
-// Since Haswell
-//static ullong hwell_sta_ev = 0x010e;
-//static uint   hwell_sta_tp = PERF_TYPE_RAW;
-//
 static perf_t perf_ins;
 static perf_t perf_cyc;
 static perf_t perf_sta;
-static uint ins_en;
-static uint cyc_en;
-static uint sta_en;
 static uint started;
 
 void cpi_perf_load(topology_t *tp, cpi_ops_t *ops)
 {
-	if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_HASWELL_X) {
+    if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_ICELAKE_X) {
+        perf_open(&perf_ins, NULL, 0, PERF_TYPE_HARDWARE, PERF_COUNT_HW_INSTRUCTIONS);
+        perf_open(&perf_cyc, NULL, 0, PERF_TYPE_HARDWARE, PERF_COUNT_HW_CPU_CYCLES  );
+        perf_open(&perf_sta, NULL, 0, PERF_TYPE_RAW     , 0x40004a3                 );
+    } else if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_HASWELL_X) {
+        perf_open(&perf_ins, NULL, 0, PERF_TYPE_HARDWARE, PERF_COUNT_HW_INSTRUCTIONS);
+        perf_open(&perf_cyc, NULL, 0, PERF_TYPE_HARDWARE, PERF_COUNT_HW_CPU_CYCLES  );
+        perf_open(&perf_sta, NULL, 0, PERF_TYPE_RAW     , 0x01a2                    );
 	} else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN) {
+        perf_open(&perf_ins, NULL, 0, PERF_TYPE_HARDWARE, PERF_COUNT_HW_INSTRUCTIONS);
+        perf_open(&perf_cyc, NULL, 0, PERF_TYPE_HARDWARE, PERF_COUNT_HW_CPU_CYCLES  );
+        perf_open(&perf_sta, NULL, 0, PERF_TYPE_HARDWARE, PERF_COUNT_HW_STALLED_CYCLES_BACKEND);
     } else if (tp->vendor == VENDOR_ARM) {
+        perf_open(&perf_ins, NULL, 0, PERF_TYPE_HARDWARE, PERF_COUNT_HW_INSTRUCTIONS);
+        perf_open(&perf_cyc, NULL, 0, PERF_TYPE_HARDWARE, PERF_COUNT_HW_CPU_CYCLES  );
     } else {
         // API incompatible
-        return;
-    }
-	// Opening events
-	if (state_ok(perf_open(&perf_ins, NULL, 0, gen_ins_tp, gen_ins_ev))) {
-		ins_en = 1;
-	}
-	if (state_ok(perf_open(&perf_cyc, NULL, 0, gen_cyc_tp, gen_cyc_ev))) {
-		cyc_en = 1;
-	}
-    if (!ins_en && !cyc_en) {
         return;
     }
     apis_put(ops->get_info, cpi_perf_get_info);
@@ -64,15 +55,9 @@ void cpi_perf_get_info(apinfo_t *info)
 state_t cpi_perf_init()
 {
 	if (!started) {
-		if (ins_en) {
-			perf_start(&perf_ins);
-		}
-		if (cyc_en) {
-			perf_start(&perf_cyc);
-		}
-		if (sta_en) {
-			perf_start(&perf_sta);
-		}
+		if (perf_ins.fd >= 0) perf_start(&perf_ins);
+		if (perf_cyc.fd >= 0) perf_start(&perf_cyc);
+		if (perf_sta.fd >= 0) perf_start(&perf_sta);
 		++started;
 	}
 	return EAR_SUCCESS;
@@ -80,9 +65,9 @@ state_t cpi_perf_init()
 
 state_t cpi_perf_dispose()
 {
-    if (ins_en) perf_close(&perf_ins);
-    if (cyc_en) perf_close(&perf_cyc);
-    if (sta_en) perf_close(&perf_sta);
+    if (perf_ins.fd >= 0) perf_close(&perf_ins);
+    if (perf_cyc.fd >= 0) perf_close(&perf_cyc);
+    if (perf_sta.fd >= 0) perf_close(&perf_sta);
     started = 0;
 	return EAR_SUCCESS;
 }
@@ -90,15 +75,9 @@ state_t cpi_perf_dispose()
 state_t cpi_perf_read(cpi_t *ci)
 {
 	memset(ci, 0, sizeof(cpi_t));
-	if (ins_en) {
-		perf_read(&perf_ins, (llong *)&ci->instructions);
-	}
-	if (cyc_en) {
-		perf_read(&perf_cyc, (llong *)&ci->cycles);
-	}
-	if (sta_en) {
-		perf_read(&perf_sta, (llong *)&ci->stalls);
-	}
+	if (perf_ins.fd >= 0) perf_read(&perf_ins, (llong *) &ci->instructions);
+	if (perf_cyc.fd >= 0) perf_read(&perf_cyc, (llong *) &ci->cycles);
+	if (perf_sta.fd >= 0) perf_read(&perf_sta, (llong *) &ci->stalls);
 	debug("Instructions: %llu", ci->instructions);
 	debug("Cycles: %llu", ci->cycles);
 	debug("Stalls: %llu", ci->stalls);

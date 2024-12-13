@@ -8,8 +8,11 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
+//#define SHOW_DEBUGS 1
+
 #include <string.h>
 #include <pthread.h>
+#include <common/output/debug.h>
 #include <common/math_operations.h>
 #include <metrics/cpi/cpi.h>
 #include <metrics/cpi/archs/perf.h>
@@ -103,10 +106,14 @@ void cpi_data_diff(cpi_t *ci2, cpi_t *ci1, cpi_t *ciD, double *cpi)
 
     memset(ciD, 0, sizeof(cpi_t));
     ciD->instructions = overflow_zeros_u64(ci2->instructions, ci1->instructions);
-    ciD->cycles       = overflow_zeros_u64(ci2->cycles, ci1->cycles);
-    ciD->stalls       = overflow_zeros_u64(ci2->stalls, ci1->stalls);
+    ciD->cycles       = overflow_zeros_u64(ci2->cycles      , ci1->cycles      );
+    ciD->stalls       = overflow_zeros_u64(ci2->stalls      , ci1->stalls      );
+    debug("Instructions: %llu", ciD->instructions);
+    debug("Cycles: %llu", ciD->cycles);
+    debug("Stalls: %llu", ciD->stalls);
     // If instructions is 0, we convert them to 1
-    if (ciD->instructions == 0 || ciD->cycles == 0) {
+    if (ciD->instructions == 0 || ciD->cycles == 0)
+    {
         ciD->instructions = (ciD->instructions > 0) ? ciD->instructions : 1;
         ciD->cycles       = (ciD->cycles       > 0) ? ciD->cycles       : 1;
         // And if CPI is not NULL, we return the last valid CPI
@@ -135,3 +142,30 @@ void cpi_data_tostr(cpi_t *ci, double cpi, char *buffer, size_t length)
 {
     snprintf(buffer, length, "Instructions: %llu\nCycles: %llu (cpi: %0.2lf)\n", ci->instructions, ci->cycles, cpi);
 }
+
+
+#if TEST
+#include <time.h>
+
+static topology_t tp;
+static apinfo_t   info;
+static cpi_t      c1;
+static cpi_t      c2;
+static cpi_t      cD;
+static double     gbs;
+
+int main(int argc, char *argv[])
+{
+    topology_init(&tp);
+    cpi_load(&tp, API_FREE);
+    cpi_get_info(&info);
+
+    cpi_init(no_ctx);
+    apinfo_tostr(&info);
+    printf("%s\n", info.api_str);
+    cpi_read(no_ctx, &c1);
+    cpi_read_diff(no_ctx, &c2, &c1, &cD, &gbs);
+
+    return 0;
+}
+#endif
