@@ -57,7 +57,6 @@ void state_verbose_signature(loop_t *sig, int master_rank, char *aname,
 {
 	double CPI, GBS, POWER, TIME, VPI, FLOPS;
 	float AVGF = 0, AVGGPUF = 0, PFREQ = 0, NFREQ = 0;
-	float l1_sec = 0, l2_sec = 0, l3_sec = 0;
 	float IO_MBS;
 	ulong GPU_UTIL = 0, GPU_FREQ = 0, gpu_used_cnt = 0, GPU_mem_util = 0;
 	ulong elapsed;
@@ -172,8 +171,6 @@ void state_verbose_signature(loop_t *sig, int master_rank, char *aname,
 		// Proc OS statistics
 		char proc_data_str[256];
 		if (proc_ps_ok) {
-			// proc_stat_t *proc_data;
-			uint cpu_util;
 			if (per_proc_verb_file) {
 				snprintf(proc_data_str,
 					 sizeof(proc_data_str) - 1,
@@ -393,26 +390,71 @@ void state_verbose_signature(loop_t *sig, int master_rank, char *aname,
 		}
 
 		verbose(SIG_VRB_LVL,
-			"\tCPI: %.3lf VPI: %.2f, Mem. bwidth: %.2lfGB/s GFLOPS: %s I/O: %.2fMB/s %s %s",
-			CPI, VPI, GBS, gflops_str, IO_MBS, pmpi_txt, gpu_buff);
+			"\tCPI: %.3lf VPI: %.2f, Mem. bwidth: %.2lfGB/s TPI: %.2lf GFLOPS: %s I/O: %.2fMB/s %s %s",
+			CPI, VPI, GBS, sig->signature.TPI, gflops_str, IO_MBS, pmpi_txt, gpu_buff);
 
-		ullong l1_miss =
-		    (per_proc_verb_file) ? sig_shared_region[my_node_id].
-		    sig.L1_misses : sig->signature.L1_misses;
-		ullong l2_miss =
-		    (per_proc_verb_file) ? sig_shared_region[my_node_id].
-		    sig.L2_misses : sig->signature.L2_misses;
-		ullong l3_miss =
-		    (per_proc_verb_file) ? sig_shared_region[my_node_id].
-		    sig.L3_misses : sig->signature.L3_misses;
+		/* Cache metrics */
+		/* Misses */
+		ull l1d_misses = (per_proc_verb_file) ? sig_shared_region[my_node_id].sig.cache.l1d_misses : sig->signature.cache.l1d_misses;
+		ull l2_misses = (per_proc_verb_file) ? sig_shared_region[my_node_id].sig.cache.l2_misses : sig->signature.cache.l2_misses;
+		ull l3_misses = (per_proc_verb_file) ? sig_shared_region[my_node_id].sig.cache.l3_misses : sig->signature.cache.l3_misses;
+		ull ll_misses = (per_proc_verb_file) ? sig_shared_region[my_node_id].sig.cache.ll_misses : sig->signature.cache.ll_misses;
 
-		l1_sec = l1_miss / (TIME * 1024 * 1024 * 1024);
-		l2_sec = l2_miss / (TIME * 1024 * 1024 * 1024);
-		l3_sec = l3_miss / (TIME * 1024 * 1024 * 1024);
+		/* Giga-misses per second */
+		float l1d_miss_sec = l1d_misses / (float)(TIME * 1000000000);
+		float l2_miss_sec = l2_misses / (float)(TIME * 1000000000);
+		float l3_miss_sec = l3_misses / (float)(TIME * 1000000000);
+		float ll_miss_sec = ll_misses / (float)(TIME * 1000000000);
+
+		/* Hits */
+		ull l1d_hits = (per_proc_verb_file) ? sig_shared_region[my_node_id].sig.cache.l1d_hits : sig->signature.cache.l1d_hits;
+		ull l2_hits = (per_proc_verb_file) ? sig_shared_region[my_node_id].sig.cache.l2_hits : sig->signature.cache.l2_hits;
+		ull l3_hits = (per_proc_verb_file) ? sig_shared_region[my_node_id].sig.cache.l3_hits : sig->signature.cache.l3_hits;
+		ull ll_hits = (per_proc_verb_file) ? sig_shared_region[my_node_id].sig.cache.ll_hits : sig->signature.cache.ll_hits;
+
+		/* Giga-hits per second */
+		float l1d_hit_sec = l1d_hits / (float)(TIME * 1000000000);
+		float l2_hit_sec = l2_hits / (float)(TIME * 1000000000);
+		float l3_hit_sec = l3_hits / (float)(TIME * 1000000000);
+		float ll_hit_sec = ll_hits / (float)(TIME * 1000000000);
+
+		/* Accesses */
+		ull l1d_accesses = (per_proc_verb_file) ? sig_shared_region[my_node_id].sig.cache.l1d_accesses : sig->signature.cache.l1d_accesses;
+		ull l2_accesses = (per_proc_verb_file) ? sig_shared_region[my_node_id].sig.cache.l2_accesses : sig->signature.cache.l2_accesses;
+		ull l3_accesses = (per_proc_verb_file) ? sig_shared_region[my_node_id].sig.cache.l3_accesses : sig->signature.cache.l3_accesses;
+		ull ll_accesses = (per_proc_verb_file) ? sig_shared_region[my_node_id].sig.cache.ll_accesses : sig->signature.cache.ll_accesses;
+
+		/* Giga-accesses per second */
+		float l1d_access_sec = l1d_accesses / (float)(TIME * 1000000000);
+		float l2_access_sec = l2_accesses / (float)(TIME * 1000000000);
+		float l3_access_sec = l3_accesses / (float)(TIME * 1000000000);
+		float ll_access_sec = ll_accesses / (float)(TIME * 1000000000);
+
+		/* Miss and hit rates are not stored in per-process shared signature, so
+		 * in the case we report per-process signature, we must compute it */
+		double l1d_miss_rate = (per_proc_verb_file && l1d_accesses) ?  l1d_misses / (double)l1d_accesses : sig->signature.cache.l1d_miss_rate;
+		double l2_miss_rate = (per_proc_verb_file && l2_accesses) ? l2_misses / (double)l2_accesses : sig->signature.cache.l2_miss_rate;
+		double l3_miss_rate = (per_proc_verb_file && l3_accesses) ? l3_misses / (double)l3_accesses : sig->signature.cache.l3_miss_rate;
+		double ll_miss_rate = (per_proc_verb_file && ll_accesses) ? ll_misses / (double)ll_accesses : sig->signature.cache.ll_miss_rate;
+
+		double l1d_hit_rate = (per_proc_verb_file && l1d_accesses) ?  l1d_hits / (double)l1d_accesses : sig->signature.cache.l1d_hit_rate;
+		double l2_hit_rate = (per_proc_verb_file && l2_accesses) ? l2_hits / (double)l2_accesses : sig->signature.cache.l2_hit_rate;
+		double l3_hit_rate = (per_proc_verb_file && l3_accesses) ? l3_hits / (double)l3_accesses : sig->signature.cache.l3_hit_rate;
+		double ll_hit_rate = (per_proc_verb_file && ll_accesses) ? ll_hits / (double)ll_accesses : sig->signature.cache.ll_hit_rate;
 
 		verbose(SIG_VRB_LVL,
-			"\tTPI %.2lf Cache miss rates: L1 %.2fGB/s L2 %.2fGB/s L3 %.2fGB/s",
-			sig->signature.TPI, l1_sec, l2_sec, l3_sec);
+				"\t          Cache: %-6s %-6s %-6s %-6s\n"
+				"\t  giga-misses/s: %-6.2f %-6.2f %-6.2f %-6.2f\n"
+				"\t    giga-hits/s: %-6.2f %-6.2f %-6.2f %-6.2f\n"
+				"\tgiga-accesses/s: %-6.2f %-6.2f %-6.2f %-6.2f\n"
+				"\t      miss rate: %-6.2f %-6.2f %-6.2f %-6.2f\n"
+				"\t       hit rate: %-6.2f %-6.2f %-6.2f %-6.2f",
+				"L1d", "L2", "L3", "LL",
+				l1d_miss_sec, l2_miss_sec, l3_miss_sec, ll_miss_sec,
+				l1d_hit_sec, l2_hit_sec, l3_hit_sec, ll_hit_sec,
+				l1d_access_sec, l2_access_sec, l3_access_sec, ll_access_sec,
+				l1d_miss_rate, l2_miss_rate, l3_miss_rate, ll_miss_rate,
+				l1d_hit_rate, l2_hit_rate, l3_hit_rate, ll_hit_rate);
 
 		ullong n_mpi_calls =
 		    (per_proc_verb_file) ?

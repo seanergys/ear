@@ -464,32 +464,6 @@ void shsignature_copy(shsignature_t *dst, shsignature_t *src)
 	memcpy(dst, src, sizeof(shsignature_t));
 }
 
-void compute_per_node_avg_mpi_info(lib_shared_data_t *data, shsignature_t *sig,
-				   mpi_information_t *my_mpi_info)
-{
-	mpi_information_t avg_mpi;
-	avg_mpi.total_mpi_calls = sig[0].mpi_info.total_mpi_calls;
-	avg_mpi.exec_time = sig[0].mpi_info.exec_time;
-	avg_mpi.mpi_time = sig[0].mpi_info.mpi_time;
-	avg_mpi.rank = sig[0].mpi_info.rank;
-	avg_mpi.perc_mpi = sig[0].mpi_info.perc_mpi;
-	int i;
-	//debug("compute_per_node_mpi_info, num_procs %d",data->num_processes);
-	for (i = 1; i < data->num_processes; i++) {
-		avg_mpi.total_mpi_calls += sig[i].mpi_info.total_mpi_calls;
-		avg_mpi.exec_time += sig[i].mpi_info.exec_time;
-		avg_mpi.mpi_time += sig[i].mpi_info.mpi_time;
-		avg_mpi.perc_mpi += sig[i].mpi_info.perc_mpi;
-	}
-	my_mpi_info->rank = 0;
-	my_mpi_info->total_mpi_calls =
-	    avg_mpi.total_mpi_calls / data->num_processes;
-	my_mpi_info->exec_time = avg_mpi.exec_time / data->num_processes;
-	my_mpi_info->mpi_time = avg_mpi.mpi_time / data->num_processes;
-	/* Should we use the minimum? */
-	my_mpi_info->perc_mpi = avg_mpi.perc_mpi / data->num_processes;
-}
-
 state_t compute_job_node_instructions(const shsignature_t *sig, int n_procs,
 				      ull *instructions)
 {
@@ -674,26 +648,6 @@ int compute_per_node_most_loaded_process(lib_shared_data_t *data,
 		}
 	}
 	return mostload;
-}
-
-void compute_per_node_avg_sig_info(lib_shared_data_t *data, shsignature_t *sig,
-				   shsignature_t *my_node_sig)
-{
-	int i;
-
-	compute_per_node_avg_mpi_info(data, sig, &my_node_sig->mpi_info);
-
-	ssig_t avg_node;
-
-	ssig_set_node_metrics(&avg_node, &sig[0].sig);	// We first set DC, GBs and TPI
-
-	for (i = 0; i < data->num_processes; i++) {
-		ssig_accumulate(&avg_node, &sig[i].sig);
-	}
-
-	ssig_compute_avg_node(&avg_node, data->num_processes);
-
-	copy_mini_sig(&my_node_sig->sig, &avg_node);
 }
 
 void load_app_mgr_env()
@@ -1479,6 +1433,51 @@ state_t compute_job_node_cpuutil(const shsignature_t *sig, int n_procs,
 	for (int i = 0; i < n_procs; i++) {
 		*t_cpuutil += sig[i].cpu_util;
 	}
+
+	return EAR_SUCCESS;
+}
+
+state_t compute_job_node_cache_metrics(const shsignature_t *sig, int n_procs, cache_signature_t *cache)
+{
+	if (!sig || !cache) {
+		return_msg(EAR_ERROR, Generr.input_null);
+	} else if (!n_procs) {
+		return_msg(EAR_WARNING, "Number of processes is zero.");
+	}
+
+	/* Init the destination memory location */
+	memset(cache, 0, sizeof(cache_signature_t));
+
+	/* Accumulate absoulte values */
+	for (int i = 0; i < n_procs; i++) {
+		cache->l1d_misses += sig[i].sig.cache.l1d_misses;
+		cache->l2_misses += sig[i].sig.cache.l2_misses;
+		cache->l3_misses += sig[i].sig.cache.l3_misses;
+		cache->ll_misses += sig[i].sig.cache.ll_misses;
+
+		cache->l1d_hits += sig[i].sig.cache.l1d_hits;
+		cache->l2_hits += sig[i].sig.cache.l2_hits;
+		cache->l3_hits += sig[i].sig.cache.l3_hits;
+		cache->ll_hits += sig[i].sig.cache.ll_hits;
+
+		cache->l1d_accesses += sig[i].sig.cache.l1d_accesses;
+		cache->l2_accesses += sig[i].sig.cache.l2_accesses;
+		cache->l3_accesses += sig[i].sig.cache.l3_accesses;
+		cache->ll_accesses += sig[i].sig.cache.ll_accesses;
+	}
+
+	/* Compute rates */
+	cache->l1d_miss_rate = (cache->l1d_accesses) ? cache->l1d_misses / (double)cache->l1d_accesses : 0;
+	cache->l1d_hit_rate = (cache->l1d_accesses) ? cache->l1d_hits / (double) cache->l1d_accesses : 0;
+
+	cache->l2_miss_rate = (cache->l2_accesses) ? cache->l2_misses / (double) cache->l2_accesses : 0;
+	cache->l2_hit_rate = (cache->l2_accesses) ? cache->l2_hits / (double) cache->l2_accesses : 0;
+
+	cache->l3_miss_rate = (cache->l3_accesses) ? cache->l3_misses / (double) cache->l3_accesses : 0;
+	cache->l3_hit_rate = (cache->l3_accesses) ? cache->l3_hits / (double) cache->l3_accesses : 0;
+
+	cache->ll_miss_rate = (cache->ll_accesses) ? cache->ll_misses / (double) cache->ll_accesses : 0;
+	cache->ll_hit_rate = (cache->ll_accesses) ? cache->ll_hits / (double) cache->ll_accesses : 0;
 
 	return EAR_SUCCESS;
 }

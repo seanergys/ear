@@ -346,6 +346,7 @@ static uint validation_new_gpu = 0;
 /** Private function to perfom last operations before returning from dispose call. */
 static void metrics_static_dispose();
 
+static void cache_sig_from_cache_t(cache_signature_t *cache_sig, cache_t *cache_src);
 
 const metrics_t *metrics_get(uint api)
 {
@@ -1654,15 +1655,19 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 #endif
 
 	/* Cache misses */
+	// TODO: To be removed when using just cache_signature_t attribute
 	metrics->L1_misses = cache_diff[sign_app_loop_idx].l1d.misses;
 	metrics->L2_misses = cache_diff[sign_app_loop_idx].l2.misses;
 	metrics->L3_misses = cache_diff[sign_app_loop_idx].l3.misses;
+
+	/* New cache metrics */
+	cache_sig_from_cache_t(&metrics->cache, &cache_diff[sign_app_loop_idx]);
 
 #if USE_GPUS & DCGMI
 	if (master && dcgmi_lib_is_enabled() && (sig_ext->dcgmis.set_cnt == 0))
 	{
 		dcgmi_lib_dcgmi_sig_init(&sig_ext->dcgmis);
-    }
+	}
 #endif
 
 	/* FLOPS */
@@ -1700,14 +1705,14 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
     sem_post(lib_shared_lock_sem);
     // verbose(2,"CACHE_BW[%u] local %lf total %lf", my_node_id, cache_bwidth[sign_app_loop_idx], lib_shared_region->total_cache_bwidth);
 	}
-  verbose_master(TPI_DEBUG, "GBS %.2lf TPI %.2lf", metrics->GBS, metrics->TPI);
+	verbose_master(TPI_DEBUG, "GBS %.2lf TPI %.2lf", metrics->GBS, metrics->TPI);
 
-  #if USE_GPUS && USE_CUPTI
-  if (read_cupti_metrics){
+#if USE_GPUS && USE_CUPTI
+  if (read_cupti_metrics) {
     gpuproc_data_tostr(proc_gpu_data_diff[sign_app_loop_idx], gpu_proc_buffer, sizeof(gpu_proc_buffer));
     verbose_master(VERBOSE_CUPTI, "GPU PROC data for master: %s", gpu_proc_buffer);
   }
-  #endif
+#endif
 
 	/* Per process IO data */
 	io_copy(&(sig_ext->iod), &metrics_io_diff[sign_app_loop_idx]);
@@ -2496,7 +2501,7 @@ void metrics_app_node_signature(signature_t *master, signature_t *ns)
 	if (se != NULL)
 		memcpy(ns->sig_ext, se, sizeof(sig_ext_t));
 
-	debug(" metrics_app_node_signature");
+	debug("metrics_app_node_signature");
 
 	compute_job_node_instructions(sig_shared_region,
 				      lib_shared_region->num_processes, &inst);
@@ -2517,6 +2522,7 @@ void metrics_app_node_signature(signature_t *master, signature_t *ns)
 				   lib_shared_region->num_processes, &L2);
 	compute_job_node_L3_misses(sig_shared_region,
 				   lib_shared_region->num_processes, &L3);
+	compute_job_node_cache_metrics(sig_shared_region, lib_shared_region->num_processes, &ns->cache);
 
 	for (i = 0; i < FLOPS_EVENTS; i++) {
 		ns->FLOPS[i] = FLOPS[i];
@@ -2646,6 +2652,7 @@ void metrics_job_signature(const signature_t *master, signature_t *dst)
 	compute_job_node_L1_misses(sig_shared_region, lib_shared_region->num_processes, &L1);
 	compute_job_node_L2_misses(sig_shared_region, lib_shared_region->num_processes, &L2);
 	compute_job_node_L3_misses(sig_shared_region, lib_shared_region->num_processes, &L3);
+	compute_job_node_cache_metrics(sig_shared_region, lib_shared_region->num_processes, &dst->cache);
 
 	dst->L1_misses = L1;
 	dst->L2_misses = L2;
@@ -3009,4 +3016,32 @@ int ear_get_num_threads()
   }
 	verbose(VERB_NUMTH,"Task[%d] %d threads detected", getpid(), num_th);
 	return num_th;
+}
+
+static void cache_sig_from_cache_t(cache_signature_t *cache_sig, cache_t *cache_src)
+{
+	cache_sig->l1d_misses = cache_src->l1d.misses;
+	cache_sig->l2_misses = cache_src->l2.misses;
+	cache_sig->l3_misses = cache_src->l3.misses;
+	cache_sig->ll_misses = cache_src->ll.misses;
+
+	cache_sig->l1d_hits = cache_src->l1d.hits;
+	cache_sig->l2_hits = cache_src->l2.hits;
+	cache_sig->l3_hits = cache_src->l3.hits;
+	cache_sig->ll_hits = cache_src->ll.hits;
+
+	cache_sig->l1d_accesses = cache_src->l1d.accesses;
+	cache_sig->l2_accesses = cache_src->l2.accesses;
+	cache_sig->l3_accesses = cache_src->l3.accesses;
+	cache_sig->ll_accesses = cache_src->ll.accesses;
+
+	cache_sig->l1d_miss_rate = cache_src->l1d.miss_rate;
+	cache_sig->l2_miss_rate = cache_src->l2.miss_rate;
+	cache_sig->l3_miss_rate = cache_src->l3.miss_rate;
+	cache_sig->ll_miss_rate = cache_src->ll.miss_rate;
+
+	cache_sig->l1d_hit_rate = cache_src->l1d.hit_rate;
+	cache_sig->l2_hit_rate = cache_src->l2.hit_rate;
+	cache_sig->l3_hit_rate = cache_src->l3.hit_rate;
+	cache_sig->ll_hit_rate = cache_src->ll.hit_rate;
 }
