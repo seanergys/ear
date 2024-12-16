@@ -1,5 +1,18 @@
+### EAR 5.1.2
+- Bugs fixed:
+  - Prevent closing eard fd 0 when storing powermon\_app fd into shared memory.
+  - Close folder fd when removing it.
+  - GFLOPS aggregation.
+  - FreeIPMI energy plug-in was managing a dynamically allocated buffer in the wrong way.
+- Check whether new fds are not attended.
+- Now intel\_pstate driver creates the CPUFreq. list using Boost frequency by default.
+
 ### EAR 5.1.1
 - Bug fixed: The application local\_id attribute is now copied to the power monitor context when saving the application signature.
+- Per-process CPU utilization fixed.
+- Classify module default verbosity fixed.
+- econtrol's manpage with improved examples.
+- Support for GPU models in the Configuration file.
 
 ### EAR 5.1.0
 - CPU temperature monitoring included in application monitoring and reported to csv files.
