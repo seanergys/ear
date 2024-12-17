@@ -171,6 +171,7 @@ src/tools/compute_coefficients_v2
 src/tools/ear_lp_validation
 src/tools/external_attach
 src/tools/enode_control
+src/tools/enodectl
 src/tools/get_projections
 src/tools/insert_test
 src/tools/powercap_test
