@@ -77,6 +77,8 @@ state_t add_new_connection()
         error("new remote connection fd is too large (%d, max is %d). Closing connection", new_fd, AFD_MAX);
         close(new_fd);
     }
+
+	debug("Successfully added new FD: %d", new_fd);
 	return EAR_SUCCESS;
 }
 
@@ -119,7 +121,7 @@ static void check_all_fds(afd_set_t *fdset)
 		if (fdset->fds[i].fd != -1) {
 			if (i == pipe_for_new_conn[0]) continue;
 			if (!is_socket_alive(i)) {
-				debug("Remote api(check_all_fds) closing connection %d", i);
+				verbose(0, "%sWarning%s Remote api(check_all_fds) closing connection %d", i);
 				remove_remote_connection(i);
 			}
 		}
