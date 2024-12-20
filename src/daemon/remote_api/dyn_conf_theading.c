@@ -77,6 +77,8 @@ state_t add_new_connection()
         error("new remote connection fd is too large (%d, max is %d). Closing connection", new_fd, AFD_MAX);
         close(new_fd);
     }
+
+	debug("Successfully added new FD: %d", new_fd);
 	return EAR_SUCCESS;
 }
 
@@ -119,8 +121,10 @@ static void check_all_fds(afd_set_t *fdset)
 		if (fdset->fds[i].fd != -1) {
 			if (i == pipe_for_new_conn[0]) continue;
 			if (!is_socket_alive(i)) {
-				debug("Remote api(check_all_fds) closing connection %d", i);
-				remove_remote_connection(i);
+				// verbose(0, "%sWarning%s Remote api(check_all_fds) closing connection %d", i);
+				// remove_remote_connection(i);
+				verbose(VRAPI-1, "%sWarning%s Connection %d remotely closed!",
+						COL_YLW, COL_CLR, i);
 			}
 		}
 	}
@@ -136,6 +140,7 @@ void *process_remote_req_th(void * arg)
 	int i;
 
 	debug("Thread to process remote requests created ");
+	verbose(VRAPI, "RemoteAPI connection fd %d", pipe_for_new_conn[0]);
 	while ((numfds_ready = aselectv(&rfds_basic, NULL)) && (eard_must_exit == 0))
 	{
 		verbose(VRAPI, "RemoteAPI thread new info received (new_conn/new_data)");
