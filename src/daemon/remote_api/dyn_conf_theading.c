@@ -16,8 +16,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdbool.h>
-#include <signal.h>
 #include <pthread.h>
+#include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -80,6 +80,7 @@ state_t add_new_connection()
 	return EAR_SUCCESS;
 }
 
+
 state_t remove_remote_connection(int fd)
 {
 	debug("Closing remote connection %d",fd);
@@ -93,6 +94,11 @@ bool is_socket_alive(int32_t socketfd)
 	debug("Entering is_socket_alive with fd %d\n", socketfd);
 	struct tcp_info info = { 0 };
     socklen_t  optlen = sizeof(info);
+
+    int32_t tmp = 0;
+    ioctl(socketfd, FIONREAD, &tmp);
+    // If there's data pending to read, keep the socket alive
+    if (tmp > 0) return true;
 
 	int32_t ret = getsockopt(socketfd, IPPROTO_TCP, TCP_INFO, &info, &optlen);
 	if (ret < 0) {
