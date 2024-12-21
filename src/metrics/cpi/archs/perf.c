@@ -12,34 +12,49 @@
 
 #include <common/output/debug.h>
 #include <metrics/common/perf.h>
+#include <metrics/common/offsets.h>
 #include <metrics/cpi/archs/perf.h>
 
 // Generic
-static perf_t perf_ins;
-static perf_t perf_cyc;
-static perf_t perf_sta;
-static uint started;
+static perf_t       perfs[4];
+static uint         perfs_count;
+static uint         started;
+static offset_ops_t ofs;
+
+static void perfs_add(ullong event, uint type, ulong offset_result, const char *event_desc)
+{
+    offsets_add(&ofs, offset_result, NO_OFFSET, NO_OFFSET, '=');
+    if (state_fail(perf_open(&perfs[perfs_count], NULL, 0, type, event))) {
+        debug("failed: %s", state_msg);
+    }
+    strcpy(perfs[perfs_count].event_name, event_desc);
+    ++perfs_count;
+}
+
+#define O2(l, v) (((int) offsetof(cpi_t, l)) + ((int) offsetof(stalls_t, v)))
+#define O1(l)    (((int) offsetof(cpi_t, l)))
 
 void cpi_perf_load(topology_t *tp, cpi_ops_t *ops)
 {
     if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_ICELAKE_X) {
-        perf_open(&perf_ins, NULL, 0, PERF_TYPE_HARDWARE, PERF_COUNT_HW_INSTRUCTIONS);
-        perf_open(&perf_cyc, NULL, 0, PERF_TYPE_HARDWARE, PERF_COUNT_HW_CPU_CYCLES  );
-        perf_open(&perf_sta, NULL, 0, PERF_TYPE_RAW     , 0x40004a3                 );
-    } else if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_HASWELL_X) {
-        perf_open(&perf_ins, NULL, 0, PERF_TYPE_HARDWARE, PERF_COUNT_HW_INSTRUCTIONS);
-        perf_open(&perf_cyc, NULL, 0, PERF_TYPE_HARDWARE, PERF_COUNT_HW_CPU_CYCLES  );
-        perf_open(&perf_sta, NULL, 0, PERF_TYPE_RAW     , 0x01a2                    );
+        perfs_add(PERF_COUNT_HW_CPU_CYCLES  , PERF_TYPE_HARDWARE , O1(cycles           ), "PERF_COUNT_HW_CPU_CYCLES   ");
+        perfs_add(PERF_COUNT_HW_INSTRUCTIONS, PERF_TYPE_HARDWARE , O1(instructions     ), "PERF_COUNT_HW_INSTRUCTIONS ");
+        perfs_add(0x40004a3                 , PERF_TYPE_RAW      , O2(stalls, memory   ), "CYCLE_ACTIVITY.STALLS_TOTAL");
+    } else if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_BROADWELL_X) {
+        perfs_add(PERF_COUNT_HW_CPU_CYCLES  , PERF_TYPE_HARDWARE , O1(cycles           ), "PERF_COUNT_HW_CPU_CYCLES   ");
+        perfs_add(PERF_COUNT_HW_INSTRUCTIONS, PERF_TYPE_HARDWARE , O1(instructions     ), "PERF_COUNT_HW_INSTRUCTIONS ");
+        perfs_add(0x40004a3                 , PERF_TYPE_RAW      , O2(stalls, memory   ), "CYCLE_ACTIVITY.STALLS_TOTAL");
+        perfs_add(0x00001a2                 , PERF_TYPE_RAW      , O2(stalls, resources), "RESOURCE_STALLS.ANY");
 	} else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN) {
-        perf_open(&perf_ins, NULL, 0, PERF_TYPE_HARDWARE, PERF_COUNT_HW_INSTRUCTIONS);
-        perf_open(&perf_cyc, NULL, 0, PERF_TYPE_HARDWARE, PERF_COUNT_HW_CPU_CYCLES  );
-        perf_open(&perf_sta, NULL, 0, PERF_TYPE_HARDWARE, PERF_COUNT_HW_STALLED_CYCLES_BACKEND);
-    } else if (tp->vendor == VENDOR_ARM) {
-        perf_open(&perf_ins, NULL, 0, PERF_TYPE_HARDWARE, PERF_COUNT_HW_INSTRUCTIONS);
-        perf_open(&perf_cyc, NULL, 0, PERF_TYPE_HARDWARE, PERF_COUNT_HW_CPU_CYCLES  );
+        perfs_add(PERF_COUNT_HW_CPU_CYCLES  , PERF_TYPE_HARDWARE , O1(cycles              ), "PERF_COUNT_HW_CPU_CYCLES    ");
+        perfs_add(PERF_COUNT_HW_INSTRUCTIONS, PERF_TYPE_HARDWARE , O1(instructions        ), "PERF_COUNT_HW_INSTRUCTIONS  ");
+        perfs_add(0x0000287                 , PERF_TYPE_RAW      , O2(stalls, fetch_decode), "IC_FETCH_STALL.DECODING_QUEUE");
+        perfs_add(0x0000187                 , PERF_TYPE_RAW      , O2(stalls, resources   ), "IC_FETCH_STALL.BACK_PRESSURE ");
     } else {
-        // API incompatible
-        return;
+        perfs_add(PERF_COUNT_HW_CPU_CYCLES             , PERF_TYPE_HARDWARE, O1(cycles              ), "PERF_COUNT_HW_CPU_CYCLES     ");
+        perfs_add(PERF_COUNT_HW_INSTRUCTIONS           , PERF_TYPE_HARDWARE, O1(instructions        ), "PERF_COUNT_HW_INSTRUCTIONS   ");
+        perfs_add(PERF_COUNT_HW_STALLED_CYCLES_FRONTEND, PERF_TYPE_HARDWARE, O2(stalls, fetch_decode), "PERF_COUNT_HW_STALLS_FRONTEND");
+        perfs_add(PERF_COUNT_HW_STALLED_CYCLES_BACKEND , PERF_TYPE_HARDWARE, O2(stalls, memory      ), "PERF_COUNT_HW_STALLS_BACKEND ");
     }
     apis_put(ops->get_info, cpi_perf_get_info);
 	apis_put(ops->init,     cpi_perf_init);
@@ -54,32 +69,55 @@ void cpi_perf_get_info(apinfo_t *info)
 
 state_t cpi_perf_init()
 {
-	if (!started) {
-		if (perf_ins.fd >= 0) perf_start(&perf_ins);
-		if (perf_cyc.fd >= 0) perf_start(&perf_cyc);
-		if (perf_sta.fd >= 0) perf_start(&perf_sta);
-		++started;
-	}
-	return EAR_SUCCESS;
+    int i;
+    if (started) {
+        return EAR_SUCCESS;
+    }
+    for (i = 0; i < perfs_count; ++i) {
+        if (perfs[i].fd >= 0) {
+            perf_start(&perfs[i]);
+        }
+    }
+    ++started;
+    return EAR_SUCCESS;
 }
 
 state_t cpi_perf_dispose()
 {
-    if (perf_ins.fd >= 0) perf_close(&perf_ins);
-    if (perf_cyc.fd >= 0) perf_close(&perf_cyc);
-    if (perf_sta.fd >= 0) perf_close(&perf_sta);
+    int i;
+    if (started) {
+        for (i = 0; i < perfs_count; ++i) {
+            if (perfs[i].fd >= 0) {
+                perf_close(&perfs[i]);
+            }
+        }
+    }
     started = 0;
-	return EAR_SUCCESS;
+    perfs_count = 0;
+    return EAR_SUCCESS;
 }
 
 state_t cpi_perf_read(cpi_t *ci)
 {
-	memset(ci, 0, sizeof(cpi_t));
-	if (perf_ins.fd >= 0) perf_read(&perf_ins, (llong *) &ci->instructions);
-	if (perf_cyc.fd >= 0) perf_read(&perf_cyc, (llong *) &ci->cycles);
-	if (perf_sta.fd >= 0) perf_read(&perf_sta, (llong *) &ci->stalls);
-	debug("Instructions: %llu", ci->instructions);
-	debug("Cycles: %llu", ci->cycles);
-	debug("Stalls: %llu", ci->stalls);
-	return EAR_SUCCESS;
+    void *p = (void *) ci;
+    llong value;
+    state_t s;
+    int i;
+    // Cleaning
+    memset(ci, 0, sizeof(cpi_t));
+    // Reading
+    for (i = 0; i < perfs_count; ++i) {
+        if (perfs[i].fd >= 0) {
+            value = 0;
+            if (state_fail(s = perf_read(&perfs[i], &value))) {
+                return s;
+            }
+            offsets_calc_one(&ofs, p, i, value, 0LLU);
+        }
+    }
+    offsets_calc_all(&ofs, p);
+    #if SHOW_DEBUGS
+    cpi_data_print(ci, 0.0, fderr);
+    #endif
+    return EAR_SUCCESS;
 }

@@ -17,6 +17,7 @@ mets_OBJS = \
     $(SRCDIR)/metrics/common/nvml.o \
     $(SRCDIR)/metrics/common/pci.o \
     $(SRCDIR)/metrics/common/msr.o \
+    $(SRCDIR)/metrics/common/offsets.o \
     $(SRCDIR)/metrics/common/omsr.o \
     $(SRCDIR)/metrics/common/oneapi.o \
     $(SRCDIR)/metrics/common/perf.o \

@@ -58,12 +58,12 @@ state_t perf_open_cpu(perf_t *perf, perf_t *group, pid_t pid, uint type, ulong e
 	int gp_flag =  0;	
 	int gp_fd   = -1;
 
+    // Cleaning
+    memset(perf, 0, sizeof(perf_t));
+    perf->fd = -1;
 	if (!test_paranoid()) {
 		return_msg(EAR_ERROR, "perf_event_paranoid value is not valid");
 	}
-	//
-	memset(perf, 0, sizeof(perf_t));
-
 	if (group != NULL) {
 		if (perf != group) {
 			gp_fd = group->fd;

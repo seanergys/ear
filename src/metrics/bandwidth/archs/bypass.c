@@ -60,7 +60,7 @@ state_t bwidth_bypass_read(ctx_t *c, bwidth_t *bw)
 	cache_t data;
 	state_t s;
 	s = cache_read(no_ctx, &data);
-	bw[0].cas = data.lbw.misses * cpus_count;
+	bw[0].cas = (data.lbw->lines_in + data.lbw->lines_out) * cpus_count;
 	bw[1].time = data.time;
 	return s;
 }

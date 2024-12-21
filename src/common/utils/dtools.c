@@ -110,4 +110,5 @@ int dtools_is_ldd_library(char *library)
     cb_data.found = 0;
     cb_data.library = library;
     dl_iterate_phdr(dtools_is_ldd_library_callback, (void *) &cb_data);
+    return cb_data.found;
 }

@@ -16,6 +16,7 @@ comm_OBJS = \
     likwid.o \
     msr.o \
     nvml.o \
+    offsets.o \
     omsr.o \
     oneapi.o \
     pci.o \

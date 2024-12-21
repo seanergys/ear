@@ -105,12 +105,15 @@ void cpi_data_diff(cpi_t *ci2, cpi_t *ci1, cpi_t *ciD, double *cpi)
     static double cpi_copy = 0.0;
 
     memset(ciD, 0, sizeof(cpi_t));
-    ciD->instructions = overflow_zeros_u64(ci2->instructions, ci1->instructions);
-    ciD->cycles       = overflow_zeros_u64(ci2->cycles      , ci1->cycles      );
-    ciD->stalls       = overflow_zeros_u64(ci2->stalls      , ci1->stalls      );
-    debug("Instructions: %llu", ciD->instructions);
-    debug("Cycles: %llu", ciD->cycles);
-    debug("Stalls: %llu", ciD->stalls);
+    ciD->instructions        = overflow_zeros_u64(ci2->instructions       , ci1->instructions       );
+    ciD->cycles              = overflow_zeros_u64(ci2->cycles             , ci1->cycles             );
+    ciD->stalls.fetch_decode = overflow_zeros_u64(ci2->stalls.fetch_decode, ci1->stalls.fetch_decode);
+    ciD->stalls.resources    = overflow_zeros_u64(ci2->stalls.resources   , ci1->stalls.resources   );
+    ciD->stalls.memory       = overflow_zeros_u64(ci2->stalls.memory      , ci1->stalls.memory      );
+
+    #if SHOW_DEBUGS
+    cpi_data_print(ciD, 0.0, fderr);
+    #endif
     // If instructions is 0, we convert them to 1
     if (ciD->instructions == 0 || ciD->cycles == 0)
     {
@@ -136,11 +139,19 @@ void cpi_data_print(cpi_t *ci, double cpi, int fd)
 {
     char buffer[SZ_BUFFER];
     cpi_data_tostr(ci, cpi, buffer, SZ_BUFFER);
+    dprintf(fd, "%s", buffer);
 }
 
 void cpi_data_tostr(cpi_t *ci, double cpi, char *buffer, size_t length)
 {
-    snprintf(buffer, length, "Instructions: %llu\nCycles: %llu (cpi: %0.2lf)\n", ci->instructions, ci->cycles, cpi);
+    snprintf(buffer, length,
+             "Instructions      : %llu\n"
+             "Cycles            : %llu (cpi: %0.2lf)\n"
+             "Stalls (fetch-dec): %llu\n"
+             "Stalls (resources): %llu\n"
+             "Stalls (memory)   : %llu\n",
+             ci->instructions       , ci->cycles          , cpi,
+             ci->stalls.fetch_decode, ci->stalls.resources, ci->stalls.memory);
 }
 
 
@@ -164,6 +175,7 @@ int main(int argc, char *argv[])
     apinfo_tostr(&info);
     printf("%s\n", info.api_str);
     cpi_read(no_ctx, &c1);
+    sleep(1);
     cpi_read_diff(no_ctx, &c2, &c1, &cD, &gbs);
 
     return 0;

@@ -16,10 +16,16 @@
 #include <common/system/time.h>
 #include <common/hardware/topology.h>
 
+typedef struct stalls_s {
+    ullong fetch_decode; // Instruction fetch-decode pipeline
+    ullong resources; // Reservation Station, PORTs, Physical Registers, load/store buffers...
+    ullong memory; // Cache miss waits
+} stalls_t;
+
 typedef struct cpi_s {
-	ullong instructions;
-	ullong cycles;
-	ullong stalls;
+	ullong   instructions;
+	ullong   cycles;
+	stalls_t stalls;
 } cpi_t;
 
 typedef struct cpi_ops_s {

@@ -36,17 +36,19 @@ typedef struct cache_level_s {
     ullong accesses;
     ullong misses;
     ullong hits;
+    ullong lines_in;
+    ullong lines_out;
     double miss_rate;
     double hit_rate;
 } cache_level_t;
 
 typedef struct cache_s {
-    cache_level_t l1d;
-    cache_level_t l2;
-    cache_level_t l3;
-    cache_level_t ll; // Last level, can be L2 or L3
-    cache_level_t lbw; // The level used to compute the bandwidth
-    timestamp_t time;
+    cache_level_t  l1d;
+    cache_level_t  l2;
+    cache_level_t  l3;
+    cache_level_t *ll;
+    cache_level_t *lbw; // Level used to calc bandwidth in case ll is a victim cache.
+    timestamp_t    time;
 } cache_t;
 
 typedef struct coche_ops_s {

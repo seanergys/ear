@@ -14,78 +14,62 @@
 #include <common/output/debug.h>
 #include <common/math_operations.h>
 #include <metrics/common/perf.h>
+#include <metrics/common/offsets.h>
 #include <metrics/cache/archs/perf.h>
 
-typedef struct arith_s {
-    void *p_res;
-    void *p_op1;
-    void *p_op2;
-    ulong offset_res;
-    ulong offset_op1;
-    ulong offset_op2;
-    char  operation;
-    char  type;
-} arith_t;
+#define PERF_TYPE_HW PERF_TYPE_HW_CACHE
+#define L1_LDM PERF_COUNT_HW_CACHE_L1D | (PERF_COUNT_HW_CACHE_OP_READ  << 8) | (PERF_COUNT_HW_CACHE_RESULT_MISS   << 16)
+#define L1_LDA PERF_COUNT_HW_CACHE_L1D | (PERF_COUNT_HW_CACHE_OP_READ  << 8) | (PERF_COUNT_HW_CACHE_RESULT_ACCESS << 16)
 
-static perf_t  perfs[5];
-static uint    perfs_count;
-static arith_t ariths[3];
-static uint    ariths_count;
-static uint    started;
+static perf_t       perfs[6];
+static uint         perfs_count;
+static uint         started;
+static offset_ops_t ofs;
 
-static void set_perf(ullong event, uint type, ulong offset, const char *event_desc)
+static void perfs_add(ullong event, uint type, ulong offset_result, const char *event_desc)
 {
-    perf_open(&perfs[perfs_count], NULL, 0, type, event);
+    offsets_add(&ofs, offset_result, NO_OFFSET, NO_OFFSET, '=');
+    if (state_fail(perf_open(&perfs[perfs_count], NULL, 0, type, event))) {
+        debug("failed: %s", state_msg);
+    }
     strcpy(perfs[perfs_count].event_name, event_desc);
-    perfs[perfs_count].aux = (llong) offset;
     ++perfs_count;
 }
 
-static void arith_add(ulong offset_res, ulong offset_op1, ulong offset_op2, char op)
-{
-    ariths[ariths_count].offset_res = offset_res;
-    ariths[ariths_count].offset_op1 = offset_op1;
-    ariths[ariths_count].offset_op2 = offset_op2;
-    ariths[ariths_count].operation  = op;
-    ++ariths_count;
-}
-
-static void ariths_calc(void *base_addr, arith_t *ariths, uint ariths_count)
-{
-    int i;
-    for (i = 0; i < ariths_count; ++i) {
-        void *p_res = (base_addr) ? base_addr + ariths[i].offset_res: ariths[i].p_res;
-        void *p_op1 = (base_addr) ? base_addr + ariths[i].offset_op1: ariths[i].p_op1;
-        void *p_op2 = (base_addr) ? base_addr + ariths[i].offset_op2: ariths[i].p_op2;
-        //printf("%p %p %p %llu %llu\n", p_res, p_op1, p_op2, *((ullong *) p_op1), *((ullong *) p_op2));
-        if (ariths[i].operation == '+') *((ullong *) p_res) = *((ullong *) p_op1) + *((ullong *) p_op2);
-        if (ariths[i].operation == '-') *((ullong *) p_res) = *((ullong *) p_op1) - *((ullong *) p_op2);
-        if (ariths[i].operation == '=') *((ullong *) p_res) = *((ullong *) p_op1);
-    }
-}
-
-#define O(l, v) (offsetof(cache_t, l) + offsetof(cache_level_t, v))
+#define O2(l, v) (((int) offsetof(cache_t, l)) + ((int) offsetof(cache_level_t, v)))
+#define O1(l)    (((int) offsetof(cache_t, l)))
 
 void cache_perf_load(topology_t *tp, cache_ops_t *ops)
 {
-    if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_TIGERLAKE) {
-        set_perf(0x01d1, PERF_TYPE_RAW, O(l1d, hits    ), "MEM_LOAD_RETIRED.L1_HIT       ");
-        set_perf(0x08d1, PERF_TYPE_RAW, O(l1d, misses  ), "MEM_LOAD_RETIRED.L1_MISS      ");
-        set_perf(0xe724, PERF_TYPE_RAW, O(l2 , accesses), "L2_RQSTS.ALL_DEMAND_REFERENCES");
-        set_perf(0x2724, PERF_TYPE_RAW, O(l2 , misses  ), "L2_RQSTS.ALL_DEMAND_MISS      ");
-        arith_add(O(l1d, accesses), O(l1d, hits    ), O(l1d, misses), '+');
-        arith_add(O(l2 , hits    ), O(l2 , accesses), O(l2 , misses), '-');
-        arith_add(O(ll , misses  ), O(l2 , misses  ),              0, '=');
-        arith_add(O(lbw, misses  ), O(l2 , misses  ),              0, '=');
+    if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_SKYLAKE_X) {
+        perfs_add(0x01d1, PERF_TYPE_RAW, O2(l1d, hits    ), "MEM_LOAD_RETIRED.L1_HIT       ");
+        perfs_add(0x08d1, PERF_TYPE_RAW, O2(l1d, misses  ), "MEM_LOAD_RETIRED.L1_MISS      ");
+        perfs_add(0xe724, PERF_TYPE_RAW, O2(l2 , accesses), "L2_RQSTS.ALL_DEMAND_REFERENCES");
+        perfs_add(0x2724, PERF_TYPE_RAW, O2(l2 , misses  ), "L2_RQSTS.ALL_DEMAND_MISS      ");
+        perfs_add(0x04d1, PERF_TYPE_RAW, O2(l3 , hits    ), "MEM_LOAD_RETIRED.L3_HIT       ");
+        perfs_add(0x20d1, PERF_TYPE_RAW, O2(l3 , misses  ), "MEM_LOAD_RETIRED.L3_MISS      ");
+        offsets_add(&ofs, O2(l1d, accesses), O2(l1d, hits    ), O2(l1d, misses), '+');
+        offsets_add(&ofs, O2(l2 , hits    ), O2(l2 , accesses), O2(l2 , misses), '-');
+        offsets_add(&ofs, O1(ll)           , O1(l3)           ,               0, '&');
+        offsets_add(&ofs, O1(lbw)          , O1(l2)           ,               0, '&');
+    } else if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_BROADWELL_X) {
+        perfs_add(L1_LDA, PERF_TYPE_HW , O2(l1d, accesses), "PERF_L1D_LOAD_ACCESS");
+        perfs_add(L1_LDM, PERF_TYPE_HW , O2(l1d, misses  ), "PERF_L1D_LOAD_MISS"  );
+        perfs_add(0xe724, PERF_TYPE_RAW, O2(l2 , accesses), "L2_RQSTS.ALL_DEMAND_REFERENCES");
+        perfs_add(0x2724, PERF_TYPE_RAW, O2(l2 , misses  ), "L2_RQSTS.ALL_DEMAND_MISS      ");
+        offsets_add(&ofs, O2(l1d, hits    ), O2(l1d, accesses), O2(l1d, misses), '-');
+        offsets_add(&ofs, O2(l2 , hits    ), O2(l2 , accesses), O2(l2 , misses), '-');
+        offsets_add(&ofs, O1(ll)           , O1(l2)           ,               0, '&');
+        offsets_add(&ofs, O1(lbw)          , O1(l2)           ,               0, '&');
     } else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN3) {
-        set_perf(0xf064, PERF_TYPE_RAW, O(l2 , hits    ), "PMCx064.1111.0000");
-        set_perf(0x0864, PERF_TYPE_RAW, O(l2 , misses  ), "PMCx064.0000.1000");
-        set_perf(0x0729, PERF_TYPE_RAW, O(l1d, accesses), "PMCx029.0000.0111");
-        arith_add(O(l2 , accesses), O(l2 , misses  ), O(l2 , hits  ), '+');
-        arith_add(O(l1d, misses  ), O(l2 , accesses),              0, '=');
-        arith_add(O(l1d, hits    ), O(l1d, accesses), O(l1d, misses), '-');
-        arith_add(O(ll , misses  ), O(l2 , misses  ),              0, '=');
-        arith_add(O(lbw, misses  ), O(l2 , misses  ),              0, '=');
+        perfs_add(0xf064, PERF_TYPE_RAW, O2(l2 , hits    ), "PMCx064.1111.0000");
+        perfs_add(0x0864, PERF_TYPE_RAW, O2(l2 , misses  ), "PMCx064.0000.1000");
+        perfs_add(0x0729, PERF_TYPE_RAW, O2(l1d, accesses), "PMCx029.0000.0111");
+        offsets_add(&ofs, O2(l2 , accesses), O2(l2 , misses  ), O2(l2 , hits  ), '+');
+        offsets_add(&ofs, O2(l1d, misses  ), O2(l2 , accesses),               0, '=');
+        offsets_add(&ofs, O2(l1d, hits    ), O2(l1d, accesses), O2(l1d, misses), '-');
+        offsets_add(&ofs, O1(ll)           , O1(l2)           ,               0, '&');
+        offsets_add(&ofs, O1(lbw)          , O1(l2)           ,               0, '&');
     } else {
         return;
     }
@@ -123,7 +107,7 @@ state_t cache_perf_init()
 state_t cache_perf_dispose()
 {
     int i;
-    if (started){
+    if (started) {
         for (i = 0; i < perfs_count; ++i) {
             if (perfs[i].fd >= 0) {
                 perf_close(&perfs[i]);
@@ -151,11 +135,10 @@ state_t cache_perf_read(cache_t *ca)
             if (state_fail(s = perf_read(&perfs[i], &value))) {
                 return s;
             }
-            *((llong *) (p+perfs[i].aux)) += value;
-            debug("%s: %llu", perfs[i].event_name, *((ullong *) (p+perfs[i].aux)));
+            offsets_calc_one(&ofs, p, i, value, 0LLU);
         }
     }
-    ariths_calc(p, ariths, ariths_count);
+    offsets_calc_all(&ofs, p);
     #if SHOW_DEBUGS
     cache_data_print(ca, 0.0, fderr);
     #endif

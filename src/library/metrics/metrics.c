@@ -3023,25 +3023,25 @@ static void cache_sig_from_cache_t(cache_signature_t *cache_sig, cache_t *cache_
 	cache_sig->l1d_misses = cache_src->l1d.misses;
 	cache_sig->l2_misses = cache_src->l2.misses;
 	cache_sig->l3_misses = cache_src->l3.misses;
-	cache_sig->ll_misses = cache_src->ll.misses;
+	cache_sig->ll_misses = cache_src->ll->misses;
 
 	cache_sig->l1d_hits = cache_src->l1d.hits;
 	cache_sig->l2_hits = cache_src->l2.hits;
 	cache_sig->l3_hits = cache_src->l3.hits;
-	cache_sig->ll_hits = cache_src->ll.hits;
+	cache_sig->ll_hits = cache_src->ll->hits;
 
 	cache_sig->l1d_accesses = cache_src->l1d.accesses;
 	cache_sig->l2_accesses = cache_src->l2.accesses;
 	cache_sig->l3_accesses = cache_src->l3.accesses;
-	cache_sig->ll_accesses = cache_src->ll.accesses;
+	cache_sig->ll_accesses = cache_src->ll->accesses;
 
 	cache_sig->l1d_miss_rate = cache_src->l1d.miss_rate;
 	cache_sig->l2_miss_rate = cache_src->l2.miss_rate;
 	cache_sig->l3_miss_rate = cache_src->l3.miss_rate;
-	cache_sig->ll_miss_rate = cache_src->ll.miss_rate;
+	cache_sig->ll_miss_rate = cache_src->ll->miss_rate;
 
 	cache_sig->l1d_hit_rate = cache_src->l1d.hit_rate;
 	cache_sig->l2_hit_rate = cache_src->l2.hit_rate;
 	cache_sig->l3_hit_rate = cache_src->l3.hit_rate;
-	cache_sig->ll_hit_rate = cache_src->ll.hit_rate;
+	cache_sig->ll_hit_rate = cache_src->ll->hit_rate;
 }
