@@ -54,13 +54,16 @@ uint is_job_step_valid(job_id jid, job_id sid)
 
 	pid_t child_pid = fork();
 	if (child_pid == 0){
+		struct sigaction sa;
 		// Enable SIGALARM
 		sigset_t m;
 		sigemptyset(&m);
 		sigaddset(&m, SIGALRM);
 		sigprocmask(SIG_UNBLOCK, &m, NULL);		
 		// Set default
-		sigaction(SIGALRM, SIG_DFL, NULL);
+		sa.sa_handler = SIG_DFL;
+		sigemptyset(&sa.sa_mask);
+		sigaction(SIGALRM, &sa, NULL);
 		// Set time limit
 		alarm(DEF_TIMEOUT_COMMANDS);
 

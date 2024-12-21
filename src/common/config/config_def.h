@@ -102,7 +102,7 @@
 #define RUN_AS_ROOT 0
 
 /** Maximum number of tries when doing non-blocking communications. */
-#define MAX_SOCKET_COMM_TRIES               1000000
+#define MAX_SOCKET_COMM_TRIES               9000000
 //
 
 /* These flags configures EARL */
