@@ -1682,9 +1682,12 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 	for (uint i = 0; i < FLOPS_EVENTS; i++) metrics->FLOPS[i] = metrics->FLOPS[i] * num_th;
 
 	/* CPI */
-	metrics->cycles       = cpi_diff[sign_app_loop_idx].cycles * num_th;;
-	metrics->instructions = ear_max(cpi_diff[sign_app_loop_idx].instructions, 1) * num_th;;
-	metrics->CPI          = cpi_avrg[sign_app_loop_idx];
+	metrics->cycles       			 	= cpi_diff[sign_app_loop_idx].cycles * num_th;;
+	metrics->instructions 	     	= ear_max(cpi_diff[sign_app_loop_idx].instructions, 1) * num_th;;
+	metrics->stalls.fetch_decode	= cpi_diff[sign_app_loop_idx].stalls.fetch_decode * num_th;; 
+	metrics->stalls.resources 		= cpi_diff[sign_app_loop_idx].stalls.resources * num_th;; 
+	metrics->stalls.memory 			 	= cpi_diff[sign_app_loop_idx].stalls.memory * num_th;; 
+	metrics->CPI          			 	= cpi_avrg[sign_app_loop_idx];
 
 	/* TPI and Memory bandwith */
 	if (master) {
@@ -2507,6 +2510,12 @@ void metrics_app_node_signature(signature_t *master, signature_t *ns)
 				      lib_shared_region->num_processes, &inst);
 	compute_job_node_cycles(sig_shared_region,
 				lib_shared_region->num_processes, &cycles);
+	compute_job_node_stalls_fetch_decode(sig_shared_region, 
+									lib_shared_region->num_processes, &ns->stalls.fetch_decode);
+	compute_job_node_stalls_resources(sig_shared_region, 
+									lib_shared_region->num_processes, &ns->stalls.resources);
+	compute_job_node_stalls_memory(sig_shared_region, 
+									lib_shared_region->num_processes, &ns->stalls.memory);
 	compute_job_node_io_mbs(sig_shared_region,
 				lib_shared_region->num_processes, &io_mbs);
 
@@ -2616,6 +2625,7 @@ void metrics_job_signature(const signature_t *master, signature_t *dst)
 	ullong cycles;
 	ullong FLOPS[FLOPS_EVENTS];
 	ullong L1, L2, L3;
+	ullong fetch_decode, resources, memory;
 
 	signature_copy(dst, master);
 
@@ -2633,6 +2643,21 @@ void metrics_job_signature(const signature_t *master, signature_t *dst)
 		assert(inst != 0);
 		dst->CPI = (double) cycles / (double) inst;
 
+	}
+	if (state_fail(compute_job_node_stalls_fetch_decode(sig_shared_region, lib_shared_region->num_processes, &fetch_decode))) {
+		verbose_warning("Error on computing job's node stalls' fetch decode: %s", state_msg);
+	} else {
+		dst->stalls.fetch_decode = fetch_decode;
+	}
+	if (state_fail(compute_job_node_stalls_resources(sig_shared_region, lib_shared_region->num_processes, &resources))) {
+		verbose_warning("Error on computing job's node stalls' resources: %s", state_msg);
+	} else {
+		dst->stalls.resources = resources;
+	}
+	if (state_fail(compute_job_node_stalls_memory(sig_shared_region, lib_shared_region->num_processes, &memory))) {
+		verbose_warning("Error on computing job's node stalls' memory: %s", state_msg);
+	} else {
+		dst->stalls.memory = memory;
 	}
 
 	if (state_fail(compute_job_node_flops(sig_shared_region, lib_shared_region->num_processes, FLOPS))) {

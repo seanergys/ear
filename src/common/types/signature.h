@@ -14,6 +14,7 @@
 #include <common/config.h>
 #include <common/types/generic.h>
 #include <common/utils/serial_buffer.h>
+#include <metrics/cpi/cpi.h>
 #include <metrics/io/io.h>
 #include <metrics/gpu/gpu.h>
 #include <metrics/flops/flops.h>
@@ -128,6 +129,7 @@ typedef struct mini_sig
   ull FLOPS[FLOPS_EVENTS];
   ull instructions;
   ull cycles;
+  stalls_t stalls;
   ull L1_misses;
   ull L2_misses;
   ull L3_misses;
@@ -160,6 +162,7 @@ typedef struct signature
   ull L3_misses;
   ull instructions;
   ull cycles;
+  stalls_t stalls;
   ulong avg_f;
   ulong avg_imc_f;
   ulong def_f;

@@ -164,7 +164,8 @@ int create_app_header(char * header, char *path, uint num_gpus, char is_extended
 												 "END_TIME;START_DATE;END_DATE;AVG_CPUFREQ_KHZ;"\
 												 "AVG_IMCFREQ_KHZ;DEF_FREQ_KHZ;TIME_SEC;CPI;TPI;MEM_GBS;"\
 												 "IO_MBS;PERC_MPI;DC_NODE_POWER_W;DRAM_POWER_W;PCK_POWER_W;"\
-												 "CYCLES;INSTRUCTIONS;CPU-GFLOPS";
+												 "CYCLES;INSTRUCTIONS;STALLS_FETCH_DECODE;STALLS_RESOURCES;"\
+												 "STALLS_MEMORY;CPU-GFLOPS";
 
 #if USE_GPUS
 #if WF_SUPPORT

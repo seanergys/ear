@@ -521,6 +521,60 @@ state_t compute_job_node_cycles(const shsignature_t *sig, int n_procs,
 	return EAR_SUCCESS;
 }
 
+state_t compute_job_node_stalls_fetch_decode(const shsignature_t *sig, int n_procs,
+								ull *t_fetch_decode)
+{
+	if (sig == NULL || t_fetch_decode == NULL) {
+		return_msg(EAR_ERROR, Generr.input_null);
+	} else if (n_procs == 0) {
+		return_msg(EAR_WARNING, "Number of processes is zero.");
+	}
+
+	int i;
+	*t_fetch_decode = 0;
+	for (i = 0; i < n_procs; i++) {
+		*t_fetch_decode += sig[i].sig.stalls.fetch_decode;
+	}
+
+	return EAR_SUCCESS;
+}
+
+state_t compute_job_node_stalls_resources(const shsignature_t *sig, int n_procs,
+								ull *t_resources)
+{
+	if (sig == NULL || t_resources == NULL) {
+		return_msg(EAR_ERROR, Generr.input_null);
+	} else if (n_procs == 0) {
+		return_msg(EAR_WARNING, "Number of processes is zero.");
+	}
+
+	int i;
+	*t_resources = 0;
+	for (i = 0; i < n_procs; i++) {
+		*t_resources += sig[i].sig.stalls.resources;
+	}
+
+	return EAR_SUCCESS;
+}
+
+state_t compute_job_node_stalls_memory(const shsignature_t *sig, int n_procs,
+								ull *t_memory)
+{
+	if (sig == NULL || t_memory == NULL) {
+		return_msg(EAR_ERROR, Generr.input_null);
+	} else if (n_procs == 0) {
+		return_msg(EAR_WARNING, "Number of processes is zero.");
+	}
+
+	int i;
+	*t_memory = 0;
+	for (i = 0; i < n_procs; i++) {
+		*t_memory += sig[i].sig.stalls.memory;
+	}
+
+	return EAR_SUCCESS;
+}
+
 state_t compute_job_node_L3_misses(const shsignature_t *sig, int n_procs,
 				   ull *t_L3)
 {

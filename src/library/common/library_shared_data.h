@@ -352,6 +352,81 @@ state_t compute_job_node_io_mbs(const shsignature_t *sig, int n_procs, double *i
 state_t compute_job_node_cycles(const shsignature_t *sig, int n_procs, ull *t_cycles);
 
 /**
+ * @brief Computes the total CPU stalls' fetch decode instructions of a job in a node.
+ *
+ * This function calculates the total CPU stalls' fetch decode instructions for a job in the node by summing
+ * the fetch_decode values from an array of `shsignature_t` structures, each representing
+ * a process. The total CPU fetch decode instructions are stored in the `t_fetch_decode` variable.
+ *
+ * If the signature array (`sig`) or the fetch decode output pointer (`t_fetch_decode`) is NULL,
+ * an error code is returned, and the global `state_msg` is set accordingly. If the number
+ * of processes (`n_procs`) is zero, a warning is returned.
+ *
+ * @param[in]		sig 						Pointer to an array of `shsignature_t` structures, each representing a process,
+ *                containing the cycle values of that process.
+ * @param[in]	 	n_procs 				The number of processes whose CPU cycles are to be summed.
+ * @param[out] 	t_fetch_decode 	A pointer to the variable where the total CPU stalls' fetch decode
+ *  			instructions of the job in the node will be stored.
+ *
+ * @return A status code of type `state_t`:
+ * - `EAR_SUCCESS` if the calculation is successful.
+ * - Error codes if invalid inputs are provided (e.g., `NULL` pointers or zero processes).
+ *
+ * @note This function assumes that the `sig` array is valid and contains at least `n_procs` elements.
+ */
+state_t compute_job_node_stalls_fetch_decode(const shsignature_t *sig, int n_procs, ull *t_fetch_decode);
+
+/**
+ * @brief Computes the total CPU stalls' resources of a job in a node.
+ *
+ * This function calculates the total CPU stalls' resources for a job in the node by summing
+ * the resources values from an array of `shsignature_t` structures, each representing
+ * a process. The total CPU stalls' resources are stored in the `t_resources` variable.
+ *
+ * If the signature array (`sig`) or the fetch decode output pointer (`t_fetch_decode`) is NULL,
+ * an error code is returned, and the global `state_msg` is set accordingly. If the number
+ * of processes (`n_procs`) is zero, a warning is returned.
+ *
+ * @param[in] 	sig 					Pointer to an array of `shsignature_t` structures, each representing a process,
+ *                containing the cycle values of that process.
+ * @param[in] 	n_procs 			The number of processes whose CPU cycles are to be summed.
+ * @param[out] 	t_resources 	A pointer to the variable where the total CPU stalls' resources
+ *  			of the job in the node will be stored.
+ *
+ * @return A status code of type `state_t`:
+ * - `EAR_SUCCESS` if the calculation is successful.
+ * - Error codes if invalid inputs are provided (e.g., `NULL` pointers or zero processes).
+ *
+ * @note This function assumes that the `sig` array is valid and contains at least `n_procs` elements.
+ */
+state_t compute_job_node_stalls_resources(const shsignature_t *sig, int n_procs, ull *t_resources);
+
+/**
+ * @brief Computes the total CPU stalls' memory of a job in a node.
+ *
+ * This function calculates the total CPU stalls' memory waits for a job in the node by summing
+ * the memory values from an array of `shsignature_t` structures, each representing
+ * a process. The total CPU stalls' memory waits are stored in the `t_memory` variable.
+ *
+ * If the signature array (`sig`) or the fetch decode output pointer (`t_fetch_decode`) is NULL,
+ * an error code is returned, and the global `state_msg` is set accordingly. If the number
+ * of processes (`n_procs`) is zero, a warning is returned.
+ *
+ * @param[in] 	sig 			Pointer to an array of `shsignature_t` structures, each representing a process,
+ *                containing the cycle values of that process.
+ * @param[in] 	n_procs 	The number of processes whose CPU cycles are to be summed.
+ * @param[out] 	t_memory 	A pointer to the variable where the total CPU stalls' memory waits
+ *  			of the job in the node will be stored.
+ *
+ * @return A status code of type `state_t`:
+ * - `EAR_SUCCESS` if the calculation is successful.
+ * - Error codes if invalid inputs are provided (e.g., `NULL` pointers or zero processes).
+ *
+ * @note This function assumes that the `sig` array is valid and contains at least `n_procs` elements.
+ */
+state_t compute_job_node_stalls_memory(const shsignature_t *sig, int n_procs, ull *t_memory);
+
+/**
  * @brief Computes the total L1 cache misses of a job in a node.
  *
  * This function calculates the total L1 cache misses for a job in the node by summing

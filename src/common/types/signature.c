@@ -48,8 +48,9 @@ void signature_print_fd(int fd, signature_t *sig, char is_extended,
 	dprintf(fd, "%lf;%lf;%lf;",
 		sig->DC_power, sig->DRAM_power, sig->PCK_power);
 
-	dprintf(fd, "%llu;%llu;%lf",
-		sig->cycles, sig->instructions, sig->Gflops);
+	dprintf(fd, "%llu;%llu;%llu;%llu;%llu;%lf",
+		sig->cycles, sig->instructions, sig->stalls.fetch_decode, sig->stalls.resources,
+		sig->stalls.memory, sig->Gflops);
 
 	if (is_extended) {
 		dprintf(fd, ";%u;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%.2f;%.2f;%.2f;%.2f;%.2f;%.2f;%.2f;%.2f",
@@ -428,6 +429,8 @@ state_t signature_from_ssig(signature_t *dst_sig, ssig_t *src_ssig)
 
 	dst_sig->instructions = src_ssig->instructions;
 	dst_sig->cycles = src_ssig->cycles;
+//TODO: define stalls num. of elements via macro, and not hardcoded
+	memcpy(&dst_sig->stalls, &src_ssig->stalls, sizeof(ull) * 3);
 
 	dst_sig->CPI = (double)src_ssig->CPI;
 
@@ -483,6 +486,8 @@ state_t ssig_from_signature(ssig_t *dst_ssig, signature_t *src_sig)
 
 	dst_ssig->instructions = src_sig->instructions;
 	dst_ssig->cycles = src_sig->cycles;
+//TODO: change this 3 into a constant defined via macro, and not hardcoded
+	memcpy(&dst_ssig->stalls, &src_sig->stalls, sizeof(ull) * 3);
 	dst_ssig->L1_misses = src_sig->L1_misses;
 	dst_ssig->L2_misses = src_sig->L2_misses;
 	dst_ssig->L3_misses = src_sig->L3_misses;
