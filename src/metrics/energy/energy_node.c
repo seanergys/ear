@@ -33,7 +33,7 @@ struct energy_op
 	state_t (*power_limit)        (void *c, ulong limit,ulong target);
 	uint    (*is_null)        	  (edata_t end);
 } energy_ops;
-static char energy_objc[SZ_PATH];
+
 static int  energy_loaded  = 0;
 const int   energy_nops    = 12;
 const char *energy_names[] = {
@@ -53,64 +53,40 @@ const char *energy_names[] = {
 
 state_t energy_load(char *energy_obj)
 {
-	state_t ret;
-
-    debug("loading energy plugins");	
-	if (energy_obj == NULL) {
-		return_msg(EAR_ERROR, "Trying to load NULL energy plugin");
-	}
-	debug("loading shared object '%s'", energy_obj);
-	if (state_fail(ret = symplug_open(energy_obj, (void **) &energy_ops, energy_names, energy_nops))) {
-		debug("symplug_open() returned %d (%s)", ret, state_msg);
-		return ret;
-	}
-	energy_loaded = 1;
-	return EAR_SUCCESS; 
-}
-
-state_t energy_initialization(ehandler_t *eh)
-{
-	state_t ret;
-	if (!energy_loaded){
-		state_return_msg(EAR_NOT_READY,0,"Energy plugin not loaded");
-	} 
-	ret = energy_ops.init(&eh->context);
-  if (ret!=EAR_SUCCESS) debug("energy_ops.init() returned %d", ret);
-  return ret;
-
-}
-state_t energy_init(cluster_conf_t *conf, ehandler_t *eh)
-{
-	state_t ret;
-
 	if (energy_loaded) {
-		debug("Energy plugin already loaded, executing basic init");	
-		if (state_fail(ret = energy_ops.init(&eh->context))) {
-			debug("energy_ops.init() returned %d", ret);
-		}
-		return ret;
-	}
-	if (conf == NULL) {
-		return_msg(EAR_ERROR, "The conf value cannot be NULL if the plugin is not loaded");
+		return_msg(EAR_ERROR, Generr.api_initialized);
 	}
 
-	debug("Using ear.conf energy plugin %s",conf->install.obj_ener);
-	sprintf(energy_objc, "%s/energy/%s", conf->install.dir_plug, conf->install.obj_ener);
-	debug("loading shared object '%s'", energy_objc);
+	state_t ret;
 
-	//
-	if (state_fail(ret = symplug_open(energy_objc, (void **) &energy_ops, energy_names, energy_nops))) {
+	if (!energy_obj) {
+		return_msg(EAR_ERROR, Generr.input_null);
+	}
+
+	debug("loading shared object '%s'", energy_obj);
+	if (state_fail
+	    (ret =
+	     symplug_open(energy_obj, (void **)&energy_ops, energy_names,
+			  energy_nops))) {
 		debug("symplug_open() returned %d (%s)", ret, state_msg);
-		return ret;
+		return_msg(ret, Generr.dlopen);
 	}
-	//
 	energy_loaded = 1;
-	
-	if (energy_ops.init != NULL){ 
-		return energy_ops.init(&eh->context);
-	} else {
-		return_print(EAR_ERROR, "The symbol energy_init was not found in %s", energy_objc);
+	return EAR_SUCCESS;
+}
+
+state_t energy_init(ehandler_t *eh)
+{
+	if (!energy_loaded) {
+		return_msg(EAR_ERROR, Generr.api_uninitialized);
 	}
+
+	state_t ret = EAR_SUCCESS;
+
+	if (state_fail(ret = energy_ops.init(&eh->context))) {
+		return_msg(ret, "Plug-in init() method returned an error.");
+	}
+
 	return ret;
 }
 
@@ -133,7 +109,7 @@ state_t energy_handler_clean(ehandler_t *eh)
 
 state_t energy_datasize(ehandler_t *eh, size_t *size)
 {
-	preturn (energy_ops.datasize, size);
+	preturn(energy_ops.datasize, size);
 }
 
 state_t energy_frequency(ehandler_t *eh, ulong *fus)
@@ -145,20 +121,18 @@ state_t energy_frequency(ehandler_t *eh, ulong *fus)
 	ulong e2;
 	void *c;
 
-	c = (void *) eh->context;
+	c = (void *)eh->context;
 
 	// Dedicated frequency
 	if (energy_ops.frequency != NULL) {
-		return energy_ops.frequency ( fus);
+		return energy_ops.frequency(fus);
 	}
 
 	if (energy_ops.dc_read == NULL) {
 		return EAR_UNDEFINED;
 	}
-
 	// Generic frequency
-	if (state_ok(energy_ops.dc_read(eh->context, &e1)))
-	{
+	if (state_ok(energy_ops.dc_read(eh->context, &e1))) {
 		do {
 			energy_ops.dc_read(c, &e2);
 			intents++;
@@ -177,7 +151,9 @@ state_t energy_frequency(ehandler_t *eh, ulong *fus)
 		} while (e1 == e2);
 
 		timestamp_getprecise(&ts2);
-		*fus = (timestamp_diff(&ts2, &ts1, TIME_USECS) / 2) / MAX_POWER_ERROR;
+		*fus =
+		    (timestamp_diff(&ts2, &ts1, TIME_USECS) / 2) /
+		    MAX_POWER_ERROR;
 	}
 
 	return EAR_SUCCESS;
@@ -185,50 +161,50 @@ state_t energy_frequency(ehandler_t *eh, ulong *fus)
 
 state_t energy_dc_read(ehandler_t *eh, edata_t emj)
 {
-	preturn (energy_ops.dc_read, eh->context, emj);
+	preturn(energy_ops.dc_read, eh->context, emj);
 }
 
 state_t energy_dc_time_read(ehandler_t *eh, edata_t emj, ulong *tms)
 {
-	preturn (energy_ops.dc_time_read, eh->context, emj, tms);
+	preturn(energy_ops.dc_time_read, eh->context, emj, tms);
 }
 
 state_t energy_ac_read(ehandler_t *eh, edata_t emj)
 {
-	preturn (energy_ops.ac_read, eh->context, emj);
+	preturn(energy_ops.ac_read, eh->context, emj);
 }
 
 /* Energy units are 1=Joules, 1000=mJ, 1000000=uJ, 1000000000nJ */
-state_t energy_units(ehandler_t *eh,uint *units)
+state_t energy_units(ehandler_t *eh, uint *units)
 {
-  *units=1;
-  preturn (energy_ops.units, units);
+	*units = 1;
+	preturn(energy_ops.units, units);
 }
 
-state_t energy_accumulated(ehandler_t *eh,unsigned long *e,edata_t init,edata_t end)
+state_t energy_accumulated(ehandler_t *eh, unsigned long *e, edata_t init,
+			   edata_t end)
 {
-  *e=0;
-  preturn (energy_ops.accumulated,e,init,end );
+	*e = 0;
+	preturn(energy_ops.accumulated, e, init, end);
 }
 
-state_t energy_to_str(ehandler_t *eh,char *str,edata_t e)
+state_t energy_to_str(ehandler_t *eh, char *str, edata_t e)
 {
-  preturn (energy_ops.energy_to_str,str,e );
+	preturn(energy_ops.energy_to_str, str, e);
 }
 
-state_t energy_set_power_limit(ehandler_t *eh,ulong limit,ulong target)
+state_t energy_set_power_limit(ehandler_t *eh, ulong limit, ulong target)
 {
-  preturn (energy_ops.power_limit, eh->context, limit ,target);
+	preturn(energy_ops.power_limit, eh->context, limit, target);
 }
 
-uint energy_data_is_null(ehandler_t *eh,edata_t e)
+uint energy_data_is_null(ehandler_t *eh, edata_t e)
 {
-  if (energy_ops.is_null != NULL){
-    preturn(energy_ops.is_null,e);
-  }else{
-    /* Should we return 1 or 0 by default */
-    return 1;
-  }
+	if (energy_ops.is_null != NULL) {
+		preturn(energy_ops.is_null, e);
+	} else {
+		/* Should we return 1 or 0 by default */
+		return 1;
+	}
 
 }
-

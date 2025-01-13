@@ -27,6 +27,7 @@
 #include <common/types/configuration/cluster_conf.h>
 #include <daemon/power_monitor.h>
 #include <daemon/app_api/app_conf_api.h>
+#include <daemon/common.h>
 #include <metrics/energy/energy_node.h>
 #include <management/gpu/gpu.h>
 #include <management/cpufreq/frequency.h>
@@ -54,7 +55,7 @@ static connect_t apps_eard[MAX_FDS];
 static afd_set_t rfds_basic;
 
 extern cluster_conf_t my_cluster_conf;
-extern my_node_conf_t my_node_conf;
+extern my_node_conf_t *my_node_conf;
 extern int eard_must_exit;
 static ehandler_t my_eh_app_api;
 
@@ -515,8 +516,15 @@ void *eard_non_earl_api_service(void *noinfo)
         pthread_exit(0);
     }
 
-    if (energy_init(&my_cluster_conf, &my_eh_app_api) != EAR_SUCCESS) {
-        error("Error initializing energy_init in No-EARL_API thread");
+		char energy_plugin_obj[MAX_PATH_SIZE];
+		build_energy_plugin_path(energy_plugin_obj,
+				sizeof(energy_plugin_obj), &my_cluster_conf, my_node_conf);
+
+		if (state_fail(energy_load(energy_plugin_obj))) {
+			verbose(VAPP_API + 1, "Energy plug-in load method failed: %s", state_msg);
+		}
+    if (state_fail(energy_init(&my_eh_app_api))) {
+        error("Error initializing energy_init in No-EARL_API thread: %s", state_msg);
         pthread_exit(0);
     }
 
