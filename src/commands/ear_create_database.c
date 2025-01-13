@@ -289,6 +289,7 @@ void create_tables(void *connection)
                 "avg_f INT unsigned, "
                 "avg_imc_f INT unsigned, "
                 "def_f INT unsigned, "
+								"cpu_util INT unsigned, "
 #if USE_GPUS
                 "min_GPU_sig_id BIGINT unsigned, "
                 "max_GPU_sig_id BIGINT unsigned, "
@@ -311,6 +312,7 @@ void create_tables(void *connection)
                 "avg_f INT unsigned, "
                 "avg_imc_f INT unsigned, "
                 "def_f INT unsigned, "
+								"cpu_util INT unsigned, "
 #if USE_GPUS
                 "min_GPU_sig_id BIGINT unsigned, "
                 "max_GPU_sig_id BIGINT unsigned, "
@@ -586,6 +588,7 @@ void create_tables(void *connection)
                 "avg_f INT , "
                 "avg_imc_f INT , "
                 "def_f INT , "
+								"cpu_util INT, "
 #if USE_GPUS
                 "min_GPU_sig_id BIGINT, "
                 "max_GPU_sig_id BIGINT, "
@@ -608,6 +611,7 @@ void create_tables(void *connection)
                 "avg_f INT , "
                 "avg_imc_f INT , "
                 "def_f INT , "
+								"cpu_util INT, "
 #if USE_GPUS
                 "min_GPU_sig_id BIGINT, "
                 "max_GPU_sig_id BIGINT, "

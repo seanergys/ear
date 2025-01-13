@@ -28,8 +28,8 @@
 #if USE_GPUS 
 
 //Signatures
-#define FULL_SIGNATURE_ARGS              29
-#define SIMPLE_SIGNATURE_ARGS            16
+#define FULL_SIGNATURE_ARGS              30
+#define SIMPLE_SIGNATURE_ARGS            17
 
 //Periodic_metrics
 #define FULL_PERIODIC_METRIC_ARGS        11
@@ -38,8 +38,8 @@
 #else //no USE_GPU
       
 //Signatures
-#define FULL_SIGNATURE_ARGS              27
-#define SIMPLE_SIGNATURE_ARGS            14
+#define FULL_SIGNATURE_ARGS              28
+#define SIMPLE_SIGNATURE_ARGS            15
 
 //Periodic_metrics
 #define FULL_PERIODIC_METRIC_ARGS        10
