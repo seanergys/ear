@@ -251,7 +251,7 @@
 /**@{*/
 
 /** Enable IMC management. */
-#define  EAR_eUFS         1
+#define  EAR_eUFS         0
 
 /** IMC controller threshold. */
 #define  EAR_IMC_TH       0.02
@@ -260,7 +260,7 @@
 #define  EAR_USE_PHASES   1
 
 /** Enable EARL load balance. */
-#define  EAR_USE_LB       1
+#define  EAR_USE_LB       0
 #define  EAR_LB_TH        0.8
 
 /** Set turbo for critical path processes. */
