@@ -87,6 +87,7 @@ state_t pci_scan(ushort vendor, ushort *ids, char **dfs, mode_t mode, pci_t **pc
             // Taking and comparing vendor
             pread(fd, &vid, sizeof(vid), 0);
             if (vid != vendor) {
+		close(fd);
                 continue;
             }
             // Taking id
