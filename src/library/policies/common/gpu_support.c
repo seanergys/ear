@@ -172,7 +172,7 @@ static void optimization_config(settings_conf_t * app_settings)
 			 "%s/%u", tmp, app_settings->id);
 
 		/* Check whether it exists. */
-		if (!file_is_directory(job_tmp_path)) {
+		if (!ear_file_is_directory(job_tmp_path)) {
 			verbose_warning
 			    ("%s does not exist. GPU optimization lock can't be created.",
 			     job_tmp_path);

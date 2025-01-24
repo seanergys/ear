@@ -117,7 +117,7 @@ int ear_file_is_regular(const char *path)
 	return S_ISREG(path_stat.st_mode);
 }
 
-int file_is_directory(const char *path)
+int ear_file_is_directory(const char *path)
 {
 	struct stat buff;
 	if (stat(path, &buff) < 0)

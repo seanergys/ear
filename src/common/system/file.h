@@ -77,7 +77,7 @@ int ear_file_exists(const char *path);
 int ear_file_is_regular(const char *path);
 
 /** */
-int file_is_directory(const char *path);
+int ear_file_is_directory(const char *path);
 
 /** */
 ssize_t ear_file_size(char *path);

@@ -119,7 +119,7 @@ state_t report_init(report_id_t *id, cluster_conf_t *cconf)
 		if (csv_log_file_env) {
 			int ret;
 			debug("Using PATH: %s", csv_log_file_env);
-			if (!file_is_directory(csv_log_file_env)) {
+			if (!ear_file_is_directory(csv_log_file_env)) {
 				if (ear_file_is_regular(csv_log_file_env)) {
 					error
 					    ("DCGMI report plug-in: Invalid path. It must be a directory, not a regular file (%s).",
@@ -141,7 +141,7 @@ state_t report_init(report_id_t *id, cluster_conf_t *cconf)
 				}
 			}
 
-			if (file_is_directory(csv_log_file_env)
+			if (ear_file_is_directory(csv_log_file_env)
 			    || (csv_log_file_env[strlen(csv_log_file_env) - 1]
 				== '/')) {
 				debug("%s is directory", csv_log_file_env);
