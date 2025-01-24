@@ -1,3 +1,18 @@
+### EAR 5.1.4
+- Change the open file limit in edcmon.
+- Increase the timeout for remote calls.
+- Don't check for socket alive to reduce remote message parsing overhead.
+- Add new signature classification changes threshold for AMD zen3.
+- eUFS and MPI Load Balance disabled by default.
+- Bugs fixed:
+  - Minor fixes in signature different decision algorithm.
+  - Dimension in hsmp structure fixed.
+
+### EAR 5.1.3
+- Bugs fixed:
+  - Prevent closing remote connection.
+  - Increase timeout limit for remote connections.
+
 ### EAR 5.1.2
 - Bugs fixed:
   - Prevent closing eard fd 0 when storing powermon\_app fd into shared memory.

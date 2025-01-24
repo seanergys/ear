@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <fcntl.h>
 #include <string.h>
@@ -87,6 +87,7 @@ state_t pci_scan(ushort vendor, ushort *ids, char **dfs, mode_t mode, pci_t **pc
             // Taking and comparing vendor
             pread(fd, &vid, sizeof(vid), 0);
             if (vid != vendor) {
+		close(fd);
                 continue;
             }
             // Taking id
@@ -110,6 +111,10 @@ state_t pci_scan(ushort vendor, ushort *ids, char **dfs, mode_t mode, pci_t **pc
             }
         }}
     if (*pcis_count == 0) {
+	free(*pcis);
+	*pcis = NULL;
+        debug("No PCIs found (%u permission errors, %u other errors [%s], %u opened but wrong IDs)",
+                     ret_n_errs_perms, ret_n_errs_other, ret_err_other, ret_n_opened);
         return_print(EAR_ERROR, "No PCIs found (%u permission errors, %u other errors [%s], %u opened but wrong IDs)",
                      ret_n_errs_perms, ret_n_errs_other, ret_err_other, ret_n_opened);
     }
@@ -118,16 +123,17 @@ state_t pci_scan(ushort vendor, ushort *ids, char **dfs, mode_t mode, pci_t **pc
 
 state_t pci_scan_close(pci_t **pcis, uint *pcis_count)
 {
-	int p;
+    int p;
     if (pcis == NULL || *pcis == NULL) {
         return EAR_ERROR;
     }
-	for (p = 0; p < *pcis_count; ++p) {
-		close((*pcis)[p].fd);
-	}
+    for (p = 0; p < *pcis_count; ++p) {
+        close((*pcis)[p].fd);
+    }
     free(*pcis);
-	*pcis_count = 0;
-	return EAR_SUCCESS;
+    *pcis = NULL;
+    *pcis_count = 0;
+    return EAR_SUCCESS;
 }
 
 state_t pci_read(pci_t *pci, void *buffer, size_t size, off_t addr)

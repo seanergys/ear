@@ -24,6 +24,10 @@
 
 static double compute_vpi(const ullong * FLOPS, ullong instructions);
 
+static void ps_signature_serialize(serial_buffer_t *b, proc_stat_signature_t *ps_sig);
+
+static void ps_signature_deserialize(serial_buffer_t *b, proc_stat_signature_t *ps_sig);
+
 void signature_copy(signature_t *destiny, const signature_t *source)
 {
 	memcpy(destiny, source, sizeof(signature_t));
@@ -623,6 +627,7 @@ void signature_serialize(serial_buffer_t *b, signature_t *sig)
     serial_dictionary_push_auto(b, sig->avg_imc_f);
     serial_dictionary_push_auto(b, sig->def_f);
     serial_dictionary_push_auto(b, sig->perc_MPI);
+		ps_signature_serialize(b, &sig->ps_sig);
 #if USE_GPUS
     gpu_signature_serialize(b, &sig->gpu_sig);
 #endif
@@ -671,10 +676,12 @@ void signature_deserialize(serial_buffer_t *b, signature_t *sig)
     serial_dictionary_pop_auto(b, sig->avg_imc_f);
     serial_dictionary_pop_auto(b, sig->def_f);
     serial_dictionary_pop_auto(b, sig->perc_MPI);
+		ps_signature_deserialize(b, &sig->ps_sig);
 #if USE_GPUS
     gpu_signature_deserialize(b, &sig->gpu_sig);
 #endif
 }
+
 double compute_dc_nogpu_power(signature_t *lsig)
 {
 	double CPU_power = lsig->DC_power;
@@ -686,4 +693,20 @@ double compute_dc_nogpu_power(signature_t *lsig)
 	#endif
 	CPU_power -= GPU_power;
 	return CPU_power;
+}
+
+static void ps_signature_serialize(serial_buffer_t *b, proc_stat_signature_t *ps_sig)
+{
+	if (!ps_sig) {
+		return;
+	}
+	serial_dictionary_push_auto(b, ps_sig->cpu_util);
+}
+
+static void ps_signature_deserialize(serial_buffer_t *b, proc_stat_signature_t *ps_sig)
+{
+	if (!ps_sig) {
+		return;
+	}
+	serial_dictionary_pop_auto(b, ps_sig->cpu_util);
 }

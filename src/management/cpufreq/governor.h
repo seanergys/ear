@@ -29,20 +29,20 @@
 //       means the governor set before the API was initialized.
 //
 struct governor_s {
-	uint conservative;
-	uint performance;
+    uint conservative;
+    uint performance;
     uint userspace;
     uint powersave;
     uint ondemand;
     uint unknown;
-	uint last;
+    uint last;
 } Governor __attribute__((weak)) = {
-	.conservative = 0,
-	.performance = 1,
+    .conservative = 0,
+    .performance = 1,
     .userspace = 2,
-	.powersave = 3,
-	.ondemand = 4,
-	.unknown = 5,
+    .powersave = 3,
+    .ondemand = 4,
+    .unknown = 5,
     .last = 6,
 };
 

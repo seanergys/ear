@@ -39,7 +39,8 @@ eard_OBJS = \
     shared_pmon.o \
     app_api/app_server_api.o \
     node_metrics.o \
-    log_eard.o
+    log_eard.o \
+	common.o
 
 eard_OBJS += \
     $(remote_api_OBJS) \

@@ -63,13 +63,13 @@ static pci_t     *pcis;
 
 state_t hsmp_pci_open(topology_t *tp)
 {
-    state_t s;
+	state_t s;
 
-    if (tp->vendor == VENDOR_INTEL || tp->family < FAMILY_ZEN) {
+        if (tp->vendor == VENDOR_INTEL || tp->family < FAMILY_ZEN) {
 		return_msg(EAR_ERROR, Generr.api_incompatible);
 	}
 	if (pcis != NULL) {
-        return EAR_SUCCESS;
+		return_msg(EAR_SUCCESS, "already loaded");
 	}
 	sockets_count = tp->socket_count;
 	// By now just ZEN2 and greater
@@ -94,8 +94,8 @@ state_t hsmp_pci_open(topology_t *tp)
         // different architectures, a thing we not expect.
         mist_nbios_count = pcis_count / sockets_count;
         //
-		mail = &zen2_mailbox;
-		// Test ping
+	mail = &zen2_mailbox;
+	// Test ping
         uint args[2] = { 68, -1 };
         uint reps[2] = {  0, -1 };
         if (state_fail(s = hsmp_pci_send(0, HSMP_TEST, args, reps))) {
@@ -108,7 +108,7 @@ state_t hsmp_pci_open(topology_t *tp)
         }
         debug("Ping returned %d", reps[0]);
 	}
-    return EAR_SUCCESS;
+	return EAR_SUCCESS;
 }
 
 state_t hsmp_pci_close()
@@ -119,7 +119,6 @@ state_t hsmp_pci_close()
 static state_t smn_write(pci_t *pci, mailopt_t *opt, uint data)
 {
 	state_t s;
-    //debug("smn_write");
 	if (state_fail(s = pci_write(pci, (const void *) &opt->address, sizeof(uint), smn.index))) {
 		debug("pci_write returned: %s", state_msg);
 		return s;
@@ -128,7 +127,7 @@ static state_t smn_write(pci_t *pci, mailopt_t *opt, uint data)
 		debug("pci_write returned: %s", state_msg);
 		return s;
 	}
-	debug("PCI%d: written %u (%lu) in %s (%lx)",
+	debug("PCI FD%d: written value %u (%lu bytes) in %s regiser (0x%lx address)",
 		pci->fd, data, opt->size, opt->name, opt->address);
 	return EAR_SUCCESS;
 }
@@ -145,7 +144,7 @@ static state_t smn_read(pci_t *pci, mailopt_t *opt, uint *data)
 		debug("pci_write returned: %s", state_msg);
 		return s;
 	}
-	debug("PCI%d: Readed %u (%lu) from %s (%lx)",
+	debug("PCI FD%d: readed value %u (%lu bytes) from %s register (0x%lx address)",
 		pci->fd, *data, opt->size, opt->name, opt->address);
 	return EAR_SUCCESS;
 }
@@ -156,7 +155,7 @@ state_t hsmp_pci_send(int socket, uint function, uint *args, uint *reps)
 	mailopt_t arg;
 	uint response;
 	uint timeout;
-    uint intents;
+	uint intents;
 	state_t s;
 	int a;
 
@@ -188,15 +187,18 @@ retry:
 	}
 	if (response == HSMP_NOT_READY || response == HSMP_ERR_SMU_BUSY) {
 		if (--timeout == 0) {
+			debug("HSMP didn't answer because TIMEOUT");
 			return_msg(EAR_ERROR, "Timeout, waiting too long for an HSMP response");
 		}
 		++intents;
 		goto retry;
 	}
 	if (response == HSMP_INVALID_ID) {
+		debug("HSMP answered with INVALID_MAIL_FUNCTION");
 		return_msg(EAR_ERROR, "Invalid mail function id");
 	}
 	if (response == HSMP_INVALID_ARG) {
+		debug("HSMP answered with INVALID_ARGUMENT");
 		return_msg(EAR_ERROR, "Invalid mail argument");
 	}
 	debug("HSMP answered after %d intents", intents);

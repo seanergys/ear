@@ -1,8 +1,10 @@
-# EAR Configuration File
+# ---------------------- #
+# EAR Configuration File #
+# ---------------------- #
 
-#-------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------
 # DB confguration: This section sets the DB server parameters.
-#-------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------
 DBIp=127.0.0.1
 
 # Add a secondary IP for high availability.
@@ -17,15 +19,16 @@ DBPassw=password
 DBCommandsUser=ear_commands
 DBCommandsPassw=password
 
-# Database name, server port and maximum number of allowed connections (defaults: EAR/3306/20).
+# Database name, server port and maximum number of allowed connections.
+# (defaults: EAR/3306/20).
 # DBDatabase=
 # DBPort=
 # DBMaxConnections=
 
-# Periodic metrics are by default the start and end times, the average DC node power consumption,
-# the node id and the job and step ids (if apply).
-# By setting this flag, periodic metrics also include the average CPU frequency and temperature
-# and the DRAM, PCK and GPU (if applies) average power (default: 1).
+# Periodic metrics are by default the start and end times, the average DC node
+# power consumption, the node id and the job and step ids (if apply). By setting
+# this flag, periodic metrics also include the average CPU frequency and
+# temperature and the DRAM, PCK and GPU (if applies) average power (default: 1).
 # DBReportNodeDetail=
 
 # Extended signature information saves also the hardware counters, i.e., cache misses, FLOPS,
@@ -36,9 +39,9 @@ DBCommandsPassw=password
 # THIS FIELD SHOULD BE CONSIDERED TO BE SET TO 0 IF YOU ARE INSTALLING EAR IN A LARGE CLUSTER
 # DBReportLoops=
 
-#--------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------
 # EAR Daemon (EARD): Update this section to change the EARD configuration.
-#--------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------
 # Port is used for connections with the EAR plugin and commands (default: 50000).
 # NodeDaemonPort=
 
@@ -71,9 +74,10 @@ DBCommandsPassw=password
 # Set the report plug-in to be loaded (default: no plug-in).
 # EARDReportPlugins=eardbd.so
 
-#-------------------------------------------------------------------------------------------------
-# EAR Database Manager (EARDBD): Update this section to change the EARDBD configuration.
-#-------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------
+# EAR Database Manager (EARDBD): Update this section to change the EARDBD
+# configuration.
+# -------------------------------------------------------------------------
 DBDaemonPortTCP=50002
 DBDaemonPortSecTCP=50003
 DBDaemonSyncPort=50004

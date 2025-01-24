@@ -2342,7 +2342,7 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
             error("when resetting IPMI interface 'energy_dispose'");
         }
 
-        if (energy_init(NULL, &my_eh_pm) != EAR_SUCCESS) {
+        if (energy_init(&my_eh_pm) != EAR_SUCCESS) {
             error("when resetting IPMI interface in 'energy_init'");
         }
     }
