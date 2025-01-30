@@ -46,6 +46,9 @@ src/erules/*
 /configure*
 src/common/config/config.h.in~
 src/common/config/config.h
+src/daemon/app_api/Makefile*
+!src/daemon/app_api/Makefile.am
+.dirstamp
 
 # IDE
 cmake*
@@ -208,3 +211,6 @@ tmp.txt
 *.plist
 etc/examples/prolog_epilog/ejob
 etc/examples/prolog_epilog/list
+
+build-aux
+.deps

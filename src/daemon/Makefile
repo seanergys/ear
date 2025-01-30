@@ -37,7 +37,7 @@ eard_OBJS = \
     app_mgt.o \
     shared_configuration.o \
     shared_pmon.o \
-    app_api/app_server_api.o \
+    app_server_api.o \
     node_metrics.o \
     log_eard.o \
 	common.o
@@ -75,6 +75,9 @@ shared_pmon.o: shared_pmon.c shared_pmon.h power_monitor_app.h
 	$(CC) $(CFLAGS) -fPIC -c $<
 
 eard_checkpoint.o: eard_checkpoint.c eard_checkpoint.h
+	$(CC) $(CFLAGS) -c $<
+
+app_server_api.o: app_api/app_server_api.c app_api/app_server_api.h
 	$(CC) $(CFLAGS) -c $<
 
 ######## OPTIONS
