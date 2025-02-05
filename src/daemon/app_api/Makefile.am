@@ -18,4 +18,6 @@ libear_api_a_SOURCES = app_api.c app_conf_api.h \
 											 $(top_srcdir)/src/common/system/poll.c $(top_srcdir)/src/common/system/poll.h \
 											 $(top_srcdir)/src/common/environment_common.c $(top_srcdir)/src/common/environment_common.h
 
+etc.install: ;
+
 # libear_api_a_LIBDADD = $(top_srcdir)/src/common/libcommon.la
