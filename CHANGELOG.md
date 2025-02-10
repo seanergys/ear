@@ -20,6 +20,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - v5.2 Fixed typo in cpupow define.
 - v5.2 Improved CPU governor list message.
 
+### EAR 5.1.5
+- Bugs fixed:
+  - Prevent running code in EARD report plug-in misc method if the event type is not WF_APPLICATION
+  - Prevent closing a popen structure if the process is already death.
+  - file_ module's function naming changed to ear_file to prevent symbol name collisions with third-party applications.
+
 ### EAR 5.1.4
 - Change the open file limit in edcmon.
 - Increase the timeout for remote calls.
