@@ -93,7 +93,7 @@ void cache_perf_load(topology_t *tp, cache_ops_t *ops)
         perfs_add(L1_LDA, PERF_TYPE_HW , O2(l1d, accesses ), "PERF_L1D_LOAD_ACCESS");
         perfs_add(L1_LDM, PERF_TYPE_HW , O2(l1d, misses   ), "PERF_L1D_LOAD_MISS"  );
         offsets_add(&ofs, O2(l1d, hits), O2(l1d, accesses), O2(l1d, misses), '-');
-        offsets_add(&ofs, O1(ll)       , O1(l1d)           ,               0, '&');
+        offsets_add(&ofs, O1(ll)       , O1(l1d)          ,               0, '&');
     }
     if (!perfs_count_opened_fds()) {
         debug("All PERFs failed to open");
