@@ -132,6 +132,7 @@ uint id_ovh_dc_energy;
 uint id_ovh_rapl;
 uint id_ovh_cpufreq;
 uint id_ovh_imcfreq;
+uint id_ovh_partial_start;
 
 static uint partial_stop_cnt = 0;
 static uint compute_sig_cnt = 0;
@@ -218,7 +219,7 @@ mpi_calls_types_t *metrics_mpi_calls_types[2];      // Contains the data of the 
 mpi_calls_types_t *metrics_last_mpi_calls_types[2];
 #endif
 
-
+static report_id_t report_id;
 
 /* These vectors have position APP for application granularity and LOO for loop granularity. */
 static llong       last_elap_sec = 0;
@@ -813,12 +814,15 @@ static void metrics_static_init(topology_t *tp)
 
     #if METRICS_OVH
     overhead_suscribe("partial_stop", &id_ovh_partial_stop);
+		overhead_suscribe("partial_start", &id_ovh_partial_start);
     overhead_suscribe("compute_signature_data", &id_ovh_compute_data);
     overhead_suscribe("DC_energy", &id_ovh_dc_energy);
     overhead_suscribe("RAPL", &id_ovh_rapl);
     overhead_suscribe("AVG_CPU_freq", &id_ovh_cpufreq);
     overhead_suscribe("AVG_IMC_freq", &id_ovh_imcfreq);
     #endif
+		report_create_id(&report_id, my_node_id,
+				ear_my_rank, masters_info.my_master_rank);
 }
 
 
@@ -2421,9 +2425,6 @@ state_t metrics_compute_signature_finish(signature_t *metrics, uint iterations,
     #endif
 
 		// Call report mpitrace
-		report_id_t report_id;
-		report_create_id(&report_id, my_node_id,
-                         ear_my_rank, masters_info.my_master_rank);
 
 		if (state_fail(report_misc(&report_id, MPITRACE,
                                    (cchar *) &sig_shared_region[my_node_id], 0)))
@@ -2441,7 +2442,9 @@ state_t metrics_compute_signature_finish(signature_t *metrics, uint iterations,
                     COL_RED, COL_CLR, my_node_id);
 		}
 
+		overhead_start(id_ovh_partial_start);
 		metrics_partial_start();
+		overhead_stop(id_ovh_partial_start);
 	}
 #if SHOW_DEBUGS
 	else {
