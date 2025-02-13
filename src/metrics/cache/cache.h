@@ -47,7 +47,7 @@ typedef struct cache_s {
     cache_level_t  l2;
     cache_level_t  l3;
     cache_level_t *ll;
-    cache_level_t *lbw; // Level used to calc bandwidth in case ll is a victim cache.
+    cache_level_t *lbw; // Level used to calc bandwidth
     timestamp_t    time;
 } cache_t;
 

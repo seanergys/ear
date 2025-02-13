@@ -36,6 +36,15 @@ static void perfs_add(ullong event, uint type, ulong offset_result, const char *
     ++perfs_count;
 }
 
+static int perfs_count_opened_fds()
+{
+    int i, counter;
+    for (i = counter = 0; i < perfs_count; ++i) {
+        counter += (perfs[i].fd >= 0);
+    }
+    return counter;
+}
+
 #define O2(l, v) (((int) offsetof(cache_t, l)) + ((int) offsetof(cache_level_t, v)))
 #define O1(l)    (((int) offsetof(cache_t, l)))
 
@@ -61,7 +70,7 @@ void cache_perf_load(topology_t *tp, cache_ops_t *ops)
         offsets_add(&ofs, O2(l2 , hits    ), O2(l2 , accesses), O2(l2 , misses), '-');
         offsets_add(&ofs, O1(ll)           , O1(l2)           ,               0, '&');
         offsets_add(&ofs, O1(lbw)          , O1(l2)           ,               0, '&');
-    } else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN3) {
+    } else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN) {
         perfs_add(0xf064, PERF_TYPE_RAW, O2(l2 , hits    ), "PMCx064.1111.0000");
         perfs_add(0x0864, PERF_TYPE_RAW, O2(l2 , misses  ), "PMCx064.0000.1000");
         perfs_add(0x0729, PERF_TYPE_RAW, O2(l1d, accesses), "PMCx029.0000.0111");
@@ -70,7 +79,24 @@ void cache_perf_load(topology_t *tp, cache_ops_t *ops)
         offsets_add(&ofs, O2(l1d, hits    ), O2(l1d, accesses), O2(l1d, misses), '-');
         offsets_add(&ofs, O1(ll)           , O1(l2)           ,               0, '&');
         offsets_add(&ofs, O1(lbw)          , O1(l2)           ,               0, '&');
+    } else if (tp->vendor == VENDOR_ARM) {
+        perfs_add(L1_LDA, PERF_TYPE_HW , O2(l1d, accesses ), "PERF_L1D_LOAD_ACCESS");
+        perfs_add(L1_LDM, PERF_TYPE_HW , O2(l1d, misses   ), "PERF_L1D_LOAD_MISS"  );
+        perfs_add(0x0016, PERF_TYPE_RAW, O2(l2 , accesses ), "L2D_CACHE"           );
+        perfs_add(0x0017, PERF_TYPE_RAW, O2(l2 , misses   ), "L2D_CACHE_REFILL"    );
+        perfs_add(0x0018, PERF_TYPE_RAW, O2(l2 , lines_out), "L2D_CACHE_WB"        );
+        offsets_add(&ofs, O2(l1d, hits), O2(l1d, accesses), O2(l1d, misses), '-');
+        offsets_add(&ofs, O2(l2 , hits), O2(l2 , accesses), O2(l2 , misses), '-');
+        offsets_add(&ofs, O1(ll)       , O1(l2)           ,               0, '&');
+        offsets_add(&ofs, O1(lbw)      , O1(l2)           ,               0, '&');
     } else {
+        perfs_add(L1_LDA, PERF_TYPE_HW , O2(l1d, accesses ), "PERF_L1D_LOAD_ACCESS");
+        perfs_add(L1_LDM, PERF_TYPE_HW , O2(l1d, misses   ), "PERF_L1D_LOAD_MISS"  );
+        offsets_add(&ofs, O2(l1d, hits), O2(l1d, accesses), O2(l1d, misses), '-');
+        offsets_add(&ofs, O1(ll)       , O1(l1d)           ,               0, '&');
+    }
+    if (!perfs_count_opened_fds()) {
+        debug("All PERFs failed to open");
         return;
     }
     apis_put(ops->get_info,        cache_perf_get_info);
