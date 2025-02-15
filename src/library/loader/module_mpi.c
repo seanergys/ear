@@ -85,8 +85,11 @@ static void *get_libear_handler(char *libear_path)
 {
     static void *handler = NULL;
     if (handler == NULL && libear_path != NULL) {
+        verbose(2, "LOADER: loading library '%s'", libear_path);
         handler = dlopen(libear_path, RTLD_GLOBAL | RTLD_NOW);
-	verbose(2, "LOADER: handler libear: %p (%s)", handler, dlerror());
+        verbose(2, "LOADER: handler libear: %p (%s)", handler, dlerror());
+        // Announce libear is already loaded
+        set_libear_loaded();
     }
     return handler;
 }
@@ -249,6 +252,11 @@ int load_libear_mpi_given_libmpi(char *libmpi_path)
     void *call_mpi_version = NULL;
     char *libear_path = NULL;
     verbose(2, "LOADER: Entering in MPI loader (%s)", libmpi_path);
+    // This function can be entered from MPI symbols, in that case we need to
+    // check that if loader already loaded from other ways.
+    if (is_libear_loaded()) {
+        return 0;
+    }
     // Load libcntd.so (COUNTDOWN) functions.
     if (!load_mpi_functions(get_libcnt_handler(), &calls_mpi_c, &calls_mpi_f)) {
         // Load libmpi.so functions. Protected against multiple calls.

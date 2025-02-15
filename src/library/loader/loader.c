@@ -25,6 +25,18 @@
 #include <library/loader/module_mpi.h>
 #include <library/loader/module_common.h>
 
+static int libear_already_loaded;
+
+int is_libear_loaded()
+{
+    return libear_already_loaded;
+}
+
+void set_libear_loaded()
+{
+    libear_already_loaded = 1;
+}
+
 static int init()
 {
     char *verb;
@@ -53,24 +65,35 @@ static int init()
     // return pid1 == pid2;
 }
 
-int is_not_an_invalid_program()
+static int is_a_valid_program(char **bin_names)
 {
-    if ((strstr(program_invocation_name, "bash") == NULL) &&
-        (strstr(program_invocation_name, "hydra") == NULL)) {
-        verbose(2, "LOADER: Program %s loaded with EAR", program_invocation_name);
-        return 1;
+    int l;
+    // If the program name is one of these is invalid and nothing is loaded
+    for (l = 0; bin_names[l] != NULL; ++l) {
+        if (strstr(program_invocation_name, bin_names[l]) != NULL) {
+            verbose(2, "LOADER: Program %s invalid and is loaded without EAR",
+                program_invocation_name);
+            return 0;
+        }
     }
-    verbose(2, "LOADER: Program %s loaded without EAR", program_invocation_name);
-    return 0;
+    return 1;
 }
 
-int forced_load()
+static int is_a_forced_load(char **bin_names)
 {
     char  *envar      = NULL;
     char **list       = NULL;
     uint   list_count = 0;
     int    l          = 0;
 
+    // If the program name is one of these we load the sequential library
+    for (l = 0; bin_names[l] != NULL; ++l) {
+        if (strstr(program_invocation_name, bin_names[l]) != NULL) {
+            verbose(2, "LOADER: looking for forced program '%s': found!", bin_names[l]);
+            return 1;
+        }
+        verbose(2, "LOADER: looking for forced program '%s': not found", bin_names[l]);
+    }
     if ((envar = ear_getenv(FLAG_LOADER_APPLICATION)) == NULL) {
         return 0;
     }
@@ -80,6 +103,7 @@ int forced_load()
     }
     for (l = 0; l < list_count; ++l) {
         if (strstr(program_invocation_name, list[l]) != NULL) {
+            verbose(2, "LOADER: looking for forced program '%s': found!", list[l]);
             strtoa_free(list);
             return 1;
         }
@@ -90,31 +114,26 @@ int forced_load()
 
 void __attribute__ ((constructor)) loader()
 {
-    char *syms_openmp[] = {"omp_get_max_threads", "mkl_get_max_threads", NULL};
-    char *syms_cuda[]   = {"cudaRuntimeGetVersion", NULL};
-    char *libs_oneapi[] = {"libsycl.so", NULL};
-
-    // The old load_no_parallel function is not required any more because the
-    // new loader is compatible with Python and other scripting languages. But
-    // the non-MPI version of the library turns incompatible with this loader
-    // since it is loaded before the scripting languages load the MPI library
-    // and call MPI_Init, which is done during the execution, and in the
-    // constructor these symbols are not present yet.
-    //
-    // To solve this, we define FLAG_LOAD_MPI environment variable with any
-    // value to tell the loader we want to use the MPI module. When that flag
-    // is defined, the MPI module returns 1 even if MPI is not loaded yet,
-    // preventing other modules to load the EAR library.
+    char *bins_invalid[] = {"bash", "hydra", NULL};
+    char *bins_forced[]  = {"python", "python3", "julia", NULL};
+    char *syms_openmp[]  = {"omp_get_max_threads", "mkl_get_max_threads", NULL};
+    char *syms_cuda[]    = {"cudaRuntimeGetVersion", NULL};
+    char *libs_oneapi[]  = {"libsycl.so", NULL};
+    // If FLAG_LOAD_MPI environment variable is set, the loader assumes the MPI
+    // version of the library is the version the user wants and no other library
+    // is loaded before. This is required because in example, if EAR MPI library
+    // is loaded in lazy mode (from MPI symbols), we need a way to stop the
+    // loader to open the sequential library because the program name matches
+    // one of the forced programs names.
     if (!init()) {
         return;
     }
-    if (is_not_an_invalid_program()) {
-        if (load_libear_mpi()) { return; }
-        if (load_libear_nonspec(OPENMP_EXT, syms_openmp, NULL       )) { return; }
-        if (load_libear_nonspec(  CUDA_EXT, syms_cuda  , NULL       )) { return; }
-        if (load_libear_nonspec(ONEAPI_EXT, NULL       , libs_oneapi)) { return; }
-        if (!forced_load()) { return; }
-        if (load_libear_nonspec(   DEF_EXT, NULL       , NULL       )) { return; }
-    }
+    if (!is_a_valid_program(bins_invalid)) { return; }
+    if (load_libear_mpi()) { return; }
+    if (load_libear_nonspec(OPENMP_EXT, syms_openmp, NULL       )) { return; }
+    if (load_libear_nonspec(  CUDA_EXT, syms_cuda  , NULL       )) { return; }
+    if (load_libear_nonspec(ONEAPI_EXT, NULL       , libs_oneapi)) { return; }
+    if (!is_a_forced_load(bins_forced)) { return; }
+    if (load_libear_nonspec(   DEF_EXT, NULL       , NULL       )) { return; }
     return;
 }
