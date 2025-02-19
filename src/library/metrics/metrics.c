@@ -2481,82 +2481,120 @@ long long metrics_usecs_diff(long long end, long long init)
 	return (end - init);
 }
 
-
-void metrics_app_node_signature(signature_t *master,signature_t *ns)
+void metrics_app_node_signature(signature_t * master, signature_t * ns)
 {
 	ullong inst, max_inst = 0;
 	ullong cycles;
 	ullong FLOPS[FLOPS_EVENTS];
 	sig_ext_t *se;
 	int i;
-	double valid_period;
+	ulong valid_period;
 	ullong L1, L2, L3;
-  ullong accesses = 0;
-  double io_mbs;
+	ullong accesses = 0;
+	double io_mbs;
 
-	se = (sig_ext_t *)master->sig_ext;
-	signature_copy(ns,master);
-	if (se != NULL) memcpy(ns->sig_ext,se,sizeof(sig_ext_t));
+	se = (sig_ext_t *) master->sig_ext;
+	signature_copy(ns, master);
+	if (se != NULL)
+		memcpy(ns->sig_ext, se, sizeof(sig_ext_t));
 
 	debug(" metrics_app_node_signature");
 
-	compute_job_node_instructions(sig_shared_region, lib_shared_region->num_processes, &inst);
-	compute_job_node_cycles(sig_shared_region, lib_shared_region->num_processes, &cycles);
-	compute_job_node_io_mbs(sig_shared_region, lib_shared_region->num_processes, &io_mbs);
+	compute_job_node_instructions(sig_shared_region,
+				      lib_shared_region->num_processes, &inst);
+	compute_job_node_cycles(sig_shared_region,
+				lib_shared_region->num_processes, &cycles);
+	compute_job_node_io_mbs(sig_shared_region,
+				lib_shared_region->num_processes, &io_mbs);
 
-	ns->CPI = (inst ? (double) cycles / (double) inst : 1);
-  ns->IO_MBS = io_mbs;
+	ns->CPI = (inst ? (double)cycles / (double)inst : 1);
+	ns->IO_MBS = io_mbs;
 
-	compute_job_node_flops(sig_shared_region, lib_shared_region->num_processes, FLOPS);
+	compute_job_node_flops(sig_shared_region,
+			       lib_shared_region->num_processes, FLOPS);
 
-	compute_job_node_L1_misses(sig_shared_region, lib_shared_region->num_processes, &L1);
-	compute_job_node_L2_misses(sig_shared_region, lib_shared_region->num_processes, &L2);
-	compute_job_node_L3_misses(sig_shared_region, lib_shared_region->num_processes, &L3);
+	compute_job_node_L1_misses(sig_shared_region,
+				   lib_shared_region->num_processes, &L1);
+	compute_job_node_L2_misses(sig_shared_region,
+				   lib_shared_region->num_processes, &L2);
+	compute_job_node_L3_misses(sig_shared_region,
+				   lib_shared_region->num_processes, &L3);
 
-	for (i = 0; i < FLOPS_EVENTS; i++){
+	for (i = 0; i < FLOPS_EVENTS; i++) {
 		ns->FLOPS[i] = FLOPS[i];
-	}    
-
-	if (state_fail(compute_job_node_gflops(sig_shared_region, lib_shared_region->num_processes, &ns->Gflops))) {
-		verbose_warning("Error on computing job's node GFLOP/s rate: %s", state_msg);
 	}
 
-	ns->L1_misses  = L1;
-	ns->L2_misses  = L2;
-	ns->L3_misses  = L3;
-	ns->cycles     = cycles;
+	if (state_fail
+	    (compute_job_node_gflops
+	     (sig_shared_region, lib_shared_region->num_processes,
+	      &ns->Gflops))) {
+		verbose_warning
+		    ("Error on computing job's node GFLOP/s rate: %s",
+		     state_msg);
+	}
+
+	ns->L1_misses = L1;
+	ns->L2_misses = L2;
+	ns->L3_misses = L3;
+	ns->cycles = cycles;
 	ns->instructions = inst;
 
-
-	uint tcpus     = 0;
-	ns->DC_power   = 0;
-	ns->GBS        = 0;
-	ns->avg_f      = 0;
+	uint tcpus = 0;
+	ns->DC_power = 0;
+	ns->GBS = 0;
+	ns->avg_f = 0;
 	ns->DRAM_power = 0;
-	ns->PCK_power  = 0;
-	if (master){
-		for (uint lp = 0; lp < lib_shared_region->num_processes; lp ++){
-			valid_period    = sig_shared_region[lp].sig.valid_time;
-      max_inst        = ear_max(max_inst, sig_shared_region[lp].sig.instructions);
-			if (valid_period){
-				ns->DC_power   += sig_shared_region[lp].sig.accum_energy / valid_period;
-				ns->DRAM_power += sig_shared_region[lp].sig.accum_dram_energy / valid_period;
-				ns->PCK_power  += sig_shared_region[lp].sig.accum_pack_energy / valid_period;
-				ns->GBS        += sig_shared_region[lp].sig.accum_mem_access / (valid_period * B_TO_GB);
-				ns->avg_f      += (sig_shared_region[lp].sig.accum_avg_f * sig_shared_region[lp].num_cpus) / (ulong)valid_period;
+	ns->PCK_power = 0;
+	if (master) {
+		for (uint lp = 0; lp < lib_shared_region->num_processes; lp++) {
+			valid_period =
+			    (ulong) sig_shared_region[lp].sig.valid_time;
+			max_inst =
+			    ear_max(max_inst,
+				    sig_shared_region[lp].sig.instructions);
+			if (valid_period) {
+				ns->DC_power +=
+				    sig_shared_region[lp].sig.accum_energy /
+				    valid_period;
+				ns->DRAM_power +=
+				    sig_shared_region[lp].sig.
+				    accum_dram_energy / valid_period;
+				ns->PCK_power +=
+				    sig_shared_region[lp].sig.
+				    accum_pack_energy / valid_period;
+				ns->GBS +=
+				    sig_shared_region[lp].sig.accum_mem_access /
+				    (valid_period * B_TO_GB);
+				ns->avg_f +=
+				    (sig_shared_region[lp].sig.accum_avg_f *
+				     sig_shared_region[lp].num_cpus) /
+				    valid_period;
 			}
-			tcpus          += sig_shared_region[lp].num_cpus;
-      accesses       += sig_shared_region[lp].sig.accum_mem_access;
-			if (valid_period){
-			debug(" p[%u]: Power %lf GBs %lf avg_f %lu dram %lf pck %lf  period %lf", lp, (double)(sig_shared_region[lp].sig.accum_energy / valid_period), (double)(sig_shared_region[lp].sig.accum_mem_access/ (valid_period * 1024 * 1024 * 1024)), sig_shared_region[lp].sig.accum_avg_f/(ulong)valid_period, ns->DRAM_power, ns->PCK_power, valid_period);
+			tcpus += sig_shared_region[lp].num_cpus;
+			accesses += sig_shared_region[lp].sig.accum_mem_access;
+			if (valid_period) {
+				debug
+				    (" p[%u]: Power %lf GBs %lf avg_f %lu dram %lf pck %lf  period %lf",
+				     lp,
+				     (double)(sig_shared_region[lp].sig.
+					      accum_energy / valid_period),
+				     (double)(sig_shared_region[lp].sig.
+					      accum_mem_access / (valid_period *
+								  1024 * 1024 *
+								  1024)),
+				     sig_shared_region[lp].sig.accum_avg_f /
+				     (ulong) valid_period, ns->DRAM_power,
+				     ns->PCK_power, valid_period);
 			}
 		}
-		ns->avg_f  = (tcpus ? ns->avg_f/ (double)tcpus : ns->avg_f);
-    ns->TPI    = (max_inst ? (double)accesses / (double)max_inst: 1);
-    /* TPI should be computed based on total instructions */
-		verbose_master(TPI_DEBUG,"AVG  %lu TPI %.2lf (accesses %llu, inst %llu) ", ns->avg_f, ns->TPI, accesses, inst);
+		ns->avg_f = (tcpus ? ns->avg_f / (double)tcpus : ns->avg_f);
+		ns->TPI = (max_inst ? (double)accesses / (double)max_inst : 1);
+		/* TPI should be computed based on total instructions */
+		verbose_master(TPI_DEBUG,
+			       "AVG  %lu TPI %.2lf (accesses %llu, inst %llu) ",
+			       ns->avg_f, ns->TPI, accesses, inst);
 	}
-	signature_copy(&lib_shared_region->node_signature,ns);
+	signature_copy(&lib_shared_region->node_signature, ns);
 
 }
 
