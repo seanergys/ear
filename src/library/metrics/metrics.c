@@ -2442,9 +2442,14 @@ state_t metrics_compute_signature_finish(signature_t *metrics, uint iterations,
                     COL_RED, COL_CLR, my_node_id);
 		}
 
+#if METRICS_OVH
 		overhead_start(id_ovh_partial_start);
+#endif
 		metrics_partial_start();
+
+#if METRICS_OVH
 		overhead_stop(id_ovh_partial_start);
+#endif
 	}
 #if SHOW_DEBUGS
 	else {

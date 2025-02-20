@@ -2965,9 +2965,9 @@ state_t earl_periodic_actions(void *no_arg)
 		state_t st = ear_trylock(&earl_th_locks);
 		if (state_ok(st)){
 			if (!exiting) {
-				overhead_start(&id_ovh_earl_monitor_new_iteartion);
+				overhead_start(id_ovh_earl_monitor_new_iteartion);
 				states_new_iteration(my_id, ITERS_PER_PERIOD, ear_iterations, 1, 1, lib_period, 0);
-				overhead_stop(&id_ovh_earl_monitor_new_iteartion);
+				overhead_stop(id_ovh_earl_monitor_new_iteartion);
 			}
 			ear_unlock(&earl_th_locks);
 		} else {
