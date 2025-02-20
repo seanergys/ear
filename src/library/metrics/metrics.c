@@ -2451,9 +2451,14 @@ state_t metrics_compute_signature_finish(signature_t *metrics, uint iterations,
 			verbose_error("Reporting mpi node metrics");
 		}
 
+#if METRICS_OVH
 		overhead_start(id_ovh_partial_start);
+#endif
 		metrics_partial_start();
+
+#if METRICS_OVH
 		overhead_stop(id_ovh_partial_start);
+#endif
 	}
 #if SHOW_DEBUGS
 	else {
