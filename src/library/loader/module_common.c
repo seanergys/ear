@@ -16,16 +16,24 @@
 #include <common/config.h>
 #include <common/utils/dtools.h>
 #include <common/utils/string.h>
-#include <common/output/verbose.h>
-#include <library/loader/loader.h>
+#include <library/loader/module_common.h>
 
 static void (*call_constructor) (void);
 static void (*call_destructor)  (void);
+static int libear_already_loaded;
 
 // Deprecated, clean.
-int is_cuda_enabled()     { return 1;            }
+int is_cuda_enabled() { return 1; }
 
 // Non-deprecated.
+int is_libear_loaded() {
+    return libear_already_loaded;
+}
+
+void set_libear_loaded() {
+    libear_already_loaded = 1;
+}
+
 static int syms_present(char *syms[])
 {
     while(*syms != NULL) {

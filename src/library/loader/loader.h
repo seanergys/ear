@@ -14,9 +14,4 @@
 #include <common/output/verbose.h>
 #include <common/config/config_env.h>
 
-// These functions are intended to be used ONLY for the loader
-int is_libear_loaded();
-
-void set_libear_loaded();
-
 #endif //LIBRARY_LOADER_H

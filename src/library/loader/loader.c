@@ -20,22 +20,9 @@
 #include <common/config.h>
 #include <common/output/debug.h>
 #include <common/utils/string.h>
-#include <common/config/config_env.h>
 #include <library/loader/loader.h>
 #include <library/loader/module_mpi.h>
 #include <library/loader/module_common.h>
-
-static int libear_already_loaded;
-
-int is_libear_loaded()
-{
-    return libear_already_loaded;
-}
-
-void set_libear_loaded()
-{
-    libear_already_loaded = 1;
-}
 
 static int init()
 {

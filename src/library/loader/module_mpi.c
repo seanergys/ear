@@ -16,7 +16,6 @@
 #include <common/config.h>
 #include <common/system/symplug.h>
 #include <common/string_enhanced.h>
-#include <library/loader/loader.h>
 #include <library/loader/module_mpi.h>
 #include <library/loader/module_mpi_syms_c.h>
 #include <library/loader/module_mpi_syms_f.h>
