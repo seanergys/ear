@@ -16,15 +16,24 @@
 #include <common/config.h>
 #include <common/utils/dtools.h>
 #include <common/utils/string.h>
-#include <common/output/verbose.h>
+#include <library/loader/module_common.h>
 
 static void (*call_constructor) (void);
 static void (*call_destructor)  (void);
+static int libear_already_loaded;
 
 // Deprecated, clean.
-int is_cuda_enabled()     { return 1;            }
+int is_cuda_enabled() { return 1; }
 
 // Non-deprecated.
+int is_libear_loaded() {
+    return libear_already_loaded;
+}
+
+void set_libear_loaded() {
+    libear_already_loaded = 1;
+}
+
 static int syms_present(char *syms[])
 {
     while(*syms != NULL) {
@@ -86,11 +95,11 @@ void loader_get_path_libear(char **path_lib, char **hack_lib)
 		*path_lib = malloc(strlen(env_path)+SZ_FILENAME);
 		strcpy(*path_lib, env_path);
 	}
-	verbose(2,"LOADER path_lib_so %s",*path_lib);
+	verbose(4, "LOADER: path_lib_so %s", *path_lib);
 	if (env_hack != NULL){
 		*hack_lib = malloc(strlen(env_hack)+SZ_FILENAME);
 		strcpy(*hack_lib, env_hack);
-		verbose(2,"LOADER hack file %s",*hack_lib);
+		verbose(4, "LOADER: hack file %s", *hack_lib);
 	}
 	return;
 }
@@ -121,8 +130,8 @@ int load_libear_nonspec(char *lib_extension, char *syms[], char *libs[])
     }
     // Computing library path
     loader_get_path_libear(&buffer_path, &buffer_hack);
-    printf("LOADER: env HACK/EAR_INSTALL_PATH => %s\n", buffer_path);
-    printf("LOADER: env HACK_LIBRARY_FILE     => %s\n", buffer_hack);
+    verbose(2, "LOADER: env HACK/EAR_INSTALL_PATH => %s", buffer_path);
+    verbose(2, "LOADER: env HACK_LIBRARY_FILE     => %s", buffer_hack);
     if (buffer_path == NULL && buffer_hack == NULL) {
         return 0;
     }
@@ -135,9 +144,13 @@ int load_libear_nonspec(char *lib_extension, char *syms[], char *libs[])
         return 0;
     }
     // Loading library
+    verbose(2, "LOADER: loading library '%s'", path);
     if ((libear = dlopen(path, RTLD_GLOBAL | RTLD_NOW)) == NULL) {
         return 0;
     }
+    // Announce libear is already loaded
+    set_libear_loaded();
+    // Constructor function call
     call_constructor = dlsym(libear, "ear_constructor");
     call_destructor  = dlsym(libear, "ear_destructor" );
     if (atexit(module_other_destructor) != 0) {
