@@ -80,6 +80,7 @@ void cache_perf_load(topology_t *tp, cache_ops_t *ops)
         offsets_add(&ofs, O1(ll)           , O1(l2)           ,               0, '&');
         offsets_add(&ofs, O1(lbw)          , O1(l2)           ,               0, '&');
     } else if (tp->vendor == VENDOR_ARM) {
+        // Arm Architecture Reference Manual for A-profile architecture
         perfs_add(L1_LDA, PERF_TYPE_HW , O2(l1d, accesses ), "PERF_L1D_LOAD_ACCESS");
         perfs_add(L1_LDM, PERF_TYPE_HW , O2(l1d, misses   ), "PERF_L1D_LOAD_MISS"  );
         perfs_add(0x0016, PERF_TYPE_RAW, O2(l2 , accesses ), "L2D_CACHE"           );

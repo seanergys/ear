@@ -56,14 +56,12 @@ void flops_perf_load(topology_t *tp, flops_ops_t *ops)
         set_flops(0x10c7, PERF_TYPE_RAW, 5,  4.0, "FP_ARITH_INST_RETIRED.256B_PACKED_DOUBLE");
         set_flops(0x80c7, PERF_TYPE_RAW, 6, 16.0, "FP_ARITH_INST_RETIRED.512B_PACKED_SINGLE");
         set_flops(0x40c7, PERF_TYPE_RAW, 7,  8.0, "FP_ARITH_INST_RETIRED.512B_PACKED_DOUBLE");
-    }
-    else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN) {
+    } else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN) {
         // In theory, this event counts 128 and 256 bits operations from SSE and
         // AVX FLOPs. But it can not distinguish between types. We are saving
         // the register readings in 256f by pure arbitrariness.
         set_flops(0xff03, PERF_TYPE_RAW, 4, 1.0, "FpRetSseAvxOps");
-    }
-    else if (tp->vendor == VENDOR_ARM && tp->model == MODEL_FX1000) {
+    } else if (tp->vendor == VENDOR_ARM && tp->model == MODEL_FX1000) {
         // We can mix these offsets because share the same weight. FIXED events
         // combines floats, doubles and also SIMD NEON.
         set_flops(0x80c3, PERF_TYPE_RAW, 2,                             1.0, "FP_HP_FIXED_OPS_SPEC");
@@ -74,27 +72,14 @@ void flops_perf_load(topology_t *tp, flops_ops_t *ops)
         set_flops(0x80c6, PERF_TYPE_RAW, 7, ((double) tp->sve_bits) / 128.0, "FP_DP_SCALE_OPS_SPEC");
     }
     else if (tp->vendor == VENDOR_ARM && tp->sve && tp->model == MODEL_NEOVERSE_V2) {
-	debug("ARM CPU model SVE enabled MODEL_NEOVERSE_V2"); 
-	/*
-	 * FLOPS: Floating point operations per second in any precision performed by any
-	*  instruction.
-	*  Fused instructions count as two operations.
-	*  (FP_SCALE_OPS_SPEC + FP_FIXED_OPS_SPEC)/TIME
-	 * FIXED also counts VFP_SPEC operations.
-	 * 0x80C0 FP_SCALE_OPS_SPEC Scalable floating-point element operations speculatively executed
-	 * 0x80C1 FP_FIXED_OPS_SPEC Non-scalable floating-point element operations speculatively executed
-	 */
+        // FIXED also counts VFP_SPEC operations.
         set_flops(0x80C1, PERF_TYPE_RAW, 2,                             1.0, "FP_FIXED_OPS_SPEC");
         set_flops(0x80c0, PERF_TYPE_RAW, 6, ((double) tp->sve_bits) / 128.0, "FP_SCALE_OPS_SPEC");
-    }
-
-    else if (tp->vendor == VENDOR_ARM && tp->sve && tp->model != MODEL_NEOVERSE_V2) {
-				debug("ARM CPU model SVE enabled not MODEL_NEOVERSE_V2");
+    } else if (tp->vendor == VENDOR_ARM && tp->sve && tp->model != MODEL_NEOVERSE_V2) {
         // FIXED also counts VFP_SPEC operations.
         set_flops(0x80c3, PERF_TYPE_RAW, 2,                             1.0, "FP_FIXED_OPS_SPEC");
         set_flops(0x80c2, PERF_TYPE_RAW, 6, ((double) tp->sve_bits) / 128.0, "FP_SCALE_OPS_SPEC");
-    }
-    else if (tp->vendor == VENDOR_ARM) {
+    } else if (tp->vendor == VENDOR_ARM) {
         // ASE_SPEC is multiplied by x4 because we are counting float32x4_t, the
         // mean value of float16x8_t, float32x4_t and float64x2_t.
         set_flops(0x0075, PERF_TYPE_RAW, 0,  1.0, "VFP_SPEC");
