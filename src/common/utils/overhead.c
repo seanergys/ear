@@ -54,13 +54,12 @@ void overhead_suscribe(const char *description, uint *id)
     #endif
     if (!init) {
 	// Formatting report table
-	tprintf_init2(&st, verb_channel, STR_MODE_DEF, "10 14 14 14 14 14 14 14 14 14 32");
+	    tprintf_init2(&st, verb_channel, STR_MODE_DEF, "10 14 14 14 14 14 14 14 14 14 32");
         // Times
-	overhead_getwall(&global_wall_start);
+	    overhead_getwall(&global_wall_start);
         global_cpu_start = clock();
         init = 1;
     }
-
     *id = queue_last;
     queue[*id].description = description;
     queue[*id].call_count  = 0;
@@ -136,27 +135,26 @@ void overhead_report(int print_header)
     {
         wall_msecs      = queue[id].wall_accum / 1000.0;
         wall_secs       = wall_msecs / 1000.0;
-	wall_last_msecs = queue[id].wall_last / 1000.0;
-	wall_max_msecs  = queue[id].wall_max / 1000.0;
-	wall_min_msecs  = queue[id].wall_min / 1000.0;
+        wall_last_msecs = queue[id].wall_last / 1000.0;
+        wall_max_msecs  = queue[id].wall_max / 1000.0;
+        wall_min_msecs  = queue[id].wall_min / 1000.0;
         wall_call_msecs = 0.0;
         wall_percent    = (wall_secs / global_wall_secs)*100.0;
-	cpu_secs        = queue[id].cpu_accum / ((double) CLOCKS_PER_SEC);
-	cpu_msecs       = cpu_secs * 1000.0;
-	cpu_last_msecs  = queue[id].cpu_last / ((double) CLOCKS_PER_SEC);
-	cpu_call_msecs  = 0.0;
-	cpu_percent     = (cpu_secs / global_cpu_secs)*100.0;
+        cpu_secs        = queue[id].cpu_accum / ((double) CLOCKS_PER_SEC);
+        cpu_msecs       = cpu_secs * 1000.0;
+        cpu_last_msecs  = queue[id].cpu_last / ((double) CLOCKS_PER_SEC);
+        cpu_call_msecs  = 0.0;
+        cpu_percent     = (cpu_secs / global_cpu_secs)*100.0;
 
-	if (queue[id].call_count) {
+        if (queue[id].call_count) {
             wall_call_msecs = wall_msecs / ((double) queue[id].call_count);
             cpu_call_msecs  = cpu_msecs / ((double) queue[id].call_count);
-	}
+        }
         //if (percent_clock > 100.0) {
         //    percent_clock = 0.0;
         //}
-
         tprintf2(&st, "%llu||%0.3lf s||%0.3lf ms||%0.3lf ms||%0.3lf ms||%0.3lf ms||%0.2lf %%|||%0.3lf s||%0.3lf ms||%0.2lf %%|||%s", queue[id].call_count,
-                wall_secs, wall_call_msecs, wall_last_msecs, wall_max_msecs, wall_min_msecs, wall_percent, cpu_secs, cpu_call_msecs, cpu_percent, queue[id].description);
+            wall_secs, wall_call_msecs, wall_last_msecs, wall_max_msecs, wall_min_msecs, wall_percent, cpu_secs, cpu_call_msecs, cpu_percent, queue[id].description);
     }
 }
 
@@ -190,9 +188,7 @@ int main(int argc, char *argv[])
         sleep(1);
         overhead_stop(id3);
     }
-
     overhead_report();
-
     return 0;
 }
 #endif
