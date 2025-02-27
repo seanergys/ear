@@ -115,6 +115,9 @@ void plugin_get_settings(domain_settings_t *s)
 static state_t _set_per_device_powercap_value(uint pid, uint32_t *limit, uint32_t *cpu_util)
 {
     for (int32_t i = 0; i < num_cpus; i++) {
+        if (limit[i] == POWER_CAP_UNLIMITED) {
+            limit[i] = POWERCAP_DISABLE;
+        }
         cpu_power[i] = limit[i];
         debug("power assigned to cpu%d: %u", i, cpu_power[i]);
     }
@@ -129,7 +132,7 @@ static state_t _set_per_device_powercap_value(uint pid, uint32_t *limit, uint32_
 
 static state_t _set_single_powercap_value(uint pid, uint32_t limit, uint32_t *cpu_util)
 {
-    debug("setting powercap %u", *limit);
+    debug("setting powercap %u", limit);
     if (limit == current_limit) return EAR_SUCCESS;
 
     current_limit = limit;
