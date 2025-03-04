@@ -508,6 +508,7 @@ int mysql_batch_insert_applications(MYSQL *connection, application_t *app, int n
 		if (mysql_stmt_execute(statement)) {
 			ret = mysql_statement_error(statement);
 #if MYSQL_APPS_FALLBACK
+            warning("Application insertion failed, using fallback function");
 			mysql_insert_applications_fallback(connection, app, num_apps, sigs_ids, pow_sigs_ids);
 #endif
 		}
