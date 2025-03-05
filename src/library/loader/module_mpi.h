@@ -11,6 +11,8 @@
 #ifndef LIBRARY_LOADER_MPI_H
 #define LIBRARY_LOADER_MPI_H
 
+#include <library/loader/loader.h>
+
 int load_libear_mpi();
 
 int load_libear_mpi_given_libmpi(char *libmpi_path);

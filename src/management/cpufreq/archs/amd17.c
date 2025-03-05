@@ -10,7 +10,9 @@
 
 //#define SHOW_DEBUGS 1
 
+#define _GNU_SOURCE
 #include <math.h>
+#include <sched.h>
 #include <stdlib.h>
 #include <metrics/common/msr.h>
 #include <common/utils/keeper.h>
@@ -99,7 +101,7 @@ state_t mgt_cpufreq_amd17_load(topology_t *tp_in, mgt_ps_ops_t *ops, mgt_ps_driv
 	}
 	mode_virtual = (ear_getenv("HACK_AMD_ZEN_VIRTUAL") != NULL);
 	if (!mode_virtual) {
-		if (state_fail(s = hsmp_scan(tp_in))) {
+		if (state_fail(s = hsmp_open(tp_in))) {
 			return s;
 		}
 	}
@@ -415,7 +417,7 @@ static state_t search_pstate_list(ullong freq_khz, uint *pstate_index, uint clos
 {
 	ullong cof_khz;
 	ullong aux_khz;
-    int p;
+	int p;
 
 	// Boost test
 	if (boost_enabled && freq_khz >= p0_khz(psss[0].cof)) {
@@ -427,7 +429,7 @@ static state_t search_pstate_list(ullong freq_khz, uint *pstate_index, uint clos
 		*pstate_index = pss_nominal;
 		return EAR_SUCCESS;
 	}
-    //
+	//
 	for (p = pss_nominal; p < pss_count; ++p)
 	{
 		cof_khz = p1_khz(psss[p].cof);
@@ -449,7 +451,7 @@ static state_t search_pstate_list(ullong freq_khz, uint *pstate_index, uint clos
 		*pstate_index = pss_count-1;
 		return EAR_SUCCESS;
 	}
-    return_msg(EAR_ERROR, "P_STATE not found");
+	return_msg(EAR_ERROR, "P_STATE not found");
 }
 
 state_t mgt_cpufreq_amd17_get_available_list(ctx_t *c, pstate_t *pstate_list)
@@ -481,7 +483,7 @@ state_t get_current_hsmp(ctx_t *c, pstate_t *pstate_list)
         args[0] = tp.cpus[cpu].apicid;
         reps[0] = 0;
         // Calling HSMP
-        hsmp_send(tp.cpus[cpu].socket_id, HSMP_READ_BOOST_LIMIT, args, reps); //response is freq (MHz)
+        hsmp_send(tp.cpus[cpu].socket_id, HSMP_GET_BOOST_LIMIT, args, reps); //response is freq (MHz)
         debug("HSMP read %u", reps[0]);
 
         pstate_list[cpu].idx = pss_nominal;
@@ -593,7 +595,7 @@ static state_t set_pstate_hsmp(uint cpu, uint pst, uint test)
     debug("setting PS%d: %u MHz in cpu %d (apic %d) [%u]",
         pst, getbits32(args[0], 15, 0), cpu, getbits32(args[0], 31, 16), args[0]);
 
-    return hsmp_send(tp.cpus[cpu].socket_id, HSMP_WRITE_BOOST_LIMIT, args, reps);
+    return hsmp_send(tp.cpus[cpu].socket_id, HSMP_SET_BOOST_LIMIT, args, reps);
 }
 
 // Sets the current P_STATE to MSR P1 adding new frequency.
@@ -655,7 +657,7 @@ static state_t set_pstate0_hsmp(uint cpu)
     debug("setting PS0: %u MHz in cpu %d (apic %d) [%u]",
         getbits32(args[0], 15, 0), cpu, getbits32(args[0], 31, 16), args[0]);
 
-    return hsmp_send(tp.cpus[cpu].socket_id, HSMP_WRITE_BOOST_LIMIT, args, reps);
+    return hsmp_send(tp.cpus[cpu].socket_id, HSMP_SET_BOOST_LIMIT, args, reps);
 }
 
 // Sets the current P_STATE to MSR P0
@@ -798,30 +800,58 @@ static state_t recover()
 {
 	state_t s;
 	int cpu;
-    // Recovering CPUs to its original frecuencies
+ 	// Recovering CPUs to its original frecuencies
 	for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
 		if (state_fail(s = msr_write(cpu, &regs[1], sizeof(ullong), REG_P1))) {
 			return s;
 		}
 	}
-    return EAR_SUCCESS;
+	return EAR_SUCCESS;
 }
 
 state_t mgt_cpufreq_amd17_governor_set(ctx_t *c, uint governor)
 {
+    state_t s = EAR_SUCCESS;
     recover();
-	return driver->set_governor(governor);
+    if (state_fail(s = driver->set_governor(governor))) {
+        return s;
+    }
+    if (governor == Governor.userspace) {
+        s = driver->set_current(0, all_cpus);
+    }
+    return s;
 }
 
 state_t mgt_cpufreq_amd17_governor_set_mask(ctx_t *c, uint governor, cpu_set_t mask)
 {
+    state_t s = EAR_SUCCESS;
+    int cpu;
+
     recover();
-    return driver->set_governor_mask(governor, mask);
+    if (state_fail(s = driver->set_governor_mask(governor, mask))) {
+        return s;
+    }
+    for (cpu = 0; governor == Governor.userspace && cpu < tp.cpu_count; ++cpu) {
+        if (CPU_ISSET(cpu, &mask)) {
+            s = driver->set_current(0, cpu);
+        }
+    }
+    return s;
 }
 
 state_t mgt_cpufreq_amd17_governor_set_list(ctx_t *c, uint *governors)
 {
-    recover();
-    return driver->set_governor_list(governors);
-}
+    state_t s = EAR_SUCCESS;
+    int cpu;
 
+    recover();
+    if (state_fail(s = driver->set_governor_list(governors))) {
+        return s;
+    }
+    for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
+        if (governors[cpu] == Governor.userspace) {
+            s = driver->set_current(0, cpu);
+        }
+    }
+    return s;
+}

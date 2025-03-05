@@ -872,7 +872,7 @@ void attach_shared_regions()
 				/* This function is executed by processes different than masters */
 				/* they first join the Node shared memory */
 				xsnprintf(block_file,sizeof(block_file),"%s/%u/.my_local_lock.%s",tmp, ID, application.job.user_id);
-				if ((bfd = file_lock_create(block_file))<0){
+				if ((bfd = ear_file_lock_create(block_file))<0){
 								error("Creating lock file for shared memory:%s (%s)", block_file, strerror(errno));
 				}
 
@@ -906,16 +906,16 @@ void attach_shared_regions()
 										usleep(1000000);
 									}
 								}while(lib_shared_region == NULL);
-								while(file_lock(bfd) < 0);
+								while(ear_file_lock(bfd) < 0);
 								if (!lib_shared_region->earl_on){
 												debug("%s:Setting earl off because of eard",node_name);
 												eard_ok = 0;
-												file_unlock(bfd);
+												ear_file_unlock(bfd);
 												return;
 								}
 								my_node_id 												= lib_shared_region->num_processes;
 								lib_shared_region->num_processes 	= lib_shared_region->num_processes+1;
-								file_unlock(bfd);
+								ear_file_unlock(bfd);
 				}
 #if MPI
 				if (PMPI_Barrier(MPI_COMM_WORLD)!= MPI_SUCCESS){	
@@ -1107,7 +1107,7 @@ static int get_local_id(char *node_name)
 		// verbose(WF_SUPPORT_VERB, "Using EID lock path %s", master_lock_filename);
 		debug("Using lock file %s",master_lock_filename);
 
-		if ((fd_master_lock = file_lock_master(master_lock_filename)) < 0)
+		if ((fd_master_lock = ear_file_lock_master(master_lock_filename)) < 0)
 		{
 			if (errno != EBUSY) debug("Error creating lock file %s", strerror(errno));
 			lid = 1;
@@ -1497,7 +1497,6 @@ void ear_init()
 
   // Environment initialization
   ear_lib_environment();
-	read_hack_env(&tmp);
 
 	verb_level 		= get_ear_verbose();
 	verb_channel 	= 2; // Default: stderr
@@ -1507,6 +1506,10 @@ void ear_init()
 		verb_level = atoi(hack_verb_lv);
 		VERB_SET_LV(verb_level);
 	}
+
+	// Hacking environment goes after verbosity configuration since it has
+	// verb 3 messages
+	read_hack_env(&tmp);
 
 	// Process identification (TID)
   main_pid = syscall(SYS_gettid);
@@ -1723,11 +1726,11 @@ void ear_init()
     {
       earl_early_verb(VPROC_INIT, "Shared memory not present, creating dummy areas...");
       create_eard_dummy_shared_regions(get_ear_tmp(), create_ID(my_job_id,my_step_id));
-      fd_dummy = file_lock_create(dummy_areas_path);
+      fd_dummy = ear_file_lock_create(dummy_areas_path);
     } else if ((system_conf == NULL) && (resched_conf == NULL) && my_id)
     {
       /* If I'm not the master, I will wait */
-      while(!file_is_regular(dummy_areas_path));
+      while(!ear_file_is_regular(dummy_areas_path));
     }
   } while((system_conf == NULL) || (resched_conf == NULL));
 
@@ -1766,7 +1769,7 @@ void ear_init()
 								if (!my_id) {
                         /* This lock file is created in get_local_id function, and it is used to select the master */
 												debug("Application master releasing the lock %d %s", ear_my_rank,master_lock_filename);
-												file_unlock_master(fd_master_lock,master_lock_filename);
+												ear_file_unlock_master(fd_master_lock,master_lock_filename);
 								}
     /* Only the node master will notify the problem to the other masters */
     if (!my_id) notify_eard_connection(0);
@@ -1878,7 +1881,7 @@ void ear_init()
                     /* Dummy areas path is used in case the EARD was not present */
                     if (!my_id && (fd_dummy >= 0)) {
                         int err;
-                        err = file_unlock_master(fd_dummy, dummy_areas_path);
+                        err = ear_file_unlock_master(fd_dummy, dummy_areas_path);
                         if (err) verbose_master(2, "Error cleaning dummy area %s (%s)", dummy_areas_path, strerror(err));
                     }
 
@@ -2392,7 +2395,7 @@ void ear_finalize(int exit_status)
 				if (!my_id){
                 /* Releasing master lock file. Used to select the master */
 								debug("Application master releasing the lock %d %s", ear_my_rank, master_lock_filename);
-								file_unlock_master(fd_master_lock,master_lock_filename);
+								ear_file_unlock_master(fd_master_lock,master_lock_filename);
 								mark_as_eard_disconnected(get_ear_tmp(), my_job_id,my_step_id,AID, getpid());
 				}
 
@@ -2904,7 +2907,7 @@ static ulong last_check = 0;
 static uint first_exec_monitor = 1;
 
 
-uint id_ovh_earl_monitor;
+uint id_ovh_earl_monitor, id_ovh_earl_monitor_new_iteartion;
 
 state_t earl_periodic_actions_init(void *no_arg)
 {
@@ -2923,6 +2926,7 @@ state_t earl_periodic_actions_init(void *no_arg)
     pthread_setname_np(pthread_self(), "EARL_monitor");
 
     overhead_suscribe("earl_monitor", &id_ovh_earl_monitor);
+		overhead_suscribe("earl_monitor_new_iteartion", &id_ovh_earl_monitor_new_iteartion);
 
 		configure_sigactions();
 
@@ -2967,10 +2971,16 @@ state_t earl_periodic_actions(void *no_arg)
 		/* This lock is to avoid this function to be called at the same time than ear_finalize */
 		state_t st = ear_trylock(&earl_th_locks);
 		if (state_ok(st)){
-			if (!exiting)
+			if (!exiting) {
+				overhead_start(id_ovh_earl_monitor_new_iteartion);
 				states_new_iteration(my_id, ITERS_PER_PERIOD, ear_iterations, 1, 1, lib_period, 0);
+				overhead_stop(id_ovh_earl_monitor_new_iteartion);
+			}
 			ear_unlock(&earl_th_locks);
-		}else return EAR_SUCCESS;
+		} else {
+			overhead_stop(id_ovh_earl_monitor);
+			return EAR_SUCCESS;
+		}
 		if (avg_mpi_calls_per_second() >= MAX_MPI_CALLS_SECOND) limit_exceeded = 1;
 	}
 

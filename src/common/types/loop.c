@@ -178,9 +178,14 @@ int create_loop_header(char * header, char *path, int ts, uint num_gpus, int sin
 
 	char *HEADER_NOTS = ";NODENAME;AVG_CPUFREQ_KHZ;AVG_IMCFREQ_KHZ;DEF_FREQ_KHZ;"\
 											 "ITER_TIME_SEC;CPI;TPI;MEM_GBS;IO_MBS;PERC_MPI;DC_NODE_POWER_W;"\
-											 "DRAM_POWER_W;PCK_POWER_W;CYCLES;INSTRUCTIONS;GFLOPS;L1_MISSES;"\
-											 "L2_MISSES;L3_MISSES;SPOPS_SINGLE;SPOPS_128;SPOPS_256;"\
-											 "SPOPS_512;DPOPS_SINGLE;DPOPS_128;DPOPS_256;DPOPS_512";
+											 "DRAM_POWER_W;PCK_POWER_W;CYCLES;INSTRUCTIONS;STALLS_FETCH_DECODE;"\
+											 "STALLS_RESOURCES;STALLS_MEMORY;GFLOPS;CPU_UTIL;"\
+											 "L1_MISSES;L2_MISSES;L3_MISSES;LL_MISSES;L1_HITS;L2_HITS;L3_HITS;LL_HITS;"\
+											 "L1_ACCESSES;L2_ACCESSES;L3_ACCESSES;LL_ACCESSES;"\
+											 "L1_MISSRATE;L2_MISSRATE;L3_MISSRATE;LL_MISSRATE;"\
+											 "L1_HITRATE;L2_HITRATE;L3_HITRATE;LL_HITRATE;"\
+											 "SPOPS_SINGLE;SPOPS_128;SPOPS_256;SPOPS_512;DPOPS_SINGLE;DPOPS_128;"\
+											 "DPOPS_256;DPOPS_512";
 #if WF_SUPPORT
 		uint num_sockets = MAX_SOCKETS_SUPPORTED;
 		debug("Creating header for CPU signature with %u sockets", num_sockets);
@@ -221,8 +226,8 @@ int create_loop_header(char * header, char *path, int ts, uint num_gpus, int sin
     }
 
 		// Be careful if some day the number of GPUs has more than two digits :) .
-		size_t header_len = strlen(HEADER_JOB) + strlen(HEADER_NOTS) + strlen(HEADER_GPU_SIG) * num_gpus \
-			+ strlen(HEADER_LOOP) + strlen(HEADER_TS) + 1 + strlen(cpu_sig_hdr);
+		size_t header_len = strlen(HEADER_JOB) + strlen(HEADER_NOTS) + strlen(HEADER_GPU_SIG) * 
+			num_gpus + strlen(HEADER_LOOP) + strlen(HEADER_TS) + 1 + strlen(cpu_sig_hdr);
 		if (header)
 		{
 			header_len += strlen(header);
@@ -231,7 +236,7 @@ int create_loop_header(char * header, char *path, int ts, uint num_gpus, int sin
 		// Allocate exactly what we need
     char *HEADER = calloc(header_len, sizeof(char));
 
-    if (file_is_regular(path)) {
+    if (ear_file_is_regular(path)) {
         debug("%s is a regular file", path);
 				free(HEADER);
         return EAR_SUCCESS;

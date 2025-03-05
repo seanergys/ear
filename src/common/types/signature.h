@@ -14,6 +14,7 @@
 #include <common/config.h>
 #include <common/types/generic.h>
 #include <common/utils/serial_buffer.h>
+#include <metrics/cpi/cpi.h>
 #include <metrics/io/io.h>
 #include <metrics/gpu/gpu.h>
 #include <metrics/flops/flops.h>
@@ -47,12 +48,65 @@ typedef struct gpu_signature
   gpu_app_t gpu_data[MAX_GPUS_SUPPORTED];
 } gpu_signature_t;
 
-
-typedef struct cpu_signature{
+typedef struct cpu_signature {
 	uint  devs_count;
 	llong temp[MAX_SOCKETS_SUPPORTED];
 } cpu_signature_t;
 
+typedef struct proc_stat_signature_s {
+	uint cpu_util;
+	uint mem_util;
+} proc_stat_signature_t;
+
+/** A type with cache metrics we currently can compute.
+ * It contains misses, hits, total accesses, miss rate and hit rate
+ * for L1d, L2, L3 and LL cache levels. */
+typedef struct cache_signature_s {
+	ull l1d_misses;
+	ull l2_misses;
+	ull l3_misses;
+	ull ll_misses;
+
+	ull l1d_hits;
+	ull l2_hits;
+	ull l3_hits;
+	ull ll_hits;
+
+	ull l1d_accesses;
+	ull l2_accesses;
+	ull l3_accesses;
+	ull ll_accesses;
+
+	double l1d_miss_rate;
+	double l2_miss_rate;
+	double l3_miss_rate;
+	double ll_miss_rate;
+
+	double l1d_hit_rate;
+	double l2_hit_rate;
+	double l3_hit_rate;
+	double ll_hit_rate;
+} cache_signature_t;
+
+/** A type with cache metrics reduced to be used in a shared signature.
+ * It contains the same information as 'cache_signature_t' except hit and miss rate
+ * for saving memory space in the shared signatures. */
+typedef struct cache_mini_signature_s {
+	ull l1d_misses;
+	ull l2_misses;
+	ull l3_misses;
+	ull ll_misses;
+
+	ull l1d_hits;
+	ull l2_hits;
+	ull l3_hits;
+	ull ll_hits;
+
+	ull l1d_accesses;
+	ull l2_accesses;
+	ull l3_accesses;
+	ull ll_accesses;
+} cache_shsignature_t;
 
 typedef struct mini_sig
 {
@@ -64,25 +118,27 @@ typedef struct mini_sig
   float CPI;
   float Gflops;
   float time;
-  ull FLOPS[FLOPS_EVENTS];
-  ull instructions;
-  ull cycles;
-  ull L1_misses;
-  ull L2_misses;
-  ull L3_misses;
+  float IO_MBS;
   ulong avg_f;
   ulong def_f;
-  io_data_t iod;
-  float IO_MBS;
-#if USE_GPUS
-  gpu_signature_t gpu_sig;
-#endif
   ulong accum_energy;
   ulong accum_dram_energy;
   ulong accum_pack_energy;
-  ull accum_mem_access;
   ulong accum_avg_f;
   double valid_time;
+  ull FLOPS[FLOPS_EVENTS];
+  ull instructions;
+  ull cycles;
+  stalls_t stalls;
+  ull L1_misses;
+  ull L2_misses;
+  ull L3_misses;
+  ull accum_mem_access;
+	cache_shsignature_t cache;
+  io_data_t iod;
+#if USE_GPUS
+  gpu_signature_t gpu_sig;
+#endif
 } ssig_t;
 
 // WARNING! This type is serialized through functions signature_serialize and
@@ -106,6 +162,7 @@ typedef struct signature
   ull L3_misses;
   ull instructions;
   ull cycles;
+  stalls_t stalls;
   ulong avg_f;
   ulong avg_imc_f;
   ulong def_f;
@@ -116,6 +173,8 @@ typedef struct signature
 #if WF_SUPPORT
 	cpu_signature_t cpu_sig;
 #endif
+	proc_stat_signature_t ps_sig;
+	cache_signature_t cache;
   void *sig_ext;
 } signature_t;
 
@@ -174,12 +233,6 @@ void signature_apply_weight(signature_t *dst,signature_t *src,int nums);
 /** \todo */
 void compute_avg_sig(signature_t *dst, signature_t *src, int nums);
 
-/** Modifies \p ssig in a way that all its metrics are averaged by \p n,
- * which must be a positive (non-zero) integer.
- * \todo: Maybe this function should be in another level (e.g., Library).
- * What is "n" from the point of view of a ssig_t? */
-state_t ssig_compute_avg_node(ssig_t *ssig, int n);
-
 /** \todo */
 void adapt_signature_to_node(signature_t *dest, signature_t *src, float ratio_PPN);
 
@@ -191,9 +244,6 @@ state_t ssig_from_signature(ssig_t *dst_ssig, signature_t *src_sig);
 
 /** Fills data from the mini signature \p src_ssig to the signature \p dst_sig. */
 state_t signature_from_ssig(signature_t *dst_sig, ssig_t *src_ssig);
-
-/** \todo */
-void copy_mini_sig(ssig_t *dst, ssig_t *src);
 
 /** Transforms \p ssig data to a readable format. The result is stored at \p dst_str, which must have
  * allocated at least \p n bytes. */
@@ -207,10 +257,6 @@ double sig_node_power(signature_t *s);
 
 /** \todo */
 int sig_gpus_used(signature_t *s);
-
-/** Copies node metrics (i.e., GBS, TPI, DC Node Power) from \p src_ssig
- * to \p dst_ssig. The rest of metrics of the destination are initialised to 0. */
-void ssig_set_node_metrics(ssig_t *dst_ssig, ssig_t *src_ssig);
 
 void signature_serialize(serial_buffer_t *b, signature_t *sig);
 

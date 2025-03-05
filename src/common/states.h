@@ -31,6 +31,7 @@
 
 /* error buffer */
 char state_buffer[SZ_BUFFER] __attribute__((weak));
+char ______buffer[SZ_BUFFER] __attribute__((weak));
 
 /* type & functions */
 typedef int state_t;
@@ -62,6 +63,13 @@ int state_no    __attribute__((weak));
 #define return_print(no, ...) { \
 	state_msg = state_buffer; \
 	xsnprintf(state_buffer, sizeof(state_buffer), __VA_ARGS__); \
+	return no; \
+	}
+
+#define return_reprint(no, ...) { \
+    state_msg = strncpy(______buffer, state_msg, SZ_BUFFER); \
+	xsnprintf(state_buffer, sizeof(state_buffer), __VA_ARGS__); \
+    state_msg = state_buffer; \
 	return no; \
 	}
 

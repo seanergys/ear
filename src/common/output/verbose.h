@@ -31,7 +31,6 @@
 #define fderr	STDERR_FILENO
 
 int verb_level          __attribute__((weak)) = 0;
-int VCCONF              __attribute__((weak)) = VCCONF_DEF;
 int verb_channel        __attribute__((weak)) = 2;
 int verb_enabled        __attribute__((weak)) = 1;
 int warn_channel        __attribute__((weak)) = 2;

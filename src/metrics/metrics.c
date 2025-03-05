@@ -56,7 +56,7 @@ void metrics_load(metrics_info_t *m, topology_t *tp, char *nodepow_path, ullong 
         cpi_load(tp, MFLAG_UNZIP(mflags, MET_CPI));
         gpu_load(    MFLAG_UNZIP(mflags, MET_GPU));
 
-    nodepow(initialization, &e_ctx);
+    nodepow(init, &e_ctx);
     cpufreq_init(no_ctx);
     imcfreq_init(no_ctx);
      cpupow(init,no_ctx);

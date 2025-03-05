@@ -8,7 +8,6 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-
 #if MPI
 #include <mpi.h>
 #endif
@@ -19,9 +18,9 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 #if !SHOW_DEBUGS
-#define NDEBUG // Activate assert calls only in the debug mode.
+#define NDEBUG			// Activate assert calls only in the debug mode.
 #endif
 #include <assert.h>
 
@@ -54,40 +53,39 @@
 #include <library/states/states.h>
 #include <library/api/clasify.h>
 
-#define NEW_CPUFREQ_API 1 // Enables the usage of the new metrics API,
-                          // instead of the deprecated frequency API.
-#define VERBOSE_WARN    2 // Verbose level for warning messages.
-#define VERB_SAV_PEN    2 // Verbose level for saving and penalty estimation.
-#define VERB_SIGN_TRACK 3 // Verbose level for signature tracking.
-#define DYNAIS_CUTOFF	1 // Enables the dynamic DynAIS turning off.
+#define NEW_CPUFREQ_API 1	// Enables the usage of the new metrics API,
+			  // instead of the deprecated frequency API.
+#define VERBOSE_WARN    2	// Verbose level for warning messages.
+#define VERB_SAV_PEN    2	// Verbose level for saving and penalty estimation.
+#define VERB_SIGN_TRACK 3	// Verbose level for signature tracking.
+#define DYNAIS_CUTOFF	1	// Enables the dynamic DynAIS turning off.
 
 #define states_verbose2_master(msg, ...) \
     verbose_info2_master("States: " msg, ##__VA_ARGS__);
 
-
-extern masters_info_t masters_info; // Defined at externs.h
-extern float          ratio_PPN;    // TODO: Where declared ?
-extern uint   AID;
+extern masters_info_t masters_info;	// Defined at externs.h
+extern float ratio_PPN;		// TODO: Where declared ?
+extern uint AID;
 
 /* Defined at ear.c */
-extern report_id_t    rep_id;
+extern report_id_t rep_id;
 
 extern cluster_conf_t cconf;
 
 #include <common/external/ear_external.h>
 extern ear_mgt_t *external_mgt;
 
-
 /* Period time computation control. */
 static llong comp_N_begin;
 static llong comp_N_end;
 static llong comp_N_time;
 
+static uint check_affinity_mask = 1;
 
-       ulong perf_accuracy_min_time = 10000000; // The minimum period time to be elapsed
-                                                // before starting signature computation.
-																								// Defaults to 10s, but it is initiated at
-																								// states_begin_job
+/* The minimum period time to be elapsed before starting signature computation.
+ * Defaults to 10s, but it is initiated at states_begin_job.
+ */
+ulong perf_accuracy_min_time = 10000000;
 
 // TODO: usage
 static uint begin_iter;
@@ -95,87 +93,89 @@ static uint N_iter;
 extern uint ear_guided;
 
 // TODO: usage
-static uint tries_current_loop           = 0;
+static uint tries_current_loop = 0;
 static uint tries_current_loop_same_freq = 0;
 
 // TODO: usage
-static uint perf_count_period            = 100;
-static uint perf_count_period_10p        = 10;
+static uint perf_count_period = 100;
+static uint perf_count_period_10p = 10;
 
 /* Policy related variables. */
-static uint         EAR_POLICY_STATE      = EAR_POLICY_NO_STATE; // Policy state ("state machine")
-static int          policy_max_tries_cnt;                        // The maximum number of tries we
-                                                                 // let a policy to change the CPU
-                                                                 // frequency.
-static ulong        policy_cpufreq_khz;
-static signature_t  policy_sel_signature;                        // Stores the signature used by
-static signature_t  tracer_signature;
-                                                                 // the last policy application
-                                                                 // which returned EAR_POLICY_READY
+static uint EAR_POLICY_STATE = EAR_POLICY_NO_STATE;	// Policy state ("state machine")
+static int policy_max_tries_cnt;	// The maximum number of tries we
+								 // let a policy to change the CPU
+								 // frequency.
+static ulong policy_cpufreq_khz;
+static signature_t policy_sel_signature;	// Stores the signature used by
+static signature_t tracer_signature;
+								 // the last policy application
+								 // which returned EAR_POLICY_READY
 
 /* Other */
-static int          master                       = -1;        // Indicates whether the process is the master.
-static uint         EAR_STATE                    = NO_PERIOD; // State machine controller.
-static uint         total_threads_cnt;                        // Total number of processes
-                                                              // being executed at the node.
-static uint         signatures_stables           = 0;
-static uint         *sig_ready;                               // An array indexed by CPU
-                                                              // p-state which indicated whether
-                                                              // a signature at that p-state
-                                                              // is ready.
-static loop_t       curr_loop;                                // Stores the current loop data
-                                                              // reported to the report module.
-static signature_t  loop_signature;                           // Stores the current loop
-                                                              // signature computed.
+static int master = -1;		// Indicates whether the process is the master.
+static uint EAR_STATE = NO_PERIOD;	// State machine controller.
+static uint total_threads_cnt;	// Total number of processes
+							      // being executed at the node.
+static uint signatures_stables = 0;
+static uint *sig_ready;		// An array indexed by CPU
+							      // p-state which indicated whether
+							      // a signature at that p-state
+							      // is ready.
+static loop_t curr_loop;	// Stores the current loop data
+							      // reported to the report module.
+static signature_t loop_signature;	// Stores the current loop
+							      // signature computed.
 static node_freqs_t node_freqs;
-static float        MAX_DYNAIS_OVERHEAD_DYN      = MAX_DYNAIS_OVERHEAD; // Maximum DynAIS
-                                                                        // overhead permitted.
-       uint         waiting_for_node_signatures  = 0;
-       timestamp_t  time_last_signature;
-       uint         signature_reported           = 0;
+static float MAX_DYNAIS_OVERHEAD_DYN = MAX_DYNAIS_OVERHEAD;	// Maximum DynAIS
+									// overhead permitted.
+uint waiting_for_node_signatures = 0;
+timestamp_t time_last_signature;
+uint signature_reported = 0;
 
 // Commented due to it is declared at externs.h
 // extern uint check_periodic_mode;
 extern uint lib_period;
 
-static uint id_ovh_ev_sig, id_ovh_stable;
-
+static uint id_ovh_ev_sig, id_ovh_stable, id_ovh_compute_signature, id_ovh_policy_apply, id_ovh_update_affinity_mask, id_ovh_metrics_new_iteration;
 
 /** Returns whether \p cpi_a and \p cpi_b and \p gbs_a \p gbs_b are
  * equal, respectively, with a maximum difference of \p eq_thresh permitted. */
-static uint are_cpi_gbs_eq(double cpi_a, double cpi_b, double gbs_a, double gbs_b, double eq_thresh);
+static uint are_cpi_gbs_eq(double cpi_a, double cpi_b, double gbs_a,
+			   double gbs_b, double eq_thresh);
 
 #if DYNAIS_CUTOFF
 /** This function checks whether this application is going to be
  * affected or not (an estimation based on CPI and GBS) by DynIAS.
  * Sets \p dynais_on to DYNAIS_ENABLED if needed. */
-static void check_dynais_on(const signature_t *A, const signature_t *B, uint *dynais_on);
-#endif // DYNAIS_CUTOFF
+static void check_dynais_on(const signature_t * A, const signature_t * B,
+			    uint * dynais_on);
+#endif				// DYNAIS_CUTOFF
 
 /** This function checks if there is too much overhead from DynAIS and sets it to OFF. */
-static void check_dynais_off(ulong mpi_calls_iter, uint period, uint level, ulong event);
+static void check_dynais_off(ulong mpi_calls_iter, uint period, uint level,
+			     ulong event);
 
 /** Returns wether the policy affected some metrics. */
-static uint policy_had_effect(const signature_t *A, const signature_t *B);
+static uint policy_had_effect(const signature_t * A, const signature_t * B);
 
 /**TODO */
-static void compute_perf_count_period(llong n_iters_time, llong n_iters_time_min,
-                                      uint *loop_perf_count_period, uint *loop_perf_count_period_accel);
+static void compute_perf_count_period(llong n_iters_time,
+				      llong n_iters_time_min,
+				      uint * loop_perf_count_period,
+				      uint * loop_perf_count_period_accel);
 
 /** Restarts the beginning time counter of the period stored at \p time_init. */
-static void restart_period_time_init(llong *time_init);
+static void restart_period_time_init(llong * time_init);
 
 /** Reports \p my_loop through the loaded report plug-ins. */
-static void report_loop_signature(uint iterations, loop_t *my_loop);
+static void report_loop_signature(uint iterations, loop_t * my_loop);
 
-static void accumulate_energy_savings(signature_t *loops, signature_t *apps);
-static void accumulate_phases_summary(signature_t *loops, signature_t *apps);
-
+static void accumulate_energy_savings(signature_t * loops, signature_t * apps);
+static void accumulate_phases_summary(signature_t * loops, signature_t * apps);
 
 static ear_event_t curr_state_event;
 extern uint report_earl_events;
 extern report_id_t rep_id;
-
 
 void fill_common_event(ear_event_t *ev)
 {
@@ -248,8 +248,12 @@ void states_begin_job(int my_id, char *app_name)
 	total_threads_cnt =  get_total_resources();
 	debug("Total threads: %u", total_threads_cnt);
 
-	overhead_suscribe("evaluate_sig",&id_ovh_ev_sig);
-	overhead_suscribe("sig_stable",&id_ovh_stable);
+	overhead_suscribe("evaluate_sig", &id_ovh_ev_sig);
+	overhead_suscribe("compute_sig", &id_ovh_compute_signature);
+	overhead_suscribe("policy_apply", &id_ovh_policy_apply);
+	overhead_suscribe("sig_stable", &id_ovh_stable);
+	overhead_suscribe("update_affinity_mask", &id_ovh_update_affinity_mask);
+	overhead_suscribe("metrics_new_iter", &id_ovh_metrics_new_iteration);
 
 	/* Allocating space for the sig_ext if needed , application sig ext is allocated in ear.c */
 	loop_signature.sig_ext = (void *)calloc(1, sizeof(sig_ext_t));
@@ -379,6 +383,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
     sig_shared_region[my_node_id].iterations++;
 
+		overhead_start(id_ovh_metrics_new_iteration);
     if (state_ok(metrics_new_iteration(&loop_signature))) {
         if (state_fail(policy_new_iteration(&loop_signature))) {
 
@@ -410,9 +415,11 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 						  report_events(&rep_id, &curr_state_event, 1);
 #endif
 					  }
+						overhead_stop(id_ovh_metrics_new_iteration);
             return;
         }
     }
+		overhead_stop(id_ovh_metrics_new_iteration);
 
 
     /* A rescheduling is a global event generated by an external agent
@@ -586,21 +593,29 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
             N_iter = iterations - begin_iter;
 
-            /* We update periodically because some jobs change it at runtime. */
-						/* PENDING: Reduce the periodicity */
-            if (masters_info.my_master_rank >= 0){
+            /* We update periodically because some jobs change it at runtime.
+						 * As a process may reach this code multiple times when
+						 * computing the signature, we've added the boolean
+						 * check_affinity_mask to mark that the affinity mask for that
+						 * signature was already updated.
+						 */
+            if (masters_info.my_master_rank >= 0 && check_affinity_mask) {
+							overhead_start(id_ovh_update_affinity_mask);
               if (state_fail(update_job_affinity_mask(lib_shared_region, sig_shared_region)))
              {
                verbose(1, "An error occurred updating the affinity mask: %s", state_msg);
-             }else{
-               verbose(2,"EARL[%d] Affinity mask updated, using %d CPUs", AID, lib_shared_region->num_cpus);
+             }else {
+							 check_affinity_mask = 0;
+							 verbose(2,"EARL[%d] Affinity mask updated, using %d CPUs", AID, lib_shared_region->num_cpus);
              }
+							overhead_stop(id_ovh_update_affinity_mask);
             }
 
-
             /* Signature computation */
+						overhead_start(id_ovh_compute_signature);
             result = metrics_compute_signature_finish(&loop_signature, N_iter,
                                                       perf_accuracy_min_time, total_threads_cnt, &passed_time);
+						overhead_stop(id_ovh_compute_signature);
 
 						
 			      /* At this point, signatures for all processes in the node are ready.
@@ -695,7 +710,9 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             }
 			*/
 
+						overhead_start(id_ovh_policy_apply);
             policy_node_apply(&norm_signature, &policy_cpufreq_khz, &ready);
+						overhead_stop(id_ovh_policy_apply);
 
             /* Accumulate statistics of savings */
             accumulate_phases_summary(&loop_signature, &application.signature);
@@ -777,6 +794,10 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 																		application.node_id, iterations, prev_cpufreq_khz,
 																		policy_cpufreq_khz, use_case);
 
+						/* If reached, there will be another state on the next iteration, so
+						 * we can enable the affinity mask check. */
+						check_affinity_mask = 1;
+
             overhead_stop(id_ovh_ev_sig);
             break; // EVALUATING_LOCAL_SIGNATURE
 
@@ -829,7 +850,9 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             /* We can compute the signature */
             N_iter = iterations - begin_iter;
 
+						overhead_start(id_ovh_compute_signature);
             result = metrics_compute_signature_finish(&loop_signature, N_iter, perf_accuracy_min_time, total_threads_cnt, &passed_time);
+						overhead_stop(id_ovh_compute_signature);
             if (result == EAR_NOT_READY )
             {
                 if (!lib_shared_region->master_ready && (passed_time < perf_accuracy_min_time)) {
@@ -900,30 +923,6 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             /* We must evaluate policy decissions */
             signatures_stables++;
 
-            if (default_signatures_different(&loop_signature, &policy_sel_signature, 0.2)) {
-
-              /* Reset */
-              policy_set_default_freq(&loop_signature);
-              EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
-              /* And then we mark as not ready */
-              if (master) clean_signatures(lib_shared_region,sig_shared_region);
-
-              if (VERB_ON(2)) {
-
-                char sigs_metrics_buff[128]; // This buffer is used to show differences in signatures.
-
-                snprintf(sigs_metrics_buff, sizeof(sigs_metrics_buff),
-                    "(CPI/GB/s/DC) current (%.2lf/%.2lf/%.2lf) policy (%.2lf/%.2lf/%.2lf)",
-                    loop_signature.CPI, loop_signature.GBS, loop_signature.DC_power,
-                    policy_sel_signature.CPI, policy_sel_signature.GBS, policy_sel_signature.DC_power);
-
-                verbose_info_master("EARL state reset because signature changed from the last passed to the policy: %s", sigs_metrics_buff);
-              }
-
-              overhead_stop(id_ovh_stable);
-              break;
-            }
-
             if (sig_ready[def_pstate] == 0) {
                 verbose_info2_master("Signature at default freq not available, assuming policy ok.");
                 /* If default is not available, that means a dynamic configuration has been decided, we assume we are ok */
@@ -932,6 +931,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                 }
                 /* And then we mark as not ready */
                 if (master) clean_signatures(lib_shared_region,sig_shared_region);
+								overhead_stop(id_ovh_stable);
                 return;
             }
 
@@ -959,6 +959,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
 
                 /* And then we mark as not ready */
                 if (master)  clean_signatures(lib_shared_region,sig_shared_region);
+								overhead_stop(id_ovh_stable);
 
                 return;
 
@@ -974,6 +975,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                 EAR_STATE = EVALUATING_LOCAL_SIGNATURE;
                 /* And then we mark as not ready */
                 if (master) clean_signatures(lib_shared_region,sig_shared_region);
+								overhead_stop(id_ovh_stable);
                 break;
             }
 
@@ -987,6 +989,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
                     // traces_frequency(ear_my_rank, my_id, policy_cpufreq_khz);
                     /* And then we mark as not ready */
                     clean_signatures(lib_shared_region,sig_shared_region);
+								overhead_stop(id_ovh_stable);
                 }
 
                 break;
@@ -1007,6 +1010,7 @@ void states_new_iteration(int my_id, uint period, uint iterations,
             }
             /* And then we mark as not ready */
             if (master) clean_signatures(lib_shared_region,sig_shared_region);
+								overhead_stop(id_ovh_stable);
 
             break; // SIGNATURE_STABLE
 

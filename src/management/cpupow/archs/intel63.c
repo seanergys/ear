@@ -457,6 +457,9 @@ CPUPOW_F_POWERCAP_SET(mgt_cpupow_intel63_powercap_set)
         }
         // Getting base register
         reg = p->pl[i].reg;
+		if (watts[i] == POWERCAP_DO_NOTHING) {
+			continue;
+		}
         // If is disabling
         if (watts[i] == POWERCAP_DISABLE) {
             // By now we are just using PL#1 (TODO: use TDP in power field)

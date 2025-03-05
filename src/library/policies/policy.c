@@ -150,7 +150,7 @@ static ullong min_cpufreq = 0; // CPu freq. selection works with khz
 static ullong min_imcfreq = 0;
 uint max_policy_imcfreq_ps = ps_nothing; // IMC freq. selection works with pstates
 
-uint gpu_optimize = 0;
+uint gpu_optimize = DEFAULT_GPU_OPT;
 
 static pstate_t *cpu_pstate_lst; /*!< The list of available CPU pstates in the current system.*/
 static uint cpu_pstate_cnt;
@@ -341,6 +341,7 @@ static state_t policy_io_freq_selection(polctx_t * c, signature_t * my_sig,
 					node_freqs_t * freqs,
 					node_freq_domain_t * dom,
 					node_freqs_t * avg_freq);
+static void verbose_governor_list(int vrb_lvl);
 
 #define DEBUG_CPUFREQ_COST 0
 
@@ -570,9 +571,9 @@ static state_t policy_init()
     char *cfake_bw_phase = (system_conf->user_type == AUTHORIZED) ? ear_getenv(FLAG_BW_FAKE_PHASE) : NULL;
     char *cignore_affinity_mask = ear_getenv(FLAG_NO_AFFINITY_MASK);
 
-    char *cgpu_optimize = ear_getenv(GPU_ENABLE_OPT);
-    if (cgpu_optimize != NULL)
-        gpu_optimize = atoi(cgpu_optimize);
+    char *cgpu_optimize = ear_getenv(FLAG_GPU_ENABLE_OPT);
+    if (cgpu_optimize == NULL) cgpu_optimize = ear_getenv(GPU_ENABLE_OPT);
+    if (cgpu_optimize != NULL) gpu_optimize = atoi(cgpu_optimize);
 
     verbose_policy_info("GPU optimization during GPU comp: %s", gpu_optimize ? "Enabled" : "Disabled");
 
@@ -2168,19 +2169,9 @@ static state_t policy_set_cpus_governor(uint exclusive)
               "Retrieving the governor list.");
 
         // Verbose governor list
-        if (VERB_ON(POLICY_INFO))
-        {
-            verbosen(POLICY_INFO, "List of governors of %u CPUs: ", lib_shared_region->num_cpus);
-            for (int i = 0; i < metrics_get(MGT_CPUFREQ)->devs_count; i++)
-            {
-                verbosen(POLICY_INFO, " %u", governor_list_before_init[i]);
-                ;
-            }
-            verbose(POLICY_INFO, " ");
-        }
+				verbose_governor_list(POLICY_INFO);
 
         // Set userspace governor on CPUs not used by the job
-
         cpu_set_t cpus_to_be_set;
         if (exclusive){
           cpumask_all_cpus(&cpus_to_be_set);
@@ -2371,4 +2362,35 @@ static state_t policy_cpu_gpu_freq_selection(polctx_t * c, signature_t * my_sig,
 		polsyms_fun.cpu_gpu_settings(c, my_sig, freqs);
 	}
 	return EAR_SUCCESS;
+}
+
+static void verbose_governor_list(int vrb_lvl)
+{
+	if (VERB_ON(vrb_lvl))
+	{
+		verbosen(vrb_lvl, "Governor list of %u CPUs:", lib_shared_region->num_cpus);
+
+		uint last_gov = governor_list_before_init[0];
+		int last_gov_cpu = 0;
+
+		char gov_str[16];
+		governor_tostr(last_gov, gov_str);
+
+		for (int i = 1; i < metrics_get(MGT_CPUFREQ)->devs_count; i++)
+		{
+			uint cpu_i_gov = governor_list_before_init[i];
+			/* If the governor change, we print the number of CPUs since the last
+			 * governor. Then update the last governor and its cpu id. */
+			if (cpu_i_gov != last_gov) {
+				verbosen(vrb_lvl, " %d CPUs to %s", i - last_gov_cpu, gov_str);
+				last_gov = cpu_i_gov;
+				last_gov_cpu = i;
+				governor_tostr(last_gov, gov_str);
+			}
+		}
+
+		/* Finally we print the remaining CPUs with the last governor, since
+		 * we skip the loop when we reach the end. */
+		verbose(vrb_lvl, " %d CPUs to %s", metrics_get(MGT_CPUFREQ)->devs_count - last_gov_cpu, gov_str);
+	}
 }

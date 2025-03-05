@@ -20,7 +20,6 @@ static int plug_rcom_eard_connect(spank_t sp, plug_serialization_t *sd, char *by
 		return ESPANK_ERROR;
 	}
 	plug_verbose(sp, 2, "connected to EARD: '%s:%d': OK (by %s)", node, port, by);
-
     return ESPANK_SUCCESS;
 }
 
@@ -32,8 +31,7 @@ static int plug_rcom_eard_disconnect(spank_t sp, plug_serialization_t *sd, char 
 
 static int plug_rcom_eard_job_sbatch(spank_t sp, plug_serialization_t *sd, int new_job)
 {
-	plug_verbose(sp, 2, "function plug_rcom_eard_sbatch");
-
+	plug_verbose(sp, 2, "function plug_rcom_eard_job_sbatch");
 	char *net_ext = sd->pack.eard.servs.net_ext;
 	int port = sd->pack.eard.servs.eard.port;
 	int i = 0;
@@ -50,6 +48,8 @@ static int plug_rcom_eard_job_sbatch(spank_t sp, plug_serialization_t *sd, int n
 	if (new_job) {
 		ear_nodelist_new_job(&sd->job.app, port, net_ext,
 			sd->job.nodes_list, sd->job.nodes_count);
+        // To know if EARD was contacted previosly by SBATCH
+        setenv_agnostic(sp, Var.con_eard_sbatch.mod, "1", 1);
 	} else {
 		ear_nodelist_end_job(sd->job.app.job.id, sd->job.app.job.step_id, port, net_ext,
 			sd->job.nodes_list, sd->job.nodes_count);
@@ -59,21 +59,28 @@ static int plug_rcom_eard_job_sbatch(spank_t sp, plug_serialization_t *sd, int n
 
 static int plug_rcom_eard_job_srun(spank_t sp, plug_serialization_t *sd, int new_job)
 {
+    plug_verbose(sp, 2, "function plug_rcom_eard_job_srun");
+    #if ERUN
+    if(sd->erun.avoid_connecting) {
+        return ESPANK_SUCCESS;
+    }
+    #endif
 	// Hostlist get
-	sd->pack.eard.connected = 1;
 	if (plug_rcom_eard_connect(sp, sd, "SRUN") == ESPANK_ERROR) {
-		sd->pack.eard.connected = 0;
 		return ESPANK_ERROR;
 	}
-	//
 	if (new_job) {
-		ear_node_new_job(&sd->job.app);
-		plug_print_application(sp, &sd->job.app);
+		if (ear_node_new_job(&sd->job.app)) {
+            plug_print_application(sp, &sd->job.app);
+            // To know if EARD was contacted previously by SRUN
+            setenv_agnostic(sp, Var.con_eard_srun.mod, "1", 1);
+        } else {
+            plug_verbose(sp, 2, "EARD communication error on REMOTE SRUN: %d", sd->job.task.pid);
+        }
 	} else {
 		ear_node_end_job(sd->job.app.job.id, sd->job.app.job.step_id);
 	}
 	plug_rcom_eard_disconnect(sp, sd, "SRUN");
-
 	return ESPANK_SUCCESS;
 }
 
@@ -100,13 +107,20 @@ int plug_rcom_eard_job_finish(spank_t sp, plug_serialization_t *sd)
 int plug_rcom_eard_task_start(spank_t sp, plug_serialization_t *sd)
 {
 	plug_verbose(sp, 2, "function plug_rcom_eard_task_start");
-	
+    #if ERUN
+    if(sd->erun.avoid_connecting) {
+        return ESPANK_SUCCESS;
+    }
+    #endif
     if (plug_rcom_eard_connect(sp, sd, "TASK") == ESPANK_ERROR) {
 		return ESPANK_ERROR;
     }
     // 1: OK, 0: KO
-    if (!ear_node_new_task(&sd->job.task)) {
-		plug_verbose(sp, 2, "EARD communication error on task: %d", sd->job.task.pid);
+    if (ear_node_new_task(&sd->job.task)) {
+        // To know if EARD was contacted previously by SRUN
+        setenv_agnostic(sp, Var.con_eard_task.mod, "1", 1);
+    } else {
+        plug_verbose(sp, 2, "EARD communication error on REMOTE SRUN/TASK: %d", sd->job.task.pid);
     }
     plug_rcom_eard_disconnect(sp, sd, "TASK");
 	return ESPANK_SUCCESS;

@@ -1,5 +1,61 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Added
+- v5.2 Implementation of Powercap setting by domain.
+- v5.2 Application CPU utiliztion is now computed and reported by EARL to CSV files.
+- v5.2 Now the power signature is printed when printing an application to CSV file.
+
+### Changed
+- v5.2 A new version of the `eacct` command is released providing an output format option.
+- v5.2 Reduce the periodicity in which EARL updates job's affinity mask.
+
+### Fixed
+- v5.2 Fixed typo in cpupow define.
+- v5.2 Improved CPU governor list message.
+
+### EAR 5.1.5
+- Bugs fixed:
+  - Prevent running code in EARD report plug-in misc method if the event type is not WF_APPLICATION
+  - Prevent closing a popen structure if the process is already death.
+  - file_ module's function naming changed to ear_file to prevent symbol name collisions with third-party applications.
+
+### EAR 5.1.4
+- Change the open file limit in edcmon.
+- Increase the timeout for remote calls.
+- Don't check for socket alive to reduce remote message parsing overhead.
+- Add new signature classification changes threshold for AMD zen3.
+- eUFS and MPI Load Balance disabled by default.
+- Bugs fixed:
+  - Minor fixes in signature different decision algorithm.
+  - Dimension in hsmp structure fixed.
+
+### EAR 5.1.3
+- Bugs fixed:
+  - Prevent closing remote connection.
+  - Increase timeout limit for remote connections.
+
+### EAR 5.1.2
+- Bugs fixed:
+  - Prevent closing eard fd 0 when storing powermon\_app fd into shared memory.
+  - Close folder fd when removing it.
+  - GFLOPS aggregation.
+  - FreeIPMI energy plug-in was managing a dynamically allocated buffer in the wrong way.
+- Check whether new fds are not attended.
+- Now intel\_pstate driver creates the CPUFreq. list using Boost frequency by default.
+
 ### EAR 5.1.1
 - Bug fixed: The application local\_id attribute is now copied to the power monitor context when saving the application signature.
+- Per-process CPU utilization fixed.
+- Classify module default verbosity fixed.
+- econtrol's manpage with improved examples.
+- Support for GPU models in the Configuration file.
 
 ### EAR 5.1.0
 - CPU temperature monitoring included in application monitoring and reported to csv files.

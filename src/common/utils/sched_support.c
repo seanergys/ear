@@ -19,6 +19,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <errno.h>
+#include <signal.h>
 
 #include <common/config.h>
 #include <common/output/verbose.h>
@@ -51,27 +52,53 @@ uint is_job_step_valid(job_id jid, job_id sid)
 
 	debug("Executing: %s\n", command);
 
-  if (popen_open(command, no_header, one_shot, &sched_test) != EAR_SUCCESS){
+	pid_t child_pid = fork();
+	if (child_pid == 0){
+		struct sigaction sa;
+		// Enable SIGALARM
+		sigset_t m;
+		sigemptyset(&m);
+		sigaddset(&m, SIGALRM);
+		sigprocmask(SIG_UNBLOCK, &m, NULL);		
+		// Set default
+		sa.sa_handler = SIG_DFL;
+		sigemptyset(&sa.sa_mask);
+		sigaction(SIGALRM, &sa, NULL);
+		// Set time limit
+		alarm(DEF_TIMEOUT_COMMANDS);
+
+  	if (popen_open(command, no_header, one_shot, &sched_test) != EAR_SUCCESS){
        debug("popen for scheduler test failedfailed\n");
-       return 0;
-  }
-  uint expected_items = 1;
-  uint i = 0;
-  while(i < expected_items){
-  while(popen_read2(&sched_test, sep,  "s", &job_sched_state)) {
-		debug("Detected state '%s'\n", job_sched_state);
-    i++;
-  }
-  }
+       return 1;
+  	}
+  	uint expected_items = 1;
+  	uint i = 0;
+  	while(i < expected_items){
+  	while(popen_read2(&sched_test, sep,  "s", &job_sched_state)) {
+			debug("Detected state '%s'\n", job_sched_state);
+    	i++;
+  	}
+  	}
 
-  popen_close(&sched_test);
+  	popen_close(&sched_test);
 
-  if (strcmp(job_sched_state, "RUNNING") == 0) return 1;
-  if (strcmp(job_sched_state, "COMPLETED") == 0) return 0;
-  if (strcmp(job_sched_state, "CANCELLED") == 0) return 0;
-  if (strcmp(job_sched_state, "FAILED") == 0) return 0;
-  if (strcmp(job_sched_state, "EXITED") == 0) return 0;
-  if (strcmp(job_sched_state, "TIMEOUT") == 0) return 0;
+  	if (strcmp(job_sched_state, "RUNNING") == 0) exit(1);
+  	if (strcmp(job_sched_state, "COMPLETED") == 0) exit(0);
+  	if (strcmp(job_sched_state, "CANCELLED") == 0) exit(0);
+  	if (strcmp(job_sched_state, "FAILED") == 0) exit(0);
+  	if (strcmp(job_sched_state, "EXITED") == 0) exit(0);
+  	if (strcmp(job_sched_state, "TIMEOUT") == 0) exit(0);
+	}
+	// Parent checks exit status
+	if (child_pid > 0){
+		int estatus;
+		waitpid(child_pid, &estatus, 0);
+		if (WIFEXITED(estatus)) return (WEXITSTATUS(estatus));
+		else                    return 1;
+	}else{
+		// If we cannot create processes we have lot of problems.
+		return 1;
+	}
 #endif
   /* Should we check more cases ? */
   return 1;
@@ -129,7 +156,7 @@ void sched_local_barrier(char *file,int N)
 	
 	snprintf(lock_file,sizeof(lock_file),"%s.lock", file); // Implements the exclusive acess
 	// Create the file and accum 1 element
-	while((fd_lock = file_lock_master(lock_file)) < 0) {}; // lock
+	while((fd_lock = ear_file_lock_master(lock_file)) < 0); // lock
 	fd = open(file, O_RDWR|O_CREAT, S_IRUSR|S_IWUSR);
 		// Update
 		if (fd >= 0){
@@ -146,7 +173,7 @@ void sched_local_barrier(char *file,int N)
 		}else{
 			error("sched_local_barrier timeout");
 		}
-	file_unlock_master(fd_lock, lock_file);
+	ear_file_unlock_master(fd_lock, lock_file);
 
 
 	debug("Waiting for processes");

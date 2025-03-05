@@ -16,8 +16,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdbool.h>
-#include <signal.h>
 #include <pthread.h>
+#include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -52,6 +52,7 @@ state_t init_active_connections_list()
 /*********** This function notify a new remote connetion ***************/
 state_t notify_new_connection(int fd)
 {
+	debug("Accept new connection %d", fd);
 	if (ear_fd_write(pipe_for_new_conn[1],(char *)&fd,sizeof(int)) != EAR_SUCCESS){
 		error("Error sending new fd for remote command %s",strerror(errno));
 		return EAR_ERROR;
@@ -73,9 +74,15 @@ state_t add_new_connection()
 	}
 	/* we have a new valid fd */
 	debug("New remote connection %d",new_fd);
-	AFD_SET(new_fd, &rfds_basic);
+	if (AFD_SET(new_fd, &rfds_basic) == 0) {
+        error("new remote connection fd is too large (%d, max is %d). Closing connection", new_fd, AFD_MAX);
+        close(new_fd);
+    }
+
+	debug("Successfully added new FD: %d", new_fd);
 	return EAR_SUCCESS;
 }
+
 
 state_t remove_remote_connection(int fd)
 {
@@ -85,32 +92,12 @@ state_t remove_remote_connection(int fd)
     return EAR_SUCCESS;
 }
 
-bool is_socket_alive(int32_t socketfd)
-{
-	debug("Entering is_socket_alive with fd %d\n", socketfd);
-	struct tcp_info info = { 0 };
-    socklen_t  optlen = sizeof(info);
-
-	int32_t ret = getsockopt(socketfd, IPPROTO_TCP, TCP_INFO, &info, &optlen);
-	if (ret < 0) {
-		debug("Error getting sockopt %d (%s)\n", errno, strerror(errno));
-		return false;
-	} else if (info.tcpi_state == TCP_CLOSE_WAIT) {
-		debug("Socket opt with TCP_CLOSE_WAIT!\n");
-		return false;
-	}
-	debug("Socket opt got with state %d!\n", info.tcpi_state);
-	return true;
-}
-
 static void check_all_fds(afd_set_t *fdset)
 {
+	debug("Testing sockets min %d max %d", fdset->fd_min+1, fdset->fd_max);
 	for (int32_t i = fdset->fd_min+1; i <= fdset->fd_max; i++) {
 		if (fdset->fds[i].fd != -1) {
 			if (i == pipe_for_new_conn[0]) continue;
-			if (!is_socket_alive(i)) {
-				remove_remote_connection(i);
-			}
 		}
 	}
 }
@@ -125,6 +112,7 @@ void *process_remote_req_th(void * arg)
 	int i;
 
 	debug("Thread to process remote requests created ");
+	verbose(VRAPI, "RemoteAPI connection fd %d", pipe_for_new_conn[0]);
 	while ((numfds_ready = aselectv(&rfds_basic, NULL)) && (eard_must_exit == 0))
 	{
 		verbose(VRAPI, "RemoteAPI thread new info received (new_conn/new_data)");
@@ -144,9 +132,12 @@ void *process_remote_req_th(void * arg)
 						verbose(VRAPI, "New connection received in RemoteAPI thread");
 						add_new_connection();
 					} else {
-						verbose(VRAPI, "New request received in RemoteAPI thread");
+						verbose(VRAPI, "New request received in RemoteAPI thread %d", i);
 						ret = process_remote_requests(i);
-						if (ret != EAR_SUCCESS) remove_remote_connection(i);
+						if (ret != EAR_SUCCESS){
+							verbose(VRAPI, "process_remote_requests returns error, closing %d ret %d", i, ret);
+							remove_remote_connection(i);
+						}
 					}
 				}
 			}

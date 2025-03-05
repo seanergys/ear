@@ -54,6 +54,7 @@
 #include <daemon/powercap/powercap.h>
 #include <daemon/eard_checkpoint.h>
 #include <daemon/log_eard.h>
+#include <daemon/common.h>
 
 #include <daemon/app_api/app_server_api.h>
 #if USE_GPUS
@@ -154,7 +155,6 @@ int fd_rapl[MAX_PACKAGES];
 
 static void set_sigaction();
 
-
 /*************** To recover hardware settings **************/
 
 void set_default_management_init()
@@ -183,7 +183,6 @@ static void set_default_management_exit()
     mgt_imcfreq_set_current(no_ctx, 0, all_sockets);
   }
   #endif
-
 }
 /**********************************************************/
 
@@ -640,7 +639,7 @@ void report_eard_init_error()
     }
 }
 
-void     update_global_configuration_with_local_ssettings(cluster_conf_t *my_cluster_conf,my_node_conf_t *my_node_conf)
+void update_global_configuration_with_local_ssettings(cluster_conf_t *my_cluster_conf,my_node_conf_t *my_node_conf)
 {
 				strcpy(my_cluster_conf->install.obj_ener,my_node_conf->energy_plugin);
 				strcpy(my_cluster_conf->install.obj_power_model,my_node_conf->energy_model);
@@ -690,14 +689,15 @@ int main(int argc, char *argv[])
 {
 	char    my_name[1024];
 	ulong   ear_node_freq;
-    int     node_size;
-    int     ret;
-    state_t s;
+	int     node_size;
+	int     ret;
+	state_t s;
 
 	// Usage
 	if (argc > 2) {
 		Usage(argv[0]);
 	}
+
 	// Check
 	if (argc == 2) {
 		if (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0) {
@@ -911,14 +911,23 @@ int main(int argc, char *argv[])
                     error_rapl=1;
                 }
 								#endif
-                verbose(VEARD_INIT,"Initialzing energy plugin");
-                // We initilize energy_node
-                debug("Initializing energy in main EARD thread");
 
-                if (state_fail(energy_init(&my_cluster_conf, &eard_handler_energy))) {
-                    error("While initializing energy plugin: %s\n", state_msg);
-                    error_energy=1;
-                }
+                // We initilize energy_node
+                verbose(VEARD_INIT,
+										"Loading the energy plug-in from the main thread...");
+
+								char energy_plugin_obj[MAX_PATH_SIZE];
+								build_energy_plugin_path(energy_plugin_obj,
+										sizeof(energy_plugin_obj), &my_cluster_conf, my_node_conf);
+								
+								if (state_fail(energy_load(energy_plugin_obj))) {
+									verbose(VEARD_INIT + 1, "Energy plug-in load method failed: %s", state_msg);
+								}
+								if (state_fail(energy_init(&eard_handler_energy))) {
+                    error("While initiating the energy plug-in: %s", state_msg);
+                    error_energy = 1;
+								}
+
                 if (state_fail(s = init_power_monitoring(&handler_energy, &node_desc))) {
                     error("While initializing power monitor: %s\n", state_msg);
                     _exit(0);	

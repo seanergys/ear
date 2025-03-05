@@ -27,6 +27,7 @@ typedef struct perf_s {
     char    unit[16]; // Used in files
     char    event_name[64]; // Used in files
     char    pmu_name[64]; // Used in files
+    llong   aux;
 } perf_t;
 
 /* For per-process events */

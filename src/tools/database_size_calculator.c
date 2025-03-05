@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
 			unit = 1000;
 			strcpy(unit_name, "KBytes");
 		}
-		days_to_compute = atoi(argv[5]);
+		days_to_compute = atoi(argv[7]);
 	}
 
 	read_cluster_conf(conf_path, &my_conf);
@@ -155,9 +155,10 @@ int main(int argc, char *argv[])
 	int64_t jobs_estimate = nodes_job * job_day * days_to_compute * (application_size + pow_signature_size + signature_size + gpu_signature_size * gpus_job) + job_day * days_to_compute * job_size;
 	double jobs_double = (double)jobs_estimate / unit;
 
-	int64_t loops_estimate = nodes_job * job_day * duration_job/10 * (loop_size + signature_size + gpu_signature_size * gpus_job);
+	int64_t loops_estimate = nodes_job * job_day * days_to_compute * duration_job/10 * (loop_size + signature_size + gpu_signature_size * gpus_job);
 	double loops_double = (double)loops_estimate / unit;
 	printf("\n----------------------\n");
+	printf("Estimates for %d days:\n", days_to_compute);
 	printf("Monitoring size estimate (periodic metrics) %.3lf %s\n", periodic_metrics_double, unit_name);
 	printf("Job accounting size estimate (applications, jobs, signatures, power_signatures, gpu_signatures) %.3lf %s\n", jobs_double, unit_name);
 	printf("Loop accounting size estimate (loops & signatures) %.3lf %s\n", loops_double, unit_name);

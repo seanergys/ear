@@ -161,12 +161,13 @@ state_t folder_remove(char *path)
 	if (strcmp(file, "..") == 0) continue;
     xsnprintf(file_path,sizeof(file_path),"%s/%s",job_path,file);
     debug("Deleting: %s",file_path);
-    if (file_is_directory(file_path)){
+    if (ear_file_is_directory(file_path)){
 	debug("file '%s' is a directory, removing", file_path);
 	folder_remove(file_path);
     }else unlink(file_path);
   }
-  //folder_close(&job_folder);
+	// Closing folder to avoid fd to remain open
+  folder_close(&job_folder);
   debug("Deleting folder %s", job_path);
   rmdir(job_path);
 	return EAR_SUCCESS;

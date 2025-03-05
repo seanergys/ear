@@ -97,20 +97,20 @@
 
 #if USE_GPUS
 #define SIGNATURE_QUERY_SIMPLE  "INSERT INTO Signatures (DC_power, DRAM_power, PCK_power,  EDP,"\
-                                        "GBS, IO_MBS, TPI, CPI, Gflops, time, perc_MPI, avg_f, avg_imc_f, def_f, min_GPU_sig_id, max_GPU_sig_id) VALUES"
+                                        "GBS, IO_MBS, TPI, CPI, Gflops, time, perc_MPI, avg_f, avg_imc_f, def_f, cpu_util, min_GPU_sig_id, max_GPU_sig_id) VALUES"
 
 #define SIGNATURE_QUERY_FULL    "INSERT INTO Signatures (DC_power, DRAM_power, PCK_power,  EDP,"\
                                 "GBS, IO_MBS, TPI, CPI, Gflops, time, perc_MPI, L1_misses, L2_misses, L3_misses, "\
                                 "FLOPS1, FLOPS2, FLOPS3, FLOPS4, FLOPS5, FLOPS6, FLOPS7, FLOPS8,"\
-                                "instructions, cycles, avg_f, avg_imc_f, def_f, min_GPU_sig_id, max_GPU_sig_id) VALUES "
+                                "instructions, cycles, avg_f, avg_imc_f, def_f, cpu_util, min_GPU_sig_id, max_GPU_sig_id) VALUES "
 #else
 #define SIGNATURE_QUERY_SIMPLE  "INSERT INTO Signatures (DC_power, DRAM_power, PCK_power,  EDP,"\
-                                        "GBS, IO_MBS, TPI, CPI, Gflops, time, perc_MPI, avg_f, avg_imc_f, def_f) VALUES"
+                                        "GBS, IO_MBS, TPI, CPI, Gflops, time, perc_MPI, avg_f, avg_imc_f, def_f, cpu_util) VALUES"
 
 #define SIGNATURE_QUERY_FULL    "INSERT INTO Signatures (DC_power, DRAM_power, PCK_power,  EDP,"\
                                 "GBS, IO_MBS, TPI, CPI, Gflops, time, perc_MPI, FLOPS1, FLOPS2, FLOPS3, FLOPS4, "\
                                 "FLOPS5, FLOPS6, FLOPS7, FLOPS8,"\
-                                "instructions, cycles, avg_f, avg_imc_f, def_f) VALUES "
+                                "instructions, cycles, avg_f, avg_imc_f, def_f, cpu_util) VALUES "
 #endif
 
 
@@ -585,9 +585,10 @@ int postgresql_retrieve_signatures(PGconn *connection, char *query, signature_t 
             sig_aux[i].avg_f = htonl( *((ulong *)PQgetvalue(res, i, 25)));
             sig_aux[i].avg_imc_f = htonl( *((ulong *)PQgetvalue(res, i, 26)));
             sig_aux[i].def_f = htonl( *((ulong *)PQgetvalue(res, i, 27)));
+            sig_aux[i].ps_sig.cpu_util = htonl( *((ulong *)PQgetvalue(res, i, 28)));
 #if USE_GPUS
-            min_gpu_sig_id = htonl( *((ulong *)PQgetvalue(res, i, 28)));
-            max_gpu_sig_id = htonl( *((ulong *)PQgetvalue(res, i, 29)));
+            min_gpu_sig_id = htonl( *((ulong *)PQgetvalue(res, i, 29)));
+            max_gpu_sig_id = htonl( *((ulong *)PQgetvalue(res, i, 30)));
 #endif
         }
         else
@@ -595,9 +596,10 @@ int postgresql_retrieve_signatures(PGconn *connection, char *query, signature_t 
             sig_aux[i].avg_f = htonl( *((ulong *)PQgetvalue(res, i, 12)));
             sig_aux[i].avg_imc_f = htonl( *((ulong *)PQgetvalue(res, i, 13)));
             sig_aux[i].def_f = htonl( *((ulong *)PQgetvalue(res, i, 14)));
+            sig_aux[i].ps_sig.cpu_util = htonl( *((ulong *)PQgetvalue(res, i, 15)));
 #if USE_GPUS
-            min_gpu_sig_id = htonl( *((ulong *)PQgetvalue(res, i, 15)));
-            max_gpu_sig_id = htonl( *((ulong *)PQgetvalue(res, i, 16)));
+            min_gpu_sig_id = htonl( *((ulong *)PQgetvalue(res, i, 16)));
+            max_gpu_sig_id = htonl( *((ulong *)PQgetvalue(res, i, 17)));
 #endif
         }
 #if USE_GPUS
@@ -1497,17 +1499,18 @@ int postgresql_batch_insert_signatures(PGconn *connection, signature_t *sigs, ch
             param_values[24 + offset] = (char *) &sigs[i].avg_f;
             param_values[25 + offset] = (char *) &sigs[i].avg_imc_f;
             param_values[26 + offset] = (char *) &sigs[i].def_f;
+            param_values[27 + offset] = (char *) &sigs[i].ps_sig.cpu_util;
 #if USE_GPUS
             if (sigs[i].gpu_sig.num_gpus > 0 && starter_gpu_sig_id >= 0)
             {
-                param_values[27 + offset] = (char *) &gpu_sig_ids[current_gpu_sig_id];
-                current_gpu_sig_id += sigs[i].gpu_sig.num_gpus - 1;
                 param_values[28 + offset] = (char *) &gpu_sig_ids[current_gpu_sig_id];
+                current_gpu_sig_id += sigs[i].gpu_sig.num_gpus - 1;
+                param_values[29 + offset] = (char *) &gpu_sig_ids[current_gpu_sig_id];
             }
             else
             {
-                param_values[24 + offset] = NULL;
-                param_values[25 + offset] = NULL;
+                param_values[28 + offset] = NULL;
+                param_values[29 + offset] = NULL;
             }
 #endif
         }
@@ -1516,17 +1519,18 @@ int postgresql_batch_insert_signatures(PGconn *connection, signature_t *sigs, ch
             param_values[11 + offset] = (char *) &sigs[i].avg_f;
             param_values[12 + offset] = (char *) &sigs[i].avg_imc_f;
             param_values[13 + offset] = (char *) &sigs[i].def_f;
+            param_values[14 + offset] = (char *) &sigs[i].ps_sig.cpu_util;
 #if USE_GPUS
             if (sigs[i].gpu_sig.num_gpus > 0 && starter_gpu_sig_id >= 0)
             {
-                param_values[14 + offset] = (char *) &gpu_sig_ids[current_gpu_sig_id];
-                current_gpu_sig_id += sigs[i].gpu_sig.num_gpus - 1;
                 param_values[15 + offset] = (char *) &gpu_sig_ids[current_gpu_sig_id];
+                current_gpu_sig_id += sigs[i].gpu_sig.num_gpus - 1;
+                param_values[16 + offset] = (char *) &gpu_sig_ids[current_gpu_sig_id];
             }
             else
             {
-                param_values[14 + offset] = NULL;
                 param_values[15 + offset] = NULL;
+                param_values[16 + offset] = NULL;
             }
 #endif
         }
@@ -1561,9 +1565,10 @@ int postgresql_batch_insert_signatures(PGconn *connection, signature_t *sigs, ch
             param_lengths[24 + offset] = sizeof(int);
             param_lengths[25 + offset] = sizeof(int);
             param_lengths[26 + offset] = sizeof(int);
+            param_lengths[27 + offset] = sizeof(int);
 #if USE_GPUS
-            param_lengths[27 + offset] = sizeof(ulong);
             param_lengths[28 + offset] = sizeof(ulong);
+            param_lengths[29 + offset] = sizeof(ulong);
 #endif
         }
         else 
@@ -1571,9 +1576,10 @@ int postgresql_batch_insert_signatures(PGconn *connection, signature_t *sigs, ch
             param_lengths[11 + offset] = sizeof(int);
             param_lengths[12 + offset] = sizeof(int);
             param_lengths[13 + offset] = sizeof(int);
+            param_lengths[14 + offset] = sizeof(int);
 #if USE_GPUS
-            param_lengths[14 + offset] = sizeof(ulong);
             param_lengths[15 + offset] = sizeof(ulong);
+            param_lengths[16 + offset] = sizeof(ulong);
 #endif
 
         }
