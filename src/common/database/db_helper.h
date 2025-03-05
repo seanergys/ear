@@ -113,6 +113,7 @@ int get_num_columns(char *query);
 int db_read_applications_query(application_t **apps, char *query);
 
 int db_read_loops_query(loop_t **loops, char *query);
+int db_read_jobs_query(job_t **jobs, char *query);
 
 void db_reset_counters();
 
