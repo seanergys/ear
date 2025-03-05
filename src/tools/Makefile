@@ -12,6 +12,7 @@ tool_BINS = \
     ear_conf \
     insert_test \
     enode_info \
+    enodectl \
     node_manager_info \
     list_folders \
     groups_test \
@@ -95,6 +96,9 @@ ear_conf: ear_conf.c $(comm_OBJS)
 
 enode_control: ear_node_control.c $(comm_OBJS)
 	$(CCC) -o $@ $< $(comm_OBJS)
+
+enodectl: ear_node_ctl.c $(comm_OBJS) $(rapi_OBJS)
+	$(CCC) -o $@ $< $(rapi_OBJS) $(comm_OBJS) -lm
 
 groups_test: groups_test.c $(comm_OBJS)
 	$(CCC) -o $@ $< $(comm_OBJS)
