@@ -61,11 +61,12 @@ typedef struct ipmi_reading_s {
 } ipmi_reading_t;
 
 typedef struct ipmi_sensor_s {
-    uchar        dev_no; // /dev/ipmi#
-    uchar        sen_no;
+    uchar        dev_no; // device (/dev/ipmi#)
+    uchar        rec_no; // record
     const char  *name;
     uchar        available;
     uchar        units;
+    uchar        rate;
     const char  *units_str;
     uchar        instance;
 } ipmi_sensor_t;
@@ -80,7 +81,8 @@ int ipmi_has_hardware(char *string);
 
 int ipmi_sensors_find(char *string, ipmi_sensor_t **sensors, uint *sensors_count);
 
-state_t ipmi_sensors_read(ipmi_sensor_t *sensors, uint sensors_count, ipmi_reading_t *values);
+// Allocates values memory if the inner pointer is NULL.
+state_t ipmi_sensors_read(ipmi_sensor_t *sensors, uint sensors_count, ipmi_reading_t **values);
 
 // OEM
 void ipmi_cmd_set_paddr(ipmi_cmd_t *pkg, ipmi_addr_t *addr);

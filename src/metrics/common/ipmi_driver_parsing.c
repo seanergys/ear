@@ -8,6 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
+#include <math.h>
 #include <stdio.h>
 #include <ctype.h>
 #include <stddef.h>
@@ -83,27 +84,6 @@ void ipmi_driver_parse_device_id(uchar *data, ipmi_dev_t *dev)
     );
 }
 
-void ipmi_driver_parse_sensor_reading()
-{
-    // Linearization formula:
-    //   y = lf((mx + (b * 10^(b_exp))) * 10^(r_exp)) units
-    //
-    //   where:
-    //   - x Raw reading
-    //   - y Converted reading
-    //   - lf() Linearization function specified by ‘lin_type’.
-    //     This function is ‘null’ (y = f(x) = x) if the sensor is linear.
-    //   - M Signed integer constant multiplier
-    //   - B Signed additive ‘offset’
-    //   - K1 Signed Exponent. Sets ‘decimal point’ location for B. This
-    //     is called the ‘B’ exponent in the SDRs.
-    //   - K2 Signed Result Exponent. Sets ‘decimal point’ location for
-    //     the result before the linearization function is applied.
-    //     This is called the ‘R’ exponent in SDRs. Linear and Linearized
-    //     readings have constant accuracy, tolerance, M, and B factors
-    //     regardless of the reading.
-}
-
 uchar ipmi_driver_parse_sdr(uchar *data, sdr_t *rec, ipmi_addr_t *addr)
 {
     #define B(n) 3+n-1
@@ -116,12 +96,13 @@ uchar ipmi_driver_parse_sdr(uchar *data, sdr_t *rec, ipmi_addr_t *addr)
             rec->entity_logical          = getbits8(data[B(10)], 7, 7);
             rec->sensor_no               = data[B(8)];
             rec->sensor_type             = data[B(13)];
+            rec->sensor_type_str         = (char *) sensor_type_str[rec->sensor_type];
             rec->formula_complement      = getbits8(data[B(21)], 7, 6);
             rec->formula_rate_unit       = getbits8(data[B(21)], 5, 3);
             rec->formula_modifier        = getbits8(data[B(21)], 2, 1);
             rec->formula_percentage      = getbits8(data[B(21)], 0, 0);
             rec->formula_result_unit     = data[B(22)];
-            rec->formula_result_unit_str = (char *) unit_str[data[B(22)]];
+            rec->formula_result_unit_str = (char *) unit_str[rec->formula_result_unit];
             rec->formula_modifier_unit   = data[B(23)];
             rec->formula_lin_function    = getbits8(data[B(24)], 6, 0);
             rec->formula_m               = getbits8(data[B(26)], 7, 6) << 8 | data[B(25)];
@@ -167,14 +148,19 @@ uchar ipmi_driver_parse_sdr(uchar *data, sdr_t *rec, ipmi_addr_t *addr)
                   rec->formula_modifier_unit);
             break;
         case 0x03: // EVENT-BASED
+            debug("EVENT-BASED");
             break;
         case 0x08: // ENTITY-ASSOC
+            debug("ENTITY-ASSOC");
             break;
         case 0x09: // DEV-RELATIVE
+            debug("DEV-RELATIVE");
             break;
-        case 0x10: // DEV-LOCATOR"
+        case 0x10: // DEV-LOCATOR
+            debug("DEV-LOCATOR");
             break;
         case 0x11: // FRU-LOCATOR
+            debug("FRU-LOCATOR");
             break;
         case 0x12: // BMC-LOCATOR
             rec->new_addr_slave   = getbits8(data[B(6)], 7, 1);
@@ -186,8 +172,10 @@ uchar ipmi_driver_parse_sdr(uchar *data, sdr_t *rec, ipmi_addr_t *addr)
                     getbits8(data[B(9)], 3, 3) ? "FRU": "");
             break;
         case 0x13: // MCC-RECORD
+            debug("MCC-RECORD");
             break;
         case 0x14: // MSG-CHANNEL
+            debug("MSG-CHANNEL");
             break;
         default:
             if (rec->type >= 0x0a && rec->type <= 0x0f) {} //RESERVED
@@ -195,4 +183,41 @@ uchar ipmi_driver_parse_sdr(uchar *data, sdr_t *rec, ipmi_addr_t *addr)
     }
     rec->addr = addr;
     return rec->type;
+}
+
+void ipmi_driver_parse_sensor_reading(uchar raw, sdr_t *rec, ipmi_reading_t *val)
+{
+    // Linearization formula:
+    //   y = lf((mx + (b * 10^(b_exp))) * 10^(r_exp)) units
+    //
+    //   where:
+    //   - x Raw reading
+    //   - y Converted reading
+    //   - lf() Linearization function specified by ‘lin_type’.
+    //     This function is ‘null’ (y = f(x) = x) if the sensor is linear.
+    //   - m Signed integer constant multiplier
+    //   - b Signed additive ‘offset’
+    //   - b_exp Signed Exponent. Sets ‘decimal point’ location for b.
+    //   - r_exp Signed Result Exponent. Sets ‘decimal point’ location for
+    //     the result before the linearization function is applied.
+    double b_exp = (double) rec->formula_b_exp;
+    double r_exp = (double) rec->formula_r_exp;
+    double m = (double) rec->formula_m;
+    double b = (double) rec->formula_b;
+    double y = 0.0;
+    long   x = raw; // Unsigned
+
+    // Complement processing
+    if (rec->formula_complement == 0x02) { //Two's complement
+        x = (long) ((char) raw);
+    } else { // Ones' complement
+        x = (((char) raw) >= 0) ? (long) ((uchar) raw): (long) ((char) raw+1);
+    }
+    // Operations
+    b = b * pow(10.0, b_exp);
+    y = (m * ((double) x)) + b;
+    y = y * pow(10.0, r_exp);
+    debug("%s #%u => %lfy = lf((%lfm*%ldx + (%lfb * 10^(%lfb_exp))) * 10^(%lfr_exp))",
+          rec->name, rec->sensor_no, y, m, x, b, b_exp, r_exp);
+    val->value = y;
 }

@@ -15,7 +15,7 @@
 #include <ipmi.h>
 
 typedef struct sdr_s {
-    ipmi_addr_t *addr;
+    ipmi_addr_t *addr; // Device address
     ushort       id;
     uchar        type;
     char         name[16];
@@ -24,6 +24,7 @@ typedef struct sdr_s {
     uchar        entity_logical;
     uchar        sensor_no;
     uchar        sensor_type;
+    char        *sensor_type_str;
     uchar        new_addr_slave;
     uchar        new_addr_lun;
     uchar        new_addr_channel;
@@ -60,7 +61,7 @@ void ipmi_driver_close();
 
 int ipmi_driver_sensors_find(char *string, ipmi_sensor_t **sensors, uint *sensors_count);
 
-state_t ipmi_driver_sensors_read(ipmi_sensor_t *sensors, uint sensors_count, ipmi_reading_t *values);
+state_t ipmi_driver_sensors_read(ipmi_sensor_t *sensors, uint sensors_count, ipmi_reading_t **values);
 
 // OEM
 void ipmi_driver_cmd_set_paddr(ipmi_cmd_t *pkg, ipmi_addr_t *addr);

@@ -234,15 +234,15 @@ int ipmi_driver_sensors_find(char *string, ipmi_sensor_t **sensors, uint *sensor
     for (d = s = 0; d < devs_count; ++d) {
         for (r = 0; r < devs[d].records_count; ++r) {
             if (strstr(devs[d].records[r].name_lower, string) != NULL) {
-                debug("%d_%d %s (FOUND!)", d, r, devs[d].records[r].name);
                 alloc = realloc(alloc, (s+1)*sizeof(ipmi_sensor_t));
                 alloc[s].dev_no    = d;
-                alloc[s].sen_no    = devs[d].records[r].sensor_no;
+                alloc[s].rec_no    = r;
                 alloc[s].name      = devs[d].records[r].name;
                 alloc[s].available = 1;
                 alloc[s].units     = devs[d].records[r].formula_result_unit;
                 alloc[s].units_str = devs[d].records[r].formula_result_unit_str;
                 alloc[s].instance  = devs[d].records[r].entity_instance;
+                debug("%d_%d %s (FOUND!)", d, r, alloc[s].name);
                 s++;
             } else {
                 debug("%d_%d %s", d, r, devs[d].records[r].name);
@@ -254,14 +254,33 @@ int ipmi_driver_sensors_find(char *string, ipmi_sensor_t **sensors, uint *sensor
     return s;
 }
 
-state_t ipmi_driver_sensors_read(ipmi_sensor_t *sensors, uint sensors_count, ipmi_reading_t *values)
+state_t ipmi_driver_sensors_read(ipmi_sensor_t *sensors, uint sensors_count, ipmi_reading_t **values)
 {
+    ipmi_addr_t *addr = NULL;
+    sdr_t *rec = NULL;
+    ipmi_cmd_t pkg;
+    state_t st;
     int s;
-    for (s = 0; s < sensors_count; ++s)
-    {
-        ipmi_driver_cmd_set_paddr(&pkg, devs[sensors[s].dev_no].records[sensors[s].sen_no].addr);
-        ipmi_driver_cmd_set_msg(&pkg, );
-        debug("");
+
+    if (*values == NULL) {
+        *values = calloc(sensors_count, sizeof(ipmi_reading_t));
+    }
+    ipmi_driver_cmd_set_msg(&pkg, IPMI_NETFN_SENSOR_EVENT_REQUEST, 0x2d, 1);
+    //
+    for (s = 0; s < sensors_count; ++s) {
+        rec = &devs[sensors[s].dev_no].records[sensors[s].rec_no];
+        if (addr != rec->addr) {
+            ipmi_driver_cmd_set_paddr(&pkg, rec->addr);
+            addr = rec->addr;
+        }
+        // Setting the sensor to read
+        pkg.msg_send_data[0] = rec->sensor_no;
+        // Sending message
+        if (state_ok(st = ipmi_driver_cmd_send(sensors[s].dev_no, &pkg))) {
+            // Getting the sensor formula variables
+            ipmi_driver_parse_sensor_reading(pkg.msg_recv_data[1], rec, &(*values)[s]);
+            debug("val[%02d]: %lf", s, (*values)[s].value);
+        }
     }
     return EAR_SUCCESS;
 }
@@ -289,6 +308,7 @@ void ipmi_driver_cmd_set_paddr(ipmi_cmd_t *pkg, ipmi_addr_t *addr)
 void ipmi_driver_cmd_set_msg(ipmi_cmd_t *pkg, uchar netfn, uchar cmd, ushort data_len)
 {
     memset(pkg->msg_send_data, 0, sizeof(pkg->msg_send_data));
+    memset(pkg->msg_recv_data, 0, sizeof(pkg->msg_recv_data));
     pkg->msg_send.netfn    = netfn;
     pkg->msg_send.cmd      = cmd;
     pkg->msg_send.data     = (data_len > 0) ? pkg->msg_send_data : NULL;
