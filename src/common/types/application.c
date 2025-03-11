@@ -246,6 +246,8 @@ int create_app_header(char * header, char *path, uint num_gpus, char is_extended
     }
 #endif
 
+	strncat(HEADER, HEADER_POWER_SIG, header_len - strlen(HEADER) - 1);
+
 	  int fd = open(path, OPTIONS, PERMISSION);
     if (fd >= 0) {
     	dprintf(fd, "%s\n", HEADER);
