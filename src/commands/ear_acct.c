@@ -714,6 +714,10 @@ void print_short_apps(application_t *apps, int num_apps, int fd, int is_csv)
 
 void _add_string_filter(char *query, char *addition, char *value, bool quotes)
 {
+    if (strchr(value, ' ') || strchr(value, '\'')) {
+        printf("\"%s\" argument (\"%s\") is invalid.\n", addition, value);
+        exit(1);
+    }
 	if (query_filters < 1)
 		strcat(query, " WHERE ");
 	else
