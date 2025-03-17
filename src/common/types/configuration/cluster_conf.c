@@ -103,14 +103,9 @@ int get_num_nodes_in_eargm(cluster_conf_t *my_conf, int eargm_id)
     {
         for (j = 0; j < my_conf->islands[i].num_ranges; j++)
         {
-            node_range_t range = my_conf->islands[i].ranges[j];
-            if (range.eargm_id != eargm_id) continue;
-            if (range.end == -1)
-                total_nodes++;
-            else if (range.end == range.start)
-                total_nodes++;
-            else
-                total_nodes += (range.end - range.start) + 1; //end - start does not count the starting node
+            node_range_t *range = &my_conf->islands[i].ranges[j];
+            if (range->eargm_id != eargm_id) continue;
+            total_nodes += node_range_get_num_nodes(range);
         }
     }
 
@@ -133,13 +128,8 @@ int get_num_nodes(cluster_conf_t *my_conf)
     {
         for (j = 0; j < my_conf->islands[i].num_ranges; j++)
         {
-            node_range_t range = my_conf->islands[i].ranges[j];
-            if (range.end == -1)
-                total_nodes++;
-            else if (range.end == range.start)
-                total_nodes++;
-            else
-                total_nodes += (range.end - range.start) + 1; //end - start does not count the starting node
+            node_range_t *range = &my_conf->islands[i].ranges[j];
+            total_nodes += node_range_get_num_nodes(range);
         }
     }
 

@@ -463,7 +463,7 @@ int32_t concat_range(char *base, range_def_t *cr, size_t max_size, size_t *curre
     }
     for (int32_t k = 0; k < cr->numbers_count; k++) {
         memset(second_buff, 0, sizeof(second_buff));
-        memset(buff, 0, sizeof(second_buff));
+        memset(buff, 0, sizeof(buff));
         if (base != NULL) strcpy(buff, base);
         pair *aux = &cr->numbers[k];
         /*   1)0-0 if NO numbers had to be set (ideally shouldn't happen and the pointer would be null with no range). cmp2546[] (useless [])
