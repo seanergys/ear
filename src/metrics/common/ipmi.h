@@ -12,9 +12,12 @@
 #define METRICS_COMMON_IPMI_H
 
 #include <linux/ipmi.h>
-//#include <common/states.h>
+#if !IPMI_INDEPENDENCY
+#include <common/states.h>
+#endif
 
-#if 1
+// Delete these regions when finished
+#if IPMI_INDEPENDENCY
     #define debug(...) { \
         printf(__VA_ARGS__); \
         printf("\n"); \
@@ -42,11 +45,15 @@
     #define EAR_ERROR   -1
 #endif
 
+#define IPMI_MAX_DEVS 4 // Max supported devices
+
 typedef struct ipmi_addr_s {
     struct ipmi_addr addr;
     uint addr_len;
 } ipmi_addr_t;
 
+// This structure includes all the data required to send a message. It is also
+// named as Command Package.
 typedef struct ipmi_cmd_s {
     ipmi_addr_t      addr;
     struct ipmi_msg  msg_send;
@@ -75,20 +82,26 @@ state_t ipmi_open();
 
 void ipmi_close();
 
+// Returns the IPMI devices opened (normally /dev/impiN).
 int ipmi_devs_count();
 
 int ipmi_has_hardware(char *string);
 
+// You can pass %d in string to retrieve a multi numbered sensor.
 int ipmi_sensors_find(char *string, ipmi_sensor_t **sensors, uint *sensors_count);
 
 // Allocates values memory if the inner pointer is NULL.
 state_t ipmi_sensors_read(ipmi_sensor_t *sensors, uint sensors_count, ipmi_reading_t **values);
 
 // OEM
+
+// Sets an address in the CMD Package (PKG) based on an existing address.
 void ipmi_cmd_set_paddr(ipmi_cmd_t *pkg, ipmi_addr_t *addr);
 
+// Sets an address in the PKG based on separated components.
 void ipmi_cmd_set_addr(ipmi_cmd_t *pkg, int type, short channel, uchar slave_addr, uchar lun);
 
+// Sets the message part in the PKG based on separated components.
 void ipmi_cmd_set_msg(ipmi_cmd_t *pkg, uchar netfn, uchar cmd, ushort data_len);
 
 state_t ipmi_cmd_send(int dev_no, ipmi_cmd_t *pkg);

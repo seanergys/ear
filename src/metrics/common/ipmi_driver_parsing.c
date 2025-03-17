@@ -13,7 +13,13 @@
 #include <ctype.h>
 #include <stddef.h>
 #include <string.h>
+#if IPMI_INDEPENDENCY
 #include <ipmi_driver_parsing.h>
+#else
+#include <common/string_enhanced.h>
+#include <common/hardware/bithack.h>
+#include <metrics/common/ipmi_driver_parsing.h>
+#endif
 
 static const char *unit_str[] = {
     "unspecified", "degrees C", "degrees F", "degrees K", "Volts", "Amps",
@@ -46,7 +52,7 @@ const char *sensor_type_str[] = {
     "Session Audit", "Version Change", "FRU State", NULL
 };
 
-#if 1
+#if IPMI_INDEPENDENCY
 static uint getbits32(uint reg, uint left_bit, uint right_bit)
 {
     uint digits = left_bit - right_bit;
@@ -74,7 +80,7 @@ char *strtolow(char *string)
 
 void ipmi_driver_parse_device_id(uchar *data, ipmi_dev_t *dev)
 {
-    // Getting BMC data
+    // IPMI Doc: 20.1 Get Device ID Command, getting the BMC data
     dev->id      = data[1];
     dev->has_sdr = getbits32((uint) data[2], 7, 7);
     dev->has_fru = getbits32((uint) data[6], 3, 3);
@@ -87,11 +93,12 @@ void ipmi_driver_parse_device_id(uchar *data, ipmi_dev_t *dev)
 uchar ipmi_driver_parse_sdr(uchar *data, sdr_t *rec, ipmi_addr_t *addr)
 {
     #define B(n) 3+n-1
-    static char buffer[256];
 
+    // IPMI Doc: 43. Sensor Data Record Formats
     switch((rec->type = data[B(4)]))
     {
         case 0x01: // FULL
+            // IPMI Doc: 43.1 SDR Type 01h, Full Sensor Record
             rec->entity_instance         = getbits8(data[B(10)], 6, 0);
             rec->entity_logical          = getbits8(data[B(10)], 7, 7);
             rec->sensor_no               = data[B(8)];
@@ -160,16 +167,40 @@ uchar ipmi_driver_parse_sdr(uchar *data, sdr_t *rec, ipmi_addr_t *addr)
             debug("DEV-LOCATOR");
             break;
         case 0x11: // FRU-LOCATOR
-            debug("FRU-LOCATOR");
+            // The generation of an IPMB address (IPMI_IPMB_ADDR_TYPE) requires
+            // more knowledge about IMPI and is beyond the scope of this source
+            // code. By now que use IPMI_SYSTEM_INTERFACE_ADDR_TYPE type
+            // addresses that are managed by the BMC by its KCS, SMIC, etc
+            // interfaces and saves us from writing channels, slave addresses,
+            // private bus addresses, etc. Maybe one day we will be forced to
+            // increase the complexity of this code and build IMPB addresses.
+            rec->new_addr_type    = IPMI_SYSTEM_INTERFACE_ADDR_TYPE;
+            rec->new_addr_channel = IPMI_BMC_CHANNEL;
+            rec->entity_logical   = getbits8(data[B(8)], 7, 7);
+            rec->entity_instance  = (rec->entity_logical) ? getbits8(data[B(7)], 7, 0): 0;
+            rec->length           = getbits8(data[B(16)], 4, 0);
+            if (rec->length != 0x00 && rec->length != 0x1F) {
+                strncpy(rec->name, (const char *) &data[B(17)], rec->length);
+            } else {
+                sprintf(rec->name, "no-name");
+            }
+            debug("FRU-LOCATOR ADDR_0x%X CHAN_0x%x LUN_0x%X BUS_0x%X ID_0x%X %s %s",
+                  getbits8(data[B(6)], 7, 1), getbits8(data[B(9)], 7, 4),
+                  getbits8(data[B(8)], 4, 3), getbits8(data[B(8)], 2, 0),
+                  rec->entity_instance, rec->name, (rec->entity_logical) ? "LOGICAL": "PHYSICAL");
             break;
         case 0x12: // BMC-LOCATOR
+            debug("record id 0x%X", (getbits8(data[B(2)], 7, 0) << 8) | getbits8(data[B(1)], 7, 0));
+            debug("entity id 0x%X", (getbits8(data[B(13)], 7, 0)));
+            debug("entity instance 0x%X", (getbits8(data[B(14)], 7, 0)));
             rec->new_addr_slave   = getbits8(data[B(6)], 7, 1);
             rec->new_addr_channel = getbits8(data[B(7)], 3, 0);
+            rec->bmc_sdr          = getbits8(data[B(9)], 1, 1);
+            rec->bmc_fru          = getbits8(data[B(9)], 3, 3);
             strncpy(rec->name, (const char *) &data[B(17)], getbits8(data[B(16)], 4, 0));
             debug("BMC-LOCATOR ADDR_0x%X CHAN_0x%x %s %s%s",
-                    rec->new_addr_slave, rec->new_addr_channel, rec->name,
-                    getbits8(data[B(9)], 1, 1) ? "SDR ": "",
-                    getbits8(data[B(9)], 3, 3) ? "FRU": "");
+                rec->new_addr_slave, rec->new_addr_channel, rec->name,
+                (rec->bmc_sdr) ? "SDR ": "", (rec->bmc_fru) ? "FRU": "");
             break;
         case 0x13: // MCC-RECORD
             debug("MCC-RECORD");
@@ -185,8 +216,21 @@ uchar ipmi_driver_parse_sdr(uchar *data, sdr_t *rec, ipmi_addr_t *addr)
     return rec->type;
 }
 
+void ipmi_driver_parse_fru_inventory(uchar *data)
+{
+    // Check the function __ipmi_fru_print() of ipmitool source code for more
+    // information regarding FRU and its processing.
+    #if SHOW_DEBUGS
+    ushort inventory_size = (data[2] << 8) | data[1];
+    debug("Detected FRU inventory of size %u accesed by %s",
+          inventory_size, (!getbits8(data[3], 0, 0)) ? "BYTES": "WORDS");
+    #endif
+}
+
 void ipmi_driver_parse_sensor_reading(uchar raw, sdr_t *rec, ipmi_reading_t *val)
 {
+    // IPMI Doc: 36.3 Sensor Reading Conversion Formula
+    //
     // Linearization formula:
     //   y = lf((mx + (b * 10^(b_exp))) * 10^(r_exp)) units
     //

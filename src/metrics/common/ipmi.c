@@ -9,10 +9,13 @@
  **************************************************************************/
 
 #include <pthread.h>
-//#include <metrics/common/ipmi.h>
-//#include <metrics/common/ipmi_driver.h>
+#if IPMI_INDEPENDENCY
 #include <ipmi.h>
 #include <ipmi_driver.h>
+#else
+#include <metrics/common/ipmi.h>
+#include <metrics/common/ipmi_driver.h>
+#endif
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
@@ -32,6 +35,16 @@ void ipmi_close()
     pthread_mutex_unlock(&lock);
 }
 
+int ipmi_devs_count()
+{
+    return ipmi_driver_devs_count();
+}
+
+int ipmi_has_hardware(char *string)
+{
+    return ipmi_driver_has_hardware(string);
+}
+
 int ipmi_sensors_find(char *string, ipmi_sensor_t **sensors, uint *sensors_count)
 {
     return ipmi_driver_sensors_find(string, sensors, sensors_count);
@@ -47,6 +60,16 @@ state_t ipmi_sensors_read(ipmi_sensor_t *sensors, uint sensors_count, ipmi_readi
 }
 
 // OEM
+void ipmi_cmd_set_paddr(ipmi_cmd_t *pkg, ipmi_addr_t *addr)
+{
+    ipmi_driver_cmd_set_paddr(pkg, addr);
+}
+
+void ipmi_cmd_set_addr(ipmi_cmd_t *pkg, int type, short channel, uchar slave_addr, uchar lun)
+{
+    ipmi_driver_cmd_set_addr(pkg, type, channel, slave_addr, lun);
+}
+
 void ipmi_cmd_set_msg(ipmi_cmd_t *pkg, uchar netfn, uchar cmd, ushort data_len)
 {
     ipmi_driver_cmd_set_msg(pkg, netfn, cmd, data_len);
@@ -61,6 +84,7 @@ state_t ipmi_cmd_send(int dev_no, ipmi_cmd_t *pkg)
     return s;
 }
 
+#if TEST
 static ipmi_reading_t *readings1, *readings2;
 static ipmi_sensor_t *sensors;
 static uint sensors_count;
@@ -68,9 +92,10 @@ static uint sensors_count;
 int main(int argc, char *argv)
 {
     ipmi_open();
-    ipmi_driver_sensors_find("dimm", &sensors, &sensors_count);
+    ipmi_driver_sensors_find("P%d_VDDCR_SOC", &sensors, &sensors_count);
     ipmi_driver_sensors_read(sensors, sensors_count, &readings1);
     sleep(2);
     ipmi_driver_sensors_read(sensors, sensors_count, &readings2);
     return 0;
 }
+#endif

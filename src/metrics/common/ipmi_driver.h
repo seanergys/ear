@@ -11,23 +11,30 @@
 #ifndef METRICS_COMMON_IPMI_DRIVER_H
 #define METRICS_COMMON_IPMI_DRIVER_H
 
-//#include <metrics/common/ipmi.h>
+#if IPMI_INDEPENDENCY
 #include <ipmi.h>
+#else
+#include <metrics/common/ipmi.h>
+#endif
 
 typedef struct sdr_s {
-    ipmi_addr_t *addr; // Device address
-    ushort       id;
+    ipmi_addr_t *addr; // SDR address
     uchar        type;
+    uchar        length;
     char         name[16];
     char         name_lower[16]; // Name in lower-case
+    uchar        bmc_sdr;
+    uchar        bmc_fru;
     uchar        entity_instance;
     uchar        entity_logical;
     uchar        sensor_no;
     uchar        sensor_type;
     char        *sensor_type_str;
+    uchar        new_addr_type;
     uchar        new_addr_slave;
     uchar        new_addr_lun;
     uchar        new_addr_channel;
+    uchar        new_addr_bus;
     uchar        formula_complement;
     uchar        formula_rate_unit;
     uchar        formula_modifier;
@@ -59,6 +66,10 @@ state_t ipmi_driver_open();
 
 void ipmi_driver_close();
 
+int ipmi_driver_devs_count();
+
+int ipmi_driver_has_hardware(char *string);
+
 int ipmi_driver_sensors_find(char *string, ipmi_sensor_t **sensors, uint *sensors_count);
 
 state_t ipmi_driver_sensors_read(ipmi_sensor_t *sensors, uint sensors_count, ipmi_reading_t **values);
@@ -66,7 +77,11 @@ state_t ipmi_driver_sensors_read(ipmi_sensor_t *sensors, uint sensors_count, ipm
 // OEM
 void ipmi_driver_cmd_set_paddr(ipmi_cmd_t *pkg, ipmi_addr_t *addr);
 
+void ipmi_driver_cmd_set_addr(ipmi_cmd_t *pkg, int type, short channel, uchar slave_addr, uchar lun);
+
 void ipmi_driver_cmd_set_msg(ipmi_cmd_t *pkg, uchar netfn, uchar cmd, ushort data_len);
+
+void ipmi_driver_cmd_null_msg_data(ipmi_cmd_t *pkg);
 
 state_t ipmi_driver_cmd_send(int dev_no, ipmi_cmd_t *pkg);
 

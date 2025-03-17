@@ -18,12 +18,19 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/ioctl.h>
-//#include <common/output/debug.h>
-//#include <metrics/common/ipmi_driver.h>
+#if IPMI_INDEPENDENCY
 #include <ipmi_driver.h>
 #include <ipmi_driver_parsing.h>
+#else
+#include <common/output/debug.h>
+#include <common/string_enhanced.h>
+#include <metrics/common/ipmi_driver.h>
+#include <metrics/common/ipmi_driver_parsing.h>
+#endif
 
-#define IPMI_MAX_DEVS 4
+#if IPMI_INDEPENDENCY
+char *strtolow(char *string);
+#endif
 
 static ipmi_dev_t devs[IPMI_MAX_DEVS];
 static int        devs_count;
@@ -63,6 +70,9 @@ static ipmi_addr_t *ipmi_add_addr(ipmi_dev_t *dev, int type, short channel, ucha
     struct ipmi_ipmb_addr *addr2;
     ipmi_addr_t *addr0;
 
+    // This functions adds an address in a device address list. Its prepared for
+    // the future, where there are multiple BMC's and devices attached to
+    // private devices.
     if ((addr0 = ipmi_has_addr(dev, type, channel, slave_addr, lun)) != NULL) {
         return addr0;
     }
@@ -83,6 +93,94 @@ static ipmi_addr_t *ipmi_add_addr(ipmi_dev_t *dev, int type, short channel, ucha
     dev->addrs_count++;
     return (ipmi_addr_t *) addr1;
 }
+
+#if 0
+static int ipmi_driver_frus_read_area(ipmi_dev_t *dev, ipmi_cmd_t *pkg, uchar f, uchar offset, uchar length)
+{
+    int l;
+
+    ipmi_driver_cmd_set_msg(pkg, IPMI_NETFN_STORAGE_REQUEST, 0x11, 4);
+    pkg->msg_send.data[0] = f;
+    pkg->msg_send.data[1] = offset & 0xFF;
+    pkg->msg_send.data[2] = offset >> 8;
+    pkg->msg_send.data[3] = length;
+
+    if (state_fail(ipmi_driver_cmd_send(dev->no, pkg))) {
+        return 0;
+    }
+    if (pkg->msg_recv_data[0] != 0x00) {
+        return 0;
+    }
+    for (l = 0x00; l < length; ++l) {
+        debug("B[%u] %X", l, pkg->msg_recv_data[l]);
+    }
+}
+
+static void ipmi_driver_frus_discover()
+{
+    struct fru_header {
+        uchar version;
+        union {
+            struct {
+                uchar internal;
+                uchar chassis;
+                uchar board;
+                uchar product;
+                uchar multi;
+            } offset;
+            uchar offsets[5];
+        };
+        uchar pad;
+        uchar checksum;
+    } header;
+
+    ipmi_cmd_t pkg;
+    uchar f;
+    int d;
+
+    for (d = 0; d < devs_count; ++d) {
+        ipmi_driver_cmd_set_paddr(&pkg, &devs[d].addrs[0]);
+        for (f = 0x00; f < 0x02; ++f) {
+            ipmi_driver_cmd_set_msg(&pkg, IPMI_NETFN_STORAGE_REQUEST, 0x10, 1);
+            pkg.msg_send.data[0] = f;
+            // Sending the message
+            if (state_fail(ipmi_driver_cmd_send(devs[d].no, &pkg))) {
+                break;
+            }
+            if (pkg.msg_recv_data[0] != 0x00) {
+                break;
+            }
+            ipmi_driver_parse_fru_inventory(pkg.msg_recv_data);
+            ipmi_driver_cmd_set_msg(&pkg, IPMI_NETFN_STORAGE_REQUEST, 0x11, 4);
+            pkg.msg_send.data[0] = f;
+            pkg.msg_send.data[1] = 0x00;
+            pkg.msg_send.data[2] = 0x00;
+            pkg.msg_send.data[3] = 0x08;
+            // Sending the message
+            if (state_fail(ipmi_driver_cmd_send(devs[d].no, &pkg))) {
+                break;
+            }
+            if (pkg.msg_recv_data[0] != 0x00) {
+                break;
+            }
+            memcpy(&header, pkg.msg_recv_data + 1, 8);
+            debug("fru.header.version:         0x%x", header.version);
+            debug("fru.header.offset.internal: 0x%x", header.offset.internal * 8);
+            debug("fru.header.offset.chassis:  0x%x", header.offset.chassis * 8);
+            debug("fru.header.offset.board:    0x%x", header.offset.board * 8);
+            debug("fru.header.offset.product:  0x%x", header.offset.product * 8);
+            debug("fru.header.offset.multi:    0x%x", header.offset.multi * 8);
+            if (header.offset.board != 0) {
+                // Reading length
+                if (ipmi_driver_frus_read_area(&devs[d], &pkg, f, header.offset.board*8, 2)) {
+                    uchar string_length = pkg.msg_recv_data[1]*8;
+                    if (ipmi_driver_frus_read_area(&devs[d], &pkg, f, header.offset.board*8, 2)) {
+                    }
+                }
+            }
+    }}
+}
+#endif
 
 static void ipmi_driver_sdrs_traversal(ipmi_cmd_t *pkg, ipmi_dev_t *dev, ipmi_addr_t *addr, ushort next_record_id)
 {
@@ -124,10 +222,19 @@ static void ipmi_driver_sdrs_traversal(ipmi_cmd_t *pkg, ipmi_dev_t *dev, ipmi_ad
     // Parsing, in case is BMC-Locator, get the address
     rec = &dev->records[dev->records_count];
 
-    if (ipmi_driver_parse_sdr(pkg->msg_recv_data, rec, addr) == 0x12) {
-        if (!ipmi_has_addr(dev, IPMI_IPMB_ADDR_TYPE, rec->new_addr_channel, rec->new_addr_slave, rec->new_addr_lun)) {
-            new_addr = ipmi_add_addr(dev, IPMI_IPMB_ADDR_TYPE, rec->new_addr_channel, rec->new_addr_slave, rec->new_addr_lun);
-        }
+    switch(ipmi_driver_parse_sdr(pkg->msg_recv_data, rec, addr)) {
+        case 0x11: // New FRU detected
+            // Nothing by now because we can't build complex IPMB addresses.
+            break;
+        case 0x12: // New BMC detected
+            // If no SDR or it's the main BMC (chan 0x00), no contact required.
+            if (!rec->bmc_sdr || rec->new_addr_channel == 0x00) {
+                break;
+            }
+            if (!ipmi_has_addr(dev, IPMI_IPMB_ADDR_TYPE, rec->new_addr_channel, rec->new_addr_slave, rec->new_addr_lun)) {
+                new_addr = ipmi_add_addr(dev, IPMI_IPMB_ADDR_TYPE, rec->new_addr_channel, rec->new_addr_slave, rec->new_addr_lun);
+            }
+            break;
     }
     dev->records_count++;
     // Getting next ID
@@ -149,7 +256,7 @@ static void ipmi_driver_sdrs_discover()
     ipmi_driver_cmd_set_msg(&pkg, IPMI_NETFN_STORAGE_REQUEST, 0x23, 6);
 
     for (d = 0; d < devs_count; ++d) {
-        // Discover the first device in default address
+        // Discover the first device in the default address
         ipmi_driver_sdrs_traversal(&pkg, &devs[d], &devs[d].addrs[0], 0x0000);
     }
 }
@@ -168,7 +275,7 @@ static state_t ipmi_open_dev_files()
     devs_count = 0;
     // Setting the Get Device Info message
     ipmi_driver_cmd_set_msg(&pkg, IPMI_NETFN_APP_REQUEST, IPMI_GET_DEVICE_ID_CMD, 0);
-    // Opening devices
+    // Opening devices through IPMI driver files
     for (i = 0; i < IPMI_MAX_DEVS; ++i) {
         devs[devs_count].fd = -1;
         devs[devs_count].no = devs_count;
@@ -187,7 +294,8 @@ static state_t ipmi_open_dev_files()
             break;
         }
         debug("FD%d Opened IPMI device file '%s'", devs[devs_count].fd, devs[devs_count].path);
-        // Adding default address to the device
+        // IPMI Doc: 20.1 Get Device ID Command
+        // Adding default address to the device.
         addr = ipmi_add_addr(&devs[i], IPMI_SYSTEM_INTERFACE_ADDR_TYPE, IPMI_BMC_CHANNEL, 0, 0);
         ipmi_driver_cmd_set_paddr(&pkg, addr);
         // Testing IPMI's BMCs by trying BMCs answer
@@ -199,6 +307,9 @@ static state_t ipmi_open_dev_files()
         }
         ipmi_driver_parse_device_id(pkg.msg_recv_data, &devs[devs_count]);
         ++devs_count;
+        // Check the IPMI Doc: 20.9 Broadcast ‘Get Device ID’ to know more
+        // about broadcasting Device ID Command through IPMB bus, which we are
+        // not doing because the effort to build complex addresses.
     }
     //
     is_opened = 1;
@@ -213,6 +324,7 @@ state_t ipmi_driver_open()
     state_t s;
     if (state_ok(s = ipmi_open_dev_files())) {
         ipmi_driver_sdrs_discover();
+        //ipmi_driver_frus_discover();
     }
     return s;
 }
@@ -223,29 +335,68 @@ void ipmi_driver_close()
     // the SDR and FRU inventories again.
 }
 
+int ipmi_driver_devs_count()
+{
+    return devs_count;
+}
+
+int ipmi_driver_has_hardware(char *string)
+{
+    // It requires FRU processing (unfinished topic)
+    return 0;
+}
+
+static int is_sensor(char *string, ipmi_dev_t *devs, int d, int r, ipmi_sensor_t **alloc, int *s)
+{
+    // Comparing two lower case strings
+    if (strstr(devs[d].records[r].name_lower, string) != NULL) {
+        *alloc = realloc(*alloc, (*s+1)*sizeof(ipmi_sensor_t));
+        (*alloc)[*s].dev_no    = d;
+        (*alloc)[*s].rec_no    = r;
+        (*alloc)[*s].name      = devs[d].records[r].name;
+        (*alloc)[*s].available = 1;
+        (*alloc)[*s].units     = devs[d].records[r].formula_result_unit;
+        (*alloc)[*s].units_str = devs[d].records[r].formula_result_unit_str;
+        (*alloc)[*s].instance  = devs[d].records[r].entity_instance;
+        debug("%d_%d %s (FOUND! %d)", d, r, (*alloc)[*s].name, *s);
+        (*s)++;
+        return 1;
+    }
+    //debug("%d_%d %s (!= %s)", d, r, devs[d].records[r].name_lower, string);
+    return 0;
+}
+
 int ipmi_driver_sensors_find(char *string, ipmi_sensor_t **sensors, uint *sensors_count)
 {
+    int is_multi = strstr(string, "%d") != NULL;
     ipmi_sensor_t *alloc = NULL;
-    int d, r, s;
+    int d, r, s, m, f;
+    char string_tolow[64];
+    char buffer[64];
 
     if (string == NULL) {
         return 0;
     }
+    // String to lower case
+    strcpy(string_tolow, string);
+    strtolow(string_tolow);
+
     for (d = s = 0; d < devs_count; ++d) {
         for (r = 0; r < devs[d].records_count; ++r) {
-            if (strstr(devs[d].records[r].name_lower, string) != NULL) {
-                alloc = realloc(alloc, (s+1)*sizeof(ipmi_sensor_t));
-                alloc[s].dev_no    = d;
-                alloc[s].rec_no    = r;
-                alloc[s].name      = devs[d].records[r].name;
-                alloc[s].available = 1;
-                alloc[s].units     = devs[d].records[r].formula_result_unit;
-                alloc[s].units_str = devs[d].records[r].formula_result_unit_str;
-                alloc[s].instance  = devs[d].records[r].entity_instance;
-                debug("%d_%d %s (FOUND!)", d, r, alloc[s].name);
-                s++;
-            } else {
-                debug("%d_%d %s", d, r, devs[d].records[r].name);
+            // If not FULL sensor type (0x01)
+            if (devs[d].records[r].type != 0x01) {
+                continue;
+            }
+            // If string contains %d, then is multi (m)
+            if (!is_multi) {
+                is_sensor(string_tolow, devs, d, r, &alloc, &s);
+                continue;
+            }
+            // Doing the multi part (f of fail)
+            m = f = 0;
+            while (sprintf(buffer, string_tolow, m) && !is_sensor(buffer, devs, d, r, &alloc, &s) && f < 2) {
+                m += 1;
+                f += 1;
             }
         }
     }
@@ -265,6 +416,8 @@ state_t ipmi_driver_sensors_read(ipmi_sensor_t *sensors, uint sensors_count, ipm
     if (*values == NULL) {
         *values = calloc(sensors_count, sizeof(ipmi_reading_t));
     }
+    // IPMI Doc: 35.14 Get Sensor Reading Command, and Table G-1, Command Number
+    // Assignments and Privilege Levels.
     ipmi_driver_cmd_set_msg(&pkg, IPMI_NETFN_SENSOR_EVENT_REQUEST, 0x2d, 1);
     //
     for (s = 0; s < sensors_count; ++s) {
@@ -280,6 +433,8 @@ state_t ipmi_driver_sensors_read(ipmi_sensor_t *sensors, uint sensors_count, ipm
             // Getting the sensor formula variables
             ipmi_driver_parse_sensor_reading(pkg.msg_recv_data[1], rec, &(*values)[s]);
             debug("val[%02d]: %lf", s, (*values)[s].value);
+        } else {
+            debug("ipmi_driver_cmd_send failed: %s", state_msg);
         }
     }
     return EAR_SUCCESS;
@@ -305,16 +460,39 @@ void ipmi_driver_cmd_set_paddr(ipmi_cmd_t *pkg, ipmi_addr_t *addr)
     }
 }
 
+void ipmi_driver_cmd_set_addr(ipmi_cmd_t *pkg, int type, short channel, uchar slave_addr, uchar lun)
+{
+    memset(&pkg->addr, 0, sizeof(ipmi_addr_t));
+    pkg->addr.addr.addr_type = type;
+    pkg->addr.addr.channel   = channel;
+    if (type == IPMI_SYSTEM_INTERFACE_ADDR_TYPE) {
+        pkg->addr.addr_len = sizeof(struct ipmi_system_interface_addr);
+        struct ipmi_system_interface_addr *dst = (struct ipmi_system_interface_addr *) &pkg->addr.addr;
+        dst->lun = lun;
+    } else if (type == IPMI_IPMB_ADDR_TYPE) {
+        pkg->addr.addr_len = sizeof(struct ipmi_ipmb_addr);
+        struct ipmi_ipmb_addr *dst = (struct ipmi_ipmb_addr *) &pkg->addr.addr;
+        dst->slave_addr = slave_addr;
+        dst->lun = lun;
+    }
+}
+
 void ipmi_driver_cmd_set_msg(ipmi_cmd_t *pkg, uchar netfn, uchar cmd, ushort data_len)
 {
-    memset(pkg->msg_send_data, 0, sizeof(pkg->msg_send_data));
-    memset(pkg->msg_recv_data, 0, sizeof(pkg->msg_recv_data));
+    ipmi_driver_cmd_null_msg_data(pkg);
     pkg->msg_send.netfn    = netfn;
     pkg->msg_send.cmd      = cmd;
     pkg->msg_send.data     = (data_len > 0) ? pkg->msg_send_data : NULL;
     pkg->msg_send.data_len = data_len;
 }
 
+void ipmi_driver_cmd_null_msg_data(ipmi_cmd_t *pkg)
+{
+    memset(pkg->msg_send_data, 0, sizeof(pkg->msg_send_data));
+    memset(pkg->msg_recv_data, 0, sizeof(pkg->msg_recv_data));
+}
+
+#if SHOW_DEBUGS
 static void debug_raw(struct ipmi_msg *msg)
 {
     char buffer_debug[256*3];
@@ -330,6 +508,7 @@ static void debug_raw(struct ipmi_msg *msg)
     }
     debug("%s", buffer_debug);
 }
+#endif
 
 state_t ipmi_driver_cmd_send(int dev_no, ipmi_cmd_t *pkg)
 {
@@ -341,10 +520,12 @@ state_t ipmi_driver_cmd_send(int dev_no, ipmi_cmd_t *pkg)
     memset(&reqs, 0, sizeof(reqs));
     // Addresses:
     // - IPMI_SYSTEM_INTERFACE_ADDR_TYPE: local BMC address. The driver uses
-    //   KCS, BT or SMIC underlying.
+    //   KCS, BT or SMIC interfaces by PCI or motherboard's SMBus.
     // - IPMI_IPMB_ADDR_TYPE: to communicate to a device not directly connected
     //   to the main BMC, but connected by an i2c IMPB bus to the main BMC like
-    //   a satellite controller (other BMC).
+    //   a satellite controller (other BMC). In IPMB connections, multiple
+    //   devices can be connected to the single bus, each of them with its own
+    //   address.
     // Channels:
     //   - Are interfaces to group sets of devices (0-15, 4 bits).
     //   - There is a command to retrieve information of a channel.
@@ -380,7 +561,7 @@ state_t ipmi_driver_cmd_send(int dev_no, ipmi_cmd_t *pkg)
 #if 0
     debug("FD%d Sending %u bytes from IPMI [ADDR TYPE 0x%X (0x%X), CHAN 0x%X, NETFN 0x%X, CMD 0x%x]:", devs[dev_no].fd,
           reqs.msg.data_len, pkg->addr.addr.addr_type, pkg->addr.addr.data[0], pkg->addr.addr.channel, reqs.msg.netfn, reqs.msg.cmd);
-    debug_raw(&reqs.msg);
+    //debug_raw(&reqs.msg);
 #endif
     if (ioctl(devs[dev_no].fd, IPMICTL_SEND_COMMAND, &reqs) < 0) {
         debug("IPMI command ioctl error: %s", strerror(errno));
@@ -391,6 +572,7 @@ state_t ipmi_driver_cmd_send(int dev_no, ipmi_cmd_t *pkg)
     recv.msg.data     = pkg->msg_recv_data;
     recv.msg.data_len = sizeof(pkg->msg_recv_data);
 
+    // Convert to aselect()?
     while (ioctl(devs[dev_no].fd, IPMICTL_RECEIVE_MSG_TRUNC, &recv) < 0) {
         if (errno != EAGAIN) {
             debug("IPMI receive message ioctl error: %s", strerror(errno));

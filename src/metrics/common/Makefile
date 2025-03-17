@@ -12,6 +12,9 @@ comm_OBJS = \
     hsmp_pci.o \
     hwmon.o \
     hwmon_old.o \
+    ipmi.o \
+    ipmi_driver.o \
+    ipmi_driver_parsing.o \
     isst.o \
     likwid.o \
     msr.o \
