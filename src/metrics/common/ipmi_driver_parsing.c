@@ -9,8 +9,9 @@
  **************************************************************************/
 
 #include <math.h>
-#include <stdio.h>
 #include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
 #if IPMI_INDEPENDENCY
@@ -216,15 +217,75 @@ uchar ipmi_driver_parse_sdr(uchar *data, sdr_t *rec, ipmi_addr_t *addr)
     return rec->type;
 }
 
-void ipmi_driver_parse_fru_inventory(uchar *data)
+int ipmi_driver_parse_fru_inventory(uchar *data)
 {
     // Check the function __ipmi_fru_print() of ipmitool source code for more
     // information regarding FRU and its processing.
+    int words = getbits8(data[3], 0, 0);
     #if SHOW_DEBUGS
     ushort inventory_size = (data[2] << 8) | data[1];
     debug("Detected FRU inventory of size %u accesed by %s",
-          inventory_size, (!getbits8(data[3], 0, 0)) ? "BYTES": "WORDS");
+          inventory_size, (!words) ? "BYTES": "WORDS");
     #endif
+    if (words) {
+        // TODO: support it
+        debug("Readig FRU word by word is not supported.")
+        return 0;
+    }
+    return 1;
+}
+
+static int ipmi_driver_parse_fru_string(uchar *data, uint *index, ipmi_dev_t *dev, int add_it)
+{
+    // Check the function get_fru_area_str() of ipmitool's source code.
+    uchar typecode  = (data[*index] & 0xC0) >> 6;
+    uchar length    = (data[*index] & 0x3f);
+    uchar not_null  = strncmp(&data[(*index)+1], "NULL", length) != 0;
+    uchar not_empty = strnlen(&data[(*index)+1], length) != 0;
+    // Allocation. TODO: adapt the string extraction to other codifications
+    if (add_it && typecode == 3 && not_null && not_empty) {
+        dev->boards_names = realloc(dev->boards_names, sizeof(char *)*dev->boards_names_count+1);
+        dev->boards_names[dev->boards_names_count] = calloc(length+1, sizeof(uchar));
+        memcpy(dev->boards_names[dev->boards_names_count], &data[(*index)+1], length);
+        debug("BOARD%d: %s", dev->boards_names_count, dev->boards_names[dev->boards_names_count]);
+        // TODO: remove also special characters
+        strtolow(dev->boards_names[dev->boards_names_count]);
+        ++dev->boards_names_count;
+    }
+    *index = *index + 1 + length;
+}
+
+void ipmi_driver_parse_fru_board(uchar *data, ipmi_dev_t *dev)
+{
+    // Check the function fru_area_print_board() of ipmitool's source code.
+    // DATA [0:0] FRU version
+    // DATA [1:1] FRU length
+    // DATA [2:2] FRU board language
+    // DATA [3:5] Board manufacturing date
+    // DATA [6:?] Board manufacturer
+    // DATA [?:?] etc
+    uint i = 6;
+    ipmi_driver_parse_fru_string(data, &i, dev, 1); // Board manufacturer
+    ipmi_driver_parse_fru_string(data, &i, dev, 1); // Board product
+    ipmi_driver_parse_fru_string(data, &i, dev, 0); // Board serial
+    ipmi_driver_parse_fru_string(data, &i, dev, 0); // Board part-number
+    ipmi_driver_parse_fru_string(data, &i, dev, 0); // Board FRU-id
+}
+
+void ipmi_driver_parse_fru_product(uchar *data, ipmi_dev_t *dev)
+{
+    // Check the function fru_area_print_product() of ipmitool's source code.
+    // DATA [0:0] FRU version
+    // DATA [1:1] FRU length
+    // DATA [2:2] FRU board language
+    // DATA [3:?] Product manufacturer
+    // DATA [?:?] ...
+    uint i = 3;
+    ipmi_driver_parse_fru_string(data, &i, dev, 1); // Product manufacturer
+    ipmi_driver_parse_fru_string(data, &i, dev, 1); // Product name
+    ipmi_driver_parse_fru_string(data, &i, dev, 0); // Product part number
+    ipmi_driver_parse_fru_string(data, &i, dev, 0); // Product version
+    ipmi_driver_parse_fru_string(data, &i, dev, 0); // Product serial
 }
 
 void ipmi_driver_parse_sensor_reading(uchar raw, sdr_t *rec, ipmi_reading_t *val)

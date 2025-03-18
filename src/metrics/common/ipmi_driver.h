@@ -51,13 +51,15 @@ typedef struct sdr_s {
 
 typedef struct ipmi_dev_s {
     int          fd;
-    int          no; //number in the array
+    int          no; // Number in the array
     char         path[32];
     uchar        id;
     uchar        has_sdr;
     uchar        has_fru;
     sdr_t       *records;
     uint         records_count;
+    char       **boards_names; // Attached boards names, lower-cased
+    char         boards_names_count;
     ipmi_addr_t  addrs[16];
     uint         addrs_count;
 } ipmi_dev_t;
@@ -84,5 +86,10 @@ void ipmi_driver_cmd_set_msg(ipmi_cmd_t *pkg, uchar netfn, uchar cmd, ushort dat
 void ipmi_driver_cmd_null_msg_data(ipmi_cmd_t *pkg);
 
 state_t ipmi_driver_cmd_send(int dev_no, ipmi_cmd_t *pkg);
+
+// Driver interns
+ipmi_addr_t *ipmi_has_addr(ipmi_dev_t *dev, int type, short channel, uchar slave_addr, uchar lun);
+
+ipmi_addr_t *ipmi_add_addr(ipmi_dev_t *dev, int type, short channel, uchar slave_addr, uchar lun);
 
 #endif //METRICS_COMMON_IPMI_DRIVER_H

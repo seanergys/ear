@@ -20,11 +20,13 @@
 #include <sys/ioctl.h>
 #if IPMI_INDEPENDENCY
 #include <ipmi_driver.h>
+#include <ipmi_driver_frusdr.h>
 #include <ipmi_driver_parsing.h>
 #else
 #include <common/output/debug.h>
 #include <common/string_enhanced.h>
 #include <metrics/common/ipmi_driver.h>
+#include <metrics/common/ipmi_driver_frusdr.h>
 #include <metrics/common/ipmi_driver_parsing.h>
 #endif
 
@@ -37,7 +39,7 @@ static int        devs_count;
 static int        is_opened;
 static long       msg_counter;
 
-static ipmi_addr_t *ipmi_has_addr(ipmi_dev_t *dev, int type, short channel, uchar slave_addr, uchar lun)
+ipmi_addr_t *ipmi_has_addr(ipmi_dev_t *dev, int type, short channel, uchar slave_addr, uchar lun)
 {
     struct ipmi_system_interface_addr *addr1;
     struct ipmi_ipmb_addr *addr2;
@@ -64,7 +66,7 @@ static ipmi_addr_t *ipmi_has_addr(ipmi_dev_t *dev, int type, short channel, ucha
     return NULL;
 }
 
-static ipmi_addr_t *ipmi_add_addr(ipmi_dev_t *dev, int type, short channel, uchar slave_addr, uchar lun)
+ipmi_addr_t *ipmi_add_addr(ipmi_dev_t *dev, int type, short channel, uchar slave_addr, uchar lun)
 {
     struct ipmi_system_interface_addr *addr1;
     struct ipmi_ipmb_addr *addr2;
@@ -92,173 +94,6 @@ static ipmi_addr_t *ipmi_add_addr(ipmi_dev_t *dev, int type, short channel, ucha
     }
     dev->addrs_count++;
     return (ipmi_addr_t *) addr1;
-}
-
-#if 0
-static int ipmi_driver_frus_read_area(ipmi_dev_t *dev, ipmi_cmd_t *pkg, uchar f, uchar offset, uchar length)
-{
-    int l;
-
-    ipmi_driver_cmd_set_msg(pkg, IPMI_NETFN_STORAGE_REQUEST, 0x11, 4);
-    pkg->msg_send.data[0] = f;
-    pkg->msg_send.data[1] = offset & 0xFF;
-    pkg->msg_send.data[2] = offset >> 8;
-    pkg->msg_send.data[3] = length;
-
-    if (state_fail(ipmi_driver_cmd_send(dev->no, pkg))) {
-        return 0;
-    }
-    if (pkg->msg_recv_data[0] != 0x00) {
-        return 0;
-    }
-    for (l = 0x00; l < length; ++l) {
-        debug("B[%u] %X", l, pkg->msg_recv_data[l]);
-    }
-}
-
-static void ipmi_driver_frus_discover()
-{
-    struct fru_header {
-        uchar version;
-        union {
-            struct {
-                uchar internal;
-                uchar chassis;
-                uchar board;
-                uchar product;
-                uchar multi;
-            } offset;
-            uchar offsets[5];
-        };
-        uchar pad;
-        uchar checksum;
-    } header;
-
-    ipmi_cmd_t pkg;
-    uchar f;
-    int d;
-
-    for (d = 0; d < devs_count; ++d) {
-        ipmi_driver_cmd_set_paddr(&pkg, &devs[d].addrs[0]);
-        for (f = 0x00; f < 0x02; ++f) {
-            ipmi_driver_cmd_set_msg(&pkg, IPMI_NETFN_STORAGE_REQUEST, 0x10, 1);
-            pkg.msg_send.data[0] = f;
-            // Sending the message
-            if (state_fail(ipmi_driver_cmd_send(devs[d].no, &pkg))) {
-                break;
-            }
-            if (pkg.msg_recv_data[0] != 0x00) {
-                break;
-            }
-            ipmi_driver_parse_fru_inventory(pkg.msg_recv_data);
-            ipmi_driver_cmd_set_msg(&pkg, IPMI_NETFN_STORAGE_REQUEST, 0x11, 4);
-            pkg.msg_send.data[0] = f;
-            pkg.msg_send.data[1] = 0x00;
-            pkg.msg_send.data[2] = 0x00;
-            pkg.msg_send.data[3] = 0x08;
-            // Sending the message
-            if (state_fail(ipmi_driver_cmd_send(devs[d].no, &pkg))) {
-                break;
-            }
-            if (pkg.msg_recv_data[0] != 0x00) {
-                break;
-            }
-            memcpy(&header, pkg.msg_recv_data + 1, 8);
-            debug("fru.header.version:         0x%x", header.version);
-            debug("fru.header.offset.internal: 0x%x", header.offset.internal * 8);
-            debug("fru.header.offset.chassis:  0x%x", header.offset.chassis * 8);
-            debug("fru.header.offset.board:    0x%x", header.offset.board * 8);
-            debug("fru.header.offset.product:  0x%x", header.offset.product * 8);
-            debug("fru.header.offset.multi:    0x%x", header.offset.multi * 8);
-            if (header.offset.board != 0) {
-                // Reading length
-                if (ipmi_driver_frus_read_area(&devs[d], &pkg, f, header.offset.board*8, 2)) {
-                    uchar string_length = pkg.msg_recv_data[1]*8;
-                    if (ipmi_driver_frus_read_area(&devs[d], &pkg, f, header.offset.board*8, 2)) {
-                    }
-                }
-            }
-    }}
-}
-#endif
-
-static void ipmi_driver_sdrs_traversal(ipmi_cmd_t *pkg, ipmi_dev_t *dev, ipmi_addr_t *addr, ushort next_record_id)
-{
-    ipmi_addr_t *new_addr = NULL;
-    sdr_t *rec = NULL;
-
-    if (next_record_id == 0xFFFF) {
-        return;
-    }
-    // Preparing the package message
-    pkg->msg_send.data[2] = (next_record_id     ) & 0xFF;
-    pkg->msg_send.data[3] = (next_record_id >> 8) & 0xFF;
-    pkg->msg_send.data[4] = 0x00; // Offset
-    pkg->msg_send.data[5] = 0xFF; // Length
-    // And the package address
-    ipmi_driver_cmd_set_paddr(pkg, addr);
-
-    if (state_fail(ipmi_driver_cmd_send(dev->no, pkg))) {
-        return;
-    }
-    // Response:
-    //    0: Completion Code
-    //    1: Record ID for next record, LS Byte
-    //    2: Record ID for next record, MS Byte
-    //    3: Record Data (the 5 first bytes are the header):
-    //          0-1: Record ID
-    //          2  : SDR Version (0x51 is IPMI 2.0)
-    //          3  : Record Type (0x1 full, 0x2 compact, 0x8 FRU, 0x11 other BMC...)
-    //          4  : Record Length
-    //          5-x: Device information.
-    if (pkg->msg_recv_data[0] != 0x00) {
-        return;
-    }
-    // Allocating new space if required (in blocks of 64 records)
-    if ((dev->records_count % 64) == 0) {
-        dev->records = realloc(dev->records, (dev->records_count+64)*sizeof(sdr_t));
-        memset(&dev->records[dev->records_count], 0, 64*sizeof(sdr_t));
-    }
-    // Parsing, in case is BMC-Locator, get the address
-    rec = &dev->records[dev->records_count];
-
-    switch(ipmi_driver_parse_sdr(pkg->msg_recv_data, rec, addr)) {
-        case 0x11: // New FRU detected
-            // Nothing by now because we can't build complex IPMB addresses.
-            break;
-        case 0x12: // New BMC detected
-            // If no SDR or it's the main BMC (chan 0x00), no contact required.
-            if (!rec->bmc_sdr || rec->new_addr_channel == 0x00) {
-                break;
-            }
-            if (!ipmi_has_addr(dev, IPMI_IPMB_ADDR_TYPE, rec->new_addr_channel, rec->new_addr_slave, rec->new_addr_lun)) {
-                new_addr = ipmi_add_addr(dev, IPMI_IPMB_ADDR_TYPE, rec->new_addr_channel, rec->new_addr_slave, rec->new_addr_lun);
-            }
-            break;
-    }
-    dev->records_count++;
-    // Getting next ID
-    next_record_id = pkg->msg_recv_data[1] | (pkg->msg_recv_data[2] << 8);
-    // Following the traversal
-    ipmi_driver_sdrs_traversal(pkg, dev, addr, next_record_id);
-    // Following the traversal on new address
-    if (new_addr != NULL) {
-        ipmi_driver_sdrs_traversal(pkg, dev, new_addr, 0x0000);
-    }
-}
-
-static void ipmi_driver_sdrs_discover()
-{
-    ipmi_cmd_t pkg;
-    int d;
-    // The SDR reservation allows the SDR doesn't change while reading
-    // registers. But we are going to assume it won't happen.
-    ipmi_driver_cmd_set_msg(&pkg, IPMI_NETFN_STORAGE_REQUEST, 0x23, 6);
-
-    for (d = 0; d < devs_count; ++d) {
-        // Discover the first device in the default address
-        ipmi_driver_sdrs_traversal(&pkg, &devs[d], &devs[d].addrs[0], 0x0000);
-    }
 }
 
 static state_t ipmi_open_dev_files()
@@ -323,8 +158,8 @@ state_t ipmi_driver_open()
 {
     state_t s;
     if (state_ok(s = ipmi_open_dev_files())) {
-        ipmi_driver_sdrs_discover();
-        //ipmi_driver_frus_discover();
+        //ipmi_driver_sdrs_discover(devs, devs_count);
+        ipmi_driver_frus_discover(devs, devs_count);
     }
     return s;
 }
@@ -342,7 +177,18 @@ int ipmi_driver_devs_count()
 
 int ipmi_driver_has_hardware(char *string)
 {
-    // It requires FRU processing (unfinished topic)
+    char buffer[256] = { 0 };
+    int d, b;
+
+    strncpy(buffer, string, 255);
+    strtolow(buffer);
+    for (d = 0; d < devs_count; ++d) {
+        for (b = 0; b < devs[d].boards_names_count; ++b) {
+            if (strstr(devs[d].boards_names[b], buffer) != NULL) {
+                return 1;
+            }
+        }
+    }
     return 0;
 }
 

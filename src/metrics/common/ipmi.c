@@ -85,6 +85,9 @@ state_t ipmi_cmd_send(int dev_no, ipmi_cmd_t *pkg)
 }
 
 #if TEST
+#include <stdio.h>
+#include <unistd.h>
+
 static ipmi_reading_t *readings1, *readings2;
 static ipmi_sensor_t *sensors;
 static uint sensors_count;
@@ -92,9 +95,18 @@ static uint sensors_count;
 int main(int argc, char *argv)
 {
     ipmi_open();
+    // If it has the hardware
+    if (ipmi_driver_has_hardware("MZ42-G20-00")) {
+        printf("Hardware detected!\n");
+    } else {
+        printf("Hardware not found.\n");
+        return 0;
+    }
+    // If not, we search for these sensors
     ipmi_driver_sensors_find("P%d_VDDCR_SOC", &sensors, &sensors_count);
+    // Start-end reading strategy. The values are in readingsX[i].value.
     ipmi_driver_sensors_read(sensors, sensors_count, &readings1);
-    sleep(2);
+    sleep(1);
     ipmi_driver_sensors_read(sensors, sensors_count, &readings2);
     return 0;
 }
