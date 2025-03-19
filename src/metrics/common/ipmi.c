@@ -91,6 +91,7 @@ state_t ipmi_cmd_send(int dev_no, ipmi_cmd_t *pkg)
 static ipmi_reading_t *readings1, *readings2;
 static ipmi_sensor_t *sensors;
 static uint sensors_count;
+static uint ohid;
 
 int main(int argc, char *argv)
 {
@@ -102,6 +103,7 @@ int main(int argc, char *argv)
         printf("Hardware not found.\n");
         return 0;
     }
+#if 0
     // If not, we search for these sensors
     ipmi_driver_sensors_find("P%d_VDDCR_SOC", &sensors, &sensors_count);
     // Start-end reading strategy. The values are in readingsX[i].value.
@@ -109,5 +111,6 @@ int main(int argc, char *argv)
     sleep(1);
     ipmi_driver_sensors_read(sensors, sensors_count, &readings2);
     return 0;
+#endif
 }
 #endif

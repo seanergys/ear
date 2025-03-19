@@ -10,6 +10,7 @@
 
 //#define SHOW_DEBUGS 1
 
+#define _GNU_SOURCE
 #include <math.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -18,6 +19,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <common/system/poll.h>
 #if IPMI_INDEPENDENCY
 #include <ipmi_driver.h>
 #include <ipmi_driver_frusdr.h>
@@ -158,7 +160,7 @@ state_t ipmi_driver_open()
 {
     state_t s;
     if (state_ok(s = ipmi_open_dev_files())) {
-        //ipmi_driver_sdrs_discover(devs, devs_count);
+        ipmi_driver_sdrs_discover(devs, devs_count);
         ipmi_driver_frus_discover(devs, devs_count);
     }
     return s;
@@ -419,6 +421,7 @@ state_t ipmi_driver_cmd_send(int dev_no, ipmi_cmd_t *pkg)
     recv.msg.data_len = sizeof(pkg->msg_recv_data);
 
     // Convert to aselect()?
+    #if 1
     while (ioctl(devs[dev_no].fd, IPMICTL_RECEIVE_MSG_TRUNC, &recv) < 0) {
         if (errno != EAGAIN) {
             debug("IPMI receive message ioctl error: %s", strerror(errno));
@@ -430,5 +433,26 @@ state_t ipmi_driver_cmd_send(int dev_no, ipmi_cmd_t *pkg)
         }
         usleep(100000);
     }
+    #else
+    static afd_set_t fds_group;
+    static uint init = 0;
+    int fds_status;
+
+    if (!init) {
+        afd_init(&fds_group);
+        init = 1;
+    }
+    AFD_SET(devs[dev_no].fd, &fds_group);
+
+    if ((fds_status = aselect(&fds_group, 300, NULL)) <= 0) {
+        if (fds_status > 0) {
+            debug("IPMI receive message ioctl error: %s", strerror(errno));
+            return_print(EAR_ERROR, "Error when receiving IPMI message: %s", strerror(errno));
+        } else if (fds_status == 0) {
+            debug("IPMI receive message ioctl error: timeout");
+            return_msg(EAR_ERROR, "Timeout");
+        }
+    }
+    #endif
     return EAR_SUCCESS;
 }

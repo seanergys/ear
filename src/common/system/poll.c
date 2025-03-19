@@ -195,7 +195,6 @@ int aselectv(afd_set_t *set, struct timeval *_timeout)
 
 int32_t afd_check_socket_state(int32_t socket)
 {
-
 	struct pollfd stfd = { 0 };
 	stfd.fd = socket;
 	stfd.events = POLLRDHUP;
@@ -236,8 +235,3 @@ void afd_check_sockets(afd_set_t *fdlist)
 		}
 	}
 }
-
-
-
-
-

@@ -18,10 +18,14 @@
 
 // Delete these regions when finished
 #if IPMI_INDEPENDENCY
+    #if 1
+    #define SHOW_DEBUGS 1
+    #else
     #define debug(...) { \
         printf(__VA_ARGS__); \
         printf("\n"); \
     }
+    #endif
 
     typedef unsigned char uchar;
     typedef unsigned short ushort;

@@ -229,7 +229,7 @@ int ipmi_driver_parse_fru_inventory(uchar *data)
     #endif
     if (words) {
         // TODO: support it
-        debug("Readig FRU word by word is not supported.")
+        debug("Readig FRU word by word is not supported.");
         return 0;
     }
     return 1;
