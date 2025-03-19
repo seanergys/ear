@@ -8,6 +8,8 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
+//#define SHOW_DEBUGS 1
+
 #include <math.h>
 #include <ctype.h>
 #include <stdio.h>
@@ -17,6 +19,7 @@
 #if IPMI_INDEPENDENCY
 #include <ipmi_driver_parsing.h>
 #else
+#include <common/output/debug.h>
 #include <common/string_enhanced.h>
 #include <common/hardware/bithack.h>
 #include <metrics/common/ipmi_driver_parsing.h>
