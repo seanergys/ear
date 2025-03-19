@@ -235,13 +235,13 @@ int ipmi_driver_parse_fru_inventory(uchar *data)
     return 1;
 }
 
-static int ipmi_driver_parse_fru_string(uchar *data, uint *index, ipmi_dev_t *dev, int add_it)
+static void ipmi_driver_parse_fru_string(uchar *data, uint *index, ipmi_dev_t *dev, int add_it)
 {
     // Check the function get_fru_area_str() of ipmitool's source code.
     uchar typecode  = (data[*index] & 0xC0) >> 6;
     uchar length    = (data[*index] & 0x3f);
-    uchar not_null  = strncmp(&data[(*index)+1], "NULL", length) != 0;
-    uchar not_empty = strnlen(&data[(*index)+1], length) != 0;
+    uchar not_null  = strncmp((const char *) &data[(*index)+1], "NULL", length) != 0;
+    uchar not_empty = strnlen((const char *) &data[(*index)+1], length) != 0;
     // Allocation. TODO: adapt the string extraction to other codifications
     if (add_it && typecode == 3 && not_null && not_empty) {
         dev->boards_names = realloc(dev->boards_names, sizeof(char *)*dev->boards_names_count+1);

@@ -85,10 +85,11 @@ void ipmi_close();
 // Returns the IPMI devices opened (normally /dev/impiN).
 int ipmi_devs_count();
 
-int ipmi_has_hardware(char *string);
+// Checks if IPMI has a board attached to its system.
+int ipmi_has_hardware(char *board_name);
 
 // You can pass %d in string to retrieve a multi numbered sensor.
-int ipmi_sensors_find(char *string, ipmi_sensor_t **sensors, uint *sensors_count);
+int ipmi_sensors_find(char *sensor_name, ipmi_sensor_t **sensors, uint *sensors_count);
 
 // Allocates values memory if the inner pointer is NULL.
 state_t ipmi_sensors_read(ipmi_sensor_t *sensors, uint sensors_count, ipmi_reading_t **values);
@@ -104,6 +105,7 @@ void ipmi_cmd_set_addr(ipmi_cmd_t *pkg, int type, short channel, uchar slave_add
 // Sets the message part in the PKG based on separated components.
 void ipmi_cmd_set_msg(ipmi_cmd_t *pkg, uchar netfn, uchar cmd, ushort data_len);
 
+// Sends th ecommand to the device specied by its number
 state_t ipmi_cmd_send(int dev_no, ipmi_cmd_t *pkg);
 
 #endif //METRICS_COMMON_IPMI_H

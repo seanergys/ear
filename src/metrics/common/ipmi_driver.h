@@ -59,7 +59,7 @@ typedef struct ipmi_dev_s {
     sdr_t       *records;
     uint         records_count;
     char       **boards_names; // Attached boards names, lower-cased
-    char         boards_names_count;
+    uint         boards_names_count;
     ipmi_addr_t  addrs[16];
     uint         addrs_count;
 } ipmi_dev_t;

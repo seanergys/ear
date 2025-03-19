@@ -226,7 +226,7 @@ void ipmi_driver_frus_discover(ipmi_dev_t *devs, uint devs_count)
                 break;
             }
             if (!ipmi_driver_parse_fru_inventory(pkg.msg_recv_data)) {
-                break;
+                continue;
             }
             // IPMI Doc: 34.2 Read FRU Data Command
             ipmi_driver_cmd_set_msg(&pkg, IPMI_NETFN_STORAGE_REQUEST, 0x11, 4);
