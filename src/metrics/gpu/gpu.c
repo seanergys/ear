@@ -44,7 +44,7 @@ void gpu_load(int force_api)
     gpu_rsmi_load(&ops, force_api);
 		if (USE_PVC_HWMON) {
 			if (state_fail(gpu_pvc_hwmon_load(&ops, force_api))) {
-				warning("GPU PVC HWMON Load error: %s", state_msg);
+				debug("GPU PVC HWMON Load error: %s", state_msg);
 			}
 		} else {
 			gpu_oneapi_load(&ops, force_api);
