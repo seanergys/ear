@@ -11,6 +11,9 @@
 #ifndef METRICS_COMMON_HSMP_H
 #define METRICS_COMMON_HSMP_H
 
+#include <fcntl.h>
+#include <unistd.h>
+#include <common/states.h>
 #include <common/hardware/topology.h>
 
 #if defined __has_include
@@ -19,6 +22,10 @@
 #    include <asm/amd_hsmp.h>
 #  endif
 #endif
+
+// Mode
+#define HSMP_RD O_RDONLY
+#define HSMP_WR O_RDWR
 
 #if !HAS_AMD_HSMP_H
 enum hsmp_message_ids {
@@ -65,7 +72,7 @@ enum hsmp_message_ids {
 
 // It opens HSMP by various methods: contacting amd_hsmp driver, loading e_smi library
 // or opening PCIs directly (in that order).
-state_t hsmp_open(topology_t *tp);
+state_t hsmp_open(topology_t *tp, mode_t mode);
 
 state_t hsmp_close();
 

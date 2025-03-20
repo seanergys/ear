@@ -65,7 +65,7 @@ state_t hsmp_pci_open(topology_t *tp)
 {
 	state_t s;
 
-        if (tp->vendor == VENDOR_INTEL || tp->family < FAMILY_ZEN) {
+    if (tp->vendor == VENDOR_INTEL || tp->family < FAMILY_ZEN) {
 		return_msg(EAR_ERROR, Generr.api_incompatible);
 	}
 	if (pcis != NULL) {
@@ -94,8 +94,8 @@ state_t hsmp_pci_open(topology_t *tp)
         // different architectures, a thing we not expect.
         mist_nbios_count = pcis_count / sockets_count;
         //
-	mail = &zen2_mailbox;
-	// Test ping
+        mail = &zen2_mailbox;
+        // Test ping
         uint args[2] = { 68, -1 };
         uint reps[2] = {  0, -1 };
         if (state_fail(s = hsmp_pci_send(0, HSMP_TEST, args, reps))) {

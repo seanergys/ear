@@ -89,8 +89,7 @@ static const char *esmi_names[] = {
 
 #define ESMI_N 21
 
-static esmi_t          esmi;
-static uint            loaded;
+static esmi_t esmi;
 
 static state_t translate(esmi_status_t s)
 {
@@ -117,19 +116,20 @@ static state_t hsmp_load_library()
     return_msg(EAR_ERROR, "Can not load libe_smi.so");
 }
 
-state_t hsmp_esmi_open(topology_t *tp)
+state_t hsmp_esmi_open(topology_t *tp, mode_t mode)
 {
     struct smu_fw_version smu;
     state_t s = EAR_SUCCESS;
 
-    if (loaded) {
-        goto ret;
+    // This is because ESMI library can't perform writing actions without root
+    // permissions. ESMI does not provide any function to perform that test,
+    // then if write permissions are required we return error.
+    if (mode == O_RDWR && (getuid() != 0)) {
+        return_msg(EAR_ERROR, Generr.no_permissions);
     }
     if (state_fail(s = hsmp_load_library())) {
         return s;
     }
-    loaded = 1;
-ret:
     if (state_ok(s = translate(esmi.init()))) {
         if (state_ok(s = translate(esmi.smu_fw_version_get(&smu)))) {
         }

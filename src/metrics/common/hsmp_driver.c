@@ -81,32 +81,28 @@ state_t hsmp_driver_close()
 	return EAR_SUCCESS;
 }
 
-state_t hsmp_driver_open(topology_t *tp)
+state_t hsmp_driver_open(topology_t *tp, mode_t mode)
 {
-    state_t s;
+    state_t s = EAR_SUCCESS;
     if (tp->vendor == VENDOR_INTEL || tp->family < FAMILY_ZEN) {
-		return_msg(EAR_ERROR, Generr.api_incompatible);
-	}
-    if (fd != -1) {
-        goto leave;
+        return_msg(EAR_ERROR, Generr.api_incompatible);
     }
-    if ((fd = open("/dev/hsmp", O_RDWR)) < 0) {
-        if ((fd = open("/dev/hsmp", O_RDONLY)) < 0) {
-            return_print(EAR_ERROR, "Error while opening /dev/hsmp driver file: %s", strerror(errno))
-        }
+    if ((fd = open("/dev/hsmp", mode)) < 0) {
+        return_print(EAR_ERROR, "Error while opening /dev/hsmp driver file: %s", strerror(errno))
+    }
+    if (mode == O_RDONLY) {
         debug("HSMP is in user mode");
-        // Test ping
-        uint args[2] = { 68, -1 };
-        uint reps[2] = {  0, -1 };
-        if (state_fail(s = hsmp_driver_send(0, HSMP_TEST, args, reps))) {
-            hsmp_driver_close();
-            return_print(EAR_ERROR, "HSMP test function failed: %s", state_msg);
-        }
-        if (reps[0] != 69) {
-            hsmp_driver_close();
-            return_print(EAR_ERROR, "HSMP not enabled (incorrect ping value, expected 69, received %u)", reps[0]);
-        }
     }
-leave:
+    // Test ping
+    uint args[2] = { 68, -1 };
+    uint reps[2] = {  0, -1 };
+    if (state_fail(s = hsmp_driver_send(0, HSMP_TEST, args, reps))) {
+        hsmp_driver_close();
+        return_print(EAR_ERROR, "HSMP test function failed: %s", state_msg);
+    }
+    if (reps[0] != 69) {
+        hsmp_driver_close();
+        return_print(EAR_ERROR, "HSMP not enabled (incorrect ping value, expected 69, received %u)", reps[0]);
+    }
     return EAR_SUCCESS;
 }

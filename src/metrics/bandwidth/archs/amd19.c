@@ -33,7 +33,7 @@ BWIDTH_F_LOAD(bwidth_amd19_load)
     if (tpo->vendor != VENDOR_AMD || tpo->family < FAMILY_ZEN){
         return_msg(, Generr.api_incompatible);
     }
-    if (state_fail(hsmp_open(tpo))) {
+    if (state_fail(hsmp_open(tpo, HSMP_RD))) {
         return;
     }
     // Testing if the function is compatible

@@ -53,7 +53,7 @@ state_t mgt_imcfreq_amd17_load(topology_t *tp, mgt_imcfreq_ops_t *ops)
 
     debug("Detecting AMD17 HSMP mailboxes.");
 	// Already loaded
-	if (state_fail(s = hsmp_open(tp))) {
+	if (state_fail(s = hsmp_open(tp, HSMP_WR))) {
 		return s;
 	}
 	// Getting the list of available frequencies
