@@ -1,3 +1,25 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Added
+- v5.2 Implementation of Powercap setting by domain.
+- v5.2 Application CPU utiliztion is now computed and reported by EARL to CSV files.
+- v5.2 Now the power signature is printed when printing an application to CSV file.
+
+### Changed
+- v5.2 A new version of the `eacct` command is released providing an output format option.
+- v5.2 Reduce the periodicity in which EARL updates job's affinity mask.
+
+### Fixed
+- v5.2 Fixed typo in cpupow define.
+- v5.2 Improved CPU governor list message.
+
 ### EAR 5.1.5
 - Bugs fixed:
   - Prevent running code in EARD report plug-in misc method if the event type is not WF_APPLICATION
