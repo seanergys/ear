@@ -46,6 +46,7 @@
 #define API_ACPI_POWER        22
 #define API_GRACE_CPU         23
 #define API_HWMON             24
+#define API_PVC_HWMON         30
 
 
 #define GRANULARITY_NONE       0
