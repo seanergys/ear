@@ -194,3 +194,7 @@ tmp.txt
 *.plist
 etc/examples/prolog_epilog/ejob
 etc/examples/prolog_epilog/list
+.deps
+.dirstamp
+src/daemon/app_api/Makefile*
+!src/daemon/app_api/Makefile.am
