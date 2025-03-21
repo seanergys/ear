@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <fcntl.h>
 #include <sys/ioctl.h>
@@ -46,7 +46,7 @@ state_t hsmp_driver_send(int socket, uint function, uint *args, uint *reps)
     memset(&msg, 0, sizeof(struct hsmp_message));
     msg.msg_id      = (__u32) function;
     msg.sock_ind    = (__u16) socket;
-    debug("msg.msg_id     : %u", msg.msg_id);
+    debug("msg.msg_id     : 0x%X", msg.msg_id);
     debug("msg.sock_ind   : %u", msg.sock_ind);
     // Counting args and reps
     while(args[msg.num_args] != -1) {

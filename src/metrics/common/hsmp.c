@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <pthread.h>
 #include <sys/types.h>
@@ -28,25 +28,34 @@ static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static int             api;
 static mode_t          api_mode;
 
+char *mode_str(mode_t mode)
+{
+    if (mode == O_RDWR) return "O_RDWR";
+    return "O_RDONLY";
+}
+
 static state_t __hsmp_open(topology_t *tp, mode_t mode)
 {
     state_t s;
     api_mode = mode;
     if (state_ok(s = hsmp_driver_open(tp, mode))) {
-        debug("HSMP driver loaded");
+        debug("HSMP driver loaded in %s mode", mode_str(mode));
         api = HSMP_API_DRIVER;
         return s;
     }
+    debug("HSMP driver failed in %s mode: %s", mode_str(mode), state_msg);
     if (state_ok(s = hsmp_esmi_open(tp, mode))) {
-        debug("HSMP esmi loaded");
+        debug("HSMP ESMI loaded in %s mode", mode_str(mode));
         api = HSMP_API_ESMI;
         return s;
     }
+    debug("HSMP ESMI failed in %s mode: %s", mode_str(mode), state_msg);
     if ((mode == O_RDWR) && state_ok(s = hsmp_pci_open(tp))) {
-        debug("HSMP pci not loaded");
+        debug("HSMP PCI loaded in %s mode", mode_str(mode));
         api = HSMP_API_PCI;
         return s;
     }
+    debug("HSMP PCI failed in %s mode: %s", mode_str(mode), state_msg);
     return EAR_ERROR;
 }
 
@@ -56,6 +65,7 @@ state_t hsmp_open(topology_t *tp, mode_t mode)
     if (api == HSMP_API_NONE) {
         if (state_fail(__hsmp_open(tp, O_RDWR))) {
             if (state_fail(__hsmp_open(tp, O_RDONLY))) {
+                debug("no HSMP API can be opened");
                 api = HSMP_API_FAILED;
             }
         }
@@ -65,6 +75,7 @@ state_t hsmp_open(topology_t *tp, mode_t mode)
     if (api == HSMP_API_FAILED) {
         return_msg(EAR_ERROR, "API failed previously");
     } else if (mode == O_RDWR && api_mode != O_RDWR) {
+        debug("The permissions request can be satisfied");
         return_msg(EAR_ERROR, Generr.no_permissions);
     }
     return EAR_SUCCESS;

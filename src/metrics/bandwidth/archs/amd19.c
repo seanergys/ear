@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <pthread.h>
@@ -28,16 +28,19 @@ static double          line_size;
 
 BWIDTH_F_LOAD(bwidth_amd19_load)
 {
-    uint test[1] = { -1 };
+    uint reps[2] = { 0, -1 };
+    uint args[1] = { -1 };
 
     if (tpo->vendor != VENDOR_AMD || tpo->family < FAMILY_ZEN){
         return_msg(, Generr.api_incompatible);
     }
     if (state_fail(hsmp_open(tpo, HSMP_RD))) {
+        debug("hsmp_open failed: %s", state_msg);
         return;
     }
     // Testing if the function is compatible
-    if (state_fail(hsmp_send(0, HSMP_GET_DDR_BANDWIDTH, test, test))) {
+    if (state_fail(hsmp_send(0, HSMP_GET_DDR_BANDWIDTH, args, reps))) {
+        debug("hsmp_send failed: %s", state_msg);
         return;
     }
     if (state_fail(topology_select(tpo, &tp, TPSelect.socket, TPGroup.merge, 0))) {
