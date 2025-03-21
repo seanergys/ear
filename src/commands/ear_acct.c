@@ -1549,6 +1549,11 @@ int main(int argc, char *argv[])
 
 	verb_level = -1;
 	verb_enabled = 0;
+
+    if (check_and_unset_environment_variables()) {
+        printf("Warning: using MySQL/MariaDB environment variables is not supporting, unsetting them.\n");
+    }
+
 	if (get_ear_conf_path(path_name)==EAR_ERROR){
 		fprintf(stderr, "Error getting ear.conf path\n");
 		exit(1);
