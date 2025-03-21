@@ -100,7 +100,7 @@
                     "INNER JOIN Jobs ON Applications.job_id = Jobs.job_id AND Applications.step_id = Jobs.step_id " \
                     "WHERE start_time >= %d AND end_time <= %d AND DC_power < %d GROUP BY Jobs.user_id ORDER BY energy"
 
-#define ALL_GROUPS   "SELECT TRUNCATE(SUM(DC_power*time), 0) as energy, Jobs.user_id FROM " \
+#define ALL_GROUPS   "SELECT TRUNCATE(SUM(DC_power*time), 0) as energy, Jobs.user_group FROM " \
                     "Power_signatures INNER JOIN Applications On id=Applications.power_signature_id " \
                     "INNER JOIN Jobs ON Applications.job_id = Jobs.job_id AND Applications.step_id = Jobs.step_id " \
                     "WHERE start_time >= %d AND end_time <= %d AND DC_power < %d GROUP BY Jobs.user_group ORDER BY energy"
@@ -1255,7 +1255,7 @@ int main(int argc,char *argv[])
     };
     while (1)
     {
-        c = getopt_long(argc, argv, "t:vhzdbn:u:s:e:i:gx", long_options, &option_idx);
+        c = getopt_long(argc, argv, "t:vhzdbn:u:G:s:e:i:gx", long_options, &option_idx);
 
         if (c == -1) break;
 
