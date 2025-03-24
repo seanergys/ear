@@ -32,7 +32,7 @@
 #include <mysql/mysql.h>
 #endif
 
-#define PUE 1.56
+#define PUE 1.2
 #define CARBON_INTENSITY 174
 
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
@@ -983,30 +983,30 @@ void print_all(MYSQL *connection, int start_time, int end_time, char *inc_query,
             if (!has_records) // on the first iteration
             {
                 if (!strcmp(inc_query, ALL_USERS)) {
-                    printf("%15s %15s %20s\n", "Energy (J)", "User", "Carbon footprint(Kg)");
+                    printf("%15s %15s %20s\n", "Energy (J)", "User", "Carbon footprint(g)");
 #if USE_GPUS
                     has_gpus = 1;
 #endif
                 } else if (!strcmp(inc_query, ALL_TAGS)) {
-                    printf("%15s %15s %20s\n", "Energy (J)", "Energy tag", "Carbon footprint(Kg)");
+                    printf("%15s %15s %20s\n", "Energy (J)", "Energy tag", "Carbon footprint(g)");
 #if USE_GPUS
                     has_gpus = 1;
 #endif
                 } else if (!strcmp(inc_query, ALL_ISLANDS)) {
-                    printf("%15s %15s %20s\n", "Energy (J)", "EARDBD", "Carbon footprint(Kg)");
+                    printf("%15s %15s %20s\n", "Energy (J)", "EARDBD", "Carbon footprint(g)");
                 } else if (!strcmp(inc_query, ISLANDS_RAW)) {
-                    printf("%15s %15s %15s %15s %20s\n", "Energy (J)", "EARDBD", "Start time", "End time", "Power", "Carbon footprint(Kg)");
+                    printf("%15s %15s %15s %15s %20s\n", "Energy (J)", "EARDBD", "Start time", "End time", "Power", "Carbon footprint(g)");
                 } else if (global_end_time > 0) {
 #if USE_GPUS
-                    printf("%15s %15s %15s %15s %20s\n", "Energy (J)", "Node", "Avg. DC Power", "Avg. GPU Power", "Carbon footprint(Kg)");
+                    printf("%15s %15s %15s %15s %20s\n", "Energy (J)", "Node", "Avg. DC Power", "Avg. GPU Power", "Carbon footprint(g)");
                     has_gpus = 1;
 #else
-                    printf("%15s %15s %15s %20s\n", "Energy (J)", "Node", "Avg. Power", "Carbon footprint(Kg)");
+                    printf("%15s %15s %15s %20s\n", "Energy (J)", "Node", "Avg. Power", "Carbon footprint(g)");
 #endif
                     all_nodes = 1;
                 }
                 else {
-                    printf("%15s %15s %20s\n", "Energy (J)", "Node", "Carbon footprint(Kg)");
+                    printf("%15s %15s %20s\n", "Energy (J)", "Node", "Carbon footprint(g)");
                 }
                 has_records = 1;
             }
@@ -1040,7 +1040,7 @@ void print_all(MYSQL *connection, int start_time, int end_time, char *inc_query,
 #endif
             }
 			//Carbon footprint formula: Energy X Power usage effectiveness X Carbon intensity
-            printf("%20.2lf", (atoll(row[0]) * PUE * CARBON_INTENSITY) / 1000);
+            printf("%20.2lf", ((double)atoll(row[0])/(3600*1000) * PUE * CARBON_INTENSITY));
             printf("\n");
         }
         if (!has_records) {
@@ -1373,7 +1373,7 @@ int main(int argc,char *argv[])
             strtok(ctime_r(&start_time, sbuff), "\n");
             printf("Total energy spent from %s to %s: %llu J\n", sbuff, ebuff, result);
             double computing_energy = result * PUE;
-            double carbon_footprint = computing_energy * CARBON_INTENSITY / 1000;
+            double carbon_footprint = computing_energy/(3600*1000) * CARBON_INTENSITY;
             if (avg_pow <= 0)
             {
                 if (user_name == NULL && etag == NULL && verbose)
@@ -1382,7 +1382,7 @@ int main(int argc,char *argv[])
             else if (avg_pow > 0) {
                 printf("Average power during the reported period: %llu W\n", avg_pow);
             }
-            printf("Computing energy spent during the reporting period: %.2lf J\t Carbon footprint: %.2lf Kg\n", 
+            printf("Computing energy spent during the reporting period: %.2lf J\t Carbon footprint: %.2lf g\n", 
             	computing_energy, carbon_footprint);
         }    
 #if DB_MYSQL
