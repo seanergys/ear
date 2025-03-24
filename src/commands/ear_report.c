@@ -50,6 +50,11 @@
                     "ON Applications.job_id = Jobs.job_id AND Applications.step_id = Jobs.step_id WHERE "\
                     "Jobs.user_id = '%s' AND start_time >= ? AND end_time <= ? AND DC_power < %d)"
 
+#define GROUP_QUERY "SELECT SUM(DC_power*time)/? FROM Power_signatures WHERE id IN " \
+                    "(SELECT Applications.power_signature_id FROM Applications JOIN Jobs " \
+                    "ON Applications.job_id = Jobs.job_id AND Applications.step_id = Jobs.step_id WHERE "\
+                    "Jobs.user_group = '%s' AND start_time >= ? AND end_time <= ? AND DC_power < %d)"
+
 #define ETAG_QUERY  "SELECT SUM(DC_power*time)/? FROM Power_signatures WHERE id IN " \
                     "(SELECT Applications.power_signature_id FROM Applications JOIN Jobs " \
                     "ON Applications.job_id = Jobs.job_id AND Applications.step_id = Jobs.step_id WHERE "\
@@ -74,6 +79,11 @@
                     "ON Applications.job_id = Jobs.job_id AND Applications.step_id = Jobs.step_id WHERE "\
                     "Jobs.user_id = '%s' AND start_time >= %d AND end_time <= %d AND DC_power < %d)"
 
+#define GROUP_QUERY  "SELECT SUM(DC_power*time)/%llu FROM Power_signatures WHERE id IN " \
+                     "(SELECT Applications.power_signature_id FROM Applications JOIN Jobs " \
+                     "ON Applications.job_id = Jobs.job_id AND Applications.step_id = Jobs.step_id WHERE "\
+                     "Jobs.user_group = '%s' AND start_time >= %d AND end_time <= %d AND DC_power < %d)"
+
 #define ETAG_QUERY  "SELECT SUM(DC_power*time)/%llu FROM Power_signatures WHERE id IN " \
                     "(SELECT Applications.power_signature_id FROM Applications JOIN Jobs " \
                     "ON Applications.job_id = Jobs.job_id AND Applications.step_id = Jobs.step_id WHERE "\
@@ -90,6 +100,10 @@
                     "INNER JOIN Jobs ON Applications.job_id = Jobs.job_id AND Applications.step_id = Jobs.step_id " \
                     "WHERE start_time >= %d AND end_time <= %d AND DC_power < %d GROUP BY Jobs.user_id ORDER BY energy"
 
+#define ALL_GROUPS   "SELECT TRUNCATE(SUM(DC_power*time), 0) as energy, Jobs.user_group FROM " \
+                    "Power_signatures INNER JOIN Applications On id=Applications.power_signature_id " \
+                    "INNER JOIN Jobs ON Applications.job_id = Jobs.job_id AND Applications.step_id = Jobs.step_id " \
+                    "WHERE start_time >= %d AND end_time <= %d AND DC_power < %d GROUP BY Jobs.user_group ORDER BY energy"
 #if USE_GPUS
 #define ALL_NODES   "select SUM(DC_energy), MIN(start_time), MAX(end_time), SUM(GPU_energy), node_id FROM Periodic_metrics WHERE start_time >= %d " \
                     " AND end_time <= %d GROUP BY node_id "
@@ -130,6 +144,7 @@
 
 char *node_name = NULL;
 char *user_name = NULL;
+char *group_name = NULL;
 char *etag = NULL;
 char *eardbd_host = NULL;
 int verbose = 0;
@@ -148,6 +163,7 @@ void usage(char *app)
         "\t-e end_time       \t indicates the end of the period from which the energy consumed will be computed. Format: YYYY-MM-DD. Default: current time.\n"
         "\t-n node_name |all \t indicates from which node the energy will be computed. Default: none (all nodes computed) \n\t\t\t\t\t 'all' option shows all nodes individually, not aggregated.\n"
         "\t-u user_name |all \t requests the energy consumed by a user in the selected period of time. Default: none (all users computed). \n\t\t\t\t\t 'all' option shows all users individually, not aggregated.\n"
+        "\t-G user_group|all \t requests the energy consumed by a user group in the selected period of time. Default: none (all groups computed). \n\t\t\t\t\t 'all' option shows all groups individually, not aggregated.\n"
         "\t-t energy_tag|all \t requests the energy consumed by energy tag in the selected period of time. Default: none (all tags computed). \n\t\t\t\t\t 'all' option shows all tags individually, not aggregated.\n"
         "\t-i eardbd_name|all\t indicates from which eardbd (island) the energy will be computed. Default: none (all islands computed) \n\t\t\t\t\t 'all' option shows all eardbds individually, not aggregated.\n"
         "\t\t-d                 expands the results of -i to individual records. If an island is not specified, it prints all of them.\n"
@@ -288,6 +304,10 @@ long long get_sum(MYSQL *connection, int start_time, int end_time, unsigned long
     else if (etag != NULL)
     {
         sprintf(query, ETAG_QUERY, etag, max_power);
+    }
+    else if (group_name != NULL)
+    {
+        sprintf(query, GROUP_QUERY, group_name, max_power);
     }
     else if (eardbd_host != NULL)
     {
@@ -1144,6 +1164,7 @@ int main(int argc,char *argv[])
     int divisor = 1;
     int c;
     char all_users = 0;
+    char all_groups= 0;
     char all_nodes = 0;
     char all_tags = 0;
     char all_eardbds = 0;
@@ -1156,7 +1177,7 @@ int main(int argc,char *argv[])
     VCCONF = 2;
 
     if (check_and_unset_environment_variables()) {
-        printf("Warning: using MySQL/MariaDB environment variables is not supporting, unsetting them.\n");
+        printf("Warning: using MySQL/MariaDB environment variables is not supported, unsetting them.\n");
     }
 
     if (get_ear_conf_path(path_name) == EAR_ERROR)
@@ -1226,6 +1247,7 @@ int main(int argc,char *argv[])
         {"detailed",      no_argument, 0, 'z'},
         {"nodes",      required_argument, 0, 'n'},
         {"users",      required_argument, 0, 'u'},
+        {"group",      required_argument, 0, 'G'},
         {"etags",      required_argument, 0, 't'},
         {"islands",    required_argument, 0, 'i'},
         {"start-time", required_argument, 0, 's'},
@@ -1233,7 +1255,7 @@ int main(int argc,char *argv[])
     };
     while (1)
     {
-        c = getopt_long(argc, argv, "t:vhzdbn:u:s:e:i:gx", long_options, &option_idx);
+        c = getopt_long(argc, argv, "t:vhzdbn:u:G:s:e:i:gx", long_options, &option_idx);
 
         if (c == -1) break;
 
@@ -1264,15 +1286,20 @@ int main(int argc,char *argv[])
                 islands_expanded = 1;
                 if (eardbd_host == NULL) all_eardbds=1;
                 break;
+            case 'G':
+                group_name = optarg;
+                if (!strcmp(group_name, "all"))
+                    all_groups = 1;
+                break;
             case 'u':
                 user_name = optarg;
                 if (!strcmp(user_name, "all"))
-                    all_users=1;
+                    all_users = 1;
                 break;
             case 't':
                 etag = optarg;
                 if (!strcmp(etag, "all"))
-                    all_tags=1;
+                    all_tags = 1;
                 break;
             case 'g':
                 time_period = my_conf.eargm.t2*2;
@@ -1320,8 +1347,9 @@ int main(int argc,char *argv[])
         }
     }
 
+
     if (start_time == 0) start_time = end_time - MAX(my_conf.eard.period_powermon, my_conf.db_manager.aggr_time)*4;
-    if (!all_users && !all_nodes && !all_tags && !all_eardbds && !global_energy && !report_events && !report_detailed)
+    if (!all_users && !all_groups && !all_nodes && !all_tags && !all_eardbds && !global_energy && !report_events && !report_detailed)
     {
         long long result = get_sum(connection, start_time, end_time, divisor);
         compute_pow(connection, start_time, end_time, result);
@@ -1363,6 +1391,8 @@ int main(int argc,char *argv[])
 
     if (all_users)
         print_all(connection, start_time, end_time, ALL_USERS, ALL_PER_METRIC_TYPE);
+    else if (all_groups)
+        print_all(connection, start_time, end_time, ALL_GROUPS, ALL_PER_METRIC_TYPE);
     else if (all_tags)
         print_all(connection, start_time, end_time, ALL_TAGS, ALL_PER_METRIC_TYPE);
     else if (all_nodes)
