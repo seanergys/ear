@@ -26,11 +26,14 @@
 #include <common/types/version.h>
 #include <daemon/log_eard.h>
 #include <common/types/configuration/cluster_conf.h>
- #include <global_manager/log_eargmd.h>
+#include <global_manager/log_eargmd.h>
 
 #if DB_MYSQL
 #include <mysql/mysql.h>
 #endif
+
+#define PUE 1.56
+#define CARBON_INTENSITY 1
 
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
 
@@ -156,9 +159,9 @@ cluster_conf_t my_conf;
 
 void usage(char *app)
 {
-    printf( "%s is a tool that reports energy consumption data\n", app);
-	printf( "Usage: %s [options]\n", app);
-    printf( "Options are as follows:\n"\
+    printf("%s is a tool that reports energy consumption data\n", app);
+	printf("Usage: %s [options]\n", app);
+    printf("Options are as follows:\n"\
         "\t-s start_time     \t indicates the start of the period from which the energy consumed will be computed. Format: YYYY-MM-DD. Default: end_time minus insertion time*2.\n"
         "\t-e end_time       \t indicates the end of the period from which the energy consumed will be computed. Format: YYYY-MM-DD. Default: current time.\n"
         "\t-n node_name |all \t indicates from which node the energy will be computed. Default: none (all nodes computed) \n\t\t\t\t\t 'all' option shows all nodes individually, not aggregated.\n"
@@ -246,7 +249,7 @@ void add_int_list_filter(char *query, char *addition, char *value)
 #if DB_MYSQL
 long long ereport_stmt_error(MYSQL_STMT *statement)
 {
-    printf( "Error preparing statement (%d): %s\n",
+    printf("Error preparing statement (%d): %s\n",
             mysql_stmt_errno(statement), mysql_stmt_error(statement));
     mysql_stmt_close(statement);
     return -1;
@@ -260,7 +263,7 @@ long long get_sum(MYSQL *connection, int start_time, int end_time, unsigned long
     MYSQL_STMT *statement = mysql_stmt_init(connection);
     if (!statement)
     {
-        printf( "Error creating statement (%d): %s\n", mysql_errno(connection),
+        printf("Error creating statement (%d): %s\n", mysql_errno(connection),
                 mysql_error(connection)); //error
         return -1;
     }
@@ -323,7 +326,7 @@ long long get_sum(MYSQL *connection, int start_time, int end_time, unsigned long
 #endif
 
     if (verbose) {
-        printf( "QUERY: %s\n", query);
+        printf("QUERY: %s\n", query);
     }
     if (mysql_stmt_prepare(statement, query, strlen(query)))
                                                 return ereport_stmt_error(statement);
@@ -361,11 +364,11 @@ long long get_sum(MYSQL *connection, int start_time, int end_time, unsigned long
         result = -2;
 
     if (mysql_stmt_free_result(statement)) {
-        printf( "ERROR when freing result.\n"); //error
+        printf("ERROR when freing result.\n"); //error
     }
 
     if (mysql_stmt_close(statement)) {
-        printf( "ERROR when freeing statement\n"); //error
+        printf("ERROR when freeing statement\n"); //error
     }
 
     return result;
@@ -429,7 +432,7 @@ long long get_sum(PGconn *connection, int start_time, int end_time, unsigned lon
 #endif
 
     if (verbose) {
-        printf( "QUERY: %s\n", query);
+        printf("QUERY: %s\n", query);
     }
 
     PGresult *res = PQexecParams(connection, query, 0, NULL, NULL, NULL, NULL, 1);
@@ -457,7 +460,7 @@ void compute_pow(MYSQL *connection, int start_time, int end_time, unsigned long 
         MYSQL_STMT *statement = mysql_stmt_init(connection);
         if (!statement)
         {
-            printf( "Error creating statement (%d): %s\n", mysql_errno(connection),
+            printf("Error creating statement (%d): %s\n", mysql_errno(connection),
                     mysql_error(connection));
             return;
         }
@@ -488,7 +491,7 @@ void compute_pow(MYSQL *connection, int start_time, int end_time, unsigned long 
 #endif
 
         if (verbose) {
-            printf( "QUERY: %s\n", query);
+            printf("QUERY: %s\n", query);
         }
 
         if (mysql_stmt_prepare(statement, query, strlen(query)))
@@ -536,11 +539,11 @@ void compute_pow(MYSQL *connection, int start_time, int end_time, unsigned long 
         char sbuff[64], ebuff[64];
         if (verbose)
         {
-            printf( "original  \t start_time: %d\t end_time: %d\n\n", start_time, end_time);
-            printf( "from query\t start_time: %ld\t end_time: %ld\n\n", global_start_time, global_end_time);
-            printf( "from query\t start_time: %s\t end_time: %s\n\n",
+            printf("original  \t start_time: %d\t end_time: %d\n\n", start_time, end_time);
+            printf("from query\t start_time: %ld\t end_time: %ld\n\n", global_start_time, global_end_time);
+            printf("from query\t start_time: %s\t end_time: %s\n\n",
                     ctime_r(&global_start_time, sbuff), ctime_r(&global_end_time, ebuff));
-            printf( "result: %llu\n", result);
+            printf("result: %llu\n", result);
         }
         if (global_start_time != global_end_time && result > 0)
             avg_pow = result / (global_end_time-global_start_time);
@@ -552,8 +555,8 @@ void compute_pow(MYSQL *connection, int start_time, int end_time, unsigned long 
     
         if (verbose)
         {
-            printf( "avg_pow after computation: %llu\n", avg_pow);
-            printf( "end-start: %ld\n", global_end_time-global_start_time);
+            printf("avg_pow after computation: %llu\n", avg_pow);
+            printf("end-start: %ld\n", global_end_time-global_start_time);
         }
 
         mysql_stmt_close(statement);
@@ -589,7 +592,7 @@ void compute_pow(PGconn *connection, int start_time, int end_time, unsigned long
 
         sprintf(final_query, query, start_time, end_time);
         if (verbose) {
-            printf( "QUERY: %s\n", final_query);
+            printf("QUERY: %s\n", final_query);
         }
 
         //time_t start, end; 
@@ -610,19 +613,19 @@ void compute_pow(PGconn *connection, int start_time, int end_time, unsigned long
         char sbuff[64], ebuff[64];
         if (verbose)
         {
-            printf( "original  \t start_time: %d\t end_time: %d\n\n", start_time, end_time);
-            printf( "from query\t start_time: %ld\t end_time: %ld\n\n", global_start_time, global_end_time);
-            printf( "from query\t start_time: %s\t end_time: %s\n\n",
+            printf("original  \t start_time: %d\t end_time: %d\n\n", start_time, end_time);
+            printf("from query\t start_time: %ld\t end_time: %ld\n\n", global_start_time, global_end_time);
+            printf("from query\t start_time: %s\t end_time: %s\n\n",
                     ctime_r(&global_start_time, sbuff), ctime_r(&global_end_time, ebuff));
-            printf( "result: %llu\n", result);
+            printf("result: %llu\n", result);
         }
         if (global_start_time != global_end_time && result > 0)
             avg_pow = result / (global_end_time-global_start_time);
     
         if (verbose)
         {
-            printf( "avg_pow after computation: %llu\n", avg_pow);
-            printf( "end-start: %ld\n", global_end_time-global_start_time);
+            printf("avg_pow after computation: %llu\n", avg_pow);
+            printf("end-start: %ld\n", global_end_time-global_start_time);
         }
 
         PQclear(res);
@@ -919,19 +922,19 @@ void print_all(MYSQL *connection, int start_time, int end_time, char *inc_query,
         sprintf(query, inc_query, start_time, end_time);
 
     if (verbose) {
-        printf( "query: %s\n", query);
+        printf("query: %s\n", query);
     }
     
     if (mysql_query(connection, query))
     {
-        printf( "MYSQL error\n");
+        printf("MYSQL error\n");
         return;
     }
     MYSQL_RES *result = mysql_store_result(connection);
   
     if (result == NULL) 
     {
-        printf( "MYSQL error\n");
+        printf("MYSQL error\n");
         return;
     }
 
@@ -980,33 +983,31 @@ void print_all(MYSQL *connection, int start_time, int end_time, char *inc_query,
             if (!has_records) // on the first iteration
             {
                 if (!strcmp(inc_query, ALL_USERS)) {
-                    printf( "%15s %15s\n", "Energy (J)", "User");
+                    printf("%15s %15s %15s\n", "Energy (J)", "User", "Carbon footprint");
 #if USE_GPUS
                     has_gpus = 1;
 #endif
                 } else if (!strcmp(inc_query, ALL_TAGS)) {
-                    printf( "%15s %15s\n", "Energy (J)", "Energy tag");
+                    printf("%15s %15s %15s\n", "Energy (J)", "Energy tag", "Carbon footprint");
 #if USE_GPUS
                     has_gpus = 1;
 #endif
                 } else if (!strcmp(inc_query, ALL_ISLANDS)) {
-                    printf( "%15s %15s\n", "Energy (J)", "EARDBD");
+                    printf("%15s %15s %15s\n", "Energy (J)", "EARDBD", "Carbon footprint");
                 } else if (!strcmp(inc_query, ISLANDS_RAW)) {
-                    printf( "%15s %15s %15s %15s %15s\n", "Energy (J)", "EARDBD", "Start time", "End time", "Power");
+                    printf("%15s %15s %15s %15s %15s\n", "Energy (J)", "EARDBD", "Start time", "End time", "Power");
                 } else if (global_end_time > 0) {
 #if USE_GPUS
-                    printf( "%15s %15s %15s %15s\n", "Energy (J)", "Node", "Avg. DC Power", "Avg. GPU Power");
+                    printf("%15s %15s %15s %15s %15s\n", "Energy (J)", "Node", "Avg. DC Power", "Avg. GPU Power", "Carbon footprint");
                     has_gpus = 1;
 #else
-                    printf( "%15s %15s %15s\n", "Energy (J)", "Node", "Avg. Power");
+                    printf("%15s %15s %15s %15s\n", "Energy (J)", "Node", "Avg. Power", "Carbon footprint");
 #endif
                     all_nodes = 1;
                 }
                 else {
-                    printf( "%15s %15s\n", "Energy (J)", "Node");
+                    printf("%15s %15s %15s\n", "Energy (J)", "Node", "Carbon footprint");
                 }
-
-
                 has_records = 1;
             }
 
@@ -1030,14 +1031,15 @@ void print_all(MYSQL *connection, int start_time, int end_time, char *inc_query,
 #endif
 
             if (row[0] && all_nodes && (atoll(row[2]) != atoll(row[1]))) { //when getting energy we compute the avg_power
-                printf("%15lld", (atoll(row[0]) /(atoll(row[2]) - atoll(row[1]))));
+                printf("%15lld ", (atoll(row[0]) /(atoll(row[2]) - atoll(row[1]))));
 #if USE_GPUS
                 if (row[3] != NULL)
-                    printf("%15lld", (atoll(row[3]) /(atoll(row[2]) - atoll(row[1]))));
+                    printf("%15lld ", (atoll(row[3]) /(atoll(row[2]) - atoll(row[1]))));
                 else
-                    printf("%15s", "---");
+                    printf("%15s ", "---");
 #endif
             }
+            printf("%15.2lf", (atoll(row[0]) * PUE * CARBON_INTENSITY));
             printf("\n");
         }
         if (!has_records) {
@@ -1074,7 +1076,7 @@ void print_all(PGconn *connection, int start_time, int end_time, char *inc_query
         sprintf(query, inc_query, start_time, end_time);
 
     if (verbose) {
-        printf( "query: %s\n", query);
+        printf("query: %s\n", query);
     }
 
     PGresult *result = PQexecParams(connection, query, 0, NULL, NULL, NULL, NULL, 0);
@@ -1123,19 +1125,19 @@ void print_all(PGconn *connection, int start_time, int end_time, char *inc_query
     else
     {
         if (!strcmp(inc_query, ALL_USERS)) {
-            printf( "%15s %15s\n", "Energy (J)", "User");
+            printf("%15s %15s\n", "Energy (J)", "User");
         } else if (!strcmp(inc_query, ALL_TAGS)) {
-            printf( "%15s %15s\n", "Energy (J)", "Energy tag");
+            printf("%15s %15s\n", "Energy (J)", "Energy tag");
         } else if (!strcmp(inc_query, ALL_ISLANDS)) {
-            printf( "%15s %15s\n", "Energy (J)", "EARDBD");
+            printf("%15s %15s\n", "Energy (J)", "EARDBD");
         } else if (!strcmp(inc_query, ISLANDS_RAW)) {
-            printf( "%15s %15s %15s %15s %15s\n", "Energy (J)", "EARDBD", "Start time", "End time", "Power");
+            printf("%15s %15s %15s %15s %15s\n", "Energy (J)", "EARDBD", "Start time", "End time", "Power");
         } else if (global_end_time > 0) {
-            printf( "%15s %15s %15s\n", "Energy (J)", "Node", "Avg. Power");
+            printf("%15s %15s %15s\n", "Energy (J)", "Node", "Avg. Power");
             all_nodes = 1;
         }
         else {
-            printf( "%15s %15s\n", "Energy (J)", "Node");
+            printf("%15s %15s\n", "Energy (J)", "Node");
         }
 
 
@@ -1182,18 +1184,18 @@ int main(int argc,char *argv[])
 
     if (get_ear_conf_path(path_name) == EAR_ERROR)
     {
-        printf( "Error getting ear.conf path.\n"); //error
+        printf("Error getting ear.conf path.\n"); //error
         exit(1);
     }
 
     if (read_cluster_conf(path_name, &my_conf) != EAR_SUCCESS) {
-        printf( "Error reading configuration\n"); //error
+        printf("Error reading configuration\n"); //error
         exit(1);
     }
 
     if (getuid() != 0 && !is_privileged_command(&my_conf))
     {
-        printf( "This command can only be executed by privileged users. Contact your admin for more info.\n");
+        printf("This command can only be executed by privileged users. Contact your admin for more info.\n");
         free_cluster_conf(&my_conf);
         exit(1); //error
     }
@@ -1202,13 +1204,13 @@ int main(int argc,char *argv[])
     MYSQL *connection = mysql_init(NULL);
     if (!connection)
     {
-        printf( "Error creating MYSQL object\n"); //error
+        printf("Error creating MYSQL object\n"); //error
         free_cluster_conf(&my_conf);
         exit(1);
     }
 
     if (strlen(my_conf.database.user_commands) < 1) 
-        printf( "Warning: commands' user is not defined in ear.conf\n");
+        printf("Warning: commands' user is not defined in ear.conf\n");
 
     if (!mysql_real_connect(connection, my_conf.database.ip, my_conf.database.user_commands, my_conf.database.pass_commands,
                 my_conf.database.database, my_conf.database.port, NULL, 0))
@@ -1310,7 +1312,7 @@ int main(int argc,char *argv[])
             case 'e':
                 if (strptime(optarg, "%Y-%m-%e", &tinfo) == NULL)
                 {
-                    printf( "Incorrect time format. Supported format is YYYY-MM-DD\n"); //error
+                    printf("Incorrect time format. Supported format is YYYY-MM-DD\n"); //error
 #if DB_MYSQL
                     mysql_close(connection);
 #elif DB_PSQL
@@ -1325,7 +1327,7 @@ int main(int argc,char *argv[])
             case 's':
                 if (strptime(optarg, "%Y-%m-%e", &tinfo) == NULL)
                 {
-                    printf( "Incorrect time format. Supported format is YYYY-MM-DD\n"); //error
+                    printf("Incorrect time format. Supported format is YYYY-MM-DD\n"); //error
 #if DB_MYSQL
                     mysql_close(connection);
 #elif DB_PSQL
@@ -1358,26 +1360,28 @@ int main(int argc,char *argv[])
             char sbuff[64], ebuff[64];
             strtok(ctime_r(&end_time, ebuff), "\n");
             strtok(ctime_r(&start_time, sbuff), "\n");
-            printf( "No results in that period of time found (from %s to %s)\n", 
+            printf("No results in that period of time found (from %s to %s)\n", 
                     sbuff, ebuff);
-        } else if (result < 0)
-        {
-            printf( "Error querying the database.\n"); //error
+        } else if (result < 0) {
+            printf("Error querying the database.\n"); //error
             exit(1);
         }
-        else
-        {
+        else {
             char sbuff[64], ebuff[64];
             strtok(ctime_r(&end_time, ebuff), "\n");
             strtok(ctime_r(&start_time, sbuff), "\n");
-            printf( "Total energy spent from %s to %s: %llu J\n", sbuff, ebuff, result);
+            printf("Total energy spent from %s to %s: %llu J\n", sbuff, ebuff, result);
+            double computing_energy = result * PUE;
+            double carbon_footprint = computing_energy * CARBON_INTENSITY;
             if (avg_pow <= 0)
             {
                 if (user_name == NULL && etag == NULL && verbose)
-                    printf( "Error when reading time info from database, could not compute average power.\n"); //error
+                    printf("Error when reading time info from database, could not compute average power.\n"); //error
             }
             else if (avg_pow > 0) {
-                printf( "Average power during the reported period: %llu W\n", avg_pow);
+                printf("Average power during the reported period: %llu W\n", avg_pow);
+                printf("Computing energy spent during the reporting period: %.2lf\t Carbon footprint: %.2lf\n", 
+                        computing_energy, carbon_footprint);
             }
         }    
 #if DB_MYSQL
