@@ -40,6 +40,8 @@
 #define DRAM_POWER_WIDTH   10
 #define ENERGY_WIDTH       12
 #define VPI_WIDTH          14
+#define CARBON_WIDTH       20
+
 
 /* Job an application values */
 #define APP_WIDTH          16
@@ -47,27 +49,28 @@
 
 /* Format values */
 typedef enum signature_format_type {
-      FREQUENCY  = 'f',
-            TIME = 't',
-          ENERGY = 'e',
-        DC_POWER = 'p',
-      DRAM_POWER = 'D',
-       PCK_POWER = 'P',
-        IMC_FREQ = 'i',
-             GBS = 'g',
-        MPI_PERC = 'm',
-          IO_MBS = 'o',
-           FLOPS = 'F',
-             GPU = 'G',
-       ALL_FREQS = 'r',
-    CACHE_MISSES = 'L',
-             CPI = 'C',
-        DEF_FREQ = 'd',
-             TPI = 'T',
-          GFLOPS = 's',
-          CYCLES = 'y',
-    INSTRUCTIONS = 'I',
-             VPI = 'v',
+       FREQUENCY  = 'f',
+             TIME = 't',
+           ENERGY = 'e',
+         DC_POWER = 'p',
+       DRAM_POWER = 'D',
+        PCK_POWER = 'P',
+         IMC_FREQ = 'i',
+              GBS = 'g',
+         MPI_PERC = 'm',
+           IO_MBS = 'o',
+            FLOPS = 'F',
+              GPU = 'G',
+        ALL_FREQS = 'r',
+     CACHE_MISSES = 'L',
+              CPI = 'C',
+         DEF_FREQ = 'd',
+              TPI = 'T',
+           GFLOPS = 's',
+           CYCLES = 'y',
+     INSTRUCTIONS = 'I',
+              VPI = 'v',
+ CARBON_FOOTPRINT = 'B',
 } signature_format_type;
 
 typedef enum job_format_type {
