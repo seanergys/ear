@@ -992,6 +992,8 @@ void print_all(MYSQL *connection, int start_time, int end_time, char *inc_query,
 #if USE_GPUS
                     has_gpus = 1;
 #endif
+                } else if (!strcmp(inc_query, ALL_GROUPS)) {
+                    printf("%15s %15s %20s\n", "Energy (J)", "Group", "Carbon footprint(g)");
                 } else if (!strcmp(inc_query, ALL_ISLANDS)) {
                     printf("%15s %15s %20s\n", "Energy (J)", "EARDBD", "Carbon footprint(g)");
                 } else if (!strcmp(inc_query, ISLANDS_RAW)) {
@@ -1382,8 +1384,7 @@ int main(int argc,char *argv[])
             else if (avg_pow > 0) {
                 printf("Average power during the reported period: %llu W\n", avg_pow);
             }
-            printf("Computing energy spent during the reporting period: %.2lf J\t Carbon footprint: %.2lf g\n", 
-            	computing_energy, carbon_footprint);
+            printf("Carbon footprint: %.2lf g\n", carbon_footprint);
         }    
 #if DB_MYSQL
         mysql_close(connection);
