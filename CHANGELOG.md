@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Support for reading GPU power of Intel PVC devices through Linux hwmon interface added.
 - CI pipeline added.
+- Added carbon footprint calculations to ereport.
 
 ### Changed
 - `econtrol` displays a `-` character when there is not any job running on a node for which `econtrol --status` is requested.
