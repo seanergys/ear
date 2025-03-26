@@ -90,21 +90,21 @@ struct generr_s {
     char *gpus_not;
     char *dlopen;
 } Generr __attribute__((weak)) = {
-	.api_undefined = "the API is undefined",
-	.api_incompatible = "current hardware is not supported by the API",
-	.api_uninitialized = "the API is not initialized",
-	.api_initialized = "the API is already initialized",
-	.alloc_error = "error ocurred during allocation",
-	.input_null = "an argument of the input is NULL",
-	.input_uninitialized = "an argument is not initialized",
-	.lock = "error while using mutex_lock",
-	.context_null = "context can not be null",
-	.arg_outbounds = "argument out of bounds",
-	.cpu_invalid = "invalid CPU",
-	.no_permissions = "not enough privileges to perform this action.",
+	.api_undefined = "The API is undefined",
+	.api_incompatible = "Current hardware is not supported by the API",
+	.api_uninitialized = "The API is not initialized",
+	.api_initialized = "The API is already initialized",
+	.alloc_error = "Error ocurred during allocation",
+	.input_null = "An argument of the input is NULL",
+	.input_uninitialized = "An argument is not initialized",
+	.lock = "Error while using mutex_lock",
+	.context_null = "Context can not be null",
+	.arg_outbounds = "Argument out of bounds",
+	.cpu_invalid = "Invalid CPU",
+	.no_permissions = "Not enough privileges to perform this action",
 	.not_found = "Not found",
-    .gpus_not = "no GPUs detected",
-    .dlopen = "error during dlopen",
+    .gpus_not = "No GPUs detected",
+    .dlopen = "Error during dlopen",
 };
 
 /*

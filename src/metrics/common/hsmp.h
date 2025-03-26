@@ -49,6 +49,7 @@ enum hsmp_message_ids {
     HSMP_SET_NBIO_DPM_LEVEL,         /* 12h Set max/min LCLK DPM Level for a given NBIO */
     HSMP_GET_NBIO_DPM_LEVEL,         /* 13h Get LCLK DPM level min and max for a given NBIO */
     HSMP_GET_DDR_BANDWIDTH,          /* 14h Get theoretical maximum and current DDR Bandwidth in Gbps */
+                                     /* Newer functions */
     HSMP_GET_TEMP_MONITOR,           /* 15h Get socket temperature */
     HSMP_GET_DIMM_TEMP_RANGE,        /* 16h Get per-DIMM temperature range and refresh rate */
     HSMP_GET_DIMM_POWER,             /* 17h Get per-DIMM power consumption */

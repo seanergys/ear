@@ -139,7 +139,10 @@ state_t hsmp_esmi_open(topology_t *tp, mode_t mode)
 
 state_t hsmp_esmi_close()
 {
-    return translate(esmi.exit());
+    if (esmi.exit != NULL) {
+        return translate(esmi.exit());
+    }
+    return EAR_SUCCESS;
 }
 
 state_t hsmp_esmi_send(int socket, uint function, uint *args, uint *reps)
@@ -147,6 +150,9 @@ state_t hsmp_esmi_send(int socket, uint function, uint *args, uint *reps)
     struct ddr_bw_metrics ddr;
     esmi_status_t s;
 
+    if (esmi.smu_fw_version_get == NULL) {
+        return_msg(EAR_ERROR, Generr.api_uninitialized);
+    }
     // Switch case
     switch (function) {
         case HSMP_TEST:

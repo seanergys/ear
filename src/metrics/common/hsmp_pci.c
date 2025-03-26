@@ -61,7 +61,7 @@ static uint       sockets_count;
 static uint       pcis_count;
 static pci_t     *pcis;
 
-state_t hsmp_pci_open(topology_t *tp)
+state_t hsmp_pci_open(topology_t *tp, mode_t mode)
 {
 	state_t s;
 
@@ -85,7 +85,7 @@ state_t hsmp_pci_open(topology_t *tp)
             mist_pci_ids     = zen5_pci_ids;
         }
         // Opening PCis
-        if (state_fail(s = pci_scan(amd_vendor, mist_pci_ids, mist_pci_dfs, O_RDWR, &pcis, &pcis_count))) {
+        if (state_fail(s = pci_scan(amd_vendor, mist_pci_ids, mist_pci_dfs, mode, &pcis, &pcis_count))) {
             return_reprint(s, "HSMP failed while scanning PCI: %s", state_msg);
         }
         // Calculating Root Comlex per DataFabric. We will need it to access
@@ -159,6 +159,9 @@ state_t hsmp_pci_send(int socket, uint function, uint *args, uint *reps)
 	state_t s;
 	int a;
 
+    if (pcis == NULL) {
+        return_msg(EAR_ERROR, Generr.api_uninitialized);
+    }
 	socket   = socket * mist_nbios_count;
 	arg.size = mail->arg0.size;
 	arg.name = mail->arg0.name;

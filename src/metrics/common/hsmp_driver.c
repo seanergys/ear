@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <fcntl.h>
 #include <sys/ioctl.h>
@@ -36,13 +36,16 @@ struct hsmp_message {
 };
 #endif
 
-static int fd   = -1;
+static int fd = -1;
 
 state_t hsmp_driver_send(int socket, uint function, uint *args, uint *reps)
 {
     struct hsmp_message msg;
     int ret;
 
+    if (fd < 0) {
+        return_msg(EAR_ERROR, Generr.api_uninitialized);
+    }
     memset(&msg, 0, sizeof(struct hsmp_message));
     msg.msg_id      = (__u32) function;
     msg.sock_ind    = (__u16) socket;
