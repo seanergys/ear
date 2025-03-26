@@ -56,6 +56,7 @@ static char *_apis_tostr(uint api)
     else if (api == API_ACPI_POWER    ) return "ACPI_POWER";
     else if (api == API_GRACE_CPU     ) return "GRACE_CPU";
     else if (api == API_HWMON)    return "HWMON";
+    else if (api == API_PVC_HWMON   ) return "PVC_HWMON";
 
     return "NONE";
 }

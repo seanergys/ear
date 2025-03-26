@@ -48,6 +48,9 @@ cluster_conf_t my_conf;
 #define STANDARD_NODENAME_LENGTH	25
 #define APP_TEXT_FILE_FIELDS		22
 
+#define PUE 1.2
+#define CARBON_INTENSITY 174
+
 int full_length = 0;
 int verbose = 0;
 int all_pow_sig = 0;
@@ -195,6 +198,9 @@ bool print_power_signature_format(application_t *app, char f)
         case ENERGY: //energy
             print_format(ENERGY_WIDTH, app->power_sig.DC_power*app->power_sig.time, 2);
             break;
+		case CARBON_FOOTPRINT:
+            print_format(CARBON_WIDTH, (((app->power_sig.DC_power*app->power_sig.time)*PUE)/(3600*1000))*CARBON_INTENSITY, 2);
+			break;
         case DC_POWER: //DC power
             print_format(POWER_WIDTH, app->power_sig.DC_power, 2);
             break;
@@ -335,6 +341,9 @@ bool print_signature_format(signature_t *sig, char f, int32_t time_length)
         case ENERGY: //energy
             print_format(ENERGY_WIDTH, sig->DC_power*sig->time, 2);
             break;
+		case CARBON_FOOTPRINT:
+            print_format(CARBON_WIDTH, (((sig->DC_power*sig->time)*PUE)/(3600*1000))*CARBON_INTENSITY, 2);
+			break;
         case GPU: //GPUs
 #if EACCT_USE_GPUS
             { // declare a custom scope to avoid compiler complains
@@ -547,6 +556,9 @@ void print_header_format(char *fmt)
 			case ENERGY: //energy
 				print_format(ENERGY_WIDTH, "ENERGY(J)");
 				break;
+			case CARBON_FOOTPRINT:
+				print_format(CARBON_WIDTH, "CARBON FOOTPRINT(g)");
+				break;
 		}
 		fmt++;
 	}
@@ -719,9 +731,7 @@ void mysql_print_events(MYSQL_RES *result, int fd)
 			else if (i == 4 || i == 3)
 				dprintf(fd, "%8s ", row[i] ? row[i] : "NULL");
 			else if (i == 5) {
-
 				if (row[i] != NULL) {
-
 					if (possible_negative) {
 						long int value = atoi(row[i]);
 						dprintf(fd, "%20ld ", *(long *) &value);
@@ -737,8 +747,7 @@ void mysql_print_events(MYSQL_RES *result, int fd)
 		}
 		dprintf(fd, "\n");
 	}
-	if (!has_records)
-	{
+	if (!has_records) {
 		printf("There are no events with the specified properties.\n\n");
 	}
 }
@@ -1191,7 +1200,12 @@ int main(int argc, char *argv[])
 
 	verb_level = -1;
 	verb_enabled = 0;
-	if (get_ear_conf_path(path_name)==EAR_ERROR) {
+
+    if (check_and_unset_environment_variables()) {
+        printf("Warning: using MySQL/MariaDB environment variables is not supported, unsetting them.\n");
+    }
+
+	if (get_ear_conf_path(path_name)==EAR_ERROR){
 		fprintf(stderr, "Error getting ear.conf path\n");
 		exit(1);
 	}
