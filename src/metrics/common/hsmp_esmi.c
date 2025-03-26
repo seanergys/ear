@@ -207,3 +207,4 @@ state_t hsmp_esmi_send(int socket, uint function, uint *args, uint *reps)
     }
     return_msg(EAR_ERROR, "HSMP function not found");
 }
+

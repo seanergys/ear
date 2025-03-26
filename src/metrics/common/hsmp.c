@@ -111,7 +111,11 @@ state_t hsmp_send(int socket, uint function, uint *args, uint *reps)
     return_msg(EAR_ERROR, Generr.api_uninitialized);
 }
 
+<<<<<<< HEAD
 static void hsmp_test_print_functions(strtable_t *tb, char *api_str, char *perms_str)
+=======
+void hsmp_test_all_functions(strtable_t *tb, char *api_str, char *perms_str)
+>>>>>>> 01c3b92561810f227de304493debf53da321324a
 {
     uint args[2] = { -1, -1 };
     uint reps[2] = { -1, -1 };
@@ -121,12 +125,19 @@ static void hsmp_test_print_functions(strtable_t *tb, char *api_str, char *perms
     args[0] = a0; args[1] = a1; \
     reps[0] = r0; reps[1] = r1; \
     if (state_ok(hsmp_send(0, function, args, reps))) { \
+<<<<<<< HEAD
         tprintf2(tb, "%s||%s||%s||%s||%d||%d||-",       \
             api_str, perms_str, #function, "OK", (int) reps[0], (int) reps[1]); \
         line; \
     } else { \
         tprintf2(tb, "%s||%s||%s||%s||%d||%d||%s",      \
             api_str, perms_str, #function, "FAILED", (int) reps[0], (int) reps[1], state_msg); \
+=======
+        tprintf2(tb, "%s||%s||%s||%s||%d||%d||-", api_str, perms_str, #function, "OK", (int) reps[0], (int) reps[1]); \
+        line; \
+    } else { \
+        tprintf2(tb, "%s||%s||%s||%s||%d||%d||%s", api_str, perms_str, #function, "FAILED", (int) reps[0], (int) reps[1], state_msg); \
+>>>>>>> 01c3b92561810f227de304493debf53da321324a
     }
 
     ht(  68, -1,  0, -1, HSMP_TEST                      ,);
