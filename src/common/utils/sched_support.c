@@ -235,7 +235,7 @@ void remove_local_barrier(char *file)
 int32_t parse_range_list(const char *source, range_def_t **range_list)
 {
     //if there's nothing on the string, return 0 total parsed
-    if (source[0] == '\0') return 0; 
+    if (source == NULL || source[0] == '\0') return 0; 
 
     int32_t num_parsed = 1;
     range_def_t *first_range = calloc(num_parsed, sizeof(range_def_t));
@@ -402,26 +402,6 @@ next:
     return num_parsed;
 }
 
-/* Returns the difference in magnitude for two different numbers.
- * It is used to know how many 0s to the left "small" has to have to be the same width as "big".
- * ex: 9 and 999 returns 2 (009 has the same width as 999)
- *     564 and 999 returns 0 (already same width)
- */
-int32_t difference_in_units(int32_t small, int32_t big)
-{
-    int32_t difference = 0;
-
-    //this is so 0 and 9 return 0, not 1. 
-    if (small == 0) small++; 
-
-    while (big) {
-        if (small == 0) difference++;
-        small /= 10;
-        big /= 10;
-    }
-    return difference;
-}
-
 /* 
  * -base: the previously-processed ranges. ex: island[0-9]rack[0-9]node[1-10] -> when processing the range containing
  *      "node", base will be "islandNrackM".
@@ -431,7 +411,7 @@ int32_t difference_in_units(int32_t small, int32_t big)
  *      repeatedly call strlen which gets increasingly slower as the string grows
  * -buffer: where the final string is stored
  *
- *  Returns 0 if successful, returns the number of nodes that could not be fit into buffer. 
+ *  Returns 0 if successful, if it fails it returns the number of nodes that could not be fit into buffer. 
  */
 int32_t concat_range(char *base, range_def_t *cr, size_t max_size, size_t *current_size, char buffer[max_size])
 {

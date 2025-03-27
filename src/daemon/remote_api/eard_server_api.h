@@ -18,6 +18,7 @@
 #include <sys/socket.h>
 
 #include <common/messaging/msg_conf.h>
+#include <common/types/configuration/cluster_conf.h>
 
 
 void propagate_req(request_t *command, uint port);

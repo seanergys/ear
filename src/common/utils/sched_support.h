@@ -39,6 +39,11 @@ int32_t expand_list(const char *source, size_t target_length, char target[target
  */
 int32_t expand_list_alloc(const char *source, char **target);
 
+/* Given a range_def_t cr, a base (should be empty, i.e. "" in the first call), a max_buffer size and a buffer,
+ * puts all the nodes expanded in the final form (node0island0,node1island0,etc) separated by a comma into buffer.
+ * Ths size of the final string is stored in current_size.
+ * Returns 0 on success. If it fails, it returns the number of nodes that it could not append */
+int32_t concat_range(char *base, range_def_t *cr, size_t max_size, size_t *current_size, char buffer[max_size]);
 #endif
 
 

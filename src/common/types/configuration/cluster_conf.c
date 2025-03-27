@@ -137,13 +137,174 @@ int get_num_nodes(cluster_conf_t *my_conf)
 
 }
 
+static void _add_ips_and_names_from_range(char *base, range_def_t *r, int32_t **ips, int32_t *num_ips, char ***names, cluster_conf_t *conf)
+{
+    char buff[1024] = { 0 };
+    char second_buff[1024] = { 0 };
+    if (r == NULL) {
+        // store the ip
+        *ips = realloc(*ips, ((*num_ips) + 1) * (sizeof(int32_t)));
+        int32_t *aux_ptr = *ips;
+        aux_ptr[*num_ips] = get_ip(buff, conf);
+
+        // store the hostname
+        *names = realloc(*names, ((*num_ips) + 1) * (sizeof(char *)));
+        char **name_list = *names;
+        name_list[*num_ips] = calloc(strlen(buff)+1, sizeof(char));
+        strcpy(name_list[*num_ips], buff);
+
+        (*num_ips)++;
+    }
+    if (base != NULL) strcpy(buff, base);
+    if (r->numbers_count == 0) { //special case
+        strcat(buff, r->prefix);
+        *ips = realloc(*ips, ((*num_ips) + 1) * (sizeof(int32_t)));
+        int32_t *aux_ptr = *ips;
+        aux_ptr[*num_ips] = get_ip(buff, conf);
+
+        *names = realloc(*names, ((*num_ips) + 1) * (sizeof(char *)));
+        char **name_list = *names;
+        name_list[*num_ips] = calloc(strlen(buff)+1, sizeof(char));
+        strcpy(name_list[*num_ips], buff);
+
+        (*num_ips)++;
+    }
+    for (int32_t i = 0; i < r->numbers_count; i++) {
+        memset(second_buff, 0, sizeof(second_buff));
+        memset(buff, 0, sizeof(buff));
+        if (base != NULL) strcpy(buff, base);
+        pair *aux = &r->numbers[i];
+        /*   1)0-0 if NO numbers had to be set (ideally shouldn't happen and the pointer would be null with no range). cmp2546[] (useless [])
+         *    2)0-N or N-M if BOTH numbers have been set. ex: cmp25[45-47]
+         *    3)N-0 if only ONE number has been set. ex: cmp25[45] 
+         */
+        if (aux->first == 0 && aux->second == 0) {
+            sprintf(second_buff, "%s", r->prefix);
+            strcat(buff, second_buff);
+            _add_ips_and_names_from_range(buff, r->next, ips, num_ips, names, conf);
+        } else if (aux->second == 0) {
+            sprintf(second_buff, "%s", r->prefix);
+            for (int32_t i = 0; i < aux->leading_zeroes; i++) strcat(second_buff, "0");
+            sprintf(&second_buff[strlen(second_buff)], "%d", aux->first);
+            strcat(buff, second_buff);
+            _add_ips_and_names_from_range(buff, r->next, ips, num_ips, names, conf);
+        } else {
+            for (int32_t i = 0; i <= (aux->second-aux->first); i++) {
+                memset(second_buff, 0, sizeof(second_buff));
+                memset(buff, 0, sizeof(second_buff));
+                if (base != NULL) strcpy(buff, base);
+
+                sprintf(second_buff, "%s", r->prefix);
+                int32_t zeroes = aux->leading_zeroes + difference_in_units(aux->first+i, aux->second);
+                for (int32_t j = 0; j < zeroes; j++) strcat(second_buff, "0");
+                sprintf(&second_buff[strlen(second_buff)], "%d", aux->first+i);
+                strcat(buff, second_buff);
+                _add_ips_and_names_from_range(buff, r->next, ips, num_ips, names, conf);
+            }
+        }
+    }
+}
+
+int get_ip_and_names_from_ranges(cluster_conf_t *my_conf, int **num_ips, int ***ips, char ****names)
+{
+#warning PENDING_TO_TEST
+    int i, j;
+    int **aux_ips;
+    char ***aux_names;
+    int *ip_counter;
+    int total_ranges = 0;
+    int current_range = 0;
+    //get total number of ranges
+    for (i = 0; i < my_conf->num_islands; i++)
+        total_ranges += my_conf->islands[i].num_ranges;
+
+    if (total_ranges < 1)
+    {
+        error("No IP ranges found.");
+        return EAR_ERROR;
+    }
+    //allocate memory for each range of IPs as well as each range's IP counter
+    ip_counter = calloc(total_ranges, sizeof(int));
+    aux_ips = calloc(total_ranges, sizeof(int*));
+    aux_names = calloc(total_ranges, sizeof(char **));
+
+    for (i = 0; i < my_conf->num_islands; i++)
+    {
+        for (j = 0; j < my_conf->islands[i].num_ranges; j++)
+        {
+            range_def_t range = my_conf->islands[i].ranges[j].range;
+            _add_ips_and_names_from_range("", &range, &aux_ips[current_range], 
+                                               &ip_counter[current_range], &aux_names[current_range], my_conf);
+            current_range++;
+        }
+    }
+    *ips = aux_ips;
+    *num_ips = ip_counter;
+    *names = aux_names;
+
+    return total_ranges;
+}
+
+static void _add_ips_from_range(char *base, range_def_t *r, int32_t **ips, int32_t *num_ips, cluster_conf_t *conf)
+{
+    char buff[1024] = { 0 };
+    char second_buff[1024] = { 0 };
+    if (r == NULL) {
+        *ips = realloc(*ips, ((*num_ips) + 1) * (sizeof(int32_t)));
+        int32_t *aux_ptr = *ips;
+        aux_ptr[*num_ips] = get_ip(buff, conf);
+        (*num_ips)++;
+    }
+    if (base != NULL) strcpy(buff, base);
+    if (r->numbers_count == 0) { //special case
+        strcat(buff, r->prefix);
+        *ips = realloc(*ips, ((*num_ips) + 1) * (sizeof(int32_t)));
+        int32_t *aux_ptr = *ips;
+        aux_ptr[*num_ips] = get_ip(buff, conf);
+        (*num_ips)++;
+    }
+    for (int32_t i = 0; i < r->numbers_count; i++) {
+        memset(second_buff, 0, sizeof(second_buff));
+        memset(buff, 0, sizeof(buff));
+        if (base != NULL) strcpy(buff, base);
+        pair *aux = &r->numbers[i];
+        /*   1)0-0 if NO numbers had to be set (ideally shouldn't happen and the pointer would be null with no range). cmp2546[] (useless [])
+         *    2)0-N or N-M if BOTH numbers have been set. ex: cmp25[45-47]
+         *    3)N-0 if only ONE number has been set. ex: cmp25[45] 
+         */
+        if (aux->first == 0 && aux->second == 0) {
+            sprintf(second_buff, "%s", r->prefix);
+            strcat(buff, second_buff);
+            _add_ips_from_range(buff, r->next, ips, num_ips, conf);
+        } else if (aux->second == 0) {
+            sprintf(second_buff, "%s", r->prefix);
+            for (int32_t i = 0; i < aux->leading_zeroes; i++) strcat(second_buff, "0");
+            sprintf(&second_buff[strlen(second_buff)], "%d", aux->first);
+            strcat(buff, second_buff);
+            _add_ips_from_range(buff, r->next, ips, num_ips, conf);
+        } else {
+            for (int32_t i = 0; i <= (aux->second-aux->first); i++) {
+                memset(second_buff, 0, sizeof(second_buff));
+                memset(buff, 0, sizeof(second_buff));
+                if (base != NULL) strcpy(buff, base);
+
+                sprintf(second_buff, "%s", r->prefix);
+                int32_t zeroes = aux->leading_zeroes + difference_in_units(aux->first+i, aux->second);
+                for (int32_t j = 0; j < zeroes; j++) strcat(second_buff, "0");
+                sprintf(&second_buff[strlen(second_buff)], "%d", aux->first+i);
+                strcat(buff, second_buff);
+                _add_ips_from_range(buff, r->next, ips, num_ips, conf);
+            }
+        }
+    }
+}
+
 int get_ip_ranges(cluster_conf_t *my_conf, int **num_ips, int ***ips)
 {
-    int i, j, k;
+#warning PENDING_TO_TEST
+    int i, j;
     int **aux_ips;
-    int *sec_aux_ips;
     int *ip_counter;
-    char aux_name[256];
     int total_ranges = 0;
     int current_range = 0;
     //get total number of ranges
@@ -163,43 +324,8 @@ int get_ip_ranges(cluster_conf_t *my_conf, int **num_ips, int ***ips)
     {
         for (j = 0; j < my_conf->islands[i].num_ranges; j++)
         {
-            node_range_t range = my_conf->islands[i].ranges[j];
-            if (range.end == -1)
-            {
-                sprintf(aux_name, "%s", range.prefix);
-                sec_aux_ips = calloc(1, sizeof(int));
-                sec_aux_ips[0] = get_ip(aux_name, my_conf);
-                aux_ips[current_range] = sec_aux_ips;
-                ip_counter[current_range] = 1;
-                current_range++;
-                continue;
-            }
-            if (range.end == range.start)
-            {
-                sprintf(aux_name, "%s%u", range.prefix, range.start);
-                sec_aux_ips = calloc(1, sizeof(int));
-                sec_aux_ips[0] = get_ip(aux_name, my_conf);
-                aux_ips[current_range] = sec_aux_ips;
-                ip_counter[current_range] = 1;
-                current_range++;
-                continue;
-            }
-
-            int total_ips = range.end-range.start + 1;
-            int it = 0;
-            sec_aux_ips = calloc(total_ips, sizeof(int));
-            for (k = range.start; k <= range.end; k++)
-            {
-                if (is_smaller_unit(k, range.end))
-                    sprintf(aux_name, "%s0%u", range.prefix, k);
-                else
-                    sprintf(aux_name, "%s%u", range.prefix, k);
-
-                sec_aux_ips[it] = get_ip(aux_name, my_conf);
-                it ++;
-            }
-            aux_ips[current_range] = sec_aux_ips;
-            ip_counter[current_range] = it;
+            range_def_t range = my_conf->islands[i].ranges[j].range;
+            _add_ips_from_range("", &range, &aux_ips[current_range], &ip_counter[current_range], my_conf);
             current_range++;
         }
     }
@@ -207,55 +333,21 @@ int get_ip_ranges(cluster_conf_t *my_conf, int **num_ips, int ***ips)
     *num_ips = ip_counter;
 
     return total_ranges;
-
 }
 
 int get_range_ips(cluster_conf_t *my_conf, char *nodename, int **ips)
 {
-    int i, j, range_idx;
-    int *aux_ips;
-    char aux_name[256];
+#warning PENDING_TO_TEST
+    int i, range_idx;
+    int32_t total_ips = 0;
     for (i = 0; i < my_conf->num_islands; i++)
     {
         range_idx = island_range_conf_contains_node(&my_conf->islands[i], nodename);
         if (range_idx < 0) continue;
 
-        node_range_t range = my_conf->islands[i].ranges[range_idx];
-        if (range.end == -1)
-        {
-            sprintf(aux_name, "%s", range.prefix);
-            aux_ips = calloc(1, sizeof(int));
-            aux_ips[0] = get_ip(aux_name, my_conf);
-            *ips = aux_ips;
-            return 1;
-        }
-        if (range.end == range.start)
-        {
-            sprintf(aux_name, "%s%u", range.prefix, range.start);
-            aux_ips = calloc(1, sizeof(int));
-            aux_ips[0] = get_ip(aux_name, my_conf);
-            *ips = aux_ips;
-            return 1;
-        }
+        range_def_t range = my_conf->islands[i].ranges[range_idx].range;
 
-        int total_ips = range.end-range.start + 1;
-        int it = 0;
-        aux_ips = calloc(total_ips, sizeof(int));
-        for (j = range.start; j <= range.end ; j++)
-        {
-            if (j < 10 && range.end > 100)
-                sprintf(aux_name, "%s00%u", range.prefix, j);
-            else if (j < 10 && range.end > 10)
-                sprintf(aux_name, "%s0%u", range.prefix, j);
-            else if (j < 100 && range.end > 100)
-                sprintf(aux_name, "%s0%u", range.prefix, j);
-            else
-                sprintf(aux_name, "%s%u", range.prefix, j);
-
-            aux_ips[it] = get_ip(aux_name, my_conf);
-            it ++;
-        }
-        *ips = aux_ips;
+        _add_ips_from_range("", &range, ips, &total_ips, my_conf);
         return total_ips;
     }
 

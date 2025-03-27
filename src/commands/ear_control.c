@@ -85,11 +85,10 @@ int no_error = 0;
 
 void fill_ip(char *buff, ip_table_t *table)
 {
-	struct addrinfo hints;
+	struct addrinfo hints = { 0 };
 	struct addrinfo *result, *rp;
 	int s;
 
-	memset(&hints, 0, sizeof(struct addrinfo));
 	hints.ai_family = AF_UNSPEC;    /* Allow IPv4 or IPv6 */
 	hints.ai_socktype = SOCK_STREAM; /* STREAM socket */
 	hints.ai_protocol = 0;          /* Any protocol */
@@ -139,39 +138,38 @@ int generate_node_names_from_list(cluster_conf_t *my_cluster_conf, ip_table_t **
 
 int generate_node_names(cluster_conf_t *my_cluster_conf, ip_table_t **ips)
 {
-    int k, n;
-    unsigned int i, j;
     char node_name[256];
-    int num_ips = 0;
     ip_table_t *new_ips = NULL;
-    int tag_id = 0;
-    int default_tag = get_default_tag_id(my_cluster_conf);
-    for (i = 0; i < my_cluster_conf->num_islands; i++){
-        for (j = 0; j < my_cluster_conf->islands[i].num_ranges; j++)
+    int32_t num_ips = 0; //ip table
+    int32_t default_tag = get_default_tag_id(my_cluster_conf);
+
+    // to be read from cluster_conf in get_ip_and_names_from_ranges
+    char ***hostnames = NULL;
+    int32_t **ip_ints = NULL;
+    int32_t *num_ip_ints = NULL;
+
+    get_ip_and_names_from_ranges(my_cluster_conf, &num_ip_ints, &ip_ints, &hostnames);
+
+    for (uint32_t i = 0; i < my_cluster_conf->num_islands; i++){
+        for (uint32_t j = 0; j < my_cluster_conf->islands[i].num_ranges; j++)
         {   
-            for (k = my_cluster_conf->islands[i].ranges[j].start; k <= my_cluster_conf->islands[i].ranges[j].end; k++)
-            {   
-                if (k == -1) 
-                    sprintf(node_name, "%s", my_cluster_conf->islands[i].ranges[j].prefix);
-                else if (my_cluster_conf->islands[i].ranges[j].end == my_cluster_conf->islands[i].ranges[j].start)
-                    sprintf(node_name, "%s%u", my_cluster_conf->islands[i].ranges[j].prefix, k); 
-                else {
-                    if (k < 10 && my_cluster_conf->islands[i].ranges[j].end > 10) 
-                        sprintf(node_name, "%s0%u", my_cluster_conf->islands[i].ranges[j].prefix, k); 
-                    else 
-                        sprintf(node_name, "%s%u", my_cluster_conf->islands[i].ranges[j].prefix, k); 
-                }   
+            int32_t tag_id = 0;
+
+            for (int32_t n = 0; n < my_cluster_conf->islands[i].ranges[j].num_tags; n++) {
+                tag_id = tag_id_exists(my_cluster_conf, my_cluster_conf->islands[i].specific_tags[my_cluster_conf->islands[i].ranges[j].specific_tags[n]]);
+                if (tag_id >= 0) {
+                    break;
+                }
+            }
+            if (tag_id < 0) {
+                tag_id = default_tag;
+            }
+
+            for (int32_t k = 0; k < num_ip_ints[j]; k++) {
+
                 new_ips = realloc(new_ips, sizeof(ip_table_t)*(num_ips+1));
-                strcpy(new_ips[num_ips].name, node_name);
-                for (n = 0; n < my_cluster_conf->islands[i].ranges[j].num_tags; n++) {
-                    tag_id = tag_id_exists(my_cluster_conf, my_cluster_conf->islands[i].specific_tags[my_cluster_conf->islands[i].ranges[j].specific_tags[n]]);
-                    if (tag_id >= 0) {
-                        break;
-                    }
-                }
-                if (tag_id < 0) {
-                    tag_id = default_tag;
-                }
+                strcpy(new_ips[num_ips].name, hostnames[j][k]);
+                new_ips[num_ips].ip_int = ip_ints[j][k];
 
                 if (tag_id >= 0) { //still need to check
                     new_ips[num_ips].max_power = my_cluster_conf->tags[tag_id].error_power;
@@ -182,6 +180,7 @@ int generate_node_names(cluster_conf_t *my_cluster_conf, ip_table_t **ips)
                 if (strlen(my_cluster_conf->net_ext) > 0)
                     strcat(node_name, my_cluster_conf->net_ext);
 
+#warning Call to fill_ip may be a bit redundant
                 fill_ip(node_name, &new_ips[num_ips]);
                 num_ips++;
             }
@@ -292,35 +291,35 @@ void print_ips(ip_table_t *ips, int num_ips, char mode)
 
 void usage(char *app)
 {
-	printf("Usage: %s [options]"\
-			"\nCOMMANDS"
-			"\n\t--status \t\t\t\t->requests the current status for all nodes. The ones responding show the current "\
-			"\n\t\t\t\t\t\t\tpower, IP address and policy configuration. A list with the ones not"\
-			"\n\t\t\t\t\t\t\tresponding is provided with their hostnames and IP address."\
-			"\n\t\t\t\t\t\t\t--status=node_name retrieves the status of that node individually."\
-			"\n\t--type \t\t[status_type]\t\t->specifies what type of status will be requested: hardware,"\
-			"\n\t\t\t\t\t\t\tpolicy, full (hardware+policy), app_node, app_master, eardbd, eargm or power. [default:hardware]"\
-			"\n\t--power \t\t\t\t->requests the current power for the cluster. "\
-			"\n\t\t\t\t\t\t\t--power=node_name retrieves the current power of that node individually."\
-			"\n\t--ping	\t\t\t\t->pings all nodes to check whether the nodes are up or not. Additionally,"\
-			"\n\t\t\t\t\t\t\t--ping=node_name pings that node individually."\
-			"\n\t--set-freq \t[newfreq]\t\t->sets the frequency of all nodes to the requested one"\
-			"\n\t--set-def-freq \t[newfreq]  [pol_name]\t->sets the default frequency for the selected policy "\
-			"\n\t--set-max-freq \t[newfreq]\t\t->sets the maximum frequency"\
-			"\n\t--set-powercap \t[new_cap]\t\t->sets the powercap of all nodes to the given value. A node can be specified"\
-			"\n\t\t\t\t\t\t\t after the value to only target said node."\
-			"\n\t--restore-conf \t\t\t\t->restores the configuration for all nodes"\
+    printf("Usage: %s [options]"\
+            "\nCOMMANDS"
+            "\n\t--status \t\t\t\t->requests the current status for all nodes. The ones responding show the current "\
+            "\n\t\t\t\t\t\t\tpower, IP address and policy configuration. A list with the ones not"\
+            "\n\t\t\t\t\t\t\tresponding is provided with their hostnames and IP address."\
+            "\n\t\t\t\t\t\t\t--status=node_name retrieves the status of that node individually."\
+            "\n\t--type \t\t[status_type]\t\t->specifies what type of status will be requested: hardware,"\
+            "\n\t\t\t\t\t\t\tpolicy, full (hardware+policy), app_node, app_master, eardbd, eargm or power. [default:hardware]"\
+            "\n\t--power \t\t\t\t->requests the current power for the cluster. "\
+            "\n\t\t\t\t\t\t\t--power=node_name retrieves the current power of that node individually."\
+            "\n\t--ping	\t\t\t\t->pings all nodes to check whether the nodes are up or not. Additionally,"\
+            "\n\t\t\t\t\t\t\t--ping=node_name pings that node individually."\
+            "\n\t--set-freq \t[newfreq]\t\t->sets the frequency of all nodes to the requested one"\
+            "\n\t--set-def-freq \t[newfreq]  [pol_name]\t->sets the default frequency for the selected policy "\
+            "\n\t--set-max-freq \t[newfreq]\t\t->sets the maximum frequency"\
+            "\n\t--set-powercap \t[new_cap]\t\t->sets the powercap of all nodes to the given value. A node can be specified"\
+            "\n\t\t\t\t\t\t\t after the value to only target said node."\
+            "\n\t--restore-conf \t\t\t\t->restores the configuration for all nodes"\
 
-			"\n\nMODIFIERS"
-			"\n\t--hosts \t[hostlist]\t\t->sends the command only to the specified hosts. "\
-			"\n\t--domain [domain:target]\t\t->sends the requested command to the requested targets, effectively filtering"\
-			"\n\t\t\t\t\t\t\twhich nodes receive the message. Available domains are: tag, node, subcluster/eargmid, island."\
-			"\n\t--conf-path \t[path_name]\t\t->specifies the ear.conf path. [default: $EAR_ETC/ear/ear.conf]"
-			"\n\t--mail [address] \t\t\t->sends the output of the program to address."\
-			"\n\t--active-only \t\t\t\t->supresses inactive nodes from the output in hardware status."\
-			"\n\t--health-check \t\t\t\t->checks all EARDs and EARDBDs for errors and prints all that are unresponsive."\
-			"\n\t--version \t\t\t\t->displays current EAR version."\
-			"\n\n\t--help \t\t\t\t\t->displays this message.", app);
+            "\n\nMODIFIERS"
+            "\n\t--hosts \t[hostlist]\t\t->sends the command only to the specified hosts. "\
+            "\n\t--domain [domain:target]\t\t->sends the requested command to the requested targets, effectively filtering"\
+            "\n\t\t\t\t\t\t\twhich nodes receive the message. Available domains are: tag, node, subcluster/eargmid, island."\
+            "\n\t--conf-path \t[path_name]\t\t->specifies the ear.conf path. [default: $EAR_ETC/ear/ear.conf]"
+            "\n\t--mail [address] \t\t\t->sends the output of the program to address."\
+            "\n\t--active-only \t\t\t\t->supresses inactive nodes from the output in hardware status."\
+            "\n\t--health-check \t\t\t\t->checks all EARDs and EARDBDs for errors and prints all that are unresponsive."\
+            "\n\t--version \t\t\t\t->displays current EAR version."\
+            "\n\n\t--help \t\t\t\t\t->displays this message.", app);
 #if EXT_OPT
     printf(""\
             "\n\t--reset-powercap\t\t\t->Resets the powercap value of all nodes to their default one."\
@@ -740,63 +739,63 @@ void process_single_status(int num_status, status_t *status, char *node_name, ch
 #define MAX_DOMAIN_LEN 128
 void _parse_domain(const char *optarg, char ***hosts, int32_t *num_hosts, cluster_conf_t *conf)
 {
-	char domain_type[MAX_DOMAIN_LEN] = { 0 };
-	char domain_name[MAX_DOMAIN_LEN] = { 0 };
+    char domain_type[MAX_DOMAIN_LEN] = { 0 };
+    char domain_name[MAX_DOMAIN_LEN] = { 0 };
 
-	char *current_ptr = domain_type;
-	int32_t current_pos = 0;
+    char *current_ptr = domain_type;
+    int32_t current_pos = 0;
 
-	while (*optarg) {
-		if (*optarg == ':') {
-			current_ptr = domain_name;
-			current_pos = 0;
-		} else {
-			if (current_pos >= MAX_DOMAIN_LEN) {
-				printf("Error: domain type or name cannot be longer than %d characters\n", MAX_DOMAIN_LEN);
-				if (!strcasecmp(domain_type, "NODE")) {
-					printf("For domain \"node\" the preferred option is the --hosts argument, which accepts a list of unlimited length\n");
-				}
-				exit(0);
-			}
-			current_ptr[current_pos] = *optarg;
-			current_pos++;
-		}
-		optarg++;
-	}
+    while (*optarg) {
+        if (*optarg == ':') {
+            current_ptr = domain_name;
+            current_pos = 0;
+        } else {
+            if (current_pos >= MAX_DOMAIN_LEN) {
+                printf("Error: domain type or name cannot be longer than %d characters\n", MAX_DOMAIN_LEN);
+                if (!strcasecmp(domain_type, "NODE")) {
+                    printf("For domain \"node\" the preferred option is the --hosts argument, which accepts a list of unlimited length\n");
+                }
+                exit(0);
+            }
+            current_ptr[current_pos] = *optarg;
+            current_pos++;
+        }
+        optarg++;
+    }
 
-	debug("domain type %s domain name %s\n", domain_type, domain_name);
+    debug("domain type %s domain name %s\n", domain_type, domain_name);
 
-	if (!strcasecmp(domain_type, "NODE")) {
-		str_cut_list(domain_name, hosts, num_hosts, ",");
-		return;
-	} else if (!strcasecmp(domain_type, "SUBCLUSTER") || !strcasecmp(domain_type, "EARGMID")) {
-		eargm_def_t tmp = { 0 };
-		tmp.id = atoi(domain_name);
-		remove_islands_by_eargm(conf, &tmp);
-		return;
-	} else if (!strcasecmp(domain_type, "ISLAND")) {
-		int32_t island_id = atoi(domain_name);
-		remove_islands_by_island_id(conf, island_id);
-		return;
-	} else if (!strcasecmp(domain_type, "TAG")) {
-		remove_islands_by_tag(conf, domain_name);
-		return;
-	} else {
-		printf("Error: domain type \"%s\" not supported\n", domain_type);
-		exit(0);
-	}
+    if (!strcasecmp(domain_type, "NODE")) {
+        str_cut_list(domain_name, hosts, num_hosts, ",");
+        return;
+    } else if (!strcasecmp(domain_type, "SUBCLUSTER") || !strcasecmp(domain_type, "EARGMID")) {
+        eargm_def_t tmp = { 0 };
+        tmp.id = atoi(domain_name);
+        remove_islands_by_eargm(conf, &tmp);
+        return;
+    } else if (!strcasecmp(domain_type, "ISLAND")) {
+        int32_t island_id = atoi(domain_name);
+        remove_islands_by_island_id(conf, island_id);
+        return;
+    } else if (!strcasecmp(domain_type, "TAG")) {
+        remove_islands_by_tag(conf, domain_name);
+        return;
+    } else {
+        printf("Error: domain type \"%s\" not supported\n", domain_type);
+        exit(0);
+    }
 
 }
 
 int main(int argc, char *argv[])
 {
-	int c = 0;
-	int num_status = 0;
-	int status_type = 0;
-	int mail_fd = -1;
-	int num_nodes = 0;
-	long set_limit = -2;
-	bool send_message = false;
+    int c = 0;
+    int num_status = 0;
+    int status_type = 0;
+    int mail_fd = -1;
+    int num_nodes = 0;
+    long set_limit = -2;
+    bool send_message = false;
 
 
     char get_power = 0;
@@ -835,44 +834,44 @@ int main(int argc, char *argv[])
         exit(1); //error
     }
 
-	int option_idx = 0;
-	static struct option long_options[] = {
-		{"set-freq",     	required_argument, 0, 0},
-		{"red-def-freq", 	required_argument, 0, 1},
-		{"set-max-freq", 	required_argument, 0, 2},
-		{"inc-th",       	required_argument, 0, 3},
-		{"set-def-freq", 	required_argument, 0, 4},
-		{"set-th",          required_argument, 0, 5},
-		{"hosts",           required_argument, 0, 6},
-		{"restore-conf", 	optional_argument, 0, 7},
-		{"ping", 	     	optional_argument, 0, 'p'},
-		{"status",       	optional_argument, 0, 's'},
-		{"powerstatus",     optional_argument, 0, 'w'},
-		{"power",           optional_argument, 0, 'g'},
-		{"release",         optional_argument, 0, 'l'},
-		{"set-risk",        required_argument, 0, 'r'},
-		{"setopt",          required_argument, 0, 'o'},
-		{"type",            required_argument, 0, 't'},
-		{"set-powercap",    required_argument, 0, 'c'},
-		{"reset-powercap",  required_argument, 0, 'x'},
-		{"inc-powercap",    required_argument, 0, 'i'},
-		{"red-powercap",    required_argument, 0, 'd'},
-		{"domain",          required_argument, 0, 'D'},
-		{"mail",            required_argument, 0, 'm'},
-		{"send-message",    required_argument, 0, 'M'},
-		{"conf-path",       required_argument, 0, 'a'},
-		{"verbose",         optional_argument, 0, 'b'},
-		{"error",           no_argument, 0, 'e'},
-		{"health-check",    no_argument, 0, 'k'},
-		{"active-only",     no_argument, 0, 'y'},
-		{"help",         	no_argument, 0, 'h'},
-		{"version",         no_argument, 0, 'v'},
-		{0, 0, 0, 0}
-	};
-	while (1)
-	{
+    int option_idx = 0;
+    static struct option long_options[] = {
+        {"set-freq",     	required_argument, 0, 0},
+        {"red-def-freq", 	required_argument, 0, 1},
+        {"set-max-freq", 	required_argument, 0, 2},
+        {"inc-th",       	required_argument, 0, 3},
+        {"set-def-freq", 	required_argument, 0, 4},
+        {"set-th",          required_argument, 0, 5},
+        {"hosts",           required_argument, 0, 6},
+        {"restore-conf", 	optional_argument, 0, 7},
+        {"ping", 	     	optional_argument, 0, 'p'},
+        {"status",       	optional_argument, 0, 's'},
+        {"powerstatus",     optional_argument, 0, 'w'},
+        {"power",           optional_argument, 0, 'g'},
+        {"release",         optional_argument, 0, 'l'},
+        {"set-risk",        required_argument, 0, 'r'},
+        {"setopt",          required_argument, 0, 'o'},
+        {"type",            required_argument, 0, 't'},
+        {"set-powercap",    required_argument, 0, 'c'},
+        {"reset-powercap",  required_argument, 0, 'x'},
+        {"inc-powercap",    required_argument, 0, 'i'},
+        {"red-powercap",    required_argument, 0, 'd'},
+        {"domain",          required_argument, 0, 'D'},
+        {"mail",            required_argument, 0, 'm'},
+        {"send-message",    required_argument, 0, 'M'},
+        {"conf-path",       required_argument, 0, 'a'},
+        {"verbose",         optional_argument, 0, 'b'},
+        {"error",           no_argument, 0, 'e'},
+        {"health-check",    no_argument, 0, 'k'},
+        {"active-only",     no_argument, 0, 'y'},
+        {"help",         	no_argument, 0, 'h'},
+        {"version",         no_argument, 0, 'v'},
+        {0, 0, 0, 0}
+    };
+    while (1)
+    {
 
-		c = getopt_long(argc, argv, "p::shvb::M:", long_options, &option_idx);
+        c = getopt_long(argc, argv, "p::shvb::M:", long_options, &option_idx);
 
         if (c == -1)
             break;
@@ -1119,10 +1118,10 @@ int main(int argc, char *argv[])
                 break;
             case 'e':
                 if (state_fail(ear_get_status(&my_cluster_conf, &status, &num_status, NULL, 0))) {
-					printf("Error retrieving status\n");
-				} else {
-                	process_status(num_status, status, 1, NULL, 0);
-				}
+                    printf("Error retrieving status\n");
+                } else {
+                    process_status(num_status, status, 1, NULL, 0);
+                }
                 break;
             case 'k':
                 status_type = EAR_TYPE_HEALTH_CHECK;
@@ -1195,9 +1194,9 @@ int main(int argc, char *argv[])
                     }
                 }
                 break;
-			case 'D': //domain
-				_parse_domain(optarg, &nodes, &num_nodes, &my_cluster_conf);
-				break;
+            case 'D': //domain
+                _parse_domain(optarg, &nodes, &num_nodes, &my_cluster_conf);
+                break;
             case 'm':
                 mail = optarg;
                 break;
@@ -1278,17 +1277,17 @@ int main(int argc, char *argv[])
             {
                 case EAR_TYPE_STATUS:
                     if (state_fail(ear_node_get_status(&my_cluster_conf, &status, &num_status))) {
-						printf("Error getting status for node %s\n", node_name);
-					} else {
-                    	process_single_status(num_status, status, node_name, NODE_ONLY);
-					}
+                        printf("Error getting status for node %s\n", node_name);
+                    } else {
+                        process_single_status(num_status, status, node_name, NODE_ONLY);
+                    }
                     break;
                 case EAR_TYPE_POLICY:
                     if (state_fail(ear_nodelist_get_policy_status(&my_cluster_conf, &policystatus, &num_status, &tmp, 1))) { 
-						printf("Error getting status for node %s\n", node_name);
-					} else {
-                    	process_single_policy_status(num_status, policystatus, node_name);
-					}
+                        printf("Error getting status for node %s\n", node_name);
+                    } else {
+                        process_single_policy_status(num_status, policystatus, node_name);
+                    }
                     break;
 #if 0
                 case EAR_TYPE_FULL_STATUS:
@@ -1300,24 +1299,24 @@ int main(int argc, char *argv[])
                 case EAR_TYPE_POWER_STATUS:
                     printf("Reading power_status from node %s\n", node_name);
                     if (state_fail(ear_node_get_powercap_status(&my_cluster_conf, &powerstatus, 0))) {
-						printf("Error getting status for node %s\n", node_name);
-					} else {
-                    	process_powercap_status(powerstatus, num_status);
-					}
+                        printf("Error getting status for node %s\n", node_name);
+                    } else {
+                        process_powercap_status(powerstatus, num_status);
+                    }
                     break;
                 case EAR_TYPE_APP_STATUS_MASTER:
                     if (state_fail(ear_node_get_app_master_status(&my_cluster_conf, &appstatus, &num_status))) {
-						printf("Error retrieving app status\n");
-					} else {
-                    	process_app_status(num_status, appstatus, 1);
-					}
+                        printf("Error retrieving app status\n");
+                    } else {
+                        process_app_status(num_status, appstatus, 1);
+                    }
                     break;
                 case EAR_TYPE_APP_STATUS_NODE:
                     if (state_fail(ear_node_get_app_node_status(&my_cluster_conf, &appstatus, &num_status))) {
-						printf("Error retrieving app status\n");
-					} else {
-                    	process_app_status(num_status, appstatus, 0);
-					}
+                        printf("Error retrieving app status\n");
+                    } else {
+                        process_app_status(num_status, appstatus, 0);
+                    }
                     break;
                 case EAR_TYPE_EARDBD_STATUS:
                     num_status = eardbd_status(node_name, my_cluster_conf.db_manager.tcp_port, &edbstatus.status);
@@ -1345,17 +1344,17 @@ int main(int argc, char *argv[])
         {
             case EAR_TYPE_STATUS:
                 if (state_fail(ear_get_status(&my_cluster_conf, &status, &num_status, nodes, num_nodes))) {
-					printf("Error retrieving status\n");
-				} else {
-                	process_status(num_status, status, NODE_ONLY, nodes, num_nodes);
-				}
+                    printf("Error retrieving status\n");
+                } else {
+                    process_status(num_status, status, NODE_ONLY, nodes, num_nodes);
+                }
                 break;
             case EAR_TYPE_POLICY:
                 if (state_fail(ear_get_policy_status(&my_cluster_conf, &policystatus, &num_status, nodes, num_nodes))) {
-					printf("Error retrieving status\n");
-				} else {
-                	process_policy_status(num_status, policystatus);
-				}
+                    printf("Error retrieving status\n");
+                } else {
+                    process_policy_status(num_status, policystatus);
+                }
                 break;
 #if 0
             case EAR_TYPE_FULL_STATUS:
@@ -1365,24 +1364,24 @@ int main(int argc, char *argv[])
 #endif
             case EAR_TYPE_POWER_STATUS:
                 if(state_fail(ear_get_powercap_status(&my_cluster_conf, &powerstatus, 0, nodes, num_nodes))) {
-					printf("Error retrieving powercap status\n");
-				} else {
-                	process_powercap_status(powerstatus,num_status);
-				}
+                    printf("Error retrieving powercap status\n");
+                } else {
+                    process_powercap_status(powerstatus,num_status);
+                }
                 break;
             case EAR_TYPE_APP_STATUS_MASTER:
                 if (state_fail(ear_get_app_master_status(&my_cluster_conf, &appstatus, &num_status, nodes, num_nodes))) {
-					printf("Error retrieving status\n");
-				} else {
-                	process_app_status(num_status, appstatus, 1);
-				}
+                    printf("Error retrieving status\n");
+                } else {
+                    process_app_status(num_status, appstatus, 1);
+                }
                 break;
             case EAR_TYPE_APP_STATUS_NODE:
                 if (state_fail(ear_get_app_node_status(&my_cluster_conf, &appstatus, &num_status, nodes, num_nodes))) {
-					printf("Error retrieving status\n");
-				} else {
-                	process_app_status(num_status, appstatus, 0);
-				}
+                    printf("Error retrieving status\n");
+                } else {
+                    process_app_status(num_status, appstatus, 0);
+                }
                 break;
             case EAR_TYPE_EARDBD_STATUS:
                 num_status = eardbd_status_all(&my_cluster_conf, &edbstatus);
@@ -1397,10 +1396,10 @@ int main(int argc, char *argv[])
             case EAR_TYPE_HEALTH_CHECK:
                 printf("---------------------\nINACTIVE NODES\n---------------------\n");
                 if (state_fail(ear_get_status(&my_cluster_conf, &status, &num_status, nodes, num_nodes))) {
-					printf("Error retrieving status\n");
-				} else {
-                	process_status(num_status, status, NODE_ONLY, nodes, num_nodes);
-				}
+                    printf("Error retrieving status\n");
+                } else {
+                    process_status(num_status, status, NODE_ONLY, nodes, num_nodes);
+                }
                 printf("---------------------\nINACTIVE EARDBDS\n---------------------\n");
                 num_status = eardbd_status_all(&my_cluster_conf, &edbstatus);
                 process_eardbd_status(num_status, edbstatus, 1);

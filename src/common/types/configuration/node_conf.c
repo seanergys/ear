@@ -40,7 +40,7 @@ int is_smaller_unit(int small, int big)
  * ex: 9 and 999 returns 2 (009 has the same width as 999)
  *     564 and 999 returns 0 (already same width)
  */
-int32_t _difference_in_units(int32_t small, int32_t big)
+int32_t difference_in_units(int32_t small, int32_t big)
 {
     int32_t difference = 0;
 
@@ -122,7 +122,7 @@ bool _check_range_for_node(char *base, range_def_t *r, char *nodename)
                 if (base != NULL) strcpy(buff, base);
 
                 sprintf(second_buff, "%s", r->prefix);
-                int32_t zeroes = aux->leading_zeroes + _difference_in_units(aux->first+i, aux->second);
+                int32_t zeroes = aux->leading_zeroes + difference_in_units(aux->first+i, aux->second);
                 for (int32_t j = 0; j < zeroes; j++) strcat(second_buff, "0");
                 sprintf(&second_buff[strlen(second_buff)], "%d", aux->first+i);
                 strcat(buff, second_buff);
@@ -134,6 +134,7 @@ bool _check_range_for_node(char *base, range_def_t *r, char *nodename)
 
     return false;
 }
+
 
 int range_conf_contains_node(node_conf_t *node, char *nodename)
 {
@@ -294,7 +295,7 @@ void report_my_node_conf(my_node_conf_t *my_node_conf)
         snprintf(buffer, sizeof(buffer),"error_power %.0lf max_temp %lu \n", my_node_conf->max_error_power, my_node_conf->max_temp);
         printf("%60.60s", buffer);
 
-        snprintf(buffer, sizeof(buffer),"powercap_type %s\n", (my_node_conf->powercap_type == POWERCAP_TYPE_NODE)?"NODE":"JOB");
+        snprintf(buffer, sizeof(buffer),"powercap_type %s\n", (my_node_conf->powercap_type == POWER_CAP_TYPE)?"NODE":"JOB");
         printf("%60.60s", buffer);
 
         snprintf(buffer, sizeof(buffer),"gpu_def_freq %lu / cpu_max_pstate %d / imc_max_pstate %d",

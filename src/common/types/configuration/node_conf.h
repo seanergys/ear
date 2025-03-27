@@ -14,7 +14,6 @@
 #include <common/config.h>
 #include <common/types/generic.h>
 #include <common/types/configuration/policy_conf.h>
-//#include <common/types/configuration/cluster_conf.h>
 
 /**
 * @file node_conf.h
@@ -186,6 +185,6 @@ int is_smaller_unit(int small, int big);
 /** TODO: Declared here because it's used by cluster_conf module. */
 int is_smaller_unit(int small, int big);
 
-
+int32_t difference_in_units(int32_t first, int32_t second);
 #else
 #endif

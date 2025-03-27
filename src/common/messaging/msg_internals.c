@@ -1226,7 +1226,7 @@ request_header_t data_nodelist(request_t *command, cluster_conf_t *my_cluster_co
 
 void send_command_all(request_t command, cluster_conf_t *my_cluster_conf)
 {
-    int i, j,  rc, total_ranges;
+    int i, j, rc, total_ranges;
     int **ips, *ip_counts;
     struct sockaddr_in temp;
     char next_ip[256];

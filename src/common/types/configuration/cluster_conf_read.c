@@ -41,17 +41,11 @@ static void insert_th_policy(cluster_conf_t *conf, char *token, int policy, int 
 }
 #endif
 
+#include <common/utils/sched_support.h>
 static int set_nodes_conf(cluster_conf_t *conf, char *namelist)
 {
-    char *buffer_ptr;
-    char *second_ptr;
-    char *token;
-    char *start;
-    char *next_token;
 
-    start = strtok_r(namelist, "[", &buffer_ptr);
-    token = strtok_r(NULL, ",", &buffer_ptr);
-
+#warning this should be cleaned up, range naming scheme sucks and range_def_t maybe should be a pointer
     conf->nodes = realloc(conf->nodes, sizeof(node_conf_t)*(conf->num_nodes+1));
     if (conf->nodes==NULL){
         error("NULL pointer in set_nodes_conf");
@@ -59,65 +53,22 @@ static int set_nodes_conf(cluster_conf_t *conf, char *namelist)
     }
     memset(&conf->nodes[conf->num_nodes], 0, sizeof(node_conf_t));
 
-    //in this case, only one node is specified in the line
-    if (token == NULL)
-    {
+    range_def_t *aux_range = NULL;
+    int32_t range_count = 0;
 
+    range_count = parse_range_list(namelist, &aux_range);
+
+    for (int32_t i = 0; i < range_count; i++) {
         conf->nodes[conf->num_nodes].range = realloc(conf->nodes[conf->num_nodes].range, sizeof(node_range_t)*(conf->nodes[conf->num_nodes].range_count+1));
-        if (conf->nodes[conf->num_nodes].range==NULL){
+        if (conf->nodes[conf->num_nodes].range == NULL){
             error("NULL pointer in set_nodes_conf for nodes range");
             return 0;
         }
         memset(&conf->nodes[conf->num_nodes].range[conf->nodes[conf->num_nodes].range_count], 0, sizeof(node_range_t));
-        sprintf(conf->nodes[conf->num_nodes].range[conf->nodes[conf->num_nodes].range_count].prefix, "%s", start);
-        conf->nodes[conf->num_nodes].range[conf->nodes[conf->num_nodes].range_count].start =
-            conf->nodes[conf->num_nodes].range[conf->nodes[conf->num_nodes].range_count].end = -1;
-        conf->nodes[conf->num_nodes].range_count++;
-
-        return 1;
-    }
-    //at least one node if we reach this point
-
-    while (token != NULL)
-    {
-
-        conf->nodes[conf->num_nodes].range = realloc(conf->nodes[conf->num_nodes].range, sizeof(node_range_t)*(conf->nodes[conf->num_nodes].range_count+1));
-        if (conf->nodes[conf->num_nodes].range==NULL){
-            error("NULL pointer in set_nodes_conf for nodes range");
-            return 0;
-        }
-        memset(&conf->nodes[conf->num_nodes].range[conf->nodes[conf->num_nodes].range_count], 0, sizeof(node_range_t));
-        sprintf(conf->nodes[conf->num_nodes].range[conf->nodes[conf->num_nodes].range_count].prefix, "%s", start);
-
-        if (strchr(token, ']'))
-        {
-            next_token = strtok_r(NULL, "[", &buffer_ptr);
-            strclean(token, ']');
-        }
-        else next_token = NULL;
-
-        if (strchr(token, '-'))
-        {
-            char *first_token = strtok_r(token, "-", &second_ptr);
-            char *second_token = strtok_r(NULL, "-", &second_ptr);
-            conf->nodes[conf->num_nodes].range[conf->nodes[conf->num_nodes].range_count].start = atoi(first_token);
-            conf->nodes[conf->num_nodes].range[conf->nodes[conf->num_nodes].range_count].end = atoi(second_token);
-
-            if (atoi(first_token) < 10 && atoi(second_token) < 10 && (strchr(first_token, '0') || strchr(second_token, '0')))
-                strcat(conf->nodes[conf->num_nodes].range[conf->nodes[conf->num_nodes].range_count].prefix, "0");
-        }
-        else
-        {
-            conf->nodes[conf->num_nodes].range[conf->nodes[conf->num_nodes].range_count].end =
-                conf->nodes[conf->num_nodes].range[conf->nodes[conf->num_nodes].range_count].start =
-                atoi(token);
-            if (atoi(token) < 10 && strchr(token, '0'))
-                strcat(conf->nodes[conf->num_nodes].range[conf->nodes[conf->num_nodes].range_count].prefix, "0");
-        }
-        token = strtok_r(NULL, ",", &buffer_ptr);
-        if (next_token != NULL) start = next_token;
+        memcpy(&conf->nodes[conf->num_nodes].range[conf->nodes[conf->num_nodes].range_count].range, &aux_range[i], sizeof(range_def_t));
         conf->nodes[conf->num_nodes].range_count++;
     }
+
     return 1;
 }
 #if 0
@@ -143,136 +94,25 @@ static void fill_policies(cluster_conf_t *conf)
     }
 }
 
-static void set_num_zeroes(node_range_t *r, int max_range)
-{
-	int tmp_end = r->end;
-	while (max_range)
-	{
-		if (tmp_end == 0) strcat(r->prefix, "0");
-		tmp_end /= 10;
-		max_range /= 10;
-	}
-}
-
 void generate_node_ranges(node_island_t *island, char *nodelist)
 {
-    char *buffer_ptr;
-    char *second_ptr;
-    char *token;
-    char *start;
-    char *next_token;
-	int i, j;
+#warning this should be cleaned up, range naming scheme sucks and range_def_t maybe should be a pointer
 
-    strclean(nodelist, '\n');
-    start = strtok_r(nodelist, "[", &buffer_ptr);
-    token = strtok_r(NULL, ",", &buffer_ptr);
-    //in this case, no node ranges are specified in the line and they are of the format node1234,node2345,node3456
-    if (token == NULL)
-    {
-        token = strtok_r(start, ",", &buffer_ptr);
-        while (token != NULL)
-        {
-            island->ranges = realloc(island->ranges, sizeof(node_range_t)*(island->num_ranges+1));
-            if (island->ranges==NULL){
-                error("NULL pointer in generate_node_ranges");
-                return;
-            }
-            memset(&island->ranges[island->num_ranges], 0, sizeof(node_range_t));
-            sprintf(island->ranges[island->num_ranges].prefix, "%s", token);
-            island->ranges[island->num_ranges].start = island->ranges[island->num_ranges].end = -1;
-            island->ranges[island->num_ranges].db_ip = island->ranges[island->num_ranges].sec_ip = -1;
-            island->num_ranges++;
-            token = strtok_r(NULL, ",", &buffer_ptr);
-        }
-    }
-    //at least one range if we reach this point
-    int range_count = 0;
-    while (token != NULL)
-    {
-        island->ranges = realloc(island->ranges, sizeof(node_range_t)*(island->num_ranges+range_count+1));
+    range_def_t *aux_range = NULL;
+    int32_t range_count = 0;
+
+    range_count = parse_range_list(nodelist, &aux_range);
+
+    for (int32_t i = 0; i < range_count; i++) {
+        island->ranges = realloc(island->ranges, sizeof(node_range_t)*(island->num_ranges+1));
         if (island->ranges==NULL){
             error("NULL pointer in generate_node_ranges");
             return;
         }
-        memset(&island->ranges[island->num_ranges+range_count], 0, sizeof(node_range_t));
-        strcpy(island->ranges[island->num_ranges+range_count].prefix, start);
-        if (strchr(token, ']'))
-        {
-            next_token = strtok_r(NULL, "[", &buffer_ptr);
-            strclean(token, ']');
-        }
-        else next_token = NULL;
-
-        if (strchr(token, '-')) // contains a range of the type node22[00-22]
-        {
-            char *first_token = strtok_r(token, "-", &second_ptr);
-            char *second_token = strtok_r(NULL, "-", &second_ptr);
-			int r_start = atoi(first_token);
-			int r_end = atoi(second_token);
-			int r_len = ear_min(strlen(first_token), strlen(second_token));
-			int curr_start = r_start;
-			int curr_end = ear_min(r_end, r_start+MAX_RANGE);
-
-			//calculate the number of ranges we need to fit the big range
-			int extra_ranges = ((r_end-r_start)/MAX_RANGE) + 1;
-			//reallocate memory (the +1 from the previous allocation is not taken into account)
-        	island->ranges = realloc(island->ranges, 
-									 sizeof(node_range_t)*(island->num_ranges+range_count+extra_ranges));
-			//set all the ranges' memory to 0
-        	memset(&island->ranges[island->num_ranges+range_count], 0, extra_ranges*sizeof(node_range_t));
-
-			//iterate over the big ranges
-			for (i = 0; i < extra_ranges; i++) {
-        		strncpy(island->ranges[island->num_ranges+range_count+i].prefix, start, strlen(start) + 1); //they all have the same prefix
-            	island->ranges[island->num_ranges+range_count+i].start = curr_start;
-            	island->ranges[island->num_ranges+range_count+i].end = curr_end;
-
-				//check if both tokens contain 0s at the beginning and set them to the prefix if they do
-				for (j = 0; j < r_len; j++) { 
-					if ((first_token[j] == second_token[j]) && (first_token[j]  == '0')) { 
-                		strcat(island->ranges[island->num_ranges+range_count+i].prefix, "0");
-					} else break;
-				}
-
-
-				//add 0s to the prefix if needed
-				set_num_zeroes(&island->ranges[island->num_ranges+range_count+i], r_end);
-            	//if (curr_start < 10 && curr_end < 10 && (strchr(first_token, '0') || strchr(second_token, '0')))
-               	//	strcat(island->ranges[island->num_ranges+range_count+i].prefix, "0");
-				//else if ((curr_start < 10 || curr_end < 10) && (r_end - r_start) > 100 && 
-				//		(strchr(first_token, '0') || strchr(second_token, '0')))
-               	//		strcat(island->ranges[island->num_ranges+range_count+i].prefix, "0");
-
-				//prepare start and end for the next iteration
-				curr_start = curr_end + 1;
-				curr_end = ear_min(r_end, curr_start+MAX_RANGE);
-			}
-           	range_count += extra_ranges; //add the new ranges to the total range count
-        }
-        else //this one contains a single number (ex node22[22])
-        {
-            island->ranges[island->num_ranges+range_count].start = island->ranges[island->num_ranges+range_count].end =
-                atoi(token);
-			//add zeroes to the left of the number, the -1 is to prevent nodes ending with 0 to have an extra character 
-			for (i = 0; i < strlen(token)-1; i++) { 
-				if (token[i] == '0')
-                	strcat(island->ranges[island->num_ranges+range_count].prefix, "0");
-				else break;
-			}
-			
-            //if (atoi(token) < 10 && strchr(token, '0'))
-            //    strcat(island->ranges[island->num_ranges+range_count].prefix, "0");
-            range_count++;
-        }
-        token = strtok_r(NULL, ",", &buffer_ptr);
-        if (next_token != NULL) start = next_token;
+        memset(&island->ranges[island->num_ranges], 0, sizeof(node_range_t));
+        memcpy(&island->ranges[island->num_ranges], &aux_range[i], sizeof(range_def_t));
+        island->num_ranges++;
     }
-
-    for (i = island->num_ranges; i < island->num_ranges + range_count; i++) {
-        island->ranges[i].db_ip = island->ranges[i].sec_ip = -1;
-    }
-
-    island->num_ranges += range_count;
 }
 
 void clean_newlines(char *str)
