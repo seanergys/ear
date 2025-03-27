@@ -61,6 +61,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed typo in cpupow define.
 - Improved CPU governor list message.
 
+## 5.1.7 - 2025-03-27
+
+### Changed
+- Disable the inclusion of configuration files in the ear.conf.
+
 ## [5.1.6] - 2025-03-22
 
 ### Added
