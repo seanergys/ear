@@ -79,7 +79,7 @@ static int gpu_freq_to_pstate(int gpuid,ulong f)
 }
 
 static state_t int_set_powercap_value(ulong limit,ulong *gpu_util);
-static state_t int_set_per_device_powercap_value(ulong *limit, ulong *gpu_util);
+static state_t int_set_per_device_powercap_value(uint32_t *limit, ulong *gpu_util);
 /************************ This function is called by the monitor before the iterative part ************************/
 state_t gpu_pc_thread_init(void *p)
 {
@@ -243,13 +243,13 @@ void plugin_get_settings(domain_settings_t *s)
 	memcpy(s, &settings, sizeof(domain_settings_t));
 }
 
-state_t set_powercap_value(uint pid,uint domain, ulong *limit,ulong *gpu_util)
+state_t set_powercap_value(uint pid, uint32_t domain, uint32_t *limit, uint32_t *gpu_util)
 {
     debug("GPU: powermgr gpu power allocated %lu", *limit);
 	if (domain == LEVEL_NODE || domain == LEVEL_DOMAIN) {
 		default_gpu_pc = *limit;
 		c_status = PC_STATUS_OK;
-		return int_set_powercap_value(*limit, gpu_util);
+		return int_set_powercap_value((ulong)*limit, gpu_util);
 	}
 	else return int_set_per_device_powercap_value(limit, gpu_pc_util);
 }
@@ -287,8 +287,7 @@ state_t restore_powercap()
 	return mgt_gpu_power_cap_set(no_ctx, gpu_pc_curr_power);
 }
 
-static state_t int_set_per_device_powercap_value(ulong *limit, ulong *gpu_util)
-{
+static state_t int_set_per_device_powercap_value(uint32_t *limit, ulong *gpu_util){
 	state_t ret;
 	int i;
 
@@ -298,7 +297,15 @@ static state_t int_set_per_device_powercap_value(ulong *limit, ulong *gpu_util)
 	ret = mgt_gpu_power_cap_set(no_ctx, limit);
 	if (ret == EAR_ERROR) debug("Error setting powercap");
 	for (i=0;i<gpu_pc_num_gpus;i++) {
+		if (limit[i] == POWER_CAP_UNLIMITED) {
+			limit[i] = gpu_pc_max_power[i];
+		}
+		gpu_pc_curr_power[i] = limit[i];
 		debug("GPU: util_gpu[%d]=%lu power_alloc=%lu", i, gpu_util[i], limit[i]);
+	}
+	ret = mgt_gpu_power_cap_set(no_ctx, gpu_pc_curr_power);
+	if (ret == EAR_ERROR) {
+		debug("Error setting powercap");
 	}
 	memcpy(gpu_pc_util, gpu_util, sizeof(ulong)*gpu_pc_num_gpus);
 	debug("%s",COL_CLR);
