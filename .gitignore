@@ -197,6 +197,8 @@ src/tools/metrics_show
 src/tools/list_folders
 src/tools/groups_test
 src/tools/database_size_calculator
+src/tools/enodectl
+src/tools/loops_average
 src/commands/ear-info
 src/tools/node_manager_info
 deployment.sh
@@ -216,3 +218,6 @@ etc/examples/prolog_epilog/list
 
 build-aux
 .deps
+.dirstamp
+src/daemon/app_api/Makefile*
+!src/daemon/app_api/Makefile.am
