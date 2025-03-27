@@ -57,6 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `gpuprof_dcgmi` now filters unsupported events requested.
 
 ### Fixed
+- Fixes related to setting powercap to single devices and domains.
 - Fixed typo in cpupow define.
 - Improved CPU governor list message.
 
