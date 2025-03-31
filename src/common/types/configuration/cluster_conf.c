@@ -141,6 +141,8 @@ static void _add_ips_and_names_from_range(char *base, range_def_t *r, int32_t **
 {
     char buff[1024] = { 0 };
     char second_buff[1024] = { 0 };
+    if (base != NULL) strcpy(buff, base);
+
     if (r == NULL) {
         // store the ip
         *ips = realloc(*ips, ((*num_ips) + 1) * (sizeof(int32_t)));
@@ -154,8 +156,8 @@ static void _add_ips_and_names_from_range(char *base, range_def_t *r, int32_t **
         strcpy(name_list[*num_ips], buff);
 
         (*num_ips)++;
+		return;
     }
-    if (base != NULL) strcpy(buff, base);
     if (r->numbers_count == 0) { //special case
         strcat(buff, r->prefix);
         *ips = realloc(*ips, ((*num_ips) + 1) * (sizeof(int32_t)));
@@ -168,6 +170,7 @@ static void _add_ips_and_names_from_range(char *base, range_def_t *r, int32_t **
         strcpy(name_list[*num_ips], buff);
 
         (*num_ips)++;
+		return;
     }
     for (int32_t i = 0; i < r->numbers_count; i++) {
         memset(second_buff, 0, sizeof(second_buff));
@@ -249,19 +252,21 @@ static void _add_ips_from_range(char *base, range_def_t *r, int32_t **ips, int32
 {
     char buff[1024] = { 0 };
     char second_buff[1024] = { 0 };
+    if (base != NULL) strcpy(buff, base);
     if (r == NULL) {
         *ips = realloc(*ips, ((*num_ips) + 1) * (sizeof(int32_t)));
         int32_t *aux_ptr = *ips;
         aux_ptr[*num_ips] = get_ip(buff, conf);
         (*num_ips)++;
+		return;
     }
-    if (base != NULL) strcpy(buff, base);
     if (r->numbers_count == 0) { //special case
         strcat(buff, r->prefix);
         *ips = realloc(*ips, ((*num_ips) + 1) * (sizeof(int32_t)));
         int32_t *aux_ptr = *ips;
         aux_ptr[*num_ips] = get_ip(buff, conf);
         (*num_ips)++;
+		return;
     }
     for (int32_t i = 0; i < r->numbers_count; i++) {
         memset(second_buff, 0, sizeof(second_buff));
