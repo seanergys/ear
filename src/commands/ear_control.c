@@ -166,6 +166,7 @@ int generate_node_names(cluster_conf_t *my_cluster_conf, ip_table_t **ips)
             }
 
             for (int32_t k = 0; k < num_ip_ints[j]; k++) {
+                strcpy(node_name, hostnames[j][k]);
 
                 new_ips = realloc(new_ips, sizeof(ip_table_t)*(num_ips+1));
                 strcpy(new_ips[num_ips].name, hostnames[j][k]);
