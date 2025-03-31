@@ -122,7 +122,6 @@ struct generr_s {
 #define EAR_BUSY                -10
 #define EAR_MYSQL_ERROR         -14
 #define EAR_MYSQL_STMT_ERROR    -15
-#define EAR_SOCK_OP_ERROR       -18
 #define EAR_SOCK_DISCONNECTED   -20
 #define EAR_NO_RESOURCES        -22 //*
 #define EAR_NOT_FOUND           -23 //*

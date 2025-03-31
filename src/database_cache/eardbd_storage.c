@@ -8,25 +8,23 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-#define SOCKETS_DEBUG 0
-
 #include <database_cache/eardbd.h>
 #include <database_cache/eardbd_body.h>
 #include <database_cache/eardbd_sync.h>
 #include <database_cache/eardbd_signals.h>
 #include <database_cache/eardbd_storage.h>
 #include <report/report.h>
+
 extern report_id_t rid;
 
-
 #if EDB_OFFLINE
-	#define batch_insert_applications(a, b);
-	#define batch_insert_applications_no_mpi(a, b);
-	#define batchh_insert_applications_learning(a, b);
-	#define batch_insert_loops(a, b);
-	#define batch_insert_periodic_metrics(a, b);
-	#define batch_insert_periodic_aggregations(a, b);
-	#define batch_insert_ear_event(a, b);
+	#define batch_insert_applications(a, b)          EAR_SUCCESS
+	#define batch_insert_applications_no_mpi(a, b)   EAR_SUCCESS
+	#define batch_insert_applications_learning(a, b) EAR_SUCCESS
+	#define batch_insert_loops(a, b)                 EAR_SUCCESS
+	#define batch_insert_periodic_metrics(a, b)      EAR_SUCCESS
+	#define batch_insert_periodic_aggregations(a, b) EAR_SUCCESS
+	#define batch_insert_ear_event(a, b)             EAR_SUCCESS
 #else
 	#define batch_insert_applications(a, b)          report_applications(&rid, a, b);
 	#define batch_insert_applications_no_mpi(a, b)   report_applications(&rid, a, b);
@@ -85,9 +83,9 @@ extern uint   samples_count[EDB_NTYPES];
 // Sockets info
 extern uint sockets_accepted;
 extern uint sockets_online;
-extern uint sockets_disconnected;
-extern uint sockets_unrecognized;
-extern uint sockets_timeout;
+extern uint sockets_err_disconnected;
+extern uint sockets_err_other;
+extern uint sockets_err_timeout;
 
 // State machine
 extern int listening;
@@ -152,8 +150,8 @@ void metrics_print()
 	}
 	//
 	verbose(VL2, "actv./accp. sockets: %u/%u", sockets_online, sockets_accepted);
-	verbose(VL2, "disc./tout. sockets: %u/%u", sockets_disconnected, sockets_timeout);
-	verbose(VL2, "recv. unknown samples: %u", sockets_timeout);
+	verbose(VL2, "disc./tout. sockets: %u/%u", sockets_err_disconnected, sockets_err_timeout);
+	verbose(VL2, "recv. unknown samples: %u", sockets_err_timeout);
 	print_line(VL2);
     // When empty
     if (!verbosity) {
@@ -162,11 +160,10 @@ void metrics_print()
             samples_index[4], samples_index[5], samples_index[6],
             sockets_online); 
     }
-
-	sockets_accepted     = 0;
-	sockets_disconnected = 0;
-	sockets_unrecognized = 0;
-	sockets_timeout      = 0;
+	sockets_accepted         = 0;
+	sockets_err_disconnected = 0;
+	sockets_err_other        = 0;
+	sockets_err_timeout      = 0;
 }
 
 /*
@@ -192,12 +189,12 @@ static void reset_aggregations()
 
 static void reset_index(int index)
 {
-	time_recv1[index]   = 0;
-	time_recv2[index]   = 0;
-	time_insert1[index] = 0;
-	time_insert2[index] = 0;
+	time_recv1[index]    = 0;
+	time_recv2[index]    = 0;
+	time_insert1[index]  = 0;
+	time_insert2[index]  = 0;
 	samples_index[index] = 0;
-	samples_count[index]  = 0;
+	samples_count[index] = 0;
 }
 
 void reset_all()
@@ -321,7 +318,7 @@ static void insert_events(int i)
 void insert_hub(uint option, uint reason)
 {
     if (verbosity >= 2) {
-	    verb_who("looking for possible DB insertion (type 0x%x, reason 0x%x)", option, reason);
+	    tell("looking for possible DB insertion (type 0x%x, reason 0x%x)", option, reason);
     }
 	// Why print is set before inserts?
 	metrics_print();
@@ -373,7 +370,7 @@ void storage_sample_add(char *buf, ulong len, ulong *index, char *cnt, size_t si
 		if(server_iam) {
 			insert_hub(opt, EDB_INSERT_BY_FULL);
 		// If mirror synchronize with server.
-		} else if (state_fail(sync_question(opt, veteran, NULL))) {
+		} else if (state_fail(sync_send_question(opt, veteran, NULL))) {
 			// If fails, then insert.
 			insert_hub(opt, EDB_INSERT_BY_FULL);
 		}
@@ -386,20 +383,13 @@ void storage_sample_add(char *buf, ulong len, ulong *index, char *cnt, size_t si
  *
  */
 
-static int storage_type_extract(packet_header_t *header, char *content)
+static uint storage_type_extract(uint type, char *content)
 {
-	application_t *app;
-	uint type;
-
-	//
-	type = header->content_type;
+	application_t *app = (application_t *) content;
 
 	if (type != EDB_TYPE_APP_MPI) {
 		return type;
 	}
-	//
-	app = (application_t *) content;
-
 	if (app->is_learning) {
 		return EDB_TYPE_APP_LEARN;
 	} else if (app->is_mpi) {
@@ -410,7 +400,7 @@ static int storage_type_extract(packet_header_t *header, char *content)
 	return -1;
 }
 
-static int storage_index_extract(int type, char **name)
+static int storage_index_extract(uint type, char **name)
 {
 	switch (type)
 	{
@@ -437,54 +427,35 @@ static int storage_index_extract(int type, char **name)
 			return index_aggrs;
 		case EDB_TYPE_SYNC_QUESTION:
 			*name = "sync_question";
-			return -1;
+			return 0;
 		case EDB_TYPE_SYNC_ANSWER:
 			*name = "sync_answer";
-			return -1;
+			return 0;
 		case EDB_TYPE_STATUS:
 			*name = "status";
-			return -1;
-		default:
-			*name = "unknown";
-			return -1;
+			return 0;
 	}
+    *name = "unknown";
+    return -1;
 }
 
-void storage_sample_receive(int fd, packet_header_t *header, char *content)
+state_t storage_sample_receive(int fd, uint type, char *content, ullong extra)
 {
 	char *name;
 	state_t s;
 	int index;
-	int type;
 
 	// Data extraction
-	type  = storage_type_extract(header, content);
+	type  = storage_type_extract(type, content);
 	index = storage_index_extract(type, &name);
 
 	if (verbosity) {
-		#if SOCKETS_DEBUG
-		verb_who("received from host '%s' an object of type: '%s' (t: '%d', i: '%d')",
-			header->host_src, name, type, index);
-		#else
-		verb_who("received object of type: '%s' (t: '%d', i: '%d')",
-			name, type, index);
-		#endif
+		tell("received object of type: '%s' (t: '%d', i: '%d', k: '%llu')",
+			name, type, index, add_key(extra));
 	}
-
-	//TODO:
-	// Currently, samples_index and sam_recv are the same. In the near future
-	// a struct for every type has to be made. This type have to include
-	// these things:
-	//		- an index to the position of the empty value in the allocation
-	//		- a maximum of the allocation
-	//		- an ulong of the sizeof the type
-	//		- a pointer to the allocation
-	//		- a pointer to the MySQL insert function
-	//		- a pointer to the string of the name of the type
-	//		- a time_t of the insertion time
-	//		- a value if the metric has overflow within a insert time
-	//		- a value of the sync option
-
+    if (add_key(extra) != add_key(0LLU)) {
+        return_msg(EAR_ERROR, "Key does not match");
+    }
 	// Storage
 	if (type == EDB_TYPE_APP_MPI) {
 		//print_application_fd_binary(0, (application_t *) content);
@@ -529,7 +500,7 @@ void storage_sample_receive(int fd, packet_header_t *header, char *content)
 			insert_hub(question->sync_option, EDB_INSERT_BY_SYNC);
 		}
 		// Answering the mirror question
-		sync_answer(fd, veteran);
+		sync_send_answer(fd, veteran);
 		// In case it is a full sync the sync time is resetted before the answer
 		// with a very small offset (5 second is enough)
 		if (sync_option(question->sync_option, EDB_SYNC_ALL))
@@ -551,16 +522,16 @@ void storage_sample_receive(int fd, packet_header_t *header, char *content)
 			error("Error when sending status: %s", state_msg);
 		}
 	}
-	// Metrics
+	// Unknown type received is an error
 	if (index == -1) {
-		return;
+		return_msg(EAR_ERROR, "Received unknown type");
 	}
 	//	
 	if (samples_count[index] == 0) {
 		time(&time_recv1[index]);
 	}
-	//
 	time(&time_recv2[index]);
-	//
 	samples_count[index] += 1;
+
+    return EAR_SUCCESS;
 }

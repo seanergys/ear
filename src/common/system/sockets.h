@@ -109,38 +109,4 @@ void sockets_get_hostname_fd(int fd, char *buffer, int length);
 
 void sockets_get_ip(struct sockaddr_storage *host_addr, long *ip);
 
-/*
- *
- * Obsolete
- *
- */
-
-#define packet_header_t socket_header_t
-
-typedef struct socket_header_s {
-#if SOCKETS_DEBUG
-	char    host_src[SZ_NAME_SHORT]; // Filled in sockets_send()
-    time_t  timestamp;               // Filled in sockets_send()
-#endif
-	size_t  content_size;  // 8 bytes ( 8)
-	ullong  padding;       // 8 bytes (16)
-	uint    content_type;  // 4 byte  (20)
-}  socket_header_t;
-
-#define PACKET_HEADER(buffer) \
-	(socket_header_t *) buffer;
-
-#define PACKET_CONTENT(buffer) \
-	(void *) &buffer[sizeof(socket_header_t)];
-
-/* (Obsolete) Header */
-state_t sockets_header_clean(socket_header_t *header);
-
-state_t sockets_header_update(socket_header_t *header);
-
-/* (Obsolete) Write & read */
-state_t __sockets_send(socket_t *socket, socket_header_t *header, char *content);
-
-state_t __sockets_recv(int fd, socket_header_t *header, char *buffer, ssize_t size_buffer, int block);
-
 #endif //COMMON_SOCKETS_H

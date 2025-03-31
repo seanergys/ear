@@ -23,18 +23,18 @@
 #define print_line(level) \
     verb(level, col1 line col2);
 
-#define verb_who_noarg(format) \
+#define tell0(format) \
     verb(VERB_LEVEL, "%s, %s", str_who[mirror_iam], format);
 
-#define verb_who(format, ...) \
+#define tell(format, ...) \
     verb(VERB_LEVEL, "%s, " format, str_who[mirror_iam], __VA_ARGS__);
 
-#define verb_master(...) \
+#define tellm(...) \
     if (!forked || master_iam) { \
         verb(VERB_LEVEL, __VA_ARGS__); \
     }
 
-#define verb_master_line(...) \
+#define tellm_line(...) \
     if (!forked || master_iam) { \
         verbosen(VERB_LEVEL, col1 line "\n" __VA_ARGS__); \
         verbosen(VERB_LEVEL, col2 "\n"); \

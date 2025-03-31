@@ -242,7 +242,7 @@ static state_t static_send(int fd, char *data, size_t size)
 				case ENOTCONN:
 				case EPIPE:
 				case EDESTADDRREQ:
-					return_msg(EAR_ERROR, strerror(errno));
+					return_msg(EAR_SOCK_DISCONNECTED, strerror(errno));
 				case EAGAIN:
 					return_msg(EAR_NOT_READY, strerror(errno));
 				default:
@@ -307,14 +307,14 @@ static state_t static_recv(int fd, char *buffer, ssize_t size, int block)
 				case ENOTCONN:
 				case ETIMEDOUT:
 				case ECONNRESET:
-					return_msg(EAR_ERROR, strerror(errno));
+                    return_msg(EAR_SOCK_DISCONNECTED, strerror(errno));
 					break;
-				case EINVAL: // Not sure abou this
+				case EINVAL: // Not sure about this
 				case EAGAIN:
 					if (!block && intents < NON_BLOCK_TRYS) {
 						intents += 1;
 					} else {
-						return_msg(EAR_TIMEOUT, strerror(errno));
+                        return_msg(EAR_TIMEOUT, strerror(errno));
 					}
 					break;
 				default:
@@ -336,19 +336,15 @@ state_t sockets_recv_header(int fd, uint *type, size_t *size, ullong *extra, uin
 		ullong extra;
 		uint type;
 	} header;
-
 	// Initializing data
 	header.type  = 0;
 	header.size  = 0;
 	header.extra = 0;
 	// Receiving header
 	s = static_recv(fd, (char *) &header, sizeof(header), block);
-	*type = header.type;
-	*size = header.size;
-	if (extra != NULL) {
-		*extra = header.extra;
-	}
-
+	if (type  != NULL) { *type  = header.type;  }
+	if (size  != NULL) { *size  = header.size;  }
+	if (extra != NULL) { *extra = header.extra; }
 	return s;
 }
 
@@ -465,226 +461,4 @@ void sockets_get_ip(struct sockaddr_storage *host_addr, long *ip)
 	}
 	// convert the IP to a string and print it
 	//inet_ntop(host_addr->sa_family, address, buffer, INET6_ADDRSTRLEN);
-}
-
-/*
- *
- * Obsolete
- *
- */
-
-state_t sockets_header_clean(socket_header_t *header)
-{
-	memset((void *) header, 0, sizeof(socket_header_t));
-	return EAR_SUCCESS;
-}
-
-state_t sockets_header_update(socket_header_t *header)
-{
-	#if SOCKETS_DEBUG
-	if (strlen(header->host_src) == 0) {
-		gethostname(header->host_src, sizeof(header->host_src));
-	}
-	header->timestamp = time(NULL);
-	#endif
-	return EAR_SUCCESS;
-}
-
-// Send:
-//
-// Errors:
-//	Returning EAR_BAD_ARGUMENT
-//	 - Header or buffer pointers are NULL
-//	Returning EAR_SOCK_DISCONNECTED
-// 	 - On ENETUNREACH, ENETDOWN, ECONNRESET, ENOTCONN, EPIPE and EDESTADDRREQ
-//	Returning EAR_NOT_READY
-//	 - On EAGAIN
-//	Returning EAR_ERROR
-//	 - On EACCES, EBADF, ENOTSOCK, EOPNOTSUPP, EINTR, EIO and ENOBUFS
-
-static state_t __static_send(socket_t *socket, ssize_t bytes_expc, char *buffer)
-{
-	ssize_t bytes_left = bytes_expc;
-	ssize_t bytes_sent = 0;
-	int flags;
-
-	// Better to return error than receive a signal
-	flags = MSG_NOSIGNAL;
-
-	// In the near future, it will be better to include a non-blocking
-	// implementation with a controlled retry system
-	while(bytes_left > 0)
-	{
-		if (socket->protocol == TCP) {
-			bytes_sent = send(socket->fd, buffer + bytes_sent, bytes_left, flags);
-		} else {
-			bytes_sent = sendto(socket->fd, buffer + bytes_sent, bytes_left, flags,
-								socket->info->ai_addr, socket->info->ai_addrlen);
-		}
-
-		if (bytes_sent < 0)
-		{
-			debug("fd '%d', %ld to add to %ld/%ld (errno: %d, strerrno: %s)",
-				  socket->fd, bytes_sent, bytes_expc - bytes_left, bytes_expc,
-				  errno, strerror(errno));
-
-			switch (bytes_sent) {
-				case ENETUNREACH:
-				case ENETDOWN:
-				case ECONNRESET:
-				case ENOTCONN:
-				case EPIPE:
-				case EDESTADDRREQ:
-					state_return_msg(EAR_SOCK_DISCONNECTED, errno, strerror(errno));
-				case EAGAIN:
-					state_return_msg(EAR_NOT_READY, errno, strerror(errno));
-				default:
-					state_return_msg(EAR_SOCK_OP_ERROR, errno, strerror(errno));
-			}
-		}
-
-		bytes_left -= bytes_sent;
-	}
-
-	state_return(EAR_SUCCESS);
-}
-
-state_t __sockets_send(socket_t *socket, socket_header_t *header, char *content)
-{
-	char output_buffer[SZ_BUFFER];
-	socket_header_t *output_header;
-	char *output_content;
-	state_t state;
-
-	// Error handling
-	if (socket->fd < 0) {
-		state_return_msg(EAR_SOCK_DISCONNECTED, 0, "invalid file descriptor");
-	}
-	if (header == NULL || content == NULL) {
-		state_return_msg(EAR_BAD_ARGUMENT, 0, "passing parameter can't be NULL");
-	}
-	// Output
-	output_header  = PACKET_HEADER(output_buffer);
-	output_content = PACKET_CONTENT(output_buffer);
-	// Copy process
-	memcpy(output_header, header, sizeof(socket_header_t));
-	memcpy(output_content, content, header->content_size);
-	// Locking and sending
-	pthread_mutex_lock(&lock_send);
-	{
-		// Sending
-		state = __static_send(socket, sizeof(socket_header_t) + header->content_size, output_buffer);
-		pthread_mutex_unlock(&lock_send);
-	}
-
-	return state;
-}
-
-// Receive:
-//
-// Errors:
-//	Returning EAR_BAD_ARGUMENT
-//	 - File descriptor less than 0
-//	 - Header or buffer pointers are NULL
-//	 - Buffer size is less than the packet content size
-//	Returning EAR_SOCK_DISCONNECTED
-//	 - Received 0 bytes (meaning disconnection)
-//	 - On ECONNRESET, ENOTCONN and ETIMEDOUT
-//	Returning EAR_NOT_READY
-//	 - On EAGAIN and EINVAL
-//	Returning EAR_ERROR
-//	 - On EBADF, ENOTSOCK, EOPNOTSUPP, EINTR, EIO, ENOBUFS and ENOMEM
-
-static void _spin_delay()
-{
-	volatile int i;
-	for (i = 0; i < 10000; ++i)
-	{}
-}
-
-static state_t __static_recv(int fd, ssize_t bytes_expc, char *buffer, int block)
-{
-	ssize_t bytes_left = bytes_expc;
-	ssize_t bytes_recv = 0;
-	ssize_t bytes_acum = 0;
-	int intents = 0;
-	int flags = 0;
-
-	if (!block) {
-		flags = MSG_DONTWAIT;
-	}
-
-	while (bytes_left > 0)
-	{
-		bytes_recv = recv(fd, (void *) &buffer[bytes_acum], bytes_left, flags);
-		debug("fd '%d' received %ld of %ld/%ld (intent: %d)",
-			  fd, bytes_recv, bytes_expc - bytes_left, bytes_expc, intents);
-
-		if (bytes_recv == 0) {
-			state_return_msg(EAR_SOCK_DISCONNECTED, 0, "disconnected from socket");
-		}
-		else if (bytes_recv < 0)
-		{
-			debug("fd '%d', %ld to add to %ld/%ld (intent: %d, errno: %d, strerrno: %s)",
-				  fd, bytes_recv, bytes_expc - bytes_left, bytes_expc,
-				  intents, errno, strerror(errno));
-
-			switch (errno) {
-				case ENOTCONN:
-				case ETIMEDOUT:
-				case ECONNRESET:
-					state_return_msg(EAR_SOCK_DISCONNECTED, errno, strerror(errno));
-					break;
-				case EINVAL: // Not sure about this
-				case EAGAIN:
-					if (!block && intents < NON_BLOCK_TRYS) {
-						intents += 1;
-					} else {
-						state_return_msg(EAR_TIMEOUT, errno, strerror(errno));
-					}
-
-					#ifndef SHOW_DEBUGS
-					_spin_delay();
-					#endif
-					break;
-				default:
-					state_return_msg(EAR_SOCK_OP_ERROR, errno, strerror(errno));
-			}
-		} else {
-			bytes_acum += bytes_recv;
-			bytes_left -= bytes_recv;
-		}
-	}
-
-	state_return(EAR_SUCCESS);
-}
-
-state_t __sockets_recv(int fd, socket_header_t *header, char *buffer, ssize_t size_buffer, int block)
-{
-	state_t state;
-
-	// Error handling
-	if (fd < 0) {
-		state_return_msg(EAR_SOCK_DISCONNECTED, 0, "invalid file descriptor");
-	}
-
-	if (header == NULL || buffer == NULL) {
-		state_return_msg(EAR_BAD_ARGUMENT, 0, "passing parameter can't be NULL");
-	}
-
-	// Receiving the header
-	state = __static_recv(fd, sizeof(socket_header_t), (char *) header, block);
-	if (state_fail(state)) {
-		state_return(state);
-	}
-	if (header->content_size > size_buffer) {
-		state_return(EAR_NO_RESOURCES);
-	}
-	// Receiving the content
-	state = __static_recv(fd, header->content_size, buffer, block);
-	if (state_fail(state)) {
-		state_return(state);
-	}
-
-	state_return(EAR_SUCCESS);
 }
