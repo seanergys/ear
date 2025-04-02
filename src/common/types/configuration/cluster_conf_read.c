@@ -16,6 +16,7 @@
 #include <common/config.h>
 //#define SHOW_DEBUGS 1
 #include <common/output/verbose.h>
+#include <common/utils/sched_support.h>
 #include <common/types/configuration/cluster_conf.h>
 #include <common/types/configuration/cluster_conf_eargm.h>
 #include <common/types/configuration/cluster_conf_eard.h>
@@ -41,7 +42,6 @@ static void insert_th_policy(cluster_conf_t *conf, char *token, int policy, int 
 }
 #endif
 
-#include <common/utils/sched_support.h>
 static int set_nodes_conf(cluster_conf_t *conf, char *namelist)
 {
 
@@ -71,18 +71,6 @@ static int set_nodes_conf(cluster_conf_t *conf, char *namelist)
 
     return 1;
 }
-#if 0
-static int get_default_pstate(policy_conf_t *pow_pol, int num_pol, int policy)
-{
-    int i;
-    for (i = 0; i < num_pol; i++)
-    {
-        if (pow_pol[i].policy == policy)
-            return pow_pol[i].p_state;
-    }
-    return 0;
-}
-#endif
 
 static void fill_policies(cluster_conf_t *conf)
 {

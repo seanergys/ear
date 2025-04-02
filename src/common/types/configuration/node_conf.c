@@ -136,7 +136,8 @@ bool _check_range_for_node(char *base, range_def_t *r, char *nodename)
 }
 
 
-int range_conf_contains_node(node_conf_t *node, char *nodename)
+
+bool range_conf_contains_node(node_conf_t *node, char *nodename)
 {
     char aux_name[256];
     for (int32_t i = 0; i < node->range_count; i++)
@@ -149,24 +150,24 @@ int range_conf_contains_node(node_conf_t *node, char *nodename)
 
         //the prefix is the nodename, no need to check
         if (r->numbers == NULL || r->numbers_count < 1) {
-            return 1;
+            return true;
         }
         //the prefix is the nodename, no need to check
         if (r->numbers_count == 1 && r->numbers[0].first == 0 && r->numbers[0].second == 0) {
-            return 1;
+            return true;
         }
 
         //check the numbers to see if it matches
         //
         for (int32_t j = 0; j < r->numbers_count; j++) {
-            if (_check_range_for_node("", r, nodename)) return 1;
+            if (_check_range_for_node("", r, nodename)) return true;
         }
     }
 
-    return 0;
+    return false;
 }
 
-int island_range_conf_contains_node(node_island_t *node, char *nodename)
+int nodeconf_get_island_range_for_node(node_island_t *node, char *nodename)
 {
     for (int32_t i = 0; i < node->num_ranges; i++)
     {
@@ -178,17 +179,17 @@ int island_range_conf_contains_node(node_island_t *node, char *nodename)
 
         //the prefix is the nodename, no need to check
         if (r->numbers == NULL || r->numbers_count < 1) {
-            return 1;
+            return i;
         }
         //the prefix is the nodename, no need to check
         if (r->numbers_count == 1 && r->numbers[0].first == 0 && r->numbers[0].second == 0) {
-            return 1;
+            return i;
         }
 
         //check the numbers to see if it matches
         //
         for (int32_t j = 0; j < r->numbers_count; j++) {
-            if (_check_range_for_node("", r, nodename)) return 1;
+            if (_check_range_for_node("", r, nodename)) return i;
         }
     }
 

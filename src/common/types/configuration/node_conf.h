@@ -11,6 +11,7 @@
 #ifndef _NODE_CONF_H
 #define _NODE_CONF_H
 
+#include <stdbool.h>
 #include <common/config.h>
 #include <common/types/generic.h>
 #include <common/types/configuration/policy_conf.h>
@@ -157,8 +158,14 @@ typedef struct node_island
  *
  */
 
-int range_conf_contains_node(node_conf_t *node, char *nodename);
-int island_range_conf_contains_node(node_island_t *node, char *nodename);
+/* Checks if a range_conf contains a node. 
+ * Returns true if the node is in the range, false if it is not. 
+ */
+bool range_conf_contains_node(node_conf_t *node, char *nodename);
+
+/* Checks if a node_islant_t contains a certain node.
+ * Returns the range id on success, -1 if it is not on the island */
+int nodeconf_get_island_range_for_node(node_island_t *node, char *nodename);
 
 /** Copies dest=src */
 void copy_my_node_conf(my_node_conf_t *dest,my_node_conf_t *src);

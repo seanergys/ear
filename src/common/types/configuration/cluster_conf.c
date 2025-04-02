@@ -347,7 +347,7 @@ int get_range_ips(cluster_conf_t *my_conf, char *nodename, int **ips)
     int32_t total_ips = 0;
     for (i = 0; i < my_conf->num_islands; i++)
     {
-        range_idx = island_range_conf_contains_node(&my_conf->islands[i], nodename);
+        range_idx = nodeconf_get_island_range_for_node(&my_conf->islands[i], nodename);
         if (range_idx < 0) continue;
 
         range_def_t range = my_conf->islands[i].ranges[range_idx].range;
@@ -442,7 +442,7 @@ my_node_conf_t *get_my_node_conf(cluster_conf_t *my_conf, char *nodename)
 
     i = 0;
     do{ // At least one node is assumed
-        if ((range_id = island_range_conf_contains_node(&my_conf->islands[i], nodename)) >= 0) {
+        if ((range_id = nodeconf_get_island_range_for_node(&my_conf->islands[i], nodename)) >= 0) {
             range_found = 1;
             n->island = my_conf->islands[i].id;
             island_idx = i;
