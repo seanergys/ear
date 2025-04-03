@@ -246,10 +246,13 @@ void plugin_get_settings(domain_settings_t *s)
 state_t set_powercap_value(uint pid, uint32_t domain, uint32_t *limit, uint32_t *gpu_util)
 {
     debug("GPU: powermgr gpu power allocated %lu", *limit);
+    for (int32_t i = 0; i < gpu_pc_num_gpus; i++) {
+        gpu_pc_util[i] = gpu_util[i];
+    }
 	if (domain == LEVEL_NODE || domain == LEVEL_DOMAIN) {
 		default_gpu_pc = *limit;
 		c_status = PC_STATUS_OK;
-		return int_set_powercap_value((ulong)*limit, gpu_util);
+		return int_set_powercap_value((ulong)*limit, gpu_pc_util);
 	}
 	else return int_set_per_device_powercap_value(limit, gpu_pc_util);
 }
@@ -293,9 +296,9 @@ static state_t int_set_per_device_powercap_value(uint32_t *limit, ulong *gpu_uti
 
 	/* Set data */
 	debug("%s",COL_BLU);
-	debug("GPU: set_manual_powercap_value (first GPU: %lu)",limit);
-	ret = mgt_gpu_power_cap_set(no_ctx, limit);
-	if (ret == EAR_ERROR) debug("Error setting powercap");
+	debug("GPU: set_manual_powercap_value (first GPU: %u)", *limit);
+	//ret = mgt_gpu_power_cap_set(no_ctx, limit);
+	//if (ret == EAR_ERROR) debug("Error setting powercap");
 	for (i=0;i<gpu_pc_num_gpus;i++) {
 		if (limit[i] == POWER_CAP_UNLIMITED) {
 			limit[i] = gpu_pc_max_power[i];
