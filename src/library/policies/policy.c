@@ -1138,7 +1138,9 @@ state_t policy_get_default_freq(node_freqs_t *freq_set)
 
     sig_ext_t *sigext = (sig_ext_t *)application.signature.sig_ext;
     /* Copy avg selected mem freq */
-    compute_avg_sel_freq(&sigext->sel_mem_freq_khz, freq_set->imc_freq);
+    if (sigext != NULL) {
+        compute_avg_sel_freq(&sigext->sel_mem_freq_khz, freq_set->imc_freq);
+    }
 
     return EAR_SUCCESS;
 }
@@ -2242,15 +2244,27 @@ void compute_avg_sel_freq(ulong *avg_sel_mem_f, ulong *imcfreqs)
 
 	ulong avg = 0, low, f;
 	for (uint sock_id = 0; sock_id < arch_desc.top.socket_count; sock_id++)
-	{
-		low = imcfreqs[sock_id * IMC_VAL + IMC_MAX];
-		f = imc_pstates[low].khz;
+    {
+        // Validate array index before access
+        if ((sock_id * IMC_VAL + IMC_MAX) >= (arch_desc.top.socket_count * IMC_VAL)) {
+            verbosen(POLICY_INFO, "Invalid array index %lu", sock_id * IMC_VAL + IMC_MAX);
+            verbose_master(2, "Invalid array index %lu", sock_id * IMC_VAL + IMC_MAX);
+            break;
+        }
 
-		verbose_master(2,"Computing avg mem freq : Socket %u max freq %lu", sock_id, f);
+        low = imcfreqs[sock_id * IMC_VAL + IMC_MAX];
 
-		avg += f;
-	}
+        // Validate pstate index before access
+        if (low >= imc_pstate_cnt) {
+            verbosen(POLICY_INFO, "Invalid pstate index %lu", low);
+             verbose_master(2,"Invalid pstate index %lu", low);
+            continue;
+        }
 
+        f = imc_pstates[low].khz;
+        verbose_master(2,"Computing avg mem freq : Socket %u max freq %lu", sock_id, f);
+        avg += f;
+    }
 	avg = avg / arch_desc.top.socket_count;
 	*avg_sel_mem_f = avg;
 }
