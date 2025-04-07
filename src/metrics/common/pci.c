@@ -113,9 +113,9 @@ state_t pci_scan(ushort vendor, ushort *ids, char **dfs, mode_t mode, pci_t **pc
     if (*pcis_count == 0) {
 	free(*pcis);
 	*pcis = NULL;
-        debug("No PCIs found (%u permission errors, %u other errors [%s], %u opened but wrong IDs)",
-                     ret_n_errs_perms, ret_n_errs_other, ret_err_other, ret_n_opened);
-        return_print(EAR_ERROR, "No PCIs found (%u permission errors, %u other errors [%s], %u opened but wrong IDs)",
+        debug("No PCIs found (%u perms, %u others [%s], %u wrong IDs)",
+             ret_n_errs_perms, ret_n_errs_other, ret_err_other, ret_n_opened);
+        return_print(EAR_ERROR, "No PCIs found (%u perms, %u others [%s], %u wrong IDs)",
                      ret_n_errs_perms, ret_n_errs_other, ret_err_other, ret_n_opened);
     }
     return EAR_SUCCESS;
@@ -207,3 +207,4 @@ state_t pci_mmio_unmap(void *p)
 	//iounmap(p);
 	return EAR_SUCCESS;
 }
+

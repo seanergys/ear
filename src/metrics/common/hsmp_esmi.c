@@ -8,6 +8,9 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
+//#define SHOW_DEBUGS 1
+
+#include <common/output/debug.h>
 #include <common/system/symplug.h>
 #include <common/hardware/bithack.h>
 #include <common/environment_common.h>
@@ -89,7 +92,8 @@ static const char *esmi_names[] = {
 
 #define ESMI_N 21
 
-static esmi_t esmi;
+static esmi_t     esmi;
+static topology_t tp;
 
 static state_t translate(esmi_status_t s)
 {
@@ -116,7 +120,7 @@ static state_t hsmp_load_library()
     return_msg(EAR_ERROR, "Can not load libe_smi.so");
 }
 
-state_t hsmp_esmi_open(topology_t *tp, mode_t mode)
+state_t hsmp_esmi_open(topology_t *tp_in, mode_t mode)
 {
     struct smu_fw_version smu;
     state_t s = EAR_SUCCESS;
@@ -132,6 +136,7 @@ state_t hsmp_esmi_open(topology_t *tp, mode_t mode)
     }
     if (state_ok(s = translate(esmi.init()))) {
         if (state_ok(s = translate(esmi.smu_fw_version_get(&smu)))) {
+            topology_copy(&tp, tp_in);
         }
     }
     return s;
@@ -143,6 +148,18 @@ state_t hsmp_esmi_close()
         return translate(esmi.exit());
     }
     return EAR_SUCCESS;
+}
+
+static uint apicid_to_cpuid(uint apicid)
+{
+    uint c;
+    for (c = 0; c < tp.cpu_count; ++c) {
+        if (tp.cpus[c].apicid == apicid) {
+            debug("Found APICID %u in CPU %u", apicid, c);
+            return c;
+        }
+    }
+    return 0;
 }
 
 state_t hsmp_esmi_send(int socket, uint function, uint *args, uint *reps)
@@ -172,12 +189,14 @@ state_t hsmp_esmi_send(int socket, uint function, uint *args, uint *reps)
         case HSMP_GET_SOCKET_POWER_LIMIT_MAX:
             return translate(esmi.socket_power_cap_max_get(socket, &reps[0]));
         case HSMP_SET_BOOST_LIMIT:
-            return translate(esmi.core_boostlimit_set(getbits32(args[0], 31, 16), getbits32(args[0], 15, 0)));
+            // Function core_boostlimit_set receives the CPU number, not the APICID
+            return translate(esmi.core_boostlimit_set(apicid_to_cpuid(getbits32(args[0], 31, 16)), getbits32(args[0], 15, 0)));
         case HSMP_SET_BOOST_LIMIT_SOCKET:
             return translate(esmi.socket_boostlimit_set(socket, args[0]));
         case HSMP_GET_BOOST_LIMIT:
             reps[0] = 0U;
-            return translate(esmi.core_boostlimit_get(args[0], &reps[0]));
+            // Function core_boostlimit_get receives the CPU number, not the APICID
+            return translate(esmi.core_boostlimit_get(apicid_to_cpuid(args[0]), &reps[0]));
         case HSMP_GET_PROC_HOT:
             return translate(esmi.prochot_status_get(socket, &reps[0]));
         case HSMP_SET_XGMI_LINK_WIDTH:
