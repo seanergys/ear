@@ -19,30 +19,45 @@ compile-no-mpi-loader:
   stage: build
   script:
     - export CONFIG_SITE="$TESTDIR/config-sites/config.no-mpi-loader.site"
-    - CONFIGURE_FLAGS="--prefix=/tmp/ear-no-mpi-loader" $TESTDIR/compile.sh
+    - CONFIGURE_FLAGS="--prefix=$PWD/ear-no-mpi-loader" $TESTDIR/compile.sh
     - make install
   artifacts:
     untracked: false
     when: on_success
-    expire_in: 2 days
+    expire_in: 1 days
     paths:
-      - "/tmp/ear-no-mpi-loader"
+      - "ear-no-mpi-loader"
 
 compile-no-mpi:
   stage: build
   script:
     - export CONFIG_SITE="$TESTDIR/config-sites/config.no-mpi.site"
-    - EAR_FEATURES="MPI_CFLAGS='$(pkgconf ompi-c --cflags)'" $TESTDIR/compile.sh
+    - MAKE_FEATURES="MPI_CFLAGS='$(pkgconf ompi-c --cflags)'" $TESTDIR/compile.sh
 
 compile-mpi:
   stage: build
   script:
     - export CONFIG_SITE="$TESTDIR/config-sites/config.ompi.site"
-    - EAR_FEATURES="MPI_CFLAGS='$(pkgconf ompi-c --cflags)'" $TESTDIR/compile.sh
+    - MAKE_FEATURES="MPI_CFLAGS='$(pkgconf ompi-c --cflags)'" CONFIGURE_FLAGS="--prefix=$PWD/ear-ompi" $TESTDIR/compile.sh
+    - make install
+  artifacts:
+    when: on_success
+    expire_in: 1 days
+    paths:
+      - "ear-ompi"
 
 test-install-no-mpi-loader:
   stage: test
   needs: [compile-no-mpi-loader]
   script:
-    - echo "Checking installation for no MPI Loader isntallation"
-    - test ear-no-mpi-loader
+    - echo "Checking installation for no MPI Loader installation"
+    - $TESTDIR/test_install.sh ear-no-mpi-loader
+    - test -f ear-no-mpi-loader/lib/libear.gen.so
+
+test-install-mpi:
+  stage: test
+  needs: [compile-mpi]
+  script:
+    - echo "Checking installation for MPI installation"
+    - $TESTDIR/test_install.sh ear-ompi
+    - test -f ear-ompi/lib/libear.ompi.so
