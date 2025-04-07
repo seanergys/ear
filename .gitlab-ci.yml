@@ -11,6 +11,7 @@ workflow:
 # compile.sh script provided in the ear_ci repository: https://gitlab.bsc.es/ear_team/ear-ci
 stages:          # List of stages for jobs, and their order of execution
   - build
+  - test
 
 image: registry.gitlab.bsc.es/ear_team/ear-ci
 
@@ -18,7 +19,14 @@ compile-no-mpi-loader:
   stage: build
   script:
     - export CONFIG_SITE="$TESTDIR/config-sites/config.no-mpi-loader.site"
-    - $TESTDIR/compile.sh
+    - CONFIGURE_FLAGS="--prefix=/tmp/ear-no-mpi-loader" $TESTDIR/compile.sh
+    - make install
+  artifacts:
+    untracked: false
+    when: on_success
+    expire_in: 2 days
+    paths:
+      - "/tmp/ear-no-mpi-loader"
 
 compile-no-mpi:
   stage: build
@@ -31,3 +39,10 @@ compile-mpi:
   script:
     - export CONFIG_SITE="$TESTDIR/config-sites/config.ompi.site"
     - EAR_FEATURES="MPI_CFLAGS='$(pkgconf ompi-c --cflags)'" $TESTDIR/compile.sh
+
+test-install-no-mpi-loader:
+  stage: test
+  needs: [compile-no-mpi-loader]
+  script:
+    - echo "Checking installation for no MPI Loader isntallation"
+    - test ear-no-mpi-loader
