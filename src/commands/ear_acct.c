@@ -372,6 +372,7 @@ bool print_signature_format(signature_t *sig, char f, int32_t time_length)
                         gpu_util /= num_gpus;
                         gpu_mem_util /= num_gpus;
                         gpu_gflops /= num_gpus;
+                        gpu_freq /= num_gpus;
                         char mem_util_buf[16] = { 0 };
                         snprintf(mem_util_buf, 16, "%lu%%", gpu_mem_util);
                         print_format_custom("%-7.2lf/%-7.2lf %-7.3lf %6lu%%/%-7s %-10.2lf", gpu_total_power,
