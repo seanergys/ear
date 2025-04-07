@@ -122,14 +122,14 @@ static void hsmp_test_print_functions(cpu_t *cpu, strtable_t *tb, char *api_str,
     args[0] = a0; args[1] = a1; \
     reps[0] = r0; reps[1] = r1; \
     if (state_ok(hsmp_send(cpu->socket_id, function, args, reps))) { \
-        tprintf2(tb, "%s||%s||%s||%d||%d||%d||%s||%d||%d||-",       \
+        tprintf2(tb, "%s||%s||%s||%d||%d||%d||%s||%d||%d||%d||-", \
             api_str, perms_str, #function, cpu->socket_id, cpu->id, cpu->apicid, \
-            "OK", (int) reps[0], (int) reps[1]); \
+            "OK", (int) args[0], (int) reps[0], (int) reps[1]); \
         line; \
     } else { \
-        tprintf2(tb, "%s||%s||%s||%d||%d||%d||%s||%d||%d||%s",      \
+        tprintf2(tb, "%s||%s||%s||%d||%d||%d||%s||%d||%d||%d||%s",      \
             api_str, perms_str, #function, cpu->socket_id, cpu->id, cpu->apicid, \
-            "FAILED", (int) reps[0], (int) reps[1], state_msg); \
+            "FAILED", (int) args[0], (int) reps[0], (int) reps[1], state_msg); \
     }
 
     ht(  68, -1,  0, -1, HSMP_TEST                      ,);
@@ -167,13 +167,13 @@ void hsmp_test_print()
     topology_select(&tp, &tp_sockets, TPSelect.socket, TPGroup.merge, 0);
 
     // Initializing the output table
-    tprintf_init2(&tb, fdout, STR_MODE_DEF, "8 9 35 4 4 8 8 10 10 20");
-    tprintf2(&tb, "API||Perms||Function||S||CPU||APICID||State||reps0||reps1||Error msg.");
-    tprintf2(&tb, "---||-----||--------||-||---||------||-----||-----||-----||----------");
+    tprintf_init2(&tb, fdout, STR_MODE_DEF, "8 9 35 4 4 8 8 10 10 10 20");
+    tprintf2(&tb, "API||Perms||Function||S||CPU||APICID||State||args0||reps0||reps1||Error msg.");
+    tprintf2(&tb, "---||-----||--------||-||---||------||-----||-----||-----||-----||----------");
 
     #define ho(iapi, IAPI, PERMS) \
     if (state_fail(hsmp_##iapi##_open(&tp, PERMS))) { \
-        tprintf2(&tb, "%s||%s||HSMP_OPEN()||-||-||-||%s||-1||-1||%s", #IAPI, #PERMS, "FAILED", state_msg); \
+        tprintf2(&tb, "%s||%s||HSMP_OPEN()||-||-||-||%s||-1||-1||-1||%s", #IAPI, #PERMS, "FAILED", state_msg); \
     } else { \
         api = HSMP_API_##IAPI; \
         for (cpu = 0; cpu < tp_sockets.cpu_count; ++cpu) { \
