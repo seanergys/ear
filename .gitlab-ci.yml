@@ -1,18 +1,26 @@
+workflow:
+  rules:
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS && $CI_PIPELINE_SOURCE == "push"
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_BRANCH
+
 stages:          # List of stages for jobs, and their order of execution
   - build
+  - test
 
-image: registry.gitlab.bsc.es/ear_team/ear_private
+image: registry.gitlab.bsc.es/ear_team/ear-ci
 
-build-job:       # This job runs in the build stage, which runs first.
+compile-no-mpi-loader:
   stage: build
   script:
-    - echo "Compiling the code..."
-    - build.sh
-    - echo "Compile complete."
-  rules:
-    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - export CONFIG_SITE="$TESTDIR/config-sites/config.no-mpi-loader.site"
+    - $TESTDIR/compile.sh
 
-build-test:
+compile-no-mpi:
   stage: build
   script:
-    - "echo Hello world"
+    - export CONFIG_SITE="$TESTDIR/config-sites/config.no-mpi.site"
+    - EAR_FEATURES="MPI_CFLAGS='$(pkgconf ompi-c --cflags)'" $TESTDIR/compile.sh

@@ -39,24 +39,24 @@ static state_t __hsmp_open(topology_t *tp, mode_t mode)
 {
     state_t s;
     api_mode = mode;
-    if (state_ok(s = hsmp_driver_open(tp, mode))) {
-        debug("HSMP driver loaded in %s mode", mode_str(mode));
-        api = HSMP_API_DRIVER;
-        return s;
-    }
-    debug("HSMP driver failed in %s mode: %s", mode_str(mode), state_msg);
-    if (state_ok(s = hsmp_esmi_open(tp, mode))) {
-        debug("HSMP ESMI loaded in %s mode", mode_str(mode));
-        api = HSMP_API_ESMI;
-        return s;
-    }
-    debug("HSMP ESMI failed in %s mode: %s", mode_str(mode), state_msg);
     if ((mode == O_RDWR) && state_ok(s = hsmp_pci_open(tp, mode))) {
         debug("HSMP PCI loaded in %s mode", mode_str(mode));
         api = HSMP_API_PCI;
         return s;
     }
     debug("HSMP PCI failed in %s mode: %s", mode_str(mode), state_msg);
+    if (state_ok(s = hsmp_esmi_open(tp, mode))) {
+        debug("HSMP ESMI loaded in %s mode", mode_str(mode));
+        api = HSMP_API_ESMI;
+        return s;
+    }
+    debug("HSMP ESMI failed in %s mode: %s", mode_str(mode), state_msg);
+    if (state_ok(s = hsmp_driver_open(tp, mode))) {
+        debug("HSMP driver loaded in %s mode", mode_str(mode));
+        api = HSMP_API_DRIVER;
+        return s;
+    }
+    debug("HSMP driver failed in %s mode: %s", mode_str(mode), state_msg);
     return EAR_ERROR;
 }
 
@@ -192,10 +192,23 @@ void hsmp_test_print()
     ho(pci   , PCI   , HSMP_RD);
 }
 
-#if TEST
+#if TESTM
 int main(int argc, char *argv[])
 {
     hsmp_test_print();
+    return 0;
+}
+#endif
+#if TEST
+int main(int argc, char *argv[])
+{
+    static topology_t tp = {0};
+    topology_init(&tp);
+    if (state_ok(hsmp_open(&tp, HSMP_RD))) {
+        printf("HSMP opened: API %d\n", api);
+    } else {
+        printf("HSMP failed: %s\n", state_msg);
+    }
     return 0;
 }
 #endif
