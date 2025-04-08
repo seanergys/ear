@@ -8,7 +8,8 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
+#define ASELECT 1
 
 #define _GNU_SOURCE
 #include <math.h>
@@ -19,12 +20,12 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/ioctl.h>
-#include <common/system/poll.h>
 #if IPMI_INDEPENDENCY
 #include <ipmi_driver.h>
 #include <ipmi_driver_frusdr.h>
 #include <ipmi_driver_parsing.h>
 #else
+#include <common/system/poll.h>
 #include <common/output/debug.h>
 #include <common/string_enhanced.h>
 #include <metrics/common/ipmi_driver.h>
@@ -40,6 +41,8 @@ static ipmi_dev_t devs[IPMI_MAX_DEVS];
 static int        devs_count;
 static int        is_opened;
 static long       msg_counter;
+static afd_set_t  fds_group;
+static int        fds_status;
 
 ipmi_addr_t *ipmi_has_addr(ipmi_dev_t *dev, int type, short channel, uchar slave_addr, uchar lun)
 {
@@ -107,9 +110,11 @@ static state_t ipmi_open_dev_files()
     if (is_opened == 1) {
         return EAR_SUCCESS;
     }
-    // Initializing
+    // Initializing devices
     memset(devs, 0, sizeof(ipmi_dev_t)*IPMI_MAX_DEVS);
     devs_count = 0;
+    // Initializing aselect() struct
+    afd_init(&fds_group);
     // Setting the Get Device Info message
     ipmi_driver_cmd_set_msg(&pkg, IPMI_NETFN_APP_REQUEST, IPMI_GET_DEVICE_ID_CMD, 0);
     // Opening devices through IPMI driver files
@@ -130,6 +135,8 @@ static state_t ipmi_open_dev_files()
             }
             break;
         }
+        // Adding file descriptor to aselect FD group
+        AFD_SET(devs[devs_count].fd, &fds_group);
         debug("FD%d Opened IPMI device file '%s'", devs[devs_count].fd, devs[devs_count].path);
         // IPMI Doc: 20.1 Get Device ID Command
         // Adding default address to the device.
@@ -420,8 +427,21 @@ state_t ipmi_driver_cmd_send(int dev_no, ipmi_cmd_t *pkg)
     recv.msg.data     = pkg->msg_recv_data;
     recv.msg.data_len = sizeof(pkg->msg_recv_data);
 
-    // Convert to aselect()?
     #if 1
+    if ((fds_status = aselect(&fds_group, 300, NULL)) <= 0) {
+        if (fds_status < 0) {
+            debug("IPMI waiting for message error: %s", strerror(errno));
+            return_print(EAR_ERROR, "Error when receiving IPMI message: %s", strerror(errno));
+        } else if (fds_status == 0) {
+            debug("IPMI receive message ioctl error: timeout");
+            return_msg(EAR_ERROR, "Timeout");
+        }
+    }
+    if (ioctl(devs[dev_no].fd, IPMICTL_RECEIVE_MSG_TRUNC, &recv) < 0) {
+        debug("IPMI receive message ioctl error: %s", strerror(errno));
+        return_print(EAR_ERROR, "Error when receiving IPMI message: %s", strerror(errno));
+    }
+    #else
     while (ioctl(devs[dev_no].fd, IPMICTL_RECEIVE_MSG_TRUNC, &recv) < 0) {
         if (errno != EAGAIN) {
             debug("IPMI receive message ioctl error: %s", strerror(errno));
@@ -432,26 +452,6 @@ state_t ipmi_driver_cmd_send(int dev_no, ipmi_cmd_t *pkg)
             return_msg(EAR_ERROR, "Timeout");
         }
         usleep(100000);
-    }
-    #else
-    static afd_set_t fds_group;
-    static uint init = 0;
-    int fds_status;
-
-    if (!init) {
-        afd_init(&fds_group);
-        init = 1;
-    }
-    AFD_SET(devs[dev_no].fd, &fds_group);
-
-    if ((fds_status = aselect(&fds_group, 300, NULL)) <= 0) {
-        if (fds_status > 0) {
-            debug("IPMI receive message ioctl error: %s", strerror(errno));
-            return_print(EAR_ERROR, "Error when receiving IPMI message: %s", strerror(errno));
-        } else if (fds_status == 0) {
-            debug("IPMI receive message ioctl error: timeout");
-            return_msg(EAR_ERROR, "Timeout");
-        }
     }
     #endif
     return EAR_SUCCESS;
