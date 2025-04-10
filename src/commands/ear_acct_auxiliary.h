@@ -47,6 +47,9 @@
 #define APP_WIDTH          16
 #define OTHER_WIDTH        10
 
+#define APP_TYPE           100001
+#define LOOP_TYPE          100002
+
 /* Format values */
 typedef enum signature_format_type {
        FREQUENCY  = 'f',
