@@ -479,7 +479,8 @@ void print_header_format(char *fmt, uint32_t type)
                 break;
             case DATE_ITER:
                 if (type == APP_TYPE) {
-                    print_format(OTHER_WIDTH*2, "DATE");
+                    print_format(OTHER_WIDTH, "START TIME");
+                    print_format(OTHER_WIDTH, "END TIME");
                 } else {
 #if REPORT_TIMESTAMP
                     print_format(OTHER_WIDTH, "DATE");
