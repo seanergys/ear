@@ -48,12 +48,11 @@ void signature_print_fd(int fd, signature_t *sig, char is_extended,
 	dprintf(fd, "%lf;%lf;%lf;",
 		sig->DC_power, sig->DRAM_power, sig->PCK_power);
 
-	dprintf(fd, "%llu;%llu;%lf",
-		sig->cycles, sig->instructions, sig->Gflops);
+	dprintf(fd, "%llu;%llu;%lf;%u",
+		sig->cycles, sig->instructions, sig->Gflops, sig->ps_sig.cpu_util);
 
 	if (is_extended) {
-		dprintf(fd, ";%u;%llu;%llu;%llu",
-			sig->ps_sig.cpu_util,
+		dprintf(fd, ";%llu;%llu;%llu",
 			sig->L1_misses, sig->L2_misses, sig->L3_misses);
 
 		for (i = 0; i < FLOPS_EVENTS; ++i) {
