@@ -205,7 +205,7 @@ int create_app_header(char * header, char *path, uint num_gpus, char is_extended
 #endif
 
 	// Full version
-	char *HEADER_POWER_SIG = ";NODE_MGR_DC_NODE_POWER_W;NODE_MGR_DRAM_POWER_W;NODE_MGR_PCK_POWER_W;NODE_MGR_MAX_DC_POWER_W;NODE_MGR_MIN_DC_POWER_W;NODE_MGR_TIME_SEC;NODE_MGR_AVG_CPUFREQ_KHZ;NODE_MGR_DEF_FREQ_KHZ";
+	char *HEADER_POWER_SIG = ";NODEMGR_DC_NODE_POWER_W;NODEMGR_DRAM_POWER_W;NODEMGR_PCK_POWER_W;NODEMGR_MAX_DC_POWER_W;NODEMGR_MIN_DC_POWER_W;NODEMGR_TIME_SEC;NODEMGR_AVG_CPUFREQ_KHZ;NODEMGR_DEF_FREQ_KHZ";
 
 		size_t header_len = strlen(HEADER_JOB) + strlen(HEADER_BASE) + strlen(HEADER_SIGN) + num_gpus * USE_GPUS * strlen(HEADER_GPU_SIG) + strlen(ext_header) + 1 + strlen(cpu_sig_hdr) + strlen(HEADER_POWER_SIG);
 		if (header)
