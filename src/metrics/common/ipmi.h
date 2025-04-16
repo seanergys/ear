@@ -45,6 +45,19 @@
     #define EAR_ERROR   -1
 #endif
 
+//  _____ _____  __  __ _____ 
+// |_   _|  __ \|  \/  |_   _|
+//   | | | |__) | \  / | | |  
+//   | | |  ___/| |\/| | | |  
+//  _| |_| |    | |  | |_| |_ 
+// |_____|_|    |_|  |_|_____|
+//
+// What we don't support by now?
+//   - SDRs and FRUs in IMPB addresses (other than INTERFACE).
+//   - Full sensors with linearization functions other than 0x00. 
+//   - Compact sensors.
+// These missing features can be added as we require it.
+
 #define IPMI_MAX_DEVS 4 // Max supported devices
 
 typedef struct ipmi_addr_s {

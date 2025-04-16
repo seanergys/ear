@@ -8,8 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-#define SHOW_DEBUGS 1
-#define ASELECT 1
+//#define SHOW_DEBUGS 1
 
 #define _GNU_SOURCE
 #include <math.h>
@@ -34,6 +33,9 @@
 #endif
 
 #if IPMI_INDEPENDENCY
+#define AFD_SET(...)
+#define afd_init(...)
+typedef int afd_set_t;
 char *strtolow(char *string);
 #endif
 
@@ -427,7 +429,7 @@ state_t ipmi_driver_cmd_send(int dev_no, ipmi_cmd_t *pkg)
     recv.msg.data     = pkg->msg_recv_data;
     recv.msg.data_len = sizeof(pkg->msg_recv_data);
 
-    #if 1
+    #if !IPMI_INDEPENDENCY
     if ((fds_status = aselect(&fds_group, 300, NULL)) <= 0) {
         if (fds_status < 0) {
             debug("IPMI waiting for message error: %s", strerror(errno));

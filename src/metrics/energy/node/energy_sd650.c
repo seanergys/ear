@@ -8,6 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
+#define _GNU_SOURCE
 #include <string.h>
 #include <stddef.h>
 #include <stdlib.h>

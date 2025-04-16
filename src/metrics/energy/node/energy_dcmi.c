@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <math.h>
 #include <errno.h>
@@ -360,8 +360,8 @@ state_t dcmi_power_reading(struct ipmi_intf *intf, struct ipmi_data *out,dcmi_po
     out->data_len=rsp->data_len;
     for (i=0;i<rsp->data_len; i++) {
         out->data[i] = rsp->data[i];
-#if 0
-        debug("Byte %d: 0x%02x\n",i,rsp->data[i]);
+#if 1
+        debug("Byte %d: 0x%02x",i,rsp->data[i]);
 #endif
     }
     /*

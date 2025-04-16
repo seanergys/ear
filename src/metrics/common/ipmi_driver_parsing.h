@@ -28,6 +28,8 @@ void ipmi_driver_parse_fru_board(uchar *data, ipmi_dev_t *dev);
 
 void ipmi_driver_parse_fru_product(uchar *data, ipmi_dev_t *dev);
 
+void ipmi_driver_parse_fru_chassis(uchar *data, ipmi_dev_t *dev);
+
 void ipmi_driver_parse_sensor_reading(uchar raw, sdr_t *rec, ipmi_reading_t *val);
 
 #endif //METRICS_COMMON_IPMI_DRIVER_PARSING_H

@@ -97,7 +97,7 @@ int main(int argc, char *argv)
 {
     ipmi_open();
     // If it has the hardware
-    if (ipmi_driver_has_hardware("MZ42-G20-00")) {
+    if (ipmi_driver_has_hardware("SD665")) {
         printf("Hardware detected!\n");
     } else {
         printf("Hardware not found.\n");

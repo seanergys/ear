@@ -50,7 +50,7 @@ static ulong inm_power_accumulated_energy=0;
 static inm_power_data_t inm_current_power_reading,inm_last_power_reading;
 static struct ipmi_intf inm_context_for_pool;
 
-extern int bmc_channel;
+//extern int bmc_channel;
 
 static int opendev(struct ipmi_intf *intf)
 {
@@ -80,6 +80,7 @@ static struct ipmi_rs *sendcmd(struct ipmi_intf *intf, struct ipmi_rq *req)
 	struct ipmi_system_interface_addr bmc_addr = {
 			.addr_type =    IPMI_SYSTEM_INTERFACE_ADDR_TYPE,
 			.channel =    (short)bmc_channel,
+			//.channel =    IPMI_BMC_CHANNEL,
 	};
 	struct ipmi_ipmb_addr ipmb_addr = {
 			.addr_type =    IPMI_IPMB_ADDR_TYPE,

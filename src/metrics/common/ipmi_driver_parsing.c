@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <math.h>
 #include <ctype.h>
@@ -168,9 +168,21 @@ uchar ipmi_driver_parse_sdr(uchar *data, sdr_t *rec, ipmi_addr_t *addr)
             debug("DEV-RELATIVE");
             break;
         case 0x10: // DEV-LOCATOR
+            // This record is used to store the location and type information
+            // for devices on the IPMB or management controller private busses
+            // that are neither IPMI FRU devices nor IPMI management
+            // controllers.
             debug("DEV-LOCATOR");
             break;
         case 0x11: // FRU-LOCATOR
+            // This record is used for locating FRU information that is on the
+            // IPMB, on a Private Bus behind or management controller, or
+            // accessed via FRU commands to a management controller. This
+            // excludes any FRU Information that is accessed via FRU commands
+            // at LUN 00b of a management controller. The presence or absence
+            // of that FRU Information is indicated using the Management Device
+            // Locator record (0x12).
+            //
             // The generation of an IPMB address (IPMI_IPMB_ADDR_TYPE) requires
             // more knowledge about IMPI and is beyond the scope of this source
             // code. By now que use IPMI_SYSTEM_INTERFACE_ADDR_TYPE type
@@ -194,9 +206,6 @@ uchar ipmi_driver_parse_sdr(uchar *data, sdr_t *rec, ipmi_addr_t *addr)
                   rec->entity_instance, rec->name, (rec->entity_logical) ? "LOGICAL": "PHYSICAL");
             break;
         case 0x12: // BMC-LOCATOR
-            debug("record id 0x%X", (getbits8(data[B(2)], 7, 0) << 8) | getbits8(data[B(1)], 7, 0));
-            debug("entity id 0x%X", (getbits8(data[B(13)], 7, 0)));
-            debug("entity instance 0x%X", (getbits8(data[B(14)], 7, 0)));
             rec->new_addr_slave   = getbits8(data[B(6)], 7, 1);
             rec->new_addr_channel = getbits8(data[B(7)], 3, 0);
             rec->bmc_sdr          = getbits8(data[B(9)], 1, 1);
@@ -225,7 +234,7 @@ int ipmi_driver_parse_fru_inventory(uchar *data)
     // Check the function __ipmi_fru_print() of ipmitool source code for more
     // information regarding FRU and its processing.
     int words = getbits8(data[3], 0, 0);
-    #if SHOW_DEBUGS
+    #if SHOW_DEBUGS && 0
     ushort inventory_size = (data[2] << 8) | data[1];
     debug("Detected FRU inventory of size %u accesed by %s",
           inventory_size, (!words) ? "BYTES": "WORDS");
@@ -238,8 +247,9 @@ int ipmi_driver_parse_fru_inventory(uchar *data)
     return 1;
 }
 
-static void ipmi_driver_parse_fru_string(uchar *data, uint *index, ipmi_dev_t *dev, int add_it)
+static void ipmi_driver_parse_fru_string(uchar *data, uint *index, ipmi_dev_t *dev, int add_it, char *str_type)
 {
+    int i = 1;
     // Check the function get_fru_area_str() of ipmitool's source code.
     uchar typecode  = (data[*index] & 0xC0) >> 6;
     uchar length    = (data[*index] & 0x3f);
@@ -249,8 +259,9 @@ static void ipmi_driver_parse_fru_string(uchar *data, uint *index, ipmi_dev_t *d
     if (add_it && typecode == 3 && not_null && not_empty) {
         dev->boards_names = realloc(dev->boards_names, sizeof(char *)*dev->boards_names_count+1);
         dev->boards_names[dev->boards_names_count] = calloc(length+1, sizeof(uchar));
-        memcpy(dev->boards_names[dev->boards_names_count], &data[(*index)+1], length);
-        debug("BOARD%d: %s", dev->boards_names_count, dev->boards_names[dev->boards_names_count]);
+        while(data[(*index)+i] == ' ') { ++i; }
+        memcpy(dev->boards_names[dev->boards_names_count], &data[(*index)+i], length);
+        debug("FRU_STRING%02d saved (%s): '%s'", dev->boards_names_count, str_type, dev->boards_names[dev->boards_names_count]);
         // TODO: remove also special characters
         strtolow(dev->boards_names[dev->boards_names_count]);
         ++dev->boards_names_count;
@@ -260,6 +271,7 @@ static void ipmi_driver_parse_fru_string(uchar *data, uint *index, ipmi_dev_t *d
 
 void ipmi_driver_parse_fru_board(uchar *data, ipmi_dev_t *dev)
 {
+    char *str = "board  ";
     // Check the function fru_area_print_board() of ipmitool's source code.
     // DATA [0:0] FRU version
     // DATA [1:1] FRU length
@@ -268,15 +280,17 @@ void ipmi_driver_parse_fru_board(uchar *data, ipmi_dev_t *dev)
     // DATA [6:?] Board manufacturer
     // DATA [?:?] etc
     uint i = 6;
-    ipmi_driver_parse_fru_string(data, &i, dev, 1); // Board manufacturer
-    ipmi_driver_parse_fru_string(data, &i, dev, 1); // Board product
-    ipmi_driver_parse_fru_string(data, &i, dev, 0); // Board serial
-    ipmi_driver_parse_fru_string(data, &i, dev, 0); // Board part-number
-    ipmi_driver_parse_fru_string(data, &i, dev, 0); // Board FRU-id
+    ipmi_driver_parse_fru_string(data, &i, dev, 1, str); // Board manufacturer
+    ipmi_driver_parse_fru_string(data, &i, dev, 1, str); // Board product
+    ipmi_driver_parse_fru_string(data, &i, dev, 1, str); // Board serial
+    ipmi_driver_parse_fru_string(data, &i, dev, 0, str); // Board part-number
+    ipmi_driver_parse_fru_string(data, &i, dev, 0, str); // Board FRU-id
+    ipmi_driver_parse_fru_string(data, &i, dev, 1, str); // Board extra0
 }
 
 void ipmi_driver_parse_fru_product(uchar *data, ipmi_dev_t *dev)
 {
+    char *str = "product";
     // Check the function fru_area_print_product() of ipmitool's source code.
     // DATA [0:0] FRU version
     // DATA [1:1] FRU length
@@ -284,11 +298,25 @@ void ipmi_driver_parse_fru_product(uchar *data, ipmi_dev_t *dev)
     // DATA [3:?] Product manufacturer
     // DATA [?:?] ...
     uint i = 3;
-    ipmi_driver_parse_fru_string(data, &i, dev, 1); // Product manufacturer
-    ipmi_driver_parse_fru_string(data, &i, dev, 1); // Product name
-    ipmi_driver_parse_fru_string(data, &i, dev, 0); // Product part number
-    ipmi_driver_parse_fru_string(data, &i, dev, 0); // Product version
-    ipmi_driver_parse_fru_string(data, &i, dev, 0); // Product serial
+    ipmi_driver_parse_fru_string(data, &i, dev, 1, str); // Product manufacturer
+    ipmi_driver_parse_fru_string(data, &i, dev, 1, str); // Product name
+    ipmi_driver_parse_fru_string(data, &i, dev, 0, str); // Product part number
+    ipmi_driver_parse_fru_string(data, &i, dev, 1, str); // Product version
+    ipmi_driver_parse_fru_string(data, &i, dev, 1, str); // Product serial
+}
+
+void ipmi_driver_parse_fru_chassis(uchar *data, ipmi_dev_t *dev)
+{
+    char *str = "chassis";
+    // Check the function fru_area_print_chassis() of ipmitool's source code.
+    // DATA [0:0] FRU version
+    // DATA [1:1] FRU length
+    // DATA [?:?] ...
+    uint i = 2;
+    ipmi_driver_parse_fru_string(data, &i, dev, 0, str); // Chassis type
+    ipmi_driver_parse_fru_string(data, &i, dev, 1, str); // Chassis part number
+    ipmi_driver_parse_fru_string(data, &i, dev, 1, str); // Chassis serial
+    ipmi_driver_parse_fru_string(data, &i, dev, 1, str); // Chassis extra0
 }
 
 void ipmi_driver_parse_sensor_reading(uchar raw, sdr_t *rec, ipmi_reading_t *val)
