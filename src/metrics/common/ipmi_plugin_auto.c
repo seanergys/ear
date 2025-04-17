@@ -60,6 +60,7 @@ state_t energy_units(uint *units)
     return EAR_SUCCESS;
 }
 
+#if TEST_PLUG
 int main(int argc, char *argv[])
 {
     energy_init(NULL);
@@ -68,3 +69,4 @@ int main(int argc, char *argv[])
     energy_dc_read(NULL, NULL);
     return 0;
 }
+#endif
