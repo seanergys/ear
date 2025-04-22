@@ -1,4 +1,15 @@
+/***************************************************************************
+ * Copyright (c) 2024 Energy Aware Runtime - Barcelona Supercomputing Center
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **************************************************************************/
+
 #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS_ULTRA 1
 
 #include <stdlib.h>
 #include <pthread.h>
@@ -26,10 +37,7 @@ static consumption_t *pool;
 static char           opt_sd650e [11] = { 1, 0, 0x3a, 0x32, 5, 0x04, 0x02, 0x00, 0x00, 0x00, 0x00 }; // Lenovo SD650 (energy)
 static char           opt_sd650p [11] = { 2, 1, 0x3a, 0x32, 5, 0x04, 0x08, 0x00, 0x00, 0x00, 0x00 }; // Lenovo SD650 (power)
 static char           opt_dcmi   [11] = { 3, 1, 0x2c, 0x02, 4, 0xdc, 0x01, 0x00, 0x00, 0x00, 0x00 }; // Data Center Manageability Interface (power)
-static char           opt_inm    [11] = { 4, 1, 0x2e, 0xc8, 6, 0x57, 0x01, 0x00, 0x01, 0x00, 0x00 }; // Intel Node Manager (power)
-//static char         opt_lm5066c[11] = { 5, 1, 0x04, 0x2d, 1, 0x78, 0x00, 0x00, 0x00, 0x00, 0x00 }; // Paderborn LM5066 (power)
-//static char         opt_lm5066g[11] = { 6, 1, 0x04, 0x2d, 1, 0x22, 0x00, 0x00, 0x00, 0x00, 0x00 }; // Paderborn LM5066 (power)
-//static char         opt_nm     [11]; // This is weird class that requires an unknown parameter
+static char           opt_inmp   [11] = { 4, 1, 0x2e, 0xc8, 6, 0x57, 0x01, 0x00, 0x01, 0x00, 0x00 }; // Intel Node Manager (power)
 static char          *opt             = NULL;
 static char           opts_count      = 0;
 
@@ -47,9 +55,9 @@ static int send_oem_message(int d, ipmi_cmd_t *pkg)
         return 0;
     }
     if (pkg->msg_recv_data[0] != 0) {
-        return_msg(0, "invalid completion code")
+        return_print(0, "invalid completion code 0x%x", pkg->msg_recv_data[0]);
     }
-    #if SHOW_DEBUGS
+    #if SHOW_DEBUGS_ULTRA
     int i;
     for (i = 0; i < 16; ++i) {
         debug("data[%d]: 0x%x", i, pkg->msg_recv_data[i]);
@@ -61,6 +69,8 @@ static int send_oem_message(int d, ipmi_cmd_t *pkg)
 state_t energy_init(void **x)
 {
     state_t s = EAR_SUCCESS;
+    char *hint;
+
     while (pthread_mutex_trylock(&lock));
     if (devs_count) {
         goto leave;
@@ -69,14 +79,24 @@ state_t energy_init(void **x)
         goto leave;
     }
     // Detecting sensors depending on hardware
-    if      (ipmi_has_hardware("SD650"      )) opt = opt_sd650e;
+    if ((hint = getenv("PLUGIN_HINT")) != NULL) {
+        switch(atoi(hint)) {
+            case 1: opt = opt_sd650e; break;
+            case 2: opt = opt_sd650p; break;
+            case 3: opt = opt_dcmi;   break;
+            case 4: opt = opt_inmp;   break;
+        }
+    }
+    else if (ipmi_has_hardware("SD650"      )) opt = opt_sd650e;
     else if (ipmi_has_hardware("ThinkSystem")) opt = opt_dcmi;
     // If no sensors, error
     if (opt == NULL) {
         s = EAR_ERROR;
         goto leave;
     }
+    // Other initializations
     devs_count = ipmi_devs_count();
+    pool = calloc(devs_count, sizeof(consumption_t));
     // Monitoring
     if (opt[1]) {
         sus = suscription();
@@ -97,37 +117,41 @@ state_t energy_dispose(void **x)
 static void parse(char id, char *data, consumption_t *reading)
 {
     // Getting timestamp
-    timestamp_get(&reading->timestamp);
+    // timestamp_get(&reading->timestamp);
     //
     switch(id) {
-        case 1: // Lenovo SD650
+        case 1: // Lenovo SD650 (energy)
             reading->energy = ((uint64_t) *((uint32_t *) &data[3])) * 1000LLU +
                               ((uint64_t) *((uint16_t *) &data[7]));
             reading->timestamp.tv_sec  = ((uint64_t) *((uint32_t *) &data[9]));
             reading->timestamp.tv_nsec = ((uint64_t) *((uint16_t *) &data[13])) * 1000000LLU;
             break;
-        case 2:
-            reading->timestamp.tv_sec  = ((uint64_t) *((uint32_t *) &data[0]));
-            reading->timestamp.tv_nsec = ((uint64_t) *((uint16_t *) &data[4])) * 1000000LLU;
-            reading->power_current     = ((uint64_t) *((uint16_t *) &data[6])) +
-                                         ((uint64_t) *((uint16_t *) &data[8]));
+        case 2: // Lenovo SD650 (power)
+            // The energy_sd650_power.so plugin uses these indexes to get the timestamp, but
+            // I found that weren't working and the correct timestamp uses the same indexes
+            // than the energy_sd650.so. Then, by now we are going to use the same values. 
+            reading->timestamp.tv_sec  = ((uint64_t) *((uint32_t *) &data[1]));
+            reading->timestamp.tv_nsec = ((uint64_t) *((uint16_t *) &data[5])) * 1000000LLU;
+            reading->power_current     = ((uint64_t) *((uint16_t *) &data[7])) * 1000LLU +
+                                         ((uint64_t) *((uint16_t *) &data[9])) * 1000LLU;
             break;
         case 3: // Data Center Manageability Interface (DCMI)
-            reading->power_current     = (uint64_t) *((uint16_t *) &data[2]);
-            reading->power_minimum     = (uint64_t) *((uint16_t *) &data[4]);
-            reading->power_maximum     = (uint64_t) *((uint16_t *) &data[6]);
-            reading->power_average     = (uint64_t) *((uint16_t *) &data[8]);
+            reading->power_current     = (uint64_t) *((uint16_t *) &data[2]) * 1000LLU;
+            reading->power_minimum     = (uint64_t) *((uint16_t *) &data[4]) * 1000LLU;
+            reading->power_maximum     = (uint64_t) *((uint16_t *) &data[6]) * 1000LLU;
+            reading->power_average     = (uint64_t) *((uint16_t *) &data[8]) * 1000LLU;
             reading->timestamp.tv_sec  = (uint64_t) *((uint32_t *) &data[10]);
             reading->timestamp.tv_nsec = 0;
             reading->timeframe         = (uint64_t) *((uint32_t *) &data[14]);
             break;
         case 4: // Intel Node Manager (INM)
-            reading->power_current = (uint64_t) *((uint16_t *) &data[4]);
-            reading->power_minimum = (uint64_t) *((uint16_t *) &data[6]);
-            reading->power_maximum = (uint64_t) *((uint16_t *) &data[8]);
-            reading->power_average = (uint64_t) *((uint16_t *) &data[10]);
-            //reading->timestamp   = (uint64_t) *((uint32_t *) &data[12]);
-            reading->timeframe     = (uint64_t) *((uint32_t *) &data[16]);
+            reading->power_current     = (uint64_t) *((uint16_t *) &data[4])  * 1000LLU;
+            reading->power_minimum     = (uint64_t) *((uint16_t *) &data[6])  * 1000LLU;
+            reading->power_maximum     = (uint64_t) *((uint16_t *) &data[8])  * 1000LLU;
+            reading->power_average     = (uint64_t) *((uint16_t *) &data[10]) * 1000LLU;
+            reading->timestamp.tv_sec  = (uint64_t) *((uint32_t *) &data[12]);
+            reading->timestamp.tv_nsec = 0;
+            reading->timeframe         = (uint64_t) *((uint32_t *) &data[16]);
             break;
     }
 }
@@ -135,14 +159,15 @@ static void parse(char id, char *data, consumption_t *reading)
 static state_t energy_read(uint d, ipmi_cmd_t *pkg, consumption_t *rd)
 {
     if (!send_oem_message(d, pkg)) {
+        debug("ERROR while reading IPMI: %s", state_msg);
         return EAR_ERROR;
     }
     parse(opt[0], pkg->msg_recv_data, rd);
-    debug("energy: %lu mJ", rd[d].energy);
-    debug("power : %lu/%lu/%lu/%lu mW (cur/min/max/avg)", rd[d].power_current,
+    debug("read->energy: %lu mJ", rd[d].energy);
+    debug("read->power : %lu/%lu/%lu/%lu mW (cur/min/max/avg)", rd[d].power_current,
           rd[d].power_minimum, rd[d].power_maximum, rd[d].power_average);
-    debug("tstamp: %ld s, %ld ns\n", rd[d].timestamp.tv_sec, rd[d].timestamp.tv_nsec);
-    debug("tframe: %lu", rd[d].timeframe);
+    debug("read->tstamp: %ld s, %ld ns", rd[d].timestamp.tv_sec, rd[d].timestamp.tv_nsec);
+    debug("read->tframe: %lu", rd[d].timeframe);
     return EAR_SUCCESS;
 }
 
@@ -163,7 +188,7 @@ static state_t energy_pool(void *data)
     consumption_t rd = {0};
     ipmi_cmd_t pkg = {0};
     double fpower;
-    double fsecs;
+    double ftime;
     int d;
 
     while (pthread_mutex_trylock(&lock));
@@ -174,22 +199,30 @@ static state_t energy_pool(void *data)
             goto_state(leave, s = EAR_ERROR);
         }
         // Computing time between samples
-        fsecs  = (double) timestamp_fdiff(&rd.timestamp, &pool[d].timestamp, TIME_SECS, TIME_MSECS);
-        fpower = (pool[d].samples > 0)? ((double) rd.power_current) * fsecs:
+        ftime  = (double) timestamp_fdiff(&rd.timestamp, &pool[d].timestamp, TIME_SECS, TIME_MSECS);
+        fpower = (pool[d].samples > 0)? ((double) rd.power_current) * ftime:
                                          (double) rd.power_current;
         // If there are no changes between timestamps, continue
-        if (fsecs < 0.1) {
+        if (ftime < 0.1) {
             goto_msg(leave, s = EAR_WARNING, "Insufficient time to get new samples");
         }
         // Pooling things
-        pool[d].energy        = (opt[1])? rd.energy + (uint64_t) fpower: rd.energy;
-        pool[d].power_current = 0LLU;
+        pool[d].energy        = (opt[1])? pool[d].energy + (uint64_t) fpower: rd.energy;
+        pool[d].power_current = rd.power_current;
         pool[d].power_minimum = rd.power_minimum;
         pool[d].power_maximum = rd.power_maximum;
         pool[d].power_average = rd.power_average;
         pool[d].timeframe     = rd.timeframe;
         pool[d].timestamp     = rd.timestamp;
         pool[d].samples      += 1;
+       
+        debug("pool->energy: %lu mJ", pool[d].energy);
+        debug("pool->power : %lu/%lu/%lu/%lu mW (cur/min/max/avg)", pool[d].power_current,
+            pool[d].power_minimum, pool[d].power_maximum, pool[d].power_average);
+        debug("pool->tstamp: %ld s, %ld ns", pool[d].timestamp.tv_sec, pool[d].timestamp.tv_nsec);
+        debug("pool->tframe: %lu", pool[d].timeframe);
+        debug("pool->fpower: %.02lf W", fpower);
+        debug("pool->ftime : %.02lf s", ftime);
     }
 leave:
     if (data != NULL) {
@@ -220,8 +253,16 @@ state_t energy_accumulated(ulong *energy_mj, void *data1, void *data2)
 {
     consumption_t *readings2 = (consumption_t *) data2;
     consumption_t *readings1 = (consumption_t *) data1;
+
+    *energy_mj = 0LU;
     if (readings2->energy != 0LLU || readings1->energy != 0LLU) {
         *energy_mj = overflow_zeros_u64(readings2->energy, readings1->energy);
+        #if SHOW_DEBUGS
+        double time_s = (double) timestamp_fdiff(&readings2->timestamp, &readings1->timestamp, TIME_SECS, TIME_MSECS);
+        debug("diff->energy: %lu mJ (%lu - %lu)", *energy_mj, readings2->energy, readings1->energy);
+        debug("diff->fpower: %.02lf W", ((double) *energy_mj) / (time_s * 1000.0));
+        debug("diff->ftime : %.02lf s", time_s);
+        #endif
     }
     return EAR_SUCCESS;
 }

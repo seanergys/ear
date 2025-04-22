@@ -8,7 +8,9 @@
  * SPDX-License-Identifier: EPL-2.0
  **********************************************************************/
 
-// #define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
+
+#define _GNU_SOURCE
 #include <string.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -34,7 +36,6 @@ static ulong  accum_sd650_energy = 0;
 static ulong  last_time = 0;
 static uint sd650_power_initialized = 0;
 static uint monitor_done = 0;
-
 static pthread_mutex_t sd650_power_lock = PTHREAD_MUTEX_INITIALIZER;
 static struct ipmi_intf sd650_context_for_pool;
 static struct ipmi_intf sd650_context_for_mail;
@@ -236,15 +237,16 @@ static state_t sd650_power_reading(struct ipmi_intf *intf,struct sd650_node_powe
   debug("\n");
 	
   /* Processing answer */
-	bytes_rs = out.data;
-	memset(power_data, 0, sizeof(struct sd650_node_power));
- 	power_data->seconds 		= (bytes_rs[FIRST_BYTE_POWER_SEC+3] << 24) | (bytes_rs[FIRST_BYTE_POWER_SEC+2] << 16) | (bytes_rs[FIRST_BYTE_POWER_SEC+1] << 8) | (bytes_rs[FIRST_BYTE_POWER_SEC]);
- 	power_data->mseconds 		= (bytes_rs[FIRST_BYTE_POWER_MSEC+1] << 8) | (bytes_rs[FIRST_BYTE_POWER_MSEC]);
- 	power_data->node_power 	= (bytes_rs[FIRST_BYTE_NODE_POWER+1] << 8) | (bytes_rs[FIRST_BYTE_NODE_POWER]);
- 	power_data->gpu_power 	= (bytes_rs[FIRST_BYTE_GPU_POWER+1] << 8) | (bytes_rs[FIRST_BYTE_GPU_POWER]);
-
-	debug("SD650_power: Secs %lu msecs %lu Node power %lu GPU power %lu", power_data->seconds, power_data->mseconds, power_data->node_power, power_data->gpu_power);
-  return EAR_SUCCESS;
+    bytes_rs = out.data;
+    memset(power_data, 0, sizeof(struct sd650_node_power));
+    power_data->seconds    = (bytes_rs[FIRST_BYTE_POWER_SEC+3]  << 24) | (bytes_rs[FIRST_BYTE_POWER_SEC+2] << 16) |
+                             (bytes_rs[FIRST_BYTE_POWER_SEC+1]  <<  8) | (bytes_rs[FIRST_BYTE_POWER_SEC]);
+    power_data->mseconds   = (bytes_rs[FIRST_BYTE_POWER_MSEC+1] <<  8) | (bytes_rs[FIRST_BYTE_POWER_MSEC]);
+    power_data->node_power = (bytes_rs[FIRST_BYTE_NODE_POWER+1] <<  8) | (bytes_rs[FIRST_BYTE_NODE_POWER]);
+    power_data->gpu_power  = (bytes_rs[FIRST_BYTE_GPU_POWER+1]  <<  8) | (bytes_rs[FIRST_BYTE_GPU_POWER]);
+    debug("SD650_power: Secs %lu msecs %lu Node power %lu GPU power %lu",
+        power_data->seconds, power_data->mseconds, power_data->node_power, power_data->gpu_power);
+    return EAR_SUCCESS;
 };
 
 /* Not used in this plugin */

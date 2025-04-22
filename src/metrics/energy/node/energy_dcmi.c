@@ -8,8 +8,9 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
+#define _GNU_SOURCE
 #include <math.h>
 #include <errno.h>
 #include <stdio.h>
@@ -31,27 +32,24 @@
 #include <metrics/energy/node/energy_dcmi.h>
 #include <metrics/energy/node/energy_node.h>
 
-#define MAX_LOCK_TRIES  1000000000
-#define MIN_READ_PERIOD 2000       /*!< The minimum period time to for the periodic thread to read the power. */
-
+#define MAX_LOCK_TRIES            1000000000
+#define MIN_READ_PERIOD           2000       /*!< The minimum period time to for the periodic thread to read the power. */
 /* For error control */
 #define MAX_TIMES_POWER_SUPPORTED 10
-#define VPOWER_ERROR 0
+#define VPOWER_ERROR              0
+
 static        unsigned long     dcmi_last_power_measurement = 0;
-
-
 static struct ipmi_intf         dcmi_context_for_pool;
 static        dcmi_power_data_t dcmi_current_power_reading;
 static        dcmi_power_data_t dcmi_last_power_reading;
 static        ulong             dcmi_timeframe;
 static        suscription_t    *dcmi_sus;
-
-static int    monitor_done                            = 0;
-static        ulong           dcmi_accumulated_energy = 0;
-static        pthread_mutex_t ompi_lock               = PTHREAD_MUTEX_INITIALIZER;
+static int                      monitor_done = 0;
+static        ulong             dcmi_accumulated_energy = 0;
+static        pthread_mutex_t   ompi_lock = PTHREAD_MUTEX_INITIALIZER;
+static        timestamp_t       last_timestamp;
 
 static state_t dcmi_thread_init(void *p);
-static        timestamp_t     last_timestamp;
 
 static int opendev(struct ipmi_intf *intf)
 {
@@ -114,7 +112,7 @@ static struct ipmi_rs *sendcmd(struct ipmi_intf *intf, struct ipmi_rq *req)
 	_req.msg.cmd = req->msg.cmd;
 
 	if (ioctl(intf->fd, IPMICTL_SEND_COMMAND, &_req) < 0) {
-		debug("Unable to send command\n");
+		debug("Unable to send command");
 		if (data != NULL)
 			free(data);
 		return NULL;
@@ -124,13 +122,13 @@ static struct ipmi_rs *sendcmd(struct ipmi_intf *intf, struct ipmi_rq *req)
 	AFD_SET(intf->fd, &rset);
 
 	if (aselectv(&rset, NULL) < 0) {
-		debug("I/O Error\n");
+		debug("I/O Error");
 		if (data != NULL)
 			free(data);
 		return NULL;
 	};
 	if (AFD_ISSET(intf->fd, &rset) == 0) {
-		debug("No data available\n");
+		debug("No data available");
 		if (data != NULL)
 			free(data);
 		return NULL;
@@ -141,7 +139,7 @@ static struct ipmi_rs *sendcmd(struct ipmi_intf *intf, struct ipmi_rq *req)
 	recv.msg.data = rsp.data;
 	recv.msg.data_len = sizeof(rsp.data);
 	if (ioctl(intf->fd, IPMICTL_RECEIVE_MSG_TRUNC, &recv) < 0) {
-		debug("Error receiving message\n");
+		debug("Error receiving message");
 		if (errno != EMSGSIZE) {
 			if (data != NULL)
 				free(data);
@@ -211,7 +209,7 @@ state_t dcmi_get_capabilities_enh_power(struct ipmi_intf *intf, struct ipmi_data
   for (i=0;i<rsp->data_len; i++) {
   	out->data[i]=rsp->data[i];
 		#if SHOW_DEBUGS
-		debug("Byte %d: 0x%02x\n",i,rsp->data[i]);
+		debug("Byte %d: 0x%02x",i,rsp->data[i]);
 		#endif
   }
 	/* 0: Group extension
@@ -226,11 +224,11 @@ state_t dcmi_get_capabilities_enh_power(struct ipmi_intf *intf, struct ipmi_data
 	#if SHOW_DEBUGS
 	uint8_t num_rolling_avg, ra_time_period;
 	num_rolling_avg = rsp->data[6];
-	debug("There are %u rolling averag periods\n",num_rolling_avg);
+	debug("There are %u rolling averag periods",num_rolling_avg);
 
 	for (i=0;i<num_rolling_avg;i++){
 		ra_time_period = rsp->data[7+i];
-		debug("Units %u Time %u\n",ra_time_period&0xC0,ra_time_period&0x3F);
+		debug("Units %u Time %u",ra_time_period&0xC0,ra_time_period&0x3F);
 	}		
 	#endif
 	
@@ -296,7 +294,7 @@ state_t dcmi_get_capabilities(struct ipmi_intf *intf, struct ipmi_data *out)
 	minor=rsp->data[2];
 	revision=rsp->data[3];
 	power_enabled=rsp->data[5]&(uint8_t)0x01;
-	debug("Major %u minor %u revision %u power management enabled %u \n",(uint)major,(uint)minor,(uint)revision,(uint)power_enabled);
+	debug("Major %u minor %u revision %u power management enabled %u",(uint)major,(uint)minor,(uint)revision,(uint)power_enabled);
 	#endif
 	
 	pthread_mutex_unlock(&ompi_lock);
@@ -392,10 +390,10 @@ state_t dcmi_power_reading(struct ipmi_intf *intf, struct ipmi_data *out,dcmi_po
     uint8_t power_state,*power_statep;
     power_statep = (uint8_t *)&rsp->data[17];
     power_state  = ((*power_statep&0x40) > 0);
-    debug("current power 0x%04x min power 0x%04x max power 0x%04x avg power 0x%04x\n",current_power,min_power,max_power,avg_power);
-    debug("current power %u min power %u max power %u avg power %u\n",(uint)current_power,(uint)min_power,(uint)max_power,(uint)avg_power);
-    debug("timeframe %u timestamp %u\n",timeframe,timestamp);
-    debug("power state %u\n",(uint)power_state);
+    debug("current power 0x%04x min power 0x%04x max power 0x%04x avg power 0x%04x",current_power,min_power,max_power,avg_power);
+    debug("current power %u min power %u max power %u avg power %u",(uint)current_power,(uint)min_power,(uint)max_power,(uint)avg_power);
+    debug("timeframe %u timestamp %u",timeframe,timestamp);
+    debug("power state %u",(uint)power_state);
 #endif
     cpower->current_power = (ulong)current_power;
     cpower->min_power     = (ulong)min_power;
@@ -422,16 +420,16 @@ state_t dcmi_power_reading(struct ipmi_intf *intf, struct ipmi_data *out,dcmi_po
 /** These functions are used to accumulate the eneergy. */
 state_t dcmi_thread_main(void *p)
 {
-    struct ipmi_data out;
-    state_t st;
-    int etries = 0, lret;
+    struct       ipmi_data out;
+    ulong        current_elapsed;
+    ulong        current_energy;
+    timestamp_t  curr_time;
+    ullong       dcmi_elapsed;
+    state_t      st;
+    int          etries = 0;
+    int          lret;
 
     debug("dcmi_thread_main");
-
-    ulong current_elapsed, current_energy;
-		timestamp_t   curr_time;
-    ullong        dcmi_elapsed;
-
     while ((lret = pthread_mutex_trylock(&ompi_lock)) && (etries < MAX_LOCK_TRIES)) {
         etries++;
     }

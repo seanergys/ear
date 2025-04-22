@@ -8,11 +8,9 @@
  * SPDX-License-Identifier: EPL-2.0
  **********************************************************************/
 
-// #define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
-#define FIRST_SIGNIFICANT_BYTE 3
-#define POWER_PERIOD 5
-
+#define _GNU_SOURCE
 #include <math.h>
 #include <errno.h>
 #include <stdio.h>
@@ -37,11 +35,11 @@
 
 /* For error control */
 #define MAX_TIMES_POWER_SUPPORTED 10
-#define VPOWER_ERROR 0
+#define VPOWER_ERROR              0
+#define FIRST_SIGNIFICANT_BYTE    3
+#define POWER_PERIOD              5
+
 static        unsigned int     inm_power_last_power_measurement = 0;
-
-
-
 static pthread_mutex_t ompi_lock = PTHREAD_MUTEX_INITIALIZER;
 static suscription_t *inm_power_sus;
 static ulong inm_power_already_loaded=0;
@@ -50,7 +48,7 @@ static ulong inm_power_accumulated_energy=0;
 static inm_power_data_t inm_current_power_reading,inm_last_power_reading;
 static struct ipmi_intf inm_context_for_pool;
 
-//extern int bmc_channel;
+extern int bmc_channel;
 
 static int opendev(struct ipmi_intf *intf)
 {

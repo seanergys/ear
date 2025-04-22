@@ -1,16 +1,16 @@
 all:
-	gcc -g -DTEST=1 -I ../../ -o test ipmi.c ipmi_driver.c ipmi_driver_frusdr.c ipmi_driver_parsing.c ../../common/libcommon.a -lpthread -lm
-	gcc -g -DTEST_PLUG=1 -I ../../ -o test_plug_oem ipmi_plugin_oem.c ipmi.c ipmi_driver.c ipmi_driver_frusdr.c ipmi_driver_parsing.c ../../common/libcommon.a -lpthread -lm
-	#gcc -g -I ../../ -o test_plug_auto ipmi_plugin_auto.c ipmi.c ipmi_driver.c ipmi_driver_frusdr.c ipmi_driver_parsing.c ../../common/libcommon.a -lpthread -lm
-	gcc -g -I ../../ -o test_plug_sd650 ipmi_plugin_sd650.c ../../common/libcommon.a -lpthread -lm
-	gcc -g -I ../../ -o test_plug_dcmi ipmi_plugin_dcmi.c ../../common/libcommon.a -lpthread -lm
-	#gcc -g -I ../../ -o test_plug_inm ipmi_plugin_inm.c ../../common/libcommon.a -lpthread -lm
-	scp test root@spr4270:/root
-	scp test_plug_oem root@spr4270:/root
-	#scp test_plug_auto root@spr4270:/root
-	scp test_plug_sd650 root@spr4270:/root
-	scp test_plug_dcmi root@spr4270:/root
-	#scp test_plug_inm root@spr4270:/root
+	gcc -g -I ../../ -shared -fPIC -o energy_ipmi_oem.so ipmi_plugin_oem.c ipmi.c ipmi_driver.c ipmi_driver_frusdr.c ipmi_driver_parsing.c ../../common/libcommon.a -lpthread -lm
+	gcc -g -I ../../ -shared -fPIC -o energy_inm_power.so ../energy/node/energy_inm_power.c ../../common/libcommon.a -lpthread -lm
+	gcc -g -I ../../ -shared -fPIC -o energy_dcmi.so ../energy/node/energy_dcmi.c ../../common/libcommon.a -lpthread -lm
+	gcc -g -I ../../ -shared -fPIC -o energy_sd650.so ../energy/node/energy_sd650.c ../../common/libcommon.a -lpthread -lm
+	gcc -g -I ../../ -shared -fPIC -o energy_sd650_power.so ../energy/node/energy_sd650_power.c ../../common/libcommon.a -lpthread -lm
+	gcc -g -I ../../ -rdynamic -o test_plug ipmi_plugin.c ../energy/energy_node.c ../libmetrics.a ../../common/system/symplug.c ../../common/libcommon.a -lpthread -lm
+	scp energy_ipmi_oem.so root@spr4270:/root
+	scp energy_inm_power.so root@spr4270:/root
+	scp energy_dcmi.so root@spr4270:/root
+	scp energy_sd650.so root@spr4270:/root
+	scp energy_sd650_power.so root@spr4270:/root
+	scp test_plug root@spr4270:/root
 
 clean:
-	rm -f test test_plug_oem test_plug_auto test_plug_sd650 test_plug_dcmi test_plug_inm
+	rm -f test test_plug test_plug_oem test_plug_auto test_plug_sd650 test_plug_dcmi test_plug_inm *.so

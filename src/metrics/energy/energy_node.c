@@ -53,21 +53,16 @@ const char *energy_names[] = {
 
 state_t energy_load(char *energy_obj)
 {
-	if (energy_loaded) {
+	state_t ret;
+	
+    if (energy_loaded) {
 		return_msg(EAR_ERROR, Generr.api_initialized);
 	}
-
-	state_t ret;
-
 	if (!energy_obj) {
 		return_msg(EAR_ERROR, Generr.input_null);
 	}
-
 	debug("loading shared object '%s'", energy_obj);
-	if (state_fail
-	    (ret =
-	     symplug_open(energy_obj, (void **)&energy_ops, energy_names,
-			  energy_nops))) {
+	if (state_fail(ret = symplug_open(energy_obj, (void **)&energy_ops, energy_names, energy_nops))) {
 		debug("symplug_open() returned %d (%s)", ret, state_msg);
 		return_msg(ret, Generr.dlopen);
 	}
