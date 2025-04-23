@@ -1386,9 +1386,9 @@ int main(int argc, char *argv[])
         if (is_loops)
             strcpy(format, "jxnXpgTCstrimG");
         else if (full_length)
-            strcpy(format, "jxuapnrtpgCseG");
+            strcpy(format, "jxuapnrtgCseG");
         else
-            strcpy(format, "jxuapNrtpgCseG");
+            strcpy(format, "jxuapNrtgCseG");
     }
 
     if (file_name != NULL) read_applications_from_files(file_name, format);
