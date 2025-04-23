@@ -227,8 +227,10 @@ int ipmi_driver_sensors_find(char *string, ipmi_sensor_t **sensors, uint *sensor
 {
     int is_multi = strstr(string, "%d") != NULL;
     ipmi_sensor_t *alloc = NULL;
-    int d, r, s, m, f;
     char string_tolow[64];
+    uint list_count = 0;
+    char **list = NULL;
+    int d, r, s, m, l;
     char buffer[64];
 
     if (string == NULL) {
@@ -237,26 +239,38 @@ int ipmi_driver_sensors_find(char *string, ipmi_sensor_t **sensors, uint *sensor
     // String to lower case
     strcpy(string_tolow, string);
     strtolow(string_tolow);
-
+    // String low to list
+    if (strtoa((const char *) string_tolow, ',', &list, &list_count) == NULL) {
+        return 0;
+    }
     for (d = s = 0; d < devs_count; ++d) {
         for (r = 0; r < devs[d].records_count; ++r) {
             // If not FULL sensor type (0x01)
             if (devs[d].records[r].type != 0x01) {
                 continue;
             }
-            // If string contains %d, then is multi (m)
-            if (!is_multi) {
-                is_sensor(string_tolow, devs, d, r, &alloc, &s);
-                continue;
+            for (l = 0; l < list_count; ++l) {
+                // If string contains %d, then it has an index that grows
+                if (strstr(list[l], "%d") == NULL) {
+                    if (is_sensor(list[l], devs, d, r, &alloc, &s)) {
+                        goto next_record;
+                    }
+                    continue;
+                }
+                // Doing the %d part (f of fail)
+                m = 0;
+                while (m < 16 && sprintf(buffer, list[l], m)) {
+                    if (is_sensor(buffer, devs, d, r, &alloc, &s)) {
+                        goto next_record;
+                    }
+                    m += 1;
+                }
             }
-            // Doing the multi part (f of fail)
-            m = f = 0;
-            while (sprintf(buffer, string_tolow, m) && !is_sensor(buffer, devs, d, r, &alloc, &s) && f < 2) {
-                m += 1;
-                f += 1;
-            }
+            next_record:
+            ;
         }
     }
+    strtoa_free(list);
     if (sensors       != NULL) *sensors = alloc;
     if (sensors_count != NULL) *sensors_count = s;
     return s;

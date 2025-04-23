@@ -38,8 +38,7 @@ static char           opt_sd650e [11] = { 1, 0, 0x3a, 0x32, 5, 0x04, 0x02, 0x00,
 static char           opt_sd650p [11] = { 2, 1, 0x3a, 0x32, 5, 0x04, 0x08, 0x00, 0x00, 0x00, 0x00 }; // Lenovo SD650 (power)
 static char           opt_dcmi   [11] = { 3, 1, 0x2c, 0x02, 4, 0xdc, 0x01, 0x00, 0x00, 0x00, 0x00 }; // Data Center Manageability Interface (power)
 static char           opt_inmp   [11] = { 4, 1, 0x2e, 0xc8, 6, 0x57, 0x01, 0x00, 0x01, 0x00, 0x00 }; // Intel Node Manager (power)
-static char          *opt             = NULL;
-static char           opts_count      = 0;
+static char          *opt = NULL;
 
 static state_t energy_pool(void *data);
 
@@ -277,31 +276,3 @@ uint energy_data_is_null(void *data)
 {
     return ((consumption_t *) data)->energy == 0;
 }
-
-#if TEST_PLUG
-void *energy_alloc(void **data)
-{
-    size_t size = 0;
-    energy_datasize(&size);
-    *data = calloc(devs_count, size);
-}
-
-int main(int argc, char *argv[])
-{
-    void *energy1 = NULL;
-    void *energy2 = NULL;
-    ulong energyD = 0LU;
-
-    if (state_fail(energy_init(NULL))) {
-        return 0;
-    }
-    energy_alloc(&energy1);
-    energy_alloc(&energy2);
-    energy_dc_read(NULL, energy1);
-    sleep(2);
-    energy_dc_read(NULL, energy2);
-    energy_accumulated(&energyD, energy1, energy2);
-    printf("%lu mJ\n", energyD);
-    return 0;
-}
-#endif

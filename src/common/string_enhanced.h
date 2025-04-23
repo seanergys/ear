@@ -42,6 +42,4 @@ void str_cut_list(char *src, char ***elements, int *num_elements, char *separato
  * For example, replace_char("hello world", 'l', 'm') generates "hemmo wormd". */
 void replace_char(char *string, char old_char, char new_char);
 
-
-
 #endif
