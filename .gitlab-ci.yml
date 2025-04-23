@@ -46,6 +46,19 @@ compile-mpi:
     paths:
       - "ear-ompi"
 
+compile-mpi-mysql:
+  stage: build
+  script:
+    - dnf install -y mysql-devel
+    - export CONFIG_SITE="$TESTDIR/config-sites/config.ompi.site"
+    - MAKE_FEATURES="MPI_CFLAGS='$(pkgconf ompi-c --cflags)'" CONFIGURE_FLAGS="--prefix=$PWD/ear-db" $TESTDIR/compile.sh
+    - make install
+  artifacts:
+    when: on_success
+    expire_in: 1 days
+    paths:
+      - "ear-db"
+
 test-install-no-mpi-loader:
   stage: test
   needs: [compile-no-mpi-loader]
@@ -61,3 +74,21 @@ test-install-mpi:
     - echo "Checking installation for MPI installation"
     - $TESTDIR/test_install.sh ear-ompi
     - test -f ear-ompi/lib/libear.ompi.so
+
+test-install-db:
+  needs: [compile-mpi-mysql]
+  script:
+    - echo "Checking installation DB installation"
+    - $TESTDIR/test_install.sh ear-db
+    - test -f ear-db/bin/eacct
+    - test -f ear-db/bin/ereport
+    - test -f ear-db/sbin/edb_create
+    - test -f ear-db/sbin/edb_clean_apps
+    - test -f ear-db/sbin/edb_clean_pm
+    - test -f ear-db/sbin/eargmd
+    - test -f ear-db/bin/tools/learning_show
+    - test -f ear-db/bin/tools/get_periodic
+    - test -f ear-db/bin/tools/metrics_show
+    - test -f ear-db/bin/tools/loops_average
+    - test -f ear-db/bin/tools/database_size_calculator
+    - test -f ear-db/bin/tools/learning_delete
