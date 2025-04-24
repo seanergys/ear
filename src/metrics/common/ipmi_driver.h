@@ -11,11 +11,7 @@
 #ifndef METRICS_COMMON_IPMI_DRIVER_H
 #define METRICS_COMMON_IPMI_DRIVER_H
 
-#if IPMI_INDEPENDENCY
-#include <ipmi.h>
-#else
 #include <metrics/common/ipmi.h>
-#endif
 
 typedef struct sdr_s {
     ipmi_addr_t *addr; // SDR address

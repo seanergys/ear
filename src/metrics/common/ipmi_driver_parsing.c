@@ -16,14 +16,10 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
-#if IPMI_INDEPENDENCY
-#include <ipmi_driver_parsing.h>
-#else
 #include <common/output/debug.h>
 #include <common/string_enhanced.h>
 #include <common/hardware/bithack.h>
 #include <metrics/common/ipmi_driver_parsing.h>
-#endif
 
 static const char *unit_str[] = {
     "unspecified", "degrees C", "degrees F", "degrees K", "Volts", "Amps",
@@ -55,32 +51,6 @@ const char *sensor_type_str[] = {
     "Monitor ASIC", "LAN", "Management Subsys Health", "Battery",
     "Session Audit", "Version Change", "FRU State", NULL
 };
-
-#if IPMI_INDEPENDENCY
-static uint getbits32(uint reg, uint left_bit, uint right_bit)
-{
-    uint digits = left_bit - right_bit;
-    uint mask   = (((0x01 << digits) - 1) << 1) + 1;
-    return ((reg >> right_bit) & mask);
-}
-
-static uchar getbits8(uchar reg, uchar left_bit, uchar right_bit)
-{
-    uchar digits = left_bit - right_bit;
-    uchar mask   = (((0x01 << digits) - 1) << 1) + 1;
-    return ((reg >> right_bit) & mask);
-}
-
-char *strtolow(char *string)
-{
-    char *p = string;
-    while (*string != '\0') {
-        *string = tolower((unsigned char) *string);
-        string++;
-    }
-    return p;
-}
-#endif
 
 void ipmi_driver_parse_device_id(uchar *data, ipmi_dev_t *dev)
 {

@@ -11,11 +11,7 @@
 #ifndef METRICS_COMMON_IPMI_DRIVER_PARSING_H
 #define METRICS_COMMON_IPMI_DRIVER_PARSING_H
 
-#if IPMI_INDEPENDENCY
-#include <ipmi_driver.h>
-#else
 #include <metrics/common/ipmi_driver.h>
-#endif
 
 void ipmi_driver_parse_device_id(uchar *data, ipmi_dev_t *dev);
 

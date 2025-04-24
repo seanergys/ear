@@ -14,6 +14,7 @@ comm_OBJS = \
     hwmon_old.o \
     ipmi.o \
     ipmi_driver.o \
+    ipmi_driver_frusdr.o \
     ipmi_driver_parsing.o \
     isst.o \
     likwid.o \

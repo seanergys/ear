@@ -12,38 +12,7 @@
 #define METRICS_COMMON_IPMI_H
 
 #include <linux/ipmi.h>
-#if !IPMI_INDEPENDENCY
 #include <common/states.h>
-#endif
-
-// Delete these regions when finished
-#if IPMI_INDEPENDENCY
-    #define debug(...) { \
-        printf(__VA_ARGS__); \
-        printf("\n"); \
-    }
-
-    typedef unsigned char uchar;
-    typedef unsigned short ushort;
-    typedef unsigned int uint;
-    typedef int state_t;
-
-    char *state_msg __attribute__((weak));
-
-    #define state_ok(state) \
-        ((state) == EAR_SUCCESS)
-
-    #define state_fail(state) \
-        ((state) != EAR_SUCCESS)
-
-    #define return_msg(no, msg) { \
-        state_msg = msg; \
-        return no; \
-        }
-
-    #define EAR_SUCCESS  0
-    #define EAR_ERROR   -1
-#endif
 
 //  _____ _____  __  __ _____ 
 // |_   _|  __ \|  \/  |_   _|
@@ -101,24 +70,29 @@ int ipmi_devs_count();
 // Checks if IPMI has a board attached to its system.
 int ipmi_has_hardware(char *board_name);
 
-// You can pass %d in string to retrieve a multi numbered sensor.
+// The 'sensor_name' can be a comma separated list of sensor names and also can
+// include %d to get numbered sensors.
 int ipmi_sensors_find(char *sensor_name, ipmi_sensor_t **sensors, uint *sensors_count);
 
 // Allocates values memory if the inner pointer is NULL.
 state_t ipmi_sensors_read(ipmi_sensor_t *sensors, uint sensors_count, ipmi_reading_t **values);
 
-// OEM
+// RAW/OEM:
+// These functions are intended to contact to IPMI devices through raw messages.
+// Before the main function ipmi_cmd_send(), you have to fill the request struct
+// with address through ipmi_cmd_set_paddr() OR ipmi_cmd_set_addr(), and the
+// message content (net function and command) by calling ipmi_cmd_set_msg().
 
-// Sets an address in the CMD Package (PKG) based on an existing address.
-void ipmi_cmd_set_paddr(ipmi_cmd_t *pkg, ipmi_addr_t *addr);
+// Sets an address in the request pack (req) based on an existing address.
+void ipmi_cmd_set_paddr(ipmi_cmd_t *req, ipmi_addr_t *addr);
 
-// Sets an address in the PKG based on separated components.
-void ipmi_cmd_set_addr(ipmi_cmd_t *pkg, int type, short channel, uchar slave_addr, uchar lun);
+// Sets an address in the request (req) based on separated components.
+void ipmi_cmd_set_addr(ipmi_cmd_t *req, int type, short channel, uchar slave_addr, uchar lun);
 
-// Sets the message part in the PKG based on separated components.
-void ipmi_cmd_set_msg(ipmi_cmd_t *pkg, uchar netfn, uchar cmd, ushort data_len);
+// Sets the message part in the request (req) based on separated components.
+void ipmi_cmd_set_msg(ipmi_cmd_t *req, uchar netfn, uchar cmd, ushort data_len);
 
-// Sends th ecommand to the device specied by its number
-state_t ipmi_cmd_send(int dev_no, ipmi_cmd_t *pkg);
+// Sends the request (req) to the device specified by its number.
+state_t ipmi_cmd_send(int dev_no, ipmi_cmd_t *req);
 
 #endif //METRICS_COMMON_IPMI_H

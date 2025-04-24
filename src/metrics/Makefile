@@ -13,6 +13,10 @@ mets_OBJS = \
     $(SRCDIR)/metrics/common/hwmon.o \
     $(SRCDIR)/metrics/common/hwmon_old.o \
     $(SRCDIR)/metrics/common/isst.o \
+    $(SRCDIR)/metrics/common/ipmi.o \
+    $(SRCDIR)/metrics/common/ipmi_driver.o \
+    $(SRCDIR)/metrics/common/ipmi_driver_frusdr.o \
+    $(SRCDIR)/metrics/common/ipmi_driver_parsing.o \
     $(SRCDIR)/metrics/common/likwid.o \
     $(SRCDIR)/metrics/common/nvml.o \
     $(SRCDIR)/metrics/common/pci.o \

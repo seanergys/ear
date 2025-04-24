@@ -11,11 +11,7 @@
 #ifndef METRICS_COMMON_IPMI_DRIVER_FRUSDR_H
 #define METRICS_COMMON_IPMI_DRIVER_FRUSDR_H
 
-#if IPMI_INDEPENDENCY
-#include <ipmi.h>
-#else
 #include <metrics/common/ipmi.h>
-#endif
 
 void ipmi_driver_sdrs_discover(ipmi_dev_t *devs, uint devs_count);
 

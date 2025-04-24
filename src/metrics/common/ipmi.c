@@ -9,13 +9,8 @@
  **************************************************************************/
 
 #include <pthread.h>
-#if IPMI_INDEPENDENCY
-#include <ipmi.h>
-#include <ipmi_driver.h>
-#else
 #include <metrics/common/ipmi.h>
 #include <metrics/common/ipmi_driver.h>
-#endif
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 

@@ -13,16 +13,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#if IPMI_INDEPENDENCY
-#include <ipmi_driver.h>
-#include <ipmi_driver_frusdr.h>
-#include <ipmi_driver_parsing.h>
-#else
 #include <common/output/debug.h>
 #include <metrics/common/ipmi_driver.h>
 #include <metrics/common/ipmi_driver_frusdr.h>
 #include <metrics/common/ipmi_driver_parsing.h>
-#endif
 
 static uchar fru_buffer[1048576];
 

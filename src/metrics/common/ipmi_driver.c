@@ -19,25 +19,12 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/ioctl.h>
-#if IPMI_INDEPENDENCY
-#include <ipmi_driver.h>
-#include <ipmi_driver_frusdr.h>
-#include <ipmi_driver_parsing.h>
-#else
 #include <common/system/poll.h>
 #include <common/output/debug.h>
 #include <common/string_enhanced.h>
 #include <metrics/common/ipmi_driver.h>
 #include <metrics/common/ipmi_driver_frusdr.h>
 #include <metrics/common/ipmi_driver_parsing.h>
-#endif
-
-#if IPMI_INDEPENDENCY
-#define AFD_SET(...)
-#define afd_init(...)
-typedef int afd_set_t;
-char *strtolow(char *string);
-#endif
 
 static ipmi_dev_t devs[IPMI_MAX_DEVS];
 static int        devs_count;
@@ -443,7 +430,6 @@ state_t ipmi_driver_cmd_send(int dev_no, ipmi_cmd_t *pkg)
     recv.msg.data     = pkg->msg_recv_data;
     recv.msg.data_len = sizeof(pkg->msg_recv_data);
 
-    #if !IPMI_INDEPENDENCY
     if ((fds_status = aselect(&fds_group, 300, NULL)) <= 0) {
         if (fds_status < 0) {
             debug("IPMI waiting for message error: %s", strerror(errno));
@@ -457,18 +443,5 @@ state_t ipmi_driver_cmd_send(int dev_no, ipmi_cmd_t *pkg)
         debug("IPMI receive message ioctl error: %s", strerror(errno));
         return_print(EAR_ERROR, "Error when receiving IPMI message: %s", strerror(errno));
     }
-    #else
-    while (ioctl(devs[dev_no].fd, IPMICTL_RECEIVE_MSG_TRUNC, &recv) < 0) {
-        if (errno != EAGAIN) {
-            debug("IPMI receive message ioctl error: %s", strerror(errno));
-        }
-        // Tiemout control
-        if (tries-- == 0) {
-            debug("IPMI receive message ioctl error: timeout");
-            return_msg(EAR_ERROR, "Timeout");
-        }
-        usleep(100000);
-    }
-    #endif
     return EAR_SUCCESS;
 }

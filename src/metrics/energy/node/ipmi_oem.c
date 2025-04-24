@@ -8,8 +8,8 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-#define SHOW_DEBUGS 1
-#define SHOW_DEBUGS_ULTRA 1
+//#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS_ULTRA 1
 
 #include <stdlib.h>
 #include <pthread.h>
@@ -276,3 +276,4 @@ uint energy_data_is_null(void *data)
 {
     return ((consumption_t *) data)->energy == 0;
 }
+
