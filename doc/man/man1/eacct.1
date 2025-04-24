@@ -58,11 +58,11 @@ All Freqs@r@Average, default and IMC frequency in a shorter format
 CACHE MISSES@L@L1, L2 and L3 cache misses
 CPI@C@Average clocks per instruction
 DEF(GHz)@d@Default CPU frequency
-TPI@T@-
+TPI@T@Transactions per Instruction
 GFlops/W@s@Average Gflops per Watt
 CYCLES@y@Total application cycles 
 INSTRUCTIONS@I@Number of instructions (accumulated counter)
-VPI(%)@v@Percentage of instructions that are vectorial (SSE, AVX)
+VPI(%)@v@Percentage of instructions that are vectorial (AVX256, AVX512)
 .TE
 .SS Jobs
 .TS
@@ -75,10 +75,9 @@ APPLICATION@a@Application name
 JOB/STEP@j@Job and step ID
 AID@x@Local application ID (mostly used to distinguish applications within workflows)
 USER@u@User that executed the application
-NODE ID@n@Nodename that the data belongs to (only available with -l and -r options)
+NODE@n@Nodename that the data belongs to (only available with -l and -r options)
 NODES@N@Total nodes used by the application (only available when NOT using -l or -r)
-DATE@X@Timestamp of the loop signature or start and end time of a job.
-ITER@X@Accumulated total iterations of a loop. Goes together with DATE (only available with -r)
+DATE/TIMESTAMP@X@Timestamp of the loop signature or start and end time of a job.
 .TE
 
 Note that DATE and ITER are mutually exclusive, and depend on how EAR is compiled. By default, DATE will be used.
@@ -102,7 +101,7 @@ A specific job may be specified with -j:
 For node-specific information, the -l option provides detailed accounting of each individual node:
 
 [user@host]$ eacct -j 175966 -l
-     JOB-STEP    NODE ID    USER ID    APPLICATION      AVG-F/IMC-F TIME(s)    POWER(s)   GBS        CPI        ENERGY(J)  IO(MBS) MPI%  VPI(%)  G-POW(T/U)    G-FREQ G-UTIL(G/M)
+     JOB-STEP    NODE       USER ID    APPLICATION      AVG-F/IMC-F TIME(s)    POWER(s)   GBS        CPI        ENERGY(J)  IO(MBS) MPI%  VPI(%)  G-POW(T/U)    G-FREQ G-UTIL(G/M)
   175966-sb      cmp2506    user       afid              2.97/---   3660.00    388.79     ---        ---        1422970    ---     ---   ---     ---     ---      ---
   175966-sb      cmp2507    user       afid              2.97/---   3660.00    374.22     ---        ---        1369649    ---     ---   ---     ---     ---      ---
   175966-2       cmp2506    user       afid              2.97/2.39  1205.27    423.81     146.06     1.03       510807     0.0     21.2  0.23    ---     ---      ---
@@ -115,7 +114,7 @@ For node-specific information, the -l option provides detailed accounting of eac
 For runtime data (EAR loops) one may retrieve them with -r. Both job_id and step_id filtering works:
 
 [user@host]$ eacct -j 175966.1 -r
-    JOB-STEP      NODE ID    ITER.  POWER(W) GBS      CPI      GFLOPS/W TIME(s)  AVG_F IMC_F IO(MBS) MPI%  G-POWER(T/U) G-FREQ   G-UTIL(G/MEM)
+    JOB-STEP      NODE       ITER.  POWER(W) GBS      CPI      GFLOPS/W TIME(s)  AVG_F IMC_F IO(MBS) MPI%  G-POWER(T/U) G-FREQ   G-UTIL(G/MEM)
  175966-1         cmp2506    21     360.6    115.8    0.838    0.086    1.001    2.58  2.30  0.0     11.6  0.0   /   0.0  0.00     0%/0%
  175966-1         cmp2507    21     333.7    118.4    0.849    0.081    1.001    2.58  2.32  0.0     12.0  0.0   /   0.0  0.00     0%/0%
  175966-1         cmp2506    31     388.6    142.3    1.010    0.121    1.113    2.58  2.38  0.0     19.7  0.0   /   0.0  0.00     0%/0%
@@ -160,7 +159,7 @@ By default, the following fields are shown:
 If a different format wants to be selected, use the -F option. For example:
 
 [user@host]$ eacct -F jant -n 5
-     JOB-STEP APPLICATION      NODE ID    TIME(s)
+     JOB-STEP APPLICATION      NODE       TIME(s)
    44546-sb   app0             node1      10
    44545-sb   app1             node2      2608
    44544-sb   app2             node2      2424
