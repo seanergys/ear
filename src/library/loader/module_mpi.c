@@ -16,7 +16,6 @@
 #include <common/config.h>
 #include <common/system/symplug.h>
 #include <common/string_enhanced.h>
-#include <library/loader/loader.h>
 #include <library/loader/module_mpi.h>
 #include <library/loader/module_mpi_syms_c.h>
 #include <library/loader/module_mpi_syms_f.h>
@@ -85,8 +84,9 @@ static void *get_libear_handler(char *libear_path)
 {
     static void *handler = NULL;
     if (handler == NULL && libear_path != NULL) {
+        verbose(2, "LOADER: loading library '%s'", libear_path);
         handler = dlopen(libear_path, RTLD_GLOBAL | RTLD_NOW);
-	verbose(2, "LOADER: handler libear: %p (%s)", handler, dlerror());
+        verbose(2, "LOADER: handler libear: %p (%s)", handler, dlerror());
     }
     return handler;
 }
@@ -176,7 +176,7 @@ static char *build_libear_path(void *call_mpi_version)
     return buffer_path;
 }
 
-static int load_ear_functions(void *handler)
+static int load_and_set_ear_functions(void *handler)
 {
     static int built_mpi_structure = 0;
     void (*libear_setnext_c)(mpic_t *) = NULL;
@@ -212,7 +212,8 @@ static int load_ear_functions(void *handler)
     call_constructor = dlsym(handler, "ear_constructor");
     call_destructor  = dlsym(handler, "ear_destructor" );
 override:
-    // Overriding LIBEAR MPI functions by MPI functions in case doesn't exists
+    // Overriding LIBEAR MPI functions by LIBMPI functions. This was done before,
+    // but plug_join() function sets to NULL the calls that does not find.
     for (i = 0; i < MPIC_N; ++i) if (libear_c[i] == NULL) libear_c[i] = libmpi_c[i];
     for (i = 0; i < MPIF_N; ++i) if (libear_f[i] == NULL) libear_f[i] = libmpi_f[i];
     // Passing MPI functions to LIBEAR MPI functions
@@ -226,9 +227,9 @@ static void usage_and_exit()
 {
     char message[1024];
     snprintf(message, sizeof(message),
-             "Error, you are using your MPI4Py application with EAR library and the %s env var is not set."
-             "If you want to run your application with EAR set \"export %s = \"intel\"|\"open mpi\". "
-             "Otherwise use \"--ear=off\" to disable the EAR library. \n",
+     "Error, you are using your MPI4Py application with EAR library and the %s env var is not set."
+     "If you want to run your application with EAR set \"export %s = \"intel\"|\"open mpi\". "
+     "Otherwise use \"--ear=off\" to disable the EAR library. \n",
              FLAG_LOAD_MPI_VERSION, FLAG_LOAD_MPI_VERSION);
     write(2, message, strlen(message));
     exit(1);
@@ -267,10 +268,14 @@ int load_libear_mpi_given_libmpi(char *libmpi_path)
     }
     MPI_Get_library_version_detected = (call_mpi_version != NULL);
     verbose(2, "LOADER: address of PMPI_Get_library_version: %p", call_mpi_version);
-    // Building libear.$ext.so final path. Protected against multiple calls.
-    libear_path = build_libear_path(call_mpi_version);
+    // Building libear.$ext.so final path in case no other EAR library is loaded.
+    if (!is_libear_loaded()) {
+        libear_path = build_libear_path(call_mpi_version);
+    }
     // Loading libear.$ext.so. Protected against multiple calls.
-    if (load_ear_functions(get_libear_handler(libear_path))) {
+    if (load_and_set_ear_functions(get_libear_handler(libear_path))) {
+        // Announce libear is already loaded
+        set_libear_loaded();
         // Registering destructor and calling constructor
         if (atexit(loader_mpi_destructor) != 0) {
             verbose(2, "LOADER: cannot set exit function");

@@ -36,17 +36,20 @@ struct hsmp_message {
 };
 #endif
 
-static int fd   = -1;
+static int fd = -1;
 
 state_t hsmp_driver_send(int socket, uint function, uint *args, uint *reps)
 {
     struct hsmp_message msg;
     int ret;
 
+    if (fd < 0) {
+        return_msg(EAR_ERROR, Generr.api_uninitialized);
+    }
     memset(&msg, 0, sizeof(struct hsmp_message));
-    msg.msg_id      = (__u32) function;
-    msg.sock_ind    = (__u16) socket;
-    debug("msg.msg_id     : %u", msg.msg_id);
+    msg.msg_id   = (__u32) function;
+    msg.sock_ind = (__u16) socket;
+    debug("msg.msg_id     : 0x%X", msg.msg_id);
     debug("msg.sock_ind   : %u", msg.sock_ind);
     // Counting args and reps
     while(args[msg.num_args] != -1) {
@@ -60,7 +63,9 @@ state_t hsmp_driver_send(int socket, uint function, uint *args, uint *reps)
     debug("msg.num_args   : %u", msg.num_args);
     debug("msg.response_sz: %u", msg.response_sz);
     // Contacting the driver
-    if ((ret = ioctl(fd, HSMP_IOCTL_CMD, &msg)) == -1) {
+    ret = ioctl(fd, HSMP_IOCTL_CMD, &msg);
+    debug("ret = %d, errno = %d", ret, errno);
+    if (ret == -1) {
         debug("ioctl failed: %s", strerror(errno));
         return_print(EAR_ERROR, "Error while sending a command to HSMP driver: %s", strerror(errno));
     }
@@ -81,32 +86,28 @@ state_t hsmp_driver_close()
 	return EAR_SUCCESS;
 }
 
-state_t hsmp_driver_open(topology_t *tp)
+state_t hsmp_driver_open(topology_t *tp, mode_t mode)
 {
-    state_t s;
+    state_t s = EAR_SUCCESS;
     if (tp->vendor == VENDOR_INTEL || tp->family < FAMILY_ZEN) {
-		return_msg(EAR_ERROR, Generr.api_incompatible);
-	}
-    if (fd != -1) {
-        goto leave;
+        return_msg(EAR_ERROR, Generr.api_incompatible);
     }
-    if ((fd = open("/dev/hsmp", O_RDWR)) < 0) {
-        if ((fd = open("/dev/hsmp", O_RDONLY)) < 0) {
-            return_print(EAR_ERROR, "Error while opening /dev/hsmp driver file: %s", strerror(errno))
-        }
+    if ((fd = open("/dev/hsmp", mode)) < 0) {
+        return_print(EAR_ERROR, "Error while opening /dev/hsmp driver file: %s", strerror(errno))
+    }
+    if (mode == O_RDONLY) {
         debug("HSMP is in user mode");
-        // Test ping
-        uint args[2] = { 68, -1 };
-        uint reps[2] = {  0, -1 };
-        if (state_fail(s = hsmp_driver_send(0, HSMP_TEST, args, reps))) {
-            hsmp_driver_close();
-            return_print(EAR_ERROR, "HSMP test function failed: %s", state_msg);
-        }
-        if (reps[0] != 69) {
-            hsmp_driver_close();
-            return_print(EAR_ERROR, "HSMP not enabled (incorrect ping value, expected 69, received %u)", reps[0]);
-        }
     }
-leave:
+    // Test ping
+    uint args[2] = { 68, -1 };
+    uint reps[2] = {  0, -1 };
+    if (state_fail(s = hsmp_driver_send(0, HSMP_TEST, args, reps))) {
+        hsmp_driver_close();
+        return_print(EAR_ERROR, "HSMP test function failed: %s", state_msg);
+    }
+    if (reps[0] != 69) {
+        hsmp_driver_close();
+        return_print(EAR_ERROR, "HSMP not enabled (incorrect ping value, expected 69, received %u)", reps[0]);
+    }
     return EAR_SUCCESS;
 }

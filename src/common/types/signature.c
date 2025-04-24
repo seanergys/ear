@@ -52,13 +52,12 @@ void signature_print_fd(int fd, signature_t *sig, char is_extended,
 	dprintf(fd, "%lf;%lf;%lf;",
 		sig->DC_power, sig->DRAM_power, sig->PCK_power);
 
-	dprintf(fd, "%llu;%llu;%llu;%llu;%llu;%lf",
+	dprintf(fd, "%llu;%llu;%llu;%llu;%llu;%lf;%u",
 		sig->cycles, sig->instructions, sig->stalls.fetch_decode, sig->stalls.resources,
-		sig->stalls.memory, sig->Gflops);
+		sig->stalls.memory, sig->Gflops, sig->ps_sig.cpu_util);
 
 	if (is_extended) {
-		dprintf(fd, ";%u;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%.2f;%.2f;%.2f;%.2f;%.2f;%.2f;%.2f;%.2f",
-			sig->ps_sig.cpu_util,
+		dprintf(fd, ";%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%.2f;%.2f;%.2f;%.2f;%.2f;%.2f;%.2f;%.2f",
 			sig->L1_misses, sig->L2_misses, sig->L3_misses, sig->cache.ll_misses,
 			sig->cache.l1d_hits, sig->cache.l2_hits, sig->cache.l3_hits, sig->cache.ll_hits,
 			sig->cache.l1d_accesses, sig->cache.l2_accesses, sig->cache.l3_accesses, sig->cache.ll_accesses,
@@ -408,7 +407,85 @@ void compute_avg_sig(signature_t *dst, signature_t *src, int nums)
 		dst->gpu_sig.gpu_data[i].GPU_temp_mem =
 		    src->gpu_sig.gpu_data[i].GPU_temp_mem / nums;
 #endif
-	}
+    }
+#endif
+}
+
+void ssig_set_node_metrics(ssig_t *avg_sig, ssig_t *s)
+{
+    avg_sig->GBS=s->GBS;
+    avg_sig->TPI=s->TPI;
+    avg_sig->DC_power=s->DC_power;
+    avg_sig->time=0;
+    avg_sig->CPI=0;
+    avg_sig->avg_f=0;
+    avg_sig->def_f=0;
+    avg_sig->Gflops=0;
+    memset(avg_sig->FLOPS, 0, sizeof(ull) * FLOPS_EVENTS);
+}
+
+state_t ssig_compute_avg_node(ssig_t *ssig, int n)
+{
+    if (ssig == NULL || n <= 0) {
+        return EAR_ERROR;
+    }
+
+    ssig->time /= n;
+
+    ssig->cycles /= n;
+    ssig->instructions /= n;
+    ssig->CPI /= n;
+
+    ssig->avg_f /= n;
+    ssig->def_f	/= n;
+
+    ssig->L3_misses /= n;
+
+    ssig->IO_MBS /= n;
+
+    for (int i = 0; i < FLOPS_EVENTS; i++) {
+        ssig->FLOPS[i] /= n;
+    }
+
+    return EAR_SUCCESS;
+}
+
+void signature_apply_weight(signature_t *dst,signature_t *src,int nums)
+{
+    int i;
+    dst->DC_power = src->DC_power*nums;
+    dst->DRAM_power = src->DRAM_power*nums;
+    dst->PCK_power = src->PCK_power*nums;
+    dst->EDP = src->EDP*nums;
+    dst->GBS = src->GBS*nums;
+    dst->TPI = src->TPI*nums;
+    dst->CPI = src->CPI*nums;
+    dst->Gflops = src->Gflops*nums;
+    dst->perc_MPI = src->perc_MPI*nums;
+    dst->time = src->time*nums;
+    for (i=0;i<FLOPS_EVENTS;i++) dst->FLOPS[i] = src->FLOPS[i]*nums;
+    dst->L1_misses = src->L1_misses*nums;
+    dst->L2_misses = src->L2_misses*nums;
+    dst->L3_misses = src->L3_misses*nums;
+    dst->instructions = src->instructions*nums;
+    dst->cycles = src->cycles*nums;
+    dst->avg_f = src->avg_f*nums;
+    dst->avg_imc_f = src->avg_imc_f*nums;
+    dst->def_f = src->def_f*nums;
+#if USE_GPUS
+    dst->gpu_sig.num_gpus = src->gpu_sig.num_gpus;
+    for (i=0;i<MAX_GPUS_SUPPORTED;i++){
+        dst->gpu_sig.gpu_data[i].GPU_power    = src->gpu_sig.gpu_data[i].GPU_power*nums;
+        dst->gpu_sig.gpu_data[i].GPU_freq     = src->gpu_sig.gpu_data[i].GPU_freq*nums;
+        dst->gpu_sig.gpu_data[i].GPU_mem_freq = src->gpu_sig.gpu_data[i].GPU_mem_freq*nums;
+        dst->gpu_sig.gpu_data[i].GPU_util     = src->gpu_sig.gpu_data[i].GPU_util*nums;
+        dst->gpu_sig.gpu_data[i].GPU_mem_util = src->gpu_sig.gpu_data[i].GPU_mem_util*nums;
+#if WF_SUPPORT
+        dst->gpu_sig.gpu_data[i].GPU_GFlops   = src->gpu_sig.gpu_data[i].GPU_GFlops*nums;
+        dst->gpu_sig.gpu_data[i].GPU_temp     = src->gpu_sig.gpu_data[i].GPU_temp*nums;
+        dst->gpu_sig.gpu_data[i].GPU_temp_mem = src->gpu_sig.gpu_data[i].GPU_temp_mem*nums;
+#endif
+    }
 #endif
 }
 

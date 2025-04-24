@@ -104,6 +104,11 @@ static void level_diff(cache_level_t *l2, cache_level_t *l1, cache_level_t *lD)
     lD->miss_rate = (lD->accesses) ? ((double) lD->misses) / ((double) lD->accesses): 0.0;
 }
 
+static cache_level_t *get_offset(void *dst_addr, void *src_addr, void *src_lv_addr)
+{
+    return (cache_level_t *) (dst_addr + (src_lv_addr - src_addr));
+}
+
 void cache_data_diff(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs)
 {
     double secs = 0.0;
@@ -113,8 +118,8 @@ void cache_data_diff(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs)
     }
     memset(caD, 0, sizeof(cache_t));
     secs = timestamp_fdiff(&ca2->time, &ca1->time, TIME_SECS, TIME_MSECS);
-    caD->ll  = (cache_level_t *) ((void *) caD + ((void *) ca2->ll  - (void *) ca2));
-    caD->lbw = (cache_level_t *) ((void *) caD + ((void *) ca2->lbw - (void *) ca2));
+    caD->ll  = get_offset(caD, ca2, ca2->ll );
+    caD->lbw = get_offset(caD, ca2, ca2->lbw);
     level_diff(&ca2->l1d, &ca1->l1d, &caD->l1d);
     level_diff(&ca2->l2 , &ca1->l2 , &caD->l2 );
     level_diff(&ca2->l3 , &ca1->l3 , &caD->l3 );
@@ -132,6 +137,8 @@ void cache_data_diff(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs)
 void cache_data_copy(cache_t *dst, cache_t *src)
 {
     memcpy(dst, src, sizeof(cache_t));
+    dst->ll  = get_offset(dst, src, src->ll );
+    dst->lbw = get_offset(dst, src, src->lbw);
 }
 
 void cache_data_print(cache_t *ca, double gbs, int fd)

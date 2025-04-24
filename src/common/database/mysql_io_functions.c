@@ -508,6 +508,7 @@ int mysql_batch_insert_applications(MYSQL *connection, application_t *app, int n
 		if (mysql_stmt_execute(statement)) {
 			ret = mysql_statement_error(statement);
 #if MYSQL_APPS_FALLBACK
+            warning("Application insertion failed, using fallback function");
 			mysql_insert_applications_fallback(connection, app, num_apps, sigs_ids, pow_sigs_ids);
 #endif
 		}
@@ -840,7 +841,7 @@ int mysql_retrieve_applications(MYSQL *connection, char *query, application_t **
 		int num_pow_sigs = mysql_retrieve_power_signatures(connection, pow_sig_query, &pow_sig_aux);
 		if (num_pow_sigs > 0)
 		{
-			copy_power_signature(&app_aux->power_sig, pow_sig_aux);
+			power_signature_copy(&app_aux->power_sig, pow_sig_aux);
 			free(pow_sig_aux);
 		}
 
@@ -2034,7 +2035,7 @@ int mysql_retrieve_power_signatures(MYSQL *connection, char *query, power_signat
 	status = mysql_stmt_fetch(statement);
 	while (status == 0 || status == MYSQL_DATA_TRUNCATED)
 	{
-		copy_power_signature(&pow_sigs_aux[i], pow_sig_aux);
+		power_signature_copy(&pow_sigs_aux[i], pow_sig_aux);
 		status = mysql_stmt_fetch(statement);
 		i++;
 	}

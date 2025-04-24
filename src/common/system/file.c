@@ -25,7 +25,7 @@
 
 static struct flock lock;
 
-int file_lock(int fd)
+int ear_file_lock(int fd)
 {
 	if (fd >= 0) {
 		lock.l_type = F_WRLCK;
@@ -34,7 +34,7 @@ int file_lock(int fd)
 		return -1;
 }
 
-int file_trylock(int fd)
+int ear_file_trylock(int fd)
 {
 	if (fd >= 0) {
 		lock.l_type = F_WRLCK;
@@ -43,17 +43,17 @@ int file_trylock(int fd)
 		return -1;
 }
 
-int file_lock_timeout(int fd, ulong timeout)
+int ear_file_lock_timeout(int fd, ulong timeout)
 {
 	uint tries = 0;
-	while ((file_trylock(fd) < 0) && (tries < timeout))
+	while ((ear_file_trylock(fd) < 0) && (tries < timeout))
 		tries++;
 	if (tries >= timeout)
 		return 0;
 	return 1;
 }
 
-int file_lock_create(char *lock_file_name)
+int ear_file_lock_create(char *lock_file_name)
 {
 	int fd = open(lock_file_name, O_WRONLY | O_CREAT | O_CLOEXEC, S_IWUSR);
 	if (fd < 0)
@@ -65,18 +65,18 @@ int file_lock_create(char *lock_file_name)
 	return fd;
 }
 
-int file_lock_master_perm(char *lock_file_name, int flag, mode_t mode)
+int ear_file_lock_master_perm(char *lock_file_name, int flag, mode_t mode)
 {
 	int fd = open(lock_file_name, flag | O_CREAT | O_EXCL, mode);
 	return fd;
 }
 
-int file_lock_master(char *lock_file_name)
+int ear_file_lock_master(char *lock_file_name)
 {
-	return file_lock_master_perm(lock_file_name, O_WRONLY, S_IWUSR);
+	return ear_file_lock_master_perm(lock_file_name, O_WRONLY, S_IWUSR);
 }
 
-void file_lock_clean(int fd, char *lock_file_name)
+void ear_file_lock_clean(int fd, char *lock_file_name)
 {
 	if (fd >= 0) {
 		close(fd);
@@ -84,7 +84,7 @@ void file_lock_clean(int fd, char *lock_file_name)
 	}
 }
 
-int file_unlock(int fd)
+int ear_file_unlock(int fd)
 {
 	if (fd >= 0) {
 		lock.l_type = F_UNLCK;
@@ -93,7 +93,7 @@ int file_unlock(int fd)
 		return -1;
 }
 
-int file_unlock_master(int fd, char *lock_file_name)
+int ear_file_unlock_master(int fd, char *lock_file_name)
 {
 	close(fd);
 	if (unlink(lock_file_name) < 0) {
@@ -102,13 +102,13 @@ int file_unlock_master(int fd, char *lock_file_name)
 	return 0;
 }
 
-int file_exists(const char *path)
+int ear_file_exists(const char *path)
 {
 	struct stat path_stat;
 	return (stat(path, &path_stat) == 0);
 }
 
-int file_is_regular(const char *path)
+int ear_file_is_regular(const char *path)
 {
 	struct stat path_stat;
 	if (stat(path, &path_stat) < 0)
@@ -117,7 +117,7 @@ int file_is_regular(const char *path)
 	return S_ISREG(path_stat.st_mode);
 }
 
-int file_is_directory(const char *path)
+int ear_file_is_directory(const char *path)
 {
 	struct stat buff;
 	if (stat(path, &buff) < 0)
@@ -151,7 +151,7 @@ state_t ear_file_read(const char *path, char *buffer, size_t size)
 		state_return_msg(EAR_OPEN_ERROR, errno, strerror(errno));
 	}
 
-	while ((size > 0) && ((r = read(fd, &buffer[totalr], size)) > 0)) {
+	while ((size > 0) && ((r = read(fd, &buffer[totalr], size)) >= 0)) {
 		size = size - r;
 		totalr += r;
 	}
@@ -177,7 +177,7 @@ state_t ear_file_write(const char *path, const char *buffer, size_t size)
 		state_return_msg(EAR_OPEN_ERROR, errno, strerror(errno));
 	}
 
-	while ((size > 0) && ((w = write(fd, &buffer[totalw], size)) > 0)) {
+	while ((size > 0) && ((w = write(fd, &buffer[totalw], size)) >= 0)) {
 		size = size - w;
 		totalw += w;
 	}

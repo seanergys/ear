@@ -262,7 +262,7 @@ CPUPOW_F_LOAD(mgt_cpupow_amd17_load)
         }
     }
     // Opening HSMP
-    if (state_fail(s = hsmp_open(tpo))) {
+    if (state_fail(s = hsmp_open(tpo, HSMP_WR))) {
         serror("Failed during HSMP open");
         return;
     }

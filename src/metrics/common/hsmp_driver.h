@@ -13,7 +13,7 @@
 
 #include <metrics/common/hsmp.h>
 
-state_t hsmp_driver_open(topology_t *tp);
+state_t hsmp_driver_open(topology_t *tp, mode_t mode);
 
 state_t hsmp_driver_close();
 

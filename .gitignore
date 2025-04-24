@@ -46,6 +46,9 @@ src/erules/*
 /configure*
 src/common/config/config.h.in~
 src/common/config/config.h
+src/daemon/app_api/Makefile*
+!src/daemon/app_api/Makefile.am
+.dirstamp
 
 # IDE
 cmake*
@@ -152,6 +155,7 @@ src/tools/type_sizes
 src/daemon/commands/ear_check_node_test
 src/database_cache/tmpi
 src/library/policies/p_plugin_test
+src/library/metrics/dcgmi_lib_test
 src/management/test
 src/metrics/test
 src/metrics/common/nvml_test
@@ -171,6 +175,7 @@ src/tools/compute_coefficients_v2
 src/tools/ear_lp_validation
 src/tools/external_attach
 src/tools/enode_control
+src/tools/enodectl
 src/tools/get_projections
 src/tools/insert_test
 src/tools/powercap_test
@@ -179,6 +184,7 @@ src/tools/learn_validator
 src/tools/learning_delete
 src/tools/learning_show
 src/tools/learning_validate
+src/tools/loops_average
 src/tools/ear_events
 src/tools/show_coefficients
 src/tools/translate_coefficients
@@ -192,6 +198,8 @@ src/tools/metrics_show
 src/tools/list_folders
 src/tools/groups_test
 src/tools/database_size_calculator
+src/tools/enodectl
+src/tools/loops_average
 src/commands/ear-info
 src/tools/node_manager_info
 deployment.sh
@@ -208,3 +216,9 @@ tmp.txt
 *.plist
 etc/examples/prolog_epilog/ejob
 etc/examples/prolog_epilog/list
+
+build-aux
+.deps
+.dirstamp
+src/daemon/app_api/Makefile*
+!src/daemon/app_api/Makefile.am

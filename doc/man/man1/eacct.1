@@ -77,8 +77,8 @@ AID@x@Local application ID (mostly used to distinguish applications within workf
 USER@u@User that executed the application
 NODE ID@n@Nodename that the data belongs to (only available with -l and -r options)
 NODES@N@Total nodes used by the application (only available when NOT using -l or -r)
-DATE@X@Timestamp of the loop signature (only available with -r)
-ITER@X@Accumulated total iterations of a loop
+DATE@X@Timestamp of the loop signature or start and end time of a job.
+ITER@X@Accumulated total iterations of a loop. Goes together with DATE (only available with -r)
 .TE
 
 Note that DATE and ITER are mutually exclusive, and depend on how EAR is compiled. By default, DATE will be used.

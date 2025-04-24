@@ -47,6 +47,8 @@ state_t cache_dummy_read(ctx_t *c, cache_t *ca)
 {
     debug("DUMMY READ");
 	memset(ca, 0, sizeof(cache_t));
+    ca->ll  = &ca->l1d;
+    ca->lbw = &ca->l1d;
 	return EAR_SUCCESS;
 }
 

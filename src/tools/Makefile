@@ -12,6 +12,7 @@ tool_BINS = \
     ear_conf \
     insert_test \
     enode_info \
+    enodectl \
     node_manager_info \
     list_folders \
     groups_test \
@@ -25,6 +26,7 @@ tool_BINS += \
     learning_show \
     get_periodic \
     metrics_show \
+    loops_average \
 	database_size_calculator \
     learning_delete
 endif
@@ -75,6 +77,9 @@ coeffs_default: coeffs_default.c $(comm_OBJS)
 learning_show: learning_show.c $(db_OJBS) $(comm_OBJS)
 	$(CCC) -o $@ $< $(db_OJBS) $(comm_OBJS) $(DB_LDFLAGS) -lm
 
+loops_average: loops_average.c $(db_OJBS) $(comm_OBJS) $(SRCDIR)/commands/query_helpers.o
+	$(CCC) -o $@ $< $(db_OJBS) $(SRCDIR)/commands/query_helpers.o $(comm_OBJS) $(DB_LDFLAGS) -lm
+
 metrics_show: metrics_show.c $(db_OJBS) $(comm_OBJS)
 	$(CCC) -o $@ $< $(db_OJBS) $(comm_OBJS) $(DB_LDFLAGS) -lm
 
@@ -95,6 +100,9 @@ ear_conf: ear_conf.c $(comm_OBJS)
 
 enode_control: ear_node_control.c $(comm_OBJS)
 	$(CCC) -o $@ $< $(comm_OBJS)
+
+enodectl: ear_node_ctl.c $(comm_OBJS) $(rapi_OBJS)
+	$(CCC) -o $@ $< $(rapi_OBJS) $(comm_OBJS) -lm
 
 groups_test: groups_test.c $(comm_OBJS)
 	$(CCC) -o $@ $< $(comm_OBJS)

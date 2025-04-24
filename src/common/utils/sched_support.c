@@ -117,11 +117,13 @@ int get_my_sched_node_rank()
 {
 #if APP_MULTIPROCESS_NO_MPI_SUPPORT
 #if SCHED_SLURM
-    if (ear_getenv("SLURM_LOCALID") != NULL) return atoi(ear_getenv("SLURM_LOCALID"));
+	if (ear_getenv("SLURM_LOCALID") != NULL) return atoi(ear_getenv("SLURM_LOCALID"));
 #endif
 #if SCHED_PBS
-		// WARNING: Not tested!
-    if (ear_getenv("PBS_TASKNUM") != NULL) return atoi(ear_getenv("SLURM_LOCALID"));
+	// WARNING: PBS_TASKNUM is the total number of tasks, it is not parallel to SLURM_LOCALID
+	// There is currently no way to get something like SLURM_LOCALID.
+	// Falling into the default case for now.
+	//if (ear_getenv("PBS_TASKNUM") != NULL) return atoi(ear_getenv("PBS_TASKNUM"));
 #endif
 #endif
     return 0;
@@ -156,7 +158,7 @@ void sched_local_barrier(char *file,int N)
 	
 	snprintf(lock_file,sizeof(lock_file),"%s.lock", file); // Implements the exclusive acess
 	// Create the file and accum 1 element
-	while((fd_lock = file_lock_master(lock_file)) < 0) {}; // lock
+	while((fd_lock = ear_file_lock_master(lock_file)) < 0); // lock
 	fd = open(file, O_RDWR|O_CREAT, S_IRUSR|S_IWUSR);
 		// Update
 		if (fd >= 0){
@@ -173,7 +175,7 @@ void sched_local_barrier(char *file,int N)
 		}else{
 			error("sched_local_barrier timeout");
 		}
-	file_unlock_master(fd_lock, lock_file);
+	ear_file_unlock_master(fd_lock, lock_file);
 
 
 	debug("Waiting for processes");
