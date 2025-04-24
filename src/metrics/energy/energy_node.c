@@ -53,14 +53,25 @@ const char *energy_names[] = {
 
 state_t energy_load(char *energy_obj)
 {
+    uint list_count = 0;
+    char **list = NULL;
 	state_t ret;
-	
+
     if (energy_loaded) {
 		return_msg(EAR_ERROR, Generr.api_initialized);
 	}
 	if (!energy_obj) {
 		return_msg(EAR_ERROR, Generr.input_null);
 	}
+    // If energy_obj contains ':', it means it has an argument
+    if (strchr(energy_obj, ':')) {
+        if (strtoa((const char *) energy_obj, ':', &list, &list_count)) {
+            if (list_count > 0) {
+                setenv("EAR_ENERGY_ARG", list[1], 1);
+            }
+            energy_obj = list[0];
+        }
+    }
 	debug("loading shared object '%s'", energy_obj);
 	if (state_fail(ret = symplug_open(energy_obj, (void **)&energy_ops, energy_names, energy_nops))) {
 		debug("symplug_open() returned %d (%s)", ret, state_msg);

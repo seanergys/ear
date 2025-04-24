@@ -250,6 +250,7 @@ int ipmi_driver_sensors_find(char *string, ipmi_sensor_t **sensors, uint *sensor
                 continue;
             }
             for (l = 0; l < list_count; ++l) {
+                // debug("%s == %s ?", devs[d].records[r].name, list[l]);
                 // If string contains %d, then it has an index that grows
                 if (strstr(list[l], "%d") == NULL) {
                     if (is_sensor(list[l], devs, d, r, &alloc, &s)) {
@@ -443,6 +444,8 @@ state_t ipmi_driver_cmd_send(int dev_no, ipmi_cmd_t *pkg)
     recv.msg.data     = pkg->msg_recv_data;
     recv.msg.data_len = sizeof(pkg->msg_recv_data);
 
+    // You can find a complete list of completion codes in the official
+    // documentation: Table 5-2, Completion Codes
     #if !IPMI_INDEPENDENCY
     if ((fds_status = aselect(&fds_group, 300, NULL)) <= 0) {
         if (fds_status < 0) {
@@ -459,7 +462,7 @@ state_t ipmi_driver_cmd_send(int dev_no, ipmi_cmd_t *pkg)
     }
     #else
     while (ioctl(devs[dev_no].fd, IPMICTL_RECEIVE_MSG_TRUNC, &recv) < 0) {
-        if (errno != EAGAIN) {
+        if (erno != EAGAIN) {
             debug("IPMI receive message ioctl error: %s", strerror(errno));
         }
         // Tiemout control

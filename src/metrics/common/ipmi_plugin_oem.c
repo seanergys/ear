@@ -54,7 +54,7 @@ static int send_oem_message(int d, ipmi_cmd_t *pkg)
         return 0;
     }
     if (pkg->msg_recv_data[0] != 0) {
-        return_print(0, "invalid completion code 0x%x", pkg->msg_recv_data[0]);
+        return_print(0, "invalid completion code (0x%x)", pkg->msg_recv_data[0]);
     }
     #if SHOW_DEBUGS_ULTRA
     int i;
@@ -78,13 +78,14 @@ state_t energy_init(void **x)
         goto leave;
     }
     // Detecting sensors depending on hardware
-    if ((hint = getenv("PLUGIN_HINT")) != NULL) {
+    if ((hint = getenv("EAR_ENERGY_ARG")) != NULL) {
         switch(atoi(hint)) {
             case 1: opt = opt_sd650e; break;
             case 2: opt = opt_sd650p; break;
             case 3: opt = opt_dcmi;   break;
             case 4: opt = opt_inmp;   break;
         }
+        debug("EAR_ENERGY_ARG: %s", hint);
     }
     else if (ipmi_has_hardware("SD650"      )) opt = opt_sd650e;
     else if (ipmi_has_hardware("ThinkSystem")) opt = opt_dcmi;
@@ -254,7 +255,7 @@ state_t energy_accumulated(ulong *energy_mj, void *data1, void *data2)
     consumption_t *readings1 = (consumption_t *) data1;
 
     *energy_mj = 0LU;
-    if (readings2->energy != 0LLU || readings1->energy != 0LLU) {
+    if (readings2->samples != 0LLU && readings1->samples != 0LLU) {
         *energy_mj = overflow_zeros_u64(readings2->energy, readings1->energy);
         #if SHOW_DEBUGS
         double time_s = (double) timestamp_fdiff(&readings2->timestamp, &readings1->timestamp, TIME_SECS, TIME_MSECS);

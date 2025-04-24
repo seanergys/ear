@@ -1,10 +1,12 @@
 all:
+	gcc -g -I ../../ -shared -fPIC -o energy_ipmi_auto.so ipmi_plugin_auto.c ipmi.c ipmi_driver.c ipmi_driver_frusdr.c ipmi_driver_parsing.c ../../common/libcommon.a -lpthread -lm
 	gcc -g -I ../../ -shared -fPIC -o energy_ipmi_oem.so ipmi_plugin_oem.c ipmi.c ipmi_driver.c ipmi_driver_frusdr.c ipmi_driver_parsing.c ../../common/libcommon.a -lpthread -lm
 	gcc -g -I ../../ -shared -fPIC -o energy_inm_power.so ../energy/node/energy_inm_power.c ../../common/libcommon.a -lpthread -lm
 	gcc -g -I ../../ -shared -fPIC -o energy_dcmi.so ../energy/node/energy_dcmi.c ../../common/libcommon.a -lpthread -lm
 	gcc -g -I ../../ -shared -fPIC -o energy_sd650.so ../energy/node/energy_sd650.c ../../common/libcommon.a -lpthread -lm
 	gcc -g -I ../../ -shared -fPIC -o energy_sd650_power.so ../energy/node/energy_sd650_power.c ../../common/libcommon.a -lpthread -lm
 	gcc -g -I ../../ -rdynamic -o test_plug ipmi_plugin.c ../energy/energy_node.c ../libmetrics.a ../../common/system/symplug.c ../../common/libcommon.a -lpthread -lm
+	scp energy_ipmi_auto.so root@spr4270:/root
 	scp energy_ipmi_oem.so root@spr4270:/root
 	scp energy_inm_power.so root@spr4270:/root
 	scp energy_dcmi.so root@spr4270:/root
