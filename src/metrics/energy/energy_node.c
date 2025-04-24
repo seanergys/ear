@@ -75,7 +75,8 @@ state_t energy_load(char *energy_obj)
 	debug("loading shared object '%s'", energy_obj);
 	if (state_fail(ret = symplug_open(energy_obj, (void **)&energy_ops, energy_names, energy_nops))) {
 		debug("symplug_open() returned %d (%s)", ret, state_msg);
-		return_msg(ret, Generr.dlopen);
+        return ret;
+		//return_msg(ret, Generr.dlopen);
 	}
 	energy_loaded = 1;
 	return EAR_SUCCESS;

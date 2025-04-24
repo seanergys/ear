@@ -112,7 +112,6 @@ libmetrics.a: metrics.o $(mets_OBJS)
 test: metrics.c
 	$(CC) -I $(SRCDIR) -DTEST=1 -fPIC -o $@ $^ libmetrics.a ../daemon/local_api/libeard.a ../common/libcommon.a -lm -lpthread -ldl
 
-
 ######## OPTIONS
 
 install: install.components;
