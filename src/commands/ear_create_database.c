@@ -36,7 +36,7 @@ void usage(char *app)
 {
     fprintf(stdout, "Usage:%s [options]\n", app);
     fprintf(stdout, "\t-p\t\tPrompt for the password for MySQL's root user.\n");
-    fprintf(stdout, "\t-p\t\tSpecify the password for MySQL's root user.\n");
+    fprintf(stdout, "\t-P\t\tSpecify the password for MySQL's root user.\n");
     fprintf(stdout, "\t-e\t\tSpecify ear.conf file location. [default: $EAR_ETC/ear/ear.conf].\n");
     fprintf(stdout, "\t-o\t\tOutputs the queries that would run.\n");
     fprintf(stdout, "\t-r\t\tRuns the the queries and creates the database.\n");
