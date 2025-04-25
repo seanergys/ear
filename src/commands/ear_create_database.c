@@ -35,6 +35,7 @@ char db_node_detail = 1;
 void usage(char *app)
 {
     fprintf(stdout, "Usage:%s [options]\n", app);
+    fprintf(stdout, "\t-p\t\tPrompt for the password for MySQL's root user.\n");
     fprintf(stdout, "\t-p\t\tSpecify the password for MySQL's root user.\n");
     fprintf(stdout, "\t-e\t\tSpecify ear.conf file location. [default: $EAR_ETC/ear/ear.conf].\n");
     fprintf(stdout, "\t-o\t\tOutputs the queries that would run.\n");
@@ -54,9 +55,13 @@ void execute_on_error(MYSQL *connection)
 }
 #endif
 
+#if DB_MYSQL
+int get_num_indexes(void __attribute__((unused))*connection, char *table)
+#else
 int get_num_indexes(void *connection, char *table)
+#endif
 {
-    char query[256];
+    char query[256] = { 0 };
     int num_indexes;
 #if DB_MYSQL
     init_db_helper(&my_cluster.database);
@@ -69,7 +74,7 @@ int get_num_indexes(void *connection, char *table)
     return num_indexes;
 }
 
-void run_query(void *connection, char *query)
+int32_t run_query(void *connection, char *query)
 {
     if (print_out) {
         fprintf(stdout, "%s\n", query);
@@ -77,126 +82,134 @@ void run_query(void *connection, char *query)
 #if DB_MYSQL
         if (mysql_query((MYSQL *)connection, query)) {
             execute_on_error(connection);
+            return 1;
         }
 #elif DB_PSQL
         PGresult *res = PQexecParams((PGconn *)connection, query, 0, NULL, NULL, NULL, NULL, 1);
         if (PQresultStatus(res) != PGRES_COMMAND_OK)
         {
             fprintf(stdout, "%s \n", PQresultErrorMessage(res));
+            return 1;
         }
 #endif
     }
+    return 0;
 }
 
-void create_users(void *connection, char *db_name, char *db_user, char *db_user_pass, char *commands_user, char *commands_pass)
+int32_t create_users(void *connection, char *db_name, char *db_user, char *db_user_pass, char *commands_user, char *commands_pass)
 {
-    char query[256];
+    char query[256] = { 0 };
+    int32_t ret = 0;
 
 #if DB_MYSQL
     sprintf(query, "CREATE USER '%s'@'%%'", db_user);
-    run_query(connection, query);
+    ret += run_query(connection, query);
     sprintf(query, "CREATE USER '%s'@'localhost'", db_user);
 #elif DB_PSQL
     sprintf(query, "CREATE USER %s", db_user);
 #endif
-    run_query(connection, query);
+    ret += run_query(connection, query);
     if (strlen(db_user_pass) > 1)
     {
 #if DB_MYSQL
         sprintf(query, "SET PASSWORD FOR '%s'@'%%' = PASSWORD('%s')", db_user, db_user_pass);
-        run_query(connection, query);
+        ret += run_query(connection, query);
         sprintf(query, "SET PASSWORD FOR '%s'@'localhost' = PASSWORD('%s')", db_user, db_user_pass);
 #elif DB_PSQL
         sprintf(query, "ALTER USER %s WITH ENCRYPTED PASSWORD '%s'", db_user, db_user_pass);
 #endif
-        run_query(connection, query);
+        ret += run_query(connection, query);
     }
 
 #if DB_MYSQL
     sprintf(query, "GRANT SELECT, INSERT ON %s.* TO '%s'@'%%'", db_name, db_user);
-    run_query(connection, query);
+    ret += run_query(connection, query);
     sprintf(query, "GRANT SELECT, INSERT ON %s.* TO '%s'@'localhost'", db_name, db_user);
 #elif DB_PSQL
     sprintf(query, "GRANT SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO %s", db_user);
-    run_query(connection, query);
+    ret += run_query(connection, query);
     sprintf(query, "GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO %s", db_user);
 #endif
-    run_query(connection, query);
+    ret += run_query(connection, query);
 
     if (strlen(commands_user))
     {
 #if DB_MYSQL
         sprintf(query, "CREATE USER '%s'@'%%'", commands_user);
-        run_query(connection, query);
+        ret += run_query(connection, query);
         sprintf(query, "CREATE USER '%s'@'localhost'", commands_user);
 #elif DB_PSQL
         sprintf(query, "CREATE USER %s", commands_user);
 #endif
-        run_query(connection, query);
+        ret += run_query(connection, query);
 
         if (strlen(commands_pass) > 1)
         {
 #if DB_MYSQL
             sprintf(query, "SET PASSWORD FOR '%s'@'%%' = PASSWORD('%s')", commands_user, commands_pass);
-			run_query(connection, query);
+            ret += run_query(connection, query);
             sprintf(query, "SET PASSWORD FOR '%s'@'localhost' = PASSWORD('%s')", commands_user, commands_pass);
 #elif DB_PSQL
             sprintf(query, "ALTER USER %s WITH ENCRYPTED PASSWORD '%s'", commands_user, commands_pass);
 #endif
-            run_query(connection, query);
+            ret += run_query(connection, query);
         }
 
 #if DB_MYSQL
         sprintf(query, "GRANT SELECT ON %s.* TO '%s'@'%%'", db_name, commands_user);
-        run_query(connection, query);
+        ret += run_query(connection, query);
         sprintf(query, "GRANT SELECT ON %s.* TO '%s'@'localhost'", db_name, commands_user);
 #elif DB_PSQL
         sprintf(query, "GRANT SELECT ON ALL TABLES IN SCHEMA public TO %s", commands_user);
 #endif
-        run_query(connection, query);
+        ret += run_query(connection, query);
 
 #if DB_MYSQL
         sprintf(query, "ALTER USER '%s'@'%%' WITH MAX_USER_CONNECTIONS %d", commands_user, my_cluster.database.max_connections);
-        run_query(connection, query);
+        ret += run_query(connection, query);
         sprintf(query, "ALTER USER '%s'@'localhost' WITH MAX_USER_CONNECTIONS %d", commands_user, my_cluster.database.max_connections);
 #elif DB_PSQL
         sprintf(query, "ALTER USER %s WITH CONNECTION LIMIT %d", commands_user, my_cluster.database.max_connections);
 #endif
-        run_query(connection, query);
+        ret += run_query(connection, query);
     }
 #if DB_MYSQL
     sprintf(query, "FLUSH PRIVILEGES");
-    run_query(connection, query);
+    ret += run_query(connection, query);
 #endif
+    return ret;
 }
 
-void create_db(void *connection, char *db_name)
+int32_t create_db(void *connection, char *db_name)
 {
-    char query[256];
+    char query[256] = { 0 };
+    int32_t ret = 0;
 
 #if DB_MYSQL
     sprintf(query, "CREATE DATABASE IF NOT EXISTS %s", db_name);
 #elif DB_PSQL
     sprintf(query, "CREATE DATABASE %s", db_name);
 #endif
-    run_query(connection, query);
+    ret += run_query(connection, query);
 
 #if DB_MYSQL
     sprintf(query, "USE %s", db_name);
-    run_query(connection, query);
+    ret += run_query(connection, query);
 #endif
+    return ret;
 }
 
-void create_indexes(void *connection)
+int32_t create_indexes(void *connection)
 {
-    char query[256];
+    char query[256] = { 0 };
+    int32_t ret = 0;
     if (get_num_indexes(connection, "Periodic_metrics") < 3)
     {
         sprintf(query, "CREATE INDEX idx_end_time ON Periodic_metrics (end_time)");
-        run_query(connection, query);
+        ret += run_query(connection, query);
 
         sprintf(query, "CREATE INDEX idx_job_id ON Periodic_metrics (job_id)");
-        run_query(connection, query);
+        ret += run_query(connection, query);
     } else {
         fprintf(stdout, "Periodic_metrics indexes already created, skipping...\n");
     }
@@ -204,18 +217,20 @@ void create_indexes(void *connection)
     if (get_num_indexes(connection, "Jobs") < 3)
     {
         sprintf(query, "CREATE INDEX idx_user_id ON Jobs (user_id)");
-        run_query(connection, query);
+        ret += run_query(connection, query);
     }
     else {
         fprintf(stdout, "Jobs indexes already created, skipping...\n");
     }
+    return ret;
 
 }
 
 #if DB_MYSQL
-void create_tables(void *connection)
+int32_t create_tables(void *connection)
 {
-    char query[1024];
+    char query[1024] = { 0 };
+    int32_t ret = 0;
     sprintf(query, "CREATE TABLE IF NOT EXISTS Applications ("
             "job_id INT unsigned NOT NULL, "
             "step_id INT unsigned NOT NULL, "
@@ -224,7 +239,7 @@ void create_tables(void *connection)
             "signature_id BIGINT unsigned, "
             "power_signature_id INT unsigned, "
             "PRIMARY KEY(job_id, step_id, local_id, node_id))");
-    run_query(connection, query);
+    ret += run_query(connection, query);
 
     sprintf(query, "CREATE TABLE IF NOT EXISTS Loops ("
             "event INT unsigned NOT NULL, "
@@ -236,7 +251,7 @@ void create_tables(void *connection)
             "node_id VARCHAR(64), "
             "total_iterations INT unsigned, "
             "signature_id BIGINT unsigned)");
-    run_query(connection, query);
+    ret += run_query(connection, query);
 
     sprintf(query, "CREATE TABLE IF NOT EXISTS Jobs ("
             "job_id INT unsigned NOT NULL, "
@@ -257,7 +272,7 @@ void create_tables(void *connection)
             "user_group VARCHAR(256), "
             "e_tag VARCHAR(256), "
             "PRIMARY KEY(job_id, step_id, local_id))");
-    run_query(connection, query);
+    ret += run_query(connection, query);
 
     if (signature_detail)
         sprintf(query, "CREATE TABLE IF NOT EXISTS Signatures ("
@@ -289,7 +304,7 @@ void create_tables(void *connection)
                 "avg_f INT unsigned, "
                 "avg_imc_f INT unsigned, "
                 "def_f INT unsigned, "
-								"cpu_util INT unsigned, "
+                "cpu_util INT unsigned, "
 #if USE_GPUS
                 "min_GPU_sig_id BIGINT unsigned, "
                 "max_GPU_sig_id BIGINT unsigned, "
@@ -312,13 +327,13 @@ void create_tables(void *connection)
                 "avg_f INT unsigned, "
                 "avg_imc_f INT unsigned, "
                 "def_f INT unsigned, "
-								"cpu_util INT unsigned, "
+                "cpu_util INT unsigned, "
 #if USE_GPUS
                 "min_GPU_sig_id BIGINT unsigned, "
                 "max_GPU_sig_id BIGINT unsigned, "
 #endif
                 "PRIMARY KEY (id))");
-    run_query(connection, query);
+    ret += run_query(connection, query);
 
 #if USE_GPUS
     sprintf(query, "CREATE TABLE IF NOT EXISTS GPU_signatures ("
@@ -330,7 +345,7 @@ void create_tables(void *connection)
             "GPU_mem_util INT unsigned NOT NULL, "
             "GPU_gflops FLOAT NOT NULL, "
             "PRIMARY KEY (id))");
-    run_query(connection, query);
+    ret += run_query(connection, query);
 #endif
 
     if (db_node_detail){
@@ -361,7 +376,7 @@ void create_tables(void *connection)
                 "step_id INT unsigned NOT NULL, "
                 "PRIMARY KEY (id))");
     }
-    run_query(connection, query);
+    ret += run_query(connection, query);
 
     sprintf(query, "CREATE TABLE IF NOT EXISTS Power_signatures ("
             "id INT unsigned NOT NULL AUTO_INCREMENT, "
@@ -375,7 +390,7 @@ void create_tables(void *connection)
             "avg_f INT unsigned NOT NULL, "
             "def_f INT unsigned NOT NULL, "
             "PRIMARY KEY (id))");
-    run_query(connection, query);
+    ret += run_query(connection, query);
 
     sprintf(query, "CREATE TABLE IF NOT EXISTS Events ("
             "id INT unsigned NOT NULL AUTO_INCREMENT, "
@@ -386,7 +401,7 @@ void create_tables(void *connection)
             "value INT NOT NULL, "
             "node_id VARCHAR(64), "
             "PRIMARY KEY (id))");
-    run_query(connection, query);
+    ret += run_query(connection, query);
 
     sprintf(query, "CREATE TABLE IF NOT EXISTS Global_energy ("
             "energy_percent FLOAT, "
@@ -401,7 +416,7 @@ void create_tables(void *connection)
             "GlobEnergyPeriodT2 INT UNSIGNED, "
             "GlobEnergyPolicy VARCHAR(64), "
             "PRIMARY KEY (time))");
-    run_query(connection, query);
+    ret += run_query(connection, query);
 
 
 #if USE_LEARNING_APPS
@@ -413,7 +428,7 @@ void create_tables(void *connection)
             "signature_id BIGINT unsigned, "
             "power_signature_id INT unsigned, "
             "PRIMARY KEY(job_id, step_id, local_id, node_id))");
-    run_query(connection, query);
+    ret += run_query(connection, query);
 
     sprintf(query, "CREATE TABLE IF NOT EXISTS Learning_jobs ("
             "job_id INT unsigned NOT NULL, "
@@ -434,7 +449,7 @@ void create_tables(void *connection)
             "user_group VARCHAR(256), "
             "e_tag VARCHAR(256), "
             "PRIMARY KEY(job_id, step_id, local_id))");
-    run_query(connection, query);
+    ret += run_query(connection, query);
 
     if (signature_detail)
         sprintf(query, "CREATE TABLE IF NOT EXISTS Learning_signatures ("
@@ -493,7 +508,7 @@ void create_tables(void *connection)
                 "max_GPU_sig_id BIGINT unsigned, "
 #endif
                 "PRIMARY KEY (id))");
-    run_query(connection, query);
+    ret += run_query(connection, query);
 
 #endif
 
@@ -506,15 +521,16 @@ void create_tables(void *connection)
             "PRIMARY KEY(id))");
 
 
-    run_query(connection, query);
-
+    ret += run_query(connection, query);
+    return ret;
 }
 
 
 #elif DB_PSQL
-void create_tables(void *connection)
+int32_t create_tables(void *connection)
 {
-    char query[1024];
+    char query[1024] = { 0 };
+    int32_t ret;
     sprintf(query, "CREATE TABLE IF NOT EXISTS Applications ("
             "job_id INT  NOT NULL, "
             "step_id INT  NOT NULL, "
@@ -523,7 +539,7 @@ void create_tables(void *connection)
             "signature_id BIGINT , "
             "power_signature_id INT , "
             "PRIMARY KEY(job_id, step_id, local_id, node_id))");
-    run_query(connection, query);
+    ret += run_query(connection, query);
 
     sprintf(query, "CREATE TABLE IF NOT EXISTS Loops ("
             "event INT  NOT NULL, "
@@ -535,7 +551,7 @@ void create_tables(void *connection)
             "node_id VARCHAR(64), "
             "total_iterations INT , "
             "signature_id BIGINT )");
-    run_query(connection, query);
+    ret += run_query(connection, query);
 
     sprintf(query, "CREATE TABLE IF NOT EXISTS Jobs ("
             "job_id INT  NOT NULL, "
@@ -556,7 +572,7 @@ void create_tables(void *connection)
             "user_group VARCHAR(256), "
             "e_tag VARCHAR(256), "
             "PRIMARY KEY(job_id, step_id, local_id))");
-    run_query(connection, query);
+    ret += run_query(connection, query);
 
     if (signature_detail)
         sprintf(query, "CREATE TABLE IF NOT EXISTS Signatures ("
@@ -588,7 +604,7 @@ void create_tables(void *connection)
                 "avg_f INT , "
                 "avg_imc_f INT , "
                 "def_f INT , "
-								"cpu_util INT, "
+                "cpu_util INT, "
 #if USE_GPUS
                 "min_GPU_sig_id BIGINT, "
                 "max_GPU_sig_id BIGINT, "
@@ -611,13 +627,13 @@ void create_tables(void *connection)
                 "avg_f INT , "
                 "avg_imc_f INT , "
                 "def_f INT , "
-								"cpu_util INT, "
+                "cpu_util INT, "
 #if USE_GPUS
                 "min_GPU_sig_id BIGINT, "
                 "max_GPU_sig_id BIGINT, "
 #endif
                 "PRIMARY KEY (id))");
-    run_query(connection, query);
+    ret += run_query(connection, query);
 
 #if USE_GPUS
     sprintf(query, "CREATE TABLE IF NOT EXISTS GPU_signatures ("
@@ -629,7 +645,7 @@ void create_tables(void *connection)
             "GPU_mem_util INT, "
             "GPU_gflops FLOAT, "
             "PRIMARY KEY (id))");
-    run_query(connection, query);
+    ret += run_query(connection, query);
 #endif
     if (db_node_detail){
         sprintf(query, "CREATE TABLE IF NOT EXISTS Periodic_metrics ("
@@ -659,7 +675,7 @@ void create_tables(void *connection)
                 "step_id INT  NOT NULL, "
                 "PRIMARY KEY (id))");
     }
-    run_query(connection, query);
+    ret += run_query(connection, query);
 
     sprintf(query, "CREATE TABLE IF NOT EXISTS Power_signatures (  "
             "id SERIAL NOT NULL, "
@@ -673,7 +689,7 @@ void create_tables(void *connection)
             "avg_f INT  NOT NULL, "
             "def_f INT  NOT NULL, "
             "PRIMARY KEY (id))");
-    run_query(connection, query);
+    ret += run_query(connection, query);
 
     sprintf(query, "CREATE TABLE IF NOT EXISTS Events ("
             "id SERIAL NOT NULL, "
@@ -684,7 +700,7 @@ void create_tables(void *connection)
             "value INT  NOT NULL, "
             "node_id VARCHAR(64), "
             "PRIMARY KEY (id))");
-    run_query(connection, query);
+    ret += run_query(connection, query);
 
     sprintf(query, "CREATE TABLE IF NOT EXISTS Global_energy ("
             "energy_percent FLOAT, "
@@ -699,7 +715,7 @@ void create_tables(void *connection)
             "GlobEnergyPeriodT2 INT, "
             "GlobEnergyPolicy VARCHAR(64), "
             "PRIMARY KEY (time))");
-    run_query(connection, query);
+    ret += run_query(connection, query);
 
 
 #if USE_LEARNING_APPS
@@ -712,7 +728,7 @@ void create_tables(void *connection)
             "signature_id BIGINT , "
             "power_signature_id INT , "
             "PRIMARY KEY(job_id, step_id, local_id, node_id))");
-    run_query(connection, query);
+    ret += run_query(connection, query);
 
     sprintf(query, "CREATE TABLE IF NOT EXISTS Learning_jobs ("
             "job_id INT  NOT NULL, "
@@ -733,7 +749,7 @@ void create_tables(void *connection)
             "user_group VARCHAR(256), "
             "e_tag VARCHAR(256), "
             "PRIMARY KEY(job_id, step_id, local_id))");
-    run_query(connection, query);
+    ret += run_query(connection, query);
 
     if (signature_detail)
         sprintf(query, "CREATE TABLE IF NOT EXISTS Learning_signatures ("
@@ -786,7 +802,7 @@ void create_tables(void *connection)
                 "max_GPU_sig_id BIGINT, "
 #endif
                 "PRIMARY KEY (id))");
-    run_query(connection, query);
+    ret += run_query(connection, query);
 #endif
     sprintf(query, "CREATE TABLE IF NOT EXISTS Periodic_aggregations ("
             "id SERIAL NOT NULL, "
@@ -796,7 +812,7 @@ void create_tables(void *connection)
             "eardbd_host VARCHAR(64), "
             "PRIMARY KEY(id))");
 
-    run_query(connection, query);
+    ret += run_query(connection, query);
 
     sprintf(query, "CREATE OR REPLACE FUNCTION update_time_column() \n"
             "RETURNS TRIGGER AS $$\n"
@@ -805,10 +821,11 @@ void create_tables(void *connection)
             "RETURN NEW;\n"
             "END;\n"
             "$$ language 'plpgsql'");
-    run_query(connection, query);
+    ret += run_query(connection, query);
 
     sprintf(query, "CREATE TRIGGER update_table_timestamp BEFORE UPDATE ON global_energy FOR EACH ROW EXECUTE PROCEDURE update_time_column()");
-    run_query(connection, query);
+    ret += run_query(connection, query);
+    return ret;
 }
 #endif
 
@@ -816,9 +833,10 @@ void create_tables(void *connection)
 
 int main(int argc,char *argv[])
 {
-    int c;
-    char passw[256], root_user[256];;
-    char ear_path[256];
+    int32_t c;
+    int32_t ret = 0;
+    char passw[256], root_user[256] = { 0 };;
+    char ear_path[256] = { 0 };
     char default_ear_path = 1;
 
     if (argc < 2) usage(argv[0]);
@@ -831,7 +849,7 @@ int main(int argc,char *argv[])
     strcpy(passw, "");
 
     struct termios t;
-    while ((c = getopt(argc, argv, "phrouve:")) != -1)
+    while ((c = getopt(argc, argv, "phrouve:P:")) != -1)
     {
         switch(c)
         {
@@ -858,6 +876,13 @@ int main(int argc,char *argv[])
                 tcsetattr(STDIN_FILENO, TCSANOW, &t);
                 strclean(passw, '\n');
                 fprintf(stdout, " ");
+                break;
+            case 'P':
+                if (optarg != NULL) {
+                    strcpy(passw, optarg);
+                } else {
+                    printf("-P option requres an argument\n");
+                }
                 break;
             case 'r':
                 print_out = 0;
@@ -961,7 +986,7 @@ int main(int argc,char *argv[])
 #endif
     }
 
-    create_db(connection, my_cluster.database.database);
+    ret += create_db(connection, my_cluster.database.database);
 #if DB_PSQL
     if (!print_out)
     {
@@ -981,13 +1006,13 @@ int main(int argc,char *argv[])
     free(values);
 #endif
 
-    create_tables(connection);
+    ret += create_tables(connection);
 
-    create_users(connection, my_cluster.database.database, my_cluster.database.user, my_cluster.database.pass, my_cluster.database.user_commands, my_cluster.database.pass_commands);
+    ret += create_users(connection, my_cluster.database.database, my_cluster.database.user, my_cluster.database.pass, my_cluster.database.user_commands, my_cluster.database.pass_commands);
 
     if (!print_out)
     {
-        create_indexes(connection);
+        ret += create_indexes(connection);
 #if DB_MYSQL
         mysql_close(connection);
 #elif DB_PSQL
@@ -998,5 +1023,5 @@ int main(int argc,char *argv[])
 
     if (!print_out) fprintf(stdout, "Database successfully created\n");
 
-    exit(1);
+    return ret > 0;
 }
