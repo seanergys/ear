@@ -112,7 +112,7 @@ void usage(char *app)
             "\t\t-x\tshows the last EAR events. Users, start and end times, job ids, and step ids can be specified as if were showing job information.\n" \
             "\t\t-m\tprints EARD signatures regardless of whether EARL signatures are available or not.\n" \
             "\t\t-u\tspecifies the user whose applications will be retrieved. Only available to privileged users. [default: all users]\n" \
-            "\t\t\t\tA user can only retrieve its own jobs unless said user is privileged. [default: all jobs]\n");
+            "\t\t\t\tA user can only retrieve its own jobs unless said user is privileged. [default: all jobs]\n", app);
     printf("\t\t-n\tspecifies the number of jobs to be shown, starting from the most recent one. [default: 20][to get all jobs use -n all]\n" );
 #endif
     exit(0);
@@ -191,7 +191,7 @@ bool print_power_signature_format(application_t *app, char f)
             print_format(TIME_WIDTH, app->power_sig.time, 0);
             break;
         case ENERGY: //energy
-            print_format(ENERGY_WIDTH, app->power_sig.DC_power*app->power_sig.time, 0);
+            print_format(ENERGY_WIDTH, (app->power_sig.DC_power*app->power_sig.time)/(3600*1000), 2);
             break;
         case CARBON_FOOTPRINT:
             print_format(CARBON_WIDTH, (((app->power_sig.DC_power*app->power_sig.time)*PUE)/(3600*1000))*CARBON_INTENSITY, 2);
@@ -336,7 +336,7 @@ bool print_signature_format(signature_t *sig, char f, int32_t time_length)
             }
             break;
         case ENERGY: //energy
-            print_format(ENERGY_WIDTH, sig->DC_power*sig->time, 0);
+            print_format(ENERGY_WIDTH, sig->DC_power*sig->time/(3600*1000), 2);
             break;
         case CARBON_FOOTPRINT:
             print_format(CARBON_WIDTH, (((sig->DC_power*sig->time)*PUE)/(3600*1000))*CARBON_INTENSITY, 2);
@@ -575,7 +575,7 @@ void print_header_format(char *fmt, uint32_t type)
                 print_format(VPI_WIDTH, "VPI(%)");
                 break;
             case ENERGY: //energy
-                print_format(ENERGY_WIDTH, "ENERGY(J)");
+                print_format(ENERGY_WIDTH, "ENERGY(KWh)");
                 break;
             case CARBON_FOOTPRINT:
                 print_format(CARBON_WIDTH, "CARBON FOOTPRINT(g)");
