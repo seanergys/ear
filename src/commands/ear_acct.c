@@ -51,6 +51,8 @@ cluster_conf_t my_conf;
 #define PUE 1.2
 #define CARBON_INTENSITY 174
 
+#define DEFAULT_QUERY_LIMIT 5
+
 int32_t full_length = 0;
 int32_t verbose = 0;
 int32_t all_pow_sig = 0;
@@ -113,7 +115,7 @@ void usage(char *app)
             "\t\t-m\tprints EARD signatures regardless of whether EARL signatures are available or not.\n" \
             "\t\t-u\tspecifies the user whose applications will be retrieved. Only available to privileged users. [default: all users]\n" \
             "\t\t\t\tA user can only retrieve its own jobs unless said user is privileged. [default: all jobs]\n", app);
-    printf("\t\t-n\tspecifies the number of jobs to be shown, starting from the most recent one. [default: 20][to get all jobs use -n all]\n" );
+    printf("\t\t-n\tspecifies the number of jobs to be shown, starting from the most recent one. [default: %d][to get all jobs use -n all]\n", DEFAULT_QUERY_LIMIT);
 #endif
     exit(0);
 }
@@ -1114,7 +1116,7 @@ void read_applications_from_database(char *user, query_adds_t *q_a, char *format
         printf("Preparing query statement\n");
     }
 
-    sprintf(query, "SELECT Applications.* FROM Applications join Jobs on Applications.job_id=Jobs.job_id and Applications.step_id = Jobs.step_id and Jobs.local_id = Applications.local_id where Jobs.job_id in (select job_id from (select job_id, end_time from Jobs" );
+    sprintf(query, "SELECT Applications.* FROM Applications join Jobs on Applications.job_id=Jobs.job_id and Applications.step_id = Jobs.step_id and Jobs.local_id = Applications.local_id where Jobs.job_id in (select job_id from (select distinct(job_id) from Jobs" );
     application_t *apps;
     if (q_a->job_id >= 0)
         add_int_filter(query, "job_id", q_a->job_id);
@@ -1179,8 +1181,8 @@ void read_applications_from_database(char *user, query_adds_t *q_a, char *format
         exit(1);
     }
 
-    if (q_a->limit == 20 && strlen(csv_path) < 1)
-        printf("\nBy default only the first 20 jobs are retrieved.\n\n");
+    if (q_a->limit == DEFAULT_QUERY_LIMIT && strlen(csv_path) < 1 && num_apps >= DEFAULT_QUERY_LIMIT)
+        printf("\nBy default only the first %d jobs are retrieved.\n\n", DEFAULT_QUERY_LIMIT);
 
     bool is_csv = (strlen(csv_path) > 1);
     bool aggregate = !full_length;
@@ -1205,7 +1207,7 @@ int main(int argc, char *argv[])
 
     query_adds_t query_adds = { 0 };
 
-    query_adds.limit = 20;
+    query_adds.limit = DEFAULT_QUERY_LIMIT;
     query_adds.job_id = -1;
     query_adds.step_id = -1;
 
@@ -1296,7 +1298,7 @@ int main(int argc, char *argv[])
                 user = optarg;
                 break;
             case 'j':
-                query_adds.limit = query_adds.limit == 20 ? -1 : query_adds.limit; //if the limit is still the default
+                query_adds.limit = query_adds.limit == DEFAULT_QUERY_LIMIT ? -1 : query_adds.limit; //if the limit is still the default
                 if (strchr(optarg, ','))
                 {
                     strcpy(query_adds.job_ids, optarg);
