@@ -71,24 +71,13 @@ test-install-mpi:
   stage: test
   needs: [compile-mpi]
   script:
-    - echo "Checking installation for MPI installation"
+    - echo "Checking installation for OpenMPI installation"
     - $TESTDIR/test_install.sh ear-ompi
-    - test -f ear-ompi/lib/libear.ompi.so
+    - $TESTDIR/test_install_ompi.sh ear-ompi
 
 test-install-db:
   needs: [compile-mpi-mysql]
   script:
     - echo "Checking installation DB installation"
     - $TESTDIR/test_install.sh ear-db
-    - test -f ear-db/bin/eacct
-    - test -f ear-db/bin/ereport
-    - test -f ear-db/sbin/edb_create
-    - test -f ear-db/sbin/edb_clean_apps
-    - test -f ear-db/sbin/edb_clean_pm
-    - test -f ear-db/sbin/eargmd
-    - test -f ear-db/bin/tools/learning_show
-    - test -f ear-db/bin/tools/get_periodic
-    - test -f ear-db/bin/tools/metrics_show
-    - test -f ear-db/bin/tools/loops_average
-    - test -f ear-db/bin/tools/database_size_calculator
-    - test -f ear-db/bin/tools/learning_delete
+    - $TESTDIR/test_install_db.sh ear-db

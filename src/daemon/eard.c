@@ -153,7 +153,8 @@ int fd_rapl[MAX_PACKAGES];
 
 #define EARD_RESTORE 1
 
-static void set_sigaction();
+//static void set_sigaction();
+static void set_sigaction(int signum, const struct sigaction *act);
 
 /*************** To recover hardware settings **************/
 
