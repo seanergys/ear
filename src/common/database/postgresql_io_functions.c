@@ -514,7 +514,7 @@ int postgresql_retrieve_gpu_signatures(PGconn *connection, char *query, gpu_sign
         base_data.GPU_mem_freq = htonl( *((ulong *)PQgetvalue(res, i, 4)));
         base_data.GPU_util     = htonl( *((ulong *)PQgetvalue(res, i, 5)));
         base_data.GPU_mem_util = htonl( *((ulong *)PQgetvalue(res, i, 6)));
-        base_data.GPU_gflops   = htonl( *((ulong *)PQgetvalue(res, i, 7)));
+        base_data.GPU_GFlops   = htonl( *((ulong *)PQgetvalue(res, i, 7)));
 
         memcpy(&gpu_sig->gpu_data[i], &base_data, sizeof(gpu_app_t));
     }
@@ -1345,7 +1345,7 @@ int postgresql_batch_insert_gpu_signatures(PGconn *connection, signature_t *sigs
             param_values[2  + offset] = (char *) &sigs[i].gpu_sig.gpu_data[j].GPU_mem_freq;
             param_values[3  + offset] = (char *) &sigs[i].gpu_sig.gpu_data[j].GPU_util;
             param_values[4  + offset] = (char *) &sigs[i].gpu_sig.gpu_data[j].GPU_mem_util;
-            param_values[5  + offset] = (char *) &sigs[i].gpu_sig.gpu_data[j].GPU_Gflops;
+            param_values[5  + offset] = (char *) &sigs[i].gpu_sig.gpu_data[j].GPU_GFlops;
 
             /* Parameter sizes */
             param_lengths[0  + offset] = sizeof(sigs[i].gpu_sig.gpu_data[j].GPU_power);
@@ -1353,7 +1353,7 @@ int postgresql_batch_insert_gpu_signatures(PGconn *connection, signature_t *sigs
             param_lengths[2  + offset] = sizeof(sigs[i].gpu_sig.gpu_data[j].GPU_mem_freq);
             param_lengths[3  + offset] = sizeof(sigs[i].gpu_sig.gpu_data[j].GPU_util);
             param_lengths[4  + offset] = sizeof(sigs[i].gpu_sig.gpu_data[j].GPU_mem_util);
-            param_lengths[5  + offset] = sizeof(sigs[i].gpu_sig.gpu_data[j].GPU_Gflops);
+            param_lengths[5  + offset] = sizeof(sigs[i].gpu_sig.gpu_data[j].GPU_GFlops);
 
 
             /* Parameter formats, 1 is binary 0 is string */

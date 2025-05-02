@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <stdbool.h>
 
 #include <commands/query_helpers.h>
@@ -34,6 +35,11 @@ void reset_query_filters()
 
 void _add_string_filter(char *query, char *addition, char *value, bool quotes)
 {
+
+    if (strchr(value, ' ') || strchr(value, '\'')) {
+        printf("\"%s\" argument (\"%s\") is invalid.\n", addition, value);
+        exit(1);
+    }
     if (query_filters < 1) {
         strcat(query, " WHERE ");
     } else {

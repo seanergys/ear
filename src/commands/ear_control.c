@@ -394,22 +394,30 @@ void check_app_status(app_status_t status, ip_table_t *ips, int num_ips, char is
     ulong GPU_freq=0;
 #endif
     char step_id[12];
+    char job_id[12];
     for (i = 0; i < num_ips; i++)
         if (htonl(status.ip) == htonl(ips[i].ip_int))
         {
-            if (status.step_id == BATCH_STEP)
-                sprintf(step_id, "%-8s", "sbatch");
-            else if (status.step_id == INTERACT_STEP)
-                sprintf(step_id, "%-8s", "interact");
-            else
-                sprintf(step_id, "%-8ld", status.step_id);
+            if(status.job_id == 0) {//no job, this should be a defined constant
+                sprintf(job_id, "%s", "-");
+                sprintf(step_id, "%s", "-");
+            }
+            else {
+                sprintf(job_id, "%-7lu", status.job_id);
+                if (status.step_id == BATCH_STEP)
+                    sprintf(step_id, "%-8s", "batch");
+                else if (status.step_id == INTERACT_STEP)
+                    sprintf(step_id, "%-8s", "interact");
+                else
+                    sprintf(step_id, "%-8ld", status.step_id);
+            }
             if (is_master)
-                printf("%7ld-%-8s %6d %10.2lf %8.2lf %8.2lf %8.2lf %8.2lf %8.2lf", 
-                        status.job_id, step_id, status.nodes,
+                printf("%-7s-%-8s %6d %10.2lf %8.2lf %8.2lf %8.2lf %8.2lf %8.2lf", 
+                        job_id, step_id, status.nodes,
                         status.signature.DC_power, status.signature.CPI, status.signature.GBS, 
                         status.signature.Gflops, status.signature.time, (double)status.signature.avg_f/1000000);
             else
-                printf("%15s %7ld-%-8s %6d %10.2lf %8.2lf %8.2lf %8.2lf %8.2lf %8.2lf", 
+                printf("%15s %7lu-%-8s %6d %10.2lf %8.2lf %8.2lf %8.2lf %8.2lf %8.2lf", 
                         ips[i].name, status.job_id, step_id, status.master_rank,
                         status.signature.DC_power, status.signature.CPI, status.signature.GBS, 
                         status.signature.Gflops, status.signature.time, (double)status.signature.avg_f/1000000);

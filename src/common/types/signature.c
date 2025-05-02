@@ -52,13 +52,12 @@ void signature_print_fd(int fd, signature_t *sig, char is_extended,
 	dprintf(fd, "%lf;%lf;%lf;",
 		sig->DC_power, sig->DRAM_power, sig->PCK_power);
 
-	dprintf(fd, "%llu;%llu;%llu;%llu;%llu;%lf",
+	dprintf(fd, "%llu;%llu;%llu;%llu;%llu;%lf;%u",
 		sig->cycles, sig->instructions, sig->stalls.fetch_decode, sig->stalls.resources,
-		sig->stalls.memory, sig->Gflops);
+		sig->stalls.memory, sig->Gflops, sig->ps_sig.cpu_util);
 
 	if (is_extended) {
-		dprintf(fd, ";%u;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%.2f;%.2f;%.2f;%.2f;%.2f;%.2f;%.2f;%.2f",
-			sig->ps_sig.cpu_util,
+		dprintf(fd, ";%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%llu;%.2f;%.2f;%.2f;%.2f;%.2f;%.2f;%.2f;%.2f",
 			sig->L1_misses, sig->L2_misses, sig->L3_misses, sig->cache.ll_misses,
 			sig->cache.l1d_hits, sig->cache.l2_hits, sig->cache.l3_hits, sig->cache.ll_hits,
 			sig->cache.l1d_accesses, sig->cache.l2_accesses, sig->cache.l3_accesses, sig->cache.ll_accesses,
