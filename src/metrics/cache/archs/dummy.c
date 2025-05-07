@@ -43,7 +43,7 @@ state_t cache_dummy_dispose(ctx_t *c)
     return EAR_SUCCESS;
 }
 
-state_t cache_dummy_read(ctx_t *c, cache_t *ca)
+state_t cache_dummy_read(cache_t *ca)
 {
     debug("DUMMY READ");
     memset(ca, 0, sizeof(cache_t));

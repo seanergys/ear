@@ -150,7 +150,7 @@ state_t ear_file_read(const char *path, char *buffer, size_t size)
         state_return_msg(EAR_OPEN_ERROR, errno, strerror(errno));
     }
 
-    while ((size > 0) && ((r = read(fd, &buffer[totalr], size)) >= 0)) {
+    while ((size > 0) && ((r = read(fd, &buffer[totalr], size)) > 0)) {
         size = size - r;
         totalr += r;
     }

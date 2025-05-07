@@ -21,7 +21,7 @@ state_t cache_dummy_init(ctx_t *c);
 
 state_t cache_dummy_dispose(ctx_t *c);
 
-state_t cache_dummy_read(ctx_t *c, cache_t *ca);
+state_t cache_dummy_read(cache_t *ca);
 
 void cache_dummy_data_diff(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs);
 
