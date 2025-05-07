@@ -11,6 +11,7 @@
 #ifndef _APP_MGT_H
 #define _APP_MGT_H
 #define _GNU_SOURCE
+#include <common/types/generic.h>
 #include <sched.h>
 
 typedef struct app_management_data {

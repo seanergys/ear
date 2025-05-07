@@ -53,7 +53,8 @@
 #include <library/states/states_comm.h>
 #include <library/tracer/tracer.h>
 
-#define NEW_CPUFREQ_API 1                  // Enables the usage of the new metrics API,
+#define NEW_CPUFREQ_API                                                                                                \
+    1                                      // Enables the usage of the new metrics API,
                                            // instead of the deprecated frequency API.
 #define VERBOSE_WARN                     2 // Verbose level for warning messages.
 #define VERB_SAV_PEN                     2 // Verbose level for saving and penalty estimation.

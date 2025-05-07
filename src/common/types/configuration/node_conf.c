@@ -8,19 +8,23 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-#include <common/config.h>
-#include <common/environment.h>
-#include <common/output/verbose.h>
-#include <common/types/configuration/cluster_conf_tag.h>
-#include <common/types/configuration/node_conf.h>
-#include <common/types/configuration/policy_conf.h>
-#include <common/utils/string.h>
 #include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+#include <common/config.h>
+#include <common/environment.h>
+#include <common/output/verbose.h>
+#include <common/utils/string.h>
+
+#include <common/types/configuration/policy_conf.h>
+
+#include <common/types/configuration/node_conf.h>
+
+#include <common/types/configuration/cluster_conf_tag.h>
 
 // #define __OLD__CONF__
 

@@ -10,13 +10,14 @@
 
 // #define SHOW_DEBUGS 1
 
-#include <common/output/debug.h>
-#include <common/output/verbose.h>
-#include <common/system/monitor.h>
 #include <error.h>
 #include <pthread.h>
 #include <signal.h>
 #include <string.h>
+
+#include <common/output/debug.h>
+#include <common/output/verbose.h>
+#include <common/system/monitor.h>
 
 #define N_QUEUE     128
 #define SIGNAL      SIGCONT

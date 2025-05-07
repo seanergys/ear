@@ -13,6 +13,7 @@
 
 #include <library/metrics/metrics.h>
 #include <library/models/energy_model.h>
+#include <library/policies/policy_ctx.h>
 
 #define DOM_CPU     0
 #define DOM_MEM     1

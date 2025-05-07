@@ -13,6 +13,7 @@
 
 #include <common/config.h>
 #include <common/types/generic.h>
+#include <stdio.h>
 #include <time.h>
 
 typedef struct periodic_metric {

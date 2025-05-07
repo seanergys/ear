@@ -17,8 +17,7 @@
  * policy id, for internal use. Moreover, basic functions to copy, print etc are provided
  */
 
-#ifndef _POLICY_CONF_H
-#define _POLICY_CONF_H
+#pragma once
 
 #include <common/config.h>
 #include <common/types/generic.h>
@@ -55,5 +54,3 @@ void report_policy_conf(policy_conf_t *p);
 void init_policy_conf(policy_conf_t *p);
 
 state_t POLICY_token(unsigned int *num_policiesp, policy_conf_t **power_policiesl, char *line);
-
-#endif

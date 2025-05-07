@@ -8,8 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-#ifndef _TAG_CONF_H
-#define _TAG_CONF_H
+#pragma once
 
 #include <common/config.h>
 #include <common/states.h>
@@ -51,5 +50,3 @@ state_t TAG_token(char *token);
 state_t TAG_parse_token(tag_t **tags_i, unsigned int *num_tags_i, char *line);
 void print_tags_conf(tag_t *tag, int i);
 void power2str(ulong power, char *str);
-
-#endif

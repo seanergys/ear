@@ -33,7 +33,7 @@ void usage(char *name)
            "\t-h\t\t\t Shows this message.\n");
     printf("\n");
     //"\t-n [node_name1, nn2]\t Specifies from which nodes the learning phase will be deleted from, or all for every
-    //entry. [default: all]\n"
+    // entry. [default: all]\n"
     exit(0);
 }
 

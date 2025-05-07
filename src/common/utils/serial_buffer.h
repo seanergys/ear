@@ -54,6 +54,8 @@
 //		serial_copy_elem(&b, (char *) elem2, NULL);
 //
 
+#include <stddef.h>
+
 typedef struct serial_buffer_t {
     char *data;
     size_t size; // Allocated size

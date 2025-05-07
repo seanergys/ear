@@ -1176,7 +1176,8 @@ int main(int argc, char *argv[])
     if (!mysql_real_connect(connection, my_conf.database.ip, my_conf.database.user_commands,
                             my_conf.database.pass_commands, my_conf.database.database, my_conf.database.port, NULL,
                             0)) {
-        printf("Error connecting to the database (%d): %s\n", mysql_errno(connection), mysql_error(connection)); // error
+        printf("Error connecting to the database (%d): %s\n", mysql_errno(connection),
+               mysql_error(connection)); // error
         mysql_close(connection);
         free_cluster_conf(&my_conf);
         exit(1);

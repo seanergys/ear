@@ -8,16 +8,8 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-#ifndef _CLUSTER_CONF_H
-#define _CLUSTER_CONF_H
+#pragma once
 
-#include <common/config.h>
-#include <common/sizes.h>
-#include <common/states.h>
-#include <common/string_enhanced.h>
-#include <common/types/configuration/node_conf.h>
-#include <common/types/configuration/policy_conf.h>
-#include <common/types/generic.h>
 #include <fcntl.h>
 #include <grp.h>
 #include <stdint.h>
@@ -26,6 +18,10 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <common/config.h>
+#include <common/sizes.h>
+#include <common/states.h>
+#include <common/string_enhanced.h>
 #include <common/types/configuration/cluster_conf_db.h>
 #include <common/types/configuration/cluster_conf_eard.h>
 #include <common/types/configuration/cluster_conf_eardbd.h>
@@ -34,6 +30,9 @@
 #include <common/types/configuration/cluster_conf_edcmon_tag.h>
 #include <common/types/configuration/cluster_conf_etag.h>
 #include <common/types/configuration/cluster_conf_tag.h>
+#include <common/types/configuration/node_conf.h>
+#include <common/types/configuration/policy_conf.h>
+#include <common/types/generic.h>
 
 #define NORMAL     0
 #define AUTHORIZED 1
@@ -252,4 +251,3 @@ state_t deserialize_cluster_conf(cluster_conf_t *conf, char *ear_conf_buf, size_
 int tag_id_exists(cluster_conf_t *conf, char *tag);
 
 void generate_node_ranges(node_island_t *island, char *nodelist);
-#endif

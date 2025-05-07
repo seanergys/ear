@@ -8,8 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-#ifndef _NODE_CONF_H
-#define _NODE_CONF_H
+#pragma once
 
 #include <common/config.h>
 #include <common/types/configuration/policy_conf.h>
@@ -133,6 +132,3 @@ int is_smaller_unit(int small, int big);
 
 /** TODO: Declared here because it's used by cluster_conf module. */
 int is_smaller_unit(int small, int big);
-
-#else
-#endif
