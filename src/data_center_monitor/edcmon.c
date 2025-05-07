@@ -8,17 +8,16 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #include <common/system/plugin_manager.h>
-#include <unistd.h>
 #include <sys/resource.h>
-
+#include <unistd.h>
 
 int main(int argc, char *argv[])
 {
     printf("%s: Started....\n", argv[0]);
-    
+
     /** Change the open file limit */
     struct rlimit rl;
     getrlimit(RLIMIT_NOFILE, &rl);

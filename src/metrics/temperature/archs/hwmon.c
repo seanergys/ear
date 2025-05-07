@@ -8,18 +8,18 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #include <common/output/debug.h>
 #include <metrics/common/hwmon.h>
 #include <metrics/temperature/archs/hwmon.h>
 
 static hwmon_t *chips;
-static uint     chips_count;
-static uint     sockets_count;
-static uint     items_count;
-static char    *label;
-static char    *driver_name;
+static uint chips_count;
+static uint sockets_count;
+static uint items_count;
+static char *label;
+static char *driver_name;
 
 TEMP_F_LOAD(hwmon)
 {
@@ -44,9 +44,9 @@ TEMP_F_LOAD(hwmon)
     }
     sockets_count = tp->socket_count;
     apis_put(ops->get_info, temp_hwmon_get_info);
-    apis_put(ops->init,     temp_hwmon_init);
-    apis_put(ops->dispose,  temp_hwmon_dispose);
-    apis_put(ops->read,     temp_hwmon_read);
+    apis_put(ops->init, temp_hwmon_init);
+    apis_put(ops->dispose, temp_hwmon_dispose);
+    apis_put(ops->read, temp_hwmon_read);
 }
 
 TEMP_F_GET_INFO(hwmon)
@@ -80,10 +80,12 @@ TEMP_F_READ(hwmon)
     // Reading and calculating the average per chip
     hwmon_read(chips);
     hwmon_calc_average(chips, label);
-    while((chip = hwmon_iter_chips(chips)) != NULL) {
+    while ((chip = hwmon_iter_chips(chips)) != NULL) {
         temp_aux = ((llong) chip->devs_avg.input_toint) / 1000LL;
-        if (temp    != NULL) temp[c]   = temp_aux;
-        if (average != NULL) *average += (llong) chip->devs_avg.input_toint;
+        if (temp != NULL)
+            temp[c] = temp_aux;
+        if (average != NULL)
+            *average += (llong) chip->devs_avg.input_toint;
         ++c;
     }
     if (average != NULL) {

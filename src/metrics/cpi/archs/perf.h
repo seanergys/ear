@@ -15,4 +15,4 @@
 
 CPI_DEFINES(perf);
 
-#endif //METRICS_CPI_PERF_H
+#endif // METRICS_CPI_PERF_H

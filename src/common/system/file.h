@@ -11,36 +11,36 @@
 #ifndef _FILE_H
 #define _FILE_H
 
-#include <fcntl.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <common/sizes.h>
 #include <common/states.h>
+#include <fcntl.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
-#define PERMS000(T) 0
-#define PERMS100(T) S_IR ## T
-#define PERMS010(T) S_IW ## T
-#define PERMS001(T) S_IX ## T
-#define PERMS110(T) (PERMS100(T)) | (PERMS010(T))
-#define PERMS111(T) (PERMS100(T)) | (PERMS010(T)) | (PERMS001(T))
-#define PEXPA(...) __VA_ARGS__
-#define PERMS(u, g, o) PEXPA(PERMS ## u)(USR) | PEXPA(PERMS ## g)(GRP) | PEXPA(PERMS ## o)(OTH)
+#define PERMS000(T)    0
+#define PERMS100(T)    S_IR##T
+#define PERMS010(T)    S_IW##T
+#define PERMS001(T)    S_IX##T
+#define PERMS110(T)    (PERMS100(T)) | (PERMS010(T))
+#define PERMS111(T)    (PERMS100(T)) | (PERMS010(T)) | (PERMS001(T))
+#define PEXPA(...)     __VA_ARGS__
+#define PERMS(u, g, o) PEXPA(PERMS##u)(USR) | PEXPA(PERMS##g)(GRP) | PEXPA(PERMS##o)(OTH)
 
-#define F_WR 			O_WRONLY
-#define F_RD			O_RDONLY
-#define F_CR 			O_CREAT
-#define F_TR			O_TRUNC
-#define F_UR 			S_IRUSR
-#define F_UW 			S_IWUSR
-#define F_UX 			S_IXUSR
-#define F_GR 			S_IRGRP
-#define F_GW 			S_IWGRP
-#define F_GX 			S_IXGRP
-#define F_OR 			S_IROTH
-#define F_OW 			S_IWOTH
-#define F_OX 			S_IXOTH
+#define F_WR           O_WRONLY
+#define F_RD           O_RDONLY
+#define F_CR           O_CREAT
+#define F_TR           O_TRUNC
+#define F_UR           S_IRUSR
+#define F_UW           S_IWUSR
+#define F_UX           S_IXUSR
+#define F_GR           S_IRGRP
+#define F_GW           S_IWGRP
+#define F_GX           S_IXGRP
+#define F_OR           S_IROTH
+#define F_OW           S_IWOTH
+#define F_OX           S_IXOTH
 
 /** Locks the file for writting in a fixed part. */
 int ear_file_lock(int fd);
@@ -51,7 +51,8 @@ int ear_file_lock(int fd);
  * \return -1 Otherwise. */
 int ear_file_trylock(int fd);
 
-/** Tries to acquire the lock with file_trylock with a max a attemps = tiemoput, expressed as loop iterations, not time. Returns true when the lock has been acquired. */
+/** Tries to acquire the lock with file_trylock with a max a attemps = tiemoput, expressed as loop iterations, not time.
+ * Returns true when the lock has been acquired. */
 int ear_file_lock_timeout(int fd, ulong timeout);
 
 /** Creates a file to be used  as lock. It doesn't locks the file */

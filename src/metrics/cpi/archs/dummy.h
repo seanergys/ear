@@ -15,4 +15,4 @@
 
 CPI_DEFINES(dummy);
 
-#endif //METRICS_CPI_DUMMY_H
+#endif // METRICS_CPI_DUMMY_H

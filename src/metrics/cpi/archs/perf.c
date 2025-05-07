@@ -8,17 +8,17 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #include <common/output/debug.h>
-#include <metrics/common/perf.h>
 #include <metrics/common/offsets.h>
+#include <metrics/common/perf.h>
 #include <metrics/cpi/archs/perf.h>
 
 // Generic
-static perf_t       perfs[4];
-static uint         perfs_count;
-static uint         started;
+static perf_t perfs[4];
+static uint perfs_count;
+static uint started;
 static offset_ops_t ofs;
 
 static void perfs_add(ullong event, uint type, ulong offset_result, const char *event_desc)
@@ -37,29 +37,31 @@ static void perfs_add(ullong event, uint type, ulong offset_result, const char *
 void cpi_perf_load(topology_t *tp, cpi_ops_t *ops)
 {
     if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_ICELAKE_X) {
-        perfs_add(PERF_COUNT_HW_CPU_CYCLES  , PERF_TYPE_HARDWARE , O1(cycles           ), "PERF_COUNT_HW_CPU_CYCLES   ");
-        perfs_add(PERF_COUNT_HW_INSTRUCTIONS, PERF_TYPE_HARDWARE , O1(instructions     ), "PERF_COUNT_HW_INSTRUCTIONS ");
-        perfs_add(0x40004a3                 , PERF_TYPE_RAW      , O2(stalls, memory   ), "CYCLE_ACTIVITY.STALLS_TOTAL");
+        perfs_add(PERF_COUNT_HW_CPU_CYCLES, PERF_TYPE_HARDWARE, O1(cycles), "PERF_COUNT_HW_CPU_CYCLES   ");
+        perfs_add(PERF_COUNT_HW_INSTRUCTIONS, PERF_TYPE_HARDWARE, O1(instructions), "PERF_COUNT_HW_INSTRUCTIONS ");
+        perfs_add(0x40004a3, PERF_TYPE_RAW, O2(stalls, memory), "CYCLE_ACTIVITY.STALLS_TOTAL");
     } else if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_BROADWELL_X) {
-        perfs_add(PERF_COUNT_HW_CPU_CYCLES  , PERF_TYPE_HARDWARE , O1(cycles           ), "PERF_COUNT_HW_CPU_CYCLES   ");
-        perfs_add(PERF_COUNT_HW_INSTRUCTIONS, PERF_TYPE_HARDWARE , O1(instructions     ), "PERF_COUNT_HW_INSTRUCTIONS ");
-        perfs_add(0x40004a3                 , PERF_TYPE_RAW      , O2(stalls, memory   ), "CYCLE_ACTIVITY.STALLS_TOTAL");
-        perfs_add(0x00001a2                 , PERF_TYPE_RAW      , O2(stalls, resources), "RESOURCE_STALLS.ANY");
-	} else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN) {
-        perfs_add(PERF_COUNT_HW_CPU_CYCLES  , PERF_TYPE_HARDWARE , O1(cycles              ), "PERF_COUNT_HW_CPU_CYCLES    ");
-        perfs_add(PERF_COUNT_HW_INSTRUCTIONS, PERF_TYPE_HARDWARE , O1(instructions        ), "PERF_COUNT_HW_INSTRUCTIONS  ");
-        perfs_add(0x0000287                 , PERF_TYPE_RAW      , O2(stalls, fetch_decode), "IC_FETCH_STALL.DECODING_QUEUE");
-        perfs_add(0x0000187                 , PERF_TYPE_RAW      , O2(stalls, resources   ), "IC_FETCH_STALL.BACK_PRESSURE ");
+        perfs_add(PERF_COUNT_HW_CPU_CYCLES, PERF_TYPE_HARDWARE, O1(cycles), "PERF_COUNT_HW_CPU_CYCLES   ");
+        perfs_add(PERF_COUNT_HW_INSTRUCTIONS, PERF_TYPE_HARDWARE, O1(instructions), "PERF_COUNT_HW_INSTRUCTIONS ");
+        perfs_add(0x40004a3, PERF_TYPE_RAW, O2(stalls, memory), "CYCLE_ACTIVITY.STALLS_TOTAL");
+        perfs_add(0x00001a2, PERF_TYPE_RAW, O2(stalls, resources), "RESOURCE_STALLS.ANY");
+    } else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN) {
+        perfs_add(PERF_COUNT_HW_CPU_CYCLES, PERF_TYPE_HARDWARE, O1(cycles), "PERF_COUNT_HW_CPU_CYCLES    ");
+        perfs_add(PERF_COUNT_HW_INSTRUCTIONS, PERF_TYPE_HARDWARE, O1(instructions), "PERF_COUNT_HW_INSTRUCTIONS  ");
+        perfs_add(0x0000287, PERF_TYPE_RAW, O2(stalls, fetch_decode), "IC_FETCH_STALL.DECODING_QUEUE");
+        perfs_add(0x0000187, PERF_TYPE_RAW, O2(stalls, resources), "IC_FETCH_STALL.BACK_PRESSURE ");
     } else {
-        perfs_add(PERF_COUNT_HW_CPU_CYCLES             , PERF_TYPE_HARDWARE, O1(cycles              ), "PERF_COUNT_HW_CPU_CYCLES     ");
-        perfs_add(PERF_COUNT_HW_INSTRUCTIONS           , PERF_TYPE_HARDWARE, O1(instructions        ), "PERF_COUNT_HW_INSTRUCTIONS   ");
-        perfs_add(PERF_COUNT_HW_STALLED_CYCLES_FRONTEND, PERF_TYPE_HARDWARE, O2(stalls, fetch_decode), "PERF_COUNT_HW_STALLS_FRONTEND");
-        perfs_add(PERF_COUNT_HW_STALLED_CYCLES_BACKEND , PERF_TYPE_HARDWARE, O2(stalls, memory      ), "PERF_COUNT_HW_STALLS_BACKEND ");
+        perfs_add(PERF_COUNT_HW_CPU_CYCLES, PERF_TYPE_HARDWARE, O1(cycles), "PERF_COUNT_HW_CPU_CYCLES     ");
+        perfs_add(PERF_COUNT_HW_INSTRUCTIONS, PERF_TYPE_HARDWARE, O1(instructions), "PERF_COUNT_HW_INSTRUCTIONS   ");
+        perfs_add(PERF_COUNT_HW_STALLED_CYCLES_FRONTEND, PERF_TYPE_HARDWARE, O2(stalls, fetch_decode),
+                  "PERF_COUNT_HW_STALLS_FRONTEND");
+        perfs_add(PERF_COUNT_HW_STALLED_CYCLES_BACKEND, PERF_TYPE_HARDWARE, O2(stalls, memory),
+                  "PERF_COUNT_HW_STALLS_BACKEND ");
     }
     apis_put(ops->get_info, cpi_perf_get_info);
-	apis_put(ops->init,     cpi_perf_init);
-	apis_put(ops->dispose,  cpi_perf_dispose);
-	apis_put(ops->read,     cpi_perf_read);
+    apis_put(ops->init, cpi_perf_init);
+    apis_put(ops->dispose, cpi_perf_dispose);
+    apis_put(ops->read, cpi_perf_read);
 }
 
 void cpi_perf_get_info(apinfo_t *info)
@@ -92,7 +94,7 @@ state_t cpi_perf_dispose()
             }
         }
     }
-    started = 0;
+    started     = 0;
     perfs_count = 0;
     return EAR_SUCCESS;
 }
@@ -116,8 +118,8 @@ state_t cpi_perf_read(cpi_t *ci)
         }
     }
     offsets_calc_all(&ofs, p);
-    #if SHOW_DEBUGS
+#if SHOW_DEBUGS
     cpi_data_print(ci, 0.0, fderr);
-    #endif
+#endif
     return EAR_SUCCESS;
 }
