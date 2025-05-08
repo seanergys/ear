@@ -29,10 +29,10 @@ typedef struct cpi_s {
 } cpi_t;
 
 typedef struct cpi_ops_s {
-    void (*get_info)(apinfo_t *info);
-    state_t (*init)();
-    state_t (*dispose)();
-    state_t (*read)(cpi_t *ci);
+    void    (*get_info) (apinfo_t *info);
+    state_t (*init)     ();
+    state_t (*dispose)  ();
+    state_t (*read)     (cpi_t *ci);
 } cpi_ops_t;
 
 // API building scheme

@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-// #define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <common/output/debug.h>
 #include <common/sizes.h>
@@ -223,12 +223,15 @@ int hwmon_count_items(hwmon_t chips[], char *item_name, char *label)
     int c       = 0; // c of chip
     int d       = 0; // d of device
 
-    int cmp1 = strncmp(item_name, "input", 5) == 0;
-    int cmp2 = strncmp(item_name, "min", 3) == 0;
-    int cmp3 = strncmp(item_name, "max", 3) == 0;
-    int cmp4 = strncmp(item_name, "average", 7) == 0;
+    int cmp1 = strncmp(item_name, "input"           ,  5) == 0;
+    int cmp2 = strncmp(item_name, "min"             ,  3) == 0;
+    int cmp3 = strncmp(item_name, "max"             ,  3) == 0;
+    int cmp4 = strncmp(item_name, "average"         ,  7) == 0;
     int cmp5 = strncmp(item_name, "average_interval", 16) == 0;
 
+    if (chips == NULL) {
+        return 0;
+    }
     while (!chips[c].is_null) {
         d = 0;
         while (!chips[c].devs[d].is_null) {

@@ -16,9 +16,9 @@
 void cpi_dummy_load(topology_t *tp, cpi_ops_t *ops)
 {
     apis_put(ops->get_info, cpi_dummy_get_info);
-    apis_put(ops->init, cpi_dummy_init);
-    apis_put(ops->dispose, cpi_dummy_dispose);
-    apis_put(ops->read, cpi_dummy_read);
+    apis_put(ops->init    , cpi_dummy_init    );
+    apis_put(ops->dispose , cpi_dummy_dispose );
+    apis_put(ops->read    , cpi_dummy_read    );
 }
 
 void cpi_dummy_get_info(apinfo_t *info)

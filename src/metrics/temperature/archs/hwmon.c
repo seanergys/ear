@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-// #define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <common/output/debug.h>
 #include <metrics/common/hwmon.h>
@@ -36,17 +36,17 @@ TEMP_F_LOAD(hwmon)
     }
     if (state_fail(hwmon_open(driver_name, "temp", &chips, &chips_count))) {
         debug("Failed: %s", state_msg);
+        return;
     }
-    debug("items to count %u", items_count);
     if (hwmon_count_items(chips, "input", label) != items_count) {
         hwmon_close(&chips);
         return;
     }
     sockets_count = tp->socket_count;
     apis_put(ops->get_info, temp_hwmon_get_info);
-    apis_put(ops->init, temp_hwmon_init);
-    apis_put(ops->dispose, temp_hwmon_dispose);
-    apis_put(ops->read, temp_hwmon_read);
+    apis_put(ops->init,     temp_hwmon_init);
+    apis_put(ops->dispose,  temp_hwmon_dispose);
+    apis_put(ops->read,     temp_hwmon_read);
 }
 
 TEMP_F_GET_INFO(hwmon)
@@ -65,7 +65,10 @@ TEMP_F_INIT(hwmon)
 
 TEMP_F_DISPOSE(hwmon)
 {
-    hwmon_close(&chips);
+    if (chips != NULL) {
+        hwmon_close(&chips);
+        chips = NULL;
+    }
 }
 
 TEMP_F_READ(hwmon)
