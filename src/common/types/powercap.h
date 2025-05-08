@@ -26,7 +26,8 @@ typedef enum {
     CPU0,
     CPU1,
     GPUSTART,
-    NUM_DEV_TYPES
+    NUM_DEV_TYPES,
+    NO_TYPE = -1
 } powercap_device_types;
 
 typedef struct pc_device_types_map {

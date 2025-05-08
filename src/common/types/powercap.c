@@ -26,13 +26,15 @@ powercap_device_types get_device_enum(const char *device_name)
         if (strncmp(device_name, device_map[i].name, len) == 0) {
             if (i == GPUSTART) {
                 // GPU case, add an offset to the index
-                if (device_name[len] >= '0' && device_name[len] <= '9')
-                    return device_map[i].type + (device_name[len] - 48);
-                else
-                    return -1;
+                if (device_name[len] >= '0' && device_name[len] <= '9') {
+                    int tmp = device_map[i].type;
+                    tmp += (device_name[len] - 48);
+                    return (powercap_device_types) tmp;
+                } else
+                    return NO_TYPE;
             } else
                 return device_map[i].type;
         }
     }
-    return -1;
+    return NO_TYPE;
 }
