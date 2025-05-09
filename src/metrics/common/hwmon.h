@@ -30,10 +30,10 @@
 #define HWMON_DEV_TYPE_POWER  "power"
 #define HWMON_DEV_TYPE_ENERGY "energy"
 
-#define hwmon_add(var) \
-    int   var ##_fd; \
-    char  var[32];     \
-    int   var ##_toint;
+#define hwmon_add(var)                                                                                                 \
+    int var##_fd;                                                                                                      \
+    char var[32];                                                                                                      \
+    int var##_toint;
 
 typedef struct hwmon_dev_s {
     hwmon_add(input);
@@ -83,4 +83,4 @@ hwmon_dev_t *hwmon_iter_devs(hwmon_t *chip, char *label);
 // is the average of all devices of all chips.
 void hwmon_calc_average(hwmon_t chips[], char *label);
 
-#endif //METRICS_COMMON_HWMON
+#endif // METRICS_COMMON_HWMON

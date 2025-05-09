@@ -8,18 +8,18 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
+#include <common/output/debug.h>
+#include <common/sizes.h>
 #include <fcntl.h>
+#include <metrics/common/hwmon.h>
+#include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <pthread.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <common/sizes.h>
-#include <common/output/debug.h>
-#include <metrics/common/hwmon.h>
+#include <unistd.h>
 
 static state_t static_read(int fd, char *buffer, size_t size)
 {
@@ -27,7 +27,7 @@ static state_t static_read(int fd, char *buffer, size_t size)
     size -= 1;
     for (i = 0, r = 1, p = size; i < size && r > 0;) {
         r = pread(fd, (void *) &buffer[i], p, i);
-        i =    i + r;
+        i = i + r;
         p = size - i;
     }
     buffer[i] = '\0';
@@ -43,17 +43,17 @@ static uint test_device_name(int fd, const char *name)
     uint correct = 0;
     if (state_ok(static_read(fd, data, SZ_PATH))) {
         int len = strlen(data);
-        if (data[len-1] == '\n') {
-            data[len-1] =  '\0';
+        if (data[len - 1] == '\n') {
+            data[len - 1] = '\0';
         }
 #if SHOW_DEBUGS
         debug("comparing the driver name '%s' with '%s'", name, data);
 #endif
-        if (strstr(name, data) != NULL) correct = 1;
+        if (strstr(name, data) != NULL)
+            correct = 1;
     }
     close(fd);
     return correct;
-
 }
 
 state_t hwmon_find_drivers(const char *name, uint **ids, uint *n)
@@ -66,54 +66,59 @@ state_t hwmon_find_drivers(const char *name, uint **ids, uint *n)
     uint def_path = 0, dev_path = 0, dev_oem = 0;
     uint fd_found = 0, dev_found = 0;
 
-    while(1)
-    {
+    while (1) {
         debug("Testing %d.........mode %d", i, m);
         do {
-            def_path = 0;dev_path = 0; dev_oem = 0;
+            def_path = 0;
+            dev_path = 0;
+            dev_oem  = 0;
             sprintf(data, "/sys/class/hwmon/hwmon%d/name", i);
             debug("opening file '%s'", data);
             //
             if ((fd = open(data, O_RDONLY)) >= 0) {
                 def_path = 1;
-                if ((dev_found = test_device_name(fd, name))) goto detected;
+                if ((dev_found = test_device_name(fd, name)))
+                    goto detected;
             }
             fd_found = def_path || dev_path || dev_oem;
             debug("File %s open returns %d", data, fd);
-            if (!fd_found || !dev_found){
+            if (!fd_found || !dev_found) {
                 sprintf(data, "/sys/class/hwmon/hwmon%d/device/name", i);
                 debug("opening device path name file '%s'", data);
-                if ((fd = open(data, O_RDONLY)) >= 0){
+                if ((fd = open(data, O_RDONLY)) >= 0) {
                     dev_path = 1;
-                    if ((dev_found = test_device_name(fd, name))) goto detected;
+                    if ((dev_found = test_device_name(fd, name)))
+                        goto detected;
                 }
             }
             fd_found = def_path || dev_path || dev_oem;
-            if (!fd_found || !dev_found){
+            if (!fd_found || !dev_found) {
                 sprintf(data, "/sys/class/hwmon/hwmon%d/device/power1_oem_info", i);
                 debug("opening device path name file '%s'", data);
-                if ((fd = open(data, O_RDONLY)) >= 0){
+                if ((fd = open(data, O_RDONLY)) >= 0) {
                     dev_oem = 1;
-                    if ((dev_found = test_device_name(fd, name))) goto detected;
+                    if ((dev_found = test_device_name(fd, name)))
+                        goto detected;
                 }
             }
             fd_found = def_path || dev_path || dev_oem;
-            debug("paths %u / %u / %u", def_path,  dev_path, dev_oem);
+            debug("paths %u / %u / %u", def_path, dev_path, dev_oem);
             /* If one of the paths is found we check the name */
-            if (!fd_found)  break; /* File not found */
-            if (!dev_found){ /* File is found but name doesn't corresponds with */
+            if (!fd_found)
+                break;        /* File not found */
+            if (!dev_found) { /* File is found but name doesn't corresponds with */
                 i++;
                 continue;
             }
-            /* At this point we have detected one device */
-            detected:
-            debug("hwmon found in pos %d" , i);
+        /* At this point we have detected one device */
+        detected:
+            debug("hwmon found in pos %d", i);
             if (m == 1) {
                 (*ids)[c] = i;
             }
             c += 1;
             ++i;
-        } while(1);
+        } while (1);
 
         if (c == 0) {
             return_msg(EAR_ERROR, "no drivers found");
@@ -140,13 +145,12 @@ state_t hwmon_open_files(uint id, char *files, int **fds, uint *n, int i_start)
 {
     char data[SZ_PATH];
     int i = i_start; // index
-    int c = 0; // count
-    int m = 0; // mode
+    int c = 0;       // count
+    int m = 0;       // mode
     int fd;
 
     debug("hwmon_open_files................");
-    while(1)
-    {
+    while (1) {
         do {
             sprintf(data, (char *) files, id, i);
             debug("opening file '%s'", data);
@@ -162,7 +166,7 @@ state_t hwmon_open_files(uint id, char *files, int **fds, uint *n, int i_start)
             }
             i += 1;
             c += 1;
-        } while(1);
+        } while (1);
 
         if (c == 0) {
             debug("no files found");
@@ -176,7 +180,7 @@ state_t hwmon_open_files(uint id, char *files, int **fds, uint *n, int i_start)
         if ((*fds = calloc(c, sizeof(int))) == NULL) {
             return_msg(EAR_ERROR, strerror(errno));
         }
-        *fds = (int *) memset(*fds, -1, c*sizeof(int));
+        *fds = (int *) memset(*fds, -1, c * sizeof(int));
         *n   = c;
         //
         i = i_start;

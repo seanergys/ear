@@ -11,11 +11,11 @@
 #ifndef COMMON_STRING_ENHANCED_H
 #define COMMON_STRING_ENHANCED_H
 
-#include <getopt.h>
 #include <common/utils/strtable.h>
+#include <getopt.h>
 
 /** Cleans the character pointed by 'chr', adding an '\0' in its position. */
-char* strclean(char *string, char chr);
+char *strclean(char *string, char chr);
 
 /** Converts a string to lower case. */
 char *strtolow(char *string);

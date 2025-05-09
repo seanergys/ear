@@ -11,16 +11,16 @@
 #ifndef METRICS_COMMON_HSMP_H
 #define METRICS_COMMON_HSMP_H
 
+#include <common/hardware/topology.h>
+#include <common/states.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <common/states.h>
-#include <common/hardware/topology.h>
 
 #if defined __has_include
-#  if __has_include (<asm/amd_hsmp.h>)
-#    define HAS_AMD_HSMP_H 1
-#    include <asm/amd_hsmp.h>
-#  endif
+#if __has_include(<asm/amd_hsmp.h>)
+#define HAS_AMD_HSMP_H 1
+#include <asm/amd_hsmp.h>
+#endif
 #endif
 
 // Mode

@@ -15,74 +15,68 @@
 
 // Verbosity
 #ifdef ERUN
-	#define plug_verbose(sp, level, ...) \
-        	if (plug_verbosity_test(sp, level) == 1) { \
-				if (level > 0) fprintf(stderr, "%s %s ", plug_host(sp), plug_context_str(sp)); \
-				fprintf(stderr, __VA_ARGS__); \
-				fprintf(stderr, "\n"); \
-        }
-	#define plug_error(sp, ...) \
-        	if (plug_verbosity_test(sp, 1) == 1) { \
-				fprintf(stderr, "%s %s ERROR, ", plug_host(sp), plug_context_str(sp)); \
-				fprintf(stderr, __VA_ARGS__); \
-				fprintf(stderr, "\n"); \
-        	}
+#define plug_verbose(sp, level, ...)                                                                                   \
+    if (plug_verbosity_test(sp, level) == 1) {                                                                         \
+        if (level > 0)                                                                                                 \
+            fprintf(stderr, "%s %s ", plug_host(sp), plug_context_str(sp));                                            \
+        fprintf(stderr, __VA_ARGS__);                                                                                  \
+        fprintf(stderr, "\n");                                                                                         \
+    }
+#define plug_error(sp, ...)                                                                                            \
+    if (plug_verbosity_test(sp, 1) == 1) {                                                                             \
+        fprintf(stderr, "%s %s ERROR, ", plug_host(sp), plug_context_str(sp));                                         \
+        fprintf(stderr, __VA_ARGS__);                                                                                  \
+        fprintf(stderr, "\n");                                                                                         \
+    }
 #else
-	#define plug_verbose(sp, level, ...) \
-        	if (plug_verbosity_test(sp, level) == 1) { \
-                	slurm_error("EARPLUG, " __VA_ARGS__); \
-        	}
-	#define plug_error(sp, ...) \
-        	if (plug_verbosity_test(sp, 1) == 1) { \
-				slurm_error("EARPLUG ERROR, " __VA_ARGS__); \
-        	}
+#define plug_verbose(sp, level, ...)                                                                                   \
+    if (plug_verbosity_test(sp, level) == 1) {                                                                         \
+        slurm_error("EARPLUG, " __VA_ARGS__);                                                                          \
+    }
+#define plug_error(sp, ...)                                                                                            \
+    if (plug_verbosity_test(sp, 1) == 1) {                                                                             \
+        slurm_error("EARPLUG ERROR, " __VA_ARGS__);                                                                    \
+    }
 #endif
 
-#define fail(function) \
-	(function != ESPANK_SUCCESS)
-
+#define fail(function) (function != ESPANK_SUCCESS)
 
 typedef char *plug_component_t;
-typedef int   plug_context_t;
+typedef int plug_context_t;
 
 struct component_s {
-	plug_component_t plugin;
-	plug_component_t library;
+    plug_component_t plugin;
+    plug_component_t library;
 } Component __attribute__((weak)) = {
-	.plugin  = "SLURM_EPC_PLUGIN", // EPC: EAR PLUGIN (CORE) COMPONENT
-	.library = "SLURM_EPC_LIBRARY",
+    .plugin  = "SLURM_EPC_PLUGIN", // EPC: EAR PLUGIN (CORE) COMPONENT
+    .library = "SLURM_EPC_LIBRARY",
 };
 
 struct context_s {
-	plug_context_t error;
-	plug_context_t srun;
-	plug_context_t sbatch;
-	plug_context_t remote;
-	plug_context_t local;
+    plug_context_t error;
+    plug_context_t srun;
+    plug_context_t sbatch;
+    plug_context_t remote;
+    plug_context_t local;
 } Context __attribute__((weak)) = {
-	.error  = S_CTX_ERROR,
-	.srun   = S_CTX_LOCAL,
-	.sbatch = S_CTX_ALLOCATOR,
-	.remote = S_CTX_REMOTE,
-	.local  = -1
-};
+    .error = S_CTX_ERROR, .srun = S_CTX_LOCAL, .sbatch = S_CTX_ALLOCATOR, .remote = S_CTX_REMOTE, .local = -1};
 
 struct constring_s {
-	char *error;
-	char *srun;
-	char *sbatch;
+    char *error;
+    char *srun;
+    char *sbatch;
 } Constring __attribute__((weak)) = {
-	.error  = "error",
-	.srun   = "srun",
-	.sbatch = "sbatch",
+    .error  = "error",
+    .srun   = "srun",
+    .sbatch = "sbatch",
 };
 
 typedef struct varname_s {
     char *comp;  // Plugin core features enabling/disable
     char *mod;   // Plugin small behavior modificators/variables
-	char *flag;  // Plugin flags
-	char *slurm; // Own SLURM variables
-	char *ear;   // Inner EAR variables
+    char *flag;  // Plugin flags
+    char *slurm; // Own SLURM variables
+    char *ear;   // Inner EAR variables
 } varnames_t;
 
 struct variables_s {
@@ -126,49 +120,101 @@ struct variables_s {
     varnames_t ld_preload;
     varnames_t ld_library;
     varnames_t is_erun;
-}
-	Var __attribute__((weak)) =
-{
-.comp_libr       = { .comp  = "SLURM_COMP_LIBRARY"                                    }, // COMP: COMPONENT
-.comp_plug       = { .comp  = "SLURM_COMP_PLUGIN"                                     },
-.plug_verbose    = { .mod   = "SLURM_COMP_VERBOSE"                                    },
-.hack_loader     = { .mod   = HACK_LOADER_FILE,                                       },
-.ctx_last        = { .mod   = "SLURM_EPV_LAST_CONTEXT",                               },
-.ctx_was_sbatch  = { .mod   = "SLURM_EPV_PASSED_SBATCH",                              },
-.ctx_was_srun    = { .mod   = "SLURM_EPV_PASSED_SRUN",                                },
-.con_eard_sbatch = { .mod   = "SLURM_EPV_CON_EARD_SBATCH",                            },
-.con_eard_srun   = { .mod   = "SLURM_EPV_CON_EARD_SRUN",                              },
-.con_eard_task   = { .mod   = "SLURM_EPV_CON_EARD_TASK",                              },
-.con_eargmd      = { .mod   = "SLURM_EPV_CON_EARGMD",                                 }, // EPV: EAR PLUGIN VARIABLE
-.user            = { .mod   = "SLURM_EPV_USER",                                       },
-.group           = { .mod   = "SLURM_EPV_GROUP",                                      },
-.account         = { .slurm = "SLURM_JOB_ACCOUNT",                                    },
-.name_app        = { .slurm = "SLURM_JOB_NAME",        .ear = ENV_APP_NAME            },
-.job_id          = { .slurm = "SLURM_JOB_ID",                                         },
-.job_node_list   = { .slurm = "SLURM_JOB_NODELIST",                                   },
-.job_node_count  = { .slurm = "SLURM_JOB_NUM_NODES",                                  },
-.step_id         = { .slurm = "SLURM_STEP_ID"                                         },
-.step_node_list  = { .slurm = "SLURM_STEP_NODELIST",                                  },
-.step_node_count = { .slurm = "SLURM_STEP_NUM_NODES",                                 },
-.local_id        = { .slurm = "SLURM_LOCALID",                                        },
-.cpus_node_num   = { .slurm = "SLURM_CPUS_ON_NODE",                                   },
-.verbose         = { .flag  = "SLURM_EPF_VERBOSITY",   .ear = ENV_FLAG_VERBOSITY      }, // EPF: EAR PLUGIN FLAG
-.policy          = { .flag  = "SLURM_EPF_POLICY",      .ear = ENV_FLAG_POLICY         },
-.policy_th       = { .flag  = "SLURM_EPF_POLICY_TH",   .ear = ENV_FLAG_POLICY_TH      },
-.frequency       = { .flag  = "SLURM_EPF_FREQUENCY",   .ear = ENV_FLAG_FREQUENCY      },
-.p_state         = { .flag  = "SLURM_EPF_PSTATE",      .ear = ENV_FLAG_PSTATE         },
-.learning        = { .flag  = "SLURM_EPF_LEARNING_PHASE", .ear = ENV_FLAG_IS_LEARNING },
-.tag             = { .flag  = "SLURM_EPF_ENERGYT_AG",  .ear = ENV_FLAG_ENERGY_TAG     },
-.path_usdb       = { .flag  = "SLURM_EPF_USER_DB",     .ear = ENV_FLAG_PATH_USERDB    },
-.path_trac       = { .flag  = "SLURM_EPF_TRACE_PATH",  .ear = ENV_FLAG_PATH_TRACE     },
-.perf_pen        = {                                   .ear = ENV_FLAG_POLICY_PENALTY },
-.eff_gain        = {                                   .ear = ENV_FLAG_POLICY_GAIN    },
-.path_temp       = {                                   .ear = ENV_PATH_TMP            },
-.path_install    = {                                   .ear = ENV_PATH_EAR            },
-.task_pid        = {                                   .ear = FLAG_TASK_PID           },
-.ld_preload      = {                                   .ear = "LD_PRELOAD"            },
-.ld_library      = {                                   .ear = "LD_LIBRARY_PATH"       },
-.is_erun         = {                                   .ear = SCHED_IS_ERUN           },
+} Var __attribute__((weak)) = {
+    .comp_libr    = {.comp = "SLURM_COMP_LIBRARY"}, // COMP: COMPONENT
+    .comp_plug    = {.comp = "SLURM_COMP_PLUGIN"},
+    .plug_verbose = {.mod = "SLURM_COMP_VERBOSE"},
+    .hack_loader =
+        {
+            .mod = HACK_LOADER_FILE,
+        },
+    .ctx_last =
+        {
+            .mod = "SLURM_EPV_LAST_CONTEXT",
+        },
+    .ctx_was_sbatch =
+        {
+            .mod = "SLURM_EPV_PASSED_SBATCH",
+        },
+    .ctx_was_srun =
+        {
+            .mod = "SLURM_EPV_PASSED_SRUN",
+        },
+    .con_eard_sbatch =
+        {
+            .mod = "SLURM_EPV_CON_EARD_SBATCH",
+        },
+    .con_eard_srun =
+        {
+            .mod = "SLURM_EPV_CON_EARD_SRUN",
+        },
+    .con_eard_task =
+        {
+            .mod = "SLURM_EPV_CON_EARD_TASK",
+        },
+    .con_eargmd =
+        {
+            .mod = "SLURM_EPV_CON_EARGMD",
+        }, // EPV: EAR PLUGIN VARIABLE
+    .user =
+        {
+            .mod = "SLURM_EPV_USER",
+        },
+    .group =
+        {
+            .mod = "SLURM_EPV_GROUP",
+        },
+    .account =
+        {
+            .slurm = "SLURM_JOB_ACCOUNT",
+        },
+    .name_app = {.slurm = "SLURM_JOB_NAME", .ear = ENV_APP_NAME},
+    .job_id =
+        {
+            .slurm = "SLURM_JOB_ID",
+        },
+    .job_node_list =
+        {
+            .slurm = "SLURM_JOB_NODELIST",
+        },
+    .job_node_count =
+        {
+            .slurm = "SLURM_JOB_NUM_NODES",
+        },
+    .step_id = {.slurm = "SLURM_STEP_ID"},
+    .step_node_list =
+        {
+            .slurm = "SLURM_STEP_NODELIST",
+        },
+    .step_node_count =
+        {
+            .slurm = "SLURM_STEP_NUM_NODES",
+        },
+    .local_id =
+        {
+            .slurm = "SLURM_LOCALID",
+        },
+    .cpus_node_num =
+        {
+            .slurm = "SLURM_CPUS_ON_NODE",
+        },
+    .verbose      = {.flag = "SLURM_EPF_VERBOSITY", .ear = ENV_FLAG_VERBOSITY}, // EPF: EAR PLUGIN FLAG
+    .policy       = {.flag = "SLURM_EPF_POLICY", .ear = ENV_FLAG_POLICY},
+    .policy_th    = {.flag = "SLURM_EPF_POLICY_TH", .ear = ENV_FLAG_POLICY_TH},
+    .frequency    = {.flag = "SLURM_EPF_FREQUENCY", .ear = ENV_FLAG_FREQUENCY},
+    .p_state      = {.flag = "SLURM_EPF_PSTATE", .ear = ENV_FLAG_PSTATE},
+    .learning     = {.flag = "SLURM_EPF_LEARNING_PHASE", .ear = ENV_FLAG_IS_LEARNING},
+    .tag          = {.flag = "SLURM_EPF_ENERGYT_AG", .ear = ENV_FLAG_ENERGY_TAG},
+    .path_usdb    = {.flag = "SLURM_EPF_USER_DB", .ear = ENV_FLAG_PATH_USERDB},
+    .path_trac    = {.flag = "SLURM_EPF_TRACE_PATH", .ear = ENV_FLAG_PATH_TRACE},
+    .perf_pen     = {.ear = ENV_FLAG_POLICY_PENALTY},
+    .eff_gain     = {.ear = ENV_FLAG_POLICY_GAIN},
+    .path_temp    = {.ear = ENV_PATH_TMP},
+    .path_install = {.ear = ENV_PATH_EAR},
+    .task_pid     = {.ear = FLAG_TASK_PID},
+    .ld_preload   = {.ear = "LD_PRELOAD"},
+    .ld_library   = {.ear = "LD_LIBRARY_PATH"},
+    .is_erun      = {.ear = SCHED_IS_ERUN},
 };
 
 /*
@@ -205,4 +251,4 @@ int plug_verbosity_test(spank_t sp, int level);
 
 char *plug_acav_get(int ac, char *av[], char *string);
 
-#endif //EAR_SLURM_PLUGIN_ENVIRONMENT_H
+#endif // EAR_SLURM_PLUGIN_ENVIRONMENT_H

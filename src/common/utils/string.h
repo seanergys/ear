@@ -11,24 +11,19 @@
 #ifndef COMMON_UTILS_STRING_H
 #define COMMON_UTILS_STRING_H
 
+#include <common/types.h>
 #include <stdio.h>
 #include <string.h>
-#include <common/types.h>
 
-#define unused(var) \
-	(void)(var)
+#define unused(var)                  (void) (var)
 
-#define xsnprintf(buffer, size, ...) \
-    snprintf(xsnbuffer(buffer), xsnsize(size), __VA_ARGS__);
+#define xsnprintf(buffer, size, ...) snprintf(xsnbuffer(buffer), xsnsize(size), __VA_ARGS__);
 
-#define xsprintf(buffer, ...) \
-    snprintf(xsnbuffer(buffer), xsnsize(sizeof(buffer)), __VA_ARGS__); \
+#define xsprintf(buffer, ...)        snprintf(xsnbuffer(buffer), xsnsize(sizeof(buffer)), __VA_ARGS__);
 
-#define xstrncpy(dst, src, size) \
-    strncpy(dst, src, xsnsize(size));
+#define xstrncpy(dst, src, size)     strncpy(dst, src, xsnsize(size));
 
-#define xstrncat(dst, src, size) \
-	strncat(dst, src, xsnsize(size));
+#define xstrncat(dst, src, size)     strncat(dst, src, xsnsize(size));
 
 // The xs functions and macros are used to avoid compile warnings.
 size_t xsnsize(size_t size);

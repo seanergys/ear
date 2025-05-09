@@ -8,19 +8,19 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
+#include <common/environment_common.h>
+#include <common/hardware/bithack.h>
 #include <common/output/debug.h>
 #include <common/system/symplug.h>
-#include <common/hardware/bithack.h>
-#include <common/environment_common.h>
 #include <metrics/common/hsmp_esmi.h>
 
 #if defined __has_include
-#  if __has_include (<e_smi/e_smi.h>)
-#    define HAS_E_SMI_H 1
-#    include <e_smi/e_smi.h>
-#  endif
+#if __has_include(<e_smi/e_smi.h>)
+#define HAS_E_SMI_H 1
+#include <e_smi/e_smi.h>
+#endif
 #endif
 
 #ifndef HAS_E_SMI_H
@@ -43,56 +43,55 @@ struct ddr_bw_metrics {
 #endif
 
 typedef struct esmi_s {
-    esmi_status_t (*init)                      (void);
-    esmi_status_t (*exit)                      (void);
-    char *        (*get_err_msg)               (esmi_status_t esmi_err);
-    esmi_status_t (*smu_fw_version_get)        (struct smu_fw_version *smu_fw);//HSMP_GET_SMU_VER
-    esmi_status_t (*proto_ver_get)             (uint *proto_ver); //HSMP_GET_PROTO_VER
-    esmi_status_t (*socket_power_get)          (uint socket_idx, uint *ppower); //HSMP_GET_SOCKET_POWER
-    esmi_status_t (*socket_power_cap_set)      (uint socket_idx, uint pcap); //HSMP_SET_SOCKET_POWER_LIMIT
-    esmi_status_t (*socket_power_cap_get)      (uint socket_idx, uint *pcap); //HSMP_GET_SOCKET_POWER_LIMIT
-    esmi_status_t (*socket_power_cap_max_get)  (uint socket_idx, uint *pmax); //HSMP_GET_SOCKET_POWER_LIMIT_MAX
-    esmi_status_t (*core_boostlimit_set)       (uint cpu_ind, uint boostlimit); //HSMP_SET_BOOST_LIMIT
-    esmi_status_t (*socket_boostlimit_set)     (uint socket_idx, uint boostlimit); //HSMP_SET_BOOST_LIMIT_SOCKET
-    esmi_status_t (*core_boostlimit_get)       (uint cpu_ind, uint *pboostlimit); //HSMP_GET_BOOST_LIMIT
-    esmi_status_t (*prochot_status_get)        (uint socket_idx, uint *prochot); //HSMP_GET_PROC_HOT
-    esmi_status_t (*xgmi_width_set)            (uchar min, uchar max); //HSMP_SET_XGMI_LINK_WIDTH
-    esmi_status_t (*apb_disable)               (uint sock_ind, uchar pstate); //HSMP_SET_DF_PSTATE
-    esmi_status_t (*apb_enable)                (uint sock_ind); //HSMP_SET_AUTO_DF_PSTATE
-    esmi_status_t (*fclk_mclk_get)             (uint socket_idx, uint *fclk, uint *mclk); //HSMP_GET_FCLK_MCLK
-    esmi_status_t (*cclk_limit_get)            (uint socket_idx, uint *cclk); //HSMP_GET_CCLK_THROTTLE_LIMIT
-    esmi_status_t (*socket_c0_residency_get)   (uint socket_idx, uint *pc0_residency); //HSMP_GET_C0_PERCENT
-    esmi_status_t (*socket_lclk_dpm_level_set) (uint sock_ind, uchar nbio_id, uchar min, uchar max); //HSMP_SET_NBIO_DPM_LEVEL
-    esmi_status_t (*ddr_bw_get)                (struct ddr_bw_metrics *ddr_bw); //HSMP_GET_DDR_BANDWIDTH
+    esmi_status_t (*init)(void);
+    esmi_status_t (*exit)(void);
+    char *(*get_err_msg)(esmi_status_t esmi_err);
+    esmi_status_t (*smu_fw_version_get)(struct smu_fw_version *smu_fw);             // HSMP_GET_SMU_VER
+    esmi_status_t (*proto_ver_get)(uint *proto_ver);                                // HSMP_GET_PROTO_VER
+    esmi_status_t (*socket_power_get)(uint socket_idx, uint *ppower);               // HSMP_GET_SOCKET_POWER
+    esmi_status_t (*socket_power_cap_set)(uint socket_idx, uint pcap);              // HSMP_SET_SOCKET_POWER_LIMIT
+    esmi_status_t (*socket_power_cap_get)(uint socket_idx, uint *pcap);             // HSMP_GET_SOCKET_POWER_LIMIT
+    esmi_status_t (*socket_power_cap_max_get)(uint socket_idx, uint *pmax);         // HSMP_GET_SOCKET_POWER_LIMIT_MAX
+    esmi_status_t (*core_boostlimit_set)(uint cpu_ind, uint boostlimit);            // HSMP_SET_BOOST_LIMIT
+    esmi_status_t (*socket_boostlimit_set)(uint socket_idx, uint boostlimit);       // HSMP_SET_BOOST_LIMIT_SOCKET
+    esmi_status_t (*core_boostlimit_get)(uint cpu_ind, uint *pboostlimit);          // HSMP_GET_BOOST_LIMIT
+    esmi_status_t (*prochot_status_get)(uint socket_idx, uint *prochot);            // HSMP_GET_PROC_HOT
+    esmi_status_t (*xgmi_width_set)(uchar min, uchar max);                          // HSMP_SET_XGMI_LINK_WIDTH
+    esmi_status_t (*apb_disable)(uint sock_ind, uchar pstate);                      // HSMP_SET_DF_PSTATE
+    esmi_status_t (*apb_enable)(uint sock_ind);                                     // HSMP_SET_AUTO_DF_PSTATE
+    esmi_status_t (*fclk_mclk_get)(uint socket_idx, uint *fclk, uint *mclk);        // HSMP_GET_FCLK_MCLK
+    esmi_status_t (*cclk_limit_get)(uint socket_idx, uint *cclk);                   // HSMP_GET_CCLK_THROTTLE_LIMIT
+    esmi_status_t (*socket_c0_residency_get)(uint socket_idx, uint *pc0_residency); // HSMP_GET_C0_PERCENT
+    esmi_status_t (*socket_lclk_dpm_level_set)(uint sock_ind, uchar nbio_id, uchar min,
+                                               uchar max);      // HSMP_SET_NBIO_DPM_LEVEL
+    esmi_status_t (*ddr_bw_get)(struct ddr_bw_metrics *ddr_bw); // HSMP_GET_DDR_BANDWIDTH
 } esmi_t;
 
-static const char *esmi_names[] = {
-    "esmi_init",
-    "esmi_exit",
-    "esmi_get_err_msg",
-    "esmi_smu_fw_version_get",
-    "esmi_hsmp_proto_ver_get",
-    "esmi_socket_power_get",
-    "esmi_socket_power_cap_set",
-    "esmi_socket_power_cap_get",
-    "esmi_socket_power_cap_max_get",
-    "esmi_core_boostlimit_set",
-    "esmi_socket_boostlimit_set",
-    "esmi_core_boostlimit_get",
-    "esmi_prochot_status_get",
-    "esmi_xgmi_width_set",
-    "esmi_apb_disable",
-    "esmi_apb_enable",
-    "esmi_fclk_mclk_get",
-    "esmi_cclk_limit_get",
-    "esmi_socket_c0_residency_get",
-    "esmi_socket_lclk_dpm_level_set",
-    "esmi_ddr_bw_get"
-};
+static const char *esmi_names[] = {"esmi_init",
+                                   "esmi_exit",
+                                   "esmi_get_err_msg",
+                                   "esmi_smu_fw_version_get",
+                                   "esmi_hsmp_proto_ver_get",
+                                   "esmi_socket_power_get",
+                                   "esmi_socket_power_cap_set",
+                                   "esmi_socket_power_cap_get",
+                                   "esmi_socket_power_cap_max_get",
+                                   "esmi_core_boostlimit_set",
+                                   "esmi_socket_boostlimit_set",
+                                   "esmi_core_boostlimit_get",
+                                   "esmi_prochot_status_get",
+                                   "esmi_xgmi_width_set",
+                                   "esmi_apb_disable",
+                                   "esmi_apb_enable",
+                                   "esmi_fclk_mclk_get",
+                                   "esmi_cclk_limit_get",
+                                   "esmi_socket_c0_residency_get",
+                                   "esmi_socket_lclk_dpm_level_set",
+                                   "esmi_ddr_bw_get"};
 
 #define ESMI_N 21
 
-static esmi_t     esmi;
+static esmi_t esmi;
 static topology_t tp;
 
 static state_t translate(esmi_status_t s)
@@ -105,11 +104,11 @@ static state_t translate(esmi_status_t s)
 
 static state_t hsmp_load_library()
 {
-    #define load_library(path) \
-        debug("Openning %s", (char *) path); \
-        if (state_ok(plug_open(path, (void **) &esmi, esmi_names, ESMI_N, RTLD_NOW | RTLD_LOCAL))) { \
-            return EAR_SUCCESS; \
-        }
+#define load_library(path)                                                                                             \
+    debug("Openning %s", (char *) path);                                                                               \
+    if (state_ok(plug_open(path, (void **) &esmi, esmi_names, ESMI_N, RTLD_NOW | RTLD_LOCAL))) {                       \
+        return EAR_SUCCESS;                                                                                            \
+    }
 
     load_library(ear_getenv("HACK_HSMP_LIBRARY"));
     load_library("/usr/lib64/libe_smi64.so");
@@ -190,7 +189,8 @@ state_t hsmp_esmi_send(int socket, uint function, uint *args, uint *reps)
             return translate(esmi.socket_power_cap_max_get(socket, &reps[0]));
         case HSMP_SET_BOOST_LIMIT:
             // Function core_boostlimit_set receives the CPU number, not the APICID
-            return translate(esmi.core_boostlimit_set(apicid_to_cpuid(getbits32(args[0], 31, 16)), getbits32(args[0], 15, 0)));
+            return translate(
+                esmi.core_boostlimit_set(apicid_to_cpuid(getbits32(args[0], 31, 16)), getbits32(args[0], 15, 0)));
         case HSMP_SET_BOOST_LIMIT_SOCKET:
             return translate(esmi.socket_boostlimit_set(socket, args[0]));
         case HSMP_GET_BOOST_LIMIT:
@@ -212,18 +212,16 @@ state_t hsmp_esmi_send(int socket, uint function, uint *args, uint *reps)
         case HSMP_GET_C0_PERCENT:
             return translate(esmi.socket_c0_residency_get(socket, &reps[0]));
         case HSMP_SET_NBIO_DPM_LEVEL:
-            return translate(esmi.socket_lclk_dpm_level_set(socket,
-                        (uchar) getbits32(args[0], 24, 16),
-                        (uchar) getbits32(args[0],  7,  0),
-                        (uchar) getbits32(args[0], 15,  8)));
+            return translate(esmi.socket_lclk_dpm_level_set(socket, (uchar) getbits32(args[0], 24, 16),
+                                                            (uchar) getbits32(args[0], 7, 0),
+                                                            (uchar) getbits32(args[0], 15, 8)));
         case HSMP_GET_DDR_BANDWIDTH:
             memset(&ddr, 0, sizeof(struct ddr_bw_metrics));
-            s = esmi.ddr_bw_get(&ddr);
-            reps[0] = setbits32(reps[0], ddr.max_bw      , 31, 20);
-            reps[0] = setbits32(reps[0], ddr.utilized_bw , 19,  8);
-            reps[0] = setbits32(reps[0], ddr.utilized_pct,  7,  0);
+            s       = esmi.ddr_bw_get(&ddr);
+            reps[0] = setbits32(reps[0], ddr.max_bw, 31, 20);
+            reps[0] = setbits32(reps[0], ddr.utilized_bw, 19, 8);
+            reps[0] = setbits32(reps[0], ddr.utilized_pct, 7, 0);
             return translate(s);
     }
     return_msg(EAR_ERROR, "HSMP function not found");
 }
-

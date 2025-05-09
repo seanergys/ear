@@ -23,4 +23,4 @@ uint getbits32(uint reg, uint left_bit, uint right_bit);
 
 uchar getbits8(uchar reg, uchar left_bit, uchar right_bit);
 
-#endif //METRICS_COMMON_BITHACK
+#endif // METRICS_COMMON_BITHACK

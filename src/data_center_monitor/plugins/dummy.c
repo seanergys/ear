@@ -8,18 +8,18 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
-#include <string.h>
-#include <report/report.h>
 #include <common/output/debug.h>
 #include <common/system/plugin_manager.h>
+#include <report/report.h>
+#include <string.h>
 
 static ullong zero = 0LLU;
 
-declr_up_get_tag ()
+declr_up_get_tag()
 {
-    *tag = "dummy";
+    *tag       = "dummy";
     *tags_deps = NULL;
 }
 
