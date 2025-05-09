@@ -58,11 +58,11 @@ state_t energy_load(char *energy_obj)
 	state_t ret;
 
     if (energy_loaded) {
-		return_msg(EAR_ERROR, Generr.api_initialized);
-	}
-	if (!energy_obj) {
-		return_msg(EAR_ERROR, Generr.input_null);
-	}
+        return_msg(EAR_ERROR, Generr.api_initialized);
+    }
+    if (!energy_obj) {
+        return_msg(EAR_ERROR, Generr.input_null);
+    }
     // If energy_obj contains ':', it means it has an argument
     if (strchr(energy_obj, ':')) {
         if (strtoa((const char *) energy_obj, ':', &list, &list_count)) {
@@ -72,11 +72,10 @@ state_t energy_load(char *energy_obj)
             energy_obj = list[0];
         }
     }
-	debug("loading shared object '%s'", energy_obj);
-	if (state_fail(ret = symplug_open(energy_obj, (void **)&energy_ops, energy_names, energy_nops))) {
-		debug("symplug_open() returned %d (%s)", ret, state_msg);
+    debug("loading shared object '%s'", energy_obj);
+    if (state_fail(ret = symplug_open(energy_obj, (void **)&energy_ops, energy_names, energy_nops))) {
+        debug("symplug_open() returned %d (%s)", ret, state_msg);
         return ret;
-		//return_msg(ret, Generr.dlopen);
 	}
 	energy_loaded = 1;
 	return EAR_SUCCESS;
@@ -84,17 +83,10 @@ state_t energy_load(char *energy_obj)
 
 state_t energy_init(ehandler_t *eh)
 {
-	if (!energy_loaded) {
-		return_msg(EAR_ERROR, Generr.api_uninitialized);
-	}
-
-	state_t ret = EAR_SUCCESS;
-
-	if (state_fail(ret = energy_ops.init(&eh->context))) {
-		return_msg(ret, "Plug-in init() method returned an error.");
-	}
-
-	return ret;
+    if (!energy_loaded) {
+		    return_msg(EAR_ERROR, Generr.api_uninitialized);
+	  }
+    return energy_ops.init(&eh->context);
 }
 
 state_t energy_dispose(ehandler_t *eh)

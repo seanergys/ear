@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 //#define SHOW_DEBUGS_ULTRA 1
 
 #include <stdlib.h>
@@ -91,8 +91,8 @@ state_t energy_init(void **x)
     else if (ipmi_has_hardware("ThinkSystem")) opt = opt_dcmi;
     // If no sensors, error
     if (opt == NULL) {
-        s = EAR_ERROR;
-        goto leave;
+        pthread_mutex_unlock(&lock);
+        return_msg(EAR_ERROR, "No sensors found.");
     }
     // Other initializations
     devs_count = ipmi_devs_count();

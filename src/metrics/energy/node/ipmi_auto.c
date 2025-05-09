@@ -49,10 +49,11 @@ state_t energy_init(void **x)
     // Detecting sensors depending on hardware
     if(ipmi_sensors_find("LM5066_PIN,CWG_LM5066I_PIN", &sensors, &sensors_count)) { opt = opt_lm50; }
     else if (ipmi_sensors_find("Sys Power", &sensors, &sensors_count)) { opt = opt_sysp; }
+    else if (ipmi_sensors_find("SYS_POWER", &sensors, &sensors_count)) { opt = opt_sysp; }
     // If no sensors, error
     if (sensors_count == 0) {
-        s = EAR_ERROR;
-        goto leave;
+        pthread_mutex_unlock(&lock);
+        return_msg(EAR_ERROR, "No sensors found.");
     }
     pool = calloc(sensors_count, sizeof(consumption_t));
     // Monitoring
