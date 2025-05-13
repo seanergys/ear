@@ -1578,8 +1578,8 @@ static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, 
                 }
                 (*core_cpu_freqs_khz)[cpu_idx] = cpu_freq_khz;
 
-                max_freq_per_socket[arch_desc.top.cpus[cpu_idx].socket_id] =
-                    ear_max(max_freq_per_socket[arch_desc.top.cpus[cpu_idx].socket_id], cpu_freq_khz);
+                max_freq_per_socket[arch_desc.top.cpus[cpu_idx].socket_idx] =
+                    ear_max(max_freq_per_socket[arch_desc.top.cpus[cpu_idx].socket_idx], cpu_freq_khz);
 
                 cpu_must_be_normalized[cpu_idx] = 1;
 #if 0
@@ -1596,14 +1596,14 @@ static state_t from_proc_to_core(ulong *process_cpu_freqs_khz, int process_cnt, 
         for (int cpu_idx = 0; cpu_idx < cpu_cnt; cpu_idx++) {
 
             // The maximum CPU freq. for the socket which the CPU belongs to.
-            ulong max_cpufreq = max_freq_per_socket[arch_desc.top.cpus[cpu_idx].socket_id];
+            ulong max_cpufreq = max_freq_per_socket[arch_desc.top.cpus[cpu_idx].socket_idx];
 
             if (cpu_must_be_normalized[cpu_idx] && (*core_cpu_freqs_khz)[cpu_idx] != max_cpufreq) {
 
                 (*core_cpu_freqs_khz)[cpu_idx] = max_cpufreq;
 
                 verbose_master(verb_lvl, "Increasing the CPU %d freq. to %lu because it's on AMD node at socket %d.",
-                               cpu_idx, max_cpufreq, arch_desc.top.cpus[cpu_idx].socket_id);
+                               cpu_idx, max_cpufreq, arch_desc.top.cpus[cpu_idx].socket_idx);
             }
         }
     }

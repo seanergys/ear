@@ -109,14 +109,10 @@ static state_t unlock(state_t s)
 
 state_t hsmp_send(int socket, uint function, uint *args, uint *reps)
 {
-    while (pthread_mutex_trylock(&lock))
-        ;
-    if (api == HSMP_API_DRIVER)
-        return unlock(hsmp_driver_send(socket, function, args, reps));
-    if (api == HSMP_API_ESMI)
-        return unlock(hsmp_esmi_send(socket, function, args, reps));
-    if (api == HSMP_API_PCI)
-        return unlock(hsmp_pci_send(socket, function, args, reps));
+    while (pthread_mutex_trylock(&lock));
+    if (api == HSMP_API_DRIVER) return unlock(hsmp_driver_send(socket, function, args, reps));
+    if (api == HSMP_API_ESMI  ) return unlock(hsmp_esmi_send(socket, function, args, reps));
+    if (api == HSMP_API_PCI   ) return unlock(hsmp_pci_send(socket, function, args, reps));
     pthread_mutex_unlock(&lock);
     return_msg(EAR_ERROR, Generr.api_uninitialized);
 }
@@ -130,7 +126,7 @@ static void hsmp_test_print_functions(cpu_t *cpu, strtable_t *tb, char *api_str,
     uint f8ar    = 0; // Function 8 argument
     uint f5ar    = 0;
 
-#define ht(dependent, a0, a1, r0, r1, function, line)                                                                  \
+    #define ht(dependent, a0, a1, r0, r1, function, line)                                                                  \
     args[0] = a0;                                                                                                      \
     args[1] = a1;                                                                                                      \
     reps[0] = r0;                                                                                                      \
