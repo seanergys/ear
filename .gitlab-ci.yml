@@ -78,7 +78,6 @@ test-install-db:
     - name: mariadb:latest
       alias: mariadb
   script:
-    - dnf install -y mariadb-devel
     - echo "Checking DB installation"
     - $TESTDIR/test_install.sh ear-db
     - $TESTDIR/test_install_db.sh ear-db
@@ -100,7 +99,6 @@ deploy-eardbd:
     - name: mariadb:latest
       alias: mariadb
   script:
-    - dnf install -y mariadb-devel
     - $TESTDIR/scripts/create_db.sh ear-db ear-db/etc/ear/ear.conf
     - $TESTDIR/scripts/deploy_eardbd.sh ear-db ear-db/etc
   artifacts:
