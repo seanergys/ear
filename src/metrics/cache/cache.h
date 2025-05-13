@@ -11,10 +11,10 @@
 #ifndef METRICS_CACHE_H
 #define METRICS_CACHE_H
 
-#include <common/states.h>
-#include <common/plugins.h>
-#include <common/system/time.h>
 #include <common/hardware/topology.h>
+#include <common/plugins.h>
+#include <common/states.h>
+#include <common/system/time.h>
 
 // Compatibility:
 //  ----------------------------------------------------------------------------
@@ -31,7 +31,6 @@
 //  - Thread safe: yes
 //  - Requires root: no
 
-
 typedef struct cache_level_s {
     ullong accesses;
     ullong misses;
@@ -43,21 +42,21 @@ typedef struct cache_level_s {
 } cache_level_t;
 
 typedef struct cache_s {
-    cache_level_t  l1d;
-    cache_level_t  l2;
-    cache_level_t  l3;
+    cache_level_t l1d;
+    cache_level_t l2;
+    cache_level_t l3;
     cache_level_t *ll;
     cache_level_t *lbw; // Level used to calc bandwidth
-    timestamp_t    time;
+    timestamp_t time;
 } cache_t;
 
 typedef struct coche_ops_s {
-    void    (*get_info)        (apinfo_t *info);
-    state_t (*init)            ();
-	state_t (*dispose)         ();
-	state_t (*read)            (cache_t *ca);
-    void    (*data_diff)       (cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs);
-    void    (*internals_tostr)   (char *buffer, int length);
+    void (*get_info)(apinfo_t *info);
+    state_t (*init)();
+    state_t (*dispose)();
+    state_t (*read)(cache_t *ca);
+    void (*data_diff)(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs);
+    void (*internals_tostr)(char *buffer, int length);
 } cache_ops_t;
 
 void cache_load(topology_t *tp, int force_api);
@@ -86,4 +85,4 @@ void cache_internals_print(int fd);
 
 void cache_internals_tostr(char *buffer, int length);
 
-#endif //METRICS_CACHE_H
+#endif // METRICS_CACHE_H

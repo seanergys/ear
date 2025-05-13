@@ -26,4 +26,4 @@ int module_mpi_is_enabled();
 // It returns if the MPI version is OpenMPI.
 int module_mpi_is_open();
 
-#endif //LIBRARY_LOADER_MPI_H
+#endif // LIBRARY_LOADER_MPI_H

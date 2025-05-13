@@ -8,31 +8,31 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
-#include <fcntl.h>
-#include <sys/ioctl.h>
 #include <common/output/debug.h>
+#include <fcntl.h>
 #include <metrics/common/hsmp_driver.h>
+#include <sys/ioctl.h>
 #if !HAS_AMD_HSMP_H
 #include <asm-generic/types.h>
 #endif
 
-#define HSMP_BY_NOTHING     0
-#define HSMP_BY_DRIVER      1
-#define HSMP_BY_ESMI        2
-#define HSMP_BY_PCI         3
+#define HSMP_BY_NOTHING 0
+#define HSMP_BY_DRIVER  1
+#define HSMP_BY_ESMI    2
+#define HSMP_BY_PCI     3
 #if !HAS_AMD_HSMP_H
-#define HSMP_MAX_MSG_LEN    8
-#define HSMP_BASE_IOCTL_NR  0xF8
-#define HSMP_IOCTL_CMD      _IOWR(HSMP_BASE_IOCTL_NR, 0, struct hsmp_message)
+#define HSMP_MAX_MSG_LEN   8
+#define HSMP_BASE_IOCTL_NR 0xF8
+#define HSMP_IOCTL_CMD     _IOWR(HSMP_BASE_IOCTL_NR, 0, struct hsmp_message)
 
 struct hsmp_message {
-    __u32	msg_id;			/* Message ID */
-    __u16	num_args;		/* Number of input argument words in message */
-    __u16	response_sz;		/* Number of expected output/response words */
-    __u32	args[HSMP_MAX_MSG_LEN];	/* argument/response buffer */
-    __u16	sock_ind;		/* socket number */
+    __u32 msg_id;                 /* Message ID */
+    __u16 num_args;               /* Number of input argument words in message */
+    __u16 response_sz;            /* Number of expected output/response words */
+    __u32 args[HSMP_MAX_MSG_LEN]; /* argument/response buffer */
+    __u16 sock_ind;               /* socket number */
 };
 #endif
 
@@ -52,12 +52,12 @@ state_t hsmp_driver_send(int socket, uint function, uint *args, uint *reps)
     debug("msg.msg_id     : 0x%X", msg.msg_id);
     debug("msg.sock_ind   : %u", msg.sock_ind);
     // Counting args and reps
-    while(args[msg.num_args] != -1) {
+    while (args[msg.num_args] != -1) {
         msg.args[msg.num_args] = (__u32) args[msg.num_args];
         debug("msg.args[%d]    : %u", msg.num_args, msg.args[msg.num_args]);
         msg.num_args++;
     }
-    while(reps[msg.response_sz] != -1) {
+    while (reps[msg.response_sz] != -1) {
         msg.response_sz++;
     }
     debug("msg.num_args   : %u", msg.num_args);
@@ -70,8 +70,8 @@ state_t hsmp_driver_send(int socket, uint function, uint *args, uint *reps)
         return_print(EAR_ERROR, "Error while sending a command to HSMP driver: %s", strerror(errno));
     }
     // Recovering responses
-    while(msg.response_sz > 0) {
-        reps[msg.response_sz-1] = (uint) msg.args[msg.response_sz-1];
+    while (msg.response_sz > 0) {
+        reps[msg.response_sz - 1] = (uint) msg.args[msg.response_sz - 1];
         msg.response_sz--;
     }
     return EAR_SUCCESS;
@@ -83,7 +83,7 @@ state_t hsmp_driver_close()
         close(fd);
     }
     fd = -1;
-	return EAR_SUCCESS;
+    return EAR_SUCCESS;
 }
 
 state_t hsmp_driver_open(topology_t *tp, mode_t mode)
@@ -99,8 +99,8 @@ state_t hsmp_driver_open(topology_t *tp, mode_t mode)
         debug("HSMP is in user mode");
     }
     // Test ping
-    uint args[2] = { 68, -1 };
-    uint reps[2] = {  0, -1 };
+    uint args[2] = {68, -1};
+    uint reps[2] = {0, -1};
     if (state_fail(s = hsmp_driver_send(0, HSMP_TEST, args, reps))) {
         hsmp_driver_close();
         return_print(EAR_ERROR, "HSMP test function failed: %s", state_msg);

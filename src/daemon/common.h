@@ -14,8 +14,7 @@
 #include <common/types/configuration/cluster_conf.h>
 #include <common/types/configuration/node_conf.h>
 
-void build_energy_plugin_path(char *dst_buff, size_t buff_size,
-			      cluster_conf_t * cluster_conf,
-			      my_node_conf_t * node_conf);
+void build_energy_plugin_path(char *dst_buff, size_t buff_size, cluster_conf_t *cluster_conf,
+                              my_node_conf_t *node_conf);
 
-#endif				// _EARD_COMMON_H
+#endif // _EARD_COMMON_H

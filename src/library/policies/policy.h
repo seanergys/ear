@@ -8,20 +8,17 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-
 #ifndef EAR_POLICIES_H
 #define EAR_POLICIES_H
-
 
 #include <common/states.h>
 #include <common/types/loop.h>
 
-#include <library/common/library_shared_data.h>
 #include <library/api/mpi_support.h>
+#include <library/common/library_shared_data.h>
 #include <library/policies/policy_ctx.h>
 
 #include <daemon/shared_configuration.h>
-
 
 /** This is the entry function of the module. It basically loads the policy plug-ins,
  * configures the context and reads and configure available P-States and max/min permitted.
@@ -61,6 +58,5 @@ state_t policy_restore_to_mpi_pstate(uint index);
 /**
  * \todo These two functions needs to be reconsidered. */
 state_t policy_configure();
-
 
 #endif // EAR_POLICIES_H

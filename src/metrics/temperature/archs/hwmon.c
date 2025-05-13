@@ -15,11 +15,11 @@
 #include <metrics/temperature/archs/hwmon.h>
 
 static hwmon_t *chips;
-static uint     chips_count;
-static uint     sockets_count;
-static uint     items_count;
-static char    *label;
-static char    *driver_name;
+static uint chips_count;
+static uint sockets_count;
+static uint items_count;
+static char *label;
+static char *driver_name;
 
 TEMP_F_LOAD(hwmon)
 {
@@ -36,8 +36,8 @@ TEMP_F_LOAD(hwmon)
     }
     if (state_fail(hwmon_open(driver_name, "temp", &chips, &chips_count))) {
         debug("Failed: %s", state_msg);
+        return;
     }
-    debug("items to count %u", items_count);
     if (hwmon_count_items(chips, "input", label) != items_count) {
         hwmon_close(&chips);
         return;
@@ -65,7 +65,10 @@ TEMP_F_INIT(hwmon)
 
 TEMP_F_DISPOSE(hwmon)
 {
-    hwmon_close(&chips);
+    if (chips != NULL) {
+        hwmon_close(&chips);
+        chips = NULL;
+    }
 }
 
 TEMP_F_READ(hwmon)
@@ -80,10 +83,12 @@ TEMP_F_READ(hwmon)
     // Reading and calculating the average per chip
     hwmon_read(chips);
     hwmon_calc_average(chips, label);
-    while((chip = hwmon_iter_chips(chips)) != NULL) {
+    while ((chip = hwmon_iter_chips(chips)) != NULL) {
         temp_aux = ((llong) chip->devs_avg.input_toint) / 1000LL;
-        if (temp    != NULL) temp[c]   = temp_aux;
-        if (average != NULL) *average += (llong) chip->devs_avg.input_toint;
+        if (temp != NULL)
+            temp[c] = temp_aux;
+        if (average != NULL)
+            *average += (llong) chip->devs_avg.input_toint;
         ++c;
     }
     if (average != NULL) {

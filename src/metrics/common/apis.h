@@ -13,13 +13,13 @@
 
 #include <common/types/generic.h>
 
-#define no_ctx                 NULL
+#define no_ctx NULL
 // Load EARD API or not
 #define EARD                   API_EARD
 #define NO_EARD                API_FREE
-#define all_devs              -1
+#define all_devs               -1
 #define all_cpus               all_devs
-#define all_cores             -2
+#define all_cores              -2
 #define API_NONE               0
 #define API_FREE               API_NONE
 #define API_DUMMY              1
@@ -31,23 +31,22 @@
 #define API_NVML               7
 #define API_PERF               8
 #define API_INTEL106           9
-#define API_LIKWID            10
-#define API_CUPTI             11
-#define API_ONEAPI            12
-#define API_RAPL              API_INTEL63
-#define API_ISST              14
-#define API_FAKE              15
-#define API_CPUMODEL          16
-#define API_RSMI              17
-#define API_AMD19             18
-#define API_INTEL143          19
-#define API_LINUX_POWERCAP    20
-#define API_DCGMI             21
-#define API_ACPI_POWER        22
-#define API_GRACE_CPU         23
-#define API_HWMON             24
-#define API_PVC_HWMON         30
-
+#define API_LIKWID             10
+#define API_CUPTI              11
+#define API_ONEAPI             12
+#define API_RAPL               API_INTEL63
+#define API_ISST               14
+#define API_FAKE               15
+#define API_CPUMODEL           16
+#define API_RSMI               17
+#define API_AMD19              18
+#define API_INTEL143           19
+#define API_LINUX_POWERCAP     20
+#define API_DCGMI              21
+#define API_ACPI_POWER         22
+#define API_GRACE_CPU          23
+#define API_HWMON              24
+#define API_PVC_HWMON          30
 
 #define GRANULARITY_NONE       0
 #define GRANULARITY_DUMMY      1
@@ -62,12 +61,11 @@
 #define SCOPE_DUMMY            1
 #define SCOPE_PROCESS          2
 #define SCOPE_NODE             3
-#define MONITORING_MODE_STOP  -1
+#define MONITORING_MODE_STOP   -1
 #define MONITORING_MODE_IDLE   0
 #define MONITORING_MODE_RUN    1
 
-#define API_IS(flag, api) \
-    (flag == api)
+#define API_IS(flag, api)      (flag == api)
 
 typedef struct ctx_s {
     void *context;
@@ -75,25 +73,25 @@ typedef struct ctx_s {
 
 typedef struct apinfo_s {
     char *layer;
-    uint  api;
-    uint  api_under;
-    uint  ok;
+    uint api;
+    uint api_under;
+    uint ok;
     char *api_str;
-    uint  devs_count;
-    uint  granularity;
+    uint devs_count;
+    uint granularity;
     char *granularity_str;
-    uint  scope;
+    uint scope;
     char *scope_str;
-    uint  bits;
-    uint  dev_model;
+    uint bits;
+    uint dev_model;
     void *list1;
     void *list2;
     void *list3;
-    uint  list1_count;
-    uint  list2_count;
-    uint  list3_count;
+    uint list1_count;
+    uint list2_count;
+    uint list3_count;
     void *avail_list;
-    uint  avail_count;
+    uint avail_count;
     void *current_list;
     void *set_list;
 } apinfo_t;
@@ -103,9 +101,9 @@ typedef struct apinfo_s {
 #if USE_GPUS
 // Below type was created to mantain compatibility with the current design of library/metrics and new GPU APIs
 typedef struct metrics_gpus_s {
-    uint  api;
-    uint  ok;
-    uint  devs_count;
+    uint api;
+    uint ok;
+    uint devs_count;
     void **avail_list;
     uint *avail_count;
     void *current_list;
@@ -113,15 +111,15 @@ typedef struct metrics_gpus_s {
 #endif
 
 /* Replaces the function of the operation if its NULL. */
-#define apis_put(op, func) \
-    if (op == NULL) { \
-        *((void **) &op) = func; \
+#define apis_put(op, func)                                                                                             \
+    if (op == NULL) {                                                                                                  \
+        *((void **) &op) = func;                                                                                       \
     }
 
 /* Conditional put. */
-#define apis_pin(op, func, cond) \
-    if (cond) { \
-        apis_put(op, func); \
+#define apis_pin(op, func, cond)                                                                                       \
+    if (cond) {                                                                                                        \
+        apis_put(op, func);                                                                                            \
     }
 
 /* Replaces the currect function of the operation. */
@@ -134,23 +132,22 @@ typedef struct metrics_gpus_s {
 #define apis_not(ops) (ops->init == NULL)
 
 /* Adds a new function to an array. */
-#define apis_add(ops, func) \
-	apis_append((void **) ops, func);
+#define apis_add(ops, func) apis_append((void **) ops, func);
 
 /* Provisional multicall function */
-#define apis_multi(ops, ...) \
-    state_t s; \
-    int i = 0; \
-    while (ops [i] != NULL) { \
-        if (state_fail(s = ops [i](__VA_ARGS__))) { \
-            debug("failed " #ops "[%d]: %s", i, state_msg); \
-            return s; \
-        } \
-        ++i; \
+#define apis_multi(ops, ...)                                                                                           \
+    state_t s;                                                                                                         \
+    int i = 0;                                                                                                         \
+    while (ops[i] != NULL) {                                                                                           \
+        if (state_fail(s = ops[i](__VA_ARGS__))) {                                                                     \
+            debug("failed " #ops "[%d]: %s", i, state_msg);                                                            \
+            return s;                                                                                                  \
+        }                                                                                                              \
+        ++i;                                                                                                           \
     }
 
-#define apis_multiret(ops, ...) \
-    apis_multi(ops, __VA_ARGS__); \
+#define apis_multiret(ops, ...)                                                                                        \
+    apis_multi(ops, __VA_ARGS__);                                                                                      \
     return s;
 
 // Rename apis to api.
@@ -163,9 +160,9 @@ void apis_tostr(uint api, char *buffer, size_t size);
 void apinfo_tostr(apinfo_t *info);
 
 /* Obsolete, remove it. */
-#define replace_ops(p1, p2) \
-	if (p1 == NULL) { \
-		p1 = p2; \
-	}
+#define replace_ops(p1, p2)                                                                                            \
+    if (p1 == NULL) {                                                                                                  \
+        p1 = p2;                                                                                                       \
+    }
 
 #endif
