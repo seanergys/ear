@@ -11,18 +11,18 @@
 // #define SHOW_DEBUGS 1
 
 #define _GNU_SOURCE
-#include <stdio.h>
-#include <sched.h>
-#include <errno.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <dlfcn.h>
 #include <common/config.h>
 #include <common/output/debug.h>
 #include <common/utils/string.h>
+#include <dlfcn.h>
+#include <errno.h>
 #include <library/loader/loader.h>
-#include <library/loader/module_mpi.h>
 #include <library/loader/module_common.h>
+#include <library/loader/module_mpi.h>
+#include <sched.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 static int init()
 {
@@ -58,8 +58,7 @@ static int is_a_valid_program(char **bin_names)
     // If the program name is one of these is invalid and nothing is loaded
     for (l = 0; bin_names[l] != NULL; ++l) {
         if (strstr(program_invocation_name, bin_names[l]) != NULL) {
-            verbose(2, "LOADER: Program %s invalid and is loaded without EAR",
-                program_invocation_name);
+            verbose(2, "LOADER: Program %s invalid and is loaded without EAR", program_invocation_name);
             return 0;
         }
     }
@@ -68,10 +67,10 @@ static int is_a_valid_program(char **bin_names)
 
 static int is_a_forced_load(char **bin_names)
 {
-    char  *envar      = NULL;
-    char **list       = NULL;
-    uint   list_count = 0;
-    int    l          = 0;
+    char *envar     = NULL;
+    char **list     = NULL;
+    uint list_count = 0;
+    int l           = 0;
 
     // If the program name is one of these we load the sequential library
     for (l = 0; bin_names[l] != NULL; ++l) {
@@ -99,7 +98,7 @@ static int is_a_forced_load(char **bin_names)
     return 0;
 }
 
-void __attribute__ ((constructor)) loader()
+void __attribute__((constructor)) loader()
 {
     char *bins_invalid[] = {"bash", "hydra", NULL};
     char *bins_forced[]  = {"python", "python3", "julia", NULL};
@@ -115,12 +114,26 @@ void __attribute__ ((constructor)) loader()
     if (!init()) {
         return;
     }
-    if (!is_a_valid_program(bins_invalid)) { return; }
-    if (load_libear_mpi()) { return; }
-    if (load_libear_nonspec(OPENMP_EXT, syms_openmp, NULL       )) { return; }
-    if (load_libear_nonspec(  CUDA_EXT, syms_cuda  , NULL       )) { return; }
-    if (load_libear_nonspec(ONEAPI_EXT, NULL       , libs_oneapi)) { return; }
-    if (!is_a_forced_load(bins_forced)) { return; }
-    if (load_libear_nonspec(   DEF_EXT, NULL       , NULL       )) { return; }
+    if (!is_a_valid_program(bins_invalid)) {
+        return;
+    }
+    if (load_libear_mpi()) {
+        return;
+    }
+    if (load_libear_nonspec(OPENMP_EXT, syms_openmp, NULL)) {
+        return;
+    }
+    if (load_libear_nonspec(CUDA_EXT, syms_cuda, NULL)) {
+        return;
+    }
+    if (load_libear_nonspec(ONEAPI_EXT, NULL, libs_oneapi)) {
+        return;
+    }
+    if (!is_a_forced_load(bins_forced)) {
+        return;
+    }
+    if (load_libear_nonspec(DEF_EXT, NULL, NULL)) {
+        return;
+    }
     return;
 }

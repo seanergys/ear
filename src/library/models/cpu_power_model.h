@@ -22,12 +22,10 @@
  * \param libconf    The current configuration.
  * \param arch_desc  The current architecture description used for models.
  * \param load_dummy Specify whether you want to load the DUMMY CPU power model. */
-state_t cpu_power_model_load(settings_conf_t *libconf, architecture_t *arch_desc,
-                             uint load_dummy);
+state_t cpu_power_model_load(settings_conf_t *libconf, architecture_t *arch_desc, uint load_dummy);
 
 state_t cpu_power_model_init();
 state_t cpu_power_model_status();
 
-state_t cpu_power_model_project(lib_shared_data_t *data, shsignature_t *sig,
-                                node_mgr_sh_data_t *nmgr);
+state_t cpu_power_model_project(lib_shared_data_t *data, shsignature_t *sig, node_mgr_sh_data_t *nmgr);
 #endif

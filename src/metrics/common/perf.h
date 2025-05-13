@@ -11,23 +11,23 @@
 #ifndef METRICS_COMMON_PERF_H
 #define METRICS_COMMON_PERF_H
 
-#include <common/types.h>
 #include <common/states.h>
+#include <common/types.h>
 #include <linux/perf_event.h>
 
 // Options (combine with &)
-#define pf_exc	0x0001
-#define pf_pin	0x0002		 
+#define pf_exc 0x0001
+#define pf_pin 0x0002
 
 typedef struct perf_s {
-	struct  perf_event_attr attr;
-	void   *group;
-	int     fd;
-    double  scale;
-    char    unit[16]; // Used in files
-    char    event_name[64]; // Used in files
-    char    pmu_name[64]; // Used in files
-    llong   aux;
+    struct perf_event_attr attr;
+    void *group;
+    int fd;
+    double scale;
+    char unit[16];       // Used in files
+    char event_name[64]; // Used in files
+    char pmu_name[64];   // Used in files
+    llong aux;
 } perf_t;
 
 /* For per-process events */
@@ -50,4 +50,4 @@ state_t perf_close(perf_t *perf);
 
 state_t perf_read(perf_t *perf, llong *value);
 
-#endif //METRICS_COMMON_PERF_H
+#endif // METRICS_COMMON_PERF_H

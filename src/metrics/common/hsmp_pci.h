@@ -22,4 +22,3 @@ state_t hsmp_pci_close();
 state_t hsmp_pci_send(int socket, uint function, uint *args, uint *reps);
 
 #endif
-
