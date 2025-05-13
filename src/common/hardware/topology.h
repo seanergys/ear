@@ -77,12 +77,13 @@ typedef struct cl_s {
 } cl_t;
 
 typedef struct cpu_s {
-    int id;
-    int apicid;
+    int id;         //
+    int apicid;     // Taken from
     int is_thread;  // If is the secondary thread in a core.
     int sibling_id; // The thread sibling within a core.
-    int core_id;    // Basically, the lesser sibling_id
-    int socket_id;
+    int core_id;    // Basically the minor sibling id
+    int socket_id;  // Socket id taken from 'physical_package_id' file
+    int socket_idx; // Socket index from 0 to socket_count, best option to work with arrays
     cl_t l[TOPO_CL_COUNT]; // Index = level, 0 doesn't exists
 } cpu_t;
 

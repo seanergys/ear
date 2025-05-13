@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <asm/sigcontext.h>
 #include <common/hardware/topology_asm.h>
@@ -97,6 +97,7 @@ static state_t topology_init_thread(topology_t *topo, uint thread)
     topo->cpus[thread].id         = thread;
     topo->cpus[thread].apicid     = -1;
     topo->cpus[thread].socket_id  = -1;
+    topo->cpus[thread].socket_idx = -1;
     topo->cpus[thread].sibling_id = thread;
     topo->cpus[thread].core_id    = thread;
     topo->cpus[thread].is_thread  = 0;
@@ -325,17 +326,36 @@ state_t topology_init(topology_t *topo)
             }
             topo->socket_count += (j == i);
         }
-// Counting cache banks
-#define cache_count(level, var)                                                                                        \
-    for (j = 0; j <= i; ++j) {                                                                                         \
-        if (topo->cpus[j].l[level].id != TOPO_UNDEFINED && topo->cpus[j].l[level].id == topo->cpus[i].l[level].id) {   \
-            break;                                                                                                     \
-        }                                                                                                              \
-    }                                                                                                                  \
-    var += (j == i);
-
-        cache_count(2, topo->l2_count) cache_count(3, topo->l3_count) cache_count(4, topo->l4_count)
+        // Macro to count cache banks
+        #define cache_count(level, var)                                                                                    \
+        for (j = 0; j <= i; ++j) {                                                                                         \
+            if (topo->cpus[j].l[level].id != TOPO_UNDEFINED && topo->cpus[j].l[level].id == topo->cpus[i].l[level].id) {   \
+                break;                                                                                                     \
+            }                                                                                                              \
+        }                                                                                                                  \
+        var += (j == i);
+        // Macro end
+        cache_count(2, topo->l2_count);
+        cache_count(3, topo->l3_count);
+        cache_count(4, topo->l4_count);
     }
+    // Setting socket_index
+    int socket_idx = 0;
+
+    for (i = 0; i < topo->cpu_count; ++i) {
+        for (j = 0; j < i; ++j) {
+            if (topo->cpus[i].socket_id == topo->cpus[j].socket_id) {
+                break;
+            }
+        }
+        if (j < i) {
+            topo->cpus[i].socket_idx = topo->cpus[j].socket_idx;
+        } else {
+            topo->cpus[i].socket_idx = socket_idx++;
+        }
+        debug("CPU%d socket_id/x: %d/%d", i, topo->cpus[i].socket_id, topo->cpus[i].socket_idx);
+    }
+    // Cache
     if (topo->l4_count) {
         topo->cache_last_level = 4;
     } else if (topo->l3_count) {
@@ -347,7 +367,7 @@ state_t topology_init(topology_t *topo)
     }
 
     // TDP definition (to avoid redundancy)
-    void topology_tdp(topology_t * topo);
+    void topology_tdp(topology_t *topo);
     topology_cpuinfo(topo);
     topology_watchdog(topo);
     topology_tdp(topo);
@@ -383,9 +403,11 @@ state_t topology_close(topology_t *topo)
       "avx512           : %d\n"                                                                                        \
       "sve              : %d\n"                                                                                        \
       "sve_bits         : %d\n",                                                                                       \
-      topo->cpu_count, topo->core_count, topo->socket_count, topo->threads_per_core, topo->smt_enabled,                \
-      topo->l2_count, topo->l3_count, topo->l4_count, topo->cache_line_size, topo->vendor, topo->family, topo->model,  \
-      topo->brand, topo->gpr_count, topo->gpr_bits, topo->nmi_watchdog, topo->avx512, topo->sve, topo->sve_bits);
+      topo->cpu_count      , topo->core_count, topo->socket_count, topo->threads_per_core,                             \
+      topo->smt_enabled    , topo->l2_count  , topo->l3_count    , topo->l4_count        ,                             \
+      topo->cache_line_size, topo->vendor    , topo->family      , topo->model           ,                             \
+      topo->brand          , topo->gpr_count , topo->gpr_bits    , topo->nmi_watchdog    ,                             \
+      topo->avx512         , topo->sve       , topo->sve_bits);
 
 void topology_print(topology_t *topo, int fd)
 {
