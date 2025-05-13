@@ -107,7 +107,6 @@ deploy-eardbd:
     when: always
     paths:
       - eardbd.out
-  allow_failure: true
 
 deploy-eard:
   stage: deploy
@@ -128,3 +127,12 @@ deploy-eard:
       - ear-dyn.conf
       - ear_tmp
   allow_failure: true
+
+#test-earl:
+#  stage: test
+#  needs: [test-install-mpi]
+#  script:
+#    - export PATH=$(pkgconf --variable=exec_prefix ompi-f90)/bin:$PATH
+#    - $TESTDIR/scripts/compile_nas.sh $TESTDIR/apps/NPB3.4.3/NPB3.4-MPI bt B
+#    - export EAR_ETC=ear-ompi/etc ; export EAR_INSTALL_PATH=ear-ompi ; export EAR_TMP=/tmp
+#    - OMPI_ALLOW_RUN_AS_ROOT=1 OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1 mpirun -np 4 ear-ompi/bin/erun --ear=on --ear-verbose=1 --program="$TESTDIR/apps/NPB3.4.3/NPB3.4-MPI/bin/bt.B.x" 2> >(tee earl.out)
