@@ -121,7 +121,7 @@ bool _check_range_for_node(char *base, range_def_t *r, char *nodename)
         if (aux->first == 0 && aux->second == 0) {
             sprintf(second_buff, "%s", r->prefix);
             strcat(buff, second_buff);
-            if (!strncmp(buff, nodename, strlen(buff)))
+            if (strncmp(buff, nodename, strlen(buff)))
                 continue;
             else if (_check_range_for_node(buff, r->next, nodename))
                 return true;
@@ -131,7 +131,7 @@ bool _check_range_for_node(char *base, range_def_t *r, char *nodename)
                 strcat(second_buff, "0");
             sprintf(&second_buff[strlen(second_buff)], "%d", aux->first);
             strcat(buff, second_buff);
-            if (!strncmp(buff, nodename, strlen(buff)))
+            if (strncmp(buff, nodename, strlen(buff)))
                 continue;
             else if (_check_range_for_node(buff, r->next, nodename))
                 return true;
@@ -148,7 +148,7 @@ bool _check_range_for_node(char *base, range_def_t *r, char *nodename)
                     strcat(second_buff, "0");
                 sprintf(&second_buff[strlen(second_buff)], "%d", aux->first + i);
                 strcat(buff, second_buff);
-                if (!strncmp(buff, nodename, strlen(buff)))
+                if (strncmp(buff, nodename, strlen(buff)))
                     continue;
                 else if (_check_range_for_node(buff, r->next, nodename))
                     return true;
@@ -180,10 +180,8 @@ bool range_conf_contains_node(node_conf_t *node, char *nodename)
 
         // check the numbers to see if it matches
         //
-        for (int32_t j = 0; j < r->numbers_count; j++) {
-            if (_check_range_for_node("", r, nodename))
-                return true;
-        }
+        if (_check_range_for_node("", r, nodename))
+            return true;
     }
 
     return false;
@@ -209,10 +207,8 @@ int nodeconf_get_island_range_for_node(node_island_t *node, char *nodename)
 
         // check the numbers to see if it matches
         //
-        for (int32_t j = 0; j < r->numbers_count; j++) {
-            if (_check_range_for_node("", r, nodename))
-                return i;
-        }
+        if (_check_range_for_node("", r, nodename))
+            return i;
     }
 
     return -1;
