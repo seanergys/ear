@@ -2,6 +2,8 @@ CFLAGS = $(CC_FLAGS) -fPIC -I$(SRCDIR) $(CONSTANTS)
 
 ######## FILES
 
+comm_BINS = libmetrics-common.a
+
 comm_OBJS = \
     apis.o \
     cupti.o \
@@ -12,6 +14,10 @@ comm_OBJS = \
     hsmp_pci.o \
     hwmon.o \
     hwmon_old.o \
+    ipmi.o \
+    ipmi_driver.o \
+    ipmi_driver_frusdr.o \
+    ipmi_driver_parsing.o \
     isst.o \
     likwid.o \
     msr.o \
@@ -28,7 +34,7 @@ comm_OBJS = \
 
 ######## RULES
 
-all: $(comm_OBJS)
+all: $(comm_BINS)
 
 hsmp_esmi.o: hsmp_esmi.c hsmp_esmi.h
 	$(CC) $(CFLAGS) $(ESMI_CFLAGS) -c $<
@@ -50,6 +56,9 @@ oneapi.o: oneapi.c oneapi.h
 
 redfish.o: redfish.c redfish.h
 	$(CC) $(CFLAGS) $(REDFISH_CFLAGS) -c $<
+
+libmetrics-common.a: Makefile $(comm_OBJS)
+	$(AR) rvs $@ $(comm_OBJS)
 
 %.o: %.c %.h
 	$(CC) $(CFLAGS) -c $<

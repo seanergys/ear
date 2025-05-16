@@ -11,50 +11,72 @@
 // #define SHOW_DEBUGS 1
 
 #include <common/config.h>
-#include <common/hardware/hardware_info.h>
 #include <common/includes.h>
 #include <common/output/debug.h>
+#include <common/utils/string.h>
 #include <common/system/symplug.h>
+#include <common/hardware/hardware_info.h>
 #include <common/types/configuration/cluster_conf.h>
 #include <metrics/energy/energy_node.h>
 
-struct energy_op {
-    state_t (*init)(void **c);
-    state_t (*dispose)(void **c);
-    state_t (*datasize)(size_t *size);
-    state_t (*frequency)(ulong *freq);
-    state_t (*dc_read)(void *c, edata_t emj);
-    state_t (*dc_time_read)(void *c, edata_t emj, ulong *tms);
-    state_t (*ac_read)(void *c, edata_t em);
-    state_t (*units)(uint *uints);
-    state_t (*accumulated)(ulong *e, edata_t init, edata_t end);
-    state_t (*energy_to_str)(char *str, edata_t end);
-    state_t (*power_limit)(void *c, ulong limit, ulong target);
-    uint (*is_null)(edata_t end);
+struct energy_op
+{
+    state_t (*init)               (void **c);
+    state_t (*dispose)            (void **c);
+    state_t (*datasize)           (size_t *size);
+    state_t (*frequency)          (ulong *freq);
+    state_t (*dc_read)            (void *c, edata_t emj);
+    state_t (*dc_time_read)       (void *c, edata_t emj, ulong *tms);
+    state_t (*ac_read)            (void *c, edata_t em);
+    state_t (*units)              (uint *uints);
+    state_t (*accumulated)        (ulong *e,edata_t init, edata_t end);
+    state_t (*energy_to_str)      (char *str,edata_t end);
+    state_t (*power_limit)        (void *c, ulong limit,ulong target);
+    uint    (*is_null)            (edata_t end);
 } energy_ops;
 
+const char *energy_names[] = {
+        "energy_init",
+        "energy_dispose",
+        "energy_datasize",
+        "energy_frequency",
+        "energy_dc_read",
+        "energy_dc_time_read",
+        "energy_ac_read",
+        "energy_units",
+        "energy_accumulated",
+        "energy_to_str",
+        "energy_power_limit",
+        "energy_data_is_null"
+};
+
 static int energy_loaded   = 0;
-const int energy_nops      = 12;
-const char *energy_names[] = {"energy_init",        "energy_dispose",      "energy_datasize",    "energy_frequency",
-                              "energy_dc_read",     "energy_dc_time_read", "energy_ac_read",     "energy_units",
-                              "energy_accumulated", "energy_to_str",       "energy_power_limit", "energy_data_is_null"};
+static int energy_nops     = 12;
 
 state_t energy_load(char *energy_obj)
 {
+    uint list_count = 0;
+    char **list = NULL;
+    state_t ret;
+
     if (energy_loaded) {
         return_msg(EAR_ERROR, Generr.api_initialized);
     }
-
-    state_t ret;
-
     if (!energy_obj) {
         return_msg(EAR_ERROR, Generr.input_null);
     }
-
+    if (strchr(energy_obj, ':')) {
+        if (strtoa((const char *) energy_obj, ':', &list, &list_count)) {
+            if (list_count > 0) {
+                setenv("EAR_ENERGY_ARG", list[1], 1);
+            }
+            energy_obj = list[0];
+        }
+    }
     debug("loading shared object '%s'", energy_obj);
     if (state_fail(ret = symplug_open(energy_obj, (void **) &energy_ops, energy_names, energy_nops))) {
         debug("symplug_open() returned %d (%s)", ret, state_msg);
-        return_msg(ret, Generr.dlopen);
+        return ret;
     }
     energy_loaded = 1;
     return EAR_SUCCESS;
@@ -65,14 +87,7 @@ state_t energy_init(ehandler_t *eh)
     if (!energy_loaded) {
         return_msg(EAR_ERROR, Generr.api_uninitialized);
     }
-
-    state_t ret = EAR_SUCCESS;
-
-    if (state_fail(ret = energy_ops.init(&eh->context))) {
-        return_msg(ret, "Plug-in init() method returned an error.");
-    }
-
-    return ret;
+    return energy_ops.init(&eh->context);
 }
 
 state_t energy_dispose(ehandler_t *eh)

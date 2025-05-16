@@ -10,13 +10,11 @@
 
 // #define SHOW_DEBUGS 1
 
-#include <common/system/symplug.h>
-
 #include <dlfcn.h>
 #include <unistd.h>
-
 #include <common/includes.h>
 #include <common/output/debug.h>
+#include <common/system/symplug.h>
 
 state_t plug_join(void *handle, void *calls[], const char *names[], uint n)
 {
@@ -43,13 +41,13 @@ state_t plug_join(void *handle, void *calls[], const char *names[], uint n)
 static state_t static_open(char *path, void *calls[], const char *names[], uint n, int flags)
 {
     void *handle;
-    debug("trying to access to '%s'", path);
+    debug("Trying to access to '%s'", path);
     if (access(path, X_OK) != 0) {
-        debug("plugin %s cannot be loaded error=%s", path, strerror(errno));
+        debug("Plugin %s cannot be accessed: %s", path, strerror(errno));
         return_msg(EAR_ERROR, strerror(errno));
     }
     if ((handle = dlopen(path, flags)) == NULL) {
-        debug("plugin %s cannot be loaded by symplug error=%s", path, dlerror());
+        debug("Plugin %s cannot be loaded: %s", path, dlerror());
         return_msg(EAR_ERROR, dlerror());
     }
     debug("dlopen ok");

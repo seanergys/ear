@@ -231,23 +231,6 @@ state_t perf_read(perf_t *perf, llong *value)
     return EAR_SUCCESS;
 }
 
-/*
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- */
-
 static char *point_value(char *string, char *key)
 {
     char *p1 = NULL;

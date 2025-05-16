@@ -202,18 +202,18 @@ int32_t afd_check_socket_state(int32_t socket)
     int32_t ret        = 0;
     if ((ret = poll(&stfd, 1, 1000)) == 1) {
         if (stfd.revents & POLLRDHUP) {
-            debug("poll returns revent POLLRDHUP, the remote has been closed");
+            debug("Poll() returns revent POLLRDHUP, the remote has been closed");
             return -1; // POLLHUP, connection has been closed by the remote
         } else if (stfd.revents & POLLHUP) {
-            debug("poll returns revent POLLHUP, the remote has been closed");
+            debug("Poll() returns revent POLLHUP, the remote has been closed");
             return -1; // POLLHUP, connection has been closed by the remote
         }
-        debug("poll revents is %d", stfd.revents);
+        debug("Poll() revents is %d", stfd.revents);
     } else if (ret == 0) {
-        debug("poll timed out");
+        debug("Poll() timed out");
     } else {
+        debug("Poll() fails for check_socket state (%s)", strerror(errno));
         return -2;
-        debug("Poll fails for check_socket state (%s)", strerror(errno));
     }
     return 0;
 }
@@ -225,13 +225,13 @@ void afd_check_sockets(afd_set_t *fdlist)
         if (AFD_ISSET(i, fdlist)) {
             debug("Validating socket %d", i);
             if (!AFD_STAT(i, NULL)) {
+                debug("Closing due to AFD_STAT");
                 AFD_CLR(i, fdlist);
                 close(i);
-                debug("CLOSING SOCKETS due to AFD_STAT!");
             } else if (afd_check_socket_state(i) < 0) {
+                debug("Closing sockets due to check_socket_state()");
                 AFD_CLR(i, fdlist);
                 close(i);
-                debug("CLOSING SOCKETS due to check_socket_state!");
             }
         }
     }

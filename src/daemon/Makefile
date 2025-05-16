@@ -52,12 +52,14 @@ eard_OBJS += \
     $(SRCDIR)/metrics/libmetrics.a \
     $(SRCDIR)/common/libcommon.a
 
+eard_LDFLAGS = $(call whole,$(SRCDIR)/metrics/common/libmetrics-common.a)
+
 ######## RULES
 
 all: all.components $(eard_BINS) $(oths_BINS) all.others shared_pmon.o
 
 eard: eard.c $(eard_OBJS)
-	$(CC) $(CFLAGS) $(DB_CFLAGS) -o $@ $< $(eard_OBJS) $(LDFLAGS) -lpthread
+	$(CC) $(CFLAGS) $(DB_CFLAGS) -o $@ $< $(eard_LDFLAGS) $(eard_OBJS) $(LDFLAGS) -lpthread
 
 power_monitor.o: power_monitor.c power_monitor.h 
 	$(CC) $(CFLAGS) -c $<  $(SLURM_CFLAGS)

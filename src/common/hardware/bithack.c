@@ -37,3 +37,10 @@ uint getbits32(uint reg, uint left_bit, uint right_bit)
     uint mask   = (((0x01 << digits) - 1) << 1) + 1;
     return ((reg >> right_bit) & mask);
 }
+
+uchar getbits8(uchar reg, uchar left_bit, uchar right_bit)
+{
+    uchar digits = left_bit - right_bit;
+    uchar mask   = (((0x01 << digits) - 1) << 1) + 1;
+    return ((reg >> right_bit) & mask);
+}
