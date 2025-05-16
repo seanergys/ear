@@ -113,6 +113,7 @@ state_t perf_close(perf_t *perf)
         close(perf->fd);
     }
     memset(perf, 0, sizeof(perf_t));
+    perf->fd = -1;
     return EAR_SUCCESS;
 }
 

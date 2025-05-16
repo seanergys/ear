@@ -10,43 +10,35 @@
 
 // #define SHOW_DEBUGS 1
 
-#include <common/math_operations.h>
-#include <common/output/debug.h>
-#include <metrics/cpi/archs/dummy.h>
-#include <metrics/cpi/archs/perf.h>
-#include <metrics/cpi/cpi.h>
-#include <pthread.h>
 #include <string.h>
+#include <pthread.h>
+#include <common/output/debug.h>
+#include <common/math_operations.h>
+#include <metrics/cpi/cpi.h>
+#include <metrics/cpi/archs/perf.h>
+#include <metrics/cpi/archs/dummy.h>
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static cpi_ops_t ops;
 static apinfo_t info;
 
-void cpi_load(topology_t *tp, int force_api)
+void cpi_load(topology_t *tp, int force_api, debug_cbs_f callback)
 {
-    while (pthread_mutex_trylock(&lock))
-        ;
+    while (pthread_mutex_trylock(&lock));
     if (info.api != API_NONE) {
         goto leave;
     }
     if (API_IS(force_api, API_DUMMY)) {
         goto dummy;
     }
-    cpi_perf_load(tp, &ops);
+    cpi_perf_load(tp, callback, &ops);
 dummy:
-    cpi_dummy_load(tp, &ops);
+    cpi_dummy_load(tp, callback, &ops);
     // Bandiwdth wants to know more about the loaded API. This is safe because at
     // this point all API's have their devices counter.
     cpi_get_info(&info);
 leave:
     pthread_mutex_unlock(&lock);
-}
-
-void cpi_get_api(uint *api_in)
-{
-    apinfo_t info;
-    cpi_get_info(&info);
-    *api_in = info.api;
 }
 
 void cpi_get_info(apinfo_t *info)
@@ -60,20 +52,6 @@ void cpi_get_info(apinfo_t *info)
     if (ops.get_info != NULL) {
         ops.get_info(info);
     }
-}
-
-state_t cpi_init(ctx_t *c)
-{
-    while (pthread_mutex_trylock(&lock))
-        ;
-    state_t s = ops.init();
-    pthread_mutex_unlock(&lock);
-    return s;
-}
-
-state_t cpi_dispose(ctx_t *c)
-{
-    return ops.dispose();
 }
 
 state_t cpi_read(ctx_t *c, cpi_t *ci)
@@ -167,10 +145,9 @@ static double gbs;
 int main(int argc, char *argv[])
 {
     topology_init(&tp);
-    cpi_load(&tp, API_FREE);
+    cpi_load(&tp, API_FREE, basic_print);
     cpi_get_info(&info);
 
-    cpi_init(no_ctx);
     apinfo_tostr(&info);
     printf("%s\n", info.api_str);
     cpi_read(no_ctx, &c1);

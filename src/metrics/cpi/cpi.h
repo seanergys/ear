@@ -11,10 +11,11 @@
 #ifndef METRICS_CPI_H
 #define METRICS_CPI_H
 
-#include <common/hardware/topology.h>
-#include <common/plugins.h>
 #include <common/states.h>
+#include <common/plugins.h>
 #include <common/system/time.h>
+#include <common/hardware/topology.h>
+#include <metrics/cpi/debug_cbs.h>
 
 typedef struct stalls_s {
     ullong fetch_decode; // Instruction fetch-decode pipeline
@@ -29,35 +30,31 @@ typedef struct cpi_s {
 } cpi_t;
 
 typedef struct cpi_ops_s {
+    state_t (*unload)   ();
     void    (*get_info) (apinfo_t *info);
-    state_t (*init)     ();
-    state_t (*dispose)  ();
     state_t (*read)     (cpi_t *ci);
 } cpi_ops_t;
 
 // API building scheme
-#define CPI_F_LOAD(name)     void name(topology_t *tpo, cpi_ops_t *ops)
+#define CPI_F_LOAD(name)     void name(topology_t *tpo, debug_cbs_f callback, cpi_ops_t *ops)
+#define CPI_F_UNLOAD(name)   void name()
 #define CPI_F_GET_INFO(name) void name(apinfo_t *info)
-#define CPI_F_INIT(name)     state_t name()
-#define CPI_F_DISPOSE(name)  state_t name()
 #define CPI_F_READ(name)     state_t name(cpi_t *cpi)
 
 #define CPI_DEFINES(name)                                                                                              \
     CPI_F_LOAD(cpi_##name##_load);                                                                                     \
+    CPI_F_UNLOAD(cpi_##name##_unload);                                                                                 \
     CPI_F_GET_INFO(cpi_##name##_get_info);                                                                             \
-    CPI_F_INIT(cpi_##name##_init);                                                                                     \
-    CPI_F_DISPOSE(cpi_##name##_dispose);                                                                               \
     CPI_F_READ(cpi_##name##_read);
 
-void cpi_load(topology_t *tp, int force_api);
+// Primer problema, necesitamos el debug en el load
+void cpi_load(topology_t *tp, int force_api, debug_cbs_f callback);
 
-void cpi_get_api(uint *api);
+void cpi_unload();
 
 void cpi_get_info(apinfo_t *info);
 
-state_t cpi_init(ctx_t *c);
-
-state_t cpi_dispose(ctx_t *c);
+//void cpi_set_debug(debug_cbs_f callback);
 
 state_t cpi_read(ctx_t *c, cpi_t *ci);
 
