@@ -144,8 +144,8 @@ test-earl-omp-lite:
   needs: [compile-no-mpi-loader]
   script:
     - $TESTDIR/scripts/compile_nas.sh $TESTDIR/apps/NPB3.4.3/NPB3.4-OMP bt B
-    - export EAR_ETC=ear-no-mpi-loader/etc ; export EAR_INSTALL_PATH=ear-no-mpi-loader ; export EAR_TMP=/tmp
-    - OMP_NUM_THREADS=2 $TESTDIR/apps/NPB3.4.3/NPB3.4-OMP/bin/bt.B.x 2> >(tee earl.out)
+    - export EAR_ETC=ear-no-mpi-loader/etc ; export EAR_INSTALL_PATH=ear-no-mpi-loader ; export EAR_TMP=/tmp ; export OMP_NUM_THREADS=2
+    - ear-no-mpi-loader/bin/erun --ear=on --ear-verbose=1 --program="$TESTDIR/apps/NPB3.4.3/NPB3.4-OMP/bin/bt.B.x" 2> >(tee earl.out)
   artifacts:
     when: always
     name: earl-omp_out
