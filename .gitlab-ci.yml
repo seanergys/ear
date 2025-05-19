@@ -50,7 +50,6 @@ compile-mpi:
 compile-mpi-mysql:
   stage: build
   script:
-    - dnf install -y mariadb-devel
     - export CONFIG_SITE="$TESTDIR/config-sites/config.ompi.site"
     - MAKE_FEATURES="MPI_CFLAGS='$(pkgconf ompi-c --cflags)'" CONFIGURE_FLAGS="--prefix=$PWD/ear-db" $TESTDIR/compile.sh
     - make install
