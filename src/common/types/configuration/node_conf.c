@@ -173,13 +173,8 @@ bool range_conf_contains_node(node_conf_t *node, char *nodename)
         if (r->numbers == NULL || r->numbers_count < 1) {
             return true;
         }
-        // the prefix is the nodename, no need to check
-        if (r->numbers_count == 1 && r->numbers[0].first == 0 && r->numbers[0].second == 0) {
-            return true;
-        }
 
         // check the numbers to see if it matches
-        //
         if (_check_range_for_node("", r, nodename))
             return true;
     }
@@ -200,13 +195,8 @@ int nodeconf_get_island_range_for_node(node_island_t *node, char *nodename)
         if (r->numbers == NULL || r->numbers_count < 1) {
             return i;
         }
-        // the prefix is the nodename, no need to check
-        if (r->numbers_count == 1 && r->numbers[0].first == 0 && r->numbers[0].second == 0) {
-            return i;
-        }
 
         // check the numbers to see if it matches
-        //
         if (_check_range_for_node("", r, nodename))
             return i;
     }
