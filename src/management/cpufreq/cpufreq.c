@@ -213,7 +213,11 @@ state_t mgt_cpufreq_governor_set_list(ctx_t *c, uint *governors)
 
 int mgt_cpufreq_governor_is_available(ctx_t *c, uint governor)
 {
-    return ops_driver.is_governor_available(governor);
+    if (ops_driver.is_governor_available) {
+        return ops_driver.is_governor_available(governor);
+    } else {
+        return 0;
+    }
 }
 
 /** Data */

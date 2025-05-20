@@ -51,13 +51,16 @@ cluster_conf_t my_conf;
 #define PUE                      1.2
 #define CARBON_INTENSITY         174
 
-int full_length    = 0;
-int verbose        = 0;
-int all_pow_sig    = 0;
-int avx            = 0;
-int print_gpus     = 1;
-int loop_extended  = 0;
-char csv_path[256] = "";
+#define DEFAULT_QUERY_LIMIT      5
+
+int32_t full_length      = 0;
+int32_t verbose          = 0;
+int32_t all_pow_sig      = 0;
+int32_t avx              = 0;
+int32_t print_gpus       = 1;
+int32_t loop_extended    = 0;
+bool display_user_column = false;
+char csv_path[256]       = "";
 
 #if COLORS
 static void print_colors_legend()
@@ -92,6 +95,11 @@ static void select_color_by_phase(double CPI, double GBS, double IO, double GFLO
 #define select_color_by_phase(A, B, C, D)
 #endif
 
+#if 0
+    "\t\t-b\tverbose mode for debugging purposes\n" \
+    "\t\t-o\tmodifies the -r option to also show the corresponding jobs. Should be used with -j.\n", app);
+    printf("\t\t-f\tspecifies the file where the user-database can be found. If this option is used, the information will be read from the file and not the database.\n");
+#endif
 void usage(char *app)
 {
 #if USE_DB
@@ -99,12 +107,12 @@ void usage(char *app)
            "\tOptional parameters: \n"
            "\t\t-h\tdisplays this message\n"
            "\t\t-v\tdisplays current EAR version\n"
-           "\t\t-b\tverbose mode for debugging purposes\n"
-           "\t\t-u\tspecifies the user whose applications will be retrieved. Only available to privileged users. "
-           "[default: all users]\n"
            "\t\t-j\tspecifies the job id and step id to retrieve with the format [jobid.stepid] or the format "
            "[jobid1,jobid2,...,jobid_n].\n"
-           "\t\t\t\tA user can only retrieve its own jobs unless said user is privileged. [default: all jobs]\n"
+           "\t\t-l\tshows the information for each node for each job instead of the global statistics for said job.\n"
+           "\t\t-r\tshows the EAR loop signatures. Users, job ids, and step ids can be specified as if were showing "
+           "job information.\n"
+           "\t\t-F\tspecifies the format string to be used. See manpage for more information.\n"
            "\t\t-a\tspecifies the application names that will be retrieved. [default: all app_ids]\n"
            "\t\t-c\tspecifies the file where the output will be stored in CSV format. If the argument is \"no_file\" "
            "the output will be printed to STDOUT [default: off]\n"
@@ -113,19 +121,16 @@ void usage(char *app)
            "filter].\n"
            "\t\t-e\tspecifies the maximum end time of the jobs that will be retrieved in YYYY-MM-DD. [default: no "
            "filter].\n"
-           "\t\t-l\tshows the information for each node for each job instead of the global statistics for said job.\n"
            "\t\t-x\tshows the last EAR events. Users, start and end times, job ids, and step ids can be specified as "
            "if were showing job information.\n"
-           "\t\t-m\tprints power signatures regardless of whether mpi signatures are available or not.\n"
-           "\t\t-r\tshows the EAR loop signatures. Users, job ids, and step ids can be specified as if were showing "
-           "job information.\n"
-           "\t\t-F\tspecifies the format string to be used. See manpage for more information.\n"
-           "\t\t-o\tmodifies the -r option to also show the corresponding jobs. Should be used with -j.\n",
+           "\t\t-m\tprints EARD signatures regardless of whether EARL signatures are available or not.\n"
+           "\t\t-u\tspecifies the user whose applications will be retrieved. Only available to privileged users. "
+           "[default: all users]\n"
+           "\t\t\t\tA user can only retrieve its own jobs unless said user is privileged. [default: all jobs]\n",
            app);
-    printf("\t\t-n\tspecifies the number of jobs to be shown, starting from the most recent one. [default: 20][to get "
-           "all jobs use -n all]\n");
-    printf("\t\t-f\tspecifies the file where the user-database can be found. If this option is used, the information "
-           "will be read from the file and not the database.\n");
+    printf("\t\t-n\tspecifies the number of jobs to be shown, starting from the most recent one. [default: %d][to get "
+           "all jobs use -n all]\n",
+           DEFAULT_QUERY_LIMIT);
 #endif
     exit(0);
 }
@@ -200,7 +205,7 @@ bool print_power_signature_format(application_t *app, char f)
             print_format(TIME_WIDTH, app->power_sig.time, 0);
             break;
         case ENERGY: // energy
-            print_format(ENERGY_WIDTH, app->power_sig.DC_power * app->power_sig.time, 2);
+            print_format(ENERGY_WIDTH, (app->power_sig.DC_power * app->power_sig.time) / (3600 * 1000), 2);
             break;
         case CARBON_FOOTPRINT:
             print_format(CARBON_WIDTH,
@@ -208,13 +213,13 @@ bool print_power_signature_format(application_t *app, char f)
                          2);
             break;
         case DC_POWER: // DC power
-            print_format(POWER_WIDTH, app->power_sig.DC_power, 2);
+            print_format(POWER_WIDTH, app->power_sig.DC_power, 0);
             break;
         case DRAM_POWER: // DRAM power
-            print_format(DRAM_POWER_WIDTH, app->power_sig.DRAM_power, 2);
+            print_format(DRAM_POWER_WIDTH, app->power_sig.DRAM_power, 0);
             break;
         case PCK_POWER: // PCK power
-            print_format(PCK_POWER_WIDTH, app->power_sig.PCK_power, 2);
+            print_format(PCK_POWER_WIDTH, app->power_sig.PCK_power, 0);
             break;
             // these format chars exist in Signatures, but not power_signature. Should be consumed
         case IMC_FREQ: // imc freq
@@ -240,7 +245,9 @@ bool print_power_signature_format(application_t *app, char f)
 #endif
             break;
         case ALL_FREQS: // all frequencies
-            print_format_custom("%-3s/%-3s/%-8s ", "---", "---", "---");
+            print_format_custom("%-3.2lf/", app->power_sig.avg_f / 1000000.0);
+            print_format_custom("%-3.2lf/", app->power_sig.def_f / 1000000.0);
+            print_format_custom("%-6.2s ", "---");
             break;
         case CACHE_MISSES: // cache misses
             print_format(CACHE_WIDTH, "---");
@@ -277,24 +284,24 @@ bool print_signature_format(signature_t *sig, char f, int32_t time_length)
     signature_format_type fmt = f;
     switch (fmt) {
         case DC_POWER: // DC power
-            print_format(POWER_WIDTH, sig->DC_power, 2);
+            print_format(POWER_WIDTH, sig->DC_power, 0);
             break;
         case DRAM_POWER: // DRAM power
-            print_format(DRAM_POWER_WIDTH, sig->DRAM_power, 2);
+            print_format(DRAM_POWER_WIDTH, sig->DRAM_power, 0);
             break;
         case PCK_POWER: // PCK power
-            print_format(PCK_POWER_WIDTH, sig->PCK_power, 2);
+            print_format(PCK_POWER_WIDTH, sig->PCK_power, 0);
             break;
         case GBS: // GBS
-            print_format(GBS_WIDTH, sig->GBS, 2);
+            print_format(GBS_WIDTH, sig->GBS, 0);
             break;
         case TPI: // TPI
-            print_format(TPI_WIDTH, sig->TPI, 2);
+            print_format(TPI_WIDTH, sig->TPI, 0);
             break;
         case CPI: // CPI
             print_format(CPI_WIDTH, sig->CPI, 2);
             break;
-        case GFLOPS: // gflops
+        case GFLOPS: // gflops/watt
             print_format(GFLOPS_WIDTH, sig->Gflops / sig->DC_power, 2);
             break;
         case TIME: // time
@@ -342,7 +349,7 @@ bool print_signature_format(signature_t *sig, char f, int32_t time_length)
             print_format(VPI_WIDTH, vpi * 100, 2);
         } break;
         case ENERGY: // energy
-            print_format(ENERGY_WIDTH, sig->DC_power * sig->time, 2);
+            print_format(ENERGY_WIDTH, sig->DC_power * sig->time / (3600 * 1000), 2);
             break;
         case CARBON_FOOTPRINT:
             print_format(CARBON_WIDTH, (((sig->DC_power * sig->time) * PUE) / (3600 * 1000)) * CARBON_INTENSITY, 2);
@@ -445,7 +452,14 @@ void print_app_format(application_t *app, char *fmt, int num_nodes)
                 print_format(OTHER_WIDTH, app->job.local_id);
                 break;
             case USER_ID: // user id
-                print_format(OTHER_WIDTH, app->job.user_id);
+                if (display_user_column) {
+                    char tmp[256] = {0};
+                    strcpy(tmp, app->job.user_id);
+                    if (strlen(app->job.user_id) > OTHER_WIDTH) {
+                        tmp[OTHER_WIDTH - 1] = '\0';
+                    }
+                    print_format(OTHER_WIDTH, tmp);
+                }
                 break;
             case NODE_ID: // node id
                 print_format(OTHER_WIDTH, app->node_id);
@@ -490,7 +504,8 @@ void print_header_format(char *fmt, uint32_t type)
                 print_format_custom("%8s-%-4s ", "JOB", "STEP");
                 break;
             case USER_ID: // user id
-                print_format(OTHER_WIDTH, "USER");
+                if (display_user_column)
+                    print_format(OTHER_WIDTH, "USER");
                 break;
             case LOCAL_ID:
                 print_format(OTHER_WIDTH, "AID");
@@ -501,14 +516,14 @@ void print_header_format(char *fmt, uint32_t type)
                     print_format(OTHER_WIDTH, "END TIME");
                 } else {
 #if REPORT_TIMESTAMP
-                    print_format(OTHER_WIDTH, "DATE");
+                    print_format(OTHER_WIDTH, "TIMESTAMP");
 #else
                     print_format(OTHER_WIDTH, "ITER.");
 #endif
                 }
                 break;
             case NODE_ID: // node id
-                print_format(OTHER_WIDTH, "NODE ID");
+                print_format(OTHER_WIDTH, "NODE");
                 break;
             case NUM_NODES: // num nodes
                 print_format(OTHER_WIDTH, "NODES");
@@ -558,13 +573,13 @@ void print_header_format(char *fmt, uint32_t type)
                 print_format(CYCLES_WIDTH, "CYCLES");
                 break;
             case ALL_FREQS: // all three freqs in format
-                print_format_custom("%-3s/%-3s/%-8s ", "AVG", "DEF", "IMC(GHz)");
+                print_format_custom("%-3s/%-3s/%-8s ", "AVG", "DEF", "MEM(GHz)");
                 break;
             case FREQUENCY: // frequency
                 print_format(FREQ_WIDTH, "AVG(GHz)");
                 break;
             case IMC_FREQ: // imc freq
-                print_format(FREQ_WIDTH, "IMC(GHz)");
+                print_format(FREQ_WIDTH, "MEM(GHz)");
                 break;
             case DEF_FREQ: // def_f
                 print_format(FREQ_WIDTH, "DEF(GHz)");
@@ -579,7 +594,7 @@ void print_header_format(char *fmt, uint32_t type)
                 print_format(VPI_WIDTH, "VPI(%)");
                 break;
             case ENERGY: // energy
-                print_format(ENERGY_WIDTH, "ENERGY(J)");
+                print_format(ENERGY_WIDTH, "ENERGY(KWh)");
                 break;
             case CARBON_FOOTPRINT:
                 print_format(CARBON_WIDTH, "CARBON FOOTPRINT(g)");
@@ -1085,7 +1100,7 @@ void read_applications_from_database(char *user, query_adds_t *q_a, char *format
 
     sprintf(query, "SELECT Applications.* FROM Applications join Jobs on Applications.job_id=Jobs.job_id and "
                    "Applications.step_id = Jobs.step_id and Jobs.local_id = Applications.local_id where Jobs.job_id in "
-                   "(select job_id from (select job_id, end_time from Jobs");
+                   "(select job_id from (select distinct(job_id) from Jobs");
     application_t *apps;
     if (q_a->job_id >= 0)
         add_int_filter(query, "job_id", q_a->job_id);
@@ -1149,8 +1164,8 @@ void read_applications_from_database(char *user, query_adds_t *q_a, char *format
         exit(1);
     }
 
-    if (q_a->limit == 20 && strlen(csv_path) < 1)
-        printf("\nBy default only the first 20 jobs are retrieved.\n\n");
+    if (q_a->limit == DEFAULT_QUERY_LIMIT && strlen(csv_path) < 1 && num_apps >= DEFAULT_QUERY_LIMIT)
+        printf("\nBy default only the first %d jobs are retrieved.\n\n", DEFAULT_QUERY_LIMIT);
 
     bool is_csv    = (strlen(csv_path) > 1);
     bool aggregate = !full_length;
@@ -1177,7 +1192,7 @@ int main(int argc, char *argv[])
 
     query_adds_t query_adds = {0};
 
-    query_adds.limit   = 20;
+    query_adds.limit   = DEFAULT_QUERY_LIMIT;
     query_adds.job_id  = -1;
     query_adds.step_id = -1;
 
@@ -1214,7 +1229,8 @@ int main(int argc, char *argv[])
 
     char *user = user_info.ruid_name;
     if (getuid() == 0 || is_privileged_command(&my_conf)) {
-        user = NULL; // by default, privilegd users or root will query all user jobs
+        user                = NULL; // by default, privilegd users or root will query all user jobs
+        display_user_column = true;
     }
 
     char *token;
@@ -1258,7 +1274,9 @@ int main(int argc, char *argv[])
                 user = optarg;
                 break;
             case 'j':
-                query_adds.limit = query_adds.limit == 20 ? -1 : query_adds.limit; // if the limit is still the default
+                query_adds.limit = query_adds.limit == DEFAULT_QUERY_LIMIT
+                                       ? -1
+                                       : query_adds.limit; // if the limit is still the default
                 if (strchr(optarg, ',')) {
                     strcpy(query_adds.job_ids, optarg);
                 } else {

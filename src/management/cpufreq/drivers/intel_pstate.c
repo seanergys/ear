@@ -106,13 +106,13 @@ void mgt_intel_pstate_load(topology_t *tp, mgt_ps_driver_ops_t *ops)
     apis_put(ops->get_freq_details, mgt_intel_pstate_get_freq_details);
     apis_put(ops->get_available_list, mgt_intel_pstate_get_available_list);
     apis_put(ops->get_current_list, mgt_intel_pstate_get_current_list);
-    apis_put(ops->get_boost, mgt_intel_pstate_get_boost);
-    apis_put(ops->get_governor, mgt_intel_pstate_governor_get);
+    apis_put(ops->get_boost        , mgt_intel_pstate_get_boost);
+    apis_put(ops->get_governor     , mgt_intel_pstate_governor_get);
     apis_put(ops->get_governor_list, mgt_intel_pstate_governor_get_list);
     apis_put(ops->is_governor_available, mgt_intel_pstate_governor_is_available);
-    apis_pin(ops->set_current_list, mgt_intel_pstate_set_current_list, set_frequency);
-    apis_pin(ops->set_current, mgt_intel_pstate_set_current, set_frequency);
-    apis_pin(ops->set_governor, mgt_intel_pstate_governor_set, set_governor);
+    apis_pin(ops->set_current_list , mgt_intel_pstate_set_current_list, set_frequency);
+    apis_pin(ops->set_current      , mgt_intel_pstate_set_current, set_frequency     );
+    apis_pin(ops->set_governor     , mgt_intel_pstate_governor_set, set_governor     );
     apis_pin(ops->set_governor_mask, mgt_intel_pstate_governor_set_mask, set_governor);
     apis_pin(ops->set_governor_list, mgt_intel_pstate_governor_set_list, set_governor);
     debug("Loaded INTEL_PSTATE");
