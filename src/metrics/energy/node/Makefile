@@ -42,8 +42,8 @@ ener_BINS = \
     energy_sd650_power.so  \
     grace_hopper_module_power.so \
     energy_cray_pm.so \
-    ipmi_auto.so \
-    ipmi_oem.so
+    ipmi_sensors.so \
+    ipmi_raw.so
 
 ifeq ($(SYSTEM_TYPE), 3)
     ener_BINS += energy_eard_nm.so
