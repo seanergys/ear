@@ -20,6 +20,7 @@
 #pragma once
 
 #include <common/config.h>
+#include <common/states.h>
 #include <common/types/generic.h>
 
 #define TOTAL_POLICIES         3
@@ -41,7 +42,7 @@ typedef struct policy_conf {
     uint is_available; // default at 0, not available
 } policy_conf_t;
 
-#include <common/types/configuration/cluster_conf.h>
+// #include <common/types/configuration/cluster_conf.h>
 
 /** copy dest=src */
 void copy_policy_conf(policy_conf_t *dest, policy_conf_t *src);

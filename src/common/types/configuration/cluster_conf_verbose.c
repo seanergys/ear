@@ -20,6 +20,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <common/utils/sched_support.h>
+
 void print_islands_conf(node_island_t *conf)
 {
     int i, j;
@@ -35,19 +37,24 @@ void print_islands_conf(node_island_t *conf)
         verbosen(VCCONF, "\n");
     }
     for (i = 0; i < conf->num_ranges; i++) {
+        char buffer[2048] = {0};
+        size_t final_size = 0;
+        int32_t cut_nodes = concat_range("", &conf->ranges[i].range, 2048, &final_size, buffer);
+        if (cut_nodes > 0) {
+            buffer[final_size]     = '.';
+            buffer[final_size - 1] = '.';
+            buffer[final_size - 2] = '.';
+        }
 
         if (conf->ranges[i].db_ip < 0) {
-            verbosen(VCCONF, "---->prefix: %s\tstart: %u\tend: %u eargm: %d\n", conf->ranges[i].prefix,
-                     conf->ranges[i].start, conf->ranges[i].end, conf->ranges[i].eargm_id);
+            verbosen(VCCONF, "---->nodes: %s\t eargm: %d\n", buffer, conf->ranges[i].eargm_id);
 
         } else if (conf->ranges[i].sec_ip < 0) {
-            verbosen(VCCONF, "---->prefix: %s\tstart: %u\tend: %u\tip: %s eargm: %d\n", conf->ranges[i].prefix,
-                     conf->ranges[i].start, conf->ranges[i].end, conf->db_ips[conf->ranges[i].db_ip],
+            verbosen(VCCONF, "---->nodes: %s\tip: %s eargm: %d\n", buffer, conf->db_ips[conf->ranges[i].db_ip],
                      conf->ranges[i].eargm_id);
 
         } else {
-            verbosen(VCCONF, "---->prefix: %s\tstart: %u\tend: %u\tip: %s\tbackup: %s eargm: %d\n",
-                     conf->ranges[i].prefix, conf->ranges[i].start, conf->ranges[i].end,
+            verbosen(VCCONF, "---->nodes: %s\tip: %s\tbackup: %s eargm: %d\n", buffer,
                      conf->db_ips[conf->ranges[i].db_ip], conf->backup_ips[conf->ranges[i].sec_ip],
                      conf->ranges[i].eargm_id);
         }

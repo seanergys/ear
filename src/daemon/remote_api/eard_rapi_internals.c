@@ -1162,38 +1162,60 @@ state_t ear_nodelist_send_message(cluster_conf_t *my_cluster_conf, char *message
     return EAR_SUCCESS;
 }
 
+/* Prints the error message for the node with ip node_ip.
+ * error_type = 1 is a connection error.
+ * error_type = 2 is a message error.
+ */
+static void _print_ping_error(char *node_ip, int32_t error_type)
+{
+    struct addrinfo hints   = {0};
+    struct addrinfo *result = NULL;
+    hints.ai_family         = AF_UNSPEC;
+    hints.ai_socktype       = SOCK_STREAM;
+    hints.ai_flags          = AI_CANONNAME;
+
+    char *final_name = node_ip;
+    if (getaddrinfo(node_ip, NULL, &hints, &result) != 0) {
+        error("Could not get %s node name", node_ip);
+    } else {
+        final_name = result->ai_canonname;
+    }
+    switch (error_type) {
+        case 1:
+            error("Error connecting with node %s", final_name);
+            break;
+        case 2:
+            error("Error doing ping for node %s", final_name);
+            break;
+        default:
+            error("Unknown error for node %s", final_name);
+            break;
+    }
+}
+
 /* pings all nodes */
 state_t ear_cluster_ping(cluster_conf_t *my_cluster_conf)
 {
-    int i, j, k, rc;
+    int32_t i, j, rc;
+    int32_t **ips = NULL, *ip_counts = NULL;
     char node_name[256];
+    struct sockaddr_in temp = {0};
     debug("Sendind ping to all nodes");
     // it is always secuential as it is only used for debugging purposes
-    for (i = 0; i < my_cluster_conf->num_islands; i++) {
-        for (j = 0; j < my_cluster_conf->islands[i].num_ranges; j++) {
-            for (k = my_cluster_conf->islands[i].ranges[j].start; k <= my_cluster_conf->islands[i].ranges[j].end; k++) {
-                if (k == -1)
-                    sprintf(node_name, "%s", my_cluster_conf->islands[i].ranges[j].prefix);
-                else if (my_cluster_conf->islands[i].ranges[j].end == my_cluster_conf->islands[i].ranges[j].start)
-                    sprintf(node_name, "%s%u", my_cluster_conf->islands[i].ranges[j].prefix, k);
-                else {
-                    if (k < 10 && my_cluster_conf->islands[i].ranges[j].end > 10)
-                        sprintf(node_name, "%s0%u", my_cluster_conf->islands[i].ranges[j].prefix, k);
-                    else
-                        sprintf(node_name, "%s%u", my_cluster_conf->islands[i].ranges[j].prefix, k);
-                }
-                if (strlen(my_cluster_conf->net_ext) > 0) {
-                    strcat(node_name, my_cluster_conf->net_ext);
-                }
-                rc = remote_connect(node_name, my_cluster_conf->eard.port);
-                if (rc < 0) {
-                    error("Error connecting with node %s", node_name);
-                } else {
-                    debug("Node %s ping!", node_name);
-                    if (!ear_node_ping())
-                        error("Error doing ping for node %s", node_name);
-                    remote_disconnect();
-                }
+    int32_t total_ranges = get_ip_ranges(my_cluster_conf, &ip_counts, &ips);
+    for (i = 0; i < total_ranges; i++) {
+        for (j = 0; j < ip_counts[i]; j++) {
+            temp.sin_addr.s_addr = ips[i][j];
+            strcpy(node_name, inet_ntoa(temp.sin_addr));
+            rc = remote_connect(node_name, my_cluster_conf->eard.port);
+
+            if (rc < 0) {
+                _print_ping_error(node_name, 1);
+            } else {
+                debug("Node %s ping!", node_name);
+                if (!ear_node_ping())
+                    _print_ping_error(node_name, 2);
+                remote_disconnect();
             }
         }
     }

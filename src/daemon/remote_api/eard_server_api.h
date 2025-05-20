@@ -17,6 +17,7 @@
 #include <sys/socket.h>
 
 #include <common/messaging/msg_conf.h>
+#include <common/types/configuration/cluster_conf.h>
 
 void propagate_req(request_t *command, uint port);
 int propagate_and_cat_data(request_t *command, uint port, void **status, size_t size, uint type, int num_items);
