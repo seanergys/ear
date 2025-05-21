@@ -84,9 +84,7 @@ static void create_dummy_node_conf(cluster_conf_t *dummycc, char *nodename)
         return;
     }
     memset(&island->ranges[island->num_ranges], 0, sizeof(node_range_t));
-    sprintf(island->ranges[island->num_ranges].prefix, "%s", nodename);
-    island->ranges[island->num_ranges].start = island->ranges[island->num_ranges].end = -1;
-    island->ranges[island->num_ranges].db_ip = island->ranges[island->num_ranges].sec_ip = 0;
+    sprintf(island->ranges[island->num_ranges].range.prefix, "%s", nodename);
     island->num_ranges++;
 }
 

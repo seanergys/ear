@@ -487,10 +487,9 @@ uint cluster_get_min_power(cluster_conf_t *conf, char type)
                 tag_id = def_tag_id;
             }
             if (type == ENERGY_TYPE) {
-                total += conf->tags[tag_id].max_power * (current_range->end - current_range->start + 1);
-
+                total += conf->tags[tag_id].max_power * node_range_get_num_nodes(current_range);
             } else {
-                total += conf->tags[tag_id].powercap * (current_range->end - current_range->start + 1);
+                total += conf->tags[tag_id].powercap * node_range_get_num_nodes(current_range);
             }
         }
     }

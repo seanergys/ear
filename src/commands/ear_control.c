@@ -82,7 +82,7 @@ typedef struct eardbd_table {
 cluster_conf_t my_cluster_conf;
 int no_error = 0;
 
-void fill_ip(char *buff, ip_table_t *table)
+static void _fill_ip(char *buff, ip_table_t *table)
 {
     struct addrinfo hints;
     struct addrinfo *result, *rp;
@@ -127,7 +127,7 @@ int generate_node_names_from_list(cluster_conf_t *my_cluster_conf, ip_table_t **
         else
             new_ips[i].max_power = (uint) aux_node_conf->max_error_power;
 
-        fill_ip(hosts[i], &new_ips[i]); // fill the ip using the net_ext
+        _fill_ip(hosts[i], &new_ips[i]); // fill the ip using the net_ext
     }
 
     *ips = new_ips;
@@ -136,39 +136,40 @@ int generate_node_names_from_list(cluster_conf_t *my_cluster_conf, ip_table_t **
 
 int generate_node_names(cluster_conf_t *my_cluster_conf, ip_table_t **ips)
 {
-    int k, n;
-    unsigned int i, j;
     char node_name[256];
-    int num_ips         = 0;
     ip_table_t *new_ips = NULL;
-    int tag_id          = 0;
-    int default_tag     = get_default_tag_id(my_cluster_conf);
-    for (i = 0; i < my_cluster_conf->num_islands; i++) {
-        for (j = 0; j < my_cluster_conf->islands[i].num_ranges; j++) {
-            for (k = my_cluster_conf->islands[i].ranges[j].start; k <= my_cluster_conf->islands[i].ranges[j].end; k++) {
-                if (k == -1)
-                    sprintf(node_name, "%s", my_cluster_conf->islands[i].ranges[j].prefix);
-                else if (my_cluster_conf->islands[i].ranges[j].end == my_cluster_conf->islands[i].ranges[j].start)
-                    sprintf(node_name, "%s%u", my_cluster_conf->islands[i].ranges[j].prefix, k);
-                else {
-                    if (k < 10 && my_cluster_conf->islands[i].ranges[j].end > 10)
-                        sprintf(node_name, "%s0%u", my_cluster_conf->islands[i].ranges[j].prefix, k);
-                    else
-                        sprintf(node_name, "%s%u", my_cluster_conf->islands[i].ranges[j].prefix, k);
+    int32_t num_ips     = 0; // ip table
+    int32_t default_tag = get_default_tag_id(my_cluster_conf);
+
+    // to be read from cluster_conf in get_ip_and_names_from_ranges
+    char ***hostnames    = NULL;
+    int32_t **ip_ints    = NULL;
+    int32_t *num_ip_ints = NULL;
+
+    get_ip_and_names_from_ranges(my_cluster_conf, &num_ip_ints, &ip_ints, &hostnames);
+
+    for (uint32_t i = 0; i < my_cluster_conf->num_islands; i++) {
+        for (uint32_t j = 0; j < my_cluster_conf->islands[i].num_ranges; j++) {
+            int32_t tag_id = 0;
+
+            for (int32_t n = 0; n < my_cluster_conf->islands[i].ranges[j].num_tags; n++) {
+                tag_id = tag_id_exists(
+                    my_cluster_conf,
+                    my_cluster_conf->islands[i].specific_tags[my_cluster_conf->islands[i].ranges[j].specific_tags[n]]);
+                if (tag_id >= 0) {
+                    break;
                 }
+            }
+            if (tag_id < 0) {
+                tag_id = default_tag;
+            }
+
+            for (int32_t k = 0; k < num_ip_ints[j]; k++) {
+                strcpy(node_name, hostnames[j][k]);
+
                 new_ips = realloc(new_ips, sizeof(ip_table_t) * (num_ips + 1));
-                strcpy(new_ips[num_ips].name, node_name);
-                for (n = 0; n < my_cluster_conf->islands[i].ranges[j].num_tags; n++) {
-                    tag_id = tag_id_exists(my_cluster_conf,
-                                           my_cluster_conf->islands[i]
-                                               .specific_tags[my_cluster_conf->islands[i].ranges[j].specific_tags[n]]);
-                    if (tag_id >= 0) {
-                        break;
-                    }
-                }
-                if (tag_id < 0) {
-                    tag_id = default_tag;
-                }
+                strcpy(new_ips[num_ips].name, hostnames[j][k]);
+                new_ips[num_ips].ip_int = ip_ints[j][k];
 
                 if (tag_id >= 0) { // still need to check
                     new_ips[num_ips].max_power = my_cluster_conf->tags[tag_id].error_power;
@@ -179,7 +180,10 @@ int generate_node_names(cluster_conf_t *my_cluster_conf, ip_table_t **ips)
                 if (strlen(my_cluster_conf->net_ext) > 0)
                     strcat(node_name, my_cluster_conf->net_ext);
 
-                fill_ip(node_name, &new_ips[num_ips]);
+                struct sockaddr_in saddr = {0};
+                saddr.sin_addr.s_addr    = new_ips[num_ips].ip_int;
+                strcpy(new_ips[num_ips].ip, inet_ntoa(saddr.sin_addr));
+
                 num_ips++;
             }
         }
@@ -352,10 +356,10 @@ void check_ip(status_t *status, ip_table_t *ips, int num_ips)
             ips[i].step_id      = status->app.step_id;
         // refactor
 #if 0
-            for (j = 0; j < TOTAL_POLICIES; j++)
-            {
-                memcpy(&ips[i].policies[j], &status->policy_conf[j], sizeof(eard_policy_info_t));
-            }
+			for (j = 0; j < TOTAL_POLICIES; j++)
+			{
+				memcpy(&ips[i].policies[j], &status->policy_conf[j], sizeof(eard_policy_info_t));
+			}
 #endif
             return;
         }
@@ -706,7 +710,7 @@ void generate_ip(ip_table_t *ips, char *node_name)
     else
         ips[0].max_power = (uint) aux_node_conf->max_error_power;
 
-    fill_ip(node_name, &ips[0]); // fill the ip using the net_ext
+    _fill_ip(node_name, &ips[0]); // fill the ip using the net_ext
 }
 
 void process_single_policy_status(int num_status, policy_status_t *status, char *node_name)
@@ -1254,11 +1258,11 @@ int main(int argc, char *argv[])
                     }
                     break;
 #if 0
-                case EAR_TYPE_FULL_STATUS:
-                    if ((num_status = ear_node_get_status(&my_cluster_conf, &status)) != 1) 
-                        printf("Error doing status for node %s, returned (%d)\n", node_name, num_status);
-                    process_single_status(num_status, status, node_name, FULL_STATUS);
-                    break;
+				case EAR_TYPE_FULL_STATUS:
+					if ((num_status = ear_node_get_status(&my_cluster_conf, &status)) != 1) 
+						printf("Error doing status for node %s, returned (%d)\n", node_name, num_status);
+					process_single_status(num_status, status, node_name, FULL_STATUS);
+					break;
 #endif
                 case EAR_TYPE_POWER_STATUS:
                     printf("Reading power_status from node %s\n", node_name);
@@ -1318,10 +1322,10 @@ int main(int argc, char *argv[])
                 }
                 break;
 #if 0
-            case EAR_TYPE_FULL_STATUS:
-                num_status = ear_get_status(&my_cluster_conf, &status, nodes, num_nodes);
-                process_status(num_status, status, FULL_STATUS);
-                break;
+			case EAR_TYPE_FULL_STATUS:
+				num_status = ear_get_status(&my_cluster_conf, &status, nodes, num_nodes);
+				process_status(num_status, status, FULL_STATUS);
+				break;
 #endif
             case EAR_TYPE_POWER_STATUS:
                 if (state_fail(ear_get_powercap_status(&my_cluster_conf, &powerstatus, 0, nodes, num_nodes))) {

@@ -9,6 +9,7 @@
  **************************************************************************/
 
 #include <fcntl.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,6 +27,8 @@
 
 #include <common/types/configuration/cluster_conf_tag.h>
 
+#include <common/types/configuration/cluster_conf.h>
+
 // #define __OLD__CONF__
 
 // checks if small is one number shorter
@@ -38,80 +41,164 @@ int is_smaller_unit(int small, int big)
     return big; // big will be > 0 if it's a bigger unit
 }
 
-int range_conf_contains_node(node_conf_t *node, char *nodename)
+/* Returns the difference in magnitude for two different numbers.
+ * It is used to know how many 0s to the left "small" has to have to be the same width as "big".
+ * ex: 9 and 999 returns 2 (009 has the same width as 999)
+ *     564 and 999 returns 0 (already same width)
+ */
+int32_t difference_in_units(int32_t small, int32_t big)
 {
-    char aux_name[256];
-    int i, j;
-    for (i = 0; i < node->range_count; i++) {
-        // if the first letters of the prefix do not correspond, we can continue
-        if (strncmp(node->range[i].prefix, nodename, strlen(node->range[i].prefix))) {
-            continue;
+    int32_t difference = 0;
+
+    // this is so 0 and 9 return 0, not 1.
+    if (small == 0)
+        small++;
+
+    while (big) {
+        if (small == 0)
+            difference++;
+        small /= 10;
+        big /= 10;
+    }
+    return difference;
+}
+
+int32_t _get_num_nodes(range_def_t *r)
+{
+#warning UNTESTED
+    int32_t total = 0;
+    if (r == NULL)
+        return 1;
+    if (r->numbers_count == 0)
+        return 1;
+    int32_t inner_count = _get_num_nodes(r->next);
+    for (int32_t i = 0; i < r->numbers_count; i++) {
+        pair *aux = &r->numbers[i];
+        if (aux->first == 0 && aux->second == 0) {
+            total += 1;
+        } else if (aux->second == 0) {
+            total += 1 * inner_count;
+        } else {
+            total += (aux->second - aux->first + 1) * inner_count;
         }
-        if (node->range[i].end == -1) {
-            // no need to check in this case
-            return 1;
-#if 0
-            sprintf(aux_name, "%s", node->range[i].prefix);
-            if (!strcmp(aux_name, nodename)) return 1;
-            else continue;
-#endif
-        }
-        if (node->range[i].end == node->range[i].start) {
-            sprintf(aux_name, "%s%u", node->range[i].prefix, node->range[i].start);
-            if (!strcmp(aux_name, nodename))
-                return 1;
-            else
+    }
+    return total;
+}
+
+int32_t node_range_get_num_nodes(node_range_t *r)
+{
+    int32_t total = _get_num_nodes(&r->range);
+    return total;
+}
+
+bool _check_range_for_node(char *base, range_def_t *r, char *nodename)
+{
+    char buff[1024]        = {0};
+    char second_buff[1024] = {0};
+    if (r == NULL) {
+        if (!strcmp(nodename, base))
+            return true;
+        else
+            return false;
+    }
+    if (base != NULL)
+        strcpy(buff, base);
+    if (r->numbers_count == 0) { // special case
+        strcat(buff, r->prefix);
+        if (!strcmp(nodename, buff))
+            return true;
+    }
+    for (int32_t i = 0; i < r->numbers_count; i++) {
+        memset(second_buff, 0, sizeof(second_buff));
+        memset(buff, 0, sizeof(buff));
+        if (base != NULL)
+            strcpy(buff, base);
+        pair *aux = &r->numbers[i];
+        /*   1)0-0 if NO numbers had to be set (ideally shouldn't happen and the pointer would be null with no range).
+         * cmp2546[] (useless []) 2)0-N or N-M if BOTH numbers have been set. ex: cmp25[45-47] 3)N-0 if only ONE number
+         * has been set. ex: cmp25[45]
+         */
+        if (aux->first == 0 && aux->second == 0) {
+            sprintf(second_buff, "%s", r->prefix);
+            strcat(buff, second_buff);
+            if (strncmp(buff, nodename, strlen(buff)))
                 continue;
-        }
-        for (j = node->range[i].end; j >= node->range[i].start && j >= 0; j--) {
-            if (is_smaller_unit(j, node->range[i].end))
-                sprintf(aux_name, "%s0%u", node->range[i].prefix, j);
-            else
-                sprintf(aux_name, "%s%u", node->range[i].prefix, j);
-            if (!strcmp(aux_name, nodename)) {
-                return 1;
+            else if (_check_range_for_node(buff, r->next, nodename))
+                return true;
+        } else if (aux->second == 0) {
+            sprintf(second_buff, "%s", r->prefix);
+            for (int32_t i = 0; i < aux->leading_zeroes; i++)
+                strcat(second_buff, "0");
+            sprintf(&second_buff[strlen(second_buff)], "%d", aux->first);
+            strcat(buff, second_buff);
+            if (strncmp(buff, nodename, strlen(buff)))
+                continue;
+            else if (_check_range_for_node(buff, r->next, nodename))
+                return true;
+        } else {
+            for (int32_t i = 0; i <= (aux->second - aux->first); i++) {
+                memset(second_buff, 0, sizeof(second_buff));
+                memset(buff, 0, sizeof(second_buff));
+                if (base != NULL)
+                    strcpy(buff, base);
+
+                sprintf(second_buff, "%s", r->prefix);
+                int32_t zeroes = aux->leading_zeroes + difference_in_units(aux->first + i, aux->second);
+                for (int32_t j = 0; j < zeroes; j++)
+                    strcat(second_buff, "0");
+                sprintf(&second_buff[strlen(second_buff)], "%d", aux->first + i);
+                strcat(buff, second_buff);
+                if (strncmp(buff, nodename, strlen(buff)))
+                    continue;
+                else if (_check_range_for_node(buff, r->next, nodename))
+                    return true;
             }
         }
     }
 
-    return 0;
+    return false;
 }
 
-int island_range_conf_contains_node(node_island_t *node, char *nodename)
+bool range_conf_contains_node(node_conf_t *node, char *nodename)
 {
     char aux_name[256];
-    int i, j;
-    for (i = 0; i < node->num_ranges; i++) {
+    for (int32_t i = 0; i < node->range_count; i++) {
+        range_def_t *r = &node->range[i].range;
         // if the first letters of the prefix do not correspond, we can continue
-        if (strncmp(node->ranges[i].prefix, nodename, strlen(node->ranges[i].prefix))) {
-            // debug("node range does not correspond (%s vs %s), continuing\n", node->ranges[i].prefix, nodename);
+        if (strncmp(r->prefix, nodename, strlen(r->prefix))) {
             continue;
         }
-        if (node->ranges[i].end == -1) {
-            // we don't need to do the comparison in this case, if the prefix is equal to the nodename they are the same
-            // debug("entering comparison with nodenames %s and %s\n", node->ranges[i].prefix, nodename);
+
+        // the prefix is the nodename, no need to check
+        if (r->numbers == NULL || r->numbers_count < 1) {
+            return true;
+        }
+
+        // check the numbers to see if it matches
+        if (_check_range_for_node("", r, nodename))
+            return true;
+    }
+
+    return false;
+}
+
+int nodeconf_get_island_range_for_node(node_island_t *node, char *nodename)
+{
+    for (int32_t i = 0; i < node->num_ranges; i++) {
+        range_def_t *r = &node->ranges[i].range;
+        // if the first letters of the prefix do not correspond, we can continue
+        if (strncmp(r->prefix, nodename, strlen(r->prefix))) {
+            continue;
+        }
+
+        // the prefix is the nodename, no need to check
+        if (r->numbers == NULL || r->numbers_count < 1) {
             return i;
-#if 0
-            sprintf(aux_name, "%s", node->ranges[i].prefix);
-            if (!strcmp(aux_name, nodename)) return i;
-            else continue;
-#endif
         }
-        if (node->ranges[i].end == node->ranges[i].start) {
-            sprintf(aux_name, "%s%u", node->ranges[i].prefix, node->ranges[i].start);
-            if (!strcmp(aux_name, nodename))
-                return i;
-            else
-                continue;
-        }
-        for (j = node->ranges[i].end; j >= node->ranges[i].start && j >= 0; j--) {
-            if (is_smaller_unit(j, node->ranges[i].end))
-                sprintf(aux_name, "%s0%u", node->ranges[i].prefix, j);
-            else
-                sprintf(aux_name, "%s%u", node->ranges[i].prefix, j);
-            if (!strcmp(aux_name, nodename))
-                return i;
-        }
+
+        // check the numbers to see if it matches
+        if (_check_range_for_node("", r, nodename))
+            return i;
     }
 
     return -1;
@@ -167,9 +254,17 @@ void print_node_conf(node_conf_t *my_node_conf)
 {
     int i;
     verbose(VCCONF, "-->cpus %u def_file: %s\n", my_node_conf->cpus, my_node_conf->coef_file);
-    for (i = 0; i < my_node_conf->range_count; i++)
-        verbosen(VCCONF, "---->prefix: %s\tstart: %u\tend: %u\n", my_node_conf->range[i].prefix,
-                 my_node_conf->range[i].start, my_node_conf->range[i].end);
+    for (i = 0; i < my_node_conf->range_count; i++) {
+        range_def_t *r   = &my_node_conf->range[i].range;
+        char spaces[128] = {0};
+        while (r != NULL) {
+            verbosen(VCCONF, "%s---->prefix: %s\n", spaces, r->prefix) for (int32_t j = 0; j < r->numbers_count; j++)
+            {
+                verbosen(VCCONF, "%s\t---->numbers: start: %d\t end: %d\tleading zeroes: %d\n", spaces,
+                         r->numbers[j].first, r->numbers[j].first, r->numbers[j].leading_zeroes)
+            }
+        }
+    }
 }
 
 void report_my_node_conf(my_node_conf_t *my_node_conf)
@@ -203,7 +298,6 @@ void report_my_node_conf(my_node_conf_t *my_node_conf)
         for (i = 0; i < my_node_conf->num_policies; i++) {
             report_policy_conf(&my_node_conf->policies[i]);
         }
-
         snprintf(buffer, sizeof(buffer), "max_sig_power %.0lf min_sig_power %.0lf \n", my_node_conf->max_sig_power,
                  my_node_conf->min_sig_power);
         printf("%60.60s", buffer);
@@ -211,7 +305,6 @@ void report_my_node_conf(my_node_conf_t *my_node_conf)
         snprintf(buffer, sizeof(buffer), "error_power %.0lf max_temp %lu \n", my_node_conf->max_error_power,
                  my_node_conf->max_temp);
         printf("%60.60s", buffer);
-
         snprintf(buffer, sizeof(buffer), "powercap_type %s\n",
                  (my_node_conf->powercap_type == POWERCAP_TYPE_NODE) ? "NODE" : "JOB");
         printf("%60.60s", buffer);
