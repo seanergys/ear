@@ -32,6 +32,7 @@ typedef struct pss_s {
     ullong fid;
     ullong did;
     ullong cof;
+    ullong mul;
 } pss_t;
 
 #define MAX_PSTATES       128
@@ -49,15 +50,15 @@ typedef struct pss_s {
 #define READ_BOOST_LIMIT  0x0A // gets the frequency limit currently enforced or Fmax
 #define WRITE_BOOST_LIMIT 0x08 // sets the frequency limit
 
-static topology_t tp;
 static mgt_ps_driver_ops_t *driver;
-static ullong regs[MAX_REGISTERS];
-static pss_t psss[MAX_PSTATES];
-static uint boost_enabled;
-static uint pss_nominal;
-static uint pss_count;
-static uint init;
-static uint mode_virtual;
+static topology_t tp;
+static ullong     regs[MAX_REGISTERS];
+static pss_t      psss[MAX_PSTATES];
+static uint       boost_enabled;
+static uint       pss_nominal;
+static uint       pss_count;
+static uint       init;
+static uint       mode_virtual;
 
 //
 static state_t set_pstate(uint cpu, uint pst, uint test, uint set_driver);
@@ -110,20 +111,20 @@ state_t mgt_cpufreq_amd17_load(topology_t *tp_in, mgt_ps_ops_t *ops, mgt_ps_driv
     cond1 = (!mode_virtual || driver->set_current_list != NULL);
     cond2 = (driver->set_governor != NULL);
     // Setting references (if driver set is not available, this API neither)
-    apis_put(ops->init, mgt_cpufreq_amd17_init);
-    apis_put(ops->dispose, mgt_cpufreq_amd17_dispose);
-    apis_put(ops->get_info, mgt_cpufreq_amd17_get_info);
-    apis_put(ops->count_available, mgt_cpufreq_amd17_count_available);
+    apis_put(ops->init             , mgt_cpufreq_amd17_init);
+    apis_put(ops->dispose          , mgt_cpufreq_amd17_dispose);
+    apis_put(ops->get_info         , mgt_cpufreq_amd17_get_info);
+    apis_put(ops->count_available  , mgt_cpufreq_amd17_count_available);
     apis_put(ops->get_available_list, mgt_cpufreq_amd17_get_available_list);
-    apis_put(ops->get_current_list, mgt_cpufreq_amd17_get_current_list);
-    apis_put(ops->get_nominal, mgt_cpufreq_amd17_get_nominal);
-    apis_put(ops->get_index, mgt_cpufreq_amd17_get_index);
-    apis_pin(ops->set_current_list, mgt_cpufreq_amd17_set_current_list, cond1);
-    apis_pin(ops->set_current, mgt_cpufreq_amd17_set_current, cond1);
-    apis_pin(ops->reset, mgt_cpufreq_amd17_reset, cond1);
-    apis_put(ops->get_governor, mgt_cpufreq_amd17_governor_get);
+    apis_put(ops->get_current_list , mgt_cpufreq_amd17_get_current_list);
+    apis_put(ops->get_nominal      , mgt_cpufreq_amd17_get_nominal);
+    apis_put(ops->get_index        , mgt_cpufreq_amd17_get_index);
+    apis_pin(ops->set_current_list , mgt_cpufreq_amd17_set_current_list , cond1);
+    apis_pin(ops->set_current      , mgt_cpufreq_amd17_set_current      , cond1);
+    apis_pin(ops->reset            , mgt_cpufreq_amd17_reset            , cond1);
+    apis_put(ops->get_governor     , mgt_cpufreq_amd17_governor_get);
     apis_put(ops->get_governor_list, mgt_cpufreq_amd17_governor_get_list);
-    apis_pin(ops->set_governor, mgt_cpufreq_amd17_governor_set, cond2);
+    apis_pin(ops->set_governor     , mgt_cpufreq_amd17_governor_set     , cond2);
     apis_pin(ops->set_governor_mask, mgt_cpufreq_amd17_governor_set_mask, cond2);
     apis_pin(ops->set_governor_list, mgt_cpufreq_amd17_governor_set_list, cond2);
 
@@ -161,20 +162,31 @@ static void print_registers()
     int i;
 
     for (i = 0; i < MAX_REGISTERS; ++i) {
+        // FAMILY_ZEN
         ullong en        = getbits64(regs[i], 63, 63);
         ullong idd_div   = getbits64(regs[i], 31, 30);
         ullong idd_value = getbits64(regs[i], 29, 22);
         double idd_core  = ((double) idd_value) / pow(10.0, (double) idd_div);
         ullong vdd_cpu   = getbits64(regs[i], 21, 14);
         // double pow_core  = 1.350 - (((double) CpuVid) * 0.00625);
-        ullong freq_fid = getbits64(regs[i], 7, 0);
-        ullong freq_did = getbits64(regs[i], 13, 8);
-        ullong freq_cof = 0;
-
-        if (freq_did > 0) {
-            freq_cof = (freq_fid * 200LLU) / freq_did;
+        ullong freq_fid  = getbits64(regs[i],  7,  0);
+        ullong freq_did  = getbits64(regs[i], 13,  8); //CpuDfsId
+        ullong freq_mul  = 200LLU;
+        ullong freq_cof  = 0LLU;
+        // In FAMILY_ZEN3 or 19 documents there is a contradiction. It says
+        // both things:
+        // - CpuFid[7:0]: core frequency ID. Specifies the core frequency
+        //   multiplier. The core COF is defined as CpuFid * 5MHz.
+        // - CoreCOF = (PStateDef[CpuFid[7:0]]/PStateDef[CpuDfsId])*200.
+        if (tp.family >= FAMILY_ZEN5) {
+            vdd_cpu  = getbits64(regs[i], 21, 14) | (getbits64(regs[i], 32, 32) << 8);
+		    freq_fid = getbits64(regs[i], 11,  0);
+            freq_mul = 5LLU;
+            freq_did = 1LLU;
         }
-
+        if (freq_did > 0) {
+            freq_cof = (freq_fid * freq_mul) / freq_did;
+        }
         tprintf("%d||%LX||%llu||%llu||%llu||%0.2lf|||%llu|||%llu||* 200||/ %llu||= %llu", i, regs[i], en, idd_div,
                 idd_value, idd_core, vdd_cpu, freq_fid, freq_did, freq_cof);
     }
@@ -182,7 +194,7 @@ static void print_registers()
 }
 #endif
 
-static state_t build_pstate_fake_register(ullong freq_mhz, ullong *cof, ullong *fid, ullong *did)
+static state_t build_pstate_fake_register(ullong freq_mhz, ullong *cof, ullong *fid, ullong *did, ullong mul)
 {
     // List of predefined divisors.
     ullong _did[31] = {8,  9,  10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
@@ -196,7 +208,6 @@ static state_t build_pstate_fake_register(ullong freq_mhz, ullong *cof, ullong *
     for (m = 255; m >= 16; --m) {
         // Divisors
         for (d = 0; d < 31; ++d) {
-
             // A frequency is composed by a multiplicator and a divisor, which are set
             // in the MSR register. This function tests by brute-force, all possible
             // combinations and selects the smallest multiplicator plus divisor add.
@@ -271,19 +282,26 @@ static state_t build_pstate_list()
     min_mhz = freqs_available[freq_count - 1] / 1000LLU;
     // Getting P0(b) information from the first of a list of registers. Registers are read
     // during init phase.
-    psss[0].fid = getbits64(regs[0], 7, 0);
+    psss[0].fid = getbits64(regs[0],  7, 0);
     psss[0].did = getbits64(regs[0], 13, 8);
+    psss[0].mul = 200LLU;
+    if (tp.family >= FAMILY_ZEN5) {
+        psss[0].fid = getbits64(regs[0], 11, 0);
+        psss[0].did = 1LLU;
+        psss[0].mul = 5LLu;
+    }
     if (psss[0].did == 0) {
         return_msg(EAR_ERROR, "the frequency divisor is 0");
     }
     // Getting the P0(b) Core Frequency
-    psss[0].cof = (psss[0].fid * 200LLU) / psss[0].did;
+    psss[0].cof = (psss[0].fid * psss[0].mul) / psss[0].did;
     // If boost is enabled, P0 is copied in P1. P1 then will have the same COF.
     i = 1;
     if (boost_enabled) {
         psss[1].cof = psss[0].cof;
         psss[1].fid = psss[0].fid;
         psss[1].did = psss[0].did;
+        psss[1].mul = psss[0].mul;
         i           = 2;
     }
     // Getting P2 (or P1 if boost is not enabled) Core Frequency (intervals of 100 MHz).
@@ -578,15 +596,12 @@ state_t mgt_cpufreq_amd17_get_index(ctx_t *c, ullong freq_khz, uint *pstate_inde
 /** Setters */
 static state_t set_pstate_hsmp(uint cpu, uint pst, uint test)
 {
-    uint args[2] = {0, -1};
-    uint reps[1] = {
-        -1,
-    };
+    uint args[2] = { 0, -1};
+    uint reps[1] = { -1 };
 
     args[0] = setbits32(0, tp.cpus[cpu].apicid, 31, 16) | psss[pst].cof; // arguments are apicid and max_freq
     debug("setting PS%d: %u MHz in cpu %d (apic %d) [%u]", pst, getbits32(args[0], 15, 0), cpu,
           getbits32(args[0], 31, 16), args[0]);
-
     return hsmp_send(tp.cpus[cpu].socket_id, HSMP_SET_BOOST_LIMIT, args, reps);
 }
 
@@ -602,7 +617,7 @@ static state_t set_pstate_virtual(uint cpu, uint pst, uint test, uint set_driver
     }
     // Setting the P_STATE 'pst' multiplicator and divider
     reg = regs[0];
-    reg = setbits64(reg, psss[pst].fid, 7, 0);
+    reg = setbits64(reg, psss[pst].fid,  7, 0);
     reg = setbits64(reg, psss[pst].did, 13, 8);
     reg = setbits64(reg, 1LLU, 63, 63);
     // Writing its value in MSR
@@ -641,15 +656,11 @@ static state_t set_pstate(uint cpu, uint pst, uint test, uint set_driver)
 static state_t set_pstate0_hsmp(uint cpu)
 {
     uint args[2] = {0, -1};
-    uint reps[1] = {
-        -1,
-    };
-
+    uint reps[1] = { -1 };
     // Setting 16 bit MAX (it is converted by the system later)
     args[0] = setbits32(0, tp.cpus[cpu].apicid, 31, 16) | 65535;
-    debug("setting PS0: %u MHz in cpu %d (apic %d) [%u]", getbits32(args[0], 15, 0), cpu, getbits32(args[0], 31, 16),
-          args[0]);
-
+    debug("setting PS0: %u MHz in cpu %d (apic %d) [%u]",
+        getbits32(args[0], 15, 0), cpu, getbits32(args[0], 31, 16), args[0]);
     return hsmp_send(tp.cpus[cpu].socket_id, HSMP_SET_BOOST_LIMIT, args, reps);
 }
 
