@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-// #define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #define _GNU_SOURCE
 #include <math.h>
@@ -153,7 +153,7 @@ static void print_registers()
     // Look into 'PPR 17h, Models 31h.pdf' the MSRC001_006[4...B] register information.
     debug("-----------------------------------------------------------------------------------");
     tprintf_init(STDERR_FILENO, STR_MODE_DEF, "4 18 4 8 8 11 8 7 8 10 10");
-    tprintf("#||reg||en||IddDiv||IddVal||IddPerCore|||CpuVid|||CpuFid||  200||CpuDfsId||CoreCof");
+    tprintf("#||reg||en||IddDiv||IddVal||IddPerCore|||CpuVid|||CpuFid||  Mul||CpuDfsId||CoreCof");
     tprintf("-||---||--||------||------||----------|||------|||------||-----||--------||-------");
 
     for (i = 0; i < MAX_REGISTERS; ++i) {
@@ -182,8 +182,8 @@ static void print_registers()
         if (freq_did > 0) {
             freq_cof = (freq_fid * freq_mul) / freq_did;
         }
-        tprintf("%d||%LX||%llu||%llu||%llu||%0.2lf|||%llu|||%llu||* 200||/ %llu||= %llu", i, regs[i], en, idd_div,
-                idd_value, idd_core, vdd_cpu, freq_fid, freq_did, freq_cof);
+        tprintf("%d||%LX||%llu||%llu||%llu||%0.2lf|||%llu|||%llu||* %llu||/ %llu||= %llu", i, regs[i], en, idd_div,
+                idd_value, idd_core, vdd_cpu, freq_fid, freq_mul, freq_did, freq_cof);
     }
     debug("-----------------------------------------------------------------------------------");
 }
@@ -265,6 +265,7 @@ state_t mgt_cpufreq_amd17_init(ctx_t *c)
     }
     // Opening MSRs (switch to user mode if permission denied)
     for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
+			  debug("Trying to open MSR for CPU%d", tp.cpus[cpu].id);
         if (state_fail(s = msr_open(tp.cpus[cpu].id, MSR_WR))) {
             return static_dispose(cpu, s, state_msg);
         }
@@ -403,7 +404,7 @@ state_t mgt_cpufreq_amd17_get_available_list(ctx_t *c, pstate_t *pstate_list)
     return EAR_SUCCESS;
 }
 
-state_t get_current_hsmp(ctx_t *c, pstate_t *pstate_list)
+static state_t get_current_hsmp(ctx_t *c, pstate_t *pstate_list)
 {
     uint args[2] = {0, -1};
     uint reps[2] = {0, -1};
@@ -416,7 +417,7 @@ state_t get_current_hsmp(ctx_t *c, pstate_t *pstate_list)
         reps[0] = 0;
         // Calling HSMP
         hsmp_send(tp.cpus[cpu].socket_id, HSMP_GET_BOOST_LIMIT, args, reps); // response is freq (MHz)
-        debug("HSMP read %u", reps[0]);
+        debug("CPU%d HSMP read %u", tp.cpus[cpu].id, reps[0]);
 
         pstate_list[cpu].idx = pss_nominal;
         pstate_list[cpu].khz = p1_khz(psss[pss_nominal].cof);
@@ -456,7 +457,7 @@ static state_t set_pstate_hsmp(uint cpu, uint ps)
     uint reps[1] = { -1 };
 
     args[0] = setbits32(0, tp.cpus[cpu].apicid, 31, 16) | psss[ps].cof; // arguments are apicid and max_freq
-    debug("setting PS%d: %u MHz in cpu %d (apic %d) [%u]", pst, getbits32(args[0], 15, 0), cpu,
+    debug("setting PS%d: %u MHz in cpu %d (apic %d) [%u]", ps, getbits32(args[0], 15, 0), cpu,
           getbits32(args[0], 31, 16), args[0]);
     return hsmp_send(tp.cpus[cpu].socket_id, HSMP_SET_BOOST_LIMIT, args, reps);
 }
