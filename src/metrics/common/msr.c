@@ -99,11 +99,10 @@ static int static_open(uint cpu, mode_t mode, char *cmode)
 state_t msr_open(uint cpu, mode_t mode)
 {
     if (cpu >= MSR_MAX) {
-        return_msg(EAR_BAD_ARGUMENT, Error.cpu_invalid);
+        return_msg(EAR_ERROR, Error.cpu_invalid);
     }
     // General exclusion
-    while (pthread_mutex_trylock(&lock_gen))
-        ;
+    while (pthread_mutex_trylock(&lock_gen));
     if (init_lock[cpu] == 0) {
         if (pthread_mutex_init(&lock_cpu[cpu], NULL) != 0) {
             return_unlock_msg(EAR_ERROR, Error.lock, &lock_gen);
@@ -112,8 +111,7 @@ state_t msr_open(uint cpu, mode_t mode)
     init_lock[cpu] = 1;
     pthread_mutex_unlock(&lock_gen);
     // CPU exclusion
-    while (pthread_mutex_trylock(&lock_cpu[cpu]))
-        ;
+    while (pthread_mutex_trylock(&lock_cpu[cpu]));
     if (init_msr[cpu] == 0) {
         fds_wr[cpu] = static_open(cpu, MSR_WR, "MSR_WR");
         fds_rd[cpu] = static_open(cpu, MSR_RD, "MSR_RD");
@@ -132,7 +130,7 @@ state_t msr_open(uint cpu, mode_t mode)
 state_t msr_close(uint cpu)
 {
     if (cpu >= MSR_MAX) {
-        return_msg(EAR_BAD_ARGUMENT, Error.cpu_invalid);
+        return_msg(EAR_ERROR, Error.cpu_invalid);
     }
     return EAR_SUCCESS;
 }
@@ -141,65 +139,63 @@ state_t msr_read(uint cpu, void *buffer, size_t size, off_t offset)
 {
     size_t psize;
     if (cpu >= MSR_MAX) {
-        return_msg(EAR_BAD_ARGUMENT, Error.cpu_invalid);
+        return_msg(EAR_ERROR, Error.cpu_invalid);
     }
     if (init_msr[cpu] == 0) {
-        return_msg(EAR_NOT_INITIALIZED, Error.cpu_uninitialized);
+        return_msg(EAR_ERROR, Error.cpu_uninitialized);
     }
     if (fds_rd[cpu] < 0) {
         return_msg(EAR_ERROR, Error.open);
     }
-#ifdef MSR_LOCK
-    while (pthread_mutex_trylock(&lock_cpu[cpu]))
-        ;
-#endif
+    #ifdef MSR_LOCK
+    while (pthread_mutex_trylock(&lock_cpu[cpu]));
+    #endif
     psize = pread(fds_rd[cpu], buffer, size, offset);
     debug("MSR read in CPU%d (fd %d, address %lx): %lu bytes of %lu expected", cpu, fds_wr[cpu], offset, psize, size);
     if (psize != size) {
-#ifdef MSR_LOCK
+        #ifdef MSR_LOCK
         return_unlock_msg(EAR_ERROR, strerror(errno), &lock_cpu[cpu]);
-#else
+        #else
         return_msg(EAR_ERROR, strerror(errno));
-#endif
+        #endif
     }
-#ifdef MSR_LOCK
+    #ifdef MSR_LOCK
     return_unlock(EAR_SUCCESS, &lock_cpu[cpu]);
-#else
+    #else
     return EAR_SUCCESS;
-#endif
+    #endif
 }
 
 state_t msr_write(uint cpu, const void *buffer, size_t size, off_t offset)
 {
     size_t psize;
     if (cpu >= MSR_MAX) {
-        return_msg(EAR_BAD_ARGUMENT, Error.cpu_invalid);
+        return_msg(EAR_ERROR, Error.cpu_invalid);
     }
     if (init_msr[cpu] == 0) {
-        return_msg(EAR_NOT_INITIALIZED, Error.cpu_uninitialized);
+        return_msg(EAR_ERROR, Error.cpu_uninitialized);
     }
     if (fds_wr[cpu] < 0) {
         return_msg(EAR_ERROR, Error.open);
     }
-#ifdef MSR_LOCK
-    while (pthread_mutex_trylock(&lock_cpu[cpu]))
-        ;
-#endif
+    #ifdef MSR_LOCK
+    while (pthread_mutex_trylock(&lock_cpu[cpu]));
+    #endif
     psize = pwrite(fds_wr[cpu], buffer, size, offset);
     debug("MSR written in CPU%d (fd %d, address %lx): %lu bytes of %lu expected", cpu, fds_wr[cpu], offset, psize,
           size);
     if (psize != size) {
-#ifdef MSR_LOCK
+        #ifdef MSR_LOCK
         return_unlock_msg(EAR_ERROR, strerror(errno), &lock_cpu[cpu]);
-#else
+        #else
         return_msg(EAR_ERROR, strerror(errno));
-#endif
+        #endif
     }
-#ifdef MSR_LOCK
+    #ifdef MSR_LOCK
     return_unlock(EAR_SUCCESS, &lock_cpu[cpu]);
-#else
+    #else
     return EAR_SUCCESS;
-#endif
+    #endif
 }
 
 void msr_print(topology_t *tp, off_t offset)
@@ -225,10 +221,8 @@ void msr_print(topology_t *tp, off_t offset)
         s_cpu1 = msr_open(id_cpu1, MSR_RD);
         s_cpu2 = msr_open(id_cpu2, MSR_RD);
         // Reading both values
-        if (state_ok(s_cpu1))
-            msr_read(id_cpu1, &value_cpu1, sizeof(ulong), offset);
-        if (state_ok(s_cpu2))
-            msr_read(id_cpu2, &value_cpu2, sizeof(ulong), offset);
+        if (state_ok(s_cpu1)) msr_read(id_cpu1, &value_cpu1, sizeof(ulong), offset);
+        if (state_ok(s_cpu2)) msr_read(id_cpu2, &value_cpu2, sizeof(ulong), offset);
         // Printing
         verbose(0, "%d/%d: %lu %lu", id_cpu1, id_cpu2, value_cpu1, value_cpu2);
     }

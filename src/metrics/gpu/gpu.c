@@ -176,7 +176,7 @@ static void static_data_diff(gpu_t *data2, gpu_t *data1, gpu_t *data_diff, int i
     d3->util_mem = (d2->util_mem - d1->util_mem) / d3->samples;
     d3->temp_gpu = (d2->temp_gpu - d1->temp_gpu) / d3->samples;
     d3->temp_mem = (d2->temp_mem - d1->temp_mem) / d3->samples;
-    d3->power_w  = (d2->power_w - d1->power_w) / d3->samples;
+    d3->power_w  = (d2->power_w  - d1->power_w)  / d3->samples;
     d3->energy_j = (d2->energy_j - d1->energy_j);
     d3->working  = (d2->working);
     d3->correct  = 1;
