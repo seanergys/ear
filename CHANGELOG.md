@@ -42,12 +42,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - v6.0 Several minor fixes in IMCFreq amd19 management API.
 - v6.0 Fixed errors with ereport's -G option.
 
-## [5.2] - 2025-03-28
+## [5.2] - 2025-05-28
 
 ### Added
 - Implementation of Powercap setting by domain.
 - Application CPU utiliztion is now computed and reported by EARL to CSV files.
 - Now the power signature is printed when printing an application to CSV file.
+- Print all application fields in the csv file.
 
 ### Changed
 - A new version of the `eacct` command is released providing an output format option.
