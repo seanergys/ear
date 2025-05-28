@@ -60,6 +60,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed typo in cpupow define.
 - Improved CPU governor list message.
 
+## 5.1.9 - 2025-04-28
+
+### Added
+- --verbose flag in the plugin manager.
+
+### Fixed
+- Avoid the usage of DRAM power in the per-core power model since it is not available in AMD systems.
+- econtrol's --hosts flag output fixed.
+
 ## 5.1.8 - 2025-04-10
 
 ### Fixed
