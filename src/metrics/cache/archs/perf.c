@@ -51,33 +51,33 @@ static int perfs_count_opened_fds()
 void cache_perf_load(topology_t *tp, cache_ops_t *ops)
 {
     if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_SKYLAKE_X) {
-        perfs_add(0x01d1, PERF_TYPE_RAW, O2(l1d, hits), "MEM_LOAD_RETIRED.L1_HIT       ");
-        perfs_add(0x08d1, PERF_TYPE_RAW, O2(l1d, misses), "MEM_LOAD_RETIRED.L1_MISS      ");
-        perfs_add(0xe724, PERF_TYPE_RAW, O2(l2, accesses), "L2_RQSTS.ALL_DEMAND_REFERENCES");
-        perfs_add(0x2724, PERF_TYPE_RAW, O2(l2, misses), "L2_RQSTS.ALL_DEMAND_MISS      ");
-        perfs_add(0x04d1, PERF_TYPE_RAW, O2(l3, hits), "MEM_LOAD_RETIRED.L3_HIT       ");
-        perfs_add(0x20d1, PERF_TYPE_RAW, O2(l3, misses), "MEM_LOAD_RETIRED.L3_MISS      ");
-        offsets_add(&ofs, O2(l1d, accesses), O2(l1d, hits), O2(l1d, misses), '+');
-        offsets_add(&ofs, O2(l2, hits), O2(l2, accesses), O2(l2, misses), '-');
-        offsets_add(&ofs, O1(ll), O1(l3), 0, '&');
+        perfs_add(0x01d1, PERF_TYPE_RAW, O2(l1d, hits    ), "MEM_LOAD_RETIRED.L1_HIT       ");
+        perfs_add(0x08d1, PERF_TYPE_RAW, O2(l1d, misses  ), "MEM_LOAD_RETIRED.L1_MISS      ");
+        perfs_add(0xe724, PERF_TYPE_RAW, O2(l2 , accesses), "L2_RQSTS.ALL_DEMAND_REFERENCES");
+        perfs_add(0x2724, PERF_TYPE_RAW, O2(l2 , misses  ), "L2_RQSTS.ALL_DEMAND_MISS      ");
+        perfs_add(0x04d1, PERF_TYPE_RAW, O2(l3 , hits    ), "MEM_LOAD_RETIRED.L3_HIT       ");
+        perfs_add(0x20d1, PERF_TYPE_RAW, O2(l3 , misses  ), "MEM_LOAD_RETIRED.L3_MISS      ");
+        offsets_add(&ofs, O2(l1d, accesses), O2(l1d, hits    ), O2(l1d, misses), '+');
+        offsets_add(&ofs, O2(l2 , hits    ), O2(l2 , accesses), O2(l2 , misses), '-');
+        offsets_add(&ofs, O1(ll ), O1(l3), 0, '&');
         offsets_add(&ofs, O1(lbw), O1(l2), 0, '&');
     } else if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_BROADWELL_X) {
-        perfs_add(L1_LDA, PERF_TYPE_HW, O2(l1d, accesses), "PERF_L1D_LOAD_ACCESS");
-        perfs_add(L1_LDM, PERF_TYPE_HW, O2(l1d, misses), "PERF_L1D_LOAD_MISS");
-        perfs_add(0xe724, PERF_TYPE_RAW, O2(l2, accesses), "L2_RQSTS.ALL_DEMAND_REFERENCES");
-        perfs_add(0x2724, PERF_TYPE_RAW, O2(l2, misses), "L2_RQSTS.ALL_DEMAND_MISS      ");
+        perfs_add(L1_LDA, PERF_TYPE_HW , O2(l1d, accesses), "PERF_L1D_LOAD_ACCESS");
+        perfs_add(L1_LDM, PERF_TYPE_HW , O2(l1d, misses  ), "PERF_L1D_LOAD_MISS");
+        perfs_add(0xe724, PERF_TYPE_RAW, O2(l2 , accesses), "L2_RQSTS.ALL_DEMAND_REFERENCES");
+        perfs_add(0x2724, PERF_TYPE_RAW, O2(l2 , misses  ), "L2_RQSTS.ALL_DEMAND_MISS      ");
         offsets_add(&ofs, O2(l1d, hits), O2(l1d, accesses), O2(l1d, misses), '-');
-        offsets_add(&ofs, O2(l2, hits), O2(l2, accesses), O2(l2, misses), '-');
-        offsets_add(&ofs, O1(ll), O1(l2), 0, '&');
+        offsets_add(&ofs, O2(l2 , hits), O2(l2 , accesses), O2(l2 , misses), '-');
+        offsets_add(&ofs, O1(ll ), O1(l2), 0, '&');
         offsets_add(&ofs, O1(lbw), O1(l2), 0, '&');
     } else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN) {
-        perfs_add(0xf064, PERF_TYPE_RAW, O2(l2, hits), "PMCx064.1111.0000");
-        perfs_add(0x0864, PERF_TYPE_RAW, O2(l2, misses), "PMCx064.0000.1000");
+        perfs_add(0xf064, PERF_TYPE_RAW, O2(l2 , hits    ), "PMCx064.1111.0000");
+        perfs_add(0x0864, PERF_TYPE_RAW, O2(l2 , misses  ), "PMCx064.0000.1000");
         perfs_add(0x0729, PERF_TYPE_RAW, O2(l1d, accesses), "PMCx029.0000.0111");
-        offsets_add(&ofs, O2(l2, accesses), O2(l2, misses), O2(l2, hits), '+');
-        offsets_add(&ofs, O2(l1d, misses), O2(l2, accesses), 0, '=');
-        offsets_add(&ofs, O2(l1d, hits), O2(l1d, accesses), O2(l1d, misses), '-');
-        offsets_add(&ofs, O1(ll), O1(l2), 0, '&');
+        offsets_add(&ofs, O2(l2 , accesses), O2(l2 , misses  ), O2(l2 , hits  ), '+');
+        offsets_add(&ofs, O2(l1d, misses  ), O2(l2 , accesses),               0, '=');
+        offsets_add(&ofs, O2(l1d, hits    ), O2(l1d, accesses), O2(l1d, misses), '-');
+        offsets_add(&ofs, O1(ll ), O1(l2), 0, '&');
         offsets_add(&ofs, O1(lbw), O1(l2), 0, '&');
     } else if (tp->vendor == VENDOR_ARM) {
         // Arm Architecture Reference Manual for A-profile architecture

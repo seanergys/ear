@@ -30,18 +30,18 @@
 #define MODEL_BROADWELL_X     79 // Also 0x4F (extended 4, model F)
 #define MODEL_SKYLAKE_X       85 // Also 0x55 (extended 5, model 5)
 #define MODEL_ICELAKE         106
-#define MODEL_ICELAKE_X       MODEL_ICELAKE // It doesn't have the X, just Skylake and Cascadelake
+#define MODEL_ICELAKE_X       MODEL_ICELAKE // It doesn't have the X
 #define MODEL_TIGERLAKE       140
 #define MODEL_CASCADELAKE_X   85 // ¿Same as Skylake but higher stepping?
 #define MODEL_SAPPHIRE_RAPIDS 143
 // AMD models (https://en.wikichip.org/wiki/amd/cpuid)
-#define FAMILY_BOBCAT    20
-#define FAMILY_BULLDOZER 21
-#define FAMILY_JAGUAR    22
-#define FAMILY_ZEN       0x17 // Also 23, includes ZEN2 and ZEN+
-#define FAMILY_ZEN3      0x19 // Also 25, includes ZEN4
-#define FAMILY_ZEN5      0x1A // Also 26
-
+#define FAMILY_BOBCAT      20
+#define FAMILY_BULLDOZER   21
+#define FAMILY_JAGUAR      22
+#define FAMILY_ZEN         0x17 // Also 23, includes ZEN2 and ZEN+
+#define FAMILY_ZEN3        0x19 // Also 25, includes ZEN4
+#define MODEL_IS_ZEN4(model) (model >= 0x61 || (model >= 0x11 && model < 0x21))
+#define FAMILY_ZEN5        0x1A // Also 26
 // ARM family (architecture)
 #define MODEL_A8  0x01
 #define FAMILY_A8 0x01
@@ -52,7 +52,6 @@
 #define MODEL_NEOVERSE_V1 0x41D40
 #define MODEL_NEOVERSE_V2 0x41D4F
 #define MODEL_FX1000      0x46001
-#define DUMMY_BASE_FREQ   100000
 
 struct tp_select_s {
     int core;

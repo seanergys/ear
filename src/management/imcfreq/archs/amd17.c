@@ -18,8 +18,9 @@
 static char *err1 = "Incorrect result when asking for frequency by HSMP";
 static ullong freqs_khz[4];
 static ullong freqs_mhz[4];
-static uint sockets_count;
-static uint pstate_count;
+static uint   sockets_count;
+static uint   pstate_count;
+static uint   family;
 
 static uint test_ps(uint ps, uint intent)
 {
@@ -27,11 +28,15 @@ static uint test_ps(uint ps, uint intent)
     uint reps[3]           = {0, 0, -1};
     uint args[2]           = {0, -1};
     state_t s;
+    uint i;
 
+    // In ZEN5, APBDisable has an output argument
+    if (family >= FAMILY_ZEN ) i = 2;
+    if (family >= FAMILY_ZEN5) i = 1;
     // Arg0 is the P_STATE for the APBDisable function (0x0d).
     args[0] = ps;
     // Function APBDisable (0x0d).
-    if (state_fail(s = hsmp_send(0, HSMP_SET_DF_PSTATE, &args[0], &reps[2]))) {
+    if (state_fail(s = hsmp_send(0, HSMP_SET_DF_PSTATE, &args[0], &reps[i]))) {
         debug("error while sending HSMP: %s", state_msg);
     }
     // Waiting 10 miliseconds to change the frequency
@@ -42,7 +47,6 @@ static uint test_ps(uint ps, uint intent)
     if (state_fail(s = hsmp_send(0, HSMP_GET_FCLK_MCLK, &args[1], &reps[0]))) {
         debug("error while sending HSMP: %s", state_msg);
     }
-
     return reps[0];
 }
 
@@ -56,12 +60,19 @@ state_t mgt_imcfreq_amd17_load(topology_t *tp, mgt_imcfreq_ops_t *ops)
     if (state_fail(s = hsmp_open(tp, HSMP_WR))) {
         return s;
     }
+    //
+    sockets_count = tp->socket_count;
+    family = tp->family;
     // Getting the list of available frequencies
+    uint ps_num = 4;
     uint ps1;
     uint ps2;
     uint ps3;
 
-    for (i = j = 0; i < 4; ++i, ++j) {
+    if (family >= FAMILY_ZEN5 || MODEL_IS_ZEN4(tp->model)) {
+        ps_num = 3;
+    }
+    for (i = j = 0; i < ps_num; ++i, ++j) {
         ps1 = test_ps(i, j);
         ps2 = test_ps(i, j);
         ps3 = test_ps(i, j);
@@ -89,17 +100,15 @@ state_t mgt_imcfreq_amd17_load(topology_t *tp, mgt_imcfreq_ops_t *ops)
     uint reps[1] = {-1};
     hsmp_send(0, HSMP_SET_AUTO_DF_PSTATE, &args[0], &reps[0]);
     //
-    replace_ops(ops->init, mgt_imcfreq_amd17_init);
-    replace_ops(ops->dispose, mgt_imcfreq_amd17_dispose);
+    replace_ops(ops->init,               mgt_imcfreq_amd17_init);
+    replace_ops(ops->dispose,            mgt_imcfreq_amd17_dispose);
     replace_ops(ops->get_available_list, mgt_imcfreq_amd17_get_available_list);
-    replace_ops(ops->get_current_list, mgt_imcfreq_amd17_get_current_list);
-    replace_ops(ops->set_current_list, mgt_imcfreq_amd17_set_current_list);
-    replace_ops(ops->set_current, mgt_imcfreq_amd17_set_current);
-    replace_ops(ops->set_auto, mgt_imcfreq_amd17_set_auto);
+    replace_ops(ops->get_current_list,   mgt_imcfreq_amd17_get_current_list);
+    replace_ops(ops->set_current_list,   mgt_imcfreq_amd17_set_current_list);
+    replace_ops(ops->set_current,        mgt_imcfreq_amd17_set_current);
+    replace_ops(ops->set_auto,           mgt_imcfreq_amd17_set_auto);
     replace_ops(ops->get_current_ranged_list, mgt_imcfreq_amd17_get_current_ranged_list);
     replace_ops(ops->set_current_ranged_list, mgt_imcfreq_amd17_set_current_ranged_list);
-    // Saving sockets
-    sockets_count = tp->socket_count;
 
     return EAR_SUCCESS;
 }
@@ -171,24 +180,27 @@ state_t mgt_imcfreq_amd17_get_current_list(ctx_t *c, pstate_t *list)
 
 static state_t set(uint pstate_index, int socket)
 {
-    uint args[2] = {0, -1};
-    uint function, i;
+    uint args[2] = { 0, -1 };
+    uint reps[2] = { 0, -1 };
+    uint function, a, r;
     state_t s;
 
     if (pstate_index == ps_auto) {
         // Function APBEnable (0x0e)
         function = HSMP_SET_AUTO_DF_PSTATE;
-        i        = 1;
+        a        = 1;
+        r        = 1;
     } else if (pstate_index >= pstate_count) {
         return_msg(EAR_ERROR, Generr.arg_outbounds);
     } else {
         // Function APBDisable (0x0d)
         function = HSMP_SET_DF_PSTATE;
-        i        = 0;
+        a        = 0;
+        r        = (family >= FAMILY_ZEN5) ? 0: 1;
     }
     args[0] = pstate_index;
     debug("Setting P%u (%u) to socket %d", pstate_index, args[0], socket);
-    if (state_fail(s = hsmp_send(socket, function, &args[i], &args[1]))) {
+    if (state_fail(s = hsmp_send(socket, function, &args[a], &reps[r]))) {
         debug("Failed while setting IMC frequency set: %s (%d)", state_msg, s);
         return s;
     }

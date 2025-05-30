@@ -55,6 +55,7 @@ void cpi_perf_load(topology_t *tp, cpi_ops_t *ops)
         perfs_add(0x40004a3                 , PERF_TYPE_RAW     , O2(stalls, memory)   , "CYCLE_ACTIVITY.STALLS_TOTAL");
         perfs_add(0x00001a2                 , PERF_TYPE_RAW     , O2(stalls, resources), "RESOURCE_STALLS.ANY        ");
     } else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN) {
+        // PMCx087 is inherited from Family 15h
         perfs_add(PERF_COUNT_HW_CPU_CYCLES  , PERF_TYPE_HARDWARE, O1(cycles)              , "PERF_COUNT_HW_CPU_CYCLES     ");
         perfs_add(PERF_COUNT_HW_INSTRUCTIONS, PERF_TYPE_HARDWARE, O1(instructions)        , "PERF_COUNT_HW_INSTRUCTIONS   ");
         perfs_add(0x0000287                 , PERF_TYPE_RAW     , O2(stalls, fetch_decode), "IC_FETCH_STALL.DECODING_QUEUE");

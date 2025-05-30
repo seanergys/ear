@@ -89,7 +89,6 @@ mets_OBJS = \
     $(SRCDIR)/metrics/gpu/archs/gpuprof_dcgmi.o \
     $(SRCDIR)/metrics/gpu/archs/gpuprof_dummy.o \
     $(SRCDIR)/metrics/temperature/temperature.o \
-    $(SRCDIR)/metrics/temperature/archs/amd17.o \
     $(SRCDIR)/metrics/temperature/archs/eard.o \
     $(SRCDIR)/metrics/temperature/archs/hwmon.o \
     $(SRCDIR)/metrics/temperature/archs/intel63.o \

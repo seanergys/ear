@@ -40,80 +40,74 @@ typedef struct mailbox_s {
 } mailbox_t;
 
 static mailbox_t zen2_mailbox = {
-    .function.address = 0x3B10534,
-    .function.size    = 4,
-    .function.name    = "function",
-    .response.address = 0x3B10980,
-    .response.size    = 1,
-    .response.name    = "response",
-    .arg0.address     = 0x3B109E0,
-    .arg0.size        = 4,
-    .arg0.name        = "argument",
+    .function.address = 0x3B10534, .function.size    = 4, .function.name    = "function",
+    .response.address = 0x3B10980, .response.size    = 1, .response.name    = "response",
+    .arg0.address     = 0x3B109E0, .arg0.size        = 4, .arg0.name        = "argument",
+};
+
+static mailbox_t zen5_mailbox = {
+    .function.address = 0x3B10934, .function.size    = 4, .function.name    = "function",
+    .response.address = 0x3B10980, .response.size    = 1, .response.name    = "response",
+    .arg0.address     = 0x3B109E0, .arg0.size        = 4, .arg0.name        = "argument",
 };
 
 // lspci -d 0x1022:0x1480 (more information on issue 'How to find HSMP device`)
-static ushort amd_vendor       = 0x1022; // AMD
-static char *zen2_pci_dfs[2]   = {"00.0", NULL};
-static ushort zen5_pci_ids[12] = {0x1450, 0x15d0, 0x1480, 0x1630, 0x14b5, // 17H
-                                  0x14a4, 0x14d8, 0x14e8,                 // 19H
-                                  0x153a, 0x1507, 0x1122,                 // 1AH
-                                  0x00};
-static char **mist_pci_dfs;
+static ushort  amd_vendor       = 0x1022; // AMD
+static char   *zen2_pci_dfs[2]  = { "00.0", NULL };
+static ushort  zen5_pci_ids[12] = { 0x1450, 0x15d0, 0x1480, 0x1630, 0x14b5, // 17H
+                                    0x14a4, 0x14d8, 0x14e8,                 // 19H
+                                    0x153a, 0x1507, 0x1122,                 // 1AH
+                                    0x00 };
+static char  **mist_pci_dfs;
 static ushort *mist_pci_ids;
-static uint mist_nbios_count;
+static uint    mist_nbios_count;
 //
 static mailbox_t *mail;
-static uint sockets_count;
-static uint pcis_count;
-static pci_t *pcis;
+static uint       sockets_count;
+static uint       pcis_count;
+static pci_t     *pcis;
 
 state_t hsmp_pci_open(topology_t *tp, mode_t mode)
 {
     state_t s;
 
-    if (tp->vendor == VENDOR_INTEL || tp->family < FAMILY_ZEN) {
+    if (tp->vendor != VENDOR_AMD || tp->family < FAMILY_ZEN) {
         return_msg(EAR_ERROR, Generr.api_incompatible);
     }
     if (pcis != NULL) {
         return_msg(EAR_SUCCESS, "already loaded");
     }
     sockets_count = tp->socket_count;
-    // By now just ZEN2 and greater
-    if (tp->family >= FAMILY_ZEN) {
-        // ZEN selection
-        if (tp->family >= FAMILY_ZEN3) {
-            debug("ZEN3 detected");
-            mist_pci_dfs = zen2_pci_dfs;
-            mist_pci_ids = zen5_pci_ids;
-        } else {
-            debug("ZEN2 detected");
-            mist_pci_dfs = zen2_pci_dfs;
-            mist_pci_ids = zen5_pci_ids;
-        }
-        // Opening PCis
-        if (state_fail(s = pci_scan(amd_vendor, mist_pci_ids, mist_pci_dfs, mode, &pcis, &pcis_count))) {
-            return_reprint(s, "HSMP failed while scanning PCI: %s", state_msg);
-        }
-        // Calculating Root Comlex per DataFabric. We will need it to access
-        // to different sockets Roots. HSMP driver counts sockets by counting
-        // DataFabrics (NB, which is better in case of two socketed processors with
-        // different architectures, a thing we not expect.
-        mist_nbios_count = pcis_count / sockets_count;
-        //
-        mail = &zen2_mailbox;
-        // Test ping
-        uint args[2] = {68, -1};
-        uint reps[2] = {0, -1};
-        if (state_fail(s = hsmp_pci_send(0, HSMP_TEST, args, reps))) {
-            pci_scan_close(&pcis, &pcis_count);
-            return_reprint(EAR_ERROR, "HSMP test function failed: %s", state_msg);
-        }
-        if (reps[0] != 69) {
-            pci_scan_close(&pcis, &pcis_count);
-            return_print(EAR_ERROR, "HSMP not enabled (incorrect ping value, expected 69, received %u)", reps[0]);
-        }
-        debug("Ping returned %d", reps[0]);
+    if (tp->family >= FAMILY_ZEN5) {
+        debug("ZEN5 detected");
+        mist_pci_dfs =  zen2_pci_dfs;
+        mist_pci_ids =  zen5_pci_ids;
+        mail         = &zen5_mailbox;
+    } else {
+        debug("ZEN2/3/4 detected");
+        mist_pci_dfs =  zen2_pci_dfs;
+        mist_pci_ids =  zen5_pci_ids;
+        mail         = &zen2_mailbox;
     }
+    // Opening PCis
+    if (state_fail(s = pci_scan(amd_vendor, mist_pci_ids, mist_pci_dfs, mode, &pcis, &pcis_count))) {
+        return_reprint(s, "HSMP failed while scanning PCI: %s", state_msg);
+    }
+    // Calculating Root Complex per DataFabric. We will need it to access
+    // to different sockets Roots.
+    mist_nbios_count = pcis_count / sockets_count;
+    // Test ping
+    uint args[2] = { 68, -1 };
+    uint reps[2] = {  0, -1 };
+    if (state_fail(s = hsmp_pci_send(0, HSMP_TEST, args, reps))) {
+        pci_scan_close(&pcis, &pcis_count);
+        return_reprint(EAR_ERROR, "HSMP test function failed: %s", state_msg);
+    }
+    if (reps[0] != 69) {
+        pci_scan_close(&pcis, &pcis_count);
+        return_print(EAR_ERROR, "HSMP not enabled (incorrect ping value, expected 69, received %u)", reps[0]);
+    }
+    debug("Ping returned %d", reps[0]);
     return EAR_SUCCESS;
 }
 

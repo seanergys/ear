@@ -23,20 +23,24 @@
 // 087:0c7 are excited by CPUs 16-31
 // 107:147 are excited by CPUs 32-47
 // 187:1c7 are excited by CPUs 48-63
-static topology_t tp;
-static uint devs_count;
-static bwidth_t *pool;
+static topology_t     tp;
+static uint           devs_count;
+static bwidth_t      *pool;
 static suscription_t *sus;
-static uint imcs[8];
-static off_t ctls[4]  = {0xc0010240, 0xc0010242, 0xc0010244, 0xc0010246};
-static off_t ctrs[4]  = {0xc0010241, 0xc0010243, 0xc0010245, 0xc0010247};
-static ullong cmds[8] = {0x0000000000403807, 0x0000000000403887, 0x0000000100403807, 0x0000000100403887,
-                         0x0000000000403847, 0x00000000004038c7, 0x0000000100403847, 0x00000001004038c7};
+static uint           imcs[8];
+static off_t          ctls[4] = { 0xc0010240, 0xc0010242, 0xc0010244, 0xc0010246 }; // DF_PERF_CTL
+static off_t          ctrs[4] = { 0xc0010241, 0xc0010243, 0xc0010245, 0xc0010247 }; // DF_PERF_CTR
+static ullong         cmds[8] = { 0x0000000000403807, 0x0000000000403887, // F17 M31
+                                  0x0000000100403807, 0x0000000100403887, // Pending for ZEN3/4/5
+                                  0x0000000000403847, 0x00000000004038c7,
+                                  0x0000000100403847, 0x00000001004038c7 };
 
 BWIDTH_F_LOAD(bwidth_amd17df_load)
 {
     int i;
-    if (tpo->vendor != VENDOR_AMD || tpo->family < FAMILY_ZEN) {
+    // If not ZEN, ZEN+ and ZEN2, return. ZEN 3 have the registers but different
+    // formats and this class have to be updated to be compatible.
+    if (tpo->vendor != VENDOR_AMD || tpo->family != FAMILY_ZEN) {
         debug("%s", Generr.api_incompatible);
         return_msg(, Generr.api_incompatible);
     }
@@ -57,9 +61,9 @@ BWIDTH_F_LOAD(bwidth_amd17df_load)
     pool       = calloc(devs_count + 1, sizeof(bwidth_t));
     //
     apis_put(ops->get_info, bwidth_amd17df_get_info);
-    apis_put(ops->init, bwidth_amd17df_init);
-    apis_put(ops->dispose, bwidth_amd17df_dispose);
-    apis_put(ops->read, bwidth_amd17df_read);
+    apis_put(ops->init    , bwidth_amd17df_init);
+    apis_put(ops->dispose , bwidth_amd17df_dispose);
+    apis_put(ops->read    , bwidth_amd17df_read);
     debug("Loaded AMD17DF");
 }
 

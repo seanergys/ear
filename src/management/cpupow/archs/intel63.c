@@ -90,23 +90,23 @@ typedef struct msr_power_info_s {
 } msr_power_info_t;
 
 struct domain_s {
-    topology_t *tp;
-    const char *name;
-    int capable;
+    topology_t  *tp;
+    const char  *name;
+    int          capable;
     msr_power_limit_t *pl;
-    off_t pl_address; // MSR_*_POWER_LIMIT
-    int pl_bit_lock;
-    double pl_divisor; // Time Window divisor
-    const char *pl_keeper_name;
-    char pl_error[256];
-    off_t es_address; // MSR_*_ENERGY_STATUS
-    off_t po_address; // MSR_*_POLICY
-    off_t ps_address; // MSR_*_PERF_STATUS
+    off_t        pl_address; // MSR_*_POWER_LIMIT
+    int          pl_bit_lock;
+    double       pl_divisor; // Time Window divisor
+    const char  *pl_keeper_name;
+    char         pl_error[256];
+    off_t        es_address; // MSR_*_ENERGY_STATUS
+    off_t        po_address; // MSR_*_POLICY
+    off_t        ps_address; // MSR_*_PERF_STATUS
     msr_power_info_t *pi;
-    off_t pi_address; // MSR_*_POWER_INFO
-    char pi_error[256];
-    timestamp_t pm_time; // Power Monitor
-    ullong *pm_energy;
+    off_t        pi_address; // MSR_*_POWER_INFO
+    char         pi_error[256];
+    timestamp_t  pm_time; // Power Monitor
+    ullong      *pm_energy;
 };
 
 static msr_power_unit_t *pu;
@@ -114,25 +114,25 @@ static topology_t        tp_cores;
 static topology_t        tp_sockets;
 static strtable_t        t;
 
-#define DOMAIN_INIT(_tp, dom, pl_bl, pl_dv, pl_kn)                                                                     \
-    {.tp             = _tp,                                                                                            \
-     .name           = #dom,                                                                                           \
-     .capable        = 1,                                                                                              \
-     .pl_address     = MSR_##dom##_POWER_LIMIT,                                                                        \
-     .pl_bit_lock    = pl_bl,                                                                                          \
-     .pl_divisor     = pl_dv,                                                                                          \
-     .pl_keeper_name = pl_kn,                                                                                          \
-     .es_address     = MSR_##dom##_ENERGY_STATUS,                                                                      \
-     .po_address     = MSR_##dom##_POLICY,                                                                             \
-     .ps_address     = MSR_##dom##_PERF_STATUS,                                                                        \
-     .pi_address     = MSR_##dom##_POWER_INFO}
+#define DOMAIN_INIT(_tp, dom, pl_bl, pl_dv, pl_kn) \
+{   .tp             = _tp,                         \
+    .name           = #dom,                        \
+    .capable        = 1,                           \
+    .pl_address     = MSR_##dom##_POWER_LIMIT,     \
+    .pl_bit_lock    = pl_bl,                       \
+    .pl_divisor     = pl_dv,                       \
+    .pl_keeper_name = pl_kn,                       \
+    .es_address     = MSR_##dom##_ENERGY_STATUS,   \
+    .po_address     = MSR_##dom##_POLICY,          \
+    .ps_address     = MSR_##dom##_PERF_STATUS,     \
+    .pi_address     = MSR_##dom##_POWER_INFO }
 
 static struct domain_s domains[] = {
     DOMAIN_INIT(&tp_sockets, PKG , 63,  4.0, "MsrPkgPowerLimit" ),
     DOMAIN_INIT(&tp_sockets, DRAM, 31, 10.0, "MsrDramPowerLimit"),
     DOMAIN_INIT(&tp_cores  , PP0 , 31, 10.0, "MsrPp0PowerLimit" ),
     DOMAIN_INIT(&tp_sockets, PP1 , 31, 10.0, "MsrPp1PowerLimit" ),
-    {NULL, NULL, 0},
+    { NULL, NULL, 0 },
 };
 
 static uint domain_window_power_limit(cchar *name, cchar *keep, uint cpu, double time_s, double div, double mult)

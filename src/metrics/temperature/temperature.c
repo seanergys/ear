@@ -27,8 +27,7 @@ static temp_ops_t ops;
 
 void temp_load(topology_t *tp, uint force_api)
 {
-    while (pthread_mutex_trylock(&lock))
-        ;
+    while (pthread_mutex_trylock(&lock));
     if (is_loaded) {
         goto leave;
     }
@@ -40,7 +39,6 @@ void temp_load(topology_t *tp, uint force_api)
 #endif
     temp_hwmon_load(tp, &ops, force_api);
     temp_intel63_load(tp, &ops, force_api);
-    // temp_amd17_load  (tp, &ops, force_api); //We already have hwmon
 dummy:
     temp_dummy_load(tp, &ops, force_api);
     temp_get_info(&info);

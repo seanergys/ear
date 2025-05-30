@@ -36,11 +36,11 @@
 #define FILE_BST "/sys/devices/system/cpu/cpufreq/boost"
 #define FILE_NTB "/sys/devices/system/cpu/intel_pstate/no_turbo"
 
-static topology_t tp_static;
+static topology_t     tp_static;
 static cpufreq_base_t bs_static;
-static int found_boost;
-static int found_freq;
-static char reason[256];
+static int            found_boost;
+static int            found_freq;
+static char           reason[256];
 
 static int basefreq_completed()
 {
@@ -92,9 +92,8 @@ static int basefreq_intel_haswell(topology_t *tp, cpufreq_base_t *base)
 
 static int basefreq_amd_zen(topology_t *tp, cpufreq_base_t *base)
 {
-    ullong did, fid;
+    ullong did, fid, mul;
     ullong aux;
-
     // This method requires permissions to, at least, read the MSR files.
     // If doesn't have enough privileges or the MSR driver is not present,
     // it will fail. In the future, maybe we can build an MSR class to avoid
@@ -109,10 +108,16 @@ static int basefreq_amd_zen(topology_t *tp, cpufreq_base_t *base)
     }
     if (!found_freq) {
         if (state_ok(msr_read(0, (char *) &aux, sizeof(ullong), REG_P0))) {
-            fid = getbits64(aux, 7, 0);
+            fid = getbits64(aux,  7, 0);
             did = getbits64(aux, 13, 8);
+            mul = 200;
+            if (tp->family >= FAMILY_ZEN5) {
+                fid = getbits64(regs[0], 11, 0);
+                did = 1LLU;
+                mul = 5LLu;
+            }
             if (did > 0) {
-                base->frequency = (ulong) (((fid * 200LLU) / did) * 1000);
+                base->frequency = (ulong) (((fid * mul) / did) * 1000);
                 basefreq_found_set(1, 0);
             }
         } else {

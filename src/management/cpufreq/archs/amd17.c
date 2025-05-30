@@ -129,7 +129,6 @@ state_t mgt_cpufreq_amd17_load(topology_t *tp_in, mgt_ps_ops_t *ops, mgt_ps_driv
 static state_t static_dispose(uint close_msr_up_to, state_t s, char *msg)
 {
     int cpu;
-    // TODO: Recover MSR previous state
     for (cpu = 0; cpu < close_msr_up_to; ++cpu) {
         msr_close(tp.cpus[cpu].id);
     }
@@ -162,10 +161,10 @@ static void print_registers()
         ullong idd_div   = getbits64(regs[i], 31, 30);
         ullong idd_value = getbits64(regs[i], 29, 22);
         double idd_core  = ((double) idd_value) / pow(10.0, (double) idd_div);
-        ullong vdd_cpu   = getbits64(regs[i], 21, 14);
+        ullong vdd_cpu   = getbits64(regs[i], 21, 14); // CpuVid
         // double pow_core  = 1.350 - (((double) CpuVid) * 0.00625);
-        ullong freq_fid  = getbits64(regs[i],  7,  0);
-        ullong freq_did  = getbits64(regs[i], 13,  8); //CpuDfsId
+        ullong freq_did  = getbits64(regs[i], 13,  8); // CpuDfsId
+        ullong freq_fid  = getbits64(regs[i],  7,  0); // CpuFid
         ullong freq_mul  = 200LLU;
         ullong freq_cof  = 0LLU;
         // In FAMILY_ZEN3 or 19 documents there is a contradiction. It says
@@ -173,8 +172,10 @@ static void print_registers()
         // - CpuFid[7:0]: core frequency ID. Specifies the core frequency
         //   multiplier. The core COF is defined as CpuFid * 5MHz.
         // - CoreCOF = (PStateDef[CpuFid[7:0]]/PStateDef[CpuDfsId])*200.
-        if (tp.family >= FAMILY_ZEN5) {
+        if (MODEL_IS_ZEN4(tp.model) || tp.family >= FAMILY_ZEN5) {
             vdd_cpu  = getbits64(regs[i], 21, 14) | (getbits64(regs[i], 32, 32) << 8);
+        }
+        if (tp.family >= FAMILY_ZEN5) {
 		    freq_fid = getbits64(regs[i], 11,  0);
             freq_mul = 5LLU;
             freq_did = 1LLU;
@@ -214,8 +215,8 @@ static state_t build_pstate_list()
     min_mhz = freqs_available[freq_count - 1] / 1000LLU;
     // Getting P0(b) information from the first of a list of registers. Registers are read
     // during init phase.
-    psss[0].fid = getbits64(regs[0],  7, 0);
-    psss[0].did = getbits64(regs[0], 13, 8);
+    psss[0].did = getbits64(regs[0], 13, 8); // CpuDfsId
+    psss[0].fid = getbits64(regs[0],  7, 0); // CpuFid
     psss[0].mul = 200LLU;
     if (tp.family >= FAMILY_ZEN5) {
         psss[0].fid = getbits64(regs[0], 11, 0);
