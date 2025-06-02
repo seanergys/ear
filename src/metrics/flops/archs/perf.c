@@ -57,10 +57,17 @@ void flops_perf_load(topology_t *tp, flops_ops_t *ops)
         set_flops(0x80c7, PERF_TYPE_RAW, 6, 16.0, "FP_ARITH_INST_RETIRED.512B_PACKED_SINGLE");
         set_flops(0x40c7, PERF_TYPE_RAW, 7, 8.0, "FP_ARITH_INST_RETIRED.512B_PACKED_DOUBLE");
     } else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN) {
-        // In theory, this event counts 128 and 256 bits operations from SSE and
-        // AVX FLOPs. But it can not distinguish between types. We are saving
-        // the register readings in 256f by pure arbitrariness.
-        set_flops(0xff03, PERF_TYPE_RAW, 4, 1.0, "FpRetSseAvxOps");
+        if (tp->family >= FAMILY_ZEN5) {
+            // This ZEN5 register contains type selection (float and double). 0h
+            // means all types, but this can be reworked next to Retired_FP_uOps
+            // to count 512, 256 and 128 length uops.
+            set_flops(0x0f03, PERF_TYPE_RAW, 4, 1.0, "Retired_SSE_AVX_FLOPs");
+        } else {
+            // In theory, this event counts 128 and 256 bits operations from SSE and
+            // AVX FLOPs. But it can not distinguish between types. We are saving
+            // the register readings in 256f by pure arbitrariness.
+            set_flops(0xff03, PERF_TYPE_RAW, 4, 1.0, "FpRetSseAvxOps");
+        }
     } else if (tp->vendor == VENDOR_ARM && tp->model == MODEL_FX1000) {
         // We can mix these offsets because share the same weight. FIXED events
         // combines floats, doubles and also SIMD NEON.
