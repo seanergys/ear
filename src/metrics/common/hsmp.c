@@ -164,7 +164,6 @@ void hsmp_test_print()
     static topology_t tp_sockets = {0};
     static topology_t tp         = {0};
     static strtable_t tb         = {0};
-    state_t s;
     int cpu;
 
     // If more than one socket

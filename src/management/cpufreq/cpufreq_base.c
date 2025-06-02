@@ -112,7 +112,7 @@ static int basefreq_amd_zen(topology_t *tp, cpufreq_base_t *base)
             did = getbits64(aux, 13, 8);
             mul = 200;
             if (tp->family >= FAMILY_ZEN5) {
-                fid = getbits64(regs[0], 11, 0);
+                fid = getbits64(aux, 11, 0);
                 did = 1LLU;
                 mul = 5LLu;
             }

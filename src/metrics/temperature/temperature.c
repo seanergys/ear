@@ -11,7 +11,6 @@
 #include <assert.h>
 #include <common/output/debug.h>
 #include <metrics/common/apis.h>
-#include <metrics/temperature/archs/amd17.h>
 #include <metrics/temperature/archs/dummy.h>
 #include <metrics/temperature/archs/eard.h>
 #include <metrics/temperature/archs/hwmon.h>

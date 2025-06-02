@@ -212,7 +212,6 @@ static int is_sensor(char *string, ipmi_dev_t *devs, int d, int r, ipmi_sensor_t
 
 int ipmi_driver_sensors_find(char *string, ipmi_sensor_t **sensors, uint *sensors_count)
 {
-    int is_multi = strstr(string, "%d") != NULL;
     ipmi_sensor_t *alloc = NULL;
     char string_tolow[64];
     uint list_count = 0;
@@ -373,7 +372,6 @@ state_t ipmi_driver_cmd_send(int dev_no, ipmi_cmd_t *pkg)
 {
     static struct ipmi_recv recv;
     static struct ipmi_req reqs;
-    int tries = 3;
 
     memset(&recv, 0, sizeof(recv));
     memset(&reqs, 0, sizeof(reqs));

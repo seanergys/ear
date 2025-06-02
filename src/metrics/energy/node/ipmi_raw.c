@@ -114,7 +114,7 @@ state_t energy_dispose(void **x)
     return EAR_SUCCESS;
 }
 
-static void parse(char id, char *data, consumption_t *reading)
+static void parse(char id, uchar *data, consumption_t *reading)
 {
     // Getting timestamp
     // timestamp_get(&reading->timestamp);
