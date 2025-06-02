@@ -28,4 +28,7 @@ uint below_perf_min_benefit(double time_ref, double time_curr, double cpi_ref, d
 void compute_energy_savings(signature_t *curr, signature_t *prev);
 
 void compute_policy_savings(energy_model_t energy_model, signature_t *ns, node_freqs_t *freqs, node_freq_domain_t *dom);
+
+void compute_gpu_policy_savings(energy_model_t energy_model, signature_t *ns, node_freqs_t *freqs);
+void compute_gpu_energy_savings(signature_t *curr);
 #endif
