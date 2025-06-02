@@ -50,6 +50,9 @@ typedef struct sig_ext {
     float saving;
     float psaving;
     float tpenalty;
+    float gpu_saving;
+    float gpu_psaving;
+    float gpu_tpenalty;
     phase_info_t earl_phase[EARL_MAX_PHASES];
     dcgmi_sig_t dcgmis;
 #if DLB_SUPPORT

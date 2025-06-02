@@ -1978,9 +1978,31 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
         app_energy_saving.event = POWER_SAVING_AVG;
         app_energy_saving.value = (llong) avg_psaving;
         report_events(&rep_id, &app_energy_saving, 1);
-#if 0
-		/* Not yet reported */
-		app_energy_saving.event = PERF_PENALTY;
+        app_energy_saving.event = PERF_PENALTY_AVG;
+        app_energy_saving.value = (llong) avg_tpenalty;
+        report_events(&rep_id, &app_energy_saving, 1);
+
+#if USE_GPU
+        float avg_gpu_esaving  = sig_ext->gpu_saving / sig_ext->telapsed;
+        float avg_gpu_psaving  = sig_ext->gpu_psaving / sig_ext->telapsed;
+        float avg_gpu_tpenalty = sig_ext->gpu_tpenalty / sig_ext->telapsed;
+        verbose_master(ENERGY_EFF_VERB,
+                       "GPU Policy savins[%s]. MR[%d] Average estimated GPU energy savings %.2f. Average GPU Power "
+                       "reduction %.2f. Time penalty %.2f. Elapsed %.2f",
+                       node_name, masters_info.my_master_rank, avg_gpu_esaving, avg_gpu_psaving, avg_gpu_tpenalty,
+                       sig_ext->telapsed);
+
+        app_energy_saving.event = GPU_ENERGY_SAVING_AVG;
+        app_energy_saving.value = (llong) avg_gpu_esaving;
+        report_events(&rep_id, &app_energy_saving, 1);
+
+        app_energy_saving.event = GPU_POWER_SAVING_AVG;
+        app_energy_saving.value = (llong) avg_gpu_psaving;
+        report_events(&rep_id, &app_energy_saving, 1);
+
+        app_energy_saving.event = GPU_PERF_PENALTY_AVG;
+        app_energy_saving.value = (llong) avg_gpu_tpenalty;
+        report_events(&rep_id, &app_energy_saving, 1);
 #endif
     }
 
