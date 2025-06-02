@@ -757,7 +757,11 @@ void mysql_print_events(MYSQL_RES *result, int fd)
                 print_event_type(event_type_int, fd);
 
                 if (event_type_int == ENERGY_SAVING || event_type_int == POWER_SAVING ||
-                    event_type_int == POWER_SAVING_AVG || event_type_int == ENERGY_SAVING_AVG) {
+                    event_type_int == POWER_SAVING_AVG || event_type_int == ENERGY_SAVING_AVG ||
+                    event_type_int == PERF_PENALTY || event_type_int == PERF_PENALTY_AVG ||
+                    event_type_int == GPU_POWER_SAVING_AVG || event_type_int == GPU_ENERGY_SAVING_AVG ||
+                    event_type_int == GPU_POWER_SAVING_AVG || event_type_int == GPU_ENERGY_SAVING_AVG ||
+                    event_type_int == GPU_PERF_PENALTY || event_type_int == GPU_PERF_PENALTY_AVG) {
                     possible_negative = 1;
                 }
             } else if (i == 1)

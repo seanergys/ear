@@ -1211,10 +1211,8 @@ static void accumulate_phases_summary(signature_t *loops, signature_t *apps)
 
 static void accumulate_energy_savings(signature_t *loops, signature_t *apps)
 {
-    static char verb_savs_pens_hdr[128] =
-        "    --- Savings and penalties ---\n"
-        "Scope E.save  P.save  T.pen   T.elapsed\n"
-        "----- ------  ------  -----   ---------"; // Header for savings and penalties verbose
+
+    static char *verb_savs_pens_hdr; // Header for savings and penalties verbose
 
     sig_ext_t *loop_sig_ext = loops->sig_ext;
     sig_ext_t *app_sig_ext;
@@ -1234,8 +1232,27 @@ static void accumulate_energy_savings(signature_t *loops, signature_t *apps)
     app_sig_ext->telapsed += loop_sig_ext->elapsed;
     app_sig_ext->tpenalty += loop_sig_ext->tpenalty;
 
+#if USE_GPUS
+    app_sig_ext->gpu_saving += loop_sig_ext->gpu_saving;
+    app_sig_ext->gpu_psaving += loop_sig_ext->gpu_psaving;
+
+    verb_savs_pens_hdr = "    --- Savings and penalties ---\n"
+                         "Scope GPU E.save  GPU P.save  E.save  P.save  T.pen   T.elapsed\n"
+                         "----- ----------  ----------- ------  ------  -----   ---------";
+    verbose_master(
+        VERB_SAV_PEN,
+        "%s\n Loop %-7.2lf %-7.2f %-7.2lf %-7.2f %-7.2f %-9.2lf\n  App %-7.2lf %-7.2f %-7.2lf %-7.2f %-7.2f %-9.2lf\n",
+        verb_savs_pens_hdr, loop_sig_ext->gpu_saving, loop_sig_ext->gpu_psaving, loop_sig_ext->saving,
+        loop_sig_ext->psaving, loop_sig_ext->tpenalty, loop_sig_ext->elapsed, app_sig_ext->gpu_saving,
+        app_sig_ext->gpu_psaving, app_sig_ext->saving, app_sig_ext->psaving, app_sig_ext->tpenalty,
+        app_sig_ext->telapsed);
+#else
+    verb_savs_pens_hdr = "    --- Savings and penalties ---\n"
+                         "Scope E.save  P.save  T.pen   T.elapsed\n"
+                         "----- ------  ------  -----   ---------";
     verbose_master(VERB_SAV_PEN, "%s\n Loop %-7.2lf %-7.2f %-7.2f %-9.2lf\n  App %-7.2lf %-7.2f %-7.2f %-9.2lf\n",
                    verb_savs_pens_hdr, loop_sig_ext->saving, loop_sig_ext->psaving, loop_sig_ext->tpenalty,
                    loop_sig_ext->elapsed, app_sig_ext->saving, app_sig_ext->psaving, app_sig_ext->tpenalty,
                    app_sig_ext->telapsed);
+#endif
 }
