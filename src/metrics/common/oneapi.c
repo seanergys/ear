@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <common/environment_common.h>
 #include <common/output/debug.h>
@@ -170,10 +170,12 @@ static void print_sysman_device_info(int h)
     debug("modelName    : '%s'", hs[h].sdevice_props.modelName);
     debug("serials      : '%s' '%s'", hs[h].sdevice_props.serialNumber, hs[h].sdevice_props.boardNumber);
     debug("uuid         : '%llu' (PCI based)", hs[h].uuid);
-    debug("domain:bus:device:function %x:%x:%x:%x", hs[h].spci_props.address.domain, hs[h].spci_props.address.bus,
+    debug("domain:bus:device:function %x:%x:%x:%x",
+          hs[h].spci_props.address.domain, hs[h].spci_props.address.bus,
           hs[h].spci_props.address.device, hs[h].spci_props.address.function);
     debug("numSubdevices: %u", hs[h].sdevice_props.numSubdevices);
-    debug("#domains PFET: %u/%u/%u/%u", hs[hs_count].spowers_count, hs[hs_count].sfreqs_count,
+    debug("#domains PFET: %u/%u/%u/%u",
+          hs[hs_count].spowers_count, hs[hs_count].sfreqs_count,
           hs[hs_count].sengines_count, hs[hs_count].stemps_count);
 }
 
@@ -185,11 +187,11 @@ static void oneapi_reorder_by_pci(uint devices_count, zes_device_handle_t *devic
     uint min_pci;
 
     for (dv = 0; dv < devices_count; dv++) {
-        debug("GPU [%u] domain:bus:device:function %x:%x:%x:%x", dv, hs[dv].spci_props.address.domain,
-              hs[dv].spci_props.address.bus, hs[dv].spci_props.address.device, hs[dv].spci_props.address.function);
+        debug("GPU [%u] domain:bus:device:function %x:%x:%x:%x", dv,
+              hs[dv].spci_props.address.domain, hs[dv].spci_props.address.bus,
+              hs[dv].spci_props.address.device, hs[dv].spci_props.address.function);
     }
     // Reordering
-
     for (dv = 0; dv < devices_count; dv++) {
         min_pci = 0;
         // reference is the first not already ordered
@@ -372,14 +374,22 @@ static state_t static_sysman_init()
             hs[hs_count].sengines_props = calloc(hs[hs_count].sengines_count, sizeof(zes_engine_properties_t));
             hs[hs_count].stemps_props   = calloc(hs[hs_count].stemps_count, sizeof(zes_temp_properties_t));
             // Getting properties
-            for (dp = 0; dp < hs[hs_count].spowers_count; ++dp)
+            for (dp = 0; dp < hs[hs_count].spowers_count; ++dp) {
+                hs[hs_count].spowers_props[dp].stype = ZES_STRUCTURE_TYPE_POWER_PROPERTIES;
                 if_fail(ze.sPowerGetProperties(hs[hs_count].spowers[dp], &hs[hs_count].spowers_props[dp]), );
-            for (dp = 0; dp < hs[hs_count].sfreqs_count; ++dp)
+            }
+            for (dp = 0; dp < hs[hs_count].sfreqs_count; ++dp) {
+                hs[hs_count].sfreqs_props[dp].stype = ZES_STRUCTURE_TYPE_FREQ_PROPERTIES;
                 if_fail(ze.sFrequencyGetProperties(hs[hs_count].sfreqs[dp], &hs[hs_count].sfreqs_props[dp]), );
-            for (dp = 0; dp < hs[hs_count].sengines_count; ++dp)
+            }
+            for (dp = 0; dp < hs[hs_count].sengines_count; ++dp) {
+                hs[hs_count].sengines_props[dp].stype = ZES_STRUCTURE_TYPE_ENGINE_PROPERTIES;
                 if_fail(ze.sEngineGetProperties(hs[hs_count].sengines[dp], &hs[hs_count].sengines_props[dp]), );
-            for (dp = 0; dp < hs[hs_count].stemps_count; ++dp)
+            }
+            for (dp = 0; dp < hs[hs_count].stemps_count; ++dp) {
+                hs[hs_count].stemps_props[dp].stype = ZES_STRUCTURE_TYPE_TEMP_PROPERTIES;
                 if_fail(ze.sTemperatureGetProperties(hs[hs_count].stemps[dp], &hs[hs_count].stemps_props[dp]), );
+            }
             // Card power domain
             if (ze.sDeviceGetCardPowerDomain(devices[dv], &hs[hs_count].scard) == ZE_RESULT_SUCCESS) {
                 hs[hs_count].scard_count = 1;
@@ -405,26 +415,25 @@ static state_t static_sysman_init()
 
 static state_t static_init(ze_t *ze_in, int sysman)
 {
-    state_t s = EAR_SUCCESS;
+    static state_t s = EAR_ERROR;
 #ifndef ONEAPI_BASE
     return EAR_ERROR;
 #endif
-    while (pthread_mutex_trylock(&lock))
-        ;
+    while (pthread_mutex_trylock(&lock));
     if (initialized) {
         goto leave;
     }
     if (state_ok(s = static_open())) {
-        if (!sysman)
-            s = static_core_init();
-        if (sysman)
-            s = static_sysman_init();
+        if (!sysman) s = static_core_init();
+        if ( sysman) s = static_sysman_init();
     }
     initialized = 1;
 leave:
     pthread_mutex_unlock(&lock);
-    if (ze_in != NULL) {
-        memcpy(ze_in, &ze, sizeof(ze_t));
+    if (state_ok(s)) {
+        if (ze_in != NULL) {
+            memcpy(ze_in, &ze, sizeof(ze_t));
+        }
     }
     return s;
 }
