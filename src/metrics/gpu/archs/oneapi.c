@@ -437,7 +437,6 @@ state_t gpu_oneapi_pool(void *p)
     pool_time1 = pool_time2;
     // Unlock
     pthread_mutex_unlock(&lock);
-
     return EAR_SUCCESS;
 }
 

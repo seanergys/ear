@@ -400,7 +400,7 @@ static state_t static_sysman_init()
             // 32 devices (6 bits) and 8 functions (3 bits) and domain (?).
             hs[hs_count].uuid = 0LLU;
             hs[hs_count].uuid = (hs[dv].spci_props.address.domain << 24) | (hs[dv].spci_props.address.bus << 16) |
-                                (hs[dv].spci_props.address.device << 8) | (hs[dv].spci_props.address.function);
+                                (hs[dv].spci_props.address.device <<  8) | (hs[dv].spci_props.address.function);
             // Last printings
             print_sysman_device_info(dv);
 
