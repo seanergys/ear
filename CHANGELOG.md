@@ -42,12 +42,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - v6.0 Several minor fixes in IMCFreq amd19 management API.
 - v6.0 Fixed errors with ereport's -G option.
 
-## [5.2] - 2025-03-28
+## [5.2] - 2025-05-28
 
 ### Added
 - Implementation of Powercap setting by domain.
 - Application CPU utiliztion is now computed and reported by EARL to CSV files.
 - Now the power signature is printed when printing an application to CSV file.
+- Print all application fields in the csv file.
 
 ### Changed
 - A new version of the `eacct` command is released providing an output format option.
@@ -59,6 +60,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixes related to setting powercap to single devices and domains.
 - Fixed typo in cpupow define.
 - Improved CPU governor list message.
+
+## 5.1.9 - 2025-04-28
+
+### Added
+- --verbose flag in the plugin manager.
+
+### Fixed
+- Avoid the usage of DRAM power in the per-core power model since it is not available in AMD systems.
+- econtrol's --hosts flag output fixed.
 
 ## 5.1.8 - 2025-04-10
 
