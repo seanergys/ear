@@ -35,7 +35,8 @@
 static uint cpu_count;
 static cfb_t bf;
 static uint avail_list_count;
-static ullong avail_list[N_FREQS]; // From 10 GHz to 1 GHz there are 90 items, enough
+static ullong avail_list_real[N_FREQS]; // From 10 GHz to 1 GHz there are 90 items, enough
+static ullong avail_list_disp[N_FREQS]; // Returned frequencies
 static ullong *current_list;
 static int *fds_sgv;
 static int *fds_sss;
@@ -44,7 +45,15 @@ static uint governor0;
 static ullong freq_max0;
 static ullong freq_min0;
 
-static state_t build_frequencies_list()
+static int have1000(ullong khz)
+{
+    ullong khz_cleaned = (khz / 10000LLU) * 10000LLU;
+    if (khz_cleaned == khz)
+        return 0;
+    return ((khz - khz_cleaned) == 1000LLU);
+}
+
+static state_t build_frequencies_list(ullong freq_max, ullong freq_min)
 {
     char buffer[PATH_MAX];
     int fd_saf0 = -1;
@@ -53,20 +62,36 @@ static state_t build_frequencies_list()
     // Building frequency list
     if (filemagic_can_read(PATH_SAF0, &fd_saf0)) {
         while (filemagic_word_read(fd_saf0, buffer, 0)) {
-            avail_list[i] = (ullong) atoll(buffer);
-            debug("avail_list%u: %llu", i, avail_list[i]);
+            avail_list_real[i] = (ullong) atoll(buffer);
+            avail_list_disp[i] = avail_list_real[i];
+            debug("avail_list_real/disp[%u]: %llu/%llu", i, avail_list_real[i], avail_list_disp[i]);
             ++i;
         }
         close(fd_saf0);
     } else {
-        avail_list[0] = bf.frequency;
         if (bf.boost_enabled) {
-            avail_list[0] = bf.frequency + 1000LLU;
-            debug("avail_list%u: %llu", i, avail_list[i]);
+            // The +1000 to indicate boost is only for display purpose, or when
+            // we read that the maximum frequency has it. In that case the
+            // driver works with the +1000 format.
+            if (freq_max == 0LLU) {
+                avail_list_real[0] = bf.frequency + 1000LLU;
+                avail_list_disp[0] = avail_list_real[0];
+            } else if (!have1000(freq_max)) {
+                avail_list_real[0] = freq_max;
+                avail_list_disp[0] = bf.frequency + 1000LLU;
+            } else {
+                avail_list_real[0] = freq_max;
+                avail_list_disp[0] = avail_list_real[0];
+            }
+            debug("avail_list_real/disp[%2u]: %7llu/%7llu", i, avail_list_real[i], avail_list_disp[i]);
             i = 1;
         }
-        while ((avail_list[i] = bf.frequency - (100000LLU * m)) >= 1000000LLU) { // 1GHz
-            debug("avail_list%u: %llu", i, avail_list[i]);
+        if (freq_min == 0LLU) {
+            freq_min = 1000000LLU; // 1GHz
+        }
+        while ((avail_list_real[i] = bf.frequency - (100000LLU * m)) >= freq_min) {
+            avail_list_disp[i] = avail_list_real[i];
+            debug("avail_list_real/disp[%2u]: %7llu/%7llu", i, avail_list_real[i], avail_list_disp[i]);
             ++m;
             ++i;
         }
@@ -142,10 +167,6 @@ void mgt_acpi_cpufreq_load(topology_t *tp, mgt_ps_driver_ops_t *ops)
     // Allocating space for current list
     cpu_count    = tp->cpu_count;
     current_list = calloc(cpu_count, sizeof(ullong));
-    // Building list of frequencies
-    if (state_fail(build_frequencies_list())) {
-        return;
-    }
     // Checking max/min frequency
     if (!mgt_intel_pstate_read_cpuinfo(1, &freq_max0)) {
         if (!keeper_load_uint64("AcpiCpufreqMaxFrequency", &freq_max0)) {
@@ -164,10 +185,10 @@ void mgt_acpi_cpufreq_load(topology_t *tp, mgt_ps_driver_ops_t *ops)
         keeper_save_uint64("AcpiCpufreqMaxFrequency", freq_max0);
     if (freq_min0 != 0LLU)
         keeper_save_uint64("AcpiCpufreqMinFrequency", freq_min0);
-    if (freq_max0 == 0LLU)
-        freq_max0 = avail_list[0];
-    if (freq_min0 == 0LLU)
-        freq_min0 = avail_list[avail_list_count - 1];
+    // Building list of frequencies
+    if (state_fail(build_frequencies_list(freq_max0, freq_min0))) {
+        return;
+    }
     // Saving initial governor
     mgt_acpi_cpufreq_governor_get(&governor0);
     // Saved initial values
@@ -210,15 +231,15 @@ state_t mgt_acpi_cpufreq_reset()
 void mgt_acpi_cpufreq_get_freq_details(freq_details_t *details)
 {
     details->freq_base = bf.frequency;
-    details->freq_max  = avail_list[0];
-    details->freq_min  = avail_list[avail_list_count - 1];
+    details->freq_max  = avail_list_real[0];
+    details->freq_min  = avail_list_real[avail_list_count - 1];
 }
 
 /* Getters */
 state_t mgt_acpi_cpufreq_get_available_list(const ullong **list, uint *list_count)
 {
     static ullong shared_list[128];
-    memcpy(shared_list, avail_list, sizeof(ullong) * 128);
+    memcpy(shared_list, avail_list_disp, sizeof(ullong) * 128);
     if (list != NULL) {
         *list = (const ullong *) shared_list;
     }
@@ -267,8 +288,8 @@ state_t mgt_acpi_cpufreq_set_current_list(uint *freqs_index)
         if (freqs_index[cpu] > avail_list_count) {
             freqs_index[cpu] = avail_list_count - 1;
         }
-        sprintf(data, "%llu", avail_list[freqs_index[cpu]]);
-        debug("set_list%d: %llu", cpu, avail_list[freqs_index[cpu]]);
+        sprintf(data, "%llu", avail_list_real[freqs_index[cpu]]);
+        debug("set_list%d: %llu", cpu, avail_list_real[freqs_index[cpu]]);
         strcat(data, "\n");
         if (!filemagic_word_write(fds_sss[cpu], data, strlen(data), 0)) {
             s = EAR_ERROR;
@@ -287,12 +308,12 @@ state_t mgt_acpi_cpufreq_set_current(uint freq_index, int cpu)
     // If is one P_STATE for all CPUs
     if (cpu == all_cpus) {
         // Converting frequency to text
-        sprintf(data, "%llu", avail_list[freq_index]);
+        sprintf(data, "%llu", avail_list_real[freq_index]);
         return (filemagic_word_mwrite(fds_sss, cpu_count, data, 1) ? EAR_SUCCESS : EAR_ERROR);
     }
     // If it is for a specified CPU
     if (cpu >= 0 && cpu < cpu_count) {
-        sprintf(data, "%llu", avail_list[freq_index]);
+        sprintf(data, "%llu", avail_list_real[freq_index]);
         debug("writing a word '%s'", data);
         strcat(data, "\n");
         return (filemagic_word_write(fds_sss[cpu], data, strlen(data), 0) ? EAR_SUCCESS : EAR_ERROR);
