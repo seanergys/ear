@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #include <asm/sigcontext.h>
 #include <common/hardware/topology_asm.h>
@@ -326,14 +326,14 @@ state_t topology_init(topology_t *topo)
             }
             topo->socket_count += (j == i);
         }
-        // Macro to count cache banks
-        #define cache_count(level, var)                                                                                    \
-        for (j = 0; j <= i; ++j) {                                                                                         \
-            if (topo->cpus[j].l[level].id != TOPO_UNDEFINED && topo->cpus[j].l[level].id == topo->cpus[i].l[level].id) {   \
-                break;                                                                                                     \
-            }                                                                                                              \
-        }                                                                                                                  \
-        var += (j == i);
+// Macro to count cache banks
+#define cache_count(level, var)                                                                                        \
+    for (j = 0; j <= i; ++j) {                                                                                         \
+        if (topo->cpus[j].l[level].id != TOPO_UNDEFINED && topo->cpus[j].l[level].id == topo->cpus[i].l[level].id) {   \
+            break;                                                                                                     \
+        }                                                                                                              \
+    }                                                                                                                  \
+    var += (j == i);
         // Macro end
         cache_count(2, topo->l2_count);
         cache_count(3, topo->l3_count);
@@ -367,7 +367,7 @@ state_t topology_init(topology_t *topo)
     }
 
     // TDP definition (to avoid redundancy)
-    void topology_tdp(topology_t *topo);
+    void topology_tdp(topology_t * topo);
     topology_cpuinfo(topo);
     topology_watchdog(topo);
     topology_tdp(topo);
@@ -403,11 +403,9 @@ state_t topology_close(topology_t *topo)
       "avx512           : %d\n"                                                                                        \
       "sve              : %d\n"                                                                                        \
       "sve_bits         : %d\n",                                                                                       \
-      topo->cpu_count      , topo->core_count, topo->socket_count, topo->threads_per_core,                             \
-      topo->smt_enabled    , topo->l2_count  , topo->l3_count    , topo->l4_count        ,                             \
-      topo->cache_line_size, topo->vendor    , topo->family      , topo->model           ,                             \
-      topo->brand          , topo->gpr_count , topo->gpr_bits    , topo->nmi_watchdog    ,                             \
-      topo->avx512         , topo->sve       , topo->sve_bits);
+      topo->cpu_count, topo->core_count, topo->socket_count, topo->threads_per_core, topo->smt_enabled,                \
+      topo->l2_count, topo->l3_count, topo->l4_count, topo->cache_line_size, topo->vendor, topo->family, topo->model,  \
+      topo->brand, topo->gpr_count, topo->gpr_bits, topo->nmi_watchdog, topo->avx512, topo->sve, topo->sve_bits);
 
 void topology_print(topology_t *topo, int fd)
 {
