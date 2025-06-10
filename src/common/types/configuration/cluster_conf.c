@@ -1580,7 +1580,7 @@ state_t serialize_cluster_conf(cluster_conf_t *conf, char **ear_conf_buf, size_t
 }
 
 /* ear_conf_buf points to a serialized region. conf is the output. Memory is not internally allocated for it */
-state_t deserialize_cluster_conf(cluster_conf_t *conf, char *ear_conf_buf, size_t conf_size)
+state_t deserialize_cluster_conf(cluster_conf_t *conf, char *ear_conf_buf, size_t conf_size, const version_t *src_version)
 {
     state_t s = EAR_SUCCESS;
     wide_buffer_t ear_conf_serial;
@@ -1649,16 +1649,20 @@ state_t deserialize_cluster_conf(cluster_conf_t *conf, char *ear_conf_buf, size_
         }
     }
 
-    /* Admin users */
-    serial_copy_elem(&ear_conf_serial, (char *) &conf->admin_users_count, NULL);
-    if (conf->admin_users_count) {
-        conf->admin_users = calloc(sizeof(char *), conf->admin_users_count);
+    /* Admin users: Just available since v6.0 */
+    version_t admusr_min_v;
+    version_set(&admusr_min_v, 6, 0);
+    if (version_is(VERSION_GE, src_version, &admusr_min_v)) {
+        serial_copy_elem(&ear_conf_serial, (char *) &conf->admin_users_count, NULL);
+        if (conf->admin_users_count) {
+            conf->admin_users = calloc(sizeof(char *), conf->admin_users_count);
 
-        for (uint admn = 0; admn < conf->admin_users_count; admn++) {
-            uint size_auth;
-            serial_copy_elem(&ear_conf_serial, (char *) &size_auth, NULL);
-            conf->admin_users[admn] = calloc(1, size_auth + 1);
-            serial_copy_elem(&ear_conf_serial, (char *) &conf->admin_users[admn], NULL);
+            for (uint admn = 0; admn < conf->admin_users_count; admn++) {
+                uint size_auth;
+                serial_copy_elem(&ear_conf_serial, (char *) &size_auth, NULL);
+                conf->admin_users[admn] = calloc(1, size_auth + 1);
+                serial_copy_elem(&ear_conf_serial, (char *) &conf->admin_users[admn], NULL);
+            }
         }
     }
 
