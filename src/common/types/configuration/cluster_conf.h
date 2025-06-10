@@ -22,6 +22,7 @@
 #include <common/sizes.h>
 #include <common/states.h>
 #include <common/string_enhanced.h>
+#include <common/system/version.h>
 #include <common/types/configuration/cluster_conf_db.h>
 #include <common/types/configuration/cluster_conf_eard.h>
 #include <common/types/configuration/cluster_conf_eardbd.h>
@@ -247,8 +248,9 @@ uint tags_are_unlimited(cluster_conf_t *conf);
 /** It serializes conf and stores in ear_conf_buf. Memory is internally allocated */
 state_t serialize_cluster_conf(cluster_conf_t *conf, char **ear_conf_buf, size_t *conf_size);
 
-/** ear_conf_buf points to a serialized region. conf is the output. Memory is not internally allocated for it */
-state_t deserialize_cluster_conf(cluster_conf_t *conf, char *ear_conf_buf, size_t conf_size);
+/** ear_conf_buf points to a serialized region. conf is the output. Memory is not internally allocated for it
+ * \param src_version version_t of the serialized region. */
+state_t deserialize_cluster_conf(cluster_conf_t *conf, char *ear_conf_buf, size_t conf_size, const version_t *src_version);
 
 /** Checks if a tag with a given name is defined in ear.conf and returns its id if it exists */
 int tag_id_exists(cluster_conf_t *conf, char *tag);
