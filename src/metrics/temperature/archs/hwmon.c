@@ -18,7 +18,6 @@ static hwmon_t *chips;
 static uint     chips_count;
 static uint     sockets_count;
 static uint     items_count;
-static uint     granularity;
 static char  **labels_test;
 static char    *label;
 static char    *driver_name;
@@ -27,7 +26,7 @@ TEMP_F_LOAD(hwmon)
 {
     if (tp->vendor == VENDOR_AMD || tp->family >= FAMILY_ZEN) {
         driver_name = "k10temp";
-        labels_test = (char *[]) { "Tccd" , "Tctl", NULL };
+        labels_test = (char *[]) { "Tccd" , "Tctl", NULL }; // Tctl is the real temperature plus an offset
     } else if (tp->vendor == VENDOR_INTEL || tp->family >= MODEL_ICELAKE_X) {
         driver_name = "coretemp";
         labels_test = (char *[]) { "Package", NULL };
@@ -51,15 +50,9 @@ TEMP_F_LOAD(hwmon)
         hwmon_close(&chips);
         return;
     }
-    debug("Detected HWMON '%s' items: %u", label, items_count)
-    if      (items_count == (tp->socket_count  )) granularity = GRANULARITY_SOCKET;
-    else if (items_count == (tp->core_count / 8)) granularity = GRANULARITY_CCD;
-    else if (items_count == (tp->core_count / 4)) granularity = GRANULARITY_CCX;
-    else if (items_count == (tp->core_count    )) granularity = GRANULARITY_CORE;
-    else if (items_count == (tp->cpu_count     )) granularity = GRANULARITY_CPU;
-    else return;
-    debug("Granularity %u", granularity);
     sockets_count = tp->socket_count;
+    debug("Detected %u HWMON '%s' chips with %u items in a system with %d sockets",
+        chips_count, label, items_count, sockets_count);
     apis_put(ops->get_info, temp_hwmon_get_info);
     apis_put(ops->init,     temp_hwmon_init);
     apis_put(ops->dispose,  temp_hwmon_dispose);
@@ -70,8 +63,8 @@ TEMP_F_GET_INFO(hwmon)
 {
     info->api         = API_HWMON;
     info->scope       = SCOPE_NODE;
-    info->granularity = granularity;
-    info->devs_count  = items_count;
+    info->granularity = GRANULARITY_SOCKET; // We use average per chip, and a chip is per socket
+    info->devs_count  = sockets_count;
 }
 
 TEMP_F_INIT(hwmon)
@@ -109,6 +102,7 @@ TEMP_F_READ(hwmon)
         debug("Read temp %lld", temp_in);
         ++c;
     }
+    debug("----");
     if (average != NULL) {
         *average /= (llong) c;
     }
