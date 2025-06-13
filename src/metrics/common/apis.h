@@ -52,11 +52,14 @@
 #define GRANULARITY_DUMMY      1
 #define GRANULARITY_PROCESS    2
 #define GRANULARITY_THREAD     3
+#define GRANULARITY_CPU        GRANULARITY_THREAD
 #define GRANULARITY_CORE       4
 #define GRANULARITY_PERIPHERAL 5
 #define GRANULARITY_L3_SLICE   7
-#define GRANULARITY_IMC        8
-#define GRANULARITY_SOCKET     9
+#define GRANULARITY_CCX        GRANULARITY_L3_SLICE
+#define GRANULARITY_CCD        8
+#define GRANULARITY_IMC        9
+#define GRANULARITY_SOCKET     10
 #define SCOPE_NONE             0
 #define SCOPE_DUMMY            1
 #define SCOPE_PROCESS          2

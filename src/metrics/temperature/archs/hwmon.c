@@ -15,22 +15,21 @@
 #include <metrics/temperature/archs/hwmon.h>
 
 static hwmon_t *chips;
-static uint chips_count;
-static uint sockets_count;
-static uint items_count;
-static char *label;
-static char *driver_name;
+static uint     chips_count;
+static uint     sockets_count;
+static uint     items_count;
+static char  **labels_test;
+static char    *label;
+static char    *driver_name;
 
 TEMP_F_LOAD(hwmon)
 {
     if (tp->vendor == VENDOR_AMD || tp->family >= FAMILY_ZEN) {
-        items_count = tp->core_count / 8; // 8 cores * CCD
         driver_name = "k10temp";
-        label       = "Tccd";
+        labels_test = (char *[]) { "Tccd" , "Tctl", NULL }; // Tctl is the real temperature plus an offset
     } else if (tp->vendor == VENDOR_INTEL || tp->family >= MODEL_ICELAKE_X) {
-        items_count = tp->socket_count;
         driver_name = "coretemp";
-        label       = "Package";
+        labels_test = (char *[]) { "Package", NULL };
     } else {
         return;
     }
@@ -38,11 +37,22 @@ TEMP_F_LOAD(hwmon)
         debug("Failed: %s", state_msg);
         return;
     }
-    if (hwmon_count_items(chips, "input", label) != items_count) {
+    debug("HWMON opened")
+    while (*labels_test != NULL) {
+        debug("LABEL %s", *labels_test);
+        if ((items_count = hwmon_count_items(chips, "input", *labels_test)) > 0) {
+            label = *labels_test;
+            break;
+        }
+        *labels_test++;
+    }
+    if (label == NULL) {
         hwmon_close(&chips);
         return;
     }
     sockets_count = tp->socket_count;
+    debug("Detected %u HWMON '%s' chips with %u items in a system with %d sockets",
+        chips_count, label, items_count, sockets_count);
     apis_put(ops->get_info, temp_hwmon_get_info);
     apis_put(ops->init,     temp_hwmon_init);
     apis_put(ops->dispose,  temp_hwmon_dispose);
@@ -53,7 +63,7 @@ TEMP_F_GET_INFO(hwmon)
 {
     info->api         = API_HWMON;
     info->scope       = SCOPE_NODE;
-    info->granularity = GRANULARITY_SOCKET;
+    info->granularity = GRANULARITY_SOCKET; // We use average per chip, and a chip is per socket
     info->devs_count  = sockets_count;
 }
 
@@ -73,7 +83,8 @@ TEMP_F_DISPOSE(hwmon)
 
 TEMP_F_READ(hwmon)
 {
-    llong temp_aux;
+    llong temp_in;
+    llong temp_av;
     hwmon_t *chip;
     int c = 0;
 
@@ -84,13 +95,14 @@ TEMP_F_READ(hwmon)
     hwmon_read(chips);
     hwmon_calc_average(chips, label);
     while ((chip = hwmon_iter_chips(chips)) != NULL) {
-        temp_aux = ((llong) chip->devs_avg.input_toint) / 1000LL;
-        if (temp != NULL)
-            temp[c] = temp_aux;
-        if (average != NULL)
-            *average += (llong) chip->devs_avg.input_toint;
+        temp_in = ((llong) chip->devs_avg.input_toint) / 1000LL;
+        temp_av = ((llong) chip->devs_avg.input_toint) / 1000LL;
+        if (temp    != NULL) temp[c]   = temp_in;
+        if (average != NULL) *average += temp_av;
+        debug("Read temp %lld", temp_in);
         ++c;
     }
+    debug("----");
     if (average != NULL) {
         *average /= (llong) c;
     }

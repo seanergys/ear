@@ -93,37 +93,25 @@ void apis_tostr(uint api, char *buffer, size_t size)
 
 static char *granularity_tostr(uint granularity)
 {
-    if (granularity == GRANULARITY_NONE)
-        return "none";
-    else if (granularity == GRANULARITY_DUMMY)
-        return "dummy";
-    else if (granularity == GRANULARITY_PROCESS)
-        return "process";
-    else if (granularity == GRANULARITY_THREAD)
-        return "thread";
-    else if (granularity == GRANULARITY_CORE)
-        return "core";
-    else if (granularity == GRANULARITY_PERIPHERAL)
-        return "peripheral";
-    else if (granularity == GRANULARITY_L3_SLICE)
-        return "l3 slice";
-    else if (granularity == GRANULARITY_IMC)
-        return "imc";
-    else if (granularity == GRANULARITY_SOCKET)
-        return "socket";
+    if      (granularity == GRANULARITY_NONE      ) return "none";
+    else if (granularity == GRANULARITY_DUMMY     ) return "dummy";
+    else if (granularity == GRANULARITY_PROCESS   ) return "process";
+    else if (granularity == GRANULARITY_THREAD    ) return "cpu/thread";
+    else if (granularity == GRANULARITY_CORE      ) return "core";
+    else if (granularity == GRANULARITY_PERIPHERAL) return "peripheral";
+    else if (granularity == GRANULARITY_L3_SLICE  ) return "l3 slice/ccx";
+    else if (granularity == GRANULARITY_CCD       ) return "ccd";
+    else if (granularity == GRANULARITY_IMC       ) return "imc";
+    else if (granularity == GRANULARITY_SOCKET    ) return "socket";
     return "none";
 }
 
 static char *scope_tostr(uint scope)
 {
-    if (scope == SCOPE_NONE)
-        return "none";
-    else if (scope == SCOPE_DUMMY)
-        return "dummy";
-    else if (scope == SCOPE_PROCESS)
-        return "process";
-    else if (scope == SCOPE_NODE)
-        return "node";
+    if      (scope == SCOPE_NONE   ) return "none";
+    else if (scope == SCOPE_DUMMY  ) return "dummy";
+    else if (scope == SCOPE_PROCESS) return "process";
+    else if (scope == SCOPE_NODE   ) return "node";
     return "none";
 }
 

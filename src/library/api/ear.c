@@ -129,6 +129,9 @@ static uint first_application = 1;
 
 static pthread_mutex_t earl_th_locks = PTHREAD_MUTEX_INITIALIZER;
 
+/* Holds the configuration of the eard */
+static eard_state_t eard_conf;
+
 #define MASTER_ID masters_info.my_master_rank
 
 extern const char *__progname;
@@ -274,32 +277,26 @@ static void create_earl_verbose_files();
 /** Make a copy of pathname and store it to a file called pathname.bckp */
 static state_t earl_log_backup(char *pathname, size_t pathname_size);
 
-static state_t check_eard_earl_compatibility(state_t eard_connect_state)
+static state_t check_eard_earl_compatibility(state_t eard_connect_state, eard_state_t *eard_conf)
 {
     state_t st = EAR_SUCCESS;
     return st;
     if (state_fail(eard_connect_state))
         return EAR_ERROR;
 
-    eard_state_t eard_conf;
-
-#if VERSION_MAJOR < 5
-    verbose_master(0, "Warning, EARD compatibility test not supported");
-    return EAR_SUCCESS;
-#endif
-
     // If eards_get_state returns EAR_ERROR, means that the connected EARD does not have the RPC
     // implemented, so we assume it is an old version and (by now) it should be compatible.
     // This is why currently if the below call returns ERROR, we return EAR_SUCCESS
-    if (state_ok(st = eards_get_state(&eard_conf))) {
-        if (eard_conf.version.major != VERSION_MAJOR) {
+    if (state_ok(st = eards_get_state(eard_conf))) {
+        if (eard_conf->version.major != VERSION_MAJOR) {
             verbose_warning_master("Major versions differ (EARD %u | EARL %u). Future versions shall consider this "
                                    "difference as an incompatibility.",
-                                   eard_conf.version.major, VERSION_MAJOR);
+                                   eard_conf->version.major, VERSION_MAJOR);
         }
-        if ((eard_conf.gpus_supported_count != MAX_GPUS_SUPPORTED) ||
-            (eard_conf.cpus_supported_count != MAX_CPUS_SUPPORTED) ||
-            (eard_conf.sock_supported_count != MAX_SOCKETS_SUPPORTED) || (eard_conf.gpus_support_enabled != USE_GPUS)) {
+        if ((eard_conf->gpus_supported_count != MAX_GPUS_SUPPORTED) ||
+            (eard_conf->cpus_supported_count != MAX_CPUS_SUPPORTED) ||
+            (eard_conf->sock_supported_count != MAX_SOCKETS_SUPPORTED) ||
+            (eard_conf->gpus_support_enabled != USE_GPUS)) {
             st = EAR_ERROR;
         }
     } else
@@ -1836,7 +1833,7 @@ void ear_init()
                 my_node_id, my_pid, ear_my_rank, node_name, ((ret == EAR_SUCCESS) ? "Connected" : "Not Connected"),
                 COL_CLR);
 
-        state_t eard_comp_state = check_eard_earl_compatibility(ret);
+        state_t eard_comp_state = check_eard_earl_compatibility(ret, &eard_conf);
 
         // Only for testing purposes
         if (fake_eard_error == 3) {
@@ -1911,7 +1908,8 @@ void ear_init()
     debug("Using ser cconf path %s", ser_cluster_conf_path);
     ser_cluster_conf = attach_ser_cluster_conf_shared_area(ser_cluster_conf_path, &ser_cluster_conf_size);
     debug("Serialized cluster conf requires %lu bytes", ser_cluster_conf_size);
-    deserialize_cluster_conf(&cconf, ser_cluster_conf, ser_cluster_conf_size);
+		verbose_info2_master("Deserializing the cluster conf")
+    deserialize_cluster_conf(&cconf, ser_cluster_conf, ser_cluster_conf_size, &eard_conf.version);
 
     debug("END Shared region creation section");
     /* Processes in same node connectes each other*/
