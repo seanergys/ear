@@ -113,6 +113,7 @@ static void open_devices(char *folder_path, char *devs_name, hwmon_dev_t **devs,
     *devs       = NULL;
     *devs_count = 0;
     *devs       = realloc(*devs, sizeof(hwmon_dev_t));
+    memset(*devs, 0, sizeof(hwmon_dev_t));
     do {
         completed = 0;
         sprintf(type_number, "%s%d", devs_name, d + 1);
@@ -125,18 +126,19 @@ static void open_devices(char *folder_path, char *devs_name, hwmon_dev_t **devs,
         (*devs)[i].max_fd              = -1;
         (*devs)[i].average_fd          = -1;
         (*devs)[i].average_interval_fd = -1;
-//
+        //
 #define offset(var) (ullong) & ((*devs)[i].var)
-        completed += read_device_item(folder_path, type_number, "input", offset(input_fd), 0);
-        completed += read_device_item(folder_path, type_number, "oem_info", offset(label_fd), 1); // Secondary label
-        completed += read_device_item(folder_path, type_number, "label", offset(label_fd), 1);
-        completed += read_device_item(folder_path, type_number, "max", offset(max_fd), 1);
-        completed += read_device_item(folder_path, type_number, "average", offset(average_fd), 0);
+        completed += read_device_item(folder_path, type_number, "input"   , offset(input_fd)  , 0);
+        completed += read_device_item(folder_path, type_number, "oem_info", offset(label_fd)  , 1); // Secondary label
+        completed += read_device_item(folder_path, type_number, "label"   , offset(label_fd)  , 1);
+        completed += read_device_item(folder_path, type_number, "max"     , offset(max_fd)    , 1);
+        completed += read_device_item(folder_path, type_number, "average" , offset(average_fd), 0);
         completed += read_device_item(folder_path, type_number, "average_interval", offset(average_interval_fd), 1);
 #undef offset
         if (completed) {
             // Allocating more space for the next device and its items (+2 because it NULL terminated)
             *devs = realloc(*devs, sizeof(hwmon_dev_t) * ((*devs_count) + 2));
+            memset(&(*devs)[*devs_count+1], 0, sizeof(hwmon_dev_t));
             (*devs_count)++;
             missing = 0;
             i++;
@@ -168,9 +170,9 @@ state_t hwmon_open(char *chip_name, char *dev_type, hwmon_t **chips, uint *chips
             break;
         }
         // If file name matches
-        if ((test = test_chip_name(chip_name, folder_path, "name")) != 0 ||
+        if ((test = test_chip_name(chip_name, folder_path, "name"       )) != 0 ||
             (test = test_chip_name(chip_name, folder_path, "device/name")) != 0 ||
-            (test = test_chip_name(chip_name, folder_path, "device/hid")) != 0) { // Rare case
+            (test = test_chip_name(chip_name, folder_path, "device/hid" )) != 0) { // Rare case
             // The is a chip but it has different name
             if (test == -1) {
                 goto next;
@@ -178,12 +180,13 @@ state_t hwmon_open(char *chip_name, char *dev_type, hwmon_t **chips, uint *chips
             debug("HWMON new chip found! We found %d already", (*chips_count) + 1);
             // Allocating more space for the devices of the newly found chip (+2 because it NULL terminated)
             *chips = realloc(*chips, sizeof(hwmon_t) * ((*chips_count) + 2));
+            memset(&(*chips)[*chips_count], 0, sizeof(hwmon_t) * 2);
             // Opening the devices of this chip
             open_devices(folder_path, dev_type, &(*chips)[*chips_count].devs, &(*chips)[*chips_count].devs_count);
             // Increasing the number of devices found
             (*chips_count)++;
         }
-    next:
+        next:
         ++i;
     } while (1);
     if (*chips_count == 0) {
@@ -236,22 +239,17 @@ int hwmon_count_items(hwmon_t chips[], char *item_name, char *label)
         d = 0;
         while (!chips[c].devs[d].is_null) {
             if (label == NULL || strstr(chips[c].devs[d].label, label) != NULL) {
-                if (cmp1)
-                    counter += chips[c].devs[d].input_fd != -1;
-                if (cmp2)
-                    counter += chips[c].devs[d].min_fd != -1;
-                if (cmp3)
-                    counter += chips[c].devs[d].max_fd != -1;
-                if (cmp4)
-                    counter += chips[c].devs[d].average_fd != -1;
-                if (cmp5)
-                    counter += chips[c].devs[d].average_interval_fd != -1;
+                if (cmp1) counter += chips[c].devs[d].input_fd != -1;
+                if (cmp2) counter += chips[c].devs[d].min_fd != -1;
+                if (cmp3) counter += chips[c].devs[d].max_fd != -1;
+                if (cmp4) counter += chips[c].devs[d].average_fd != -1;
+                if (cmp5) counter += chips[c].devs[d].average_interval_fd != -1;
             }
             ++d;
         }
         ++c;
     }
-    debug("counted %d '%s' items", counter, label);
+    debug("counted %d items '%s'", counter, label);
     return counter;
 }
 
@@ -286,24 +284,26 @@ void hwmon_calc_average(hwmon_t *chips, char *label)
         while (!chips[c].devs[d].is_null) {
             debug("- CHIP%d DEV%d comparing labels '%s' == '%s'", c, d, chips[c].devs[d].label, label);
             if (label == NULL || strstr(chips[c].devs[d].label, label) != NULL) {
-                debug("   - input  : %u += %u", chips[c].devs_avg.input_toint, chips[c].devs[d].input_toint);
-                debug("   - average: %u += %u", chips[c].devs_avg.average_toint, chips[c].devs[d].average_toint);
-                chips[c].devs_avg.input_toint += chips[c].devs[d].input_toint;
-                chips[c].devs_avg.max_toint += chips[c].devs[d].max_toint;
-                chips[c].devs_avg.min_toint += chips[c].devs[d].min_toint;
+                debug("   - input  : acc + %u = %u", chips[c].devs_avg.input_toint  , chips[c].devs[d].input_toint  );
+                debug("   - average: acc + %u = %u", chips[c].devs_avg.average_toint, chips[c].devs[d].average_toint);
+                chips[c].devs_avg.input_toint   += chips[c].devs[d].input_toint;
+                chips[c].devs_avg.max_toint     += chips[c].devs[d].max_toint;
+                chips[c].devs_avg.min_toint     += chips[c].devs[d].min_toint;
                 chips[c].devs_avg.average_toint += chips[c].devs[d].average_toint;
                 chips[c].devs_avg.average_interval_toint += chips[c].devs[d].average_interval_toint;
                 ++m;
             }
             ++d;
         }
-        debug("   - input  : %u /= %u", chips[c].devs_avg.input_toint, m);
-        debug("   - average: %u /= %u", chips[c].devs_avg.average_toint, m);
-        chips[c].devs_avg.input_toint /= m;
-        chips[c].devs_avg.max_toint /= m;
-        chips[c].devs_avg.min_toint /= m;
+        debug("   - input  : %5u / %u = ??", chips[c].devs_avg.input_toint  , m);
+        debug("   - average: %5u / %u = ??", chips[c].devs_avg.average_toint, m);
+        chips[c].devs_avg.input_toint   /= m;
+        chips[c].devs_avg.max_toint     /= m;
+        chips[c].devs_avg.min_toint     /= m;
         chips[c].devs_avg.average_toint /= m;
         chips[c].devs_avg.average_interval_toint /= m;
+        debug("   - input  : ?? = %u", chips[c].devs_avg.input_toint  );
+        debug("   - average: ?? = %u", chips[c].devs_avg.average_toint);
         ++c;
     }
 }
@@ -355,7 +355,7 @@ hwmon_dev_t *hwmon_iter_devs(hwmon_t *chip, char *label)
     return NULL;
 }
 
-#if TEST
+#if TEST1
 int main(int argc, char *argv[])
 {
     uint chips_count = 0;

@@ -40,7 +40,6 @@ void temp_load(topology_t *tp, uint force_api)
 #endif
     temp_hwmon_load(tp, &ops, force_api);
     temp_intel63_load(tp, &ops, force_api);
-    // temp_amd17_load  (tp, &ops, force_api); //We already have hwmon
 dummy:
     temp_dummy_load(tp, &ops, force_api);
     temp_get_info(&info);
@@ -129,3 +128,22 @@ void temp_data_print(llong *list, llong avrg, int fd)
     temp_data_tostr(list, avrg, buffer, 1024);
     dprintf(fd, "%s", buffer);
 }
+
+#if TEST
+static topology_t tp;
+static llong t1[128];
+static llong t2[128];
+static llong tD[128];
+static llong tA;
+
+int main(int argc, char **argv)
+{
+    topology_init(&tp);
+    temp_load(&tp, API_FREE);
+    temp_read(t1, &tA);
+    sleep(1);
+    temp_read_copy(t2, t1, tD, &tA);
+    temp_data_print(tD, tA, verb_channel);
+    return 0;
+}
+#endif
