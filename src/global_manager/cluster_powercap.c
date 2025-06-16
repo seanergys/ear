@@ -77,7 +77,13 @@ void eargm_report_event(uint event_type, ulong value)
     event.jid 			= 0;
     event.step_id		= 0;
 
-    int ret = snprintf(event.node_id, sizeof(event.node_id), "eargm-%s", host);
+    char *gm_name = ear_getenv("EARGMNAME");
+    int ret;
+    if (gm_name)
+        ret = snprintf(event.node_id, sizeof(event.node_id), "eargm-%s-%s", gm_name, host);
+    else
+        ret = snprintf(event.node_id, sizeof(event.node_id), "eargm-%s", host);
+
     if (ret < 0) {
         verbose(VGM_PC, "%sERROR%s Writing the hostname to the event.", COL_RED, COL_CLR);
     } else if (ret >= sizeof(event.node_id)) {
