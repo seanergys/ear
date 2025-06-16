@@ -334,7 +334,7 @@ void cluster_only_powercap()
     uint64_t freeable_power = 0;
     uint64_t requested = 0;
     uint64_t new_limit = 0;
-    if (power.power > upper_limit) {
+    if (power.power > upper_limit && risk == 0) {
         /* For heterogeneous clusters we set the max powercap for each node, which should be set by the admin in ear.conf
          * For homogeneous clusters we can simply divide the current power between the number of active nodes. */
         if (max_num_nodes > 0) {
@@ -378,6 +378,8 @@ void *eargm_powercap_th(void *noarg)
 {
     if (pthread_setname_np(pthread_self(), "cluster_powercap")!=0) error("Setting name forcluster_powercap thread %s", strerror(errno));
 
+    if (my_cluster_conf.eargm.powercap_mode == SOFT_POWERCAP)
+        ear_set_powerlimit(&my_cluster_conf, 1, nodes, num_eargm_nodes); // set powercap to unlimited at the start
     while(1)
     {
         sleep(cluster_powercap_period);
