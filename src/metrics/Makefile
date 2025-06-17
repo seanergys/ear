@@ -89,7 +89,6 @@ mets_OBJS = \
     $(SRCDIR)/metrics/gpu/archs/gpuprof_dcgmi.o \
     $(SRCDIR)/metrics/gpu/archs/gpuprof_dummy.o \
     $(SRCDIR)/metrics/temperature/temperature.o \
-    $(SRCDIR)/metrics/temperature/archs/amd17.o \
     $(SRCDIR)/metrics/temperature/archs/eard.o \
     $(SRCDIR)/metrics/temperature/archs/hwmon.o \
     $(SRCDIR)/metrics/temperature/archs/intel63.o \
@@ -98,16 +97,13 @@ mets_OBJS = \
 
 ######## RULES
 
-all: all.components metrics.o libmetrics.a 
+all: all.components libmetrics.a
 
 post: test
 	@ $(MAKE) -C 'gpu' post || exit
 	@ $(MAKE) -C 'common' post || exit
 
-metrics.o: metrics.c
-	$(CC) $(CC_FLAGS) -I$(SRCDIR) -fPIC -c $<
-
-libmetrics.a: metrics.o $(mets_OBJS)
+libmetrics.a: $(mets_OBJS)
 	$(AR) rvs $@ $^
 
 test: metrics.c

@@ -15,7 +15,7 @@
 #include <common/plugins.h>
 #include <common/system/time.h>
 #include <common/hardware/topology.h>
-#include <metrics/cpi/debug_cbs.h>
+#include <metrics/common/cdebug.h>
 
 typedef struct stalls_s {
     ullong fetch_decode; // Instruction fetch-decode pipeline
@@ -24,8 +24,8 @@ typedef struct stalls_s {
 } stalls_t;
 
 typedef struct cpi_s {
-    ullong instructions;
-    ullong cycles;
+    ullong   instructions;
+    ullong   cycles;
     stalls_t stalls;
 } cpi_t;
 
@@ -36,7 +36,7 @@ typedef struct cpi_ops_s {
 } cpi_ops_t;
 
 // API building scheme
-#define CPI_F_LOAD(name)     void name(topology_t *tpo, debug_cbs_f callback, cpi_ops_t *ops)
+#define CPI_F_LOAD(name)     void name(topology_t *tpo, cdebug_f callback, cpi_ops_t *ops)
 #define CPI_F_UNLOAD(name)   void name()
 #define CPI_F_GET_INFO(name) void name(apinfo_t *info)
 #define CPI_F_READ(name)     state_t name(cpi_t *cpi)
@@ -48,13 +48,13 @@ typedef struct cpi_ops_s {
     CPI_F_READ(cpi_##name##_read);
 
 // Primer problema, necesitamos el debug en el load
-void cpi_load(topology_t *tp, int force_api, debug_cbs_f callback);
+void cpi_load(topology_t *tp, int force_api, cdebug_f callback);
 
 void cpi_unload();
 
 void cpi_get_info(apinfo_t *info);
 
-//void cpi_set_debug(debug_cbs_f callback);
+//void cpi_set_debug(cdebug_f callback);
 
 state_t cpi_read(ctx_t *c, cpi_t *ci);
 

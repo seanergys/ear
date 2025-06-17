@@ -21,16 +21,21 @@
 #define L1_LDM       PERF_COUNT_HW_CACHE_L1D | (PERF_COUNT_HW_CACHE_OP_READ << 8) | (PERF_COUNT_HW_CACHE_RESULT_MISS << 16)
 #define L1_LDA       PERF_COUNT_HW_CACHE_L1D | (PERF_COUNT_HW_CACHE_OP_READ << 8) | (PERF_COUNT_HW_CACHE_RESULT_ACCESS << 16)
 
-static perf_t perfs[6];
-static uint perfs_count;
-static uint started;
+static perf_t       perfs[6];
+static uint         perfs_count;
+static uint         started;
 static offset_ops_t ofs;
 
 static void perfs_add(ullong event, uint type, ulong offset_result, const char *event_desc)
 {
     offsets_add(&ofs, offset_result, NO_OFFSET, NO_OFFSET, '=');
-    if (state_fail(perf_open(&perfs[perfs_count], NULL, 0, type, event))) {
-        debug("failed: %s", state_msg);
+    if (state_ok(perf_open(&perfs[perfs_count], NULL, 0, type, event))) {
+        if (state_fail(perf_start(&perfs[perfs_count]))) {
+            debug("perf_start() failed: %s", state_msg);
+            perf_close(&perfs[perfs_count]);
+        }
+    } else {
+        debug("perf_open() failed: %s", state_msg);
     }
     strcpy(perfs[perfs_count].event_name, event_desc);
     ++perfs_count;
@@ -48,51 +53,51 @@ static int perfs_count_opened_fds()
 #define O2(l, v) (((int) offsetof(cache_t, l)) + ((int) offsetof(cache_level_t, v)))
 #define O1(l)    (((int) offsetof(cache_t, l)))
 
-void cache_perf_load(topology_t *tp, cache_ops_t *ops)
+CACHE_F_LOAD(perf)
 {
     if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_SKYLAKE_X) {
-        perfs_add(0x01d1, PERF_TYPE_RAW, O2(l1d, hits), "MEM_LOAD_RETIRED.L1_HIT       ");
-        perfs_add(0x08d1, PERF_TYPE_RAW, O2(l1d, misses), "MEM_LOAD_RETIRED.L1_MISS      ");
-        perfs_add(0xe724, PERF_TYPE_RAW, O2(l2, accesses), "L2_RQSTS.ALL_DEMAND_REFERENCES");
-        perfs_add(0x2724, PERF_TYPE_RAW, O2(l2, misses), "L2_RQSTS.ALL_DEMAND_MISS      ");
-        perfs_add(0x04d1, PERF_TYPE_RAW, O2(l3, hits), "MEM_LOAD_RETIRED.L3_HIT       ");
-        perfs_add(0x20d1, PERF_TYPE_RAW, O2(l3, misses), "MEM_LOAD_RETIRED.L3_MISS      ");
-        offsets_add(&ofs, O2(l1d, accesses), O2(l1d, hits), O2(l1d, misses), '+');
-        offsets_add(&ofs, O2(l2, hits), O2(l2, accesses), O2(l2, misses), '-');
-        offsets_add(&ofs, O1(ll), O1(l3), 0, '&');
+        perfs_add(0x01d1, PERF_TYPE_RAW, O2(l1d, hits    ), "MEM_LOAD_RETIRED.L1_HIT       ");
+        perfs_add(0x08d1, PERF_TYPE_RAW, O2(l1d, misses  ), "MEM_LOAD_RETIRED.L1_MISS      ");
+        perfs_add(0xe724, PERF_TYPE_RAW, O2(l2 , accesses), "L2_RQSTS.ALL_DEMAND_REFERENCES");
+        perfs_add(0x2724, PERF_TYPE_RAW, O2(l2 , misses  ), "L2_RQSTS.ALL_DEMAND_MISS      ");
+        perfs_add(0x04d1, PERF_TYPE_RAW, O2(l3 , hits    ), "MEM_LOAD_RETIRED.L3_HIT       ");
+        perfs_add(0x20d1, PERF_TYPE_RAW, O2(l3 , misses  ), "MEM_LOAD_RETIRED.L3_MISS      ");
+        offsets_add(&ofs, O2(l1d, accesses), O2(l1d, hits    ), O2(l1d, misses), '+');
+        offsets_add(&ofs, O2(l2 , hits    ), O2(l2 , accesses), O2(l2 , misses), '-');
+        offsets_add(&ofs, O1(ll ), O1(l3), 0, '&');
         offsets_add(&ofs, O1(lbw), O1(l2), 0, '&');
     } else if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_BROADWELL_X) {
-        perfs_add(L1_LDA, PERF_TYPE_HW, O2(l1d, accesses), "PERF_L1D_LOAD_ACCESS");
-        perfs_add(L1_LDM, PERF_TYPE_HW, O2(l1d, misses), "PERF_L1D_LOAD_MISS");
-        perfs_add(0xe724, PERF_TYPE_RAW, O2(l2, accesses), "L2_RQSTS.ALL_DEMAND_REFERENCES");
-        perfs_add(0x2724, PERF_TYPE_RAW, O2(l2, misses), "L2_RQSTS.ALL_DEMAND_MISS      ");
+        perfs_add(L1_LDA, PERF_TYPE_HW , O2(l1d, accesses), "PERF_L1D_LOAD_ACCESS          ");
+        perfs_add(L1_LDM, PERF_TYPE_HW , O2(l1d, misses  ), "PERF_L1D_LOAD_MISS            ");
+        perfs_add(0xe724, PERF_TYPE_RAW, O2(l2 , accesses), "L2_RQSTS.ALL_DEMAND_REFERENCES");
+        perfs_add(0x2724, PERF_TYPE_RAW, O2(l2 , misses  ), "L2_RQSTS.ALL_DEMAND_MISS      ");
         offsets_add(&ofs, O2(l1d, hits), O2(l1d, accesses), O2(l1d, misses), '-');
-        offsets_add(&ofs, O2(l2, hits), O2(l2, accesses), O2(l2, misses), '-');
-        offsets_add(&ofs, O1(ll), O1(l2), 0, '&');
+        offsets_add(&ofs, O2(l2 , hits), O2(l2 , accesses), O2(l2 , misses), '-');
+        offsets_add(&ofs, O1(ll ), O1(l2), 0, '&');
         offsets_add(&ofs, O1(lbw), O1(l2), 0, '&');
     } else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN) {
-        perfs_add(0xf064, PERF_TYPE_RAW, O2(l2, hits), "PMCx064.1111.0000");
-        perfs_add(0x0864, PERF_TYPE_RAW, O2(l2, misses), "PMCx064.0000.1000");
+        perfs_add(0xf064, PERF_TYPE_RAW, O2(l2 , hits    ), "PMCx064.1111.0000");
+        perfs_add(0x0864, PERF_TYPE_RAW, O2(l2 , misses  ), "PMCx064.0000.1000");
         perfs_add(0x0729, PERF_TYPE_RAW, O2(l1d, accesses), "PMCx029.0000.0111");
-        offsets_add(&ofs, O2(l2, accesses), O2(l2, misses), O2(l2, hits), '+');
-        offsets_add(&ofs, O2(l1d, misses), O2(l2, accesses), 0, '=');
-        offsets_add(&ofs, O2(l1d, hits), O2(l1d, accesses), O2(l1d, misses), '-');
-        offsets_add(&ofs, O1(ll), O1(l2), 0, '&');
+        offsets_add(&ofs, O2(l2 , accesses), O2(l2 , misses  ), O2(l2, hits)   , '+');
+        offsets_add(&ofs, O2(l1d, misses  ), O2(l2 , accesses),               0, '=');
+        offsets_add(&ofs, O2(l1d, hits    ), O2(l1d, accesses), O2(l1d, misses), '-');
+        offsets_add(&ofs, O1(ll ), O1(l2), 0, '&');
         offsets_add(&ofs, O1(lbw), O1(l2), 0, '&');
     } else if (tp->vendor == VENDOR_ARM) {
         // Arm Architecture Reference Manual for A-profile architecture
-        perfs_add(L1_LDA, PERF_TYPE_HW, O2(l1d, accesses), "PERF_L1D_LOAD_ACCESS");
-        perfs_add(L1_LDM, PERF_TYPE_HW, O2(l1d, misses), "PERF_L1D_LOAD_MISS");
-        perfs_add(0x0016, PERF_TYPE_RAW, O2(l2, accesses), "L2D_CACHE");
-        perfs_add(0x0017, PERF_TYPE_RAW, O2(l2, misses), "L2D_CACHE_REFILL");
-        perfs_add(0x0018, PERF_TYPE_RAW, O2(l2, lines_out), "L2D_CACHE_WB");
-        offsets_add(&ofs, O2(l1d, hits), O2(l1d, accesses), O2(l1d, misses), '-');
-        offsets_add(&ofs, O2(l2, hits), O2(l2, accesses), O2(l2, misses), '-');
-        offsets_add(&ofs, O1(ll), O1(l2), 0, '&');
+        perfs_add(L1_LDA, PERF_TYPE_HW , O2(l1d, accesses ), "PERF_L1D_LOAD_ACCESS");
+        perfs_add(L1_LDM, PERF_TYPE_HW , O2(l1d, misses   ), "PERF_L1D_LOAD_MISS  ");
+        perfs_add(0x0016, PERF_TYPE_RAW, O2(l2 , accesses ), "L2D_CACHE           ");
+        perfs_add(0x0017, PERF_TYPE_RAW, O2(l2 , misses   ), "L2D_CACHE_REFILL    ");
+        perfs_add(0x0018, PERF_TYPE_RAW, O2(l2 , lines_out), "L2D_CACHE_WB        ");
+        offsets_add(&ofs, O2(l1d, hits), O2(l1d, accesses ), O2(l1d, misses), '-');
+        offsets_add(&ofs, O2(l2 , hits), O2(l2 , accesses ), O2(l2 , misses), '-');
+        offsets_add(&ofs, O1(ll ), O1(l2), 0, '&');
         offsets_add(&ofs, O1(lbw), O1(l2), 0, '&');
     } else {
         perfs_add(L1_LDA, PERF_TYPE_HW, O2(l1d, accesses), "PERF_L1D_LOAD_ACCESS");
-        perfs_add(L1_LDM, PERF_TYPE_HW, O2(l1d, misses), "PERF_L1D_LOAD_MISS");
+        perfs_add(L1_LDM, PERF_TYPE_HW, O2(l1d, misses  ), "PERF_L1D_LOAD_MISS  ");
         offsets_add(&ofs, O2(l1d, hits), O2(l1d, accesses), O2(l1d, misses), '-');
         offsets_add(&ofs, O1(ll), O1(l1d), 0, '&');
     }
@@ -100,12 +105,22 @@ void cache_perf_load(topology_t *tp, cache_ops_t *ops)
         debug("All PERFs failed to open");
         return;
     }
+    apis_put(ops->unload  , cache_perf_unload);
     apis_put(ops->get_info, cache_perf_get_info);
-    apis_put(ops->init, cache_perf_init);
-    apis_put(ops->dispose, cache_perf_dispose);
-    apis_put(ops->read, cache_perf_read);
+    apis_put(ops->read    , cache_perf_read);
     apis_put(ops->internals_tostr, cache_perf_internals_tostr);
     debug("Loaded PERF")
+}
+
+void cache_perf_unload()
+{
+    int i;
+    for (i = 0; i < perfs_count; ++i) {
+        if (perfs[i].fd >= 0) {
+            perf_close(&perfs[i]);
+        }
+    }
+    perfs_count = 0;
 }
 
 void cache_perf_get_info(apinfo_t *info)
@@ -114,36 +129,6 @@ void cache_perf_get_info(apinfo_t *info)
     info->scope       = SCOPE_PROCESS;
     info->granularity = GRANULARITY_PROCESS;
     info->devs_count  = 1;
-}
-
-state_t cache_perf_init()
-{
-    int i;
-    if (started) {
-        return EAR_SUCCESS;
-    }
-    for (i = 0; i < perfs_count; ++i) {
-        if (perfs[i].fd >= 0) {
-            perf_start(&perfs[i]);
-        }
-    }
-    ++started;
-    return EAR_SUCCESS;
-}
-
-state_t cache_perf_dispose()
-{
-    int i;
-    if (started) {
-        for (i = 0; i < perfs_count; ++i) {
-            if (perfs[i].fd >= 0) {
-                perf_close(&perfs[i]);
-            }
-        }
-    }
-    started     = 0;
-    perfs_count = 0;
-    return EAR_SUCCESS;
 }
 
 state_t cache_perf_read(cache_t *ca)

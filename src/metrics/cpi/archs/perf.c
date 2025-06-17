@@ -47,8 +47,9 @@ static int perfs_count_opened_fds()
 #define O2(l, v) (((int) offsetof(cpi_t, l)) + ((int) offsetof(stalls_t, v)))
 #define O1(l)    (((int) offsetof(cpi_t, l)))
 
-void cpi_perf_load(topology_t *tp, debug_cbs_f dcb, cpi_ops_t *ops)
+void cpi_perf_load(topology_t *tp, cdebug_f dcb, cpi_ops_t *ops)
 {
+    return;
     if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_ICELAKE_X) {
         perfs_add(PERF_COUNT_HW_CPU_CYCLES  , PERF_TYPE_HARDWARE, O1(cycles)        , "PERF_COUNT_HW_CPU_CYCLES   ");
         perfs_add(PERF_COUNT_HW_INSTRUCTIONS, PERF_TYPE_HARDWARE, O1(instructions)  , "PERF_COUNT_HW_INSTRUCTIONS ");
@@ -70,17 +71,12 @@ void cpi_perf_load(topology_t *tp, debug_cbs_f dcb, cpi_ops_t *ops)
         perfs_add(PERF_COUNT_HW_STALLED_CYCLES_BACKEND , PERF_TYPE_HARDWARE, O2(stalls, memory)      , "PERF_COUNT_HW_STALLS_BACKEND ");
     }
     if (!perfs_count_opened_fds()) {
-        rdebug("cpi_perf_load: all PERFs failed to open: %s", state_msg);
+        cdebug("cpi_perf_load: all PERFs failed to open: %s", state_msg);
         return;
     }
     apis_put(ops->unload  , cpi_perf_unload  );
     apis_put(ops->get_info, cpi_perf_get_info);
     apis_put(ops->read    , cpi_perf_read    );
-}
-
-void cpi_perf_get_info(apinfo_t *info)
-{
-    info->api = API_PERF;
 }
 
 void cpi_perf_unload()
@@ -92,6 +88,11 @@ void cpi_perf_unload()
         }
     }
     perfs_count = 0;
+}
+
+void cpi_perf_get_info(apinfo_t *info)
+{
+    info->api = API_PERF;
 }
 
 state_t cpi_perf_read(cpi_t *ci)

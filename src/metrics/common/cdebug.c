@@ -8,13 +8,14 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-#ifndef DEBUG_CBS_H
-#define DEBUG_CBS_H
+#include <stdio.h>
+#include <stdarg.h>
 
-typedef void (*debug_cbs_f) (char *fmt, ...);
-
-#define rdebug(...) if (dcb != NULL) { dcb(__VA_ARGS__); }
-
-void basic_print(char *fmt, ...);
-
-#endif // DEBUG_CBS_H
+void basic_print(const char *fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    int result = vprintf(fmt, args);
+    va_end(args);
+    printf("\n");
+}

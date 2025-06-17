@@ -15,27 +15,33 @@
 #include <common/system/symplug.h>
 #include <metrics/imcfreq/archs/amd17.h>
 
-static const char *mgt_names[] = {"mgt_imcfreq_load",    "mgt_imcfreq_get_api",       "mgt_imcfreq_init",
-                                  "mgt_imcfreq_dispose", "mgt_imcfreq_count_devices", "mgt_imcfreq_get_current_list"};
+static const char *mgt_names[] = {
+    "mgt_imcfreq_load",
+    "mgt_imcfreq_get_api",
+    "mgt_imcfreq_init",
+    "mgt_imcfreq_dispose",
+    "mgt_imcfreq_count_devices",
+    "mgt_imcfreq_get_current_list"
+};
 
 static struct mgt_ops_s {
-    state_t (*load)(topology_t *c, int eard, void *p);
-    state_t (*get_api)(uint *api);
-    state_t (*init)(ctx_t *c);
-    state_t (*dispose)(ctx_t *c);
-    state_t (*count_devices)(ctx_t *c, uint *devs_count);
-    state_t (*get_current_list)(ctx_t *c, pstate_t *pstate_list);
+    state_t (*load)             (topology_t *c, int eard, void *p);
+    state_t (*get_api)          (uint *api);
+    state_t (*init)             (ctx_t *c);
+    state_t (*dispose)          (ctx_t *c);
+    state_t (*count_devices)    (ctx_t *c, uint *devs_count);
+    state_t (*get_current_list) (ctx_t *c, pstate_t *pstate_list);
 } mgt_ops;
 
 static imcfreq_ops_t *ops;
 static uint devs_count;
 
-void imcfreq_amd17_load(topology_t *tp, imcfreq_ops_t *ops_in, int eard)
+void imcfreq_amd17_load(topology_t *tp, imcfreq_ops_t *ops_in, int options)
 {
-    uint api_intern, api;
+    uint api_intern, api, eard;
 
+    eard = API_IS(options, API_EARD);
     debug("loading");
-
     ops = ops_in;
     // Set BYPASS if:
     // 	- If !EARD and no other API is set yet.
@@ -48,7 +54,7 @@ void imcfreq_amd17_load(topology_t *tp, imcfreq_ops_t *ops_in, int eard)
         //
         if (api == API_EARD && api_intern == API_AMD17) {
             apis_add(ops->init_static, imcfreq_amd17_init_static);
-            apis_set(ops->data_diff, imcfreq_amd17_data_diff);
+            apis_set(ops->data_diff  , imcfreq_amd17_data_diff);
             debug("AMD17 loaded limited");
         }
         return;
@@ -68,49 +74,25 @@ void imcfreq_amd17_load(topology_t *tp, imcfreq_ops_t *ops_in, int eard)
         if (api <= API_DUMMY) {
             return;
         }
+        if (state_fail(s = mgt_ops.init(c))) {
+            return s;
+        }
     }
     // Bypassing
-    apis_set(ops->get_api, imcfreq_amd17_get_api);
-    apis_set(ops->init, imcfreq_amd17_init);
-    apis_set(ops->dispose, imcfreq_amd17_dispose);
-    apis_set(ops->count_devices, imcfreq_amd17_count_devices);
-    apis_set(ops->read, imcfreq_amd17_read);
+    apis_set(ops->unload   , imcfreq_amd17_unload);
+    apis_set(ops->get_info , imcfreq_amd17_get_info);
+    apis_set(ops->read     , imcfreq_amd17_read);
     apis_set(ops->data_diff, imcfreq_amd17_data_diff);
     debug("AMD17 loaded full API");
 }
 
-void imcfreq_amd17_get_api(uint *api, uint *api_intern)
+void imcfreq_amd17_unload()
 {
-    *api = API_AMD17;
-    if (api_intern) {
-        *api_intern = API_NONE;
-    }
+    mgt_ops.dispose();
 }
 
-state_t imcfreq_amd17_init(ctx_t *c)
+void imcfreq_amd17_get_info(apinfo_t *info)
 {
-    state_t s;
-
-    if (state_fail(s = mgt_ops.init(c))) {
-        return s;
-    }
-    return mgt_ops.count_devices(c, &devs_count);
-}
-
-state_t imcfreq_amd17_init_static(ctx_t *c)
-{
-    return ops->count_devices(c, &devs_count);
-}
-
-state_t imcfreq_amd17_dispose(ctx_t *c)
-{
-    return mgt_ops.dispose(c);
-}
-
-state_t imcfreq_amd17_count_devices(ctx_t *c, uint *devs_count_in)
-{
-    *devs_count_in = devs_count;
-    return EAR_SUCCESS;
 }
 
 state_t imcfreq_amd17_read(ctx_t *c, imcfreq_t *imc)

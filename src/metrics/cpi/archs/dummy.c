@@ -13,7 +13,7 @@
 #include <common/output/debug.h>
 #include <metrics/cpi/archs/dummy.h>
 
-void cpi_dummy_load(topology_t *tp, debug_cbs_f cb, cpi_ops_t *ops)
+void cpi_dummy_load(topology_t *tp, cdebug_f cb, cpi_ops_t *ops)
 {
     apis_put(ops->unload  , cpi_dummy_unload  );
     apis_put(ops->get_info, cpi_dummy_get_info);

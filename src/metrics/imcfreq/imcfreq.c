@@ -25,20 +25,19 @@
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static imcfreq_ops_t ops;
 
-void imcfreq_load(topology_t *tp, int force_api)
+void imcfreq_load(topology_t *tp, int options)
 {
-    while (pthread_mutex_trylock(&lock))
-        ;
+    while (pthread_mutex_trylock(&lock));
     if (ops.init != NULL) {
         goto done;
     }
-    if (API_IS(force_api, API_DUMMY)) {
+    if (API_IS(options, API_DUMMY)) {
         goto dummy;
     }
     debug("loading imcfreq metrics");
-    imcfreq_eard_load(tp, &ops, API_IS(force_api, API_EARD));
+    imcfreq_eard_load(tp, &ops, API_IS(options, API_EARD));
     imcfreq_intel63_load(tp, &ops);
-    imcfreq_amd17_load(tp, &ops, API_IS(force_api, API_EARD));
+    imcfreq_amd17_load(tp, &ops, API_IS(options, API_EARD));
 dummy:
     imcfreq_dummy_load(tp, &ops);
 done:
@@ -46,39 +45,15 @@ done:
     debug("loading imcfreq metrics finalized");
 }
 
-void imcfreq_get_api(uint *api)
+void imcfreq_unload()
 {
-    if (!ops.get_api) {
-        *api = API_NONE;
-    }
-    ops.get_api(api, NULL);
+    ops.unload();
 }
 
-state_t imcfreq_init(ctx_t *c)
+void temp_get_info(apinfo_t *info)
 {
-    state_t s = EAR_SUCCESS;
-    int i     = 0;
-
-    while (pthread_mutex_trylock(&lock))
-        ;
-    if (state_ok(s = ops.init(c))) {
-        while (ops.init_static[i] != NULL) {
-            ops.init_static[i](c);
-            ++i;
-        }
-    }
-    pthread_mutex_unlock(&lock);
-    return s;
-}
-
-state_t imcfreq_dispose(ctx_t *c)
-{
-    preturn(ops.dispose, c);
-}
-
-state_t imcfreq_count_devices(ctx_t *c, uint *dev_count)
-{
-    preturn(ops.count_devices, c, dev_count);
+    memset(info, 0, sizeof(apinfo_t));
+    ops.get_info(info);
 }
 
 state_t imcfreq_read(ctx_t *c, imcfreq_t *i)
@@ -104,24 +79,24 @@ state_t imcfreq_read_copy(ctx_t *c, imcfreq_t *i2, imcfreq_t *i1, ulong *freqs, 
     return imcfreq_data_copy(i1, i2);
 }
 
-state_t imcfreq_data_alloc(imcfreq_t **i, ulong **freq_list)
+void imcfreq_data_diff(imcfreq_t *i2, imcfreq_t *i1, ulong *freq_list, ulong *average)
+{
+    preturn(ops.data_diff, i2, i1, freq_list, average);
+}
+
+void imcfreq_data_alloc(imcfreq_t **i, ulong **freq_list)
 {
     preturn(ops.data_alloc, i, freq_list);
 }
 
-state_t imcfreq_data_free(imcfreq_t **i, ulong **freq_list)
+void imcfreq_data_free(imcfreq_t **i, ulong **freq_list)
 {
     preturn(ops.data_free, i, freq_list);
 }
 
-state_t imcfreq_data_copy(imcfreq_t *i2, imcfreq_t *i1)
+void imcfreq_data_copy(imcfreq_t *i2, imcfreq_t *i1)
 {
     preturn(ops.data_copy, i2, i1);
-}
-
-state_t imcfreq_data_diff(imcfreq_t *i2, imcfreq_t *i1, ulong *freq_list, ulong *average)
-{
-    preturn(ops.data_diff, i2, i1, freq_list, average);
 }
 
 void imcfreq_data_print(ulong *freq_list, ulong *average, int fd)

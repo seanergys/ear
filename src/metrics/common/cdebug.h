@@ -8,11 +8,13 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-#ifndef METRICS_TEMPERATURE_ARCHS_AMD17
-#define METRICS_TEMPERATURE_ARCHS_AMD17
+#ifndef DEBUG_CBS_H
+#define DEBUG_CBS_H
 
-#include <metrics/temperature/temperature.h>
+typedef void (*cdebug_f) (char *fmt, ...);
 
-TEMP_DEFINES(amd17);
+#define cdebug(...) if (dcb != NULL) { dcb(__VA_ARGS__); }
 
-#endif // METRICS_TEMPERATURE_ARCHS_AMD17
+void basic_print(char *fmt, ...);
+
+#endif // DEBUG_CBS_H

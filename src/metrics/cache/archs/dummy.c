@@ -10,21 +10,24 @@
 
 // #define SHOW_DEBUGS 1
 
+#include <string.h>
 #include <common/output/debug.h>
 #include <metrics/cache/archs/dummy.h>
-#include <string.h>
 
-void cache_dummy_load(topology_t *tp, cache_ops_t *ops)
+CACHE_F_LOAD(dummy)
 {
+    apis_put(ops->unload  , cache_dummy_unload);
     apis_put(ops->get_info, cache_dummy_get_info);
-    apis_put(ops->init, cache_dummy_init);
-    apis_put(ops->dispose, cache_dummy_dispose);
-    apis_put(ops->read, cache_dummy_read);
+    apis_put(ops->read    , cache_dummy_read);
     apis_put(ops->internals_tostr, cache_dummy_internals_tostr);
     debug("Loaded DUMMY");
 }
 
-void cache_dummy_get_info(apinfo_t *info)
+CACHE_F_UNLOAD(perf)
+{
+}
+
+CACHE_F_GET_INFO(perf)
 {
     info->api         = API_DUMMY;
     info->scope       = SCOPE_PROCESS;
@@ -33,17 +36,7 @@ void cache_dummy_get_info(apinfo_t *info)
     info->bits        = 0;
 }
 
-state_t cache_dummy_init(ctx_t *c)
-{
-    return EAR_SUCCESS;
-}
-
-state_t cache_dummy_dispose(ctx_t *c)
-{
-    return EAR_SUCCESS;
-}
-
-state_t cache_dummy_read(cache_t *ca)
+CACHE_F_READ(perf)
 {
     debug("DUMMY READ");
     memset(ca, 0, sizeof(cache_t));
@@ -52,7 +45,7 @@ state_t cache_dummy_read(cache_t *ca)
     return EAR_SUCCESS;
 }
 
-void cache_dummy_internals_tostr(char *buffer, int length)
+CACHE_F_INTERNALS(perf)
 {
     sprintf(buffer, "CACHE LX  : loaded event DUMMY\n");
 }

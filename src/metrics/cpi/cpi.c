@@ -22,7 +22,7 @@ static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static cpi_ops_t ops;
 static apinfo_t info;
 
-void cpi_load(topology_t *tp, int force_api, debug_cbs_f callback)
+void cpi_load(topology_t *tp, int force_api, cdebug_f callback)
 {
     while (pthread_mutex_trylock(&lock));
     if (info.api != API_NONE) {
@@ -34,10 +34,21 @@ void cpi_load(topology_t *tp, int force_api, debug_cbs_f callback)
     cpi_perf_load(tp, callback, &ops);
 dummy:
     cpi_dummy_load(tp, callback, &ops);
-    // Bandiwdth wants to know more about the loaded API. This is safe because at
+    // Bandwidth wants to know more about the loaded API. This is safe because at
     // this point all API's have their devices counter.
     cpi_get_info(&info);
 leave:
+    pthread_mutex_unlock(&lock);
+}
+
+void cpi_unload()
+{
+    while (pthread_mutex_trylock(&lock));
+    if (info.api != API_NONE) {
+        ops.unload();
+        memset(&ops, 0, sizeof(cpi_ops_t));
+        memset(&info, 0, sizeof(apinfo_t));
+    }
     pthread_mutex_unlock(&lock);
 }
 
@@ -140,19 +151,25 @@ static apinfo_t info;
 static cpi_t c1;
 static cpi_t c2;
 static cpi_t cD;
-static double gbs;
+static double cpi;
 
 int main(int argc, char *argv[])
 {
+    void *p = NULL;
+
+    if (strcmp(getenv("EAR_DEBUG_FUNCTION"), "basic_print")) p = basic_print;
+    if (strcmp(getenv("EAR_DEBUG_FUNCTION"), "otra_funcion")) p = otra_function;
+
     topology_init(&tp);
-    cpi_load(&tp, API_FREE, basic_print);
+    cpi_load(&tp, API_FREE, p);
     cpi_get_info(&info);
 
     apinfo_tostr(&info);
     printf("%s\n", info.api_str);
     cpi_read(no_ctx, &c1);
     sleep(1);
-    cpi_read_diff(no_ctx, &c2, &c1, &cD, &gbs);
+    cpi_read_diff(no_ctx, &c2, &c1, &cD, &cpi);
+    cpi_data_print(&cD, cpi, STDOUT_FILENO);
 
     return 0;
 }
