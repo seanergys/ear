@@ -15,7 +15,6 @@
 #include <common/plugins.h>
 #include <common/system/time.h>
 #include <common/hardware/topology.h>
-#include <metrics/common/cdebug.h>
 
 typedef struct stalls_s {
     ullong fetch_decode; // Instruction fetch-decode pipeline
@@ -36,25 +35,23 @@ typedef struct cpi_ops_s {
 } cpi_ops_t;
 
 // API building scheme
-#define CPI_F_LOAD(name)     void name(topology_t *tpo, cdebug_f callback, cpi_ops_t *ops)
-#define CPI_F_UNLOAD(name)   void name()
-#define CPI_F_GET_INFO(name) void name(apinfo_t *info)
-#define CPI_F_READ(name)     state_t name(cpi_t *cpi)
+#define CPI_F_LOAD(name)     void cpi_##name##_load(topology_t *tp, cpi_ops_t *ops, int options)
+#define CPI_F_UNLOAD(name)   void cpi_##name##_unload()
+#define CPI_F_GET_INFO(name) void cpi_##name##_get_info(apinfo_t *info)
+#define CPI_F_READ(name)     state_t cpi_##name##_read(cpi_t *cpi)
 
 #define CPI_DEFINES(name)                                                                                              \
-    CPI_F_LOAD(cpi_##name##_load);                                                                                     \
-    CPI_F_UNLOAD(cpi_##name##_unload);                                                                                 \
-    CPI_F_GET_INFO(cpi_##name##_get_info);                                                                             \
-    CPI_F_READ(cpi_##name##_read);
+    CPI_F_LOAD(name);                                                                                     \
+    CPI_F_UNLOAD(name);                                                                                 \
+    CPI_F_GET_INFO(name);                                                                             \
+    CPI_F_READ(name);
 
 // Primer problema, necesitamos el debug en el load
-void cpi_load(topology_t *tp, int force_api, cdebug_f callback);
+void cpi_load(topology_t *tp, int options);
 
 void cpi_unload();
 
 void cpi_get_info(apinfo_t *info);
-
-//void cpi_set_debug(cdebug_f callback);
 
 state_t cpi_read(ctx_t *c, cpi_t *ci);
 

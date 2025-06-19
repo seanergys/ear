@@ -91,7 +91,7 @@ state_t perf_open_cpu(perf_t *perf, perf_t *group, pid_t pid, uint type, ulong e
     perf->fd               = syscall(__NR_perf_event_open, &perf->attr, pid, cpu, gp_fd, 0);
     // Used in some cases
     perf->scale = 1.0;
-
+printf("Opened fd %d\n", perf->fd);
 #ifdef SHOW_DEBUGS
     debug("input: event 0x%lx, group %p and fd %d type %u size %u cpu %d group fd %d", event, group, perf->fd,
           perf->attr.type, perf->attr.size, cpu, gp_fd);
@@ -110,6 +110,7 @@ state_t perf_open_cpu(perf_t *perf, perf_t *group, pid_t pid, uint type, ulong e
 state_t perf_close(perf_t *perf)
 {
     if (perf->fd >= 0) {
+        printf("Closed fd %d\n", perf->fd);
         close(perf->fd);
     }
     memset(perf, 0, sizeof(perf_t));

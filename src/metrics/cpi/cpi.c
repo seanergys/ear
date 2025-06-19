@@ -14,26 +14,27 @@
 #include <pthread.h>
 #include <common/output/debug.h>
 #include <common/math_operations.h>
+#include <metrics/common/apis.h>
 #include <metrics/cpi/cpi.h>
 #include <metrics/cpi/archs/perf.h>
 #include <metrics/cpi/archs/dummy.h>
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-static cpi_ops_t ops;
-static apinfo_t info;
+static cpi_ops_t       ops;
+static apinfo_t        info;
 
-void cpi_load(topology_t *tp, int force_api, cdebug_f callback)
+void cpi_load(topology_t *tp, int options)
 {
     while (pthread_mutex_trylock(&lock));
     if (info.api != API_NONE) {
         goto leave;
     }
-    if (API_IS(force_api, API_DUMMY)) {
+    if (API_IS(options, API_DUMMY)) {
         goto dummy;
     }
-    cpi_perf_load(tp, callback, &ops);
+    cpi_perf_load(tp, &ops, options);
 dummy:
-    cpi_dummy_load(tp, callback, &ops);
+    cpi_dummy_load(tp, &ops, options);
     // Bandwidth wants to know more about the loaded API. This is safe because at
     // this point all API's have their devices counter.
     cpi_get_info(&info);
@@ -101,7 +102,6 @@ void cpi_data_diff(cpi_t *ci2, cpi_t *ci1, cpi_t *ciD, double *cpi)
     ciD->stalls.fetch_decode = overflow_zeros_u64(ci2->stalls.fetch_decode, ci1->stalls.fetch_decode);
     ciD->stalls.resources    = overflow_zeros_u64(ci2->stalls.resources, ci1->stalls.resources);
     ciD->stalls.memory       = overflow_zeros_u64(ci2->stalls.memory, ci1->stalls.memory);
-
 #if SHOW_DEBUGS
     cpi_data_print(ciD, 0.0, fderr);
 #endif
@@ -135,42 +135,14 @@ void cpi_data_print(cpi_t *ci, double cpi, int fd)
 void cpi_data_tostr(cpi_t *ci, double cpi, char *buffer, size_t length)
 {
     snprintf(buffer, length,
-             "Instructions      : %llu\n"
-             "Cycles            : %llu (cpi: %0.2lf)\n"
-             "Stalls (fetch-dec): %llu\n"
-             "Stalls (resources): %llu\n"
-             "Stalls (memory)   : %llu\n",
-             ci->instructions, ci->cycles, cpi, ci->stalls.fetch_decode, ci->stalls.resources, ci->stalls.memory);
+        "Instructions      : %llu\n"
+        "Cycles            : %llu (cpi: %0.2lf)\n"
+        "Stalls (fetch-dec): %llu\n"
+        "Stalls (resources): %llu\n"
+        "Stalls (memory)   : %llu\n",
+        ci->instructions,
+        ci->cycles, cpi,
+        ci->stalls.fetch_decode,
+        ci->stalls.resources,
+        ci->stalls.memory);
 }
-
-#if TEST
-#include <time.h>
-
-static topology_t tp;
-static apinfo_t info;
-static cpi_t c1;
-static cpi_t c2;
-static cpi_t cD;
-static double cpi;
-
-int main(int argc, char *argv[])
-{
-    void *p = NULL;
-
-    if (strcmp(getenv("EAR_DEBUG_FUNCTION"), "basic_print")) p = basic_print;
-    if (strcmp(getenv("EAR_DEBUG_FUNCTION"), "otra_funcion")) p = otra_function;
-
-    topology_init(&tp);
-    cpi_load(&tp, API_FREE, p);
-    cpi_get_info(&info);
-
-    apinfo_tostr(&info);
-    printf("%s\n", info.api_str);
-    cpi_read(no_ctx, &c1);
-    sleep(1);
-    cpi_read_diff(no_ctx, &c2, &c1, &cD, &cpi);
-    cpi_data_print(&cD, cpi, STDOUT_FILENO);
-
-    return 0;
-}
-#endif
