@@ -66,13 +66,13 @@ void cpi_get_info(apinfo_t *info)
     }
 }
 
-state_t cpi_read(ctx_t *c, cpi_t *ci)
+state_t cpi_read(cpi_t *ci)
 {
     return ops.read(ci);
 }
 
 // Helpers
-state_t cpi_read_diff(ctx_t *c, cpi_t *ci2, cpi_t *ci1, cpi_t *ciD, double *cpi)
+state_t cpi_read_diff(cpi_t *ci2, cpi_t *ci1, cpi_t *ciD, double *cpi)
 {
     state_t s;
     if (state_fail(s = ops.read(ci2))) {
@@ -82,10 +82,10 @@ state_t cpi_read_diff(ctx_t *c, cpi_t *ci2, cpi_t *ci1, cpi_t *ciD, double *cpi)
     return s;
 }
 
-state_t cpi_read_copy(ctx_t *c, cpi_t *ci2, cpi_t *ci1, cpi_t *ciD, double *cpi)
+state_t cpi_read_copy(cpi_t *ci2, cpi_t *ci1, cpi_t *ciD, double *cpi)
 {
     state_t s;
-    if (state_fail(s = cpi_read_diff(c, ci2, ci1, ciD, cpi))) {
+    if (state_fail(s = cpi_read_diff(ci2, ci1, ciD, cpi))) {
         return s;
     }
     cpi_data_copy(ci1, ci2);
@@ -146,3 +146,61 @@ void cpi_data_tostr(cpi_t *ci, double cpi, char *buffer, size_t length)
         ci->stalls.resources,
         ci->stalls.memory);
 }
+
+#if TEST
+#include <time.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
+
+static topology_t tp;
+static apinfo_t   info;
+static cpi_t      c1;
+static cpi_t      c2;
+static cpi_t      cD;
+static double     cpi;
+static pid_t      pid;
+static int        forked;
+
+static int count_fds()
+{
+    int dummy_fd = open("/dev/null", O_RDONLY);
+    close(dummy_fd);
+    return dummy_fd;
+}
+
+int main(int argc, char *argv[])
+{
+    topology_init(&tp);
+reload:
+    dprintf(STDOUT_FILENO, "%d: Loading... (%d fds)\n", getpid(), count_fds());
+    cpi_load(&tp, SCOPE_PROCESS | API_FREE);
+    cpi_get_info(&info);
+    apinfo_tostr(&info);
+    dprintf(STDOUT_FILENO, "%d: Loaded %s with %d fds\n", getpid(), info.api_str, count_fds());
+reread:
+    cpi_read(&c1);
+    sleep(3);
+    int i, j;
+    for (i = j = 0; i < 1000000; ++i) {
+        j += 1;
+    }
+    cpi_read_diff(&c2, &c1, &cD, &cpi);
+    dprintf(STDOUT_FILENO, "%d Printing...\n", getpid());
+    cpi_data_print(&cD, cpi, STDOUT_FILENO);
+    if (!forked) {
+        sleep(1);
+        pid = fork();
+        forked = 1;
+        if (pid == 0) {
+            sleep(1);
+            dprintf(STDOUT_FILENO, "%d: Unloading...\n", getpid());
+            cpi_unload();
+            goto reload;
+        }
+    }
+    goto reread;
+    return 0;
+}
+#endif

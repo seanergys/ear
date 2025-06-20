@@ -97,7 +97,7 @@ mets_OBJS = \
 
 ######## RULES
 
-all: all.components metrics.o libmetrics.a 
+all: all.components metrics.o libmetrics.a
 
 post: test
 	@ $(MAKE) -C 'gpu' post || exit

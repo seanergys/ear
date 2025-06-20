@@ -473,7 +473,7 @@ uint metrics_dcgmi_enabled()
 
 void metrics_lib_reset()
 {
-    cpi_dispose(no_ctx);
+    cpi_unload();
     flops_dispose(no_ctx);
     cache_dispose(no_ctx);
 }
@@ -560,16 +560,17 @@ static void metrics_static_init(topology_t *tp)
     // Get API
     sa(mgt_cpufreq_get_api(&mgt_cpufreq.api));
     sa(mgt_imcfreq_get_api(&mgt_imcfreq.api));
-    sa(temp_get_info(&met_temp));
-    sa(energy_cpu_get_api(&met_energy.api));
-    sa(cpufreq_get_api(&met_cpufreq.api));
-    sa(imcfreq_get_api(&met_imcfreq.api));
-    sa(bwidth_get_api(&met_bwidth.api));
-    sa(cpi_get_api(&met_cpi.api));
     sa(mgt_cpuprio_get_api(&mgt_cpuprio.api));
-    flops_get_info(&met_flops);
-    debug("CPU APIs ready");
+     sa(energy_cpu_get_api(&met_energy.api));
+        sa(cpufreq_get_api(&met_cpufreq.api));
+        sa(imcfreq_get_api(&met_imcfreq.api));
+         sa(bwidth_get_api(&met_bwidth.api));
 
+    flops_get_info(&met_flops);
+     temp_get_info(&met_temp );
+      cpi_get_info(&met_cpi  );
+
+    debug("CPU APIs ready");
     if (met_cpufreq.api == API_DUMMY)
         estimate_met_cpuf = 1;
     if (met_bwidth.api == API_DUMMY)
@@ -648,7 +649,6 @@ static void metrics_static_init(topology_t *tp)
     sa(bwidth_init(no_ctx));
     sa(flops_init(no_ctx));
     sa(cache_init(no_ctx));
-    sa(cpi_init(no_ctx));
     sa(mgt_cpuprio_init());
 
 #if USE_GPUS
@@ -970,7 +970,7 @@ static void metrics_global_start()
     /* To be used in partial_start */
     cache_data_copy(&cache_read2[LOO], &cache_read1[APP]);
 
-    cpi_read(no_ctx, &cpi_read1[APP]);
+    cpi_read(&cpi_read1[APP]);
     debug("cpi_read ready");
     /* To be used in partial_start */
     cpi_data_copy(&cpi_read2[LOO], &cpi_read1[APP]);
@@ -1131,7 +1131,7 @@ static void metrics_global_stop()
         lib_shared_region->cas_counters = bwidth_cas[APP];
     flops_read_diff(no_ctx, &flops_read2[APP], &flops_read1[APP], NULL, NULL);
     cache_read_diff(no_ctx, &cache_read2[APP], &cache_read1[APP], &cache_diff[APP], &cache_bwidth[APP]);
-    cpi_read_diff(no_ctx, &cpi_read2[APP], &cpi_read1[APP], &cpi_diff[APP], &cpi_avrg[APP]);
+    cpi_read_diff(&cpi_read2[APP], &cpi_read1[APP], &cpi_diff[APP], &cpi_avrg[APP]);
 
     metric_cond(
         proc_ps_ok,
@@ -1487,7 +1487,7 @@ static int metrics_partial_stop(uint where)
         lib_shared_region->cas_counters = bwidth_cas[LOO];
     flops_read_diff(no_ctx, &flops_read2[LOO], &flops_read1[LOO], &flops_diff[LOO], NULL);
     cache_read_diff(no_ctx, &cache_read2[LOO], &cache_read1[LOO], &cache_diff[LOO], &cache_bwidth[LOO]);
-    cpi_read_diff(no_ctx, &cpi_read2[LOO], &cpi_read1[LOO], &cpi_diff[LOO], &cpi_avrg[LOO]);
+    cpi_read_diff(&cpi_read2[LOO], &cpi_read1[LOO], &cpi_diff[LOO], &cpi_avrg[LOO]);
 
 #if USE_CUPTI
     if (read_cupti_metrics) {
@@ -2726,7 +2726,7 @@ state_t metrics_new_iteration(signature_t *sig)
 
         /* We should check the CPI */
         if (last_phase_bw) {
-            cpi_read_diff(no_ctx, &cpi_read2[LOO], &cpi_read1[LOO], &cpi_diff[LOO], &cpi_avrg[LOO]);
+            cpi_read_diff(&cpi_read2[LOO], &cpi_read1[LOO], &cpi_diff[LOO], &cpi_avrg[LOO]);
             sig->CPI = cpi_avrg[LOO];
             verbose_master(3, "Busy Waiting phase and current CPI %.2lf (BW? %u)", sig->CPI,
                            sig->CPI < phases_limits.cpi_busy_waiting);

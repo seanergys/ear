@@ -53,12 +53,11 @@ void cpi_unload();
 
 void cpi_get_info(apinfo_t *info);
 
-state_t cpi_read(ctx_t *c, cpi_t *ci);
+state_t cpi_read(cpi_t *ci);
 
-// Helpers
-state_t cpi_read_diff(ctx_t *c, cpi_t *ci2, cpi_t *ci1, cpi_t *ciD, double *cpi);
+state_t cpi_read_diff(cpi_t *ci2, cpi_t *ci1, cpi_t *ciD, double *cpi);
 
-state_t cpi_read_copy(ctx_t *c, cpi_t *ci2, cpi_t *ci1, cpi_t *ciD, double *cpi);
+state_t cpi_read_copy(cpi_t *ci2, cpi_t *ci1, cpi_t *ciD, double *cpi);
 
 void cpi_data_diff(cpi_t *ci2, cpi_t *ci1, cpi_t *ciD, double *cpi);
 

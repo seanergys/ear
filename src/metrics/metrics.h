@@ -11,20 +11,20 @@
 #ifndef METRICS_H
 #define METRICS_H
 
-#include <common/hardware/topology.h>
-#include <common/plugins.h>
 #include <common/states.h>
+#include <common/plugins.h>
 #include <common/types/generic.h>
+#include <common/hardware/topology.h>
 #include <common/utils/data_register.h>
-#include <metrics/bandwidth/bandwidth.h>
-#include <metrics/cache/cache.h>
-#include <metrics/cpi/cpi.h>
-#include <metrics/cpufreq/cpufreq.h>
-#include <metrics/energy/energy_node.h>
-#include <metrics/energy_cpu/energy_cpu.h>
-#include <metrics/flops/flops.h>
 #include <metrics/gpu/gpu.h>
+#include <metrics/cpi/cpi.h>
+#include <metrics/cache/cache.h>
+#include <metrics/flops/flops.h>
+#include <metrics/cpufreq/cpufreq.h>
 #include <metrics/imcfreq/imcfreq.h>
+#include <metrics/energy/energy_node.h>
+#include <metrics/bandwidth/bandwidth.h>
+#include <metrics/energy_cpu/energy_cpu.h>
 #include <metrics/temperature/temperature.h>
 
 typedef struct metrics_info_s {
