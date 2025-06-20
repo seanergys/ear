@@ -16,16 +16,20 @@
 #include <metrics/cpi/archs/perf.h>
 
 // Generic
-static perf_t perfs[4];
-static uint perfs_count;
-static uint started;
-static offset_ops_t ofs;
+static perf_t        perfs[4];
+static uint          perfs_count;
+static offset_ops_t  ofs;
 
 static void perfs_add(ullong event, uint type, ulong offset_result, const char *event_desc)
 {
     offsets_add(&ofs, offset_result, NO_OFFSET, NO_OFFSET, '=');
-    if (state_fail(perf_open(&perfs[perfs_count], NULL, 0, type, event))) {
-        debug("failed: %s", state_msg);
+    if (state_ok(perf_open(&perfs[perfs_count], NULL, 0, type, event))) {
+        if (state_fail(perf_start(&perfs[perfs_count]))) {
+            debug("perf_start() failed: %s", state_msg);
+            perf_close(&perfs[perfs_count]);
+        }
+    } else {
+        debug("perf_open() failed: %s", state_msg);
     }
     strcpy(perfs[perfs_count].event_name, event_desc);
     ++perfs_count;
@@ -43,8 +47,11 @@ static int perfs_count_opened_fds()
 #define O2(l, v) (((int) offsetof(cpi_t, l)) + ((int) offsetof(stalls_t, v)))
 #define O1(l)    (((int) offsetof(cpi_t, l)))
 
-void cpi_perf_load(topology_t *tp, cpi_ops_t *ops)
+CPI_F_LOAD(perf)
 {
+    if (!SCOPE_IS(options, SCOPE_NONE) && !SCOPE_IS(options, SCOPE_PROCESS)) {
+        return;
+    }
     if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_ICELAKE_X) {
         perfs_add(PERF_COUNT_HW_CPU_CYCLES  , PERF_TYPE_HARDWARE, O1(cycles)        , "PERF_COUNT_HW_CPU_CYCLES   ");
         perfs_add(PERF_COUNT_HW_INSTRUCTIONS, PERF_TYPE_HARDWARE, O1(instructions)  , "PERF_COUNT_HW_INSTRUCTIONS ");
@@ -55,7 +62,6 @@ void cpi_perf_load(topology_t *tp, cpi_ops_t *ops)
         perfs_add(0x40004a3                 , PERF_TYPE_RAW     , O2(stalls, memory)   , "CYCLE_ACTIVITY.STALLS_TOTAL");
         perfs_add(0x00001a2                 , PERF_TYPE_RAW     , O2(stalls, resources), "RESOURCE_STALLS.ANY        ");
     } else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN) {
-        // PMCx087 is inherited from Family 15h
         perfs_add(PERF_COUNT_HW_CPU_CYCLES  , PERF_TYPE_HARDWARE, O1(cycles)              , "PERF_COUNT_HW_CPU_CYCLES     ");
         perfs_add(PERF_COUNT_HW_INSTRUCTIONS, PERF_TYPE_HARDWARE, O1(instructions)        , "PERF_COUNT_HW_INSTRUCTIONS   ");
         perfs_add(0x0000287                 , PERF_TYPE_RAW     , O2(stalls, fetch_decode), "IC_FETCH_STALL.DECODING_QUEUE");
@@ -67,48 +73,27 @@ void cpi_perf_load(topology_t *tp, cpi_ops_t *ops)
         perfs_add(PERF_COUNT_HW_STALLED_CYCLES_BACKEND , PERF_TYPE_HARDWARE, O2(stalls, memory)      , "PERF_COUNT_HW_STALLS_BACKEND ");
     }
     if (!perfs_count_opened_fds()) {
-        debug("All PERFs failed to open");
         return;
     }
+    apis_put(ops->unload  , cpi_perf_unload  );
     apis_put(ops->get_info, cpi_perf_get_info);
-    apis_put(ops->init    , cpi_perf_init    );
-    apis_put(ops->dispose , cpi_perf_dispose );
     apis_put(ops->read    , cpi_perf_read    );
+}
+
+void cpi_perf_unload()
+{
+    int i;
+    for (i = 0; i < perfs_count; ++i) {
+        if (perfs[i].fd >= 0) {
+            perf_close(&perfs[i]);
+        }
+    }
+    perfs_count = 0;
 }
 
 void cpi_perf_get_info(apinfo_t *info)
 {
     info->api = API_PERF;
-}
-
-state_t cpi_perf_init()
-{
-    int i;
-    if (started) {
-        return EAR_SUCCESS;
-    }
-    for (i = 0; i < perfs_count; ++i) {
-        if (perfs[i].fd >= 0) {
-            perf_start(&perfs[i]);
-        }
-    }
-    ++started;
-    return EAR_SUCCESS;
-}
-
-state_t cpi_perf_dispose()
-{
-    int i;
-    if (started) {
-        for (i = 0; i < perfs_count; ++i) {
-            if (perfs[i].fd >= 0) {
-                perf_close(&perfs[i]);
-            }
-        }
-    }
-    started     = 0;
-    perfs_count = 0;
-    return EAR_SUCCESS;
 }
 
 state_t cpi_perf_read(cpi_t *ci)
@@ -130,8 +115,8 @@ state_t cpi_perf_read(cpi_t *ci)
         }
     }
     offsets_calc_all(&ofs, p);
-#if SHOW_DEBUGS
+    #if SHOW_DEBUGS
     cpi_data_print(ci, 0.0, fderr);
-#endif
+    #endif
     return EAR_SUCCESS;
 }

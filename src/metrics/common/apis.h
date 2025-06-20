@@ -60,15 +60,21 @@
 #define GRANULARITY_CCD        8
 #define GRANULARITY_IMC        9
 #define GRANULARITY_SOCKET     10
-#define SCOPE_NONE             0
-#define SCOPE_DUMMY            1
-#define SCOPE_PROCESS          2
-#define SCOPE_NODE             3
-#define MONITORING_MODE_STOP   -1
+#define SCOPE_NONE             0x000
+#define SCOPE_DUMMY            0x100 // ¿Isn't it useless?
+#define SCOPE_PROCESS          0x200
+#define SCOPE_NODE             0x300
+#define O_NO_LOOP              0x1000
+#define MONITORING_MODE_STOP  -1
 #define MONITORING_MODE_IDLE   0
 #define MONITORING_MODE_RUN    1
 
-#define API_IS(flag, api)      (flag == api)
+//  8 bits for API        (256 possibilities)
+//  4 bits for SCOPE      (8 possibilities)
+// 20 bits for OTHER OPTS (20 slots)
+#define API_IS(options, api)     ((options & 0x0FF) == api)
+#define SCOPE_IS(options, scope) ((options & 0xF00) == scope)
+#define OPTION_IS_SET(options, option) ((options & option) == option)
 
 typedef struct ctx_s {
     void *context;
@@ -85,9 +91,9 @@ typedef struct apinfo_s {
     char *granularity_str;
     uint scope;
     char *scope_str;
-    uint bits;
+    uint bits; // Unused
     uint dev_model;
-    void *list1;
+    void *list1; // From here, this can be converted to union for other purposes
     void *list2;
     void *list3;
     uint list1_count;
