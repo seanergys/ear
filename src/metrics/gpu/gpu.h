@@ -40,13 +40,14 @@ typedef struct gpu_s {
 } gpu_t;
 
 typedef struct gpu_ops_s {
-    void (*get_info)(apinfo_t *info);
-    void (*get_devices)(gpu_devs_t **devs, uint *devs_count);
-    state_t (*init)(ctx_t *c);
-    state_t (*dispose)(ctx_t *c);
-    void (*set_monitoring_mode)(int mode);
-    state_t (*read)(ctx_t *c, gpu_t *data);
-    state_t (*read_raw)(ctx_t *c, gpu_t *data);
+    void    (*get_info)    (apinfo_t *info);
+    void    (*get_devices) (gpu_devs_t **devs, uint *devs_count);
+    state_t (*init)        (ctx_t *c);
+    state_t (*dispose)     (ctx_t *c);
+    void    (*set_monitoring_mode) (int mode);
+    state_t (*read)        (ctx_t *c, gpu_t *data);
+    state_t (*read_raw)    (ctx_t *c, gpu_t *data);
+    void    (*data_diff)   (gpu_t *data2, gpu_t *data1, gpu_t *data_diff);
 } gpu_ops_t;
 
 // Discovers the low level API.

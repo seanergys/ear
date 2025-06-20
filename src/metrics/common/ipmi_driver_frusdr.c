@@ -99,7 +99,7 @@ void ipmi_driver_sdrs_discover(ipmi_dev_t *devs, uint devs_count)
     }
 }
 
-static void debug_fru_bytes(char *title, uchar *data, uint length)
+__attribute__((unused)) static void debug_fru_bytes(char *title, uchar *data, uint length)
 {
     char buffer[1024];
     int l, c;
@@ -118,7 +118,6 @@ static int ipmi_driver_frus_read_offset(ipmi_dev_t *dev, ipmi_cmd_t *pkg, uchar 
     uint length = 0;
     uint finish = 0;
     uint marker = 0;
-    int i = 0;
 
     // Reading length of the string
     ipmi_driver_cmd_set_msg(pkg, IPMI_NETFN_STORAGE_REQUEST, 0x11, 4);
@@ -195,7 +194,6 @@ calc_length:
 
 static int ipmi_driver_frus_read_board(ipmi_dev_t *dev, ipmi_cmd_t *pkg, uchar f, uint offset)
 {
-    int i;
     if (!ipmi_driver_frus_read_offset(dev, pkg, f, offset)) {
         return 0;
     }
@@ -205,7 +203,6 @@ static int ipmi_driver_frus_read_board(ipmi_dev_t *dev, ipmi_cmd_t *pkg, uchar f
 
 static int ipmi_driver_frus_read_product(ipmi_dev_t *dev, ipmi_cmd_t *pkg, uchar f, uint offset)
 {
-    int i;
     if (!ipmi_driver_frus_read_offset(dev, pkg, f, offset)) {
         return 0;
     }
@@ -215,7 +212,6 @@ static int ipmi_driver_frus_read_product(ipmi_dev_t *dev, ipmi_cmd_t *pkg, uchar
 
 static int ipmi_driver_frus_read_chassis(ipmi_dev_t *dev, ipmi_cmd_t *pkg, uchar f, uint offset)
 {
-    int i;
     if (!ipmi_driver_frus_read_offset(dev, pkg, f, offset)) {
         return 0;
     }

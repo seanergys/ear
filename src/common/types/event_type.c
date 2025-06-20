@@ -63,6 +63,24 @@ void event_type_to_str(ear_event_t *ev, char *str, size_t max)
         case PERF_PENALTY_AVG:
             strncpy(str, "PERF_PENALTY_AVG", max);
             break;
+        case GPU_ENERGY_SAVING:
+            strncpy(str, "GPU_ENERGY_SAVING", max);
+            break;
+        case GPU_POWER_SAVING:
+            strncpy(str, "GPU_POWER_SAVING", max);
+            break;
+        case GPU_PERF_PENALTY:
+            strncpy(str, "GPU_PERF_PENALTY", max);
+            break;
+        case GPU_ENERGY_SAVING_AVG:
+            strncpy(str, "GPU_ENERGY_SAVING_AVG", max);
+            break;
+        case GPU_POWER_SAVING_AVG:
+            strncpy(str, "GPU_POWER_SAVING_AVG", max);
+            break;
+        case GPU_PERF_PENALTY_AVG:
+            strncpy(str, "GPU_PERF_PENALTY_AVG", max);
+            break;
         case PHASE_SUMMARY_BASE + APP_COMP_BOUND:
             strncpy(str, "COMP_PHASE", max);
             break;

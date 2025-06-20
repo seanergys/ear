@@ -132,6 +132,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
                 if (nmgr[j].shsig[lp].sig.DC_power > 0) {
                     L3[node_process] = nmgr[j].shsig[lp].sig.L3_misses;
                     node_L3 += L3[node_process];
+                    inst[node_process] = nmgr[j].shsig[lp].sig.instructions;
                 }
                 job_in_process[node_process] = j;
                 node_process++;
@@ -157,8 +158,11 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
         if (node_L3) {
             float mem_ratio = (float) L3[j] / (float) node_L3;
             gbs[j]          = mem_ratio * lsig->GBS;
-            tpi[j]          = (double) (mem_ratio * (double) data->cas_counters) / (double) inst[j];
-            dram_power[j]   = mem_ratio * lsig->DRAM_power;
+            if (inst[j])
+                tpi[j] = (double) (mem_ratio * (double) data->cas_counters) / (double) inst[j];
+            else
+                tpi[j] = (double) 0;
+            dram_power[j] = mem_ratio * lsig->DRAM_power;
         } else {
             /* If there is no cache misses, we distribute the GBs proportionally to the number of cpus, naive approach
              */
@@ -217,7 +221,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
         CPU_power -= GPU_power;
     } else {
         /* This case should not happen */
-        if ((lsig->PCK_power > 0) && (lsig->DRAM_power > 0))
+        if (lsig->PCK_power > 0)
             CPU_power = lsig->PCK_power + lsig->DRAM_power;
         else
             CPU_power = 300;

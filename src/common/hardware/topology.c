@@ -97,6 +97,7 @@ static state_t topology_init_thread(topology_t *topo, uint thread)
     topo->cpus[thread].id         = thread;
     topo->cpus[thread].apicid     = -1;
     topo->cpus[thread].socket_id  = -1;
+    topo->cpus[thread].socket_idx = -1;
     topo->cpus[thread].sibling_id = thread;
     topo->cpus[thread].core_id    = thread;
     topo->cpus[thread].is_thread  = 0;
@@ -325,7 +326,7 @@ state_t topology_init(topology_t *topo)
             }
             topo->socket_count += (j == i);
         }
-// Counting cache banks
+// Macro to count cache banks
 #define cache_count(level, var)                                                                                        \
     for (j = 0; j <= i; ++j) {                                                                                         \
         if (topo->cpus[j].l[level].id != TOPO_UNDEFINED && topo->cpus[j].l[level].id == topo->cpus[i].l[level].id) {   \
@@ -333,9 +334,28 @@ state_t topology_init(topology_t *topo)
         }                                                                                                              \
     }                                                                                                                  \
     var += (j == i);
-
-        cache_count(2, topo->l2_count) cache_count(3, topo->l3_count) cache_count(4, topo->l4_count)
+        // Macro end
+        cache_count(2, topo->l2_count);
+        cache_count(3, topo->l3_count);
+        cache_count(4, topo->l4_count);
     }
+    // Setting socket_index
+    int socket_idx = 0;
+
+    for (i = 0; i < topo->cpu_count; ++i) {
+        for (j = 0; j < i; ++j) {
+            if (topo->cpus[i].socket_id == topo->cpus[j].socket_id) {
+                break;
+            }
+        }
+        if (j < i) {
+            topo->cpus[i].socket_idx = topo->cpus[j].socket_idx;
+        } else {
+            topo->cpus[i].socket_idx = socket_idx++;
+        }
+        debug("CPU%d socket_id/x: %d/%d", i, topo->cpus[i].socket_id, topo->cpus[i].socket_idx);
+    }
+    // Cache
     if (topo->l4_count) {
         topo->cache_last_level = 4;
     } else if (topo->l3_count) {

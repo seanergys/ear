@@ -11,18 +11,18 @@
 // #define SHOW_DEBUGS 1
 #define DEBUG_POWER_CONSUMING 0
 
-#include <common/hardware/bithack.h>
-#include <common/output/debug.h>
-#include <common/system/monitor.h>
-#include <common/system/time.h>
-#include <common/utils/keeper.h>
-#include <management/cpupow/archs/amd17.h>
-#include <management/cpupow/cpupow.h>
 #include <math.h>
+#include <stdlib.h>
+#include <common/system/time.h>
+#include <common/output/debug.h>
+#include <common/utils/keeper.h>
+#include <common/system/monitor.h>
+#include <common/hardware/bithack.h>
+#include <metrics/common/msr.h>
 #include <metrics/common/apis.h>
 #include <metrics/common/hsmp.h>
-#include <metrics/common/msr.h>
-#include <stdlib.h>
+#include <management/cpupow/cpupow.h>
+#include <management/cpupow/archs/amd17.h>
 
 #define NO_REG                      0x00
 #define HSMP_PKG_POWER_STATUS       HSMP_GET_SOCKET_POWER
@@ -80,21 +80,21 @@ typedef struct hsmp_power_status_s {
 } hsmp_power_status_t;
 
 struct domain_s {
-    int set;
+    int         set;
     topology_t *tp;
     const char *name;
-    int capable;
+    int         capable;
     hsmp_power_limit_t *pl;
-    uint pl_address_read;
-    uint pl_address_write;
+    uint        pl_address_read;
+    uint        pl_address_write;
     const char *pl_keeper_name;
     msr_energy_status_t *es;
-    off_t es_address;
+    off_t       es_address;
     timestamp_t es_time;
     hsmp_power_status_t *ps;
-    uint ps_address;
+    uint        ps_address;
     hsmp_power_info_t *pi;
-    uint pi_address;
+    uint        pi_address;
 };
 
 static topology_t tp_cores;
@@ -102,32 +102,32 @@ static topology_t tp_sockets;
 static msr_power_unit_t *pu;
 static strtable_t t;
 
-#define DOMAIN_SET(_tp, dom, cp, pl_kn)                                                                                \
-    {.set              = 1,                                                                                            \
-     .tp               = _tp,                                                                                          \
-     .name             = #dom,                                                                                         \
-     .capable          = cp,                                                                                           \
-     .pl_address_read  = HSMP_##dom##_POWER_LIMIT_READ,                                                                \
-     .pl_address_write = HSMP_##dom##_POWER_LIMIT_WRITE,                                                               \
-     .pl_keeper_name   = pl_kn,                                                                                        \
-     .es_address       = MSR_##dom##_ENERGY_STATUS,                                                                    \
-     .ps_address       = HSMP_##dom##_POWER_STATUS,                                                                    \
-     .pi_address       = HSMP_##dom##_POWER_INFO}
+#define DOMAIN_SET(_tp, dom, cp, pl_kn)                   \
+{   .set              = 1,                                \
+    .tp               = _tp,                              \
+    .name             = #dom,                             \
+    .capable          = cp,                               \
+    .pl_address_read  = HSMP_##dom##_POWER_LIMIT_READ,    \
+    .pl_address_write = HSMP_##dom##_POWER_LIMIT_WRITE,   \
+    .pl_keeper_name   = pl_kn,                            \
+    .es_address       = MSR_##dom##_ENERGY_STATUS,        \
+    .ps_address       = HSMP_##dom##_POWER_STATUS,        \
+    .pi_address       = HSMP_##dom##_POWER_INFO }
 
 static struct domain_s domains[] = {
-    DOMAIN_SET(&tp_sockets, PKG, 1, "HsmpPkgPowerLimit"),
+    DOMAIN_SET(&tp_sockets, PKG , 1, "HsmpPkgPowerLimit"),
     DOMAIN_SET(&tp_sockets, DRAM, 0, ""),
-    DOMAIN_SET(&tp_cores, PP0, 0, ""),
-    DOMAIN_SET(&tp_sockets, PP1, 0, ""),
-    {0, NULL},
+    DOMAIN_SET(&tp_cores  , PP0 , 0, ""),
+    DOMAIN_SET(&tp_sockets, PP1 , 0, ""),
+    { 0, NULL },
 };
 
 static int domain_init(int domain)
 {
+    char buffer[64];
     struct domain_s *d = &domains[domain];
     uint reps[2]       = {0, -1};
     uint args[1]       = {-1};
-    char buffer[64];
     int i;
 
     // Allocation
@@ -187,15 +187,15 @@ static int rapl_init()
         if (state_fail(msr_read(tp_sockets.cpus[i].id, &pu[i].reg, sizeof(ullong), MSR_RAPL_POWER_UNIT))) {
             debug("Failed while reading MSR_RAPL_POWER_UNIT: %s", state_msg) return 0;
         }
-        pu[i].mult_power  = pow(0.5, (double) getbits64(pu[i].reg, 3, 0));
-        pu[i].mult_energy = pow(0.5, (double) getbits64(pu[i].reg, 12, 8));
+        pu[i].mult_power  = pow(0.5, (double) getbits64(pu[i].reg,  3,  0));
+        pu[i].mult_energy = pow(0.5, (double) getbits64(pu[i].reg, 12,  8));
         pu[i].mult_time   = pow(0.5, (double) getbits64(pu[i].reg, 19, 16));
-        tprintf3(&t, "RAPL[%02d]||mult_power ||%lf||W||1/(2^%u)", tp_sockets.cpus[i].id, pu[i].mult_power,
-                 (uint) getbits64(pu[i].reg, 3, 0));
-        tprintf3(&t, "RAPL[%02d]||mult_energy||%lf||W||1/(2^%u)", tp_sockets.cpus[i].id, pu[i].mult_energy,
-                 (uint) getbits64(pu[i].reg, 12, 8));
-        tprintf3(&t, "RAPL[%02d]||mult_time  ||%lf||W||1/(2^%u)", tp_sockets.cpus[i].id, pu[i].mult_time,
-                 (uint) getbits64(pu[i].reg, 19, 16));
+        tprintf3(&t, "RAPL[%02d]||mult_power ||%lf||W||1/(2^%u)",
+            tp_sockets.cpus[i].id, pu[i].mult_power, (uint) getbits64(pu[i].reg, 3, 0));
+        tprintf3(&t, "RAPL[%02d]||mult_energy||%lf||W||1/(2^%u)",
+            tp_sockets.cpus[i].id, pu[i].mult_energy, (uint) getbits64(pu[i].reg, 12, 8));
+        tprintf3(&t, "RAPL[%02d]||mult_time  ||%lf||W||1/(2^%u)",
+            tp_sockets.cpus[i].id, pu[i].mult_time, (uint) getbits64(pu[i].reg, 19, 16));
     }
     return 1;
 }
@@ -296,14 +296,14 @@ CPUPOW_F_LOAD(mgt_cpupow_amd17_load)
     monitor_init();
 #endif
     // Ok
-    apis_put(ops->get_info, mgt_cpupow_amd17_get_info);
-    apis_put(ops->count_devices, mgt_cpupow_amd17_count_devices);
+    apis_put(ops->get_info           , mgt_cpupow_amd17_get_info);
+    apis_put(ops->count_devices      , mgt_cpupow_amd17_count_devices);
     apis_put(ops->powercap_is_capable, mgt_cpupow_amd17_powercap_is_capable);
     apis_put(ops->powercap_is_enabled, mgt_cpupow_amd17_powercap_is_enabled);
-    apis_put(ops->powercap_get, mgt_cpupow_amd17_powercap_get);
-    apis_put(ops->powercap_set, mgt_cpupow_amd17_powercap_set);
-    apis_put(ops->powercap_reset, mgt_cpupow_amd17_powercap_reset);
-    apis_put(ops->tdp_get, mgt_cpupow_amd17_tdp_get);
+    apis_put(ops->powercap_get       , mgt_cpupow_amd17_powercap_get);
+    apis_put(ops->powercap_set       , mgt_cpupow_amd17_powercap_set);
+    apis_put(ops->powercap_reset     , mgt_cpupow_amd17_powercap_reset);
+    apis_put(ops->tdp_get            , mgt_cpupow_amd17_tdp_get);
 }
 
 CPUPOW_F_GET_INFO(mgt_cpupow_amd17_get_info)

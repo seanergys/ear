@@ -79,7 +79,7 @@ CACHE_F_LOAD(perf)
         perfs_add(0xf064, PERF_TYPE_RAW, O2(l2 , hits    ), "PMCx064.1111.0000");
         perfs_add(0x0864, PERF_TYPE_RAW, O2(l2 , misses  ), "PMCx064.0000.1000");
         perfs_add(0x0729, PERF_TYPE_RAW, O2(l1d, accesses), "PMCx029.0000.0111");
-        offsets_add(&ofs, O2(l2 , accesses), O2(l2 , misses  ), O2(l2, hits)   , '+');
+        offsets_add(&ofs, O2(l2 , accesses), O2(l2 , misses  ), O2(l2 , hits  ), '+');
         offsets_add(&ofs, O2(l1d, misses  ), O2(l2 , accesses),               0, '=');
         offsets_add(&ofs, O2(l1d, hits    ), O2(l1d, accesses), O2(l1d, misses), '-');
         offsets_add(&ofs, O1(ll ), O1(l2), 0, '&');

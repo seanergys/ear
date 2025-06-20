@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <common/output/debug.h>
 #include <common/sizes.h>
@@ -186,7 +186,7 @@ state_t hwmon_open(char *chip_name, char *dev_type, hwmon_t **chips, uint *chips
             // Increasing the number of devices found
             (*chips_count)++;
         }
-    next:
+        next:
         ++i;
     } while (1);
     if (*chips_count == 0) {

@@ -47,4 +47,5 @@ state_t io_dispose(ctx_t *c);
 /** Accumulate data from \p src to \p dst. The
  * context \p c is for design purposes, but not used. */
 state_t io_accum(ctx_t *c, io_data_t *dst, io_data_t *src);
+
 #endif

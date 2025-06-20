@@ -164,11 +164,10 @@ static void static_data_diff(gpu_t *data2, gpu_t *data1, gpu_t *data_diff, int i
         memset(d3, 0, sizeof(gpu_t));
         return;
     }
-
     // Computing time
     double time_f = timestamp_diff(&d2->time, &d1->time, TIME_SECS);
-    debug("static_data_diff accumulated time diff %lf (d2 %lu d1 %lu)", time_f, d2->time.tv_sec, d1->time.tv_sec);
-
+    debug("static_data_diff accumulated time diff %lf (d2 %lu d1 %lu)",
+        time_f, d2->time.tv_sec, d1->time.tv_sec);
     // No overflow control is required (64-bits are enough)
     d3->freq_gpu = (d2->freq_gpu - d1->freq_gpu) / d3->samples;
     d3->freq_mem = (d2->freq_mem - d1->freq_mem) / d3->samples;
@@ -176,28 +175,32 @@ static void static_data_diff(gpu_t *data2, gpu_t *data1, gpu_t *data_diff, int i
     d3->util_mem = (d2->util_mem - d1->util_mem) / d3->samples;
     d3->temp_gpu = (d2->temp_gpu - d1->temp_gpu) / d3->samples;
     d3->temp_mem = (d2->temp_mem - d1->temp_mem) / d3->samples;
-    d3->power_w  = (d2->power_w - d1->power_w) / d3->samples;
+    d3->power_w  = (d2->power_w  - d1->power_w)  / d3->samples;
     d3->energy_j = (d2->energy_j - d1->energy_j);
     d3->working  = (d2->working);
     d3->correct  = 1;
+
     if (d3->power_w == 0) {
         d3->power_w = d3->energy_j / time_f;
-        debug("WARNING: Computing power using energy : %lf power = %lf energy / %lf secs", d3->power_w, d3->energy_j,
-              time_f);
+        debug("WARNING: Computing power using energy : %lf power = %lf energy / %lf secs",
+            d3->power_w, d3->energy_j, time_f);
     }
-
-#if 1
+    #if 1
     debug("%d freq gpu (KHz), %lu = %lu - %lu", i, d3->freq_gpu, d2->freq_gpu, d1->freq_gpu);
     debug("%d freq mem (KHz), %lu = %lu - %lu", i, d3->freq_mem, d2->freq_mem, d1->freq_mem);
     debug("%d power    (W)  , %0.2lf = %0.2lf - %0.2lf", i, d3->power_w, d2->power_w, d1->power_w);
     debug("%d energy   (J)  , %0.2lf = %0.2lf - %0.2lf", i, d3->energy_j, d2->energy_j, d1->energy_j);
-#endif
+    #endif
 }
 
 void gpu_data_diff(gpu_t *data2, gpu_t *data1, gpu_t *data_diff)
 {
     int i;
     gpu_data_null(data_diff);
+
+    if (ops.data_diff != NULL) {
+        return ops.data_diff(data2, data1, data_diff);
+    }
     for (i = 0; i < devs_count; i++) {
         static_data_diff(data2, data1, data_diff, i);
     }
@@ -218,7 +221,7 @@ void gpu_data_merge(gpu_t *data_diff, gpu_t *data_merge)
         data_merge->temp_gpu += data_diff[i].temp_gpu;
         data_merge->temp_mem += data_diff[i].temp_mem;
         data_merge->energy_j += data_diff[i].energy_j;
-        data_merge->power_w += data_diff[i].power_w;
+        data_merge->power_w  += data_diff[i].power_w;
     }
     // Static
     data_merge->time    = data_diff[0].time;
@@ -258,8 +261,8 @@ void gpu_data_print(gpu_t *data, int fd)
     int i;
     for (i = 0; i < devs_count; ++i) {
         dprintf(fd, "gpu%u: %3.0lf J, %3.0lf W, %4lu MHz, %4lu MHz, %2lu-%2lu usg, %2lu-%lu t, %lu\n", i,
-                data[i].energy_j, data[i].power_w, data[i].freq_gpu / 1000LU, data[i].freq_mem / 1000LU,
-                data[i].util_gpu, data[i].util_mem, data[i].temp_gpu, data[i].temp_mem, data[i].samples);
+            data[i].energy_j, data[i].power_w, data[i].freq_gpu / 1000LU, data[i].freq_mem / 1000LU,
+            data[i].util_gpu, data[i].util_mem, data[i].temp_gpu, data[i].temp_mem, data[i].samples);
     }
 }
 
@@ -271,10 +274,10 @@ char *gpu_data_tostr(gpu_t *data, char *buffer, int length)
     int i;
 
     for (i = accuml = 0; i < devs_count && length > 0; ++i) {
-        s      = snprintf(&buffer[accuml], length,
-                          "gpu%u: %3.0lf J, %3.0lf W, %7lu KHz, %7lu KHz, %2lu-%2lu usg, %2lu-%lu t, %lu (%s)\n", i,
-                          data[i].energy_j, data[i].power_w, data[i].freq_gpu, data[i].freq_mem, data[i].util_gpu,
-                          data[i].util_mem, data[i].temp_gpu, data[i].temp_mem, data[i].samples, state[data[i].correct]);
+        s = snprintf(&buffer[accuml], length,
+            "gpu%u: %3.0lf J, %3.0lf W, %7lu KHz, %7lu KHz, %2lu-%2lu usg, %2lu-%lu t, %lu (%s)\n", i,
+            data[i].energy_j, data[i].power_w, data[i].freq_gpu, data[i].freq_mem, data[i].util_gpu,
+            data[i].util_mem, data[i].temp_gpu, data[i].temp_mem, data[i].samples, state[data[i].correct]);
         length = length - s;
         accuml = accuml + s;
     }

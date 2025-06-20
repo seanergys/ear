@@ -11,20 +11,20 @@
 #ifndef METRICS_H
 #define METRICS_H
 
-#include <common/hardware/topology.h>
-#include <common/plugins.h>
 #include <common/states.h>
+#include <common/plugins.h>
 #include <common/types/generic.h>
+#include <common/hardware/topology.h>
 #include <common/utils/data_register.h>
-#include <metrics/bandwidth/bandwidth.h>
-#include <metrics/cache/cache.h>
-#include <metrics/cpi/cpi.h>
-#include <metrics/cpufreq/cpufreq.h>
-#include <metrics/energy/energy_node.h>
-#include <metrics/energy_cpu/energy_cpu.h>
-#include <metrics/flops/flops.h>
 #include <metrics/gpu/gpu.h>
+#include <metrics/cpi/cpi.h>
+#include <metrics/cache/cache.h>
+#include <metrics/flops/flops.h>
+#include <metrics/cpufreq/cpufreq.h>
 #include <metrics/imcfreq/imcfreq.h>
+#include <metrics/energy/energy_node.h>
+#include <metrics/bandwidth/bandwidth.h>
+#include <metrics/energy_cpu/energy_cpu.h>
 #include <metrics/temperature/temperature.h>
 
 typedef struct metrics_info_s {
@@ -34,10 +34,10 @@ typedef struct metrics_info_s {
     apinfo_t cch; // cache
     apinfo_t flp; // flops
     apinfo_t tmp; // temp
-    apinfo_t pow; // energy_node
+    apinfo_t pow; // energy_cpu
     apinfo_t cpi; // cpi
     apinfo_t gpu; // gpu
-    apinfo_t nod; // energy
+    apinfo_t nod; // energy_node
 } metrics_info_t;
 
 typedef struct metrics_read_s {

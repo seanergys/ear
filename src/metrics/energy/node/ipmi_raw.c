@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 //#define SHOW_DEBUGS_ULTRA 1
 
 #include <stdlib.h>
@@ -114,7 +114,7 @@ state_t energy_dispose(void **x)
     return EAR_SUCCESS;
 }
 
-static void parse(char id, char *data, consumption_t *reading)
+static void parse(char id, uchar *data, consumption_t *reading)
 {
     // Getting timestamp
     // timestamp_get(&reading->timestamp);

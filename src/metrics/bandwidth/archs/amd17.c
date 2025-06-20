@@ -17,10 +17,10 @@
 #include <stdlib.h>
 
 static topology_t tp;
-static uint devs_count;
-static off_t ctl;  // Address
-static off_t ctr;  // Address
-static ullong cmd; // Value
+static uint       devs_count;
+static off_t      ctl; // Address
+static off_t      ctr; // Address
+static ullong     cmd; // Value
 
 BWIDTH_F_LOAD(bwidth_amd17_load)
 {
@@ -34,7 +34,8 @@ BWIDTH_F_LOAD(bwidth_amd17_load)
     if (state_fail(topology_select(tpo, &tp, TPSelect.l3, TPGroup.merge, 0))) {
         return;
     }
-    // ZEN3
+    // ZEN3/4/5. In theory is compatible because the small bit changes between
+    // ZEN3/4 and ZEN5 are not used.
     if (tpo->family >= FAMILY_ZEN3) {
         //  cmd = 0x0300c0000040ff04;
         cmd = 0x0300c00000400104;
@@ -50,9 +51,9 @@ BWIDTH_F_LOAD(bwidth_amd17_load)
     devs_count = tp.cpu_count;
     //
     apis_put(ops->get_info, bwidth_amd17_get_info);
-    apis_put(ops->init, bwidth_amd17_init);
-    apis_put(ops->dispose, bwidth_amd17_dispose);
-    apis_put(ops->read, bwidth_amd17_read);
+    apis_put(ops->init,     bwidth_amd17_init);
+    apis_put(ops->dispose,  bwidth_amd17_dispose);
+    apis_put(ops->read,     bwidth_amd17_read);
     debug("Loaded AMD17");
 }
 

@@ -66,13 +66,13 @@ void cpi_get_info(apinfo_t *info)
     }
 }
 
-state_t cpi_read(ctx_t *c, cpi_t *ci)
+state_t cpi_read(cpi_t *ci)
 {
     return ops.read(ci);
 }
 
 // Helpers
-state_t cpi_read_diff(ctx_t *c, cpi_t *ci2, cpi_t *ci1, cpi_t *ciD, double *cpi)
+state_t cpi_read_diff(cpi_t *ci2, cpi_t *ci1, cpi_t *ciD, double *cpi)
 {
     state_t s;
     if (state_fail(s = ops.read(ci2))) {
@@ -82,10 +82,10 @@ state_t cpi_read_diff(ctx_t *c, cpi_t *ci2, cpi_t *ci1, cpi_t *ciD, double *cpi)
     return s;
 }
 
-state_t cpi_read_copy(ctx_t *c, cpi_t *ci2, cpi_t *ci1, cpi_t *ciD, double *cpi)
+state_t cpi_read_copy(cpi_t *ci2, cpi_t *ci1, cpi_t *ciD, double *cpi)
 {
     state_t s;
-    if (state_fail(s = cpi_read_diff(c, ci2, ci1, ciD, cpi))) {
+    if (state_fail(s = cpi_read_diff(ci2, ci1, ciD, cpi))) {
         return s;
     }
     cpi_data_copy(ci1, ci2);

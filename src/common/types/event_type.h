@@ -67,6 +67,13 @@ typedef struct ear_event {
 #define JOB_POWER              40
 #define NODE_POWER             41
 
+#define GPU_ENERGY_SAVING      42
+#define GPU_POWER_SAVING       43
+#define GPU_PERF_PENALTY       44
+#define GPU_ENERGY_SAVING_AVG  45
+#define GPU_POWER_SAVING_AVG   46
+#define GPU_PERF_PENALTY_AVG   47
+
 /** EARD Init events. */
 #define PM_CREATION_ERROR      100
 #define APP_API_CREATION_ERROR 101

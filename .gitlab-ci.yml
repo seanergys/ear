@@ -9,8 +9,6 @@ workflow:
 variables:
   CI_DEBUG_SERVICES: "true"
 
-# Currently there is just on stage: build. Different jobs compile different versions of EAR by using
-# compile.sh script provided in the ear_ci repository: https://gitlab.bsc.es/ear_team/ear-ci
 stages:          # List of stages for jobs, and their order of execution
   - build
   - test
@@ -21,6 +19,7 @@ image: registry.gitlab.bsc.es/ear_team/ear-ci
 compile-no-mpi-loader:
   stage: build
   script:
+    # This script compiles, installs, and test the correctness of the installation
     - $TESTDIR/compile_no_mpi_loader.sh
   artifacts:
     untracked: false
@@ -50,7 +49,6 @@ compile-mpi:
 compile-mpi-mysql:
   stage: build
   script:
-    - dnf install -y mariadb-devel
     - export CONFIG_SITE="$TESTDIR/config-sites/config.ompi.site"
     - MAKE_FEATURES="MPI_CFLAGS='$(pkgconf ompi-c --cflags)'" CONFIGURE_FLAGS="--prefix=$PWD/ear-db" $TESTDIR/compile.sh
     - make install
@@ -124,9 +122,8 @@ deploy-eard:
       - eard_journal.log
       - ear-dyn.conf
       - ear_tmp
-  allow_failure: true
 
-test-earl-lite:
+test-earl-mpi-lite:
   stage: test
   needs: [compile-mpi, test-install-mpi]
   script:
@@ -136,7 +133,49 @@ test-earl-lite:
     - OMPI_ALLOW_RUN_AS_ROOT=1 OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1 mpirun --oversubscribe -np 4 ear-ompi/bin/erun --ear=on --ear-verbose=1 --program="$TESTDIR/apps/NPB3.4.3/NPB3.4-MPI/bin/bt.B.x" 2> >(tee earl.out)
   artifacts:
     when: always
-    name: earl_out
+    name: earl-mpi_out
     paths:
       - earl.out
-  allow_failure: true
+
+test-earl-omp-lite:
+  stage: test
+  needs: [compile-no-mpi-loader]
+  script:
+    - $TESTDIR/scripts/compile_nas.sh $TESTDIR/apps/NPB3.4.3/NPB3.4-OMP bt B
+    - export EAR_ETC=ear-no-mpi-loader/etc ; export EAR_INSTALL_PATH=ear-no-mpi-loader ; export EAR_TMP=/tmp ; export OMP_NUM_THREADS=2
+    - ear-no-mpi-loader/bin/erun --ear=on --ear-verbose=1 --program="$TESTDIR/apps/NPB3.4.3/NPB3.4-OMP/bin/bt.B.x" 2> >(tee earl.out)
+  artifacts:
+    when: always
+    name: earl-omp_out
+    paths:
+      - earl.out
+
+test-earl-mkl-lite:
+  stage: test
+  needs: [compile-no-mpi-loader]
+  script:
+    # Install oneMKL and Intel compilers
+    - |
+      tee > /tmp/oneAPI.repo << EOF
+      [oneAPI]
+      name=Intel® oneAPI repository
+      baseurl=https://yum.repos.intel.com/oneapi
+      enabled=1
+      gpgcheck=1
+      repo_gpgcheck=1
+      gpgkey=https://yum.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB
+      EOF
+    - mv /tmp/oneAPI.repo /etc/yum.repos.d
+    - dnf install -y intel-oneapi-compiler-dpcpp-cpp
+    - dnf install -y intel-oneapi-mkl-devel
+    - source /opt/intel/oneapi/setvars.sh
+    - $TESTDIR/scripts/compile_matrix_mul_mkl.sh $TESTDIR/apps/matrix_mul_mkl
+    - export EAR_ETC=ear-no-mpi-loader/etc
+    - export EAR_INSTALL_PATH=ear-no-mpi-loader
+    - export EAR_TMP=/tmp
+    - ear-no-mpi-loader/bin/erun --ear=on --ear-verbose=1 --program="$TESTDIR/apps/matrix_mul_mkl/matrix_mul_mkl double" 2> >(tee earl.out)
+  artifacts:
+    when: always
+    name: earl-mkl_out
+    paths:
+      - earl.out

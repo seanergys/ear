@@ -10,20 +10,20 @@
 
 // #define SHOW_DEBUGS 1
 
-#include <common/config/config_install.h>
-#include <common/output/debug.h>
-#include <common/utils/overhead.h>
-#include <common/utils/special.h>
-#include <common/utils/stress.h>
-#include <common/utils/strscreen.h>
-#include <common/utils/strtable.h>
-#include <metrics/metrics.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <common/output/debug.h>
+#include <common/utils/stress.h>
+#include <common/utils/special.h>
+#include <common/utils/strtable.h>
+#include <common/utils/overhead.h>
+#include <common/utils/strscreen.h>
+#include <common/config/config_install.h>
+#include <metrics/metrics.h>
 
 #define nodepow(f, ...) energy_##f(__VA_ARGS__)
-#define cpupow(f, ...)  energy_cpu_##f(__VA_ARGS__)
+#define cpupow(f, ...) energy_cpu_##f(__VA_ARGS__)
 
 static ehandler_t e_ctx;
 static topology_t *self_tp;
@@ -48,26 +48,24 @@ void metrics_load(metrics_info_t *m, topology_t *tp, char *nodepow_path, ullong 
     nodepow(load, nodepow_path);
     cpufreq_load(tp, MFLAG_UNZIP(mflags, MET_CPUFREQ));
     imcfreq_load(tp, MFLAG_UNZIP(mflags, MET_IMCFREQ));
-    cpupow(load, tp, MFLAG_UNZIP(mflags, MET_CPUPOW));
-    bwidth_load(tp, MFLAG_UNZIP(mflags, MET_BWIDTH));
-    cache_load(tp, MFLAG_UNZIP(mflags, MET_CACHE));
-    flops_load(tp, MFLAG_UNZIP(mflags, MET_FLOPS));
-    temp_load(tp, MFLAG_UNZIP(mflags, MET_TEMP));
-    cpi_load(tp, MFLAG_UNZIP(mflags, MET_CPI));
-    gpu_load(MFLAG_UNZIP(mflags, MET_GPU));
+     cpupow(load,tp, MFLAG_UNZIP(mflags, MET_CPUPOW));
+     bwidth_load(tp, MFLAG_UNZIP(mflags, MET_BWIDTH ));
+      cache_load(tp, MFLAG_UNZIP(mflags, MET_CACHE  ));
+      flops_load(tp, MFLAG_UNZIP(mflags, MET_FLOPS  ));
+       temp_load(tp, MFLAG_UNZIP(mflags, MET_TEMP   ));
+        cpi_load(tp, MFLAG_UNZIP(mflags, MET_CPI    ));
+        gpu_load(    MFLAG_UNZIP(mflags, MET_GPU    ));
 
-    nodepow(init, &e_ctx);
+    nodepow(init,&e_ctx);
     cpufreq_init(no_ctx);
     imcfreq_init(no_ctx);
-    cpupow(init, no_ctx);
-    bwidth_init(no_ctx);
-    cache_init(no_ctx);
-    flops_init(no_ctx);
-    temp_init();
-    cpi_init(no_ctx);
-    gpu_init(no_ctx);
+     cpupow(init,no_ctx);
+     bwidth_init(no_ctx);
+      cache_init(no_ctx);
+      flops_init(no_ctx);
+       temp_init();
+        gpu_init(no_ctx);
 
-    //
     metrics_info_get(m);
 }
 
@@ -97,37 +95,34 @@ __attribute__((unused)) static void metrics_init_screen(metrics_info_t *m, topol
 void metrics_info_get(metrics_info_t *m)
 {
     bwidth_get_info(&m->ram);
-    cache_get_info(&m->cch);
-    flops_get_info(&m->flp);
-    temp_get_info(&m->tmp);
-    gpu_get_info(&m->gpu);
+     cache_get_info(&m->cch);
+     flops_get_info(&m->flp);
+      temp_get_info(&m->tmp);
+       cpi_get_info(&m->cpi);
+       gpu_get_info(&m->gpu);
 
     m->cpu.layer = "CPUFREQ";
     m->imc.layer = "IMCFREQ";
     m->pow.layer = "CPUPOW";
     m->tmp.layer = "TEMPERATURE";
-    m->cpi.layer = "CPI";
 
     cpufreq_get_api(&m->cpu.api);
     imcfreq_get_api(&m->imc.api);
-    cpupow(get_api, &m->pow.api);
-    cpi_get_api(&m->cpi.api);
+     cpupow(get_api,&m->pow.api);
 
     cpufreq_count_devices(no_ctx, &m->cpu.devs_count);
     imcfreq_count_devices(no_ctx, &m->imc.devs_count);
-    cpupow(count_devices, no_ctx, &m->pow.devs_count);
+     cpupow(count_devices,no_ctx, &m->pow.devs_count);
 
     m->cpu.scope = SCOPE_NODE;
     m->imc.scope = SCOPE_NODE;
     m->pow.scope = SCOPE_NODE;
     m->tmp.scope = SCOPE_NODE;
-    m->cpi.scope = SCOPE_PROCESS;
 
     m->cpu.granularity = GRANULARITY_THREAD;
     m->imc.granularity = GRANULARITY_SOCKET;
     m->pow.granularity = GRANULARITY_SOCKET;
     m->tmp.granularity = GRANULARITY_SOCKET;
-    m->cpi.granularity = GRANULARITY_PROCESS;
 
     apinfo_tostr(&m->cpu);
     apinfo_tostr(&m->imc);
@@ -254,7 +249,7 @@ void metrics_read(metrics_read_t *mr)
     cache_read(no_ctx, &mr->cch);
     flops_read(no_ctx, &mr->flp);
     temp_read(mr->tmp, NULL);
-    cpi_read(no_ctx, &mr->cpi);
+    cpi_read(&mr->cpi);
     gpu_read(no_ctx, mr->gpu);
 }
 

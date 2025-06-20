@@ -20,18 +20,18 @@
 #include <unistd.h>
 
 // static pthread_mutex_t           lock = PTHREAD_MUTEX_INITIALIZER;
-static ulong *freqs_default;
-static ulong **freqs_avail_list;
-static uint *freqs_avail_count;
-static ulong *power_max_default;
+static ulong         *freqs_default;
+static ulong        **freqs_avail_list;
+static uint          *freqs_avail_count;
+static ulong         *power_max_default;
 static zes_power_limit_ext_desc_t *power_descs; // sustaineds
-static uint *power_domains;
-static uint devs_count;
+static uint          *power_domains;
+static uint           devs_count;
 static ze_handlers_t *devs;
-static ze_t ze;
+static ze_t           ze;
 
-#define DUMMY_FREQ 1000000LU
-#define NO_FREQ    -1
+#define DUMMY_FREQ    1000000LU
+#define NO_FREQ      -1
 
 #define if_fail(function, action)                                                                                      \
     if ((z = function) != ZE_RESULT_SUCCESS) {                                                                         \
@@ -189,7 +189,7 @@ void mgt_gpu_oneapi_load(mgt_gpu_ops_t *ops)
     apis_set(ops->power_cap_get_current, mgt_gpu_oneapi_power_cap_get_current);
     apis_set(ops->power_cap_get_default, mgt_gpu_oneapi_power_cap_get_default);
     apis_set(ops->power_cap_get_rank, mgt_gpu_oneapi_power_cap_get_rank);
-    // Checking if NVML is capable to run commands
+    // Checking if OneAPI is capable to run commands
     if (!oneapi_is_privileged()) {
         return;
     }
@@ -307,6 +307,10 @@ state_t mgt_gpu_oneapi_freq_limit_set(ctx_t *c, ulong *khz)
     for (dv = 0; dv < devs_count; ++dv) {
         for (d = 0; d < devs[dv].sfreqs_count; ++d) {
             range.max = ((double) khz[dv]) / 1000.0;
+            // In documentation of zesFrequencySetRange -> zes_freq_range_t:
+            // - The min frequency in MHz. On input, setting to 0 will permit
+            //   the frequency to go down to the hardware minimum.
+            range.min = 0;
             if_fail(ze.sFrequencySetRange(devs[dv].sfreqs[d], &range), continue);
         }
     }

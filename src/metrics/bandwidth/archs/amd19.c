@@ -19,12 +19,12 @@
 #include <pthread.h>
 #include <stdlib.h>
 
-static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-static topology_t tp;
-static uint fun; // Address
-static suscription_t *sus;
-static bwidth_t *pool;
-static double line_size;
+static pthread_mutex_t  lock = PTHREAD_MUTEX_INITIALIZER;
+static topology_t       tp;
+static uint             fun; // Address
+static suscription_t   *sus;
+static bwidth_t        *pool;
+static double           line_size;
 
 BWIDTH_F_LOAD(bwidth_amd19_load)
 {
@@ -53,9 +53,9 @@ BWIDTH_F_LOAD(bwidth_amd19_load)
     pool = calloc(tp.cpu_count + 1, sizeof(bwidth_t));
 
     apis_put(ops->get_info, bwidth_amd19_get_info);
-    apis_put(ops->init, bwidth_amd19_init);
-    apis_put(ops->dispose, bwidth_amd19_dispose);
-    apis_put(ops->read, bwidth_amd19_read);
+    apis_put(ops->init    , bwidth_amd19_init);
+    apis_put(ops->dispose , bwidth_amd19_dispose);
+    apis_put(ops->read    , bwidth_amd19_read);
     debug("Loaded AMD19");
 }
 

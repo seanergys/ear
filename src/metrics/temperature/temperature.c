@@ -125,22 +125,3 @@ void temp_data_print(llong *list, llong avrg, int fd)
     temp_data_tostr(list, avrg, buffer, 1024);
     dprintf(fd, "%s", buffer);
 }
-
-#if TEST
-static topology_t tp;
-static llong t1[128];
-static llong t2[128];
-static llong tD[128];
-static llong tA;
-
-int main(int argc, char **argv)
-{
-    topology_init(&tp);
-    temp_load(&tp, API_FREE);
-    temp_read(t1, &tA);
-    sleep(1);
-    temp_read_copy(t2, t1, tD, &tA);
-    temp_data_print(tD, tA, verb_channel);
-    return 0;
-}
-#endif

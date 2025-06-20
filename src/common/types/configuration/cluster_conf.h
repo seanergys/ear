@@ -22,6 +22,7 @@
 #include <common/sizes.h>
 #include <common/states.h>
 #include <common/string_enhanced.h>
+#include <common/system/version.h>
 #include <common/types/configuration/cluster_conf_db.h>
 #include <common/types/configuration/cluster_conf_eard.h>
 #include <common/types/configuration/cluster_conf_eardbd.h>
@@ -202,10 +203,13 @@ int get_node_island(cluster_conf_t *conf, char *hostname);
 
 int get_node_server_mirror(cluster_conf_t *conf, const char *hostname, char *mirror_of);
 
-/** given a node name, get all ips of its range*/
+/** given a node name, get all ips of its range. Allocates memory.*/
 int get_range_ips(cluster_conf_t *my_conf, char *nodename, int **ips);
 int get_ip_ranges(cluster_conf_t *my_conf, int **num_ips, int ***ips);
 void get_ip_nodelist(cluster_conf_t *conf, char **nodes, int num_nodes, int **ips);
+
+/* Same as get_ip_ranges, but also copies the hostnames in *names. Allocates memory.*/
+int get_ip_and_names_from_ranges(cluster_conf_t *my_conf, int **num_ips, int ***ips, char ****names);
 
 /** returns the number of nodes defined in cluster_conf_t */
 int get_num_nodes(cluster_conf_t *my_conf);
@@ -244,8 +248,9 @@ uint tags_are_unlimited(cluster_conf_t *conf);
 /** It serializes conf and stores in ear_conf_buf. Memory is internally allocated */
 state_t serialize_cluster_conf(cluster_conf_t *conf, char **ear_conf_buf, size_t *conf_size);
 
-/** ear_conf_buf points to a serialized region. conf is the output. Memory is not internally allocated for it */
-state_t deserialize_cluster_conf(cluster_conf_t *conf, char *ear_conf_buf, size_t conf_size);
+/** ear_conf_buf points to a serialized region. conf is the output. Memory is not internally allocated for it
+ * \param src_version version_t of the serialized region. */
+state_t deserialize_cluster_conf(cluster_conf_t *conf, char *ear_conf_buf, size_t conf_size, const version_t *src_version);
 
 /** Checks if a tag with a given name is defined in ear.conf and returns its id if it exists */
 int tag_id_exists(cluster_conf_t *conf, char *tag);

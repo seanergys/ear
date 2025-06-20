@@ -88,14 +88,13 @@ static state_t energy_pool(void *data)
 {
     state_t st = EAR_SUCCESS;
     timestamp_t ts = {0};
-    ipmi_cmd_t pkg = {0};
     double fpower;
     double ftime;
     int s;
 
     while (pthread_mutex_trylock(&lock));
     //
-    if (state_fail(s = ipmi_sensors_read(sensors, sensors_count, &sensors_readings))) {
+    if (state_fail(st = ipmi_sensors_read(sensors, sensors_count, &sensors_readings))) {
         goto_state(leave, st = EAR_ERROR);
     }
     timestamp_get(&ts);
