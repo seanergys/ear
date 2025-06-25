@@ -389,7 +389,7 @@ static state_t _perf_open_files(perf_t **perfs, char *pmu_name, char *ev_name, u
     // Getting cpumask (i.e: 0-79(80) or 0,40(2)
     sprintf(path, "/sys/bus/event_source/devices/%s/cpumask", pmu_name);
     // Reading cpumask format file (this field is used to know the number of perfs to open)
-    if (state_ok(ear_file_read(path, memset(buffer, 0, sizeof(buffer)), sizeof(buffer)))) {
+    if (state_ok(ear_file_read(path, memset(buffer, 0, sizeof(buffer)), sizeof(buffer), 0))) {
         if ((cpus_count = parse_cpumask(buffer, (uint **) &cpus)) > 0) {
             // If ok, we are going per CPU, not process
             pid = -1;
@@ -405,7 +405,7 @@ static state_t _perf_open_files(perf_t **perfs, char *pmu_name, char *ev_name, u
         sprintf(path, "/sys/bus/event_source/devices/%s/events/%s", pmu_name, ev_name);
         // Reading event file
         debug("%s reading event file", path);
-        if (state_fail(ear_file_read(path, memset(buffer, 0, sizeof(buffer)), sizeof(buffer)))) {
+        if (state_fail(ear_file_read(path, memset(buffer, 0, sizeof(buffer)), sizeof(buffer), 0))) {
             return EAR_ERROR;
         }
         event = (ulong) strtol(parse_value(buffer, "event="), NULL, 16);
@@ -413,25 +413,25 @@ static state_t _perf_open_files(perf_t **perfs, char *pmu_name, char *ev_name, u
         // Getting event scale (i.e: 'event=0xff,umask=0x10')
         sprintf(path, "/sys/bus/event_source/devices/%s/events/%s.scale", pmu_name, ev_name);
         // Reading event file
-        if (state_ok(ear_file_read(path, memset(buffer, 0, sizeof(buffer)), sizeof(buffer)))) {
+        if (state_ok(ear_file_read(path, memset(buffer, 0, sizeof(buffer)), sizeof(buffer), 0))) {
             scale = atof(buffer);
         }
         // Getting event unit (i.e: 'event=0xff,umask=0x10')
         sprintf(path, "/sys/bus/event_source/devices/%s/events/%s.unit", pmu_name, ev_name);
         // Reading event file
-        if (state_ok(ear_file_read(path, memset(unit, 0, sizeof(unit)), sizeof(unit)))) {
+        if (state_ok(ear_file_read(path, memset(unit, 0, sizeof(unit)), sizeof(unit), 0))) {
             strclean(unit, '\n');
         }
         // Getting event format (i.e: 'config:0-7')
         sprintf(path, "/sys/bus/event_source/devices/%s/format/event", pmu_name);
         // Reading event format file
-        if (state_ok(ear_file_read(path, memset(buffer, 0, sizeof(buffer)), sizeof(buffer)))) {
+        if (state_ok(ear_file_read(path, memset(buffer, 0, sizeof(buffer)), sizeof(buffer), 0))) {
             config = config | parse_config(buffer, event);
         }
         // Getting umask format (i.e: 'config:8-15,32-55')
         sprintf(path, "/sys/bus/event_source/devices/%s/format/umask", pmu_name);
         // Reading umask format file
-        if (state_ok(ear_file_read(path, memset(buffer, 0, sizeof(buffer)), sizeof(buffer)))) {
+        if (state_ok(ear_file_read(path, memset(buffer, 0, sizeof(buffer)), sizeof(buffer), 0))) {
             config = config | parse_config(buffer, umask);
         }
     } else {
@@ -440,7 +440,7 @@ static state_t _perf_open_files(perf_t **perfs, char *pmu_name, char *ev_name, u
     // Getting type (i.e: '17')
     sprintf(path, "/sys/bus/event_source/devices/%s/type", pmu_name);
     // Reading umask format file
-    if (state_ok(ear_file_read(path, memset(buffer, 0, sizeof(buffer)), sizeof(buffer)))) {
+    if (state_ok(ear_file_read(path, memset(buffer, 0, sizeof(buffer)), sizeof(buffer), 0))) {
         type = (uint) atoi(buffer);
     }
     debug("event  : '0x%02lx'", event);

@@ -1358,7 +1358,7 @@ static int get_ear_application_id_multiprocess(int app_multi)
             earl_early_verb(VPROC_INIT, "Rank %d reading AID from %s", ear_my_rank, AID_number_file);
             state_t st;
             do {
-                st = ear_file_read(AID_number_file, (char *) &master_pid, sizeof(master_pid));
+                st = ear_file_read(AID_number_file, (char *) &master_pid, sizeof(master_pid), 1);
                 if (st != EAR_SUCCESS) {
                     usleep(100);
                     tries++;
@@ -3114,7 +3114,7 @@ static state_t earl_log_backup(char *pathname, size_t pathname_size)
         return_msg(EAR_ERROR, Generr.alloc_error);
     }
 
-    st = ear_file_read(pathname, file_buff, (size_t) file_size);
+    st = ear_file_read(pathname, file_buff, (size_t) file_size, 0);
     if (state_fail(st)) {
         verbose_error("Reading file %s (%d): %s", pathname, intern_error_num, intern_error_str);
         free(file_buff);
