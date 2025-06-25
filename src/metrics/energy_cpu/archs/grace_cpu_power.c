@@ -27,7 +27,7 @@ static uint socket_count    = 0;
 
 #define GH_CPU_PERIOD 2000
 #define NUM_DEVICES   2 // DRAM and PKG
-#define VGRACE_CPU_VL 2
+#define VGRACE_CPU_VL 3
 static suscription_t *grace_cpu_sus;
 static state_t grace_cpu_mon_main(void *p);
 static state_t grace_cpu_mon_init(void *p);

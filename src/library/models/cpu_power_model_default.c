@@ -29,36 +29,38 @@
 #include <metrics/flops/flops.h>
 
 #include <library/common/verbose_lib.h>
+#include <library/models/cpu_power_model_common.h>
 #include <library/models/cpu_power_model_default.h>
 
 static intel_skl_t my_node_coeffs;
 static uint arch_model_loaded = 0;
 static uint cpu_count;
 static uint cache_line_size;
+static node_sharing_strategy_t node_sharing_strategy; // 'node' strategy is the default since it is what we had until now.
 
-state_t cpu_power_model_init_arch(settings_conf_t *libconf, conf_install_t *conf, architecture_t *arch)
+state_t cpu_power_model_init_arch(settings_conf_t *libconf, conf_install_t *conf, architecture_t *arch,
+                                  node_sharing_strategy_t strategy)
 {
     int fd, ret;
 
-    debug("cpu_power_models_init_arch. Using tag %s etc %s", libconf->tag, conf->dir_conf);
+    verbose_info2_master("Default CPU power model. Tag %s, EAR etc %s", libconf->tag, conf->dir_conf);
 
     char model_path[MAX_PATH_SIZE];
     xsnprintf(model_path, sizeof(model_path), "%s/ear/coeffs/island%d/coeffs.cpumodel.%s", conf->dir_conf,
               libconf->island, libconf->tag);
-
-    debug("cpu_power_models_init_arch coeffs path %s", model_path);
+    verbose_info_master("Default CPU power model coeffs: %s", model_path);
 
     fd = open(model_path, O_RDONLY);
     if (fd < 0) {
-        debug("Error opening cpu model file %s", strerror(errno));
+        verbose_error_master("Opening CPU power model coefficients file: %s", strerror(errno));
         return EAR_ERROR;
     }
 
     if ((ret = read(fd, &my_node_coeffs, sizeof(intel_skl_t))) != sizeof(intel_skl_t)) {
         if (ret < 0) {
-            debug("Error reading cpu model data %s", strerror(errno));
+            verbose_error_master("Reading CPU power model data: %s", strerror(errno));
         } else {
-            debug("Error reading cpu model data %d bytes expected %lu", ret, sizeof(intel_skl_t));
+            verbose_error_master("Reading CPU power model data (%d): Expected %lu bytes.", ret, sizeof(intel_skl_t));
         }
         close(fd);
         return EAR_ERROR;
@@ -69,8 +71,9 @@ state_t cpu_power_model_init_arch(settings_conf_t *libconf, conf_install_t *conf
 
     arch_model_loaded = 1;
     cache_line_size   = arch->top.cache_line_size;
-
-    verbose_master(2, "EARL[%d] CPU power model default loaded %d", getpid(), arch_model_loaded);
+		node_sharing_strategy = strategy;
+    verbose_info_master("Default CPU power model loaded. Power assignment strategy: %s",
+                        (node_sharing_strategy == node) ? "node" : "job");
 
     return EAR_SUCCESS;
 }
@@ -86,8 +89,7 @@ state_t cpu_power_model_status_arch()
 state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig, node_mgr_sh_data_t *nmgr,
                                      uint node_mgr_index)
 {
-
-    verbose_master(2, "EARL[%d] CPU power model default loaded %d", getpid(), arch_model_loaded);
+    verbose_info2_master("Default CPU power model projection");
 
     if (!arch_model_loaded)
         return EAR_ERROR;
@@ -106,6 +108,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
     double tpi[MAX_CPUS_SUPPORTED];
     double gbs[MAX_CPUS_SUPPORTED];
     double vpi[MAX_CPUS_SUPPORTED];
+    double cpu_power_ratio;
 #if SHOW_DEBUGS
     double oldTPI;
 #endif
@@ -116,7 +119,6 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
     uint job_in_process[MAX_CPUS_SUPPORTED];
 
     double job_power_ratio, process_power_ratio[MAX_CPUS_SUPPORTED];
-    ;
 
     uint node_process = 0;
 
@@ -124,14 +126,16 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
 
     double my_job_GBS, my_job_DRAM_power, my_job_TPI;
 
-    uint used_cpus = 0;
-
-    lsig = &data->node_signature;
+    uint used_cpus    = 0;
+    uint my_used_cpus = 0;
 
     if (node_mgr_earl_apps() > MAX_CPUS_SUPPORTED) {
-        verbose(0, "EARL ERROR, more apps than CPUS--> return");
+        verbose_error_master("More applications (%d) than CPUs supported (%d)", node_mgr_earl_apps(),
+                             MAX_CPUS_SUPPORTED);
         return EAR_ERROR;
     }
+
+    lsig = &data->node_signature;
 
     memset(ipc, 0, sizeof(double) * MAX_CPUS_SUPPORTED);
     memset(process_power_ratio, 0, sizeof(double) * MAX_CPUS_SUPPORTED);
@@ -144,8 +148,6 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
     memset(dram_power, 0, sizeof(double) * MAX_CPUS_SUPPORTED);
     memset(pck_power, 0, sizeof(double) * MAX_CPUS_SUPPORTED);
     memset(inst, 0, sizeof(ullong) * MAX_CPUS_SUPPORTED);
-
-    verbose(3, "CPU power model default ...............");
 
     if ((lsig == NULL) || (sig == NULL) || (nmgr == NULL))
         return EAR_SUCCESS;
@@ -164,7 +166,7 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
             sig[lp].sig.DC_power   = 0;
             sig[lp].sig.PCK_power  = 0;
         }
-        verbose_master(2, "My job[%d][%d] not estimated node metrics", node_mgr_index, getpid());
+        verbose_info2_master("Node sharing metrics not estimated for job %d.", node_mgr_index);
         return EAR_SUCCESS;
     }
 
@@ -172,11 +174,15 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
     for (uint lp = 0; lp < data->num_processes; lp++) {
         totalinst += sig[lp].sig.instructions;
     }
-    totalinst /= data->num_processes;
+    if (data->num_processes)
+        totalinst /= data->num_processes;
+
 #if SHOW_DEBUGS
     oldTPI = lsig->TPI;
 #endif
-    lsig->TPI = (data->cas_counters * cache_line_size) / totalinst;
+
+    if (totalinst)
+        lsig->TPI = (data->cas_counters * cache_line_size) / (double) totalinst;
 
     /* compute_job_node_XXX compute the metrics only for the calling job. It is
      * needed to iterate over the jobs to have per node. */
@@ -184,22 +190,20 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
           data->cas_counters, lsig->instructions);
 
     for (uint j = 0; j < node_mgr_earl_apps(); j++) {
-        /* Power condition is to do only in case the signature is ready */
+        /* DC_power condition means the signature is ready.
+         * estimate_node_metrics is used to not give neither power nor GB/s.
+         * It is usually used for the master application in a master/worker workflow
+         * use case. */
         if (nmgr[j].creation_time && nmgr[j].libsh != NULL && nmgr[j].shsig != NULL &&
             nmgr[j].libsh->node_signature.DC_power && nmgr[j].libsh->estimate_node_metrics) {
-            /* If not estimate metrics, this app will not receive neither power of GBs , it is assumed to be a master in
-             * a master/worker use case */
 
             ull avx = 0;
-
             used_cpus += nmgr[j].libsh->num_cpus;
 
+            if (j == node_mgr_index)
+                my_used_cpus += nmgr[j].libsh->num_cpus;
+
             for (uint lp = 0; lp < nmgr[j].libsh->num_processes; lp++) {
-                // if (nmgr[j].shsig[lp].sig.DC_power > 0) {
-                /* Node metrics are not longer copied in shared signatures to avoid corrupting
-                 * per-process metrics. we use sig.instructions to detect when the first signature
-                 * is ready
-                 */
 
                 if (nmgr[j].shsig[lp].sig.instructions > 0) {
 
@@ -252,6 +256,8 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
             } else {
                 tpi[j] = (double) 0;
             }
+            verbose_info2_master("L3 misses ratio %f | GB/s %lf | DRAM power %lf | TPI %lf", mem_ratio, gbs[j],
+                                 dram_power[j], tpi[j]);
         } else {
             /* If there is no cache misses, we distribute the GBs proportionally to the number of cpus, naive approach
              */
@@ -262,6 +268,8 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
                     ((float) nmgr[cj].libsh->num_cpus / (float) used_cpus) / (float) nmgr[cj].libsh->num_processes;
                 gbs[j] = lsig->GBS * mem_ratio;
                 tpi[j] = lsig->TPI * mem_ratio;
+                verbose_info2_master("L3 misses ratio (based on CPU ratio) %f | GB/s %lf | TPI %lf", mem_ratio, gbs[j],
+                                     tpi[j]);
                 debug("case 2[%d]:Using lGBS %.0lf lTPI %.0lf mem ratio %lf", j, lsig->GBS, lsig->TPI, mem_ratio);
             } else {
                 gbs[j] = lsig->GBS;
@@ -274,6 +282,8 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
                 dram_power[j] = lsig->DRAM_power;
             debug("case 2[%d]: Ratio %.3f Node TPI %.2lf", j, mem_ratio, lsig->TPI);
         }
+
+        // DRAM power and memory bandwidth is proportional to the number of processes.
         if ((L3[j] || gbs[j]) && (job_in_process[j] == node_mgr_index)) {
             my_job_GBS += gbs[j];
             my_job_DRAM_power += dram_power[j];
@@ -293,7 +303,8 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
     debug("My job[%d] GB/s is %.2lf TPI %.2lf DRAM %lf total inst %llu", node_mgr_index, data->job_signature.GBS,
           data->job_signature.TPI, data->job_signature.DRAM_power, totalinst);
 
-    /* Power : Power is estimated based on CPU activity and Memory activity. Less CPI means more CPU activity and more
+    /* Power : Power is estimated based on CPU activity and Memory activity.
+     * Less CPI means more CPU activity and more
      * L3 means more Mem actitivy */
 
     /* Per job in node loop */
@@ -301,12 +312,11 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
     lp = 0;
     for (uint j = 0; j < node_mgr_earl_apps(); j++) {
         /* If job is active we compute its power estimated */
-        if (nmgr[j].creation_time && (nmgr[j].libsh != NULL) && (nmgr[j].shsig != NULL) && f[lp] &&
-            (nmgr[j].libsh->estimate_node_metrics)) {
+        if (nmgr[j].creation_time && nmgr[j].libsh != NULL && nmgr[j].shsig != NULL && f[lp] &&
+            nmgr[j].libsh->estimate_node_metrics) {
             for (uint proc = 0; proc < nmgr[j].libsh->num_processes; proc++) {
-                double P;
-                P = (ipc[lp] * my_node_coeffs.ipc) + (gbs[lp] * my_node_coeffs.gbs) + (vpi[lp] * my_node_coeffs.vpi) +
-                    (f[lp] * my_node_coeffs.f) + my_node_coeffs.inter;
+                double P = (ipc[lp] * my_node_coeffs.ipc) + (gbs[lp] * my_node_coeffs.gbs) +
+                           (vpi[lp] * my_node_coeffs.vpi) + (f[lp] * my_node_coeffs.f) + my_node_coeffs.inter;
 
                 power_estimations[lp] = P * nmgr[j].shsig[proc].num_cpus / cpus_in_node;
 
@@ -328,6 +338,10 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
         GPU_power += lsig->gpu_sig.gpu_data[gid].GPU_power;
     }
 #endif
+#if EARL_LIGHT
+    if (CPU_power == 0)
+        CPU_power = lsig->PCK_power + lsig->DRAM_power + GPU_power;
+#endif
     if (CPU_power > GPU_power) {
         CPU_power -= GPU_power;
     } else {
@@ -340,7 +354,11 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
 
     debug("Baseline CPU power %lf", CPU_power);
 
+    if (node_sharing_strategy == job)
+        total_power_estimated = CPU_power;
+
     job_power_ratio          = 0.0;
+    cpu_power_ratio          = (double) my_used_cpus / (double) cpu_count;
     double GPU_process_power = 0;
     lp                       = 0;
     for (uint proc = 0; proc < node_process; proc++) {
@@ -362,8 +380,15 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
     /* Extra power should be equally distributed: PENDING */
     data->job_signature.DC_power  = (CPU_power * job_power_ratio) + GPU_power;
     data->job_signature.PCK_power = job_power_ratio * lsig->PCK_power;
-    debug("My job[%d] power is %lf (node (CPU %lf + GPU %lf) x ratio %lf) PCK %lf", node_mgr_index,
-          data->job_signature.DC_power, CPU_power, GPU_power, job_power_ratio, data->job_signature.PCK_power);
+
+    data->job_signature.DC_job_power  = (CPU_power * cpu_power_ratio) + GPU_power;
+    data->job_signature.PCK_job_power = cpu_power_ratio * lsig->PCK_power;
+    verbose_info2_master("Job %u | DC node power (node ratio) %lf | CPU pwr %lf GPU pwr %lf ratio %lf | PCK pwr %lf",
+                         node_mgr_index, data->job_signature.DC_power, CPU_power, GPU_power, job_power_ratio,
+                         data->job_signature.PCK_power);
+    verbose_info2_master("Job %u | DC node power (job ratio) %lf | CPU pwr %lf GPU pwr %lf ratio %lf | PCK pwr %lf",
+                         node_mgr_index, data->job_signature.DC_job_power, CPU_power, GPU_power, cpu_power_ratio,
+                         data->job_signature.PCK_job_power);
 
     return EAR_SUCCESS;
 }
