@@ -431,15 +431,19 @@ int eards_connect(application_t *my_app, ulong lid)
     if (ear_fd_req_global >= 0) {
         /* EARD sends an ack when ack pipe for specific service is created */
         verbose(VPROC_LAPI + 1, "%s: Opening %s", nodename, ear_commack);
-        ear_fd_ack = open(ear_commack, O_RDONLY);
+        ear_fd_ack = open(ear_commack, O_RDONLY | O_NONBLOCK);
+
+        /* According to the fifo(7) man page, opening a fifo in non-blocking
+         * mode succeeds even if no one has opened on the write side yet. */
         if (ear_fd_ack < 0) {
-            error("Error opening local ack communicator with EARD (%s)", strerror(errno));
+            error("Error opening local ack communicator with EARD (%s).", strerror(errno));
             connecting = 0;
             close(ear_fd_req_global);
             ear_fd_req_global = -1;
             return EAR_ERROR;
         }
         verbose(VPROC_LAPI + 1, "%s: %s open", nodename, ear_commack);
+
 #if USE_NON_BLOCKING_IO
         ret1 = fcntl(ear_fd_ack, F_SETFL, O_NONBLOCK);
         if (ret1 < 0) {
@@ -461,8 +465,9 @@ int eards_connect(application_t *my_app, ulong lid)
         debug("ACK received: %lu", ack);
 
         verbose(VPROC_LAPI + 1, "%s: Open %s", nodename, ear_commreq);
-        if ((ear_fd_req = open(ear_commreq, O_WRONLY)) < 0) {
-            error("Error opening local req communicator, closing the EARD connection");
+
+        if ((ear_fd_req = open(ear_commreq, O_WRONLY | O_NONBLOCK)) < 0) {
+            error("Error opening local req communicator with EARD (%s), closing the EARD connection.", strerror(errno));
             CLOSE_LOCAL_COMM();
             connecting = 0;
             return EAR_ERROR;
