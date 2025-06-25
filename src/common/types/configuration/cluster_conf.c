@@ -1369,14 +1369,14 @@ state_t serialize_cluster_conf(cluster_conf_t *conf, char **ear_conf_buf, size_t
 	for (uint auth = 0; auth < conf->num_priv_users; auth ++){
 		uint size_auth = strlen(conf->priv_users[auth]);
 		serial_add_elem(&ear_conf_serial, (char *)&size_auth, sizeof(size_auth));
-		serial_add_elem(&ear_conf_serial, (char *)&conf->priv_users[auth], strlen(conf->priv_users[auth]));
+		serial_add_elem(&ear_conf_serial, (char *)conf->priv_users[auth], strlen(conf->priv_users[auth]));
 	}
 	/* Priv groups */
 	serial_add_elem(&ear_conf_serial, (char *)&conf->num_priv_groups, sizeof(conf->num_priv_groups));
 	for (uint auth = 0; auth < conf->num_priv_groups; auth ++){
 		uint size_auth = strlen(conf->priv_groups[auth]);
 		serial_add_elem(&ear_conf_serial, (char *)&size_auth, sizeof(size_auth));
-		serial_add_elem(&ear_conf_serial, (char *)&conf->priv_groups[auth], strlen(conf->priv_groups[auth]));
+		serial_add_elem(&ear_conf_serial, (char *)conf->priv_groups[auth], strlen(conf->priv_groups[auth]));
 	}
 
 	/* Priv accounts */
@@ -1384,7 +1384,7 @@ state_t serialize_cluster_conf(cluster_conf_t *conf, char **ear_conf_buf, size_t
 	for (uint auth = 0; auth < conf->num_acc; auth ++){
 		uint size_auth = strlen(conf->priv_acc[auth]);
 		serial_add_elem(&ear_conf_serial, (char *)&size_auth, sizeof(size_auth));
-		serial_add_elem(&ear_conf_serial, (char *)&conf->priv_acc[auth], strlen(conf->priv_acc[auth]));
+		serial_add_elem(&ear_conf_serial, (char *)conf->priv_acc[auth], strlen(conf->priv_acc[auth]));
 	}
 	debug("serial + authorized: users %u groups %u accounts %u", conf->num_priv_users,conf->num_priv_groups,conf->num_acc);
 
