@@ -52,7 +52,7 @@ int process_exists(const process_data_t *prodata, char *bin_name, pid_t *pid)
         char *p;
 
         sprintf(buffer1, "/proc/%d/cmdline", *pid);
-        ear_file_read(buffer1, buffer2, SZ_PATH);
+        ear_file_read(buffer1, buffer2, SZ_PATH, 0);
         p = strstr(buffer2, bin_name);
 
         free(buffer1);
@@ -84,7 +84,7 @@ state_t process_pid_file_load(const process_data_t *prodata, pid_t *pid)
     char buffer[SZ_NAME_SHORT];
     state_t state;
 
-    state = ear_file_read(prodata->path_pid, buffer, SZ_NAME_SHORT);
+    state = ear_file_read(prodata->path_pid, buffer, SZ_NAME_SHORT, 0);
 
     if (state_fail(state)) {
         state_return(state);

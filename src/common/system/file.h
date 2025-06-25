@@ -83,8 +83,20 @@ int ear_file_is_directory(const char *path);
 /** */
 ssize_t ear_file_size(char *path);
 
-/** */
-state_t ear_file_read(const char *path, char *buffer, size_t size);
+/** This function reads at most up to \p size bytes from the file pointed by \p
+ * path, and stores them in the memory region pointed by \p buffer. It is up to
+ * the caller to allocate at least \p size bytes at \p buffer. The \p wait_for_bytes
+ * parameter change the mode of operation of this funciton.
+ *
+ * \param wait_for_bytes This boolean parameter is used to determine whether the
+ * function must read exactly \p size bytes. If false, it will try to read at
+ * most \p size bytes while the read(2) function still reads bytes.
+ *
+ * \return EAR_OPEN_ERROR open(3) function returned an error.
+ * \return EAR_READ_ERROR read(2) function returned an error.
+ * \return EAR_SUCCESS Otherwise.
+ */
+state_t ear_file_read(const char *path, char *buffer, size_t size, int wait_for_bytes);
 
 /** */
 state_t ear_file_write(const char *path, const char *buffer, size_t size);
@@ -92,16 +104,16 @@ state_t ear_file_write(const char *path, const char *buffer, size_t size);
 /** */
 state_t ear_file_clean(const char *path);
 
-/* Changes the limit of files open , use ULONG_MAX to set the maximum */
+/** Changes the limit of files open , use ULONG_MAX to set the maximum */
 void set_no_files_limit(ulong new_limit);
 
-/* Returns the current limit of files open */
+/** Returns the current limit of files open */
 ulong get_no_files_limit();
 
-/* Returns the current limit of stack size */
+/** Returns the current limit of stack size */
 ulong get_stack_size_limit();
 
-/* Changes the limit of stack size, use ULONG_MAX to set the maximum*/
+/** Changes the limit of stack size, use ULONG_MAX to set the maximum*/
 void set_stack_size_limit(ulong new_limit);
 state_t ear_fd_read(int fd, char *buffer, size_t size);
 state_t ear_fd_write(int fd, const char *buffer, size_t size);
