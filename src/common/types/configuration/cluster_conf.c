@@ -1496,14 +1496,14 @@ state_t serialize_cluster_conf(cluster_conf_t *conf, char **ear_conf_buf, size_t
     for (uint auth = 0; auth < conf->auth_users_count; auth++) {
         uint size_auth = strlen(conf->auth_users[auth]);
         serial_add_elem(&ear_conf_serial, (char *) &size_auth, sizeof(size_auth));
-        serial_add_elem(&ear_conf_serial, (char *) &conf->auth_users[auth], strlen(conf->auth_users[auth]));
+        serial_add_elem(&ear_conf_serial, (char *) conf->auth_users[auth], strlen(conf->auth_users[auth]));
     }
     /* Priv groups */
     serial_add_elem(&ear_conf_serial, (char *) &conf->auth_groups_count, sizeof(conf->auth_groups_count));
     for (uint auth = 0; auth < conf->auth_groups_count; auth++) {
         uint size_auth = strlen(conf->auth_groups[auth]);
         serial_add_elem(&ear_conf_serial, (char *) &size_auth, sizeof(size_auth));
-        serial_add_elem(&ear_conf_serial, (char *) &conf->auth_groups[auth], strlen(conf->auth_groups[auth]));
+        serial_add_elem(&ear_conf_serial, (char *) conf->auth_groups[auth], strlen(conf->auth_groups[auth]));
     }
 
     /* Priv accounts */
@@ -1511,11 +1511,11 @@ state_t serialize_cluster_conf(cluster_conf_t *conf, char **ear_conf_buf, size_t
     for (uint auth = 0; auth < conf->auth_acc_count; auth++) {
         uint size_auth = strlen(conf->auth_accounts[auth]);
         serial_add_elem(&ear_conf_serial, (char *) &size_auth, sizeof(size_auth));
-        serial_add_elem(&ear_conf_serial, (char *) &conf->auth_accounts[auth], strlen(conf->auth_accounts[auth]));
+        serial_add_elem(&ear_conf_serial, (char *) conf->auth_accounts[auth], strlen(conf->auth_accounts[auth]));
     }
 
     /* Admin users */
-    serial_add_elem(&ear_conf_serial, (char *) &conf->admin_users_count, sizeof(conf->admin_users_count));
+    serial_add_elem(&ear_conf_serial, (char *) conf->admin_users_count, sizeof(conf->admin_users_count));
 
     for (uint admn = 0; admn < conf->admin_users_count; admn++) {
         uint size_auth = strlen(conf->admin_users[admn]);
