@@ -474,8 +474,8 @@ uint metrics_dcgmi_enabled()
 void metrics_lib_reset()
 {
     cpi_unload();
+    cache_unload();
     flops_dispose(no_ctx);
-    cache_dispose(no_ctx);
 }
 
 static void metrics_static_init(topology_t *tp)
@@ -648,7 +648,6 @@ static void metrics_static_init(topology_t *tp)
     sa(imcfreq_init(no_ctx));
     sa(bwidth_init(no_ctx));
     sa(flops_init(no_ctx));
-    sa(cache_init(no_ctx));
     sa(mgt_cpuprio_init());
 
 #if USE_GPUS
@@ -965,7 +964,7 @@ static void metrics_global_start()
     /* To be used in partial_start */
     flops_data_copy(&flops_read2[LOO], &flops_read1[APP]);
 
-    cache_read(no_ctx, &cache_read1[APP]);
+    cache_read(&cache_read1[APP]);
     debug("cache_read ready");
     /* To be used in partial_start */
     cache_data_copy(&cache_read2[LOO], &cache_read1[APP]);
@@ -1130,7 +1129,7 @@ static void metrics_global_stop()
     if (master)
         lib_shared_region->cas_counters = bwidth_cas[APP];
     flops_read_diff(no_ctx, &flops_read2[APP], &flops_read1[APP], NULL, NULL);
-    cache_read_diff(no_ctx, &cache_read2[APP], &cache_read1[APP], &cache_diff[APP], &cache_bwidth[APP]);
+    cache_read_diff(&cache_read2[APP], &cache_read1[APP], &cache_diff[APP], &cache_bwidth[APP]);
     cpi_read_diff(&cpi_read2[APP], &cpi_read1[APP], &cpi_diff[APP], &cpi_avrg[APP]);
 
     metric_cond(
@@ -1486,7 +1485,7 @@ static int metrics_partial_stop(uint where)
     if (master)
         lib_shared_region->cas_counters = bwidth_cas[LOO];
     flops_read_diff(no_ctx, &flops_read2[LOO], &flops_read1[LOO], &flops_diff[LOO], NULL);
-    cache_read_diff(no_ctx, &cache_read2[LOO], &cache_read1[LOO], &cache_diff[LOO], &cache_bwidth[LOO]);
+    cache_read_diff(&cache_read2[LOO], &cache_read1[LOO], &cache_diff[LOO], &cache_bwidth[LOO]);
     cpi_read_diff(&cpi_read2[LOO], &cpi_read1[LOO], &cpi_diff[LOO], &cpi_avrg[LOO]);
 
 #if USE_CUPTI

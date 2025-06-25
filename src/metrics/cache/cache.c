@@ -10,84 +10,77 @@
 
 // #define SHOW_DEBUGS 1
 
+#include <pthread.h>
 #include <common/output/debug.h>
+#include <metrics/cache/cache.h>
 #include <metrics/cache/archs/dummy.h>
 #include <metrics/cache/archs/perf.h>
-#include <metrics/cache/cache.h>
-#include <pthread.h>
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-static double line_size;
-static cache_ops_t ops;
-static uint load;
+static double          line_size;
+static cache_ops_t     ops;
+static apinfo_t        info;
 
-void cache_load(topology_t *tp, int force_api)
+void cache_load(topology_t *tp, int options)
 {
-    while (pthread_mutex_trylock(&lock))
-        ;
-    if (load) {
+    while (pthread_mutex_trylock(&lock));
+    if (info.api != API_NONE) {
         goto out;
     }
-    if (API_IS(force_api, API_DUMMY)) {
+    if (API_IS(options, API_DUMMY)) {
         goto dummy;
     }
-    cache_perf_load(tp, &ops);
+    cache_perf_load(tp, &ops, options);
 dummy:
-    cache_dummy_load(tp, &ops);
+    cache_dummy_load(tp, &ops, options);
+    cache_get_info(&info);
     // Getting cache line, is used to get the bandwidth
     line_size = (double) tp->cache_line_size;
-    load      = 1;
 out:
     pthread_mutex_unlock(&lock);
     return;
 }
 
+void cache_unload()
+{
+    while (pthread_mutex_trylock(&lock));
+    if (info.api != API_NONE) {
+        ops.unload();
+        memset(&ops, 0, sizeof(cache_ops_t));
+        memset(&info, 0, sizeof(apinfo_t));
+    }
+    pthread_mutex_unlock(&lock);
+}
+
 void cache_get_info(apinfo_t *info)
 {
+    memset(info, 0, sizeof(apinfo_t));
     info->layer       = "CACHE";
     info->api         = API_NONE;
-    info->devs_count  = 0;
-    info->scope       = SCOPE_PROCESS;
-    info->granularity = GRANULARITY_PROCESS;
     if (ops.get_info != NULL) {
         ops.get_info(info);
     }
 }
 
-state_t cache_init(ctx_t *c)
-{
-    while (pthread_mutex_trylock(&lock))
-        ;
-    state_t s = ops.init();
-    pthread_mutex_unlock(&lock);
-    return s;
-}
-
-state_t cache_dispose(ctx_t *c)
-{
-    load = 0;
-    return ops.dispose();
-}
-
-state_t cache_read(ctx_t *c, cache_t *ca)
+state_t cache_read(cache_t *ca)
 {
     return ops.read(ca);
 }
 
-state_t cache_read_diff(ctx_t *c, cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs)
+state_t cache_read_diff(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs)
 {
     state_t s;
-    if (state_fail(s = cache_read(c, ca2))) {
+    if (state_fail(s = cache_read(ca2))) {
         return s;
     }
     cache_data_diff(ca2, ca1, caD, gbs);
     return s;
 }
 
-state_t cache_read_copy(ctx_t *c, cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs)
+state_t cache_read_copy(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs)
 {
     state_t s;
-    if (state_fail(s = cache_read_diff(c, ca2, ca1, caD, gbs))) {
+    if (state_fail(s = cache_read_diff(ca2, ca1, caD, gbs))) {
         return s;
     }
     cache_data_copy(ca1, ca2);
@@ -96,10 +89,10 @@ state_t cache_read_copy(ctx_t *c, cache_t *ca2, cache_t *ca1, cache_t *caD, doub
 
 static void level_diff(cache_level_t *l2, cache_level_t *l1, cache_level_t *lD)
 {
-    lD->hits      = l2->hits - l1->hits;
-    lD->misses    = l2->misses - l1->misses;
-    lD->accesses  = l2->accesses - l1->accesses;
-    lD->lines_in  = l2->lines_in - l1->lines_in;
+    lD->hits      = l2->hits      - l1->hits;
+    lD->misses    = l2->misses    - l1->misses;
+    lD->accesses  = l2->accesses  - l1->accesses;
+    lD->lines_in  = l2->lines_in  - l1->lines_in;
     lD->lines_out = l2->lines_out - l1->lines_out;
     lD->lines_in  = (lD->lines_in) ? lD->lines_in : lD->misses;
     lD->hit_rate  = (lD->accesses) ? ((double) lD->hits) / ((double) lD->accesses) : 0.0;
@@ -153,23 +146,18 @@ void cache_data_print(cache_t *ca, double gbs, int fd)
 void cache_data_tostr(cache_t *ca, double gbs, char *buffer, size_t length)
 {
     snprintf(buffer, length,
-             "L1D: %10llu hits, %10llu misses, %10llu accesses, %10llu lines_in, %10llu lines_out, %0.2lf hit rate, "
-             "%0.2lf miss rate\n"
-             "L2 : %10llu hits, %10llu misses, %10llu accesses, %10llu lines_in, %10llu lines_out, %0.2lf hit rate, "
-             "%0.2lf miss rate\n"
-             "L3 : %10llu hits, %10llu misses, %10llu accesses, %10llu lines_in, %10llu lines_out, %0.2lf hit rate, "
-             "%0.2lf miss rate\n"
-             "LL : %10llu hits, %10llu misses, %10llu accesses, %10llu lines_in, %10llu lines_out, %0.2lf hit rate, "
-             "%0.2lf miss rate\n"
-             "LBW: %10llu hits, %10llu misses, %10llu accesses, %10llu lines_in, %10llu lines_out, %0.2lf hit rate, "
-             "%0.2lf miss rate\n"
-             "CAS: %0.2lf GB/s\n",
-             ca->l1d.hits, ca->l1d.misses, ca->l1d.accesses, ca->l1d.lines_in, ca->l1d.lines_out, ca->l1d.hit_rate,
-             ca->l1d.miss_rate, ca->l2.hits, ca->l2.misses, ca->l2.accesses, ca->l2.lines_in, ca->l2.lines_out,
-             ca->l2.hit_rate, ca->l2.miss_rate, ca->l3.hits, ca->l3.misses, ca->l3.accesses, ca->l3.lines_in,
-             ca->l3.lines_out, ca->l3.hit_rate, ca->l3.miss_rate, ca->ll->hits, ca->ll->misses, ca->ll->accesses,
-             ca->ll->lines_in, ca->ll->lines_out, ca->ll->hit_rate, ca->ll->miss_rate, ca->lbw->hits, ca->lbw->misses,
-             ca->lbw->accesses, ca->lbw->lines_in, ca->lbw->lines_out, ca->lbw->hit_rate, ca->lbw->miss_rate, gbs);
+    "L1D: %10llu hits, %10llu misses, %10llu accesses, %10llu lines_in, %10llu lines_out, %0.2lf hit rate, %0.2lf miss rate\n"
+    "L2 : %10llu hits, %10llu misses, %10llu accesses, %10llu lines_in, %10llu lines_out, %0.2lf hit rate, %0.2lf miss rate\n"
+    "L3 : %10llu hits, %10llu misses, %10llu accesses, %10llu lines_in, %10llu lines_out, %0.2lf hit rate, %0.2lf miss rate\n"
+    "LL : %10llu hits, %10llu misses, %10llu accesses, %10llu lines_in, %10llu lines_out, %0.2lf hit rate, %0.2lf miss rate\n"
+    "LBW: %10llu hits, %10llu misses, %10llu accesses, %10llu lines_in, %10llu lines_out, %0.2lf hit rate, %0.2lf miss rate\n"
+    "CAS: %0.2lf GB/s\n",
+    ca->l1d.hits , ca->l1d.misses , ca->l1d.accesses , ca->l1d.lines_in , ca->l1d.lines_out , ca->l1d.hit_rate , ca->l1d.miss_rate ,
+    ca->l2.hits  , ca->l2.misses  , ca->l2.accesses  , ca->l2.lines_in  , ca->l2.lines_out  , ca->l2.hit_rate  , ca->l2.miss_rate  ,
+    ca->l3.hits  , ca->l3.misses  , ca->l3.accesses  , ca->l3.lines_in  , ca->l3.lines_out  , ca->l3.hit_rate  , ca->l3.miss_rate  ,
+    ca->ll->hits , ca->ll->misses , ca->ll->accesses , ca->ll->lines_in , ca->ll->lines_out , ca->ll->hit_rate , ca->ll->miss_rate ,
+    ca->lbw->hits, ca->lbw->misses, ca->lbw->accesses, ca->lbw->lines_in, ca->lbw->lines_out, ca->lbw->hit_rate, ca->lbw->miss_rate,
+    gbs);
 }
 
 void cache_internals_print(int fd)
@@ -183,33 +171,3 @@ void cache_internals_tostr(char *buffer, int length)
 {
     ops.internals_tostr(buffer, length);
 }
-
-#if TEST
-#include <common/utils/stress.h>
-
-static topology_t tp;
-static apinfo_t info;
-static cache_t c1;
-static cache_t c2;
-static cache_t cD;
-static double gbs;
-
-int main(int argc, char *argv[])
-{
-    topology_init(&tp);
-    cache_load(&tp, API_FREE);
-    stress_alloc();
-
-    cache_get_info(&info);
-    apinfo_tostr(&info);
-    printf("%s\n", info.api_str);
-
-    cache_init(no_ctx);
-    cache_read(no_ctx, &c1);
-    // sleep(1);
-    stress_bandwidth(1000);
-    cache_read_diff(no_ctx, &c2, &c1, &cD, &gbs);
-
-    return 0;
-}
-#endif

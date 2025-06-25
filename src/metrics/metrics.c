@@ -61,7 +61,6 @@ void metrics_load(metrics_info_t *m, topology_t *tp, char *nodepow_path, ullong 
     imcfreq_init(no_ctx);
      cpupow(init,no_ctx);
      bwidth_init(no_ctx);
-      cache_init(no_ctx);
       flops_init(no_ctx);
        temp_init();
         gpu_init(no_ctx);
@@ -246,7 +245,7 @@ void metrics_read(metrics_read_t *mr)
     imcfreq_read(no_ctx, mr->imc);
     cpupow(read, no_ctx, mr->pow);
     bwidth_read(no_ctx, mr->ram);
-    cache_read(no_ctx, &mr->cch);
+    cache_read(&mr->cch);
     flops_read(no_ctx, &mr->flp);
     temp_read(mr->tmp, NULL);
     cpi_read(&mr->cpi);

@@ -41,7 +41,7 @@ state_t bwidth_bypass_load(topology_t *tp, bwidth_ops_t *ops)
 
 state_t bwidth_bypass_init(ctx_t *c)
 {
-    return cache_init(no_ctx);
+    return EAR_SUCCESS;
 }
 
 state_t bwidth_bypass_dispose(ctx_t *c)
@@ -59,7 +59,7 @@ state_t bwidth_bypass_read(ctx_t *c, bwidth_t *bw)
 {
     cache_t data;
     state_t s;
-    s          = cache_read(no_ctx, &data);
+    s          = cache_read(&data);
     bw[0].cas  = (data.lbw->lines_in + data.lbw->lines_out) * cpus_count;
     bw[1].time = data.time;
     return s;
