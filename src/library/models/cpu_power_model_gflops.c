@@ -255,10 +255,11 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
             nmgr[j].libsh->estimate_node_metrics) {
 
             for (uint proc = 0; proc < nmgr[j].libsh->num_processes; proc++) {
-                float ratio_p = nmgr[j].shsig[proc].num_cpus / (float) cpus_in_node;
+                float ratio_p = (float) nmgr[j].shsig[proc].num_cpus / cpus_in_node;
 
                 if (total_gflops)
-                    power_estimations[lp] = (gflops[j] / total_gflops) * ratio_p + dram_power[j] + C * ratio_p;
+                    power_estimations[lp] =
+                        (gflops[j] / total_gflops) * ratio_p * lsig->PCK_power + dram_power[j] + C * ratio_p;
                 else
                     power_estimations[lp] = CPU_power / ratio_p + C * ratio_p;
 
