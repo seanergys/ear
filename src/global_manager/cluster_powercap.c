@@ -341,13 +341,21 @@ void cluster_soft_powercap()
 
     eargm_report_event(CLUSTER_POWER, (ulong) power.power);
 
-    float upper_limit = ((float) (current_cluster_powercap * my_cluster_conf.eargm.defcon_power_limit) / 100.0);
-    float lower_limit = ((float) (current_cluster_powercap * my_cluster_conf.eargm.defcon_power_lower) / 100.0);
+    float upper_limit   = ((float) (current_cluster_powercap * my_cluster_conf.eargm.defcon_power_limit) / 100.0);
+    float lower_limit   = ((float) (current_cluster_powercap * my_cluster_conf.eargm.defcon_power_lower) / 100.0);
+    uint64_t used_power = power.power;
+    uint64_t non_computational_power = 0;
+    if (!state_ok(_read_non_computational_power(&non_computational_power))) {
+        warning("Non-computational power could not be read");
+    } else {
+        used_power += non_computational_power;
+    }
 
-    verbose(VGM_PC, "cluster_soft_powercap, power %ld and nodes %ld", power.power, power.num_nodes);
+    verbose(VGM_PC, "cluster_soft_powercap, total power %ld, computational power %ld and nodes %ld", used_power,
+            power.power, power.num_nodes);
     if (current_cluster_powercap == POWER_CAP_UNLIMITED) {
         verbose(VGM_PC, "cluster_powercap is unlimited, nothing to do");
-        write_shared_data(power.power, 0, 0);
+        write_shared_data(used_power, 0, 0);
         free(my_cluster_power_status);
         return;
     }
@@ -356,7 +364,8 @@ void cluster_soft_powercap()
     uint64_t requested         = 0;
     uint64_t new_limit         = 0;
     uint32_t num_soft_pc_nodes = max_num_nodes;
-    if (power.power > upper_limit) {
+
+    if (used_power > upper_limit) {
         /* If we have a nodelist we only want to divide by that list*/
         if (num_eargm_nodes != 0) {
             num_soft_pc_nodes = num_eargm_nodes;
@@ -376,26 +385,26 @@ void cluster_soft_powercap()
         } else {
             warning("No nodes detected for this EARGM");
         }
-        requested = power.power - upper_limit;
+        requested = used_power - upper_limit;
         risk      = 1;
     } else {
-        if (risk == 1 && power.power <= lower_limit) {
+        if (risk == 1 && used_power <= lower_limit) {
             verbose(VGM_PC, "cluster_only_powercap: sending POWER_CAP_UNLIMTED to nodes");
             ear_set_powerlimit(&my_cluster_conf, 1, nodes, num_eargm_nodes); // set powercap unlimited
             risk = 0;
             eargm_report_event(POWER_UNLIMITED, 1);
         }
         freeable_power =
-            (uint64_t) (upper_limit - power.power) / 2; // for now, we will free half of whatever extra power
+            (uint64_t) (upper_limit - used_power) / 2; // for now, we will free half of whatever extra power
     }
-    write_shared_data(power.power, freeable_power, requested);
+    write_shared_data(used_power, freeable_power, requested);
 
     /* These values in my_cluster_power_status are used automatically by the actions */
-    my_cluster_power_status->current_power    = power.power;
+    my_cluster_power_status->current_power    = used_power;
     my_cluster_power_status->idle_nodes       = 0;
     my_cluster_power_status->total_idle_power = 0;
 
-    check_powercap_actions(power.power);
+    check_powercap_actions(used_power);
 
     free(my_cluster_power_status);
 }
