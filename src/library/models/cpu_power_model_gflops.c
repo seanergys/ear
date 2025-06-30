@@ -32,14 +32,15 @@
 
 static uint arch_model_loaded = 0;
 static uint cpu_count, cache_line_size;
-static node_sharing_strategy_t node_sharing_strategy; // 'node' strategy is the default since it is what we had until now.
+static node_sharing_strategy_t
+    node_sharing_strategy; // 'node' strategy is the default since it is what we had until now.
 
 state_t cpu_power_model_init_arch(settings_conf_t *libconf, conf_install_t *conf, architecture_t *arch,
                                   node_sharing_strategy_t strategy)
 {
-    cpu_count         = arch->top.cpu_count;
-    cache_line_size   = arch->top.cache_line_size;
-    arch_model_loaded = 1;
+    cpu_count             = arch->top.cpu_count;
+    cache_line_size       = arch->top.cache_line_size;
+    arch_model_loaded     = 1;
     node_sharing_strategy = strategy;
     verbose_info_master("GFLOPS CPU power model loaded. Power assignment strategy: %s",
                         (node_sharing_strategy == node) ? "node" : "job");
@@ -270,9 +271,6 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
         }
     }
 
-    if (node_sharing_strategy == job)
-        total_power_estimated = CPU_power;
-
     job_power_ratio          = 0.0;
     cpu_power_ratio          = (double) my_used_cpus / (double) cpu_count;
     double GPU_process_power = 0;
@@ -314,6 +312,11 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
     verbose_info2_master("Job %u | DC node power (job ratio) %lf | CPU pwr %lf GPU pwr %lf ratio %lf PCK pwr %lf",
                          node_mgr_index, data->job_signature.DC_job_power, CPU_power, GPU_power, cpu_power_ratio,
                          data->job_signature.PCK_power);
+
+    if (node_sharing_strategy == job) {
+        data->job_signature.DC_power  = data->job_signature.DC_job_power;
+        data->job_signature.PCK_power = data->job_signature.PCK_job_power;
+    }
 
     return EAR_SUCCESS;
 }

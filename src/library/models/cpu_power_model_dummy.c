@@ -31,7 +31,8 @@
 static uint arch_model_loaded = 0;
 static uint cpu_count;
 static int report_per_process = 0;
-static node_sharing_strategy_t node_sharing_strategy; // 'node' strategy is the default since it is what we had until now.
+static node_sharing_strategy_t
+    node_sharing_strategy; // 'node' strategy is the default since it is what we had until now.
 
 state_t cpu_power_model_init_arch(settings_conf_t *libconf, conf_install_t *conf, architecture_t *arch,
                                   node_sharing_strategy_t strategy)
@@ -273,10 +274,6 @@ state_t cpu_power_model_project_arch(lib_shared_data_t *data, shsignature_t *sig
             }
         }
     }
-
-    // If the strategy is job focused, the total_power_estimated should be the CPU power
-    if (node_sharing_strategy == job)
-        total_power_estimated = CPU_power;
 
     job_power_ratio = 0.0;
     cpu_power_ratio = (double) my_used_cpus / (double) cpu_count;
