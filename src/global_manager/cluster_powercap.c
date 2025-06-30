@@ -115,6 +115,12 @@ void aggregate_data(powercap_status_t *cs)
     }
 }
 
+state_t _read_non_computational_power(uint64_t *power)
+{
+    *power = 0;
+    return EAR_SUCCESS;
+}
+
 void print_powercap_opt(powercap_opt_t *opt)
 {
     int i;
@@ -234,7 +240,15 @@ uint powercap_reallocation(cluster_powercap_status_t *cluster_status, powercap_o
     cluster_options->num_greedy         = cluster_status->num_greedy;
     cluster_options->cluster_perc_power = (cluster_status->total_powercap * 100) / current_cluster_powercap;
     memcpy(cluster_options->greedy_nodes, cluster_status->greedy_nodes, cluster_status->num_greedy * sizeof(int));
-    total_free = current_cluster_powercap - cluster_status->total_powercap;
+
+    total_free                       = current_cluster_powercap - cluster_status->total_powercap;
+    uint64_t non_computational_power = 0;
+    if (!state_ok(_read_non_computational_power(&non_computational_power))) {
+        warning("Non-computational power could not be read");
+    } else {
+        total_free -= non_computational_power;
+    }
+
     verbose(VGM_PC + 1, "Total power %u , requested for new %u (potential) released %u extra_req %u extra_used %u",
             current_cluster_powercap, cluster_status->requested, cluster_status->released, total_req_greedy,
             total_extra_power);
