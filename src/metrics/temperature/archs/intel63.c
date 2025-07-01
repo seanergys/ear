@@ -31,6 +31,10 @@ TEMP_F_LOAD(intel63)
     ullong data;
     int i;
 
+    // Another API is opened and this API is not mixtable
+    if (ops->read != NULL) {
+        return;
+    }
     if (tp->vendor != VENDOR_INTEL || tp->model < MODEL_HASWELL_X) {
         return;
     }
