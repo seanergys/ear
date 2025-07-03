@@ -9,19 +9,20 @@
  **************************************************************************/
 
 // #define SHOW_DEBUGS 1
+#if !SHOW_DEBUGS
+#define NDEBUG
+#endif
 
+#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#define NDEBUG
-#include <assert.h>
-#include <fcntl.h>
-#include <limits.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 #include <common/config.h>
 #include <common/states.h>
@@ -195,8 +196,8 @@ int create_loop_header(char *header, char *path, int ts, uint num_gpus, int sing
     debug("Creating header for CPU signature with %u sockets", num_sockets);
     char cpu_sig_hdr[256] = "";
     for (uint s = 0; s < num_sockets; s++) {
-        char temp_hdr[16];
-        snprintf(temp_hdr, sizeof(temp_hdr), ";TEMP%u", s);
+        char temp_hdr[33];
+        snprintf(temp_hdr, sizeof(temp_hdr), ";TEMP%u;CPU_POWER%u;DRAM_POWER%u", s, s, s);
         strcat(cpu_sig_hdr, temp_hdr);
     }
 

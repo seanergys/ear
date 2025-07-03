@@ -41,16 +41,21 @@ typedef struct gpu_app {
 #endif
 } gpu_app_t;
 
+/** GPU part. */
 typedef struct gpu_signature {
     int num_gpus;
     gpu_app_t gpu_data[MAX_GPUS_SUPPORTED];
 } gpu_signature_t;
 
+/** CPU part. */
 typedef struct cpu_signature {
     uint devs_count;
     llong temp[MAX_SOCKETS_SUPPORTED];
+    double cpu_power[MAX_SOCKETS_SUPPORTED];
+    double dram_power[MAX_SOCKETS_SUPPORTED];
 } cpu_signature_t;
 
+/** Process part. */
 typedef struct proc_stat_signature_s {
     uint cpu_util;
     uint mem_util;
@@ -106,6 +111,7 @@ typedef struct cache_mini_signature_s {
     ull ll_accesses;
 } cache_shsignature_t;
 
+/** A reduced size signature type to be used in shared memory regions. */
 typedef struct mini_sig {
     float DC_power;
     float DRAM_power;
@@ -145,6 +151,9 @@ typedef struct signature {
     double DC_power;
     double DRAM_power;
     double PCK_power;
+    double DC_job_power;
+    double PCK_job_power;
+    double DRAM_job_power;
     double EDP; // TODO: ?
     double GBS;
     double IO_MBS;

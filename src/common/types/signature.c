@@ -8,6 +8,8 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
+#define _XOPEN_SOURCE 700 // Needed for having dprintf symbol
+
 // #define SHOW_DEBUGS 1
 
 #include <common/config.h>
@@ -66,15 +68,26 @@ void signature_print_fd(int fd, signature_t *sig, char is_extended, int single_c
     }
 #if WF_SUPPORT
     uint num_sockets = MAX_SOCKETS_SUPPORTED;
+    // CPU temperature and power, and DRAM power
     debug("Creating CPU signature with %u sockets", num_sockets);
     char cpu_sig_str[256] = "";
     for (uint s = 0; s < sig->cpu_sig.devs_count; s++) {
+        // CPU temperature
         char temp_str[16];
         snprintf(temp_str, sizeof(temp_str), ";%lld", sig->cpu_sig.temp[s]);
         strcat(cpu_sig_str, temp_str);
+        // CPU power
+        char cpu_power_str[16];
+        snprintf(cpu_power_str, sizeof(cpu_power_str), ";%.2lf", sig->cpu_sig.cpu_power[s]);
+        strcat(cpu_sig_str, cpu_power_str);
+        // DRAM power
+        char dram_power_str[16];
+        snprintf(dram_power_str, sizeof(dram_power_str), ";%.2lf", sig->cpu_sig.dram_power[s]);
+        strcat(cpu_sig_str, dram_power_str);
     }
+    // from num. devices to MAX_SOCKETS_SUPPORTED we add zeroes
     for (uint s = sig->cpu_sig.devs_count; s < MAX_SOCKETS_SUPPORTED; s++) {
-        strcat(cpu_sig_str, ";0");
+        strcat(cpu_sig_str, ";0;0.0;0.0");
     }
 
 #else

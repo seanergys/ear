@@ -264,6 +264,8 @@ uint limit_exceeded       = 0;
 extern ulong perf_accuracy_min_time;
 static uint exiting = 0;
 
+static node_sharing_strategy_t node_sharing_strategy = node;
+
 /* Checks whether the job-step folder was created.
  * This folder should be created by EARD (?).
  * If not, try to create it.
@@ -1358,7 +1360,7 @@ static int get_ear_application_id_multiprocess(int app_multi)
             earl_early_verb(VPROC_INIT, "Rank %d reading AID from %s", ear_my_rank, AID_number_file);
             state_t st;
             do {
-                st = ear_file_read(AID_number_file, (char *) &master_pid, sizeof(master_pid));
+                st = ear_file_read(AID_number_file, (char *) &master_pid, sizeof(master_pid), 1);
                 if (st != EAR_SUCCESS) {
                     usleep(100);
                     tries++;
@@ -2120,12 +2122,24 @@ void ear_init()
         verbose_master(VEAR_INIT, "%sWARNING%s An error ocurred initializing the power policy.", COL_YLW, COL_CLR);
     }
 
-    verbose_master(2, "Init CPU power models for node sharing");
+    char *cnode_share_strategy = ear_getenv(FLAG_NODE_SHARING_STRATEGY);
+    if (cnode_share_strategy) {
+				verbosen_info_master("Node sharing strategy define %s", cnode_share_strategy);
+        if (strcmp(cnode_share_strategy, "job") == 0) {
+            node_sharing_strategy = job;
+        } else if (strcmp(cnode_share_strategy, "node") == 0) {
+            node_sharing_strategy = node;
+        }
+    }
+    verbosen_info_master("Node sharing strategy: ");
+    verbose_master(VEARL_INFO, "%s", (node_sharing_strategy == node) ? "node" : "job");
+
+    verbose_info2_master("Init CPU power models for node sharing.");
     if (cpu_power_model_load(system_conf, &arch_desc, API_NONE) == EAR_SUCCESS) {
         verbose_master(VEAR_INIT, "CPU power models loaded.");
     }
 
-    if (cpu_power_model_init() == EAR_SUCCESS) {
+    if (cpu_power_model_init(node_sharing_strategy) == EAR_SUCCESS) {
         verbose_master(VEAR_INIT, "CPU power model initialized.");
     }
 
@@ -2220,8 +2234,8 @@ void ear_init()
     configure_sigactions();
 
 #if !EAR_OFF
-    /* Monitor is used for applications with no mpi of few mpi calss per second. Gets control of signature computation
-     * if neded*/
+    /* Monitor is used for applications with no mpi of few mpi calss per second. Gets control of signature
+     * computation if neded*/
 
     if (!module_mpi_is_enabled()) {
         ear_guided = TIME_GUIDED;
@@ -2423,7 +2437,7 @@ void ear_finalize(int exit_status)
     dispose = 1;
     verbose_master(2, "Total resources computed %d", get_total_resources());
     debug("%d: before metrics_dispose", my_node_id);
-    metrics_dispose(&application.signature, get_total_resources());
+    metrics_dispose(&application.signature, get_total_resources(), (node_sharing_strategy == node) ? 0 : 1);
     sig_shared_region[my_node_id].exited = 1;
     debug("%d: after metrics_dispose", my_node_id);
     dynais_dispose();
@@ -3114,7 +3128,7 @@ static state_t earl_log_backup(char *pathname, size_t pathname_size)
         return_msg(EAR_ERROR, Generr.alloc_error);
     }
 
-    st = ear_file_read(pathname, file_buff, (size_t) file_size);
+    st = ear_file_read(pathname, file_buff, (size_t) file_size, 0);
     if (state_fail(st)) {
         verbose_error("Reading file %s (%d): %s", pathname, intern_error_num, intern_error_str);
         free(file_buff);

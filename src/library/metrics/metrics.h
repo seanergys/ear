@@ -78,7 +78,7 @@ long long metrics_usecs_diff(long long end, long long init);
 int metrics_load(topology_t *topo);
 
 /** Stops metrics collection and computes the accumulated data*/
-void metrics_dispose(signature_t *metrics, ulong procs);
+void metrics_dispose(signature_t *metrics, ulong procs, uint job_node_ratio);
 
 /** Restarts the current metrics and recomputes the signature */
 void metrics_compute_signature_begin();

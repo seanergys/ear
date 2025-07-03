@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
             exit(1);
         }
 
-        state = ear_file_read(argv[1], (char *) coeffs, size);
+        state = ear_file_read(argv[1], (char *) coeffs, size, 0);
 
         if (state_fail(state)) {
             error("state id: %d (%s)", state, state_msg);
@@ -157,7 +157,7 @@ int main(int argc, char *argv[])
             exit(1);
         }
 
-        state = ear_file_read(argv[1], (char *) coeffs, size);
+        state = ear_file_read(argv[1], (char *) coeffs, size, 0);
 
         if (state_fail(state)) {
             error("state id: %d (%s)", state, state_msg);
@@ -185,7 +185,7 @@ int main(int argc, char *argv[])
             exit(1);
         }
 
-        state = ear_file_read(argv[1], (char *) coeffs, size);
+        state = ear_file_read(argv[1], (char *) coeffs, size, 0);
 
         if (state_fail(state)) {
             error("state id: %d (%s)", state, state_msg);
