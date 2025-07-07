@@ -19,6 +19,8 @@ static uint     chips_count;
 static uint     sockets_count;
 static uint     items_count;
 static char  **labels_test;
+static char   *labels_amd17[]   = { "Tccd" , "Tctl", NULL }; // Tctl is the real temperature plus an offset
+static char   *labels_intel63[] = { "Package", NULL };
 static char    *label;
 static char    *driver_name;
 
@@ -30,10 +32,10 @@ TEMP_F_LOAD(hwmon)
     }
     if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN) {
         driver_name = "k10temp";
-        labels_test = (char *[]) { "Tccd" , "Tctl", NULL }; // Tctl is the real temperature plus an offset
+        labels_test = labels_amd17;
     } else if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_ICELAKE_X) {
         driver_name = "coretemp";
-        labels_test = (char *[]) { "Package", NULL };
+        labels_test = labels_intel63;
     } else {
         return;
     }
