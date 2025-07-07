@@ -49,7 +49,7 @@ static uint test_device_name(int fd, const char *name)
 #if SHOW_DEBUGS
         debug("comparing the driver name '%s' with '%s'", name, data);
 #endif
-        if (strstr(name, data) != NULL)
+        if (strstr(data, name) != NULL)
             correct = 1;
     }
     close(fd);

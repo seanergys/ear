@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <common/output/debug.h>
 #include <common/plugins.h>
@@ -126,6 +126,7 @@ state_t energy_cpu_init(ctx_t *c)
     if (state_fail(s = energy_cpu_count_devices(c, &socket_count))) {
         return s;
     }
+    debug("Init: socket_count %u", socket_count);
     preturn(ops.init, c);
 }
 
@@ -162,8 +163,14 @@ state_t energy_cpu_count_devices(ctx_t *c, uint *count)
 // Data
 state_t energy_cpu_data_alloc(ctx_t *c, ullong **values, uint *rapl_count)
 {
+    state_t s;
     if (values == NULL) {
         return_msg(EAR_BAD_ARGUMENT, Generr.input_null);
+    }
+    if (socket_count == 0) {
+        if (state_fail(s = energy_cpu_count_devices(c, &socket_count))) {
+            return_msg(s, "Count devices failed");
+        }
     }
     if ((*values = (ullong *) calloc(socket_count * NUM_PACKS, sizeof(ullong))) == NULL) {
         return_msg(EAR_ERROR, strerror(errno));
