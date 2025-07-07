@@ -282,7 +282,6 @@ static state_t earl_log_backup(char *pathname, size_t pathname_size);
 static state_t check_eard_earl_compatibility(state_t eard_connect_state, eard_state_t *eard_conf)
 {
     state_t st = EAR_SUCCESS;
-    return st;
     if (state_fail(eard_connect_state))
         return EAR_ERROR;
 
@@ -302,7 +301,9 @@ static state_t check_eard_earl_compatibility(state_t eard_connect_state, eard_st
             st = EAR_ERROR;
         }
     } else
-        st = EAR_SUCCESS; /* If eards_get_state is not implemented, there is a possibility that it's not compatible */
+	{
+		st = EAR_SUCCESS;
+	}
     return st;
 }
 

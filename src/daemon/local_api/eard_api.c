@@ -42,7 +42,6 @@
 
 #define OUTTER_MAX_PIPE_TRIES 60
 #define MAX_PIPE_TRIES        (ullong)(MAX_SOCKET_COMM_TRIES * (ullong) 1000)
-#define MAX_TRIES             10
 #define USE_NON_BLOCKING_IO   1
 
 #define VPROC_LAPI            3
@@ -103,7 +102,7 @@ static state_t create_base_path(char *base_path, size_t base_path_sz, char *tmp_
 static state_t create_app_directory(char *path);
 #endif
 
-static int eards_open(char *path, int flags, int *ear_fd_req)
+static int eards_open(char *path, int flags, int *ear_fd_req, uint max_tries)
 {
     int tries = 0;
     int fd;
@@ -115,9 +114,11 @@ static int eards_open(char *path, int flags, int *ear_fd_req)
             tries++;
         else if (fd >= 0)
             connected = 1;
-        if ((MAX_TRIES > 1) && (!connected))
-            sleep(1);
-    } while ((tries < MAX_TRIES) && !connected);
+	else
+		break;
+        if ((max_tries > 1) && (!connected))
+            usleep(5000);
+    } while ((tries < max_tries) && !connected);
     *ear_fd_req = fd;
     return connected;
 }
@@ -412,7 +413,7 @@ int eards_connect(application_t *my_app, ulong lid)
     chmod(ear_commreq, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
     debug("Communication PIPEs created");
     /* Pipes are created, we give some opportunities to connect */
-    connected = eards_open(ear_commreq_global, O_WRONLY | O_NONBLOCK, &ear_fd_req_global);
+    connected = eards_open(ear_commreq_global, O_WRONLY | O_NONBLOCK, &ear_fd_req_global, 1);
     debug("Global Com pipe connected %s", (connected ? "yes" : "no"));
 
     if (!connected) {
@@ -489,7 +490,7 @@ int eards_connect(application_t *my_app, ulong lid)
 
         verbose(VPROC_LAPI + 1, "%s: Open %s", nodename, ear_commreq);
 
-        int connected_req = eards_open(ear_commreq, O_WRONLY | O_NONBLOCK, &ear_fd_req);
+        int connected_req = eards_open(ear_commreq, O_WRONLY | O_NONBLOCK, &ear_fd_req, 10);
 
         debug("%s pipe connected %s", ear_commreq, (connected_req ? "yes" : "no"));
 #if 0
