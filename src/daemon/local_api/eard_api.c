@@ -42,7 +42,7 @@
 
 #define OUTTER_MAX_PIPE_TRIES 60
 #define MAX_PIPE_TRIES        (ullong)(MAX_SOCKET_COMM_TRIES * (ullong) 1000)
-#define MAX_TRIES             1
+#define MAX_TRIES             10
 #define USE_NON_BLOCKING_IO   1
 
 #define VPROC_LAPI            3
