@@ -2124,7 +2124,7 @@ void ear_init()
 
     char *cnode_share_strategy = ear_getenv(FLAG_NODE_SHARING_STRATEGY);
     if (cnode_share_strategy) {
-				verbosen_info_master("Node sharing strategy define %s", cnode_share_strategy);
+        verbosen_info_master("Node sharing strategy define %s", cnode_share_strategy);
         if (strcmp(cnode_share_strategy, "job") == 0) {
             node_sharing_strategy = job;
         } else if (strcmp(cnode_share_strategy, "node") == 0) {
@@ -2529,6 +2529,28 @@ void ear_finalize(int exit_status)
 void ear_mpi_call_dynais_on(mpi_call call_type, p2i buf, p2i dest);
 void ear_mpi_call_dynais_off(mpi_call call_type, p2i buf, p2i dest);
 
+static void _go_to_time_guided(int new_ear_guided)
+{
+    ear_periodic_mode = PERIODIC_MODE_ON;
+
+    if (ear_guided != new_ear_guided) {
+        if (earl_monitor->time_burst < earl_monitor->time_relax) {
+            ITERS_PER_PERIOD = earl_monitor->time_burst / 1000;
+            monitor_burst(earl_monitor, 0);
+        }
+
+        // verbose(0,"[%d]: Dynais guided --> time guided at time %lu",
+        //         my_node_id, period_elapsed);
+
+        states_comm_configure_performance_accuracy(&cconf, &perf_accuracy_min_time, &lib_period);
+
+        mpi_calls_in_period = lib_period;
+        ear_iterations      = 1;
+        ear_guided          = new_ear_guided;
+        states_begin_period(my_id, 1, (ulong) lib_period, 1);
+    }
+}
+
 void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
 {
 
@@ -2604,24 +2626,29 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
                                 /* In that case, the maximum time without signature has been passed, go to set
                                  * ear_periodic_mode ON */
                                 if (limit_exceeded || time_from_mpi_init >= dynais_timeout) {
-                                    // we must compute N here
-                                    ear_periodic_mode = PERIODIC_MODE_ON;
+                                    if (limit_exceeded) {
+                                        // we must compute N here
+                                        ear_periodic_mode = PERIODIC_MODE_ON;
 
-                                    assert(dynais_timeout > 0);
+                                        assert(dynais_timeout > 0);
 
-                                    // mpi_calls_per_second = (uint)(total_mpi_calls/dynais_timeout);
-                                    mpi_calls_per_second = (uint) avg_mpi_calls_per_second();
+                                        // mpi_calls_per_second = (uint)(total_mpi_calls/dynais_timeout);
+                                        mpi_calls_per_second = (uint) avg_mpi_calls_per_second();
 
-                                    traces_start();
+                                        traces_start();
 
-                                    verbose_master(EARL_GUIDED_LVL,
-                                                   "Going to periodic mode after %lf secs: mpi calls in period %u.\n",
-                                                   time_from_mpi_init, mpi_calls_per_second);
+                                        verbose_master(
+                                            EARL_GUIDED_LVL,
+                                            "Going to periodic mode after %lf secs: mpi calls in period %u.\n",
+                                            time_from_mpi_init, mpi_calls_per_second);
 
-                                    ear_iterations = 0;
+                                        ear_iterations = 0;
 
-                                    states_begin_period(my_id, ear_event_l, (ulong) lib_period, 1);
-                                    states_new_iteration(my_id, 1, ear_iterations, 1, 1, lib_period, 0);
+                                        states_begin_period(my_id, ear_event_l, (ulong) lib_period, 1);
+                                        states_new_iteration(my_id, 1, ear_iterations, 1, 1, lib_period, 0);
+                                    } else
+                                        _go_to_time_guided(TIME_GUIDED);
+
                                 } else {
                                     /* We continue using dynais */
                                     ear_mpi_call_dynais_on(call_type, buf, dest);
@@ -2998,23 +3025,7 @@ state_t earl_periodic_actions(void *no_arg)
                        new_ear_guided == TIME_GUIDED, new_ear_guided == DYNAIS_GUIDED, lib_period);
 
         if (new_ear_guided != DYNAIS_GUIDED) {
-            ear_periodic_mode = PERIODIC_MODE_ON;
-
-            if (ear_guided != new_ear_guided) {
-                if (earl_monitor->time_burst < earl_monitor->time_relax) {
-                    ITERS_PER_PERIOD = earl_monitor->time_burst / 1000;
-                    monitor_burst(earl_monitor, 0);
-                }
-
-                // verbose(0,"[%d]: Dynais guided --> time guided at time %lu",
-                //         my_node_id, period_elapsed);
-
-                states_comm_configure_performance_accuracy(&cconf, &perf_accuracy_min_time, &lib_period);
-
-                mpi_calls_in_period = lib_period;
-                ear_iterations      = 1;
-                states_begin_period(my_id, 1, (ulong) lib_period, 1);
-            }
+            _go_to_time_guided(new_ear_guided);
         }
         ear_guided = new_ear_guided;
     }

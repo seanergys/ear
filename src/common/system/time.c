@@ -55,7 +55,7 @@ ullong timestamp_diff(timestamp *ts2, timestamp *ts1, ullong time_unit)
     ullong initnsec = 0;
     ullong endsec   = 0;
     ullong endnsec  = 0;
-    ullong stamp    = 0;
+    double stamp    = 0;
 
     if ((ts1->tv_sec == ts2->tv_sec) && (ts1->tv_nsec == ts2->tv_nsec)) {
         return 0LLU;
@@ -69,8 +69,9 @@ ullong timestamp_diff(timestamp *ts2, timestamp *ts1, ullong time_unit)
         endsec--;
         endnsec += 1E9;
     }
-    stamp = (((endsec - initsec)) * 1E9) + (endnsec - initnsec);
-    return stamp / time_unit;
+    stamp            = (double) (((endsec - initsec)) * 1E9) + (endnsec - initnsec);
+    ullong stamp_ull = (ullong) stamp;
+    return ((stamp_ull > 0) && time_unit ? stamp_ull / time_unit : 0);
 }
 
 double timestamp_fdiff(timestamp *ts2, timestamp *ts1, ullong diff_unit, ullong prec_unit)
