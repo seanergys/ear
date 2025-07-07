@@ -1824,6 +1824,8 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 #if WF_SUPPORT
             metrics->cpu_sig.cpu_power[p] = energy_cpu_compute_power(rapl_pck, time_s);
 #endif
+            verbose_info2_master("computing dram[%d] power = %lf", p, metrics->cpu_sig.dram_power[p]);
+            verbose_info2_master("computing cpu[%d]  power = %lf", p, metrics->cpu_sig.cpu_power[p]);
         }
 
         metrics->PCK_power  = energy_cpu_compute_power(metrics->PCK_power, time_s);
