@@ -71,10 +71,8 @@ state_t mgt_cpupow_powercap_set(int domain, uint *watts)
 static state_t reset_to_tdp(int domain)
 {
     static uint *tdps = NULL;
-    int i = 0;
 
     if (tdps == NULL) {
-        printf("ALLOCATING %d\n", cpus_count);
         tdps = calloc(cpus_count, sizeof(uint));
     }
     mgt_cpupow_tdp_get(domain, tdps);
