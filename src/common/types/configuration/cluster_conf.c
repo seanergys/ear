@@ -206,7 +206,6 @@ static void _add_ips_and_names_from_range(char *base, range_def_t *r, int32_t **
 
 int get_ip_and_names_from_ranges(cluster_conf_t *my_conf, int **num_ips, int ***ips, char ****names)
 {
-#warning PENDING_TO_TEST
     int i, j;
     int **aux_ips;
     char ***aux_names;
@@ -304,7 +303,6 @@ static void _add_ips_from_range(char *base, range_def_t *r, int32_t **ips, int32
 
 int get_ip_ranges(cluster_conf_t *my_conf, int **num_ips, int ***ips)
 {
-#warning PENDING_TO_TEST
     int i, j;
     int **aux_ips;
     int *ip_counter;
@@ -1580,7 +1578,8 @@ state_t serialize_cluster_conf(cluster_conf_t *conf, char **ear_conf_buf, size_t
 }
 
 /* ear_conf_buf points to a serialized region. conf is the output. Memory is not internally allocated for it */
-state_t deserialize_cluster_conf(cluster_conf_t *conf, char *ear_conf_buf, size_t conf_size, const version_t *src_version)
+state_t deserialize_cluster_conf(cluster_conf_t *conf, char *ear_conf_buf, size_t conf_size,
+                                 const version_t *src_version)
 {
     state_t s = EAR_SUCCESS;
     wide_buffer_t ear_conf_serial;

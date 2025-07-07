@@ -317,8 +317,7 @@ long long get_sum(MYSQL *connection, int start_time, int end_time, unsigned long
         if (def_id > -1) {
             max_power = my_conf.tags[def_id].error_power;
         }
-        int i;
-        for (i = 0; i < my_conf.num_tags; i++)
+        for (uint32_t i = 0; i < my_conf.num_tags; i++)
             max_power = ear_max(my_conf.tags[i].error_power, max_power);
     }
 
@@ -879,7 +878,6 @@ void print_mets(int start_time, int end_time, char *nodes, cluster_conf_t *my_co
 void print_all(MYSQL *connection, int start_time, int end_time, char *inc_query, char type)
 {
     char query[512];
-    int i;
     char all_nodes = 0;
 #if USE_GPUS
     char has_gpus = 0;
@@ -890,7 +888,7 @@ void print_all(MYSQL *connection, int start_time, int end_time, char *inc_query,
     if (def_id > -1) {
         max_power = my_conf.tags[def_id].error_power;
     }
-    for (i = 0; i < my_conf.num_tags; i++)
+    for (uint32_t i = 0; i < my_conf.num_tags; i++)
         max_power = ear_max(my_conf.tags[i].error_power, max_power);
 
     if (type == GLOBAL_ENERGY_TYPE)
@@ -927,7 +925,7 @@ void print_all(MYSQL *connection, int start_time, int end_time, char *inc_query,
                        "POLICY");
                 has_records = 1;
             }
-            for (i = 0; i < num_fields; i++) {
+            for (int32_t i = 0; i < num_fields; i++) {
                 if (i == 0 || i == 2)
                     printf("%20s ", row[i] ? row[i] : "NULL");
                 else if (i == 1)
@@ -967,7 +965,7 @@ void print_all(MYSQL *connection, int start_time, int end_time, char *inc_query,
                 } else if (!strcmp(inc_query, ALL_ISLANDS)) {
                     printf("%15s %15s %20s\n", "Energy (J)", "EARDBD", "Carbon footprint(g)");
                 } else if (!strcmp(inc_query, ISLANDS_RAW)) {
-                    printf("%15s %15s %15s %15s %20s\n", "Energy (J)", "EARDBD", "Start time", "End time", "Power",
+                    printf("%15s %15s %15s %15s %15s %20s\n", "Energy (J)", "EARDBD", "Start time", "End time", "Power",
                            "Carbon footprint(g)");
                 } else if (global_end_time > 0) {
 #if USE_GPUS
@@ -986,7 +984,7 @@ void print_all(MYSQL *connection, int start_time, int end_time, char *inc_query,
 
             // printing of the main values
 #if USE_GPUS
-            for (i = 0; i < num_fields; i++) {
+            for (int32_t i = 0; i < num_fields; i++) {
                 if (has_gpus) {
                     if (!all_nodes || (i != 1 && i != 2 && i != 3))
                         printf("%15s ", row[i] ? row[i] : "NULL");

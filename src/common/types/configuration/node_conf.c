@@ -65,7 +65,6 @@ int32_t difference_in_units(int32_t small, int32_t big)
 
 int32_t _get_num_nodes(range_def_t *r)
 {
-#warning UNTESTED
     int32_t total = 0;
     if (r == NULL)
         return 1;
