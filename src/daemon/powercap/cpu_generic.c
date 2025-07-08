@@ -49,8 +49,8 @@ static domain_settings_t settings = {.node_ratio = 0.1, .security_range = 0.01};
 
 state_t disable()
 {
-    mgt_cpupow_powercap_reset(CPUPOW_DRAM);
-    return mgt_cpupow_powercap_reset(CPUPOW_SOCKET);
+    mgt_cpupow_powercap_reset(CPUPOW_DRAM, RESET_DEFAULT);
+    return mgt_cpupow_powercap_reset(CPUPOW_SOCKET, RESET_DEFAULT);
 }
 
 state_t enable(suscription_t *sus)
@@ -137,8 +137,8 @@ static state_t _set_single_powercap_value(uint pid, uint32_t limit, uint32_t *cp
 
     current_limit = limit;
     if (limit == POWER_CAP_UNLIMITED) {
-        mgt_cpupow_powercap_reset(CPUPOW_DRAM);
-        return mgt_cpupow_powercap_reset(CPUPOW_SOCKET);
+        mgt_cpupow_powercap_reset(CPUPOW_DRAM, RESET_DEFAULT);
+        return mgt_cpupow_powercap_reset(CPUPOW_SOCKET, RESET_DEFAULT);
     }
 
     for (int32_t i = 0; i < num_cpus; i++) {

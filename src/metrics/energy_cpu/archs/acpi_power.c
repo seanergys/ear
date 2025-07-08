@@ -34,6 +34,7 @@ static state_t acpi_power_static_read(ctx_t *c, llong *power, llong *acum);
 static uint acpi_power_meter_initialized = 0;
 static llong *aux_power;
 static llong aux_acum_energy = 0;
+static state_t init_st;
 
 typedef struct hwfds_s {
     uint id_count;
@@ -43,6 +44,7 @@ typedef struct hwfds_s {
 
 static ctx_t local_ctx;
 static ctx_t *plocal_ctx = NULL;
+static state_t static_init(ctx_t *c);
 
 static state_t acpi_power_meter_mon_init(void *p)
 {
@@ -80,10 +82,11 @@ state_t acpi_power_meter_load(topology_t *topo)
     debug("acpi_power: %d sockets found", socket_count);
     pthread_mutex_unlock(&lock);
     /* We should try to open the file for reading */
-    return s;
+    init_st = static_init(no_ctx);
+    return init_st;
 }
 
-state_t acpi_power_meter_init(ctx_t *c)
+static state_t static_init(ctx_t *c)
 {
     uint id_count;
     uint *ids;
@@ -163,6 +166,14 @@ state_t acpi_power_meter_init(ctx_t *c)
     return EAR_SUCCESS;
 }
 
+state_t acpi_power_meter_init(ctx_t *c)
+{
+    if (acpi_power_meter_initialized)
+        return init_st;
+    init_st = static_init(c);
+    return init_st;
+}
+
 static state_t get_context(ctx_t *c, hwfds_t **h)
 {
     ctx_t *curr;
@@ -184,6 +195,7 @@ state_t acpi_power_meter_read(ctx_t *c, ullong *values)
         return EAR_ERROR;
     /* Energy CPU assumes N uncore values (1 per socket) and N core values (1 per socket) */
     /* Units are nano Joules */
+    verbose(0, "Size %u", sizeof(ullong) * socket_count * NUM_DEVICES);
     memset(values, 0, sizeof(ullong) * socket_count * NUM_DEVICES);
     /* In this API energy is reported in uJoules */
     /* We don't know yet how to detect different sockets so socket 1 is used */

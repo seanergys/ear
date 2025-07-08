@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #include <common/output/debug.h>
 #include <metrics/common/offsets.h>

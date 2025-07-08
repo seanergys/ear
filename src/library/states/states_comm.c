@@ -405,7 +405,7 @@ void state_verbose_signature(loop_t *sig, int master_rank, char *aname, char *nn
 #if WF_SUPPORT
         verbosen(SIG_VRB_LVL, "\n\tSocket\tCPU temperature (celsius)\tCPU power (W)\tDRAM power (W)");
         for (uint s = 0; s < sig->signature.cpu_sig.devs_count; s++) {
-            verbosen(SIG_VRB_LVL, "\n\t%6u\t%-25lld\t%-13lld\t%lld", s, sig->signature.cpu_sig.temp[s],
+            verbosen(SIG_VRB_LVL, "\n\t%6u\t%-25lld\t%-3.2lf\t%3.2lf", s, sig->signature.cpu_sig.temp[s],
                      sig->signature.cpu_sig.cpu_power[s], sig->signature.cpu_sig.dram_power[s]);
         }
 #endif
