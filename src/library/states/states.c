@@ -330,6 +330,24 @@ void states_end_period(uint iterations)
 
 static uint sig_enlarged = 0;
 
+// #define FAKE_PASSED_TIME passed_time = 0;
+#define FAKE_PASSED_TIME
+
+static void recompute_lib_period(llong passed_time, uint dynais_used)
+{
+    double ptime = ((passed_time == 0) ? (double) 0.001 : (double) passed_time);
+    if (dynais_used) {
+        perf_count_period     = (uint) ((double) perf_accuracy_min_time / ptime) * perf_count_period;
+        perf_count_period     = ear_max(perf_count_period, 1);
+        perf_count_period_10p = perf_count_period;
+        // verbose_master(0,"%s Using new period %u accel %u (iters per second %f)", node_name,
+        // perf_count_period, perf_count_period_10p, (float)N_iter / (float)passed_time);
+    } else if (ear_guided != TIME_GUIDED) {
+        lib_period = (uint) ((double) perf_accuracy_min_time / ptime) * lib_period;
+        verbose_master(2, "Library period updated %u.", lib_period);
+    }
+}
+
 void states_new_iteration(int my_id, uint period, uint iterations, uint level, ulong event, ulong mpi_calls_iter,
                           uint dynais_used)
 {
@@ -607,21 +625,11 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
             /* At this point, signatures for all processes in the node are ready.
              * lib_shared_region->job_signature includes the master signature. */
             if (result == EAR_NOT_READY) {
+                FAKE_PASSED_TIME
                 if (!lib_shared_region->master_ready && (passed_time < perf_accuracy_min_time)) {
                     sig_enlarged = 0;
-                    if (dynais_used) {
-                        // perf_count_period++;
-                        perf_count_period =
-                            (uint) ((float) perf_accuracy_min_time / (float) passed_time) * perf_count_period;
-                        perf_count_period     = ear_max(perf_count_period, 1);
-                        perf_count_period_10p = perf_count_period;
-                        // verbose_master(0,"%s Using new period %u accel %u (iters per second %f)", node_name,
-                        // perf_count_period, perf_count_period_10p, (float)N_iter / (float)passed_time);
-
-                    } else if (ear_guided != TIME_GUIDED) {
-                        lib_period = (uint) ((float) perf_accuracy_min_time / (float) passed_time) * lib_period;
-                        states_verbose2_master("Library period updated: %u", lib_period);
-                    }
+                    // We just set a minimum time
+                    recompute_lib_period(passed_time, dynais_used);
                 }
                 overhead_stop(id_ovh_ev_sig);
                 return;
@@ -839,20 +847,10 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
                                                       total_threads_cnt, &passed_time);
             overhead_stop(id_ovh_compute_signature);
             if (result == EAR_NOT_READY) {
+                FAKE_PASSED_TIME
                 if (!lib_shared_region->master_ready && (passed_time < perf_accuracy_min_time)) {
                     sig_enlarged = 0;
-                    // perf_count_period++;
-                    if (dynais_used) {
-                        perf_count_period =
-                            (uint) ((float) perf_accuracy_min_time / (float) passed_time) * perf_count_period;
-                        perf_count_period     = ear_max(perf_count_period, 1);
-                        perf_count_period_10p = perf_count_period;
-                        // verbose_master(0,"%s Using new period %u accel %u (iters per second %f)", node_name,
-                        // perf_count_period, perf_count_period_10p, (float)N_iter / (float)passed_time);
-                    } else if (ear_guided != TIME_GUIDED) {
-                        lib_period = (uint) ((float) perf_accuracy_min_time / (float) passed_time) * lib_period;
-                        states_verbose2_master("Library period updated: %u", lib_period);
-                    }
+                    recompute_lib_period(passed_time, dynais_used);
                 }
                 overhead_stop(id_ovh_stable);
                 return;
@@ -1027,20 +1025,10 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
                                                           total_threads_cnt, &passed_time);
 
                 if (result == EAR_NOT_READY) {
-                    // perf_count_period++;
+                    FAKE_PASSED_TIME
                     if (passed_time < perf_accuracy_min_time) {
                         sig_enlarged = 0;
-                        if (dynais_used) {
-                            perf_count_period =
-                                (uint) ((float) perf_accuracy_min_time / (float) passed_time) * perf_count_period;
-                            perf_count_period     = ear_max(perf_count_period, 1);
-                            perf_count_period_10p = perf_count_period;
-                            // verbose_master(0,"%s Using new period %u accel %u (iters per second %f)", node_name,
-                            // perf_count_period, perf_count_period_10p, (float)N_iter / (float)passed_time);
-                        } else if (ear_guided != TIME_GUIDED) {
-                            lib_period = (uint) ((float) perf_accuracy_min_time / (float) passed_time) * lib_period;
-                            states_verbose2_master("Library period updated %u.", lib_period);
-                        }
+                        recompute_lib_period(passed_time, dynais_used);
                     }
                     break;
                 }
