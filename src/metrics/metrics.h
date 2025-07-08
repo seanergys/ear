@@ -41,18 +41,18 @@ typedef struct metrics_info_s {
 } metrics_info_t;
 
 typedef struct metrics_read_s {
-    ullong samples;
-    timestamp_t time;
-    cpufreq_t *cpu;
-    imcfreq_t *imc;
-    bwidth_t *ram;
-    cache_t cch;
-    flops_t flp;
-    llong *tmp;
-    ullong *pow;
-    cpi_t cpi;
-    gpu_t *gpu;
-    char *nod;
+    ullong       samples;
+    timestamp_t  time;
+    cpufreq_t   *cpu;
+    imcfreq_t   *imc;
+    bwidth_t    *ram;
+    cache_t      cch;
+    flops_t      flp;
+    llong       *tmp;
+    ullong      *pow;
+    cpi_t        cpi;
+    gpu_t       *gpu;
+    char        *nod;
 } metrics_read_t;
 
 typedef struct metrics_diff_s {

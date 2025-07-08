@@ -8,14 +8,14 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-// #define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
-#include <common/math_operations.h>
-#include <common/output/debug.h>
 #include <common/system/time.h>
-#include <metrics/cache/archs/perf.h>
-#include <metrics/common/offsets.h>
+#include <common/output/debug.h>
+#include <common/math_operations.h>
 #include <metrics/common/perf.h>
+#include <metrics/common/offsets.h>
+#include <metrics/cache/archs/perf.h>
 
 #define PERF_TYPE_HW PERF_TYPE_HW_CACHE
 #define L1_LDM       PERF_COUNT_HW_CACHE_L1D | (PERF_COUNT_HW_CACHE_OP_READ << 8) | (PERF_COUNT_HW_CACHE_RESULT_MISS << 16)
@@ -79,7 +79,7 @@ CACHE_F_LOAD(perf)
         perfs_add(0xf064, PERF_TYPE_RAW, O2(l2 , hits    ), "PMCx064.1111.0000");
         perfs_add(0x0864, PERF_TYPE_RAW, O2(l2 , misses  ), "PMCx064.0000.1000");
         perfs_add(0x0729, PERF_TYPE_RAW, O2(l1d, accesses), "PMCx029.0000.0111");
-        offsets_add(&ofs, O2(l2 , accesses), O2(l2 , misses  ), O2(l2 , hits  ), '+');
+        offsets_add(&ofs, O2(l2 , accesses), O2(l2 , misses  ), O2(l2, hits)   , '+');
         offsets_add(&ofs, O2(l1d, misses  ), O2(l2 , accesses),               0, '=');
         offsets_add(&ofs, O2(l1d, hits    ), O2(l1d, accesses), O2(l1d, misses), '-');
         offsets_add(&ofs, O1(ll ), O1(l2), 0, '&');

@@ -103,7 +103,10 @@ post: test
 	@ $(MAKE) -C 'gpu' post || exit
 	@ $(MAKE) -C 'common' post || exit
 
-libmetrics.a: $(mets_OBJS)
+metrics.o: metrics.c
+	$(CC) $(CC_FLAGS) -I$(SRCDIR) -fPIC -c $<
+
+libmetrics.a: metrics.o $(mets_OBJS)
 	$(AR) rvs $@ $^
 
 test: metrics.c

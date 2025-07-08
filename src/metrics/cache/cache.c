@@ -54,11 +54,9 @@ void cache_unload()
 
 void cache_get_info(apinfo_t *info)
 {
+    memset(info, 0, sizeof(apinfo_t));
     info->layer       = "CACHE";
     info->api         = API_NONE;
-    info->devs_count  = 0;
-    info->scope       = SCOPE_PROCESS;
-    info->granularity = GRANULARITY_PROCESS;
     if (ops.get_info != NULL) {
         ops.get_info(info);
     }
@@ -173,33 +171,3 @@ void cache_internals_tostr(char *buffer, int length)
 {
     ops.internals_tostr(buffer, length);
 }
-
-#if TEST
-#include <common/utils/stress.h>
-
-static topology_t tp;
-static apinfo_t info;
-static cache_t c1;
-static cache_t c2;
-static cache_t cD;
-static double gbs;
-
-int main(int argc, char *argv[])
-{
-    topology_init(&tp);
-    cache_load(&tp, API_FREE);
-    stress_alloc();
-
-    cache_get_info(&info);
-    apinfo_tostr(&info);
-    printf("%s\n", info.api_str);
-
-    cache_init(no_ctx);
-    cache_read(no_ctx, &c1);
-    // sleep(1);
-    stress_bandwidth(1000);
-    cache_read_diff(no_ctx, &c2, &c1, &cD, &gbs);
-
-    return 0;
-}
-#endif

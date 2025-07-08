@@ -474,8 +474,8 @@ uint metrics_dcgmi_enabled()
 void metrics_lib_reset()
 {
     cpi_unload();
+    cache_unload();
     flops_dispose(no_ctx);
-    cache_dispose(no_ctx);
 }
 
 static void metrics_static_init(topology_t *tp)
@@ -553,9 +553,7 @@ static void metrics_static_init(topology_t *tp)
 
 #endif // USE_GPUS
     debug("metics_load ready");
-
     frequency_init(1);
-
     debug("Asking for APIS");
     // Get API
     sa(mgt_cpufreq_get_api(&mgt_cpufreq.api));
@@ -563,12 +561,12 @@ static void metrics_static_init(topology_t *tp)
     sa(mgt_cpuprio_get_api(&mgt_cpuprio.api));
      sa(energy_cpu_get_api(&met_energy.api));
         sa(cpufreq_get_api(&met_cpufreq.api));
-        sa(imcfreq_get_api(&met_imcfreq.api));
          sa(bwidth_get_api(&met_bwidth.api));
 
-    flops_get_info(&met_flops);
-     temp_get_info(&met_temp );
-      cpi_get_info(&met_cpi  );
+    imcfreq_get_info(&met_imcfreq);
+      flops_get_info(&met_flops);
+       temp_get_info(&met_temp );
+        cpi_get_info(&met_cpi  );
 
     debug("CPU APIs ready");
     if (met_cpufreq.api == API_DUMMY)
@@ -641,14 +639,10 @@ static void metrics_static_init(topology_t *tp)
     debug("Metrics initialization phase 2");
     // Init
     sa(mgt_cpufreq_init(no_ctx));
-    sa(mgt_imcfreq_init(no_ctx));
-    sa(temp_init());
     sa(energy_cpu_init(no_ctx));
     sa(cpufreq_init(no_ctx));
-    sa(imcfreq_init(no_ctx));
     sa(bwidth_init(no_ctx));
     sa(flops_init(no_ctx));
-    sa(cache_init(no_ctx));
     sa(mgt_cpuprio_init());
 
 #if USE_GPUS
@@ -668,7 +662,6 @@ static void metrics_static_init(topology_t *tp)
     sa(mgt_imcfreq_count_devices(no_ctx, &mgt_imcfreq.devs_count));
     sa(energy_cpu_count_devices(no_ctx, &met_energy.devs_count));
     sa(cpufreq_count_devices(no_ctx, &met_cpufreq.devs_count));
-    sa(imcfreq_count_devices(no_ctx, &met_imcfreq.devs_count));
     sa(bwidth_count_devices(no_ctx, &met_bwidth.devs_count));
 #if USE_GPUS
     sa(mgt_gpu_count_devices(no_ctx, &mgt_gpu.devs_count));
@@ -882,7 +875,7 @@ static void metrics_global_start()
         /* Reads IMC data */
         if (mgt_imcfreq.ok) {
             debug("imcfreq_read");
-            if (state_fail(s = imcfreq_read(no_ctx, imcfreq_read1[APP]))) {
+            if (state_fail(s = imcfreq_read(imcfreq_read1[APP]))) {
                 debug("IMCFreq data read in global_start");
             }
             /* To be used in partial_start */
@@ -965,7 +958,7 @@ static void metrics_global_start()
     /* To be used in partial_start */
     flops_data_copy(&flops_read2[LOO], &flops_read1[APP]);
 
-    cache_read(no_ctx, &cache_read1[APP]);
+    cache_read(&cache_read1[APP]);
     debug("cache_read ready");
     /* To be used in partial_start */
     cache_data_copy(&cache_read2[LOO], &cache_read1[APP]);
@@ -1032,13 +1025,10 @@ static void metrics_global_stop()
 
         /* AVG IMC frequency */
         if (mgt_imcfreq.ok) {
-            if (state_fail(s = imcfreq_read(no_ctx, imcfreq_read2[APP]))) {
+            if (state_fail(s = imcfreq_read(imcfreq_read2[APP]))) {
                 error_lib("IMC freq. data read in global stop.");
             }
-            if (state_fail(s = imcfreq_data_diff(imcfreq_read2[APP], imcfreq_read1[APP], imcfreq_diff[APP],
-                                                 &imcfreq_avrg[APP]))) {
-                error_lib("IMC freq. data diff failed.");
-            }
+            imcfreq_data_diff(imcfreq_read2[APP], imcfreq_read1[APP], imcfreq_diff[APP], &imcfreq_avrg[APP]);
 
             verbose(VEARL_INFO2, "Avg. IMC frequency: %.2f.", (float) imcfreq_avrg[APP] / 1000000.0);
 
@@ -1130,7 +1120,7 @@ static void metrics_global_stop()
     if (master)
         lib_shared_region->cas_counters = bwidth_cas[APP];
     flops_read_diff(no_ctx, &flops_read2[APP], &flops_read1[APP], NULL, NULL);
-    cache_read_diff(no_ctx, &cache_read2[APP], &cache_read1[APP], &cache_diff[APP], &cache_bwidth[APP]);
+    cache_read_diff(&cache_read2[APP], &cache_read1[APP], &cache_diff[APP], &cache_bwidth[APP]);
     cpi_read_diff(&cpi_read2[APP], &cpi_read1[APP], &cpi_diff[APP], &cpi_avrg[APP]);
 
     metric_cond(
@@ -1439,16 +1429,13 @@ static int metrics_partial_stop(uint where)
 #if METRICS_OVH
             overhead_start(id_ovh_imcfreq);
 #endif
-            if (state_fail(s = imcfreq_read(no_ctx, imcfreq_read2[LOO]))) {
+            if (state_fail(s = imcfreq_read(imcfreq_read2[LOO]))) {
                 verbose_warning_master("Error IMC freq. data read in partial stop");
             }
 #if METRICS_OVH
             overhead_stop(id_ovh_imcfreq);
 #endif
-            if (state_fail(s = imcfreq_data_diff(imcfreq_read2[LOO], imcfreq_read1[LOO], imcfreq_diff[LOO],
-                                                 &imcfreq_avrg[LOO]))) {
-                verbose_warning_master("IMC data diff fails.");
-            }
+            imcfreq_data_diff(imcfreq_read2[LOO], imcfreq_read1[LOO], imcfreq_diff[LOO], &imcfreq_avrg[LOO]);
             debug("AVG IMC frequency %.2f", (float) imcfreq_avrg[LOO] / 1000000.0);
         }
 
@@ -1486,7 +1473,7 @@ static int metrics_partial_stop(uint where)
     if (master)
         lib_shared_region->cas_counters = bwidth_cas[LOO];
     flops_read_diff(no_ctx, &flops_read2[LOO], &flops_read1[LOO], &flops_diff[LOO], NULL);
-    cache_read_diff(no_ctx, &cache_read2[LOO], &cache_read1[LOO], &cache_diff[LOO], &cache_bwidth[LOO]);
+    cache_read_diff(&cache_read2[LOO], &cache_read1[LOO], &cache_diff[LOO], &cache_bwidth[LOO]);
     cpi_read_diff(&cpi_read2[LOO], &cpi_read1[LOO], &cpi_diff[LOO], &cpi_avrg[LOO]);
 
 #if USE_CUPTI
@@ -2993,7 +2980,7 @@ static state_t energy_lib_init(settings_conf_t *conf)
 static void metrics_static_dispose()
 {
     energy_node_dispose();
-    temp_dispose();
+    temp_unload();
 }
 
 /** Use this function to compute the total number of threads if neded  */

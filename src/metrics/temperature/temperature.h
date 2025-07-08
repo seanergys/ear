@@ -38,7 +38,7 @@ void temp_unload();
 
 void temp_get_info(apinfo_t *info);
 
-/** Reads the last temperature value and the average per device. */
+// Reads the last temperature value and the all devices average.
 state_t temp_read(llong *temp_list, llong *average);
 
 state_t temp_read_copy(llong *t2, llong *t1, llong *tD, llong *average);

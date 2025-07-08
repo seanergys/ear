@@ -11,11 +11,11 @@
 #ifndef METRICS_IMCFREQ_H
 #define METRICS_IMCFREQ_H
 
-#include <common/hardware/topology.h>
-#include <common/plugins.h>
-#include <common/states.h>
-#include <common/system/time.h>
 #include <common/types.h>
+#include <common/states.h>
+#include <common/plugins.h>
+#include <common/hardware/topology.h>
+#include <common/system/time.h>
 #include <metrics/common/apis.h>
 #include <metrics/common/pstate.h>
 
@@ -28,15 +28,15 @@ typedef struct imcfreq_s {
 typedef struct imcfreq_ops_s {
     void    (*unload)     ();
     void    (*get_info)   (apinfo_t *info);
-    state_t (*read)       (imcfreq_t *l);
-    void    (*data_diff)  (imcfreq_t *l2, imcfreq_t *l, ulong *l_diff, ulong *freq_avg);
+    state_t (*read)       (imcfreq_t *list);
+    void    (*data_diff)  (imcfreq_t *l2, imcfreq_t *l1, ulong *ldiff, ulong *freq_avg);
 } imcfreq_ops_t;
 
-#define IMCFREQ_F_LOAD(name)      void temp_##name##_load(topology_t *tp, temp_ops_t *ops, int options)
-#define IMCFREQ_F_UNLOAD(name)    void temp_##name##_unload()
-#define IMCFREQ_F_GET_INFO(name)  void temp_##name##_get_info(apinfo_t *info)
-#define IMCFREQ_F_READ(name)      state_t temp_##name##_read(llong *temp, llong *average)
-#define IMCFREQ_F_DATA_DIFF(name) void temp_##name##_data_diff(imcfreq_t *l2, imcfreq_t *l1, ulong *l_diff, ulong *freq_avg)
+#define IMCFREQ_F_LOAD(name)      void imcfreq_##name##_load(topology_t *tp_in, imcfreq_ops_t *ops, int options)
+#define IMCFREQ_F_UNLOAD(name)    void imcfreq_##name##_unload()
+#define IMCFREQ_F_GET_INFO(name)  void imcfreq_##name##_get_info(apinfo_t *info)
+#define IMCFREQ_F_READ(name)      state_t imcfreq_##name##_read(imcfreq_t *list)
+#define IMCFREQ_F_DATA_DIFF(name) void imcfreq_##name##_data_diff(imcfreq_t *l2, imcfreq_t *l1, ulong *ldiff, ulong *freq_avg)
 
 #define IMCFREQ_DEFINES(name)         \
     IMCFREQ_F_LOAD(name);             \
@@ -58,6 +58,7 @@ state_t imcfreq_read_diff(imcfreq_t *l2, imcfreq_t *l1, ulong *l_diff, ulong *fr
 state_t imcfreq_read_copy(imcfreq_t *l2, imcfreq_t *l1, ulong *l_diff, ulong *freq_avg);
 // Frequency is KHz
 void imcfreq_data_diff(imcfreq_t *l2, imcfreq_t *l1, ulong *l_diff, ulong *freq_avg);
+
 // Helpers
 void imcfreq_data_alloc(imcfreq_t **l, ulong **l_diff);
 

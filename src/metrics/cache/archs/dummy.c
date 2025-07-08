@@ -6,15 +6,15 @@
  * which is available at https://www.eclipse.org/legal/epl-2.0/
  *
  * SPDX-License-Identifier: EPL-2.0
- **************************************************************************/
+     **************************************************************************/
 
-// #define SHOW_DEBUGS 1
+    // #define SHOW_DEBUGS 1
 
-#include <string.h>
-#include <common/output/debug.h>
-#include <metrics/cache/archs/dummy.h>
+    #include <string.h>
+    #include <common/output/debug.h>
+    #include <metrics/cache/archs/dummy.h>
 
-CACHE_F_LOAD(dummy)
+    CACHE_F_LOAD(dummy)
 {
     apis_put(ops->unload  , cache_dummy_unload);
     apis_put(ops->get_info, cache_dummy_get_info);
@@ -23,11 +23,11 @@ CACHE_F_LOAD(dummy)
     debug("Loaded DUMMY");
 }
 
-CACHE_F_UNLOAD(perf)
+CACHE_F_UNLOAD(dummy)
 {
 }
 
-CACHE_F_GET_INFO(perf)
+CACHE_F_GET_INFO(dummy)
 {
     info->api         = API_DUMMY;
     info->scope       = SCOPE_PROCESS;
@@ -36,7 +36,7 @@ CACHE_F_GET_INFO(perf)
     info->bits        = 0;
 }
 
-CACHE_F_READ(perf)
+CACHE_F_READ(dummy)
 {
     debug("DUMMY READ");
     memset(ca, 0, sizeof(cache_t));
@@ -45,7 +45,7 @@ CACHE_F_READ(perf)
     return EAR_SUCCESS;
 }
 
-CACHE_F_INTERNALS(perf)
+CACHE_F_INTERNALS(dummy)
 {
     sprintf(buffer, "CACHE LX  : loaded event DUMMY\n");
 }

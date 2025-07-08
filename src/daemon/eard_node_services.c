@@ -89,8 +89,6 @@ static ulong node_energy_datasize;
 static edata_t node_energy_data;
 static int num_packs = 0;
 static ullong *values_rapl;
-static imcfreq_t *unc_data;
-static uint unc_count;
 static int global_req_fd;
 static char ear_commreq_global[MAX_PATH_SIZE * 2];
 static ulong energy_freq;
@@ -108,7 +106,6 @@ manages_info_t man;
 metrics_info_t met;
 static metrics_read_t met_read;
 static metrics_t uc; // Obsolete, use metrics_info_t and metrics_read_t
-static metrics_t ui; // Obsolete, use metrics_info_t and metrics_read_t
 static metrics_t ub; // Obsolete, use metrics_info_t and metrics_read_t
 static metrics_t ug; // Obsolete, use metrics_info_t and metrics_read_t
 
@@ -131,40 +128,37 @@ void services_init(topology_t *tp)
 
     cpufreq_load(tp, NO_EARD);
     imcfreq_load(tp, NO_EARD);
-    bwidth_load(tp, NO_EARD);
-    temp_load(tp, NO_EARD);
+     bwidth_load(tp, NO_EARD);
+       temp_load(tp, NO_EARD);
 #if USE_GPUS
     gpu_load(NO_EARD);
 #endif
 
-    temp_get_info(&met.tmp);
+    imcfreq_get_info(&met.imc);
+       temp_get_info(&met.tmp);
 
     cpufreq_get_api((uint *) &uc.api);
-    imcfreq_get_api((uint *) &ui.api);
-    bwidth_get_api((uint *) &ub.api);
+     bwidth_get_api((uint *) &ub.api);
 #if USE_GPUS
-    gpu_get_api((uint *) &ug.api);
+        gpu_get_api((uint *) &ug.api);
 #endif
 
     sf(cpufreq_init(no_ctx));
-    sf(imcfreq_init(no_ctx));
-    sf(bwidth_init(no_ctx));
-    sf(temp_init());
+     sf(bwidth_init(no_ctx));
 #if USE_GPUS
-    sf(gpu_init(no_ctx));
+        sf(gpu_init(no_ctx));
 #endif
 
     sf(cpufreq_count_devices(no_ctx, &uc.devs_count));
-    sf(imcfreq_count_devices(no_ctx, &ui.devs_count));
-    bwidth_count_devices(no_ctx, &ub.devs_count);
+        bwidth_count_devices(no_ctx, &ub.devs_count);
 #if USE_GPUS
     gpu_get_devices((gpu_devs_t **) &ug.avail_list, &ug.devs_count);
 #endif
 
     sf(cpufreq_data_alloc((cpufreq_t **) &uc.current_list, empty));
-    sf(imcfreq_data_alloc((imcfreq_t **) &ui.current_list, empty));
-    bwidth_data_alloc((bwidth_t **) &ub.current_list);
-    temp_data_alloc(&met_read.tmp);
+       imcfreq_data_alloc((imcfreq_t **) &met_read.imc   , empty);
+        bwidth_data_alloc((bwidth_t  **) &ub.current_list);
+          temp_data_alloc(&met_read.tmp);
 #if USE_GPUS
     gpu_data_alloc(&eard_read_gpu);
 #endif
@@ -700,19 +694,19 @@ int services_met_imcfreq(eard_head_t *head, int req_fd, int ack_fd)
     verbose(VEARD_LAPI_DEBUG, "EARD met_imcfreq");
     switch (call) {
         case RPC_MET_IMCFREQ_GET_API:
-            data = (char *) &ui.api;
+            data = (char *) &met.imc.api;
             size = sizeof(uint);
             break;
         case RPC_MET_IMCFREQ_COUNT_DEVICES:
-            data = (char *) &ui.devs_count;
+            data = (char *) &met.imc.devs_count;
             size = sizeof(uint);
             break;
         case RPC_MET_IMCFREQ_GET_CURRENT:
-            if (state_fail(s = imcfreq_read(no_ctx, (imcfreq_t *) ui.current_list))) {
+            if (state_fail(s = imcfreq_read(met_read.imc))) {
                 serror("Could not get imc frequency");
             }
-            data = (char *) ui.current_list;
-            size = sizeof(imcfreq_t) * ui.devs_count;
+            data = (char *) met_read.imc;
+            size = sizeof(imcfreq_t) * met.imc.devs_count;
             break;
         default:
             return 0;
@@ -1507,11 +1501,6 @@ state_t eard_local_api()
         verbose(VEARD_LAPI, "Error creating shared memory region for node_mgr");
         exit(1);
     }
-
-    // IMC frequency metrics
-    state_assert(s, imcfreq_count_devices(no_ctx, &unc_count), _exit(0));
-    state_assert(s, imcfreq_data_alloc(&unc_data, NULL), _exit(0));
-    verbose(VEARD_LAPI, "CPUfreq and IMC freq data ok for node_services devices %u", unc_count);
 
     // Energy node metrics
     energy_datasize(&handler_energy, &node_energy_datasize);
