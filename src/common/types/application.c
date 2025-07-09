@@ -192,8 +192,8 @@ int create_app_header(char *header, char *path, uint num_gpus, char is_extended,
     debug("Creating header for CPU signature with %u sockets", num_sockets);
     char cpu_sig_hdr[256] = "";
     for (uint s = 0; s < num_sockets; s++) {
-        char temp_hdr[16];
-        snprintf(temp_hdr, sizeof(temp_hdr), ";TEMP%u", s);
+        char temp_hdr[33]; // Assumming MAX_SOCKETS_SUPPORTED HAVE AT MOST 2 digits + null byte
+        snprintf(temp_hdr, sizeof(temp_hdr), ";TEMP%u;CPU_POWER%u;DRAM_POWER%u", s, s, s);
         strcat(cpu_sig_hdr, temp_hdr);
     }
 

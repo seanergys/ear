@@ -19,17 +19,23 @@ static uint     chips_count;
 static uint     sockets_count;
 static uint     items_count;
 static char  **labels_test;
+static char   *labels_amd17[]   = { "Tccd" , "Tctl", NULL }; // Tctl is the real temperature plus an offset
+static char   *labels_intel63[] = { "Package", NULL };
 static char    *label;
 static char    *driver_name;
 
 TEMP_F_LOAD(hwmon)
 {
-    if (tp->vendor == VENDOR_AMD || tp->family >= FAMILY_ZEN) {
+    // Another API is opened and this API is not mixtable
+    if (ops->read != NULL) {
+        return;
+    }
+    if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN) {
         driver_name = "k10temp";
-        labels_test = (char *[]) { "Tccd" , "Tctl", NULL }; // Tctl is the real temperature plus an offset
-    } else if (tp->vendor == VENDOR_INTEL || tp->family >= MODEL_ICELAKE_X) {
+        labels_test = labels_amd17;
+    } else if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_ICELAKE_X) {
         driver_name = "coretemp";
-        labels_test = (char *[]) { "Package", NULL };
+        labels_test = labels_intel63;
     } else {
         return;
     }
@@ -38,13 +44,13 @@ TEMP_F_LOAD(hwmon)
         return;
     }
     debug("HWMON opened")
-    while (*labels_test != NULL) {
-        debug("LABEL %s", *labels_test);
+    while (labels_test != NULL && *labels_test != NULL) {
+        debug("Counting label '%s'", *labels_test);
         if ((items_count = hwmon_count_items(chips, "input", *labels_test)) > 0) {
             label = *labels_test;
             break;
         }
-        *labels_test++;
+        labels_test++;
     }
     if (label == NULL) {
         hwmon_close(&chips);

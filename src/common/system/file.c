@@ -140,7 +140,7 @@ ssize_t ear_file_size(char *path)
     return size;
 }
 
-state_t ear_file_read(const char *path, char *buffer, size_t size)
+state_t ear_file_read(const char *path, char *buffer, size_t size, int wait_for_bytes)
 {
     int fd         = open(path, O_RDONLY);
     ssize_t r      = 0;
@@ -150,9 +150,12 @@ state_t ear_file_read(const char *path, char *buffer, size_t size)
         state_return_msg(EAR_OPEN_ERROR, errno, strerror(errno));
     }
 
-    while ((size > 0) && ((r = read(fd, &buffer[totalr], size)) > 0)) {
+    while ((size > 0) && ((r = read(fd, &buffer[totalr], size)) >= 0)) {
         size = size - r;
         totalr += r;
+
+        if (!wait_for_bytes && !r)
+            break;
     }
 
     close(fd);

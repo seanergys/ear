@@ -1802,9 +1802,17 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
         for (int p = 0; p < num_packs; p++) {
             double rapl_dram    = (double) metrics_rapl[sign_app_loop_idx][p];
             metrics->DRAM_power = metrics->DRAM_power + rapl_dram;
+#if WF_SUPPORT
+            metrics->cpu_sig.dram_power[p] = energy_cpu_compute_power(rapl_dram, time_s);
+#endif
 
             double rapl_pck    = (double) metrics_rapl[sign_app_loop_idx][num_packs + p];
             metrics->PCK_power = metrics->PCK_power + rapl_pck;
+#if WF_SUPPORT
+            metrics->cpu_sig.cpu_power[p] = energy_cpu_compute_power(rapl_pck, time_s);
+#endif
+            verbose_info2_master("computing dram[%d] power = %lf", p, metrics->cpu_sig.dram_power[p]);
+            verbose_info2_master("computing cpu[%d]  power = %lf", p, metrics->cpu_sig.cpu_power[p]);
         }
 
         metrics->PCK_power  = energy_cpu_compute_power(metrics->PCK_power, time_s);
@@ -2225,7 +2233,7 @@ int metrics_load(topology_t *topo)
 
 #define MAX_SYNCHO_TIME 100
 
-void metrics_dispose(signature_t *metrics, ulong procs)
+void metrics_dispose(signature_t *metrics, ulong procs, uint job_node_ratio)
 {
     sig_ext_t *se;
     signature_t job_node_sig;
@@ -2346,9 +2354,13 @@ void metrics_dispose(signature_t *metrics, ulong procs)
 
         se = (sig_ext_t *) metrics->sig_ext;
 
-        if (!exclusive) {
+        if (!exclusive || job_node_ratio) {
+            verbose_info_master(
+                "Application sharing the node or job ratio strategy requested. Computing the application node "
+                "signature.");
             metrics_app_node_signature(metrics, &job_node_sig);
         } else {
+            verbose_info_master("Application running in exclusive mode and job ratio not requested.");
             metrics_job_signature(&lib_shared_region->job_signature, &job_node_sig);
         }
 

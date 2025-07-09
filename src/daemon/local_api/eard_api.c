@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #define _GNU_SOURCE
 #include <common/config.h>
@@ -42,7 +42,6 @@
 
 #define OUTTER_MAX_PIPE_TRIES 60
 #define MAX_PIPE_TRIES        (ullong)(MAX_SOCKET_COMM_TRIES * (ullong) 1000)
-#define MAX_TRIES             1
 #define USE_NON_BLOCKING_IO   1
 
 #define VPROC_LAPI            3
@@ -103,6 +102,27 @@ static state_t create_base_path(char *base_path, size_t base_path_sz, char *tmp_
 static state_t create_app_directory(char *path);
 #endif
 
+static int eards_open(char *path, int flags, int *ear_fd_req, uint max_tries)
+{
+    int tries = 0;
+    int fd;
+    int connected = 0;
+    do {
+        debug("Connecting with EARD using file %s", path);
+        // ENXIO is for pipes
+        if (((fd = open(path, flags)) < 0) && (errno == ENXIO))
+            tries++;
+        else if (fd >= 0)
+            connected = 1;
+	else
+		break;
+        if ((max_tries > 1) && (!connected))
+            usleep(5000);
+    } while ((tries < max_tries) && !connected);
+    *ear_fd_req = fd;
+    return connected;
+}
+
 /** Saves EARD connection info to be restored in the case the client lose this info. */
 static state_t eards_save_connection(char *tmp, ulong job_id, ulong step_id, ulong local_id);
 
@@ -150,6 +170,8 @@ int eards_read(int fd, char *buff, int size, uint wait_mode)
         } else {
             out_tries = limit_outer_tries;
         }
+        if (out_tries != limit_outer_tries)
+            usleep(100);
     }
     debug("limits reached %llu/%llu", tries, out_tries);
 
@@ -177,13 +199,16 @@ int eards_write(int fd, char *buff, int size)
     to_send         = size;
     ullong limit_outer_tries;
 
-    int out_tries = 0;
+    ullong out_tries = 0;
+
+    debug("USE_NON_BLOCKING_IO Write: fd %d size %d", fd, size);
     if (connecting)
         limit_outer_tries = OUTTER_MAX_PIPE_TRIES * 1000;
     else
         limit_outer_tries = OUTTER_MAX_PIPE_TRIES;
 
     while (out_tries < limit_outer_tries) {
+        debug("Write: fd %d size %d out_tries %llu limit_outer_tries %llu", fd, size, out_tries, limit_outer_tries);
         tries = 0;
         do {
             ret = write(fd, buff + sended, size);
@@ -191,6 +216,7 @@ int eards_write(int fd, char *buff, int size)
                 sended += ret;
                 to_send -= ret;
             } else if (ret < 0) {
+                debug("Error sending command to eard %s,%d", strerror(errno), errno);
                 if ((errno == EWOULDBLOCK) || (errno == EAGAIN))
                     tries++;
                 else {
@@ -208,6 +234,9 @@ int eards_write(int fd, char *buff, int size)
         } else {
             out_tries = limit_outer_tries;
         }
+        if (out_tries != limit_outer_tries)
+            usleep(100);
+        debug("Out try ret %d (sent %u)", ret, sended);
     }
     debug("limits reached %llu/%llu", tries, out_tries);
     /* If there are bytes left to send, we return a 0 */
@@ -216,6 +245,7 @@ int eards_write(int fd, char *buff, int size)
     return sended;
 
 #else
+    debug("USE_BLOCKING_IO Write: fd %d size %d", fd, size);
     return write(fd, buff, size);
 #endif
 }
@@ -383,16 +413,8 @@ int eards_connect(application_t *my_app, ulong lid)
     chmod(ear_commreq, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
     debug("Communication PIPEs created");
     /* Pipes are created, we give some opportunities to connect */
-    do {
-        // verbose(3,"Connecting with EARD using file %s\n",ear_commreq_global);
-        debug("Connecting with EARD using file %s", ear_commreq_global);
-        if ((ear_fd_req_global = open(ear_commreq_global, O_WRONLY | O_NONBLOCK)) < 0)
-            tries++;
-        else
-            connected = 1;
-        if ((MAX_TRIES > 1) && (!connected))
-            sleep(1);
-    } while ((tries < MAX_TRIES) && !connected);
+    connected = eards_open(ear_commreq_global, O_WRONLY | O_NONBLOCK, &ear_fd_req_global, 1);
+    debug("Global Com pipe connected %s", (connected ? "yes" : "no"));
 
     if (!connected) {
         // Not possible to connect with ear_daemon
@@ -431,15 +453,21 @@ int eards_connect(application_t *my_app, ulong lid)
     if (ear_fd_req_global >= 0) {
         /* EARD sends an ack when ack pipe for specific service is created */
         verbose(VPROC_LAPI + 1, "%s: Opening %s", nodename, ear_commack);
-        ear_fd_ack = open(ear_commack, O_RDONLY);
+        ear_fd_ack = open(ear_commack, O_RDONLY | O_NONBLOCK);
+
+        debug("ACK pipe created with fd %d", ear_fd_ack);
+
+        /* According to the fifo(7) man page, opening a fifo in non-blocking
+         * mode succeeds even if no one has opened on the write side yet. */
         if (ear_fd_ack < 0) {
-            error("Error opening local ack communicator with EARD (%s)", strerror(errno));
+            error("Error opening local ack communicator with EARD (%s).", strerror(errno));
             connecting = 0;
             close(ear_fd_req_global);
             ear_fd_req_global = -1;
             return EAR_ERROR;
         }
         verbose(VPROC_LAPI + 1, "%s: %s open", nodename, ear_commack);
+
 #if USE_NON_BLOCKING_IO
         ret1 = fcntl(ear_fd_ack, F_SETFL, O_NONBLOCK);
         if (ret1 < 0) {
@@ -461,12 +489,20 @@ int eards_connect(application_t *my_app, ulong lid)
         debug("ACK received: %lu", ack);
 
         verbose(VPROC_LAPI + 1, "%s: Open %s", nodename, ear_commreq);
-        if ((ear_fd_req = open(ear_commreq, O_WRONLY)) < 0) {
-            error("Error opening local req communicator, closing the EARD connection");
+
+        int connected_req = eards_open(ear_commreq, O_WRONLY | O_NONBLOCK, &ear_fd_req, 10);
+
+        debug("%s pipe connected %s", ear_commreq, (connected_req ? "yes" : "no"));
+#if 0
+        if ((ear_fd_req = open(ear_commreq, O_WRONLY | O_NONBLOCK)) < 0) {
+#endif
+        if (!connected_req) {
+            error("Error opening local req communicator with EARD (%s), closing the EARD connection.", strerror(errno));
             CLOSE_LOCAL_COMM();
             connecting = 0;
             return EAR_ERROR;
         }
+
         verbose(VPROC_LAPI + 1, "%s: %s open", nodename, ear_commreq);
 #if USE_NON_BLOCKING_IO
         ret1 = fcntl(ear_fd_req, F_SETFL, O_NONBLOCK);

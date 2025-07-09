@@ -83,7 +83,7 @@ int master_getstep(int job_id, int step_id)
     //          3.1 Spin while can't access slave.lock
     //          3.2 Read the %step_id in slave.step
     if (step_id == 0) {
-        if (state_ok(ear_file_read(path_master_step, (char *) &step_id, sizeof(int)))) {
+        if (state_ok(ear_file_read(path_master_step, (char *) &step_id, sizeof(int), 0))) {
             plug_verbose(_sp, 2, "read step_id %d in the file '%s'", step_id, path_master_step);
             step_id += 1;
         } else {
@@ -119,7 +119,7 @@ void spinlock_slave(int job_id)
 int slave_getstep(int job_id, int step_id)
 {
     // 1. Read the %step_id contained in step.step.id
-    ear_file_read(path_slave_step, (char *) &step_id, sizeof(int));
+    ear_file_read(path_slave_step, (char *) &step_id, sizeof(int), 0);
     plug_verbose(_sp, 2, "read %d step_id in the file '%s'", step_id, path_slave_step);
     // 2. Return %step_id
     return step_id;

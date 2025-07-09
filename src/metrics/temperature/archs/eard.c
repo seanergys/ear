@@ -25,6 +25,10 @@ TEMP_F_LOAD(eard)
 {
     state_t s;
 
+    // Another API is opened and this API is not mixtable
+    if (ops->read != NULL) {
+        return;
+    }
     if (!API_IS(options, API_EARD)) {
         return;
     }

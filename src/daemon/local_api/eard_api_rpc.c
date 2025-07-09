@@ -228,13 +228,13 @@ state_t eard_rpc_cached(uint call, char *data, size_t size, char *recv_data, siz
     }
     sprintf("%s/.eard_rpc_%u", tmp, call);
     // Try to read /tmp/.eard_rpc_id
-    if (state_ok(ear_file_read(path, recv_data, size))) {
+    if (state_ok(ear_file_read(path, recv_data, size, 0))) {
         return EAR_SUCCESS;
     }
     // Get the lock_file /tmp/.eard_rpc_id.lock
 
     // Try to read again /tmp/.eard_rpc_id
-    if (state_ok(ear_file_read(path, recv_data, size))) {
+    if (state_ok(ear_file_read(path, recv_data, size, 0))) {
         // Free lock file
         return EAR_SUCCESS;
     }

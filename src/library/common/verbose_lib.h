@@ -66,6 +66,11 @@
         verbose_master(VEARL_INFO, COL_BLU "[%s][%d][INFO] " COL_CLR msg, node_name, my_node_id, ##__VA_ARGS__);       \
     } while (0);
 
+#define verbosen_info_master(msg, ...)                                                                                 \
+    do {                                                                                                               \
+        verbosen_master(VEARL_INFO, COL_BLU "[%s][%d][INFO] " COL_CLR msg, node_name, my_node_id, ##__VA_ARGS__);      \
+    } while (0);
+
 #define verbose_info2_master(msg, ...)                                                                                 \
     do {                                                                                                               \
         verbose_master(VEARL_INFO2, COL_BLU "[%s][%d][INFO2] " COL_CLR msg, node_name, my_node_id, ##__VA_ARGS__);     \

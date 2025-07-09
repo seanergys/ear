@@ -29,12 +29,14 @@
 #include <library/common/utils.h>
 #include <library/common/verbose_lib.h>
 #include <library/models/cpu_power_model.h>
+#include <library/models/cpu_power_model_common.h>
 
 extern uint node_mgr_index;
 extern uint node_mgr_earl_index;
 
 typedef struct cpu_power_model_symbols {
-    state_t (*init)(settings_conf_t *libconf, conf_install_t *conf, architecture_t *arch);
+    state_t (*init)(settings_conf_t *libconf, conf_install_t *conf, architecture_t *arch,
+                    node_sharing_strategy_t strategy);
     state_t (*status)();
     state_t (*project)(lib_shared_data_t *data, shsignature_t *sig, node_mgr_sh_data_t *nmgr, uint who);
 } cpu_power_models_sym_t;
@@ -100,12 +102,13 @@ state_t cpu_power_model_load(settings_conf_t *libconf, architecture_t *arch_desc
     return st;
 }
 
-state_t cpu_power_model_init()
+state_t cpu_power_model_init(node_sharing_strategy_t power_model_strategy)
 {
     state_t init_status = EAR_ERROR;
 
     if (cpu_power_models_syms_fun.init != NULL) {
-        init_status = cpu_power_models_syms_fun.init(copy_settings, &copy_settings->installation, &copy_arch);
+        init_status = cpu_power_models_syms_fun.init(copy_settings, &copy_settings->installation, &copy_arch,
+                                                     power_model_strategy);
     }
 
     if (init_status == EAR_SUCCESS) {
@@ -115,7 +118,8 @@ state_t cpu_power_model_init()
     // If coefficients are not available, we will load the dummy cpu power model.
     if (state_ok(cpu_power_model_load(copy_settings, &copy_arch, 1))) {
         if (cpu_power_models_syms_fun.init != NULL) {
-            init_status = cpu_power_models_syms_fun.init(copy_settings, &copy_settings->installation, &copy_arch);
+            init_status = cpu_power_models_syms_fun.init(copy_settings, &copy_settings->installation, &copy_arch,
+                                                         power_model_strategy);
         }
     } else {
         return EAR_ERROR;
