@@ -124,6 +124,7 @@ static void open_devices(char *folder_path, char *devs_name, hwmon_dev_t **devs,
         (*devs)[i].input_fd            = -1;
         (*devs)[i].label_fd            = -1;
         (*devs)[i].max_fd              = -1;
+        (*devs)[i].min_fd              = -1;
         (*devs)[i].average_fd          = -1;
         (*devs)[i].average_interval_fd = -1;
         //
@@ -213,7 +214,11 @@ state_t hwmon_open(char *chip_name, char *dev_type, hwmon_t **chips, uint *chips
 void hwmon_close(hwmon_t **chips)
 {
     int c = 0; // c of chip
-    while (!(*chips)[c].is_null) {
+    if (chips == NULL) {
+        return;
+    }
+    hwmon_close_labels(*chips, NULL);
+    while ((*chips)[c].devs != NULL && !(*chips)[c].is_null) {
         free((*chips)[c].devs);
         ++c;
     }
@@ -341,7 +346,7 @@ hwmon_t *hwmon_iter_chips(hwmon_t chips[])
 
 hwmon_dev_t *hwmon_iter_devs(hwmon_t *chip, char *label)
 {
-    int d = 0; // de of device
+    int d = 0; // d of device
     while (1) {
         if (chip->devs[d].is_null) {
             set_univisited(NULL, chip->devs);
@@ -354,6 +359,33 @@ hwmon_dev_t *hwmon_iter_devs(hwmon_t *chip, char *label)
         ++d;
     }
     return NULL;
+}
+
+void hwmon_close_labels(hwmon_t chips[], char *label)
+{
+    int d = 0; // d of device
+    int c = 0; // c of chip
+
+    #define close_dev(dev_fd) \
+    if (dev_fd >= 0) {        \
+        dprintf(STDOUT_FILENO, "closing " #dev_fd " %d\n", dev_fd);                      \
+        close(dev_fd);        \
+        dev_fd = -1;          \
+    }
+    while (!chips[c].is_null) {
+        while (!chips[c].devs[d].is_null) {
+            if (label == NULL || strstr(chips[c].devs[d].label, label) == NULL) {
+                close_dev(chips[c].devs[d].input_fd);
+                close_dev(chips[c].devs[d].label_fd);
+                close_dev(chips[c].devs[d].max_fd);
+                close_dev(chips[c].devs[d].min_fd);
+                close_dev(chips[c].devs[d].average_fd);
+                close_dev(chips[c].devs[d].average_interval_fd);
+            }
+            ++d;
+        }
+        ++c;
+    }
 }
 
 #if TEST1
