@@ -45,6 +45,11 @@ state_t policy_init(polctx_t *c)
     if (gpu_freq && c->app->user_type == AUTHORIZED) {
         g_freq = atol(gpu_freq);
     }
+    if (gpu_freq) {
+        verbose_master(2, "User requested GPU freq %lu", g_freq);
+    } else {
+        verbose_master(2, "No User requested GPU freq, using default ");
+    }
 
     debug("Asking for frequencies");
     gpuf_list       = (const ulong **) metrics_gpus_get(MGT_GPU)->avail_list;

@@ -32,6 +32,7 @@ static pstate_t *available_list;
 static uint available_count;
 static uint boost_enabled;
 static uint idx_nominal;
+static uint initialized = 0;
 
 state_t mgt_cpufreq_eard_load(topology_t *tp_in, mgt_ps_ops_t *ops, mgt_ps_driver_ops_t *ops_driver, int eard)
 {
@@ -86,6 +87,7 @@ static state_t static_dispose(ctx_t *c, state_t s, char *msg)
     if (available_list != NULL) {
         free(available_list);
     }
+    initialized = 0;
     return_msg(s, msg);
 }
 
@@ -95,6 +97,11 @@ state_t mgt_cpufreq_eard_init(ctx_t *c)
     char *buffer;
     size_t size;
     state_t s;
+
+    // Lock must be added
+    if (initialized) {
+        static_dispose(c, s, state_msg);
+    }
 
     // The initialization is just for read values. The init of this API it will
     // be called just if other APIs can't read, because if not these other APIs
@@ -125,6 +132,7 @@ state_t mgt_cpufreq_eard_init(ctx_t *c)
     }
     debug("EARD answered with nominal index %u", idx_nominal);
     boost_enabled = idx_nominal;
+    initialized   = 1;
 
     return EAR_SUCCESS;
 }
