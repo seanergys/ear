@@ -208,7 +208,7 @@ static state_t get_context(ctx_t *c, hwfds_t **h)
 
 static state_t gh_module_power_read(ctx_t *c, ullong *values)
 {
-    if ((values == NULL))
+    if (values == NULL)
         return EAR_ERROR;
     if (!gh_module_power_initialized)
         return EAR_ERROR;

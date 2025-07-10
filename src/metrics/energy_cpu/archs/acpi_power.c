@@ -189,13 +189,13 @@ static state_t get_context(ctx_t *c, hwfds_t **h)
 
 state_t acpi_power_meter_read(ctx_t *c, ullong *values)
 {
-    if ((values == NULL))
+    if (values == NULL)
         return EAR_ERROR;
     if (!acpi_power_meter_initialized)
         return EAR_ERROR;
     /* Energy CPU assumes N uncore values (1 per socket) and N core values (1 per socket) */
     /* Units are nano Joules */
-    verbose(0, "Size %u", sizeof(ullong) * socket_count * NUM_DEVICES);
+    verbose(0, "Size %lu", sizeof(ullong) * socket_count * NUM_DEVICES);
     memset(values, 0, sizeof(ullong) * socket_count * NUM_DEVICES);
     /* In this API energy is reported in uJoules */
     /* We don't know yet how to detect different sockets so socket 1 is used */

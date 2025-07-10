@@ -456,7 +456,7 @@ static state_t int_set_powercap_value(ulong limit, ulong *gpu_util)
     int i;
     float alloc;
     ulong ualloc;
-    uint gpu_run = 0, total_util = 0;
+    uint total_util = 0;
     /* Set data */
     current_gpu_pc = limit;
     debug("%sGPU-DVFS:set_powercap_value %lu%s", COL_BLU, limit, COL_CLR);
@@ -479,12 +479,9 @@ static state_t int_set_powercap_value(ulong limit, ulong *gpu_util)
             gpu_pc_curr_power[i] = values_gpu_idle[i].power_w + 5;
             gpu_idle_power       = values_gpu_idle[i].power_w + 5;
             limit                = limit - gpu_pc_curr_power[i];
-        } else {
-            gpu_run++;
         }
     }
     gpu_dvfs_util = total_util;
-    // debug("GPU: Phase 2: Allocating power to %u running GPUS",gpu_run);
     for (i = 0; i < gpu_pc_num_gpus; i++) {
         if (gpu_util[i] > 0) {
             pdist[i] = (float) gpu_util[i] / (float) total_util;
