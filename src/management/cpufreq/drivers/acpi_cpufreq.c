@@ -87,7 +87,10 @@ static state_t build_frequencies_list(ullong freq_max, ullong freq_min)
             i = 1;
         }
         if (freq_min == 0LLU) {
-            freq_min = 1000000LLU; // 1GHz
+            freq_min = 1000000LLU; // 1 GHz
+        }
+        if (freq_min < 100000LLU) {
+            freq_min = 100000LLU; // 100 MHz
         }
         while ((avail_list_real[i] = bf.frequency - (100000LLU * m)) >= freq_min) {
             avail_list_disp[i] = avail_list_real[i];
