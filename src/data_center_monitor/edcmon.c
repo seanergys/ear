@@ -10,9 +10,9 @@
 
 // #define SHOW_DEBUGS 1
 
-#include <common/system/plugin_manager.h>
-#include <sys/resource.h>
 #include <unistd.h>
+#include <sys/resource.h>
+#include <common/system/plugin_manager.h>
 
 int main(int argc, char *argv[])
 {

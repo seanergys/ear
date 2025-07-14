@@ -140,15 +140,10 @@ static void goto_time(queue_t *reg, int *sleep_units, int *sleep_reason, int pas
     // the state has been changed, the wait counter will be switched too.
     reg->sleep_units.burst -= passed_units;
     reg->sleep_units.relax -= passed_units;
-    if (reg->sleep_units.burst <= 0 && is_bursting)
-        reg->ok_main = 1;
-    if (reg->sleep_units.relax <= 0 && !is_bursting)
-        reg->ok_main = 1;
-    if (reg->sleep_units.burst <= 0)
-        reg->sleep_units.burst = reg->saved_units.burst;
-    if (reg->sleep_units.relax <= 0)
-        reg->sleep_units.relax = reg->saved_units.relax;
-
+    if (reg->sleep_units.burst <= 0 &&  is_bursting) reg->ok_main = 1;
+    if (reg->sleep_units.relax <= 0 && !is_bursting) reg->ok_main = 1;
+    if (reg->sleep_units.burst <= 0) reg->sleep_units.burst = reg->saved_units.burst;
+    if (reg->sleep_units.relax <= 0) reg->sleep_units.relax = reg->saved_units.relax;
     // If current sleep units is greater than our burst/relax pending units,
     // current wait units will be replaced by the suscription counter.
     if (is_bursting && reg->sleep_units.burst < *sleep_units) {
@@ -284,8 +279,7 @@ state_t monitor_init()
     state_t s;
 
     // We assume this statically initialized lock still working after fork
-    while (pthread_mutex_trylock(&lock_gen))
-        ;
+    while (pthread_mutex_trylock(&lock_gen));
     // If monitor is already running, and thus is_allocated
     if (is_running != 0) {
         pthread_mutex_unlock(&lock_gen);
@@ -345,8 +339,7 @@ state_t monitor_dispose()
     if (!is_running) {
         return_msg(EAR_ERROR, "not initialized");
     }
-    while (pthread_mutex_trylock(&lock_gen))
-        ;
+    while (pthread_mutex_trylock(&lock_gen));
     goto_interrupt();
     is_running = 0;
     suscriptions_unregister_all();

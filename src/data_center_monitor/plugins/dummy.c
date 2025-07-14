@@ -45,3 +45,8 @@ declr_up_post_data()
 {
     return rsprintf("dummy post data: received msg %s", msg);
 }
+
+declr_up_action_close()
+{
+    return NULL;
+}
