@@ -19,7 +19,7 @@ IMCFREQ_DEFINES(intel63);
 
 // Load addreses given a CPU model.
 state_t imcfreq_intel63_ext_load_addresses(topology_t *tp);
-// Opens an MSR and enables the control register.
+// Enables the control registers. MSR have to be opened before.
 state_t imcfreq_intel63_ext_enable_cpu(int cpu);
 // Reads a 48 bit counter and returns a frequency in KHz.
 state_t imcfreq_intel63_ext_read_cpu(int cpu, ulong *freq);

@@ -37,7 +37,7 @@ void imcfreq_load(topology_t *tp, int options)
     }
     imcfreq_intel63_load(tp, &ops, options);
     //imcfreq_amd17_load(tp, &ops, options);
-    imcfreq_eard_load(tp, &ops, options);
+    //imcfreq_eard_load(tp, &ops, options);
 dummy:
     imcfreq_dummy_load(tp, &ops, options);
     imcfreq_get_info(&info);
@@ -190,3 +190,61 @@ char *imcfreq_data_tostr(ulong *freq_list, ulong *average, char *buffer, size_t 
     }
     return buffer;
 }
+
+#if TEST
+#include <time.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
+
+static topology_t tp;
+static apinfo_t   info;
+static imcfreq_t  t1[16];
+static imcfreq_t  t2[16];
+static ulong      tD[16];
+static ulong      tA;
+static pid_t      pid;
+static int        forked;
+
+static int count_fds()
+{
+    int dummy_fd = open("/dev/null", O_RDONLY);
+    close(dummy_fd);
+    return dummy_fd;
+}
+
+int main(int argc, char *argv[])
+{
+    topology_init(&tp);
+reload:
+    dprintf(STDOUT_FILENO, "%d: Loading... (%d fds)\n", getpid(), count_fds());
+    imcfreq_load(&tp, API_FREE);
+    imcfreq_get_info(&info);
+    apinfo_tostr(&info);
+    dprintf(STDOUT_FILENO, "%d: Loaded %s with %d fds\n", getpid(), info.api_str, count_fds());
+reread:
+    imcfreq_read(t1);
+    sleep(3);
+    int i, j;
+    for (i = j = 0; i < 1000000; ++i) {
+        j += 1;
+    }
+    imcfreq_read_copy(t2, t1, tD, &tA);
+    dprintf(STDOUT_FILENO, "%d Printing...\n", getpid());
+    imcfreq_data_print(tD, &tA, STDOUT_FILENO);
+    if (!forked) {
+        sleep(1);
+        pid = fork();
+        forked = 1;
+        if (pid == 0) {
+            sleep(1);
+            dprintf(STDOUT_FILENO, "%d: Unloading...\n", getpid());
+            imcfreq_unload();
+            goto reload;
+        }
+    }
+    goto reread;
+    return 0;
+}
+#endif

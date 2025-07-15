@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -35,9 +35,19 @@ static ullong     mask_global_ctl;
 static ullong     mask_unit_ctl;
 static topology_t tp;
 
-IMCFREQ_F_LOAD(intel63)
+static void close_msrs(int max_cpu)
 {
     int cpu;
+    for (cpu = 0; cpu < max_cpu; ++cpu) {
+        msr_close(tp.cpus[cpu].id);
+    }
+}
+
+IMCFREQ_F_LOAD(intel63)
+{
+    state_t s;
+    int cpu;
+
     if (state_fail(msr_test(tp_in, MSR_WR))) {
         return;
     }
@@ -47,7 +57,15 @@ IMCFREQ_F_LOAD(intel63)
         return;
     }
     for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
+        if (state_fail(s = msr_open(cpu, MSR_WR))) {
+            debug("msr_open failed: %s", state_msg);
+            close_msrs(cpu);
+            return;
+        }
+    }
+    for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
         if (state_fail(imcfreq_intel63_ext_enable_cpu(tp.cpus[cpu].id))) {
+            close_msrs(tp.cpu_count);
             return;
         }
     }
@@ -59,10 +77,8 @@ IMCFREQ_F_LOAD(intel63)
 
 IMCFREQ_F_UNLOAD(intel63)
 {
-    int cpu;
-    for (cpu = 0; cpu < tp.cpu_count; ++cpu) {
-        msr_close(tp.cpus[cpu].id);
-    }
+    close_msrs(tp.cpu_count);
+    topology_close(&tp);
 }
 
 IMCFREQ_F_GET_INFO(intel63)
@@ -91,7 +107,7 @@ IMCFREQ_F_READ(intel63)
             return s;
         }
         debug("U_MSR_PMON_FIXED_CTR%d: read %lu (address 0x%lx)",
-            tp.cpus[cpu].id, i[cpu].freq, address_unit_ctr);
+            tp.cpus[cpu].id, list[cpu].freq, address_unit_ctr);
         list[cpu].error = state_fail(s);
     }
     return EAR_SUCCESS;
@@ -140,14 +156,12 @@ state_t imcfreq_intel63_ext_enable_cpu(int cpu)
 {
     ullong aux;
     state_t s;
+
     debug("CPU%d: unfreezing", cpu);
-    if (state_fail(s = msr_open(cpu, MSR_WR))) {
-        debug("msr_open failed: %s", state_msg);
-        return s;
-    }
     // Get global controller configuration
     if (state_fail(s = msr_read(cpu, &aux, sizeof(ullong), address_global_ctl))) {
-        debug("U_MSR_PMON_GLOBAL_CTL%d: read failed '%s' (address 0x%lx)", cpu, state_msg, address_global_ctl);
+        debug("U_MSR_PMON_GLOBAL_CTL%d: read failed '%s' (address 0x%lx)",
+            cpu, state_msg, address_global_ctl);
         return s;
     }
     // Writting global controller configuration
@@ -161,14 +175,17 @@ state_t imcfreq_intel63_ext_enable_cpu(int cpu)
     }
     // Get unit controller configuration
     if (state_fail(s = msr_read(cpu, &aux, sizeof(ullong), address_unit_ctl))) {
-        debug("U_MSR_PMON_FIXED_CTL%d: read failed '%s' (address 0x%lx)", cpu, state_msg, address_unit_ctl);
+        debug("U_MSR_PMON_FIXED_CTL%d: read failed '%s' (address 0x%lx)",
+            cpu, state_msg, address_unit_ctl);
         return s;
     }
     // Writting unit controllar configuration
     aux = (aux & mask_unit_ctl) | command_unit_ctl;
-    debug("U_MSR_PMON_FIXED_CTL%d: writting new command 0x%llx (address 0x%lx)", cpu, aux, address_unit_ctl);
+    debug("U_MSR_PMON_FIXED_CTL%d: writting new command 0x%llx (address 0x%lx)",
+          cpu, aux, address_unit_ctl);
     if (state_fail(s = msr_write(cpu, &aux, sizeof(ullong), address_unit_ctl))) {
-        debug("U_MSR_PMON_FIXED_CTL%d: write failed '%s' (address 0x%lx)", cpu, state_msg, address_unit_ctl);
+        debug("U_MSR_PMON_FIXED_CTL%d: write failed '%s' (address 0x%lx)",
+            cpu, state_msg, address_unit_ctl);
         return s;
     }
     return EAR_SUCCESS;
