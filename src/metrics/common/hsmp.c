@@ -66,17 +66,20 @@ state_t hsmp_open(topology_t *tp, mode_t mode)
     while (pthread_mutex_trylock(&lock));
     if (api == HSMP_API_NONE) {
         if (state_fail(__hsmp_open(tp, O_RDWR))) {
-            if (state_fail(__hsmp_open(tp, O_RDONLY))) {
-                debug("no HSMP API can be opened");
-                api = HSMP_API_FAILED;
-            }
+					  if (mode == O_RDONLY) {
+                if (state_fail(__hsmp_open(tp, O_RDONLY))) {
+                    debug("no HSMP API can be opened");
+                    api = HSMP_API_FAILED;
+                }
+						}
         }
     }
     pthread_mutex_unlock(&lock);
     // Once opened or failed
     if (api == HSMP_API_FAILED) {
+			  debug("HSMP failed");
         return_msg(EAR_ERROR, "API failed previously");
-    } else if (mode == O_RDWR && api_mode != O_RDWR) {
+    } else if (mode == O_RDWR && ((api == HSMP_API_NONE) || (api_mode != O_RDWR))) {
         debug("The permissions request can be satisfied");
         return_msg(EAR_ERROR, Generr.no_permissions);
     }
@@ -101,7 +104,9 @@ state_t hsmp_close()
             debug("Tried to close HSMP, opened %d times", count);
         }
         count -= 1;
-    }
+    } else {
+			   debug("HSMP already closed");
+		}
     pthread_mutex_unlock(&lock);
     return s;
 }

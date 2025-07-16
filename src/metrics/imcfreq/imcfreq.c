@@ -36,7 +36,7 @@ void imcfreq_load(topology_t *tp, int options)
         goto dummy;
     }
     imcfreq_intel63_load(tp, &ops, options);
-    //imcfreq_amd17_load(tp, &ops, options);
+    imcfreq_amd17_load(tp, &ops, options);
     //imcfreq_eard_load(tp, &ops, options);
 dummy:
     imcfreq_dummy_load(tp, &ops, options);
@@ -250,6 +250,7 @@ reread:
 #endif
 #if TEST2
 #include <metrics/common/msr.h>
+#include <metrics/common/hsmp.h>
 
 static topology_t tp;
 
@@ -264,25 +265,11 @@ int main(int argc, char *argv[])
     hsmp_open(&tp, HSMP_RD);
     hsmp_open(&tp, HSMP_RD);
     hsmp_open(&tp, HSMP_RD);
-    hsmp_open(&tp, HSMP_RD);
-    hsmp_open(&tp, HSMP_RD);
-    hsmp_open(&tp, HSMP_RD);
-    hsmp_open(&tp, HSMP_RD);
-    hsmp_open(&tp, HSMP_RD);
-    hsmp_open(&tp, HSMP_RD);
-    hsmp_open(&tp, HSMP_RD);
-    hsmp_open(&tp, HSMP_RD);
-    hsmp_open(&tp, HSMP_RD);
-    hsmp_open(&tp, HSMP_RD);
-    hsmp_open(&tp, HSMP_RD);
-    hsmp_open(&tp, HSMP_RD);
-    hsmp_open(&tp, HSMP_RD);
-    hsmp_open(&tp, HSMP_RD);
-    hsmp_open(&tp, HSMP_RD);
-    hsmp_open(&tp, HSMP_RD);
+    hsmp_open(&tp, HSMP_WR);
     hsmp_close();
     hsmp_close();
     hsmp_close();
+    hsmp_open(&tp, HSMP_WR);
     hsmp_close();
     hsmp_close();
     hsmp_close();
