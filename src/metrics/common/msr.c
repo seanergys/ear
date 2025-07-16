@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <fcntl.h>
 #include <stdio.h>
@@ -127,6 +127,8 @@ state_t msr_open(uint cpu, mode_t mode)
     } else if (fds_count[cpu] > 0) {
         if (mode == MSR_WR && fds_mode[cpu] == MSR_RD) {
             if ((fd_aux = static_open(cpu, MSR_WR)) >= 0) {
+                debug("CPU%u: Replacing FD%d in mode %d by FD%d in mode %d",
+                    cpu, fds[cpu], fds_mode[cpu], fd_aux, mode);
                 // Replacing MSR_RD file descriptor by MSR_WR
                 close(fds[cpu]);
                 fds[cpu] = fd_aux;
@@ -137,6 +139,8 @@ state_t msr_open(uint cpu, mode_t mode)
         }
     }
     fds_count[cpu] += 1;
+    debug("CPU%u: opened FD%d MSR %d times in mode %d",
+        cpu, fds[cpu], fds_count[cpu], fds_mode[cpu]);
     return_unlock(EAR_SUCCESS, &lock_cpu[cpu]);
 }
 
@@ -147,7 +151,12 @@ state_t msr_close(uint cpu)
     }
     if (fds_count[cpu] > 0) {
         if (fds_count[cpu] == 1) {
+            debug("CPU%u: closed FD%d MSR, opened %d times, in mode %d",
+                cpu, fds[cpu], fds_count[cpu], fds_mode[cpu]);
             close(fds[cpu]);
+        } else {
+            debug("CPU%u: tried to close FD%d MSR, opened %d times, in mode %d",
+                cpu, fds[cpu], fds_count[cpu], fds_mode[cpu]);
         }
         fds_count[cpu] -= 1;
     }

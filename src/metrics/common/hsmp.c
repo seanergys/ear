@@ -8,31 +8,31 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
+#include <pthread.h>
+#include <sys/types.h>
 #include <common/output/debug.h>
 #include <common/utils/strtable.h>
 #include <metrics/common/hsmp.h>
 #include <metrics/common/hsmp_driver.h>
 #include <metrics/common/hsmp_esmi.h>
 #include <metrics/common/hsmp_pci.h>
-#include <pthread.h>
-#include <sys/types.h>
 
 #define HSMP_API_FAILED -1
-#define HSMP_API_NONE   0
-#define HSMP_API_DRIVER 1
-#define HSMP_API_ESMI   2
-#define HSMP_API_PCI    3
+#define HSMP_API_NONE    0
+#define HSMP_API_DRIVER  1
+#define HSMP_API_ESMI    2
+#define HSMP_API_PCI     3
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-static int api;
-static mode_t api_mode;
+static int             api;
+static mode_t          api_mode;
+static int             count;
 
 char *mode_str(mode_t mode)
 {
-    if (mode == O_RDWR)
-        return "O_RDWR";
+    if (mode == O_RDWR) return "O_RDWR";
     return "O_RDONLY";
 }
 
@@ -63,8 +63,7 @@ static state_t __hsmp_open(topology_t *tp, mode_t mode)
 
 state_t hsmp_open(topology_t *tp, mode_t mode)
 {
-    while (pthread_mutex_trylock(&lock))
-        ;
+    while (pthread_mutex_trylock(&lock));
     if (api == HSMP_API_NONE) {
         if (state_fail(__hsmp_open(tp, O_RDWR))) {
             if (state_fail(__hsmp_open(tp, O_RDONLY))) {
@@ -81,6 +80,8 @@ state_t hsmp_open(topology_t *tp, mode_t mode)
         debug("The permissions request can be satisfied");
         return_msg(EAR_ERROR, Generr.no_permissions);
     }
+    count += 1;
+    debug("Opened HSMP %d times in mode %d (asked %d)", count, api_mode, mode);
     return EAR_SUCCESS;
 }
 
@@ -89,10 +90,18 @@ state_t hsmp_close()
     state_t s = EAR_ERROR;
     state_msg = Generr.api_uninitialized;
     while (pthread_mutex_trylock(&lock));
-    if (api == HSMP_API_DRIVER) s = hsmp_driver_close();
-    if (api == HSMP_API_ESMI  ) s = hsmp_esmi_close();
-    if (api == HSMP_API_PCI   ) s = hsmp_pci_close();
-    api = HSMP_API_NONE;
+    if (count > 0) {
+        if (count == 1) {
+            debug("Closed HSMP, opened %d times", count);
+            if (api == HSMP_API_DRIVER) s = hsmp_driver_close();
+            if (api == HSMP_API_ESMI  ) s = hsmp_esmi_close();
+            if (api == HSMP_API_PCI   ) s = hsmp_pci_close();
+            api = HSMP_API_NONE;
+        } else {
+            debug("Tried to close HSMP, opened %d times", count);
+        }
+        count -= 1;
+    }
     pthread_mutex_unlock(&lock);
     return s;
 }

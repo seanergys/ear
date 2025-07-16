@@ -248,3 +248,46 @@ reread:
     return 0;
 }
 #endif
+#if TEST2
+#include <metrics/common/msr.h>
+
+static topology_t tp;
+
+int main(int argc, char *argv[])
+{
+    topology_init(&tp);
+    hsmp_open(&tp, HSMP_RD);
+    hsmp_open(&tp, HSMP_RD);
+    hsmp_open(&tp, HSMP_RD);
+    hsmp_open(&tp, HSMP_RD);
+    hsmp_open(&tp, HSMP_RD);
+    hsmp_open(&tp, HSMP_RD);
+    hsmp_open(&tp, HSMP_RD);
+    hsmp_open(&tp, HSMP_RD);
+    hsmp_open(&tp, HSMP_RD);
+    hsmp_open(&tp, HSMP_RD);
+    hsmp_open(&tp, HSMP_RD);
+    hsmp_open(&tp, HSMP_RD);
+    hsmp_open(&tp, HSMP_RD);
+    hsmp_open(&tp, HSMP_RD);
+    hsmp_open(&tp, HSMP_RD);
+    hsmp_open(&tp, HSMP_RD);
+    hsmp_open(&tp, HSMP_RD);
+    hsmp_open(&tp, HSMP_RD);
+    hsmp_open(&tp, HSMP_RD);
+    hsmp_open(&tp, HSMP_RD);
+    hsmp_open(&tp, HSMP_RD);
+    hsmp_open(&tp, HSMP_RD);
+    hsmp_open(&tp, HSMP_RD);
+    hsmp_open(&tp, HSMP_RD);
+    hsmp_close();
+    hsmp_close();
+    hsmp_close();
+    hsmp_close();
+    hsmp_close();
+    hsmp_close();
+    hsmp_close();
+    hsmp_close();
+    hsmp_close();
+}
+#endif

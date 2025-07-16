@@ -35,7 +35,7 @@ IMCFREQ_F_LOAD(amd17)
 
 IMCFREQ_F_UNLOAD(amd17)
 {
-    // hsmp_close();
+    hsmp_close();
 }
 
 IMCFREQ_F_GET_INFO(amd17)
