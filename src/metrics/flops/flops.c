@@ -9,36 +9,47 @@
  **************************************************************************/
 
 // #define SHOW_DEBUGS 1
-#include <common/output/debug.h>
-#include <common/system/time.h>
-#include <metrics/flops/archs/dummy.h>
-#include <metrics/flops/archs/perf.h>
-#include <metrics/flops/flops.h>
-#include <pthread.h>
+
 #include <stdio.h>
 #include <string.h>
+#include <pthread.h>
+#include <common/system/time.h>
+#include <common/output/debug.h>
+#include <metrics/flops/flops.h>
+#include <metrics/flops/archs/perf.h>
+#include <metrics/flops/archs/dummy.h>
 
 // 0       1       2      3      4      5      6      7      8
 // CPU-SP, CPU-DP, 128SP, 128DP, 256SP, 256DP, 512HP, 512SP, 512DP
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-static flops_ops_t ops;
-static uint load;
+static flops_ops_t     ops;
+static apinfo_t        info;
 
-void flops_load(topology_t *tp, int force_api)
+void flops_load(topology_t *tp, int options)
 {
-    while (pthread_mutex_trylock(&lock))
-        ;
-    if (load) {
-        goto out;
+    while (pthread_mutex_trylock(&lock));
+    if (info.api != API_NONE) {
+        goto leave;
     }
-    if (API_IS(force_api, API_DUMMY)) {
+    if (API_IS(options, API_DUMMY)) {
         goto dummy;
     }
-    flops_perf_load(tp, &ops);
+    flops_perf_load(tp, &ops, options);
 dummy:
-    flops_dummy_load(tp, &ops);
-    load = 1;
-out:
+    flops_dummy_load(tp, &ops, options);
+    flops_get_info(&info);
+leave:
+    pthread_mutex_unlock(&lock);
+}
+
+void flops_unload()
+{
+    while (pthread_mutex_trylock(&lock));
+    if (info.api != API_NONE) {
+        ops.unload();
+        memset(&ops, 0, sizeof(flops_ops_t));
+        memset(&info, 0, sizeof(apinfo_t));
+    }
     pthread_mutex_unlock(&lock);
 }
 
@@ -46,48 +57,30 @@ void flops_get_info(apinfo_t *info)
 {
     info->layer       = "FLOPS";
     info->api         = API_NONE;
-    info->devs_count  = 0;
-    info->scope       = SCOPE_PROCESS;
-    info->granularity = GRANULARITY_PROCESS;
     if (ops.get_info != NULL) {
         ops.get_info(info);
     }
 }
 
-state_t flops_init(ctx_t *c)
-{
-    while (pthread_mutex_trylock(&lock))
-        ;
-    state_t s = ops.init();
-    pthread_mutex_unlock(&lock);
-    return s;
-}
-
-state_t flops_dispose(ctx_t *c)
-{
-    load = 0;
-    return ops.dispose();
-}
-
-state_t flops_read(ctx_t *c, flops_t *fl)
+state_t flops_read(flops_t *fl)
 {
     return ops.read(fl);
 }
 
 // Helpers
-state_t flops_read_diff(ctx_t *c, flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs)
+state_t flops_read_diff(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs)
 {
     state_t s;
-    if (state_ok(s = flops_read(c, fl2))) {
+    if (state_ok(s = flops_read(fl2))) {
         flops_data_diff(fl2, fl1, flD, gfs);
     }
     return s;
 }
 
-state_t flops_read_copy(ctx_t *c, flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs)
+state_t flops_read_copy(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs)
 {
     state_t s;
-    if (state_ok(s = flops_read_diff(c, fl2, fl1, flD, gfs))) {
+    if (state_ok(s = flops_read_diff(fl2, fl1, flD, gfs))) {
         flops_data_copy(fl1, fl2);
     }
     return s;
@@ -125,8 +118,8 @@ void flops_data_accum(flops_t *flA, flops_t *flD, double *gfs)
     // flAccum
     if (flD != NULL) {
         // TODO: overflow control
-        flA->f64 += flD->f64;
-        flA->d64 += flD->d64;
+        flA->f64  += flD->f64;
+        flA->d64  += flD->d64;
         flA->f128 += flD->f128;
         flA->d128 += flD->d128;
         flA->f256 += flD->f256;
@@ -135,8 +128,11 @@ void flops_data_accum(flops_t *flA, flops_t *flD, double *gfs)
         flA->d512 += flD->d512;
         flA->secs += flD->secs;
         // Individual counters are already weigthed
-        flA->gflops =
-            (flA->f64 + flA->d64 + flA->f128 + flA->d128 + flA->f256 + flA->d256 + flA->f512 + flA->d512) / flA->secs;
+        flA->gflops = (
+            flA->f64  + flA->d64  +
+            flA->f128 + flA->d128 +
+            flA->f256 + flA->d256 +
+            flA->f512 + flA->d512) / flA->secs;
         flA->gflops /= ((double) 1E9);
     }
     if (gfs != NULL) {
@@ -176,3 +172,61 @@ ullong *flops_help_toold(flops_t *flD, ullong *flops)
     debug("flops[7]: %llu", flops[7]);
     return flops;
 }
+
+#if TEST2
+#include <time.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
+
+static topology_t tp;
+static apinfo_t   info;
+static flops_t    t1[16];
+static flops_t    t2[16];
+static flops_t    tD[16];
+static double     tA;
+static pid_t      pid;
+static int        forked;
+
+static int count_fds()
+{
+    int dummy_fd = open("/dev/null", O_RDONLY);
+    close(dummy_fd);
+    return dummy_fd;
+}
+
+int main(int argc, char *argv[])
+{
+    topology_init(&tp);
+reload:
+    dprintf(STDOUT_FILENO, "%d: Loading... (%d fds)\n", getpid(), count_fds());
+    flops_load(&tp, SCOPE_PROCESS | API_FREE);
+    flops_get_info(&info);
+    apinfo_tostr(&info);
+    dprintf(STDOUT_FILENO, "%d: Loaded %s with %d fds\n", getpid(), info.api_str, count_fds());
+reread:
+    flops_read(t1);
+    sleep(3);
+    int i, j;
+    for (i = j = 0; i < 1000000; ++i) {
+        j += 1;
+    }
+    flops_read_copy(t2, t1, tD, &tA);
+    dprintf(STDOUT_FILENO, "%d Printing...\n", getpid());
+    flops_data_print(tD, tA, STDOUT_FILENO);
+    if (!forked) {
+        sleep(1);
+        pid = fork();
+        forked = 1;
+        if (pid == 0) {
+            sleep(1);
+            dprintf(STDOUT_FILENO, "%d: Unloading...\n", getpid());
+            flops_unload();
+            goto reload;
+        }
+    }
+    goto reread;
+    return 0;
+}
+#endif

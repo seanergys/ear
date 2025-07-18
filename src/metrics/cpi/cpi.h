@@ -35,9 +35,9 @@ typedef struct cpi_ops_s {
 } cpi_ops_t;
 
 // API building scheme
-#define CPI_F_LOAD(name)     void cpi_##name##_load(topology_t *tp, cpi_ops_t *ops, int options)
-#define CPI_F_UNLOAD(name)   void cpi_##name##_unload()
-#define CPI_F_GET_INFO(name) void cpi_##name##_get_info(apinfo_t *info)
+#define CPI_F_LOAD(name)     void    cpi_##name##_load(topology_t *tp, cpi_ops_t *ops, int options)
+#define CPI_F_UNLOAD(name)   void    cpi_##name##_unload()
+#define CPI_F_GET_INFO(name) void    cpi_##name##_get_info(apinfo_t *info)
 #define CPI_F_READ(name)     state_t cpi_##name##_read(cpi_t *cpi)
 
 #define CPI_DEFINES(name)                                                                                              \

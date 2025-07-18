@@ -11,33 +11,10 @@
 #ifndef METRICS_FLOPS_H
 #define METRICS_FLOPS_H
 
-#include <common/hardware/topology.h>
-#include <common/plugins.h>
 #include <common/states.h>
+#include <common/plugins.h>
 #include <common/system/time.h>
-
-// The API
-//
-// This API is designed to get the floating point operations per second of the system.
-//
-// Props:
-//  - Thread safe: yes.
-//  - Requires root: no.
-//	- Daemon bypass: no.
-//  - Dummy API: yes.
-//
-// Compatibility:
-//  ----------------------------------------------------------------------------
-//  | Architecture    | F/M | Comp. | Granularity | Comments                   |
-//  ----------------------------------------------------------------------------
-//  | Intel HASWELL   | 63  | v     | Process     |                            |
-//  | Intel BROADWELL | 79  | v     | Process     |                            |
-//  | Intel SKYLAKE   | 85  | v     | Process     |                            |
-//  | Intel ICELAKE   | 106 | v     | Process     | It is supposed             |
-//  | AMD ZEN+/2      | 17h | v     | Process     | Counts 256 flops.          |
-//  | AMD ZEN3        | 19h | ?     | Process     | Test required.             |
-//  ---------------------------------------------------------------------------|
-//
+#include <common/hardware/topology.h>
 
 // Old style, deprecated and extinguish as soon as possible
 #define FLOPS_EVENTS 8
@@ -46,15 +23,15 @@
 #define INDEX_512F   3
 #define INDEX_512D   7
 #ifdef __ARCH_ARM
-#define WEIGHT_256F 1
-#define WEIGHT_256D 1
-#define WEIGHT_512F 1
-#define WEIGHT_512D 1
+#define WEIGHT_256F  1
+#define WEIGHT_256D  1
+#define WEIGHT_512F  1
+#define WEIGHT_512D  1
 #else
-#define WEIGHT_256F 8
-#define WEIGHT_256D 4
+#define WEIGHT_256F  8
+#define WEIGHT_256D  4
 #define WEIGHT_512F 16
-#define WEIGHT_512D 8
+#define WEIGHT_512D  8
 #endif
 
 typedef struct flops_s {
@@ -67,7 +44,6 @@ typedef struct flops_s {
     ullong f512; // 512 field is also used as MAX VECTOR LENGTH flops,
     ullong d512; // i.e. the ARM's SVE. But in the future maybe union could be.
     double gflops;
-
     union {
         timestamp_t time;
         double secs;
@@ -75,27 +51,40 @@ typedef struct flops_s {
 } flops_t;
 
 typedef struct flops_ops_s {
-    void (*get_info)(apinfo_t *info);
-    state_t (*init)();
-    state_t (*dispose)();
-    state_t (*read)(flops_t *fl);
-    void (*data_diff)(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs);
-    void (*internals_tostr)(char *buffer, int length);
+    void    (*unload)    ();
+    void    (*get_info)  (apinfo_t *info);
+    state_t (*read)      (flops_t *fl);
+    void    (*data_diff) (flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs);
+    void    (*internals_tostr) (char *buffer, int length);
 } flops_ops_t;
 
-void flops_load(topology_t *tp, int force_api);
+// API building scheme
+#define FLOPS_F_LOAD(name)      void flops_##name##_load(topology_t *tp, flops_ops_t *ops, int options)
+#define FLOPS_F_UNLOAD(name)    void flops_##name##_unload()
+#define FLOPS_F_GET_INFO(name)  void flops_##name##_get_info(apinfo_t *info)
+#define FLOPS_F_READ(name)      state_t flops_##name##_read(flops_t *fl)
+#define FLOPS_F_DATA_DIFF(name) void flops_##name##_data_diff(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs)
+#define FLOPS_F_INTERNALS_TOSTR(name) state_t flops_##name##_internals_tostr(char *buffer, int length)
+
+#define FLOPS_DEFINES(name)  \
+    FLOPS_F_LOAD(name);      \
+    FLOPS_F_UNLOAD(name);    \
+    FLOPS_F_GET_INFO(name);  \
+    FLOPS_F_READ(name);      \
+    FLOPS_F_DATA_DIFF(name); \
+    FLOPS_F_INTERNALS_TOSTR(name);
+
+void flops_load(topology_t *tp, int options);
+
+void flops_dispose();
 
 void flops_get_info(apinfo_t *info);
 
-state_t flops_init(ctx_t *c);
+state_t flops_read(flops_t *fl);
 
-state_t flops_dispose(ctx_t *c);
+state_t flops_read_diff(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs);
 
-state_t flops_read(ctx_t *c, flops_t *fl);
-
-state_t flops_read_diff(ctx_t *c, flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs);
-
-state_t flops_read_copy(ctx_t *c, flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs);
+state_t flops_read_copy(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs);
 
 void flops_data_diff(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs);
 
@@ -112,7 +101,6 @@ void flops_internals_print(int fd);
 
 void flops_internals_tostr(char *buffer, int length);
 
-// Helpers
 /* Converts a flops difference into old FLOPs array system. */
 ullong *flops_help_toold(flops_t *flD, ullong *flops);
 
