@@ -151,8 +151,10 @@ int load_libear_nonspec(char *lib_extension, char *syms[], char *libs[])
     // Loading library
     verbose(2, "LOADER: loading library '%s'", path);
     if ((libear = dlopen(path, RTLD_GLOBAL | RTLD_NOW)) == NULL) {
+        verbose(2, "LOADER: library %s failed error (%s)", path, dlerror());
         return 0;
     }
+    verbose(2, "LOADER: library %s successfuly loaded", path);
     // Announce libear is already loaded
     set_libear_loaded();
     // Constructor function call
