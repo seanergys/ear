@@ -22,12 +22,12 @@
 typedef struct perf_s {
     struct perf_event_attr attr;
     void *group;
-    int fd;
+    int    fd;
     double scale;
-    char unit[16];       // Used in files
-    char event_name[64]; // Used in files
-    char pmu_name[64];   // Used in files
-    llong aux;
+    char   unit[16];       // Used in files
+    char   event_name[64]; // Used in files
+    char   pmu_name[64];   // Used in files
+    llong  aux;
 } perf_t;
 
 /* For per-process events */
