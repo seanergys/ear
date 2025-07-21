@@ -2601,6 +2601,8 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
             case PERIODIC_MODE_OFF: {
                 switch (dynais_enabled) {
                     case DYNAIS_ENABLED: {
+// DYNAIS_ENABLED is only enabled for MPI applications
+#if MPI
                         /* First time EAR computes a signature using dynais, check_periodic_mode is set to 0 */
                         if (check_periodic_mode == 0) {
                             ear_mpi_call_dynais_on(call_type, buf, dest);
@@ -2657,6 +2659,8 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
                                 ear_mpi_call_dynais_on(call_type, buf, dest);
                             }
                         }
+
+#endif
                     } break;
                     case DYNAIS_DISABLED:
                         /** That case means we have computed some signature and we have decided to set dynais disabled
@@ -3023,7 +3027,6 @@ state_t earl_periodic_actions(void *no_arg)
 
         verbose_master(EARL_GUIDED_LVL, "%d: Phase time_guided %d dynais_guided %d period %u", my_node_id,
                        new_ear_guided == TIME_GUIDED, new_ear_guided == DYNAIS_GUIDED, lib_period);
-
 #if MPI
         if (new_ear_guided != DYNAIS_GUIDED) {
             _go_to_time_guided(new_ear_guided);
