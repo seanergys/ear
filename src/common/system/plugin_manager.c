@@ -488,6 +488,8 @@ static int plugin_manager_after_close()
             action_close();
         }
     }
+
+    return EAR_SUCCESS;
 }
 
 static state_t plugins_main(void *whatever)
