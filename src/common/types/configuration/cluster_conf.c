@@ -227,7 +227,7 @@ int get_ip_and_names_from_ranges(cluster_conf_t *my_conf, int **num_ips, int ***
 
     for (i = 0; i < my_conf->num_islands; i++) {
         for (j = 0; j < my_conf->islands[i].num_ranges; j++) {
-            range_def_t range = my_conf->islands[i].ranges[j].range;
+            range_def_t range = my_conf->islands[i].ranges[j].r_def;
             _add_ips_and_names_from_range("", &range, &aux_ips[current_range], &ip_counter[current_range],
                                           &aux_names[current_range], my_conf);
             current_range++;
@@ -322,7 +322,7 @@ int get_ip_ranges(cluster_conf_t *my_conf, int **num_ips, int ***ips)
 
     for (i = 0; i < my_conf->num_islands; i++) {
         for (j = 0; j < my_conf->islands[i].num_ranges; j++) {
-            range_def_t range = my_conf->islands[i].ranges[j].range;
+            range_def_t range = my_conf->islands[i].ranges[j].r_def;
             _add_ips_from_range("", &range, &aux_ips[current_range], &ip_counter[current_range], my_conf);
             current_range++;
         }
@@ -342,7 +342,7 @@ int get_range_ips(cluster_conf_t *my_conf, char *nodename, int **ips)
         if (range_idx < 0)
             continue;
 
-        range_def_t range = my_conf->islands[i].ranges[range_idx].range;
+        range_def_t range = my_conf->islands[i].ranges[range_idx].r_def;
 
         _add_ips_from_range("", &range, ips, &total_ips, my_conf);
         return total_ips;
