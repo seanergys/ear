@@ -49,7 +49,6 @@ static void insert_th_policy(cluster_conf_t *conf, char *token, int policy, int 
 static int set_nodes_conf(cluster_conf_t *conf, char *namelist)
 {
 
-#warning this should be cleaned up, range naming scheme sucks and range_def_t maybe should be a pointer
     conf->nodes = realloc(conf->nodes, sizeof(node_conf_t) * (conf->num_nodes + 1));
     if (conf->nodes == NULL) {
         error("NULL pointer in set_nodes_conf");
@@ -57,10 +56,10 @@ static int set_nodes_conf(cluster_conf_t *conf, char *namelist)
     }
     memset(&conf->nodes[conf->num_nodes], 0, sizeof(node_conf_t));
 
-    range_def_t *aux_range = NULL;
+    range_def_t *aux_r_def = NULL;
     int32_t range_count    = 0;
 
-    range_count = parse_range_list(namelist, &aux_range);
+    range_count = parse_range_list(namelist, &aux_r_def);
 
     for (int32_t i = 0; i < range_count; i++) {
         conf->nodes[conf->num_nodes].range = realloc(
@@ -70,7 +69,7 @@ static int set_nodes_conf(cluster_conf_t *conf, char *namelist)
             return 0;
         }
         memset(&conf->nodes[conf->num_nodes].range[conf->nodes[conf->num_nodes].range_count], 0, sizeof(node_range_t));
-        memcpy(&conf->nodes[conf->num_nodes].range[conf->nodes[conf->num_nodes].range_count].range, &aux_range[i],
+        memcpy(&conf->nodes[conf->num_nodes].range[conf->nodes[conf->num_nodes].range_count].r_def, &aux_r_def[i],
                sizeof(range_def_t));
         conf->nodes[conf->num_nodes].range_count++;
     }
@@ -90,12 +89,11 @@ static void fill_policies(cluster_conf_t *conf)
 
 void generate_node_ranges(node_island_t *island, char *nodelist)
 {
-#warning this should be cleaned up, range naming scheme sucks and range_def_t maybe should be a pointer
 
-    range_def_t *aux_range = NULL;
+    range_def_t *aux_r_def = NULL;
     int32_t range_count    = 0;
 
-    range_count = parse_range_list(nodelist, &aux_range);
+    range_count = parse_range_list(nodelist, &aux_r_def);
 
     for (int32_t i = 0; i < range_count; i++) {
         island->ranges = realloc(island->ranges, sizeof(node_range_t) * (island->num_ranges + 1));
@@ -104,7 +102,7 @@ void generate_node_ranges(node_island_t *island, char *nodelist)
             return;
         }
         memset(&island->ranges[island->num_ranges], 0, sizeof(node_range_t));
-        memcpy(&island->ranges[island->num_ranges], &aux_range[i], sizeof(range_def_t));
+        memcpy(&island->ranges[island->num_ranges], &aux_r_def[i], sizeof(range_def_t));
         island->num_ranges++;
     }
 }
