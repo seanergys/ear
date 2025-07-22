@@ -57,10 +57,8 @@ void metrics_load(metrics_info_t *m, topology_t *tp, char *nodepow_path, ullong 
         gpu_load(    MFLAG_UNZIP(mflags, MET_GPU    ));
 
     nodepow(init,&e_ctx);
-    cpufreq_init(no_ctx);
      cpupow(init,no_ctx);
      bwidth_init(no_ctx);
-      flops_init(no_ctx);
         gpu_init(no_ctx);
 
     metrics_info_get(m);
@@ -91,6 +89,7 @@ __attribute__((unused)) static void metrics_init_screen(metrics_info_t *m, topol
 
 void metrics_info_get(metrics_info_t *m)
 {
+    cpufreq_get_info(&m->cpu);
     imcfreq_get_info(&m->imc);
      bwidth_get_info(&m->ram);
       cache_get_info(&m->cch);
@@ -99,18 +98,10 @@ void metrics_info_get(metrics_info_t *m)
         cpi_get_info(&m->cpi);
         gpu_get_info(&m->gpu);
 
-    m->cpu.layer = "CPUFREQ";
     m->pow.layer = "CPUPOW";
-
-    cpufreq_get_api(&m->cpu.api);
-     cpupow(get_api,&m->pow.api);
-
-    cpufreq_count_devices(no_ctx, &m->cpu.devs_count);
-     cpupow(count_devices,no_ctx, &m->pow.devs_count);
-
-    m->cpu.scope       = SCOPE_NODE;
+    cpupow(get_api,&m->pow.api);
+    cpupow(count_devices,no_ctx, &m->pow.devs_count);
     m->pow.scope       = SCOPE_NODE;
-    m->cpu.granularity = GRANULARITY_THREAD;
     m->pow.granularity = GRANULARITY_SOCKET;
 
     apinfo_tostr(&m->cpu);
@@ -222,12 +213,12 @@ void metrics_read(metrics_read_t *mr)
     mr->samples += 1;
 
     nodepow_read(         mr->nod);
-    cpufreq_read(no_ctx,  mr->cpu);
+    cpufreq_read(         mr->cpu);
     imcfreq_read(         mr->imc);
      cpupow(read,no_ctx,  mr->pow);
      bwidth_read(no_ctx,  mr->ram);
       cache_read(        &mr->cch);
-      flops_read(no_ctx, &mr->flp);
+      flops_read(        &mr->flp);
        temp_read(         mr->tmp, NULL);
         cpi_read(        &mr->cpi);
         gpu_read(no_ctx,  mr->gpu);

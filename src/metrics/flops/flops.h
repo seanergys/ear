@@ -76,7 +76,7 @@ typedef struct flops_ops_s {
 
 void flops_load(topology_t *tp, int options);
 
-void flops_dispose();
+void flops_unload();
 
 void flops_get_info(apinfo_t *info);
 

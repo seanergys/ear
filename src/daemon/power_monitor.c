@@ -931,11 +931,12 @@ void powermon_new_configuration()
 
 state_t powermon_create_idle_context()
 {
-    job_id jid = 0, sid = 0;
-    uint ID;
-    int cc = 0;
     powermon_app_t *pmapp;
     char shmem_path[GENERIC_NAME];
+    job_id jid = 0, sid = 0;
+    apinfo_t info;
+    int cc = 0;
+    uint ID;
 
     verbose(VJOBPMON, "Creating idle context");
     current_ear_app[cc] = calloc(1, sizeof(powermon_app_t));
@@ -951,9 +952,10 @@ state_t powermon_create_idle_context()
     pmapp->app.job.id      = jid;
     pmapp->app.job.step_id = sid;
 
+    cpufreq_get_info(&info);
+    freq_count = info.devs_count;
     cpufreq_data_alloc(&pmapp->freq_job1, &pmapp->freq_diff);
     cpufreq_data_alloc(&freq_job2, NULL);
-    cpufreq_count_devices(no_ctx, &freq_count);
 
     ID = create_ID(jid, sid);
 
@@ -1117,7 +1119,7 @@ void job_init_powermon_app(powermon_app_t *pmapp, ehandler_t *ceh, application_t
     copy_energy_data(&pmapp->energy_init, &c_energy);
 
     // CPU Frequency
-    state_assert(s, cpufreq_read(no_ctx, pmapp->freq_job1), );
+    state_assert(s, cpufreq_read(pmapp->freq_job1), );
 
     verbose(VJOBPMON, "job_init_powermon_app end %lu/%lu is_mpi %d", pmapp->app.job.id, pmapp->app.job.step_id,
             pmapp->app.is_mpi);
@@ -1174,7 +1176,7 @@ void job_end_powermon_app(powermon_app_t *pmapp, ehandler_t *ceh)
         pmapp->app.power_sig.PCK_power  = accum_cpu_power(&app_power);
         // CPU Frequency
         state_assert(
-            s, cpufreq_read_diff(no_ctx, freq_job2, pmapp->freq_job1, pmapp->freq_diff, &pmapp->app.power_sig.avg_f), );
+            s, cpufreq_read_diff(freq_job2, pmapp->freq_job1, pmapp->freq_diff, &pmapp->app.power_sig.avg_f), );
         ulong lcpus;
         if (pmapp->app.is_mpi) {
             pstate_freqtoavg(pmapp->app_info->node_mask, pmapp->freq_diff, freq_count, &pmapp->app.power_sig.avg_f,

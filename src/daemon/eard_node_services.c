@@ -105,7 +105,6 @@ static wide_buffer_t wb;
 manages_info_t man;
 metrics_info_t met;
 static metrics_read_t met_read;
-static metrics_t uc; // Obsolete, use metrics_info_t and metrics_read_t
 static metrics_t ub; // Obsolete, use metrics_info_t and metrics_read_t
 static metrics_t ug; // Obsolete, use metrics_info_t and metrics_read_t
 
@@ -134,31 +133,29 @@ void services_init(topology_t *tp)
     gpu_load(NO_EARD);
 #endif
 
+    cpufreq_get_info(&met.cpu);
     imcfreq_get_info(&met.imc);
        temp_get_info(&met.tmp);
 
-    cpufreq_get_api((uint *) &uc.api);
-     bwidth_get_api((uint *) &ub.api);
+    bwidth_get_api((uint *) &ub.api);
 #if USE_GPUS
-        gpu_get_api((uint *) &ug.api);
+    gpu_get_api((uint *) &ug.api);
 #endif
 
-    sf(cpufreq_init(no_ctx));
-     sf(bwidth_init(no_ctx));
+    sf(bwidth_init(no_ctx));
 #if USE_GPUS
-        sf(gpu_init(no_ctx));
+    sf(gpu_init(no_ctx));
 #endif
 
-    sf(cpufreq_count_devices(no_ctx, &uc.devs_count));
-        bwidth_count_devices(no_ctx, &ub.devs_count);
+    bwidth_count_devices(no_ctx, &ub.devs_count);
 #if USE_GPUS
     gpu_get_devices((gpu_devs_t **) &ug.avail_list, &ug.devs_count);
 #endif
 
-    sf(cpufreq_data_alloc((cpufreq_t **) &uc.current_list, empty));
-       imcfreq_data_alloc((imcfreq_t **) &met_read.imc   , empty);
-        bwidth_data_alloc((bwidth_t  **) &ub.current_list);
-          temp_data_alloc(&met_read.tmp);
+    cpufreq_data_alloc((cpufreq_t **) &met_read.cpu, empty);
+    imcfreq_data_alloc((imcfreq_t **) &met_read.imc, empty);
+     bwidth_data_alloc((bwidth_t  **) &ub.current_list);
+       temp_data_alloc(&met_read.tmp);
 #if USE_GPUS
     gpu_data_alloc(&eard_read_gpu);
 #endif
@@ -662,20 +659,19 @@ int services_met_cpufreq(eard_head_t *head, int req_fd, int ack_fd)
     verbose(VEARD_LAPI_DEBUG, "EARD met cpufreq");
     switch (call) {
         case RPC_MET_CPUFREQ_GET_API:
-            data = (char *) &uc.api;
+            data = (char *) &met.cpu.api;
             size = sizeof(uint);
             break;
         case RPC_MET_CPUFREQ_GET_CURRENT:
-            if (state_fail(s = cpufreq_read(no_ctx, (cpufreq_t *) uc.current_list))) {
+            if (state_fail(s = cpufreq_read((cpufreq_t *) met_read.cpu))) {
                 serror("Could not get cpu frequency (aperf)");
             }
-            data = (char *) uc.current_list;
-            size = sizeof(cpufreq_t) * uc.devs_count;
+            data = (char *) met_read.cpu;
+            size = sizeof(cpufreq_t) * met.cpu.devs_count;
             break;
         default:
             return 0;
     }
-
     // Always answering (if s != SUCCESS the error message is sent)
     if (state_fail(eard_rpc_answer(ack_fd, call, s, data, size, state_msg))) {
         serror("RPC answer failed");

@@ -79,20 +79,21 @@ int init_node_metrics(nm_t *id, topology_t *topo, ulong def_freq)
 
 int init_node_metrics_data(nm_t *id, nm_data_t *nm)
 {
+    apinfo_t cpu_info = {0};
     apinfo_t imc_info = {0};
 
     if ((id == NULL) || (nm == NULL)) {
         debug("init_node_metrics_data invalid argument\n");
         return EAR_ERROR;
     }
-    cpufreq_count_devices(no_ctx, &nm->freq_cpu_count);
-
+    cpufreq_get_info(&cpu_info);
     imcfreq_get_info(&imc_info);
 
     cpufreq_data_alloc(&nm->freq_cpu, &nm->freq_cpu_diff);
     imcfreq_data_alloc(&nm->freq_imc, NULL);
        temp_data_alloc(&nm->temp);
 
+    nm->freq_cpu_count = cpu_info.devs_count;
     nm->freq_imc_count = imc_info.devs_count;
     nm->avg_cpu_freq   = 0;
     nm->avg_imc_freq   = 0;
@@ -109,8 +110,8 @@ int start_compute_node_metrics(nm_t *id, nm_data_t *nm)
     }
 
     // CPU/IMC Frequency
-    state_assert(s, cpufreq_read(no_ctx, nm->freq_cpu), );
-    state_assert(s, imcfreq_read(        nm->freq_imc), );
+    state_assert(s, cpufreq_read(nm->freq_cpu), );
+    state_assert(s, imcfreq_read(nm->freq_imc), );
 
     return EAR_SUCCESS;
 }
@@ -128,8 +129,8 @@ int end_compute_node_metrics(nm_t *id, nm_data_t *nm)
     state_assert(s, temp_read(nm->temp, &nm->avg_temp), );
 
     // CPU/IMC Frequency
-    state_assert(s, cpufreq_read(no_ctx, nm->freq_cpu), );
-    state_assert(s, imcfreq_read(        nm->freq_imc), );
+    state_assert(s, cpufreq_read(nm->freq_cpu), );
+    state_assert(s, imcfreq_read(nm->freq_imc), );
 
     return EAR_SUCCESS;
 }

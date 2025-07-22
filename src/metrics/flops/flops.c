@@ -55,8 +55,9 @@ void flops_unload()
 
 void flops_get_info(apinfo_t *info)
 {
-    info->layer       = "FLOPS";
-    info->api         = API_NONE;
+    memset(info, 0, sizeof(apinfo_t));
+    info->layer = "FLOPS";
+    info->api   = API_NONE;
     if (ops.get_info != NULL) {
         ops.get_info(info);
     }

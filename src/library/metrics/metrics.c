@@ -475,45 +475,36 @@ void metrics_lib_reset()
 {
     cpi_unload();
     cache_unload();
-    flops_dispose(no_ctx);
+    flops_unload();
 }
 
 static void metrics_static_init(topology_t *tp)
 {
     char buffer[SZ_BUFFER_EXTRA];
 
-#define sa(function) function;
+    #define sa(function) function;
 
     master = (masters_info.my_master_rank >= 0);
     eard   = ((master) ? API_EARD : NO_EARD);
     // Load
     debug("mgt_cpufreq_load");
     sa(mgt_cpufreq_load(tp, API_EARD));
-
     debug("mgt_imcfreq_load");
     sa(mgt_imcfreq_load(tp, eard, NULL));
-
     debug("temperature load");
     sa(temp_load(tp, eard));
-
     debug("energy_cpu_load");
     sa(energy_cpu_load(tp, eard));
-
     debug("cpufreq_load");
     sa(cpufreq_load(tp, eard));
-
     debug("imcfreq_load");
     sa(imcfreq_load(tp, eard));
-
     debug("bwidth_load");
     sa(bwidth_load(tp, eard));
-
     debug("flops_load");
     sa(flops_load(tp, eard));
-
     debug("cache_load");
     sa(cache_load(tp, eard));
-
     debug("cpi_load");
     sa(cpi_load(tp, eard));
     sa(mgt_cpuprio_load(tp, eard));
@@ -550,19 +541,19 @@ static void metrics_static_init(topology_t *tp)
 
     debug("proc_stat_init");
     metric_cond(proc_ps_ok, proc_stat_init(&proc_ctx, getpid()), VERB_PROCPS, "EARL proc_stat_init failed");
-
 #endif // USE_GPUS
     debug("metics_load ready");
     frequency_init(1);
     debug("Asking for APIS");
+
     // Get API
     sa(mgt_cpufreq_get_api(&mgt_cpufreq.api));
     sa(mgt_imcfreq_get_api(&mgt_imcfreq.api));
     sa(mgt_cpuprio_get_api(&mgt_cpuprio.api));
      sa(energy_cpu_get_api(&met_energy.api));
-        sa(cpufreq_get_api(&met_cpufreq.api));
          sa(bwidth_get_api(&met_bwidth.api));
 
+    cpufreq_get_info(&met_cpufreq);
     imcfreq_get_info(&met_imcfreq);
       flops_get_info(&met_flops);
        temp_get_info(&met_temp );
@@ -592,15 +583,15 @@ static void metrics_static_init(topology_t *tp)
     // Working
     mgt_cpufreq.ok = (mgt_cpufreq.api > API_DUMMY);
     mgt_imcfreq.ok = (mgt_imcfreq.api > API_DUMMY);
-    met_temp.ok    = (met_temp.api > API_DUMMY);
-    met_cpufreq.ok = (met_cpufreq.api > API_DUMMY);
     mgt_cpuprio.ok = (mgt_cpuprio.api > API_DUMMY);
+    met_cpufreq.ok = (met_cpufreq.api > API_DUMMY);
     met_imcfreq.ok = (met_imcfreq.api > API_DUMMY);
-    met_bwidth.ok  = (met_bwidth.api > API_DUMMY);
-    met_energy.ok  = (met_energy.api > API_DUMMY);
+    met_bwidth.ok  = (met_bwidth.api  > API_DUMMY);
+    met_energy.ok  = (met_energy.api  > API_DUMMY);
     met_cache.ok   = 1;
     met_flops.ok   = 1;
-    met_cpi.ok     = (met_cpi.api > API_DUMMY);
+    met_temp.ok    = (met_temp.api    > API_DUMMY);
+    met_cpi.ok     = (met_cpi.api     > API_DUMMY);
 
 #if USE_GPUS
     mgt_gpu.ok = (mgt_gpu.api > API_DUMMY);
@@ -640,9 +631,7 @@ static void metrics_static_init(topology_t *tp)
     // Init
     sa(mgt_cpufreq_init(no_ctx));
     sa(energy_cpu_init(no_ctx));
-    sa(cpufreq_init(no_ctx));
     sa(bwidth_init(no_ctx));
-    sa(flops_init(no_ctx));
     sa(mgt_cpuprio_init());
 
 #if USE_GPUS
@@ -660,9 +649,9 @@ static void metrics_static_init(topology_t *tp)
     // Count
     sa(mgt_cpufreq_count_devices(no_ctx, &mgt_cpufreq.devs_count));
     sa(mgt_imcfreq_count_devices(no_ctx, &mgt_imcfreq.devs_count));
-    sa(energy_cpu_count_devices(no_ctx, &met_energy.devs_count));
-    sa(cpufreq_count_devices(no_ctx, &met_cpufreq.devs_count));
-    sa(bwidth_count_devices(no_ctx, &met_bwidth.devs_count));
+     sa(energy_cpu_count_devices(no_ctx, &met_energy.devs_count));
+         sa(bwidth_count_devices(no_ctx, &met_bwidth.devs_count));
+
 #if USE_GPUS
     sa(mgt_gpu_count_devices(no_ctx, &mgt_gpu.devs_count));
     sa(gpu_count_devices(no_ctx, &met_gpu.devs_count));
@@ -719,11 +708,11 @@ static void metrics_static_init(topology_t *tp)
         apis_print(mgt_cpuprio.api, "MGT_PRIO   : ");
         apis_print(met_cpufreq.api, "MET_CPUFREQ: ");
         apis_print(met_imcfreq.api, "MET_IMCFREQ: ");
-        apis_print(met_energy.api, "MET_ENERGY : ");
-        apis_print(met_temp.api, "MET_TEMP:    ");
-        apis_print(met_bwidth.api, "MET_BWIDTH : ");
-        apis_print(met_flops.api, "MET_FLOPS  : ");
-        apis_print(met_cpi.api, "MET_CPI    : ");
+        apis_print(met_energy.api , "MET_ENERGY : ");
+        apis_print(met_bwidth.api , "MET_BWIDTH : ");
+        apis_print(met_flops.api  , "MET_FLOPS  : ");
+        apis_print(met_temp.api   , "MET_TEMP:    ");
+        apis_print(met_cpi.api    , "MET_CPI    : ");
 #if USE_GPUS
         apis_print(mgt_gpu.api, "MGT_GPU    : ");
         apis_print(met_gpu.api, "MET_GPU    : ");
@@ -867,7 +856,7 @@ static void metrics_global_start()
 
     if (master) {
         /* Avg CPU freq */
-        if (state_fail(s = cpufreq_read(no_ctx, cpufreq_read1[APP]))) {
+        if (state_fail(s = cpufreq_read(cpufreq_read1[APP]))) {
             debug("CPUFreq data read in global_start");
         }
         /* To be used in partial_start */
@@ -953,7 +942,7 @@ static void metrics_global_start()
     /* To be used in partial_start */
     bwidth_data_copy(bwidth_read2[LOO], bwidth_read1[APP]);
 
-    flops_read(no_ctx, &flops_read1[APP]);
+    flops_read(&flops_read1[APP]);
     debug("flops_read ready");
     /* To be used in partial_start */
     flops_data_copy(&flops_read2[LOO], &flops_read1[APP]);
@@ -1007,16 +996,10 @@ static void metrics_global_stop()
         }
 
         /* Avg CPU frequency */
-        if (state_fail(s = cpufreq_read(no_ctx, cpufreq_read2[APP]))) {
+        if (state_fail(s = cpufreq_read(cpufreq_read2[APP]))) {
             verbose_warning("cpufreq data read failed in global_stop.");
         }
-        if (state_fail(
-                s = cpufreq_data_diff(cpufreq_read2[APP], cpufreq_read1[APP], cpufreq_diff, &cpufreq_avrg[APP]))) {
-            verbose_warning("cpufreq data diff failed in global_stop.");
-        } else {
-            verbose(3, "%sINFO%s CPUFreq average for the application is %.2fGHz.", COL_BLU, COL_CLR,
-                    (float) cpufreq_avrg[APP] / 1000000.0);
-        }
+        cpufreq_data_diff(cpufreq_read2[APP], cpufreq_read1[APP], cpufreq_diff, &cpufreq_avrg[APP]);
 
         cpufreq_my_avgcpufreq(cpufreq_diff, &cpufreq_avrg[APP]);
 
@@ -1119,7 +1102,7 @@ static void metrics_global_stop()
     bwidth_read_diff(no_ctx, bwidth_read2[APP], bwidth_read1[APP], NULL, &bwidth_cas[APP], NULL);
     if (master)
         lib_shared_region->cas_counters = bwidth_cas[APP];
-    flops_read_diff(no_ctx, &flops_read2[APP], &flops_read1[APP], NULL, NULL);
+    flops_read_diff(&flops_read2[APP], &flops_read1[APP], NULL, NULL);
     cache_read_diff(&cache_read2[APP], &cache_read1[APP], &cache_diff[APP], &cache_bwidth[APP]);
     cpi_read_diff(&cpi_read2[APP], &cpi_read1[APP], &cpi_diff[APP], &cpi_avrg[APP]);
 
@@ -1400,20 +1383,14 @@ static int metrics_partial_stop(uint where)
 #endif
 
         /* Avg CPU freq */
-        if (state_fail(s = cpufreq_read(no_ctx, cpufreq_read2[LOO]))) {
+        if (state_fail(s = cpufreq_read(cpufreq_read2[LOO]))) {
             verbose_warning_master("CPUFreq data read in partial stop failed.");
         }
 
 #if METRICS_OVH
         overhead_stop(id_ovh_cpufreq);
 #endif
-
-        if (xtate_fail(s,
-                       cpufreq_data_diff(cpufreq_read2[LOO], cpufreq_read1[LOO], cpufreq_diff, &cpufreq_avrg[LOO]))) {
-            verbose_warning_master("CPUFreq data diff failed");
-        } else {
-            // verbose_master(1, "CPUFreq average is %.2f GHz", (float) cpufreq_avrg[LOO] / 1000000.0);
-        }
+        cpufreq_data_diff(cpufreq_read2[LOO], cpufreq_read1[LOO], cpufreq_diff, &cpufreq_avrg[LOO]);
         // Simple verbose
         if (verb_level >= 3) {
             for (int cpu = 0; cpu < mtopo.cpu_count; cpu++) {
@@ -1472,7 +1449,7 @@ static int metrics_partial_stop(uint where)
     bwidth_read_diff(no_ctx, bwidth_read2[LOO], bwidth_read1[LOO], bwidth_diff[LOO], &bwidth_cas[LOO], NULL);
     if (master)
         lib_shared_region->cas_counters = bwidth_cas[LOO];
-    flops_read_diff(no_ctx, &flops_read2[LOO], &flops_read1[LOO], &flops_diff[LOO], NULL);
+    flops_read_diff(&flops_read2[LOO], &flops_read1[LOO], &flops_diff[LOO], NULL);
     cache_read_diff(&cache_read2[LOO], &cache_read1[LOO], &cache_diff[LOO], &cache_bwidth[LOO]);
     cpi_read_diff(&cpi_read2[LOO], &cpi_read1[LOO], &cpi_diff[LOO], &cpi_avrg[LOO]);
 
@@ -2741,7 +2718,7 @@ state_t metrics_new_iteration(signature_t *sig)
 
         /* FLOPS are used to determine the CPU BUSY waiting
          *  WARNING: Currently below code won't be executed never. */
-        flops_read_diff(no_ctx, &flops_read2[LOO], &flops_read1[LOO], &flops_diff[LOO], &sig->Gflops);
+        flops_read_diff(&flops_read2[LOO], &flops_read1[LOO], &flops_diff[LOO], &sig->Gflops);
         flops_help_toold(&flops_diff[LOO], sig->FLOPS);
 
         sig->time = elap_sec;
