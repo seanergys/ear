@@ -34,8 +34,8 @@
 
 
 
-static ulong current_gpu_pc=0;
-static ulong default_gpu_pc=0;
+static ulong current_gpu_pc = POWER_CAP_UNLIMITED;
+static ulong default_gpu_pc = POWER_CAP_UNLIMITED;
 static uint gpu_pc_enabled=0;
 static uint c_status=PC_STATUS_IDLE;
 static uint c_mode=PC_MODE_LIMIT;
@@ -467,43 +467,43 @@ uint get_powercap_status(domain_status_t *status)
 	tmp_stress /= used;
 	status->stress = tmp_stress;
 
-	/* If we know, we must check */
-	status->ok = PC_STATUS_RELEASE;
-	status->exceed = 0;
-	for (i=0;i<gpu_pc_num_gpus;i++){
-		/* gpu_pc_util is an average during a period , is more confident than an instantaneous measure*/
-		if ((t_freq[i] > gpu_freq[i]) && (gpu_pc_util[i]>0)){ 
-			//debug("We cannot release power from GPU %d",i);
-			if (c_status == PC_STATUS_RELEASE) {
-				debug("GPU status ASK_DEF, current_pc %lu and def_pc %lu", current_gpu_pc, default_gpu_pc);
-				status->ok = PC_STATUS_ASK_DEF;
-			} else {
-				status->requested += ear_max(gpu_freq_to_pstate(i,t_freq[i]) - gpu_freq_to_pstate(i,gpu_freq[i]),0);
-				status->ok = PC_STATUS_GREEDY;
-			}
-			status->exceed = 0;
-			return 0;
-		}else{
-			if (gpu_cons_power[i] > gpu_pc_curr_power[i])  //if we are at req_f but using more power than we should
-			{
-				status->ok = PC_STATUS_GREEDY;
-				status->requested += ear_max(gpu_freq_to_pstate(i,t_freq[i]) - gpu_freq_to_pstate(i,gpu_freq[i]),0);
-				status->exceed = 0;
-				debug("GPU status is greedy because more power is needed to mantain current speed");
-				return 0;
-			}
-			/* However we use instanteneous power to compute potential power releases */
-			g_tbr = (uint)((gpu_pc_curr_power[i] - gpu_cons_power[i]) *0.5);
-			status->exceed = status->exceed + g_tbr;
-			//debug("%sWe can release %u W from GPU %d since target = %lu current %lu%s",COL_GRE,g_tbr,i,t_freq[i] ,gpu_pc_freqs[i],COL_CLR);
-		}
-	}
-	if (status->exceed < MIN_GPU_POWER_MARGIN){ 
-		status->exceed = 0;
-		status->ok = PC_STATUS_OK;
-		return 0;
-	}
-	return 1;
+    /* If we know, we must check */
+    status->ok = PC_STATUS_RELEASE;
+    status->exceed = 0;
+    for (i=0;i<gpu_pc_num_gpus;i++){
+        /* gpu_pc_util is an average during a period , is more confident than an instantaneous measure*/
+        if (tmp_stress && (t_freq[i] > gpu_freq[i]) && (gpu_pc_util[i]>0)){
+            //debug("We cannot release power from GPU %d",i);
+            if (c_status == PC_STATUS_RELEASE) {
+                debug("GPU status ASK_DEF, current_pc %lu and def_pc %lu", current_gpu_pc, default_gpu_pc);
+                status->ok = PC_STATUS_ASK_DEF;
+            } else {
+                status->requested += ear_max(gpu_freq_to_pstate(i,t_freq[i]) - gpu_freq_to_pstate(i,gpu_freq[i]),0);
+                status->ok = PC_STATUS_GREEDY;
+            }
+            status->exceed = 0;
+            return 0;
+        }else{
+            if (gpu_cons_power[i] > gpu_pc_curr_power[i])  //if we are at req_f but using more power than we should
+            {
+                status->ok = PC_STATUS_GREEDY;
+                status->requested += ear_max(gpu_freq_to_pstate(i,t_freq[i]) - gpu_freq_to_pstate(i,gpu_freq[i]),0);
+                status->exceed = 0;
+                debug("GPU status is greedy because more power is needed to mantain current speed");
+                return 0;
+            }
+            /* However we use instanteneous power to compute potential power releases */
+            g_tbr = (uint)((gpu_pc_curr_power[i] - gpu_cons_power[i]) *0.5);
+            status->exceed = status->exceed + g_tbr;
+            //debug("%sWe can release %u W from GPU %d since target = %lu current %lu%s",COL_GRE,g_tbr,i,t_freq[i] ,gpu_pc_freqs[i],COL_CLR);
+        }
+    }
+    if (status->exceed < MIN_GPU_POWER_MARGIN){ 
+        status->exceed = 0;
+        status->ok = PC_STATUS_OK;
+        return 0;
+    }
+    return 1;
 
 }
 
