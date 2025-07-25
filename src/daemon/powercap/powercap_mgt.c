@@ -1119,12 +1119,12 @@ static uint pmgt_powercap_status_per_domain(uint action)
                   cdomain_status[from].exceed, from, to, 
                   cdomain_status[from].current_pc, cdomain_status[to].current_pc, 
                   new_power_send, new_power_recv);
-            ret=freturn(pcsyms_fun[from].set_powercap_value, 0, LEVEL_DOMAIN, &new_power_send, current_util[from]); /* Receives less power than before */
+            ret=freturn(pcsyms_fun[from].set_powercap_value, 0, from, new_power_send, current_util[from]); /* Receives less power than before */
             if (ret == EAR_ERROR) {
                 debug("error setting powercap value");
                 break;
             }
-            ret=freturn(pcsyms_fun[to].set_powercap_value, 0, LEVEL_DOMAIN, &new_power_recv, current_util[to]); /* Receives more power that before */
+            ret=freturn(pcsyms_fun[to].set_powercap_value, 0, from, new_power_recv, current_util[to]); /* Receives more power that before */
             if (ret == EAR_ERROR) debug("error setting powercap value");
             break;
         case 2:
@@ -1132,12 +1132,12 @@ static uint pmgt_powercap_status_per_domain(uint action)
             new_power_recv = cdomain_status[to].current_pc + cdomain_status[from].exceed;
             debug("%u Watts have been moved from domain %u to domain %u. Previous values from %u to %u. New values from: %u to %u",
                     cdomain_status[from].exceed, from, to, cdomain_status[from].current_pc, cdomain_status[to].current_pc, new_power_send, new_power_recv);
-            ret=freturn(pcsyms_fun[from].set_powercap_value, 0, LEVEL_DOMAIN, &new_power_send, current_util[from]); /* Receives less power than before */
+            ret=freturn(pcsyms_fun[from].set_powercap_value, 0, from, new_power_send, current_util[from]); /* Receives less power than before */
             if (ret == EAR_ERROR) {
                 debug("error setting powercap value");
                 break;
             }
-            ret=freturn(pcsyms_fun[to].set_powercap_value, 0, LEVEL_DOMAIN, &new_power_recv, current_util[to]); /* Receives more power that before */
+            ret=freturn(pcsyms_fun[to].set_powercap_value, 0, from, new_power_recv, current_util[to]); /* Receives more power that before */
             if (ret == EAR_ERROR) debug("error setting powercap value");
             break;
     }
