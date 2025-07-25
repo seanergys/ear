@@ -160,7 +160,7 @@ static state_t _set_per_device_powercap_value(uint pid, uint32_t *limit, uint32_
         debug("power assigned to cpu%d: %u", i, cpu_power[i]);
     }
     state_t ret = EAR_ERROR;
-    ret = mgt_cpupow_powercap_set(CPUPOW_SOCKET, cpu_power);
+    ret         = mgt_cpupow_powercap_set(CPUPOW_SOCKET, cpu_power);
     if (ret == EAR_ERROR) {
         debug("error setting CPU powercap");
     }
@@ -171,7 +171,8 @@ static state_t _set_per_device_powercap_value(uint pid, uint32_t *limit, uint32_
 static state_t _set_single_powercap_value(uint pid, uint32_t limit, uint32_t *cpu_util)
 {
     debug("setting powercap %u", limit);
-    if (limit == current_limit) return EAR_SUCCESS;
+    if (limit == current_limit)
+        return EAR_SUCCESS;
 
     if (limit == POWER_CAP_UNLIMITED) {
         mgt_cpupow_powercap_reset(CPUPOW_DRAM, RESET_DEFAULT);
@@ -186,6 +187,7 @@ static state_t _set_single_powercap_value(uint pid, uint32_t limit, uint32_t *cp
         dram_power[i] = (limit * dram_weight) / num_dram;
         debug("power assigned to dram%d: %u", i, dram_power[i]);
     }
+
     state_t ret = mgt_cpupow_powercap_set(CPUPOW_SOCKET, cpu_power);
     if (ret == EAR_ERROR) {
         debug("error setting CPU powercap");
@@ -202,10 +204,12 @@ static state_t _set_single_powercap_value(uint pid, uint32_t limit, uint32_t *cp
 
 state_t set_powercap_value(uint pid, uint32_t domain, uint32_t *limit, uint32_t *cpu_util)
 {
-    pc_on=1;
+    pc_on = 1;
 
-	if (domain == LEVEL_NODE || domain == LEVEL_DOMAIN) return _set_single_powercap_value(pid, *limit, cpu_util);
-	else return _set_per_device_powercap_value(pid, limit, cpu_util);
+    if (domain == LEVEL_DEVICE)
+        return _set_per_device_powercap_value(pid, limit, cpu_util);
+    else
+        return _set_single_powercap_value(pid, *limit, cpu_util);
 }
 
 state_t get_powercap_value(uint pid, uint *powercap)
