@@ -216,7 +216,7 @@ void metrics_read(metrics_read_t *mr)
     cpufreq_read(         mr->cpu);
     imcfreq_read(         mr->imc);
      cpupow(read,no_ctx,  mr->pow);
-     bwidth_read(no_ctx,  mr->ram);
+     bwidth_read(         mr->ram);
       cache_read(        &mr->cch);
       flops_read(        &mr->flp);
        temp_read(         mr->tmp, NULL);

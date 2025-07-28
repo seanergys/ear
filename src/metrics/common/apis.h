@@ -82,27 +82,35 @@ typedef struct ctx_s {
 
 typedef struct apinfo_s {
     char *layer;
-    uint api;
-    uint api_under;
-    uint ok;
+    uint  api;
+    uint  api_under; // API used by EAR DAEMON
+    uint ok; // Obsolete value, future union?
     char *api_str;
-    uint devs_count;
-    uint granularity;
+    uint  devs_count;
+    uint  granularity;
     char *granularity_str;
-    uint scope;
+    uint  scope;
     char *scope_str;
-    uint bits; // Unused
-    uint dev_model;
-    void *list1; // From here, this can be converted to union for other purposes
-    void *list2;
+    uint  bits; // Unused
+    uint  dev_model;
+    union {
+        void *list1;
+        void *avail_list;
+    };
+    union {
+        void *list2;
+        void *current_list;
+    };
     void *list3;
-    uint list1_count;
-    uint list2_count;
+    union {
+        uint list1_count;
+        uint avail_count;
+    };
+    union {
+        uint list2_count;
+        uint current_count;
+    };
     uint list3_count;
-    void *avail_list;
-    uint avail_count;
-    void *current_list;
-    void *set_list;
 } apinfo_t;
 
 #define metrics_t apinfo_t
@@ -138,7 +146,7 @@ typedef struct metrics_gpus_s {
 #define apis_loaded(ops) (ops->init != NULL)
 
 /* Verbose "if not loaded" */
-#define apis_not(ops) (ops->init == NULL)
+#define api_already_loaded(ops) (ops->read != NULL)
 
 /* Adds a new function to an array. */
 #define apis_add(ops, func) apis_append((void **) ops, func);

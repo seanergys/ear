@@ -14,53 +14,49 @@
 #include <metrics/bandwidth/archs/bypass.h>
 #include <metrics/cache/cache.h>
 
-static uint devs_count;
-static uint cpus_count;
+static apinfo_t info;
 
-state_t bwidth_bypass_load(topology_t *tp, bwidth_ops_t *ops)
+BWIDTH_F_LOAD(bypass)
 {
-    return EAR_ERROR;
-#if 0 
-	state_t s;
+    // Disabled by now (reason?)
+    #if 1
+    return;
+    #endif
+    // If an API is already loaded we must avoid loading cache API.
+    if (ops->read != NULL) {
+        return;
+    }
 	// Pending: test if is something loaded
-	if (state_fail(s = cache_load(tp, NO_EARD))) {
-		return s;
-	}
-#endif
-    cpus_count = tp->cpu_count;
-    devs_count = 1;
-    // It is shared by all Intel's architecture from Haswell to Skylake
-    // In the future it can be initialized in read only mode
-    replace_ops(ops->init, bwidth_bypass_init);
-    replace_ops(ops->dispose, bwidth_bypass_dispose);
-    replace_ops(ops->count_devices, bwidth_bypass_count_devices);
-    replace_ops(ops->read, bwidth_bypass_read);
-
-    return EAR_SUCCESS;
+	cache_load(tp, options);
+    cache_get_info(&info);
+    apis_put(ops->unload  , bwidth_bypass_unload);
+    apis_put(ops->get_info, bwidth_bypass_get_info);
+    apis_put(ops->read    , bwidth_bypass_read);
 }
 
-state_t bwidth_bypass_init(ctx_t *c)
+BWIDTH_F_UNLOAD(bypass)
 {
-    return EAR_SUCCESS;
+    // Closing and API could be problematic if is used in other places.
+    // cache_close();
 }
 
-state_t bwidth_bypass_dispose(ctx_t *c)
+BWIDTH_F_GET_INFO(bypass)
 {
-    return EAR_SUCCESS;
+    info->api         = API_AMD17;
+    info->scope       = info->scope;
+    info->granularity = info->granularity;
+    info->devs_count  = info->devs_count + 1;
 }
 
-state_t bwidth_bypass_count_devices(ctx_t *c, uint *devs_count_in)
-{
-    *devs_count_in = devs_count + 1;
-    return EAR_SUCCESS;
-}
-
-state_t bwidth_bypass_read(ctx_t *c, bwidth_t *bw)
+BWIDTH_F_READ(bypass)
 {
     cache_t data;
     state_t s;
+    uint d;
+    // By now cache only reads per process maybe in the future this could change
+    // and calling cache_data_alloc() and iterate per device could be required.
     s          = cache_read(&data);
-    bw[0].cas  = (data.lbw->lines_in + data.lbw->lines_out) * cpus_count;
-    bw[1].time = data.time;
+    b[0].cas  = (data.lbw->lines_in + data.lbw->lines_out);
+    b[1].time = data.time;
     return s;
 }

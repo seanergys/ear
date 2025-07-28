@@ -391,14 +391,10 @@ state_t monitor_unregister(suscription_t *s)
     int id = s->id;
     int retval;
 
-    if (!is_running)
-        monitor_init();
-    if (s == NULL)
-        return_msg(EAR_ERROR, "the suscription can't be NULL");
-    if (s->id > queue_last)
-        return_msg(EAR_ERROR, "incorrect suscription index");
-    if (s->id < 0)
-        return_msg(EAR_ERROR, "incorrect suscription index");
+    if (!is_running) monitor_init();
+    if (s == NULL)          return_msg(EAR_ERROR, "the suscription can't be NULL");
+    if (s->id > queue_last) return_msg(EAR_ERROR, "incorrect suscription index");
+    if (s->id < 0)          return_msg(EAR_ERROR, "incorrect suscription index");
 
     while ((retval = pthread_mutex_trylock(&locks[id])) != 0) {
         if (retval != EBUSY) {
