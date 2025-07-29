@@ -58,7 +58,6 @@ void metrics_load(metrics_info_t *m, topology_t *tp, char *nodepow_path, ullong 
 
     nodepow(init,&e_ctx);
      cpupow(init,no_ctx);
-     bwidth_init(no_ctx);
         gpu_init(no_ctx);
 
     metrics_info_get(m);

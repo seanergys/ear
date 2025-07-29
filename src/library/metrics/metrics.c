@@ -551,13 +551,13 @@ static void metrics_static_init(topology_t *tp)
     sa(mgt_imcfreq_get_api(&mgt_imcfreq.api));
     sa(mgt_cpuprio_get_api(&mgt_cpuprio.api));
      sa(energy_cpu_get_api(&met_energy.api));
-         sa(bwidth_get_api(&met_bwidth.api));
 
     cpufreq_get_info(&met_cpufreq);
     imcfreq_get_info(&met_imcfreq);
-      flops_get_info(&met_flops);
-       temp_get_info(&met_temp );
-        cpi_get_info(&met_cpi  );
+     bwidth_get_info(&met_bwidth );
+      flops_get_info(&met_flops  );
+       temp_get_info(&met_temp   );
+        cpi_get_info(&met_cpi    );
 
     debug("CPU APIs ready");
     if (met_cpufreq.api == API_DUMMY)
@@ -631,7 +631,6 @@ static void metrics_static_init(topology_t *tp)
     // Init
     sa(mgt_cpufreq_init(no_ctx));
     sa(energy_cpu_init(no_ctx));
-    sa(bwidth_init(no_ctx));
     sa(mgt_cpuprio_init());
 
 #if USE_GPUS
@@ -650,7 +649,6 @@ static void metrics_static_init(topology_t *tp)
     sa(mgt_cpufreq_count_devices(no_ctx, &mgt_cpufreq.devs_count));
     sa(mgt_imcfreq_count_devices(no_ctx, &mgt_imcfreq.devs_count));
      sa(energy_cpu_count_devices(no_ctx, &met_energy.devs_count));
-         sa(bwidth_count_devices(no_ctx, &met_bwidth.devs_count));
 
 #if USE_GPUS
     sa(mgt_gpu_count_devices(no_ctx, &mgt_gpu.devs_count));
@@ -937,7 +935,7 @@ static void metrics_global_start()
     debug("energy_cpu_read ready");
     /* No need to copy aux_rapl in other metric for partial_start */
 
-    bwidth_read(no_ctx, bwidth_read1[APP]);
+    bwidth_read(bwidth_read1[APP]);
     debug("bwidth_read ready");
     /* To be used in partial_start */
     bwidth_data_copy(bwidth_read2[LOO], bwidth_read1[APP]);
@@ -1099,7 +1097,7 @@ static void metrics_global_stop()
 
     // New metrics
 
-    bwidth_read_diff(no_ctx, bwidth_read2[APP], bwidth_read1[APP], NULL, &bwidth_cas[APP], NULL);
+    bwidth_read_diff(bwidth_read2[APP], bwidth_read1[APP], NULL, &bwidth_cas[APP], NULL);
     if (master)
         lib_shared_region->cas_counters = bwidth_cas[APP];
     flops_read_diff(&flops_read2[APP], &flops_read1[APP], NULL, NULL);
@@ -1446,7 +1444,7 @@ static int metrics_partial_stop(uint where)
      * copy_uncores(values_begin,values_end,num_counters);
      */
     // New metrics
-    bwidth_read_diff(no_ctx, bwidth_read2[LOO], bwidth_read1[LOO], bwidth_diff[LOO], &bwidth_cas[LOO], NULL);
+    bwidth_read_diff(bwidth_read2[LOO], bwidth_read1[LOO], bwidth_diff[LOO], &bwidth_cas[LOO], NULL);
     if (master)
         lib_shared_region->cas_counters = bwidth_cas[LOO];
     flops_read_diff(&flops_read2[LOO], &flops_read1[LOO], &flops_diff[LOO], NULL);

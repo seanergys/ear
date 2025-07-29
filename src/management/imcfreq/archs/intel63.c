@@ -375,12 +375,14 @@ static state_t set_current_list(uint *max_list, uint *min_list)
         aux_max = max_khz;
         aux_min = min_khz;
         // Else
-             if (max_list    == NULL      ) aux_max = buffer_max[i].khz;
-        else if (max_list[i] == ps_nothing) aux_max = buffer_max[i].khz;
-        else if (max_valid                ) aux_max = available_list[max_list[i]].khz;
-             if (min_list    == NULL      ) aux_min = buffer_min[i].khz;
-        else if (min_list[i] == ps_nothing) aux_min = buffer_min[i].khz;
-        else if (min_valid                ) aux_min = available_list[min_list[i]].khz;
+             if (max_list    == NULL      ) { aux_max = buffer_max[i].khz; }
+        else if (max_list[i] == ps_nothing) { aux_max = buffer_max[i].khz; }
+        else if (max_valid                ) { aux_max = available_list[max_list[i]].khz; }
+        else {}
+             if (min_list    == NULL      ) { aux_min = buffer_min[i].khz; }
+        else if (min_list[i] == ps_nothing) { aux_min = buffer_min[i].khz; }
+        else if (min_valid                ) { aux_min = available_list[min_list[i]].khz; }
+        else {}
         debug("IMC%d, setting frequency to (%llu, %llu)", i, aux_max, aux_min);
         if ((r = intel63_write(tp_static.cpus[i].id, aux_max, aux_min))) {
             return r;

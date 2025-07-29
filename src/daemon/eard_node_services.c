@@ -105,7 +105,6 @@ static wide_buffer_t wb;
 manages_info_t man;
 metrics_info_t met;
 static metrics_read_t met_read;
-static metrics_t ub; // Obsolete, use metrics_info_t and metrics_read_t
 static metrics_t ug; // Obsolete, use metrics_info_t and metrics_read_t
 
 #if USE_GPUS
@@ -135,26 +134,22 @@ void services_init(topology_t *tp)
 
     cpufreq_get_info(&met.cpu);
     imcfreq_get_info(&met.imc);
+     bwidth_get_info(&met.ram);
        temp_get_info(&met.tmp);
 
-    bwidth_get_api((uint *) &ub.api);
 #if USE_GPUS
     gpu_get_api((uint *) &ug.api);
 #endif
-
-    sf(bwidth_init(no_ctx));
 #if USE_GPUS
     sf(gpu_init(no_ctx));
 #endif
-
-    bwidth_count_devices(no_ctx, &ub.devs_count);
 #if USE_GPUS
     gpu_get_devices((gpu_devs_t **) &ug.avail_list, &ug.devs_count);
 #endif
 
     cpufreq_data_alloc((cpufreq_t **) &met_read.cpu, empty);
     imcfreq_data_alloc((imcfreq_t **) &met_read.imc, empty);
-     bwidth_data_alloc((bwidth_t  **) &ub.current_list);
+     bwidth_data_alloc((bwidth_t  **) &met_read.ram);
        temp_data_alloc(&met_read.tmp);
 #if USE_GPUS
     gpu_data_alloc(&eard_read_gpu);
@@ -726,19 +721,19 @@ int services_met_bwidth(eard_head_t *head, int req_fd, int ack_fd)
     verbose(VEARD_LAPI_DEBUG, "EARD met bandwith");
     switch (call) {
         case RPC_MET_BWIDTH_GET_API:
-            data = (char *) &ub.api;
+            data = (char *) &met.ram.api;
             size = sizeof(uint);
             break;
         case RPC_MET_BWIDTH_COUNT_DEVICES:
-            data = (char *) &ub.devs_count;
+            data = (char *) &met.ram.devs_count;
             size = sizeof(uint);
             break;
         case RPC_MET_BWIDTH_READ:
-            if (state_fail(s = bwidth_read(no_ctx, (bwidth_t *) ub.current_list))) {
+            if (state_fail(s = bwidth_read((bwidth_t *) met_read.ram))) {
                 serror("Could not get mem frequency");
             }
-            data = (char *) ub.current_list;
-            size = sizeof(bwidth_t) * ub.devs_count;
+            data = (char *) met_read.ram;
+            size = sizeof(bwidth_t) * met.ram.devs_count;
             break;
         default:
             return 0;
