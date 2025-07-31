@@ -249,7 +249,7 @@ int load_libear_mpi_given_libmpi(char *libmpi_path)
 {
     void *call_mpi_version = NULL;
     char *libear_path = NULL;
-    verbose(0, "LOADER: Entering in MPI loader (%s)", libmpi_path);
+    verbose(2, "LOADER: Entering in MPI loader (%s)", libmpi_path);
     // Load libcntd.so (COUNTDOWN) functions.
     if (!load_mpi_functions(get_libcnt_handler(), &calls_mpi_c, &calls_mpi_f)) {
         // Load libmpi.so functions. Protected against multiple calls.

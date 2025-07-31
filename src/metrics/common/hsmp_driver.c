@@ -47,8 +47,8 @@ state_t hsmp_driver_send(int socket, uint function, uint *args, uint *reps)
         return_msg(EAR_ERROR, Generr.api_uninitialized);
     }
     memset(&msg, 0, sizeof(struct hsmp_message));
-    msg.msg_id      = (__u32) function;
-    msg.sock_ind    = (__u16) socket;
+    msg.msg_id   = (__u32) function;
+    msg.sock_ind = (__u16) socket;
     debug("msg.msg_id     : 0x%X", msg.msg_id);
     debug("msg.sock_ind   : %u", msg.sock_ind);
     // Counting args and reps
@@ -63,7 +63,9 @@ state_t hsmp_driver_send(int socket, uint function, uint *args, uint *reps)
     debug("msg.num_args   : %u", msg.num_args);
     debug("msg.response_sz: %u", msg.response_sz);
     // Contacting the driver
-    if ((ret = ioctl(fd, HSMP_IOCTL_CMD, &msg)) == -1) {
+    ret = ioctl(fd, HSMP_IOCTL_CMD, &msg);
+    debug("ret = %d, errno = %d", ret, errno);
+    if (ret == -1) {
         debug("ioctl failed: %s", strerror(errno));
         return_print(EAR_ERROR, "Error while sending a command to HSMP driver: %s", strerror(errno));
     }
