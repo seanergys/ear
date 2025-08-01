@@ -65,7 +65,6 @@ int32_t difference_in_units(int32_t small, int32_t big)
 
 int32_t _get_num_nodes(range_def_t *r)
 {
-#warning UNTESTED
     int32_t total = 0;
     if (r == NULL)
         return 1;
@@ -87,7 +86,7 @@ int32_t _get_num_nodes(range_def_t *r)
 
 int32_t node_range_get_num_nodes(node_range_t *r)
 {
-    int32_t total = _get_num_nodes(&r->range);
+    int32_t total = _get_num_nodes(&r->r_def);
     return total;
 }
 
@@ -163,7 +162,7 @@ bool range_conf_contains_node(node_conf_t *node, char *nodename)
 {
     char aux_name[256];
     for (int32_t i = 0; i < node->range_count; i++) {
-        range_def_t *r = &node->range[i].range;
+        range_def_t *r = &node->range[i].r_def;
         // if the first letters of the prefix do not correspond, we can continue
         if (strncmp(r->prefix, nodename, strlen(r->prefix))) {
             continue;
@@ -185,7 +184,7 @@ bool range_conf_contains_node(node_conf_t *node, char *nodename)
 int nodeconf_get_island_range_for_node(node_island_t *node, char *nodename)
 {
     for (int32_t i = 0; i < node->num_ranges; i++) {
-        range_def_t *r = &node->ranges[i].range;
+        range_def_t *r = &node->ranges[i].r_def;
         // if the first letters of the prefix do not correspond, we can continue
         if (strncmp(r->prefix, nodename, strlen(r->prefix))) {
             continue;
@@ -255,7 +254,7 @@ void print_node_conf(node_conf_t *my_node_conf)
     int i;
     verbose(VCCONF, "-->cpus %u def_file: %s\n", my_node_conf->cpus, my_node_conf->coef_file);
     for (i = 0; i < my_node_conf->range_count; i++) {
-        range_def_t *r   = &my_node_conf->range[i].range;
+        range_def_t *r   = &my_node_conf->range[i].r_def;
         char spaces[128] = {0};
         while (r != NULL) {
             verbosen(VCCONF, "%s---->prefix: %s\n", spaces, r->prefix) for (int32_t j = 0; j < r->numbers_count; j++)

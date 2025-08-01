@@ -75,7 +75,13 @@ void eargm_report_event(uint event_type, ulong value)
     event.jid       = 0;
     event.step_id   = 0;
 
-    int ret = snprintf(event.node_id, sizeof(event.node_id), "eargm-%s", host);
+    char *gm_name = ear_getenv("EARGMNAME");
+    int ret;
+    if (gm_name)
+        ret = snprintf(event.node_id, sizeof(event.node_id), "eargm-%s-%s", gm_name, host);
+    else
+        ret = snprintf(event.node_id, sizeof(event.node_id), "eargm-%s", host);
+
     if (ret < 0) {
         verbose(VGM_PC, "%sERROR%s Writing the hostname to the event.", COL_RED, COL_CLR);
     } else if (ret >= sizeof(event.node_id)) {
@@ -414,6 +420,8 @@ void *eargm_powercap_th(void *noarg)
     if (pthread_setname_np(pthread_self(), "cluster_powercap") != 0)
         error("Setting name forcluster_powercap thread %s", strerror(errno));
 
+    if (my_cluster_conf.eargm.powercap_mode == SOFT_POWERCAP)
+        ear_set_powerlimit(&my_cluster_conf, 1, nodes, num_eargm_nodes); // set powercap to unlimited at the start
     while (1) {
         sleep(cluster_powercap_period);
         verbose(VGM_PC, "new powercap period");
