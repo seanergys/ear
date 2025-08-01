@@ -187,8 +187,7 @@ int sync_send_question(uint sync_option, int veteran, sync_answer_t *answer)
     time_t timeout_old;
     state_t s;
 
-    verb1("synchronization started: asking the question to %s (k%llu)",
-         socket_sync02->host_dst, key_add(extra));
+    verb1("synchronization started: asking the question to %s", socket_sync02->host_dst);
     //
     sync_question.sync_option = sync_option;
     sync_question.veteran = veteran;
@@ -213,20 +212,20 @@ int sync_send_question(uint sync_option, int veteran, sync_answer_t *answer)
     // Waiting
     if (state_ok(s = sockets_recv_header(socket_sync02->fd, NULL, &data_size, &extra, 1))) {
         if (state_ok(s = sockets_recv(socket_sync02->fd, (char *) &sync_answer, data_size, 1))) {
-            verb1("synchronization finished (k%llu)", key_add(extra));
+            verb0("synchronization finished");
         }
     }
     // Recovering old timeout
     sockets_timeout_set(socket_sync02->fd, timeout_old);
 
     if (state_fail(s)) {
-        verb1("synchronization failed: %s (k%llu)", state_msg, key_add(extra));
+        verb1("synchronization failed: %s", state_msg);
         return s;
     }
     // Closing anyway
     sockets_close(socket_sync02);
 
-    if (key_add(extra) != key_add(0LLU)) {
+    if (key_get(extra) != key_add(0LLU)) {
         return_msg(EAR_ERROR, "Key does not match");
     }
     if (answer != NULL) {
@@ -241,7 +240,7 @@ int sync_send_answer(int fd, int veteran)
 	state_t s;
 
 	if (verbosity) {
-		verb1("synchronization started: answering the question (k%llu)", key_add(extra));
+		verb0("synchronization started: answering the question");
 	}
     sync_answer.answer  = 0;
 	sync_answer.veteran = veteran;
