@@ -41,7 +41,9 @@ ener_BINS = \
     energy_dummy.so \
     energy_sd650_power.so  \
     grace_hopper_module_power.so \
-		energy_cray_pm.so
+    energy_cray_pm.so \
+    ipmi_sensors.so \
+    ipmi_raw.so
 
 ifeq ($(SYSTEM_TYPE), 3)
     ener_BINS += energy_eard_nm.so
@@ -49,12 +51,12 @@ endif
 
 ifdef FREEIPMI_BASE
 ener_BINS += \
-		energy_inm_power_freeipmi.so
+    energy_inm_power_freeipmi.so
 endif
 
 ifdef REDFISH_BASE
 ener_BINS += \
-		energy_redfish.so
+    energy_redfish.so
 endif
 
 ener_PATH = $(DESTDIR)/lib/plugins/energy

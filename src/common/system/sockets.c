@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #include <time.h>
 #include <errno.h>
@@ -31,39 +31,39 @@ static pthread_mutex_t lock_send = PTHREAD_MUTEX_INITIALIZER;
  */
 state_t sockets_init(socket_t *socket, char *host, uint port, uint protocol)
 {
-	if (protocol != TCP && protocol != UDP) {
-		return_msg(EAR_ERROR, "Protocol does not exist");
-	}
-	// Cleaning and settings
-	sockets_clean(socket);
-	socket->port     = port;
-	socket->protocol = protocol;
-	// If is not NULL, then copy in the small buffer in socket_t.
-	if (host != NULL) {
-		socket->host = strcpy(socket->host_dst, host);
-	}
-	return EAR_SUCCESS;
+    if (protocol != TCP && protocol != UDP) {
+        return_msg(EAR_ERROR, "Protocol does not exist");
+    }
+    // Cleaning and settings
+    sockets_clean(socket);
+    socket->port     = port;
+    socket->protocol = protocol;
+    // If is not NULL, then copy in the small buffer in socket_t.
+    if (host != NULL) {
+        socket->host = strcpy(socket->host_dst, host);
+    }
+    return EAR_SUCCESS;
 }
 
 state_t sockets_clean(socket_t *socket)
 {
-	memset((void *) socket, 0, sizeof(socket_t));
-	socket->fd = -1;
-	return EAR_SUCCESS;
+    memset((void *) socket, 0, sizeof(socket_t));
+    socket->fd = -1;
+    return EAR_SUCCESS;
 }
 
 state_t sockets_dispose(socket_t *socket)
 {
-	if (socket->fd_closable) {
-		if (socket->fd >= 0) {
-			close(socket->fd);
-		}
-	}
-	if (socket->info != NULL) {
-		freeaddrinfo(socket->info);
-		socket->info = NULL;
-	}
-	return sockets_clean(socket);
+    if (socket->fd_closable) {
+        if (socket->fd >= 0) {
+            close(socket->fd);
+        }
+    }
+    if (socket->info != NULL) {
+        freeaddrinfo(socket->info);
+        socket->info = NULL;
+    }
+    return sockets_clean(socket);
 }
 
 /*
@@ -74,34 +74,33 @@ state_t sockets_dispose(socket_t *socket)
 
 state_t sockets_socket(socket_t *sock)
 {
-	struct addrinfo hints;
-	char string_port[16];
-	int ret;
+    struct addrinfo hints;
+    char string_port[16];
+    int ret;
 
-	// Format
-	sprintf(string_port, "%u", sock->port);
-	memset(&hints, 0, sizeof(hints));
-	// Initialize addrinfo basic data.
-	hints.ai_socktype = sock->protocol; // TCP stream sockets
-	hints.ai_family = AF_UNSPEC;		// Don't care IPv4 or IPv6
-	// If NULL, fill my IP for me.
-	if (sock->host == NULL) {
-		hints.ai_flags = AI_PASSIVE;
-	}
-	// Fills the struct. If different than 0, it returns error.
-	if ((ret = getaddrinfo(sock->host, string_port, &hints, &sock->info)) != 0) {
-		return_msg(EAR_ERROR, (char *) gai_strerror(ret));
-	}
-	// With address struct complete, we can initialize the socket and get the fd.
-	sock->fd = socket(sock->info->ai_family, sock->info->ai_socktype, sock->info->ai_protocol);
-	if (sock->fd < 0) {
-		return_msg(EAR_ERROR, strerror(errno));
-	}
-	debug("granted file descriptor for socket %s:%d (fd %d)",
-		sock->host, sock->port, sock->fd);
-	// It can be closed now.
-	sock->fd_closable = 1;
-	return EAR_SUCCESS;
+    // Format
+    sprintf(string_port, "%u", sock->port);
+    memset(&hints, 0, sizeof(hints));
+    // Initialize addrinfo basic data.
+    hints.ai_socktype = sock->protocol; // TCP stream sockets
+    hints.ai_family   = AF_UNSPEC;      // Don't care IPv4 or IPv6
+    // If NULL, fill my IP for me.
+    if (sock->host == NULL) {
+        hints.ai_flags = AI_PASSIVE;
+    }
+    // Fills the struct. If different than 0, it returns error.
+    if ((ret = getaddrinfo(sock->host, string_port, &hints, &sock->info)) != 0) {
+        return_msg(EAR_ERROR, (char *) gai_strerror(ret));
+    }
+    // With address struct complete, we can initialize the socket and get the fd.
+    sock->fd = socket(sock->info->ai_family, sock->info->ai_socktype, sock->info->ai_protocol);
+    if (sock->fd < 0) {
+        return_msg(EAR_ERROR, strerror(errno));
+    }
+    debug("granted file descriptor for socket %s:%d (fd %d)", sock->host, sock->port, sock->fd);
+    // It can be closed now.
+    sock->fd_closable = 1;
+    return EAR_SUCCESS;
 }
 
 /*
@@ -112,65 +111,62 @@ state_t sockets_socket(socket_t *sock)
 
 state_t sockets_bind(socket_t *socket, time_t timeout)
 {
-	timeout = time(NULL) + timeout;
-	int ret;
+    timeout = time(NULL) + timeout;
+    int ret;
 
-	do {
-		// Assign to the socket the address and port. Wait until successfully
-		// binds. It is when timeout (in seconds) has passed.
-		ret = bind(socket->fd, socket->info->ai_addr, socket->info->ai_addrlen);
-	} while ((ret < 0) && (time(NULL) < timeout) && !sleep(5));
+    do {
+        // Assign to the socket the address and port. Wait until successfully
+        // binds. It is when timeout (in seconds) has passed.
+        ret = bind(socket->fd, socket->info->ai_addr, socket->info->ai_addrlen);
+    } while ((ret < 0) && (time(NULL) < timeout) && !sleep(5));
 
-	if (ret < 0) {
-		return_msg(EAR_ERROR, (char *) strerror(errno));
-	}
-	debug("binded socket %s:%d (fd %d)",
-		socket->host, socket->port, socket->fd);
-	return EAR_SUCCESS;
+    if (ret < 0) {
+        return_msg(EAR_ERROR, (char *) strerror(errno));
+    }
+    debug("binded socket %s:%d (fd %d)", socket->host, socket->port, socket->fd);
+    return EAR_SUCCESS;
 }
 
 state_t sockets_accept(int fd_incoming, int *fd_client, struct sockaddr_storage *addr_client)
 {
-	struct sockaddr_storage aux_addr;
-	socklen_t size;
+    struct sockaddr_storage aux_addr;
+    socklen_t size;
 
-	size = sizeof (struct sockaddr_storage);
-	// If addr_client is NULL, we fill a stack auxiliar address.
-	if (addr_client != NULL) {
-		*fd_client = accept(fd_incoming, (struct sockaddr *) addr_client, &size);
-	} else {
-		*fd_client = accept(fd_incoming, (struct sockaddr *) &aux_addr, &size);
-	}
-	// fd_client can't be NULL.
-	if (*fd_client == -1) {
-		if (errno == EWOULDBLOCK || errno == EAGAIN) {
-			return_msg(EAR_NOT_READY, strerror(errno));
-		} else {
-			return_msg(EAR_ERROR, strerror(errno));
-		}
-	}
-	#if SHOW_DEBUGS
-	char address[512];
-	sockets_get_hostname_fd(*fd_client, address, 512);
-	debug("listening descriptor %d accepted socket from address %s (fd %d)",
-		fd_incoming, address, *fd_client);
-	#endif
+    size = sizeof(struct sockaddr_storage);
+    // If addr_client is NULL, we fill a stack auxiliar address.
+    if (addr_client != NULL) {
+        *fd_client = accept(fd_incoming, (struct sockaddr *) addr_client, &size);
+    } else {
+        *fd_client = accept(fd_incoming, (struct sockaddr *) &aux_addr, &size);
+    }
+    // fd_client can't be NULL.
+    if (*fd_client == -1) {
+        if (errno == EWOULDBLOCK || errno == EAGAIN) {
+            return_msg(EAR_NOT_READY, strerror(errno));
+        } else {
+            return_msg(EAR_ERROR, strerror(errno));
+        }
+    }
+#if SHOW_DEBUGS
+    char address[512];
+    sockets_get_hostname_fd(*fd_client, address, 512);
+    debug("listening descriptor %d accepted socket from address %s (fd %d)", fd_incoming, address, *fd_client);
+#endif
 
-	return EAR_SUCCESS;
+    return EAR_SUCCESS;
 }
 
 state_t sockets_listen(socket_t *socket)
 {
-	if (socket->protocol == UDP) {
-		return EAR_SUCCESS;
-	}
-	// Listening the port.
-	if (listen(socket->fd, BACKLOG) < 0) {
-		return_msg(EAR_ERROR, strerror(errno));
-	}
-	debug("listening socket %s:%d returned (fd %d)",
-		socket->host, socket->port, socket->fd);
-	return EAR_SUCCESS;
+    if (socket->protocol == UDP) {
+        return EAR_SUCCESS;
+    }
+    // Listening the port.
+    if (listen(socket->fd, BACKLOG) < 0) {
+        return_msg(EAR_ERROR, strerror(errno));
+    }
+    debug("listening socket %s:%d returned (fd %d)", socket->host, socket->port, socket->fd);
+    return EAR_SUCCESS;
 }
 
 /*
@@ -181,13 +177,12 @@ state_t sockets_listen(socket_t *socket)
 
 state_t sockets_connect(socket_t *socket)
 {
-	// Assign to the socket the address and port.
-	if (connect(socket->fd, socket->info->ai_addr, socket->info->ai_addrlen) < 0) {
-		return_msg(EAR_ERROR, strerror(errno));
-	}
-	debug("granted connection for socket %s:%d returned (fd %d)",
-		socket->host, socket->port, socket->fd);
-	return EAR_SUCCESS;
+    // Assign to the socket the address and port.
+    if (connect(socket->fd, socket->info->ai_addr, socket->info->ai_addrlen) < 0) {
+        return_msg(EAR_ERROR, strerror(errno));
+    }
+    debug("granted connection for socket %s:%d returned (fd %d)", socket->host, socket->port, socket->fd);
+    return EAR_SUCCESS;
 }
 
 /*
@@ -198,21 +193,21 @@ state_t sockets_connect(socket_t *socket)
 
 state_t sockets_close(socket_t *socket)
 {
-	state_t s = EAR_SUCCESS;
-	if (socket->fd_closable) {
-		s = sockets_close_fd(socket->fd);
-	}
-	socket->fd_closable = 0;
-	socket->fd = -1;
-	return s;
+    state_t s = EAR_SUCCESS;
+    if (socket->fd_closable) {
+        s = sockets_close_fd(socket->fd);
+    }
+    socket->fd_closable = 0;
+    socket->fd          = -1;
+    return s;
 }
 
 state_t sockets_close_fd(int fd)
 {
-	if (fd > 0) {
-		close(fd);
-	}
-	return EAR_SUCCESS;
+    if (fd > 0) {
+        close(fd);
+    }
+    return EAR_SUCCESS;
 }
 
 /*
@@ -256,32 +251,34 @@ static state_t static_send(int fd, char *data, size_t size)
 
 static state_t static_unlock(state_t s)
 {
-	pthread_mutex_unlock(&lock_send);
-	return s;
+    pthread_mutex_unlock(&lock_send);
+    return s;
 }
 
 state_t sockets_send(int fd, uint type, char *data, size_t size, ullong extra)
 {
-	state_t s;
-	struct header_s {
-		size_t size;
-		ullong extra;
-		uint type;
-	} header = { .size = size, .extra = extra, .type = type };
-	// Locking (I don't know why).
-	pthread_mutex_lock(&lock_send);
-	// Sending header
-	if(state_fail(s = static_send(fd, (char *) &header, sizeof(header)))) {
-		return static_unlock(s);
-	}
-	// Sending content
-	if (data != NULL && size > 0) {
-		if (state_fail(s = static_send(fd, data, size))) {
-			return static_unlock(s);
-		}
-	}
-	// Unlocking
-	return static_unlock(EAR_SUCCESS);
+    state_t s;
+
+    struct header_s {
+        size_t size;
+        ullong extra;
+        uint type;
+    } header = {.size = size, .extra = extra, .type = type};
+
+    // Locking (I don't know why).
+    pthread_mutex_lock(&lock_send);
+    // Sending header
+    if (state_fail(s = static_send(fd, (char *) &header, sizeof(header)))) {
+        return static_unlock(s);
+    }
+    // Sending content
+    if (data != NULL && size > 0) {
+        if (state_fail(s = static_send(fd, data, size))) {
+            return static_unlock(s);
+        }
+    }
+    // Unlocking
+    return static_unlock(EAR_SUCCESS);
 }
 
 static state_t static_recv(int fd, char *buffer, ssize_t size, int block)
@@ -289,8 +286,8 @@ static state_t static_recv(int fd, char *buffer, ssize_t size, int block)
 	ssize_t bytes_left = size;
 	ssize_t bytes_recv = 0;
 	ssize_t bytes_acum = 0;
-	int intents = 0;
-	int flags = 0;
+	int intents        = 0;
+	int flags          = 0;
 
 	if (!block) {
 		flags = MSG_DONTWAIT;
@@ -350,7 +347,7 @@ state_t sockets_recv_header(int fd, uint *type, size_t *size, ullong *extra, uin
 
 state_t sockets_recv(int fd, char *data, size_t size, uint block)
 {
-	return static_recv(fd, data, size, block);
+    return static_recv(fd, data, size, block);
 }
 
 /*
@@ -361,41 +358,41 @@ state_t sockets_recv(int fd, char *data, size_t size, uint block)
 
 state_t sockets_timeout_get(int fd, time_t *timeout)
 {
-	struct timeval tv;
-	socklen_t length;
+    struct timeval tv;
+    socklen_t length;
 
-	*timeout = 0;
-	//
-	if (getsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, &length) != 0) {
-		return_msg(EAR_ERROR, strerror(errno));
-	}
-	*timeout = (time_t) tv.tv_sec;
-	return EAR_SUCCESS;
+    *timeout = 0;
+    //
+    if (getsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, &length) != 0) {
+        return_msg(EAR_ERROR, strerror(errno));
+    }
+    *timeout = (time_t) tv.tv_sec;
+    return EAR_SUCCESS;
 }
 
 state_t sockets_timeout_set(int fd, time_t timeout)
 {
-	struct timeval tv;
-	tv.tv_sec  = timeout;
-	tv.tv_usec = 0;
+    struct timeval tv;
+    tv.tv_sec  = timeout;
+    tv.tv_usec = 0;
 
-	if (setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (const char *) &tv, sizeof(struct timeval)) != 0) {
-		return_msg(EAR_ERROR, strerror(errno));
-	}
-	return EAR_SUCCESS;
+    if (setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (const char *) &tv, sizeof(struct timeval)) != 0) {
+        return_msg(EAR_ERROR, strerror(errno));
+    }
+    return EAR_SUCCESS;
 }
 
 state_t sockets_nonblock_set(int fd)
 {
-	fcntl(fd, F_SETFL, O_NONBLOCK);
-	return EAR_SUCCESS;
+    fcntl(fd, F_SETFL, O_NONBLOCK);
+    return EAR_SUCCESS;
 }
 
 state_t sockets_nonblock_unset(int fd)
 {
-	int flags = fcntl(fd, F_GETFL);
-	fcntl(fd, F_SETFL, flags & ~O_NONBLOCK);
-	return EAR_SUCCESS;
+    int flags = fcntl(fd, F_GETFL);
+    fcntl(fd, F_SETFL, flags & ~O_NONBLOCK);
+    return EAR_SUCCESS;
 }
 
 /*
@@ -406,59 +403,59 @@ state_t sockets_nonblock_unset(int fd)
 
 void sockets_get_hostname(struct sockaddr_storage *host_addr, char *buffer, int length)
 {
-	socklen_t addrlen;
+    socklen_t addrlen;
 
-	if (length < INET6_ADDRSTRLEN) {
-		return;
-	}
-	// IPv4
-	if (host_addr->ss_family == AF_INET) {
-		//struct sockaddr_in *ipv4 = (struct sockaddr_in *) host_addr;
-		addrlen = INET_ADDRSTRLEN;
-	}
-	// IPv6
-	else {
-		//struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *) host_addr;
-		addrlen = INET6_ADDRSTRLEN;
-	}
-	// convert the IP to a string and print it
-	getnameinfo((struct sockaddr *) host_addr, addrlen, buffer, length, NULL, 0, 0);
+    if (length < INET6_ADDRSTRLEN) {
+        return;
+    }
+    // IPv4
+    if (host_addr->ss_family == AF_INET) {
+        // struct sockaddr_in *ipv4 = (struct sockaddr_in *) host_addr;
+        addrlen = INET_ADDRSTRLEN;
+    }
+    // IPv6
+    else {
+        // struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *) host_addr;
+        addrlen = INET6_ADDRSTRLEN;
+    }
+    // convert the IP to a string and print it
+    getnameinfo((struct sockaddr *) host_addr, addrlen, buffer, length, NULL, 0, 0);
 }
 
 void sockets_get_hostname_fd(int fd, char *buffer, int length)
 {
-	struct sockaddr_storage adress;
-	socklen_t size;
+    struct sockaddr_storage adress;
+    socklen_t size;
 
-	size = sizeof(struct sockaddr_storage);
-	memset(&adress, 0, size);
+    size = sizeof(struct sockaddr_storage);
+    memset(&adress, 0, size);
 
-	getpeername(fd, (struct sockaddr *) &adress, &size);
-	sockets_get_hostname(&adress, buffer, length);
+    getpeername(fd, (struct sockaddr *) &adress, &size);
+    sockets_get_hostname(&adress, buffer, length);
 }
 
 void sockets_get_ip(struct sockaddr_storage *host_addr, long *ip)
 {
-	//socklen_t addrlen;
-	//void *address;
-	//int port;
+    // socklen_t addrlen;
+    // void *address;
+    // int port;
 
-	// IPv4
-	if (host_addr->ss_family == AF_INET) {
-		struct sockaddr_in *ipv4 = (struct sockaddr_in *) host_addr;
-		//port = (int) ntohs(ipv4->sin_port);
-		//addrlen = INET_ADDRSTRLEN;
-		//address = &(ipv4->sin_addr);
-		*ip = ipv4->sin_addr.s_addr;
-	}
-	// IPv6
-	else {
-		struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *) host_addr;
-		//port = (int) ntohs(ipv6->sin6_port);
-		//addrlen = INET6_ADDRSTRLEN;
-		//address = &(ipv6->sin6_addr);
-		*ip = (long) ipv6->sin6_addr.s6_addr[8];
-	}
-	// convert the IP to a string and print it
-	//inet_ntop(host_addr->sa_family, address, buffer, INET6_ADDRSTRLEN);
+    // IPv4
+    if (host_addr->ss_family == AF_INET) {
+        struct sockaddr_in *ipv4 = (struct sockaddr_in *) host_addr;
+        // port = (int) ntohs(ipv4->sin_port);
+        // addrlen = INET_ADDRSTRLEN;
+        // address = &(ipv4->sin_addr);
+        *ip = ipv4->sin_addr.s_addr;
+    }
+    // IPv6
+    else {
+        struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *) host_addr;
+        // port = (int) ntohs(ipv6->sin6_port);
+        // addrlen = INET6_ADDRSTRLEN;
+        // address = &(ipv6->sin6_addr);
+        *ip = (long) ipv6->sin6_addr.s6_addr[8];
+    }
+    // convert the IP to a string and print it
+    // inet_ntop(host_addr->sa_family, address, buffer, INET6_ADDRSTRLEN);
 }

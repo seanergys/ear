@@ -31,7 +31,7 @@
 
 #define EDB_NTYPES                    7
 #define EDB_MAX_CONNECTIONS           2048
-#define EDB_OFFLINE                   1 // To test EARDBD offline
+#define EDB_OFFLINE                   1 // Enable to test EARDBD in local
 // These are the type of the events passed by sockets.
 #define EDB_TYPE_ENERGY_REP           1
 #define EDB_TYPE_APP_MPI              2
@@ -46,7 +46,7 @@
 // Sync options (is used to accumulate different types in one value).
 #define EDB_SYNC_TYPE_AGGRS           0x040 // Synchronize aggregations
 #define EDB_SYNC_ALL                  0x100 // Synchronize all types
-// The reason to insert data in DB. 
+// The reason to insert data in DB.
 #define EDB_INSERT_BY_SYNC            0 // Insert by sync request
 #define EDB_INSERT_BY_TIME            1 // Insert by time completed
 #define EDB_INSERT_BY_FULL            2 // Insert by allocation arrays full
@@ -70,22 +70,23 @@
 #ifndef SEC_KEY
 #define SEC_KEY 69
 #endif
-#define add_key(val)                  ((val & 0x0000) | (0xFFFFFFFFFFFF & SEC_KEY)) // 16 bits
+#define key_add(value)                ((value & 0xFFFFFFFFFFFF0000) | SEC_KEY) // 16 bits
+#define key_get(value)                ((value & 0x000000000000FFFF))
 
 typedef struct sync_question_s {
-	uint sync_option;
-	uint veteran;
+    uint sync_option;
+    uint veteran;
 } sync_question_t;
 
 typedef struct sync_answer_s {
-	uint veteran;
-	int answer;
+    uint veteran;
+    int answer;
 } sync_answer_t;
 
 typedef struct eardbd_status_s {
-	state_t  insert_states[EDB_NTYPES];
-	uint     samples_recv[EDB_NTYPES];
-	uint     sockets_online;
+    state_t insert_states[EDB_NTYPES];
+    uint samples_recv[EDB_NTYPES];
+    uint sockets_online;
 } eardbd_status_t;
 
-#endif //EAR_EARDBD_H
+#endif // EAR_EARDBD_H

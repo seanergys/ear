@@ -111,7 +111,7 @@ static void manage_alarms(struct timeval *timeout_slct)
 
 				if (q->n_samples > 0) {
                     if (verbosity >= 2) {
-					    tell("completed the aggregation number '%lu' with energy '%lu'",
+					    verb1("completed the aggregation number '%lu' with energy '%lu'",
 					        samples_index[index_aggrs], q->DC_energy);
                     }
 					// Aggregation time done, so new aggregation incoming
@@ -203,7 +203,7 @@ static void manage_sockets()
 						if (sync_fd_exists(ip, &fd_old)) {
 							//log("multiple connections from host '%s', disconnecting previous", extra_buffer);
 							if (verbosity) {
-								tell("disconnecting from host '%s' (host was previously connected)",
+								verb1("disconnecting from host '%s' (host was previously connected)",
 									extra_buffer);
 							}
 							sync_fd_disconnect(fd_old);
@@ -214,14 +214,14 @@ static void manage_sockets()
 					// condition disconnect inmediately.
 					if (!sync_fd_is_mirror(i) && sockets_online >= EDB_MAX_CONNECTIONS) {
 						if (verbosity) {
-							tell("disconnecting from host '%s' (maximum connections reached)",
+							verb1("disconnecting from host '%s' (maximum connections reached)",
 								extra_buffer);
 						}
 						sync_fd_disconnect(fd_new);
 					} else {
 						sync_fd_add(fd_new, ip);
 						if (verbosity) {
-							tell("accepted fd '%d' from host '%s'", fd_new, extra_buffer);
+							verb1("accepted fd '%d' from host '%s'", fd_new, extra_buffer);
 						}
 					}
 				} while(state_ok(s));
@@ -242,7 +242,7 @@ static void manage_sockets()
 					}
 					if (verbosity) {
 						sockets_get_hostname_fd(i, extra_buffer, SZ_BUFFER);
-						tell("disconnecting from host %s: %s",
+						verb1("disconnecting from host %s: %s",
 								extra_buffer, state_msg);
 					}
 					sync_fd_disconnect(i);

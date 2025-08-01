@@ -9,42 +9,49 @@
  **************************************************************************/
 
 #include <assert.h>
-#include <stdlib.h>
-#include <pthread.h>
 #include <common/output/debug.h>
 #include <metrics/common/apis.h>
-#include <metrics/temperature/temperature.h>
-#include <metrics/temperature/archs/eard.h>
-#include <metrics/temperature/archs/amd17.h>
-#include <metrics/temperature/archs/intel63.h>
-#include <metrics/temperature/archs/hwmon.h>
 #include <metrics/temperature/archs/dummy.h>
+#include <metrics/temperature/archs/eard.h>
+#include <metrics/temperature/archs/hwmon.h>
+#include <metrics/temperature/archs/intel63.h>
+#include <metrics/temperature/temperature.h>
+#include <pthread.h>
+#include <stdlib.h>
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-static uint            is_loaded;
 static apinfo_t        info;
 static temp_ops_t      ops;
 
-void temp_load(topology_t *tp, uint force_api)
+void temp_load(topology_t *tp, int options)
 {
     while (pthread_mutex_trylock(&lock));
-    if (is_loaded) {
+    if (info.api != API_NONE) {
         goto leave;
     }
-    if (API_IS(force_api, API_DUMMY)) {
+    if (API_IS(options, API_DUMMY)) {
         goto dummy;
     }
-#if WF_SUPPORT
-    temp_eard_load   (tp, &ops, force_api);
-#endif
-    temp_hwmon_load(tp, &ops, force_api);
-    temp_intel63_load(tp, &ops, force_api);
-    //temp_amd17_load  (tp, &ops, force_api); //We already have hwmon
+    #if WF_SUPPORT
+    temp_eard_load(tp, &ops, options);
+    #endif
+    temp_hwmon_load(tp, &ops, options);
+    temp_intel63_load(tp, &ops, options);
 dummy:
-    temp_dummy_load  (tp, &ops, force_api);
+    temp_dummy_load(tp, &ops, options);
     temp_get_info(&info);
-    is_loaded = 1;
 leave:
+    pthread_mutex_unlock(&lock);
+}
+
+void temp_unload()
+{
+    while (pthread_mutex_trylock(&lock));
+    if (info.api != API_NONE) {
+        ops.unload();
+        memset(&ops, 0, sizeof(temp_ops_t));
+        memset(&info, 0, sizeof(apinfo_t));
+    }
     pthread_mutex_unlock(&lock);
 }
 
@@ -52,16 +59,6 @@ void temp_get_info(apinfo_t *info)
 {
     memset(info, 0, sizeof(apinfo_t));
     ops.get_info(info);
-}
-
-state_t temp_init()
-{
-    return ops.init();
-}
-
-void temp_dispose()
-{
-    ops.dispose();
 }
 
 // Getters
@@ -80,13 +77,13 @@ state_t temp_read_copy(llong *t2, llong *t1, llong *tD, llong *average)
 // Data
 void temp_data_alloc(llong **temp)
 {
-	*temp = (llong *) calloc(info.devs_count, sizeof(llong));
+    *temp = (llong *) calloc(info.devs_count, sizeof(llong));
     assert(*temp != NULL);
 }
 
 void temp_data_copy(llong *tempD, llong *tempS)
 {
-	memcpy((void *) tempD, (const void *) tempS, sizeof(llong)*info.devs_count);
+    memcpy((void *) tempD, (const void *) tempS, sizeof(llong) * info.devs_count);
 }
 
 void temp_data_diff(llong *temp2, llong *temp1, llong *tempD, llong *average)
@@ -95,7 +92,7 @@ void temp_data_diff(llong *temp2, llong *temp1, llong *tempD, llong *average)
     temp_data_copy(tempD, temp2);
     if (average != NULL) {
         *average = 0;
-        for (i = 0; i < info.devs_count; ++i) {
+           for (i = 0; i < info.devs_count; ++i) {
             *average += temp2[i];
         }
         *average /= (llong) info.devs_count;
@@ -126,5 +123,5 @@ void temp_data_print(llong *list, llong avrg, int fd)
 {
     char buffer[1024];
     temp_data_tostr(list, avrg, buffer, 1024);
-    dprintf(fd, "%s", buffer); 
+    dprintf(fd, "%s", buffer);
 }

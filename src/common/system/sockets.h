@@ -11,13 +11,13 @@
 #ifndef COMMON_SOCKETS_H
 #define COMMON_SOCKETS_H
 
-#include <netdb.h>
 #include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
 #include <common/sizes.h>
 #include <common/states.h>
 #include <common/types/generic.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
 
 // Example:
 //	Server side example:
@@ -46,19 +46,19 @@
 //		sockets_send(socket.fd, type, data, data_size, 0LLU);
 //
 
-#define BACKLOG             2048
-#define TCP                 SOCK_STREAM
-#define UDP                 SOCK_DGRAM
-#define NON_BLOCK_TRYS      10000
+#define BACKLOG        2048
+#define TCP            SOCK_STREAM
+#define UDP            SOCK_DGRAM
+#define NON_BLOCK_TRYS 10000
 
 typedef struct socket {
-	struct addrinfo *info;
-	char             host_dst[SZ_NAME_SHORT];
-	char            *host;
-	uint             protocol;
-	uint             port;
-	uint             fd_closable;
-	int              fd;
+    struct addrinfo *info;
+    char host_dst[SZ_NAME_SHORT];
+    char *host;
+    uint protocol;
+    uint port;
+    uint fd_closable;
+    int fd;
 } socket_t;
 
 /* Common initialization */

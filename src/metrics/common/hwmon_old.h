@@ -11,13 +11,12 @@
 #ifndef METRICS_COMMON_HWMON_OLD
 #define METRICS_COMMON_HWMON_OLD
 
-#include <common/types.h>
 #include <common/states.h>
+#include <common/types.h>
 
 // This is a DEPCRECATED class and its use is not recommended.
 
-struct Hwmon_s
-{
+struct Hwmon_s {
     char *temp_input;
     char *temp_max;
 } Hwmon __attribute__((weak)) = {
@@ -25,17 +24,15 @@ struct Hwmon_s
     .temp_input = "/sys/class/hwmon/hwmon%d/temp%d_input",
 };
 
-struct Hwmon_acpi_power
-{
+struct Hwmon_acpi_power {
     char *power_avg;
     char *power_avg_int;
 } Hwmon_power_meter __attribute__((weak)) = {
-    .power_avg 	= "/sys/class/hwmon/hwmon%d/device/power%d_average",
-    .power_avg_int  = "/sys/class/hwmon/hwmon%d/device/power%d_average_interval",
+    .power_avg     = "/sys/class/hwmon/hwmon%d/device/power%d_average",
+    .power_avg_int = "/sys/class/hwmon/hwmon%d/device/power%d_average_interval",
 };
 
-struct Hwmon_pvc
-{
+struct Hwmon_pvc {
     char *energy_j;
 } Hwmon_pvc_energy __attribute__((weak)) = {
     .energy_j = "/sys/class/hwmon/hwmon%d/energy%d_input",
@@ -55,4 +52,4 @@ state_t hwmon_close_files(int *fds, uint n);
 
 state_t hwmon_read_files(int fd, char *buffer, size_t size);
 
-#endif //METRICS_COMMON_HWMON
+#endif // METRICS_COMMON_HWMON

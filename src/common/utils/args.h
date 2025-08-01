@@ -27,4 +27,4 @@
 /* Returns 1 if argument arg is found. Value is copied in buffer. */
 char *args_get(int argc, char *argv[], const char *arg, char *buffer);
 
-#endif //COMMON_UTILS_ARGS_H
+#endif // COMMON_UTILS_ARGS_H

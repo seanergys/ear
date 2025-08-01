@@ -154,15 +154,15 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 		edb_error("while getting ear.conf path");
 	}
 
-	tellm("- reading '%s'", extra_buffer);
+	verb2("- reading '%s'", extra_buffer);
 	read_cluster_conf(extra_buffer, conf_clus);
 
-    tellm("- loading '%s/%s'", conf_clus->install.dir_plug, conf_clus->db_manager.plugins);
+    verb2("- loading '%s/%s'", conf_clus->install.dir_plug, conf_clus->db_manager.plugins);
     create_tmp(conf_clus->install.dir_temp);
 
 	// Output redirection
 	if (conf_clus->db_manager.use_log) {
-		tellm("- redirecting '%s/eardbd.server/mirror.log'", conf_clus->install.dir_temp);
+		verb2("- redirecting '%s/eardbd.server/mirror.log'", conf_clus->install.dir_temp);
 	}
 	/* Reporting plugin */
     if (state_fail(report_load(conf_clus->install.dir_plug, "dummy.so"))){
@@ -257,8 +257,8 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
 	}
 	#endif
 	// Server & mirror verbosity
-	tellm("enabled cache server: %s",                  server_enabled ? "OK": "NO");
-	tellm("enabled cache mirror: %s (of server '%s')", mirror_enabled ? "OK": "NO", server_host);
+	verb2("enabled cache server: %s",                  server_enabled ? "OK": "NO");
+	verb2("enabled cache mirror: %s (of server '%s')", mirror_enabled ? "OK": "NO", server_host);
 }
 
 static void init_time_configuration(int argc, char **argv, cluster_conf_t *conf_clus)
@@ -268,11 +268,11 @@ static void init_time_configuration(int argc, char **argv, cluster_conf_t *conf_
 	time_aggr = (time_t) conf_clus->db_manager.aggr_time;
 
 	if (time_insr == 0) {
-		tellm("insert time can't be 0, using 300 seconds (default)");
+		verb2("insert time can't be 0, using 300 seconds (default)");
 		time_insr = 300;
 	}
 	if (time_aggr == 0) {
-		tellm("aggregation time can't be 0, using 60 seconds (default)");
+		verb2("aggregation time can't be 0, using 60 seconds (default)");
 		time_aggr = 60;
 	}
 
@@ -282,8 +282,8 @@ static void init_time_configuration(int argc, char **argv, cluster_conf_t *conf_
 	time_reset_timeout_slct();
 
 	// Times verbosity
-	tellm("insertion time:   %lu seconds", time_insr);
-	tellm("aggregation time: %lu seconds", time_aggr);
+	verb2("insertion time:   %lu seconds", time_insr);
+	verb2("aggregation time: %lu seconds", time_aggr);
 }
 
 static int init_sockets_single(socket_t *socket, char *host, int port, int bind)
@@ -341,8 +341,8 @@ static void init_sockets(int argc, char **argv, cluster_conf_t *conf_clus)
 	tprintf("server sync||%d||TCP||%s||%d||%d",    socket_sync01->port, status[st3], fd3, errno3);
 	tprintf("mirror sync||%d||TCP||%s||%d||%d",    socket_sync02->port, status[st4], fd4, errno4);
 	//
-	tellm("TIP! mirror sync socket opens and closes intermittently");
-	tellm("maximum #connections per process: %u", EDB_MAX_CONNECTIONS);
+	verb2("TIP! mirror sync socket opens and closes intermittently");
+	verb2("maximum #connections per process: %u", EDB_MAX_CONNECTIONS);
 }
 
 static void init_fork(int argc, char **argv, cluster_conf_t *conf_clus)
@@ -371,8 +371,8 @@ static void init_fork(int argc, char **argv, cluster_conf_t *conf_clus)
 
 	// Verbosity
 	char *status[2] = { "(just sleeps)", "" };
-	tellm("cache server pid: %d %s", server_pid, status[server_enabled]);
-	tellm("cache mirror pid: %d", mirror_pid);
+	verb2("cache server pid: %d %s", server_pid, status[server_enabled]);
+	verb2("cache mirror pid: %d", mirror_pid);
 }
 
 static void init_signals()
@@ -400,22 +400,22 @@ static void init_signals()
 	action.sa_flags = SA_SIGINFO;
 
 	if (sigaction(SIGUSR1, &action, NULL) < 0) { 
-        	tell("sigaction error on signal %d (%s)", SIGUSR1, strerror(errno));
+        	verb1("sigaction error on signal %d (%s)", SIGUSR1, strerror(errno));
 	}
 	if (sigaction(SIGUSR2, &action, NULL) < 0) {
-		tell("sigaction error on signal %d (%s)", SIGUSR1, strerror(errno));
+		verb1("sigaction error on signal %d (%s)", SIGUSR1, strerror(errno));
 	}
 	if (sigaction(SIGCHLD, &action, NULL) < 0) {
-		tell("sigaction error on signal %d (%s)", SIGUSR1, strerror(errno));
+		verb1("sigaction error on signal %d (%s)", SIGUSR1, strerror(errno));
 	}
 	if (sigaction(SIGTERM, &action, NULL) < 0) {
-		tell("sigaction error on signal %d (%s)", SIGTERM, strerror(errno));
+		verb1("sigaction error on signal %d (%s)", SIGTERM, strerror(errno));
 	}
 	if (sigaction(SIGINT, &action, NULL) < 0) {
-		tell("sigaction error on signal %d (%s)", SIGINT, strerror(errno));
+		verb1("sigaction error on signal %d (%s)", SIGINT, strerror(errno));
 	}
 	if (sigaction(SIGHUP, &action, NULL) < 0) {
-		tell("sigaction error on signal %d (%s)", SIGHUP, strerror(errno));
+		verb1("sigaction error on signal %d (%s)", SIGHUP, strerror(errno));
 	}
 }
 
@@ -534,7 +534,7 @@ static void init_process_configuration(int argc, char **argv, cluster_conf_t *co
 			type_alloc_mbs[index_aggrs];
 
 	tprintf("TOTAL||%0.2f MBs", mb_total);
-	tellm("TIP! this allocated space is per process server/mirror");
+	verb2("TIP! this allocated space is per process server/mirror");
 }
 
 static void init_pid_files(int argc, char **argv)
@@ -542,7 +542,6 @@ static void init_pid_files(int argc, char **argv)
 	#if !PID_FILES
 	return;
 	#endif
-
 	// Process PID save file
 	if (server_iam && server_enabled) {
 		process_update_pid(&proc_mirror);
@@ -564,7 +563,7 @@ static void init_pid_files(int argc, char **argv)
 static void init_output_redirection(int argc, char **argv, cluster_conf_t *conf_clus)
 {
 	if (listening) {
-		tellm_line("phase 7: listening (processing every %lu s)", time_insr);
+		verb3("phase 7: listening (processing every %lu s)", time_insr);
 	}
 	log_handler(conf_clus, 0);
 }
@@ -611,18 +610,19 @@ static state_t usage(int argc, char *argv[])
 	return 1;
 }
 
-void create_tmp(char *tmp_dir) {
-        int ret;
-        ret = mkdir(tmp_dir, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
-        if ((ret < 0) && (errno != EEXIST)) {
-                error("ear tmp dir cannot be created (%s)", strerror(errno));
-                _exit(0);
-        }
+void create_tmp(char *tmp_dir)
+{
+    int ret;
+    ret = mkdir(tmp_dir, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+    if ((ret < 0) && (errno != EEXIST)) {
+        error("ear tmp dir cannot be created (%s)", strerror(errno));
+        _exit(0);
+    }
 
-        if (chmod(tmp_dir, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH) < 0) {
-                warning("ear_tmp permissions cannot be set (%s)", strerror(errno));
-                _exit(0);
-        }
+    if (chmod(tmp_dir, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH) < 0) {
+        warning("ear_tmp permissions cannot be set (%s)", strerror(errno));
+        _exit(0);
+    }
 }
 
 static void change_limits()
@@ -632,56 +632,45 @@ static void change_limits()
 	debug("current limit %lu max %lu", rl.rlim_cur, rl.rlim_max);
 	rl.rlim_cur = rl.rlim_max;
 	setrlimit(RLIMIT_NOFILE, &rl);
-
 }
 
 int main(int argc, char **argv)
 {
-	//
 	if (usage(argc, argv)) {
 		return 0;
 	}
-
 	change_limits();
+
 	while(!exitting)
 	{
 		//
-		tellm_line("phase 1: general configuration");
+		verb3("phase 1: general configuration");
 		init_general_configuration(argc, argv, &conf_clus);
 		//
-		tellm_line("phase 2: time configuration");
+		verb3("phase 2: time configuration");
 		init_time_configuration(argc, argv, &conf_clus);
 		//
-		tellm_line("phase 3: sockets initialization");
+		verb3("phase 3: sockets initialization");
 		init_sockets(argc, argv, &conf_clus);
 		//
-		tellm_line("phase 4: processes fork");
+		verb3("phase 4: processes fork");
 		init_fork(argc, argv, &conf_clus);
 		// Initializing signal handler
 		init_signals();
 		//
-		tellm_line("phase 6: process configuration & allocation");
+		verb3("phase 6: process configuration & allocation");
 		init_process_configuration(argc, argv, &conf_clus);
 		// Creating PID files
 		init_pid_files(argc, argv);
 		// Output file
 		init_output_redirection(argc, argv, &conf_clus);
-
-
-
 		/*
  		 * Running
  		 */
-
-		//
 		body();
-		//
 		release();
-		//
 		dream();
 	}
-
-	tellm_line("Bye");
-
+	verb3("Bye");
 	return 0;
 }

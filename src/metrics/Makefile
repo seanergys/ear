@@ -13,6 +13,10 @@ mets_OBJS = \
     $(SRCDIR)/metrics/common/hwmon.o \
     $(SRCDIR)/metrics/common/hwmon_old.o \
     $(SRCDIR)/metrics/common/isst.o \
+    $(SRCDIR)/metrics/common/ipmi.o \
+    $(SRCDIR)/metrics/common/ipmi_driver.o \
+    $(SRCDIR)/metrics/common/ipmi_driver_frusdr.o \
+    $(SRCDIR)/metrics/common/ipmi_driver_parsing.o \
     $(SRCDIR)/metrics/common/likwid.o \
     $(SRCDIR)/metrics/common/nvml.o \
     $(SRCDIR)/metrics/common/pci.o \
@@ -85,7 +89,6 @@ mets_OBJS = \
     $(SRCDIR)/metrics/gpu/archs/gpuprof_dcgmi.o \
     $(SRCDIR)/metrics/gpu/archs/gpuprof_dummy.o \
     $(SRCDIR)/metrics/temperature/temperature.o \
-    $(SRCDIR)/metrics/temperature/archs/amd17.o \
     $(SRCDIR)/metrics/temperature/archs/eard.o \
     $(SRCDIR)/metrics/temperature/archs/hwmon.o \
     $(SRCDIR)/metrics/temperature/archs/intel63.o \
@@ -94,7 +97,7 @@ mets_OBJS = \
 
 ######## RULES
 
-all: all.components metrics.o libmetrics.a 
+all: all.components metrics.o libmetrics.a
 
 post: test
 	@ $(MAKE) -C 'gpu' post || exit
@@ -108,7 +111,6 @@ libmetrics.a: metrics.o $(mets_OBJS)
 
 test: metrics.c
 	$(CC) -I $(SRCDIR) -DTEST=1 -fPIC -o $@ $^ libmetrics.a ../daemon/local_api/libeard.a ../common/libcommon.a -lm -lpthread -ldl
-
 
 ######## OPTIONS
 

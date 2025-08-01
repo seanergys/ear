@@ -30,10 +30,10 @@
 #define HWMON_DEV_TYPE_POWER  "power"
 #define HWMON_DEV_TYPE_ENERGY "energy"
 
-#define hwmon_add(var) \
-    int   var ##_fd; \
-    char  var[32];     \
-    int   var ##_toint;
+#define hwmon_add(var)                                                                                                 \
+    int var##_fd;                                                                                                      \
+    char var[32];                                                                                                      \
+    int var##_toint;
 
 typedef struct hwmon_dev_s {
     hwmon_add(input);
@@ -67,8 +67,10 @@ void hwmon_close(hwmon_t *chips[]);
 
 void hwmon_read(hwmon_t chips[]);
 
-// This function counts the number of items found (i.e. input). Also you can
-// pass a label to count items per label. It accepts NULL labels.
+// This function counts the number of items found (i.e. "input"). Also you can
+// pass a label to count items per label. It accepts NULL labels. If you pass
+// "input" for an opened "temp" device type, it will count all the devices that
+// have tempXX_input items.
 int hwmon_count_items(hwmon_t chips[], char *item_name, char *label);
 
 // The iter functions iterate over all chips and devices until returns NULL.
@@ -83,4 +85,7 @@ hwmon_dev_t *hwmon_iter_devs(hwmon_t *chip, char *label);
 // is the average of all devices of all chips.
 void hwmon_calc_average(hwmon_t chips[], char *label);
 
-#endif //METRICS_COMMON_HWMON
+// Closes all file descriptors of files that are not related to this label.
+void hwmon_close_labels(hwmon_t chips[], char *label);
+
+#endif // METRICS_COMMON_HWMON

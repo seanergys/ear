@@ -318,7 +318,7 @@ static void insert_events(int i)
 void insert_hub(uint option, uint reason)
 {
     if (verbosity >= 2) {
-	    tell("looking for possible DB insertion (type 0x%x, reason 0x%x)", option, reason);
+	    verb1("looking for possible DB insertion (type 0x%x, reason 0x%x)", option, reason);
     }
 	// Why print is set before inserts?
 	metrics_print();
@@ -450,10 +450,9 @@ state_t storage_sample_receive(int fd, uint type, char *content, ullong extra)
 	index = storage_index_extract(type, &name);
 
 	if (verbosity) {
-		tell("received object of type: '%s' (t: '%d', i: '%d', k: '%llu')",
-			name, type, index, add_key(extra));
+		verb1("received object of type: '%s' (type: '%d', index: '%d')", name, type, index);
 	}
-    if (add_key(extra) != add_key(0LLU)) {
+    if (key_get(extra) != key_add(0LLU)) {
         return_msg(EAR_ERROR, "Key does not match");
     }
 	// Storage

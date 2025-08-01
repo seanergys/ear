@@ -15,17 +15,19 @@
 #include <common/states.h>
 #include <common/hardware/topology.h>
 #include <metrics/common/apis.h>
-#include <metrics/common/pstate.h>
 
 // Domain/device types
-#define CPUPOW_DOMAINS       4
-#define CPUPOW_SOCKET        0 //PKG (#devs = #sockets)
-#define CPUPOW_DRAM          1 //    (#devs = #sockets)
-#define CPUPOW_CORE          2 //PP0 (#devs = #cores), remember: cores != threads
-#define CPUPOW_UNCORE        3 //PP1 (#devs = ¿#sockets?)
+#define CPUPOW_DOMAINS  4
+#define CPUPOW_SOCKET   0 //PKG (#devs = #sockets)
+#define CPUPOW_DRAM     1 //    (#devs = #sockets)
+#define CPUPOW_CORE     2 //PP0 (#devs = #cores), remember: cores != threads
+#define CPUPOW_UNCORE   3 //PP1 (#devs = ¿#sockets?)
 // Flag to use in powercap_set
-#define POWERCAP_DO_NOTHING  ps_nothing  //Don't change anything in the device
-#define POWERCAP_DISABLE     ps_auto     //Disables the power cap in the device
+#define POWERCAP_DISABLE     UINT_MAX     //Disables the power cap in the device
+#define POWERCAP_DO_NOTHING (UINT_MAX-1)  //Don't change anything in the device
+// Flags to use in powercap_reset()
+#define RESET_DEFAULT 0 // Reset to previous values
+#define RESET_TDP     1 // Reset to TDP
 
 // API building scheme
 #define CPUPOW_F_LOAD(name)                void name (topology_t *tpo, mgt_cpupow_ops_t *ops)
@@ -74,15 +76,10 @@ state_t mgt_cpupow_powercap_is_enabled(int domain, uint *enabled);
 
 state_t mgt_cpupow_powercap_get(int domain, uint *watts);
 
-state_t mgt_cpupow_powercap_get_dev(int domain, int dev, uint *watts);
-
 state_t mgt_cpupow_powercap_set(int domain, uint *watts);
 
-// You can use also 'all_devs' macro.
-state_t mgt_cpupow_powercap_set_dev(int domain, int dev, uint watts);
-
 // Reset the whole domain to its starting state.
-state_t mgt_cpupow_powercap_reset(int domain);
+state_t mgt_cpupow_powercap_reset(int domain, int reset_mode);
 
 state_t mgt_cpupow_tdp_get(int domain, uint *watts);
 

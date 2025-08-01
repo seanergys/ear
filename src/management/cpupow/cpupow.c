@@ -17,29 +17,22 @@
 #include <management/cpupow/archs/amd17.h>
 #include <management/cpupow/archs/intel63.h>
 
-static pthread_mutex_t   lock = PTHREAD_MUTEX_INITIALIZER;
-static uint              loaded;
-static mgt_cpupow_ops_t  ops;
-static uint             *inner_watts;
-static int               devs_count; // #Threads
+static pthread_mutex_t  lock = PTHREAD_MUTEX_INITIALIZER;
+static uint             loaded;
+static int              cpus_count;
+static mgt_cpupow_ops_t ops;
 
-void mgt_cpupow_load(topology_t *tp, int force_api)
+void mgt_cpupow_load(topology_t *tp, int eard)
 {
 	while (pthread_mutex_trylock(&lock));
 	if (loaded) {
 		goto ret;
 	}
-    if (API_IS(force_api, API_DUMMY)) {
-        goto dummy;
-    }
     mgt_cpupow_intel63_load(tp, &ops);
     mgt_cpupow_amd17_load(tp, &ops);
-dummy:
     mgt_cpupow_dummy_load(tp, &ops);
+    cpus_count = tp->cpu_count;
     loaded = 1;
-    // To add quality of life functions
-    devs_count = tp->cpu_count;
-    inner_watts = calloc(devs_count, sizeof(uint));
 ret:
 	pthread_mutex_unlock(&lock);
 }
@@ -70,37 +63,27 @@ state_t mgt_cpupow_powercap_get(int domain, uint *watts)
     return ops.powercap_get(domain, watts);
 }
 
-state_t mgt_cpupow_powercap_get_dev(int domain, int dev, uint *watts)
-{
-    while (pthread_mutex_trylock(&lock));
-    // Memset is not required, is done inside.
-    state_t s = mgt_cpupow_powercap_get(domain, inner_watts);
-    *watts = inner_watts[dev];
-    pthread_mutex_unlock(&lock);
-    return s;
-}
-
 state_t mgt_cpupow_powercap_set(int domain, uint *watts)
 {
     return ops.powercap_set(domain, watts);
 }
 
-state_t mgt_cpupow_powercap_set_dev(int domain, int dev, uint watts)
+static state_t reset_to_tdp(int domain)
 {
-    while (pthread_mutex_trylock(&lock));
-    if (dev != all_devs) {
-        memset(inner_watts, watts, sizeof(uint)*devs_count);
-    } else {
-        memset(inner_watts, POWERCAP_DO_NOTHING, sizeof(uint)*devs_count);
-        inner_watts[dev] = watts;
+    static uint *tdps = NULL;
+
+    if (tdps == NULL) {
+        tdps = calloc(cpus_count, sizeof(uint));
     }
-    state_t s = mgt_cpupow_powercap_set(domain, inner_watts);
-    pthread_mutex_unlock(&lock);
-    return s;
+    mgt_cpupow_tdp_get(domain, tdps);
+    return ops.powercap_set(domain, tdps);
 }
 
-state_t mgt_cpupow_powercap_reset(int domain)
+state_t mgt_cpupow_powercap_reset(int domain, int reset_mode)
 {
+    if (reset_mode == RESET_TDP) {
+        return reset_to_tdp(domain);
+    }
     return ops.powercap_reset(domain);
 }
 

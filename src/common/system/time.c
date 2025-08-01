@@ -8,45 +8,45 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
+#include <common/output/debug.h>
+#include <common/system/time.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <common/system/time.h>
-#include <common/output/debug.h>
 
 void timestamp_get(timestamp *ts)
 {
-	timestamp_getfast(ts);
+    timestamp_getfast(ts);
 }
 
 void timestamp_getprecise(timestamp *ts)
 {
-	clock_gettime(CLOCK_MONOTONIC, ts);
+    clock_gettime(CLOCK_MONOTONIC, ts);
 }
 
 void timestamp_getfast(timestamp *ts)
 {
-	clock_gettime(CLOCK_MONOTONIC_COARSE, ts);
+    clock_gettime(CLOCK_MONOTONIC_COARSE, ts);
 }
 
 void timestamp_getreal(timestamp *ts)
 {
-	clock_gettime(CLOCK_REALTIME_COARSE, ts);
+    clock_gettime(CLOCK_REALTIME_COARSE, ts);
 }
 
 ullong timestamp_convert(timestamp *ts, ullong time_unit)
 {
-	ullong stamp = 0;
-	stamp  = (ullong) (ts->tv_sec * 1000000000);
-	stamp += (ullong) (ts->tv_nsec);
-	stamp /= time_unit;
-	return stamp;
+    ullong stamp = 0;
+    stamp        = (ullong) (ts->tv_sec * 1000000000);
+    stamp += (ullong) (ts->tv_nsec);
+    stamp /= time_unit;
+    return stamp;
 }
 
 ullong timestamp_getconvert(ullong time_unit)
 {
-	timestamp_t ts;
-	timestamp_getfast(&ts);
-	return timestamp_convert(&ts, time_unit);
+    timestamp_t ts;
+    timestamp_getfast(&ts);
+    return timestamp_convert(&ts, time_unit);
 }
 
 ullong timestamp_diff(timestamp *ts2, timestamp *ts1, ullong time_unit)
@@ -55,7 +55,7 @@ ullong timestamp_diff(timestamp *ts2, timestamp *ts1, ullong time_unit)
     ullong initnsec = 0;
     ullong endsec   = 0;
     ullong endnsec  = 0;
-    ullong stamp    = 0;
+    double stamp    = 0;
 
     if ((ts1->tv_sec == ts2->tv_sec) && (ts1->tv_nsec == ts2->tv_nsec)) {
         return 0LLU;
@@ -65,12 +65,13 @@ ullong timestamp_diff(timestamp *ts2, timestamp *ts1, ullong time_unit)
     endsec   = (ullong) ts2->tv_sec;
     endnsec  = (ullong) ts2->tv_nsec;
 
-    if (endnsec < initnsec){
+    if (endnsec < initnsec) {
         endsec--;
         endnsec += 1E9;
     }
-    stamp = (((endsec - initsec)) * 1E9) + (endnsec - initnsec);
-    return stamp / time_unit;
+    stamp            = (double) (((endsec - initsec)) * 1E9) + (endnsec - initnsec);
+    ullong stamp_ull = (ullong) stamp;
+    return ((stamp_ull > 0) && time_unit ? stamp_ull / time_unit : 0);
 }
 
 double timestamp_fdiff(timestamp *ts2, timestamp *ts1, ullong diff_unit, ullong prec_unit)
@@ -82,22 +83,22 @@ double timestamp_fdiff(timestamp *ts2, timestamp *ts1, ullong diff_unit, ullong 
 
 ullong timestamp_diffnow(timestamp *ts1, ullong time_unit)
 {
-	timestamp_t time_now;
-	timestamp_get(&time_now);
-	return timestamp_diff(&time_now, ts1, time_unit);
+    timestamp_t time_now;
+    timestamp_get(&time_now);
+    return timestamp_diff(&time_now, ts1, time_unit);
 }
 
 void timestamp_revert(timestamp *ts, ullong time, ullong time_unit)
 {
     ullong aux_ns = time * time_unit;
-    ts->tv_sec    = aux_ns / 1000000000; 
+    ts->tv_sec    = aux_ns / 1000000000;
     ts->tv_nsec   = aux_ns - (ts->tv_sec * 1000000000);
 }
 
 void timestamp_print(timestamp *ts, int fd)
 {
     char buffer[1024];
-    timestamp_tostr(ts, buffer, sizeof(buffer)); 
+    timestamp_tostr(ts, buffer, sizeof(buffer));
     dprintf(fd, "%s", buffer);
 }
 

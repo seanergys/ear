@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- development Added flops to ZEN5.
 - v6.0 GPU GFLOPS field added in the EAR Database.
 - v6.0 Added quality of life functions to management/cpupow API.
 - v6.0 New API for reading metrics through Linux hwmon.
@@ -22,14 +23,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - v6.0 New command enodectl.
 - v6.0 Added HSMP opening mode control.
 - v6.0 Added an option to ereport to query by user\_group.
+- v6.0 IPMI API
+- v6.0 Non-interactive version of the edb_create command.
+- v6.0 Now the topology module stores a socket index.
 
 ### Changed
+- development Updated AMD with changes for ZEN3, ZEN4 and ZEN5.
 - v6.0 Renamed DBIP and DBSECIP in ear.conf to EARDBD\_IP and EARDBD\_MIRROR\_IP to better reflect what it is.
 - v6.0 Energy node API.
 - v6.0 EAR Loader improved.
 - v6.0 Bandwidth, cache and flops APIs improved.
 - v6.0 Create a fallback mechanism for failed inserts to DB.
 - v6.0 Added pointer recalculation in cache\_data\_copy.
+- v6.0 Changed eacct's energy field from Joules to KWh.
+- v6.0 eacct's -n flag now just counts for jobs.
+- v6.0 EAR source code collows clang-format style.
+- v6.0 GPU energy savings are reported if a GPU optimization policy is being used.
 
 ### Fixed
 - v6.0 A heap-buffer overflow when opening perf files is fixed.
@@ -41,13 +50,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - v6.0 Fixed compilation errors when using PostgreSQL.
 - v6.0 Several minor fixes in IMCFreq amd19 management API.
 - v6.0 Fixed errors with ereport's -G option.
+- v6.0 Small bug fixes in the CPU power models:
+  - Do not check DRAM power since it is not available on AMD.
+  - Initialize all arrays before using them.
 
-## [5.2] - 2025-03-28
+## [5.2] - 2025-05-28
 
 ### Added
 - Implementation of Powercap setting by domain.
 - Application CPU utiliztion is now computed and reported by EARL to CSV files.
 - Now the power signature is printed when printing an application to CSV file.
+- Print all application fields in the csv file.
 
 ### Changed
 - A new version of the `eacct` command is released providing an output format option.
@@ -59,6 +72,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixes related to setting powercap to single devices and domains.
 - Fixed typo in cpupow define.
 - Improved CPU governor list message.
+
+## 5.1.9 - 2025-04-28
+
+### Added
+- --verbose flag in the plugin manager.
+
+### Fixed
+- Avoid the usage of DRAM power in the per-core power model since it is not available in AMD systems.
+- econtrol's --hosts flag output fixed.
 
 ## 5.1.8 - 2025-04-10
 

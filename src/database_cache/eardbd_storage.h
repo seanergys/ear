@@ -22,4 +22,4 @@ void storage_sample_add(char *buf, ulong len, ulong *idx, char *cnt, size_t siz,
 
 state_t storage_sample_receive(int fd, uint type, char *content, ullong extra);
 
-#endif //EAR_EARDBD_STORAGE_H
+#endif // EAR_EARDBD_STORAGE_H
