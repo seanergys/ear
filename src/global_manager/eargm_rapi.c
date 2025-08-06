@@ -94,6 +94,7 @@ void eargm_nodelist_set_powerlimit(cluster_conf_t *conf, uint limit, char **host
         if (!eargm_send_set_powerlimit(limit)) {
             error("Error sending powerlimit to %s", conf->eargm.eargms[i].node);
         }
+        remote_disconnect_fd(rc);
     }
 }
 
