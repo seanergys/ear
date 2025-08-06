@@ -26,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - v6.0 IPMI API
 - v6.0 Non-interactive version of the edb_create command.
 - v6.0 Now the topology module stores a socket index.
+- v6.0 Node sharing strategy added.
+- v6.0 Added non-computational power support to soft powercap.
 
 ### Changed
 - development Updated AMD with changes for ZEN3, ZEN4 and ZEN5.
@@ -37,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - v6.0 Added pointer recalculation in cache\_data\_copy.
 - v6.0 Changed eacct's energy field from Joules to KWh.
 - v6.0 eacct's -n flag now just counts for jobs.
-- v6.0 EAR source code collows clang-format style.
+- v6.0 EAR source code follows clang-format style.
 - v6.0 GPU energy savings are reported if a GPU optimization policy is being used.
 
 ### Fixed
@@ -53,6 +55,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - v6.0 Small bug fixes in the CPU power models:
   - Do not check DRAM power since it is not available on AMD.
   - Initialize all arrays before using them.
+- v6.0 Improving earl-eard connect to avoid blocking.
+- v6.0 Fixed socket count in acpi_power.
 
 ## [5.2] - 2025-05-28
 
