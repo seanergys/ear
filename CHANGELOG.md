@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - v6.0 New API for reading metrics through Linux hwmon.
 - v6.0 NVIDIA Grace Hopper devices support.
 - v6.0 Added AdminUsers to provide more privileges than AuthorizedUsers.
-- v6.0 Added --force option to the SLURM Plugin.
+- v6.0 Added --force option to the erun command.
 - v6.0 Added a mechanism to dynamically increase the timeout window in msg_internals when a node connects but does not return data.
 - v6.0 Added stall cycles to CPI API.
 - v6.0 Application CPU usage field added in the EAR Database.
