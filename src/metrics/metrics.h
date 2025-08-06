@@ -38,6 +38,7 @@ typedef struct metrics_info_s {
     apinfo_t cpi; // cpi
     apinfo_t gpu; // gpu
     apinfo_t nod; // energy_node
+    apinfo_t net;
 } metrics_info_t;
 
 typedef struct metrics_read_s {
@@ -56,27 +57,27 @@ typedef struct metrics_read_s {
 } metrics_read_t;
 
 typedef struct metrics_diff_s {
-    ullong samples;
-    double time;      // Seconds
-    ulong *cpu_diff;  // KHz (per device)
-    ulong cpu_avrg;   // KHz
-    ulong *imc_diff;  // KHz (per device)
-    ulong imc_avrg;   // KHz
-    ullong ram_diff;  // CAS
-    double ram_avrg;  // GB/s
+    ullong  samples;
+    double  time;     // Seconds
+    ulong  *cpu_diff; // KHz (per device)
+    ulong   cpu_avrg; // KHz
+    ulong  *imc_diff; // KHz (per device)
+    ulong   imc_avrg; // KHz
+    ullong  ram_diff; // CAS
+    double  ram_avrg; // GB/s
     cache_t cch_diff; // Misses
-    double cch_avrg;  // GB/s
+    double  cch_avrg; // GB/s
     flops_t flp_diff; // F. instructions
-    double flp_avrg;  // Giga F. operations per second
-    llong *tmp_diff;
-    llong tmp_avrg;
+    double  flp_avrg; // Giga F. operations per second
+    llong  *tmp_diff;
+    llong   tmp_avrg;
     ullong *pow_diff;
-    ullong pow_dram; // Average per DRAM
-    ullong pow_pack; // Average per PACKAGE
-    cpi_t cpi_diff;
-    double cpi_avrg; // GPI
-    gpu_t *gpu_diff;
-    ulong nod_avrg; // Total node energy
+    ullong  pow_dram; // Average per DRAM
+    ullong  pow_pack; // Average per PACKAGE
+    cpi_t   cpi_diff;
+    double  cpi_avrg; // GPI
+    gpu_t  *gpu_diff;
+    ulong   nod_avrg; // Total node energy
 } metrics_diff_t;
 
 #define MET_CPUFREQ                0LLU  // 0x0000000001

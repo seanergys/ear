@@ -1,3 +1,4 @@
+#if 0
 /*
  *
  * This program is part of the EAR software.
@@ -28,7 +29,7 @@
 #include <common/system/symplug.h>
 #include <metrics/common/apis.h>
 #include <metrics/common/hwmon.h>
-#include <metrics/gpu/archs/pvc_power_hwmon.h>
+#include <metrics/gpu/archs/hwmon_pvc.h>
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static state_t pvc_hwmon_static_init(ctx_t *c);
@@ -53,12 +54,13 @@ static bool pvc_gpus_found = false;
 state_t gpu_pvc_hwmon_load(gpu_ops_t *ops, int force_api)
 {
     state_t s;
+
     debug("asking for status");
-
     debug("Received API %d", force_api);
-
-    while (pthread_mutex_trylock(&lock))
-        ;
+    if (!USE_PVC_HWMON) {
+        return;
+    }
+    while (pthread_mutex_trylock(&lock));
     if (pvc_gpus_num_devices == 0) {
         if (state_ok(s = hwmon_find_drivers("i915", NULL, NULL))) {
             pvc_gpus_found = true;
@@ -286,7 +288,7 @@ state_t pvc_hwmon_set_mode(ctx_t *c, uint32_t mode)
 #if TEST
 
 /// WARNING: It was based on energy_cpu API it has to be adapted to gpu API
-// gcc -o test -DTEST -I$HOME/lrz-sng2/ear_private/src pvc_power_hwmon.c ../../../common/libcommon.a ../../libmetrics.a
+// gcc -o test -DTEST -I$HOME/lrz-sng2/ear_private/src hwmon_pvc.c ../../../common/libcommon.a ../../libmetrics.a
 int main(int argc, char *argv[])
 {
     if (state_fail(pvc_hwmon_meter_load())) {
@@ -329,4 +331,5 @@ int main(int argc, char *argv[])
     pvc_hwmon_meter_dispose(&c);
     return 0;
 }
+#endif
 #endif

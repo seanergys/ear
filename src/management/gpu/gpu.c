@@ -8,19 +8,19 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-#include <pthread.h>
+// #define SHOW_DEBUGS 1
+
 #include <stdio.h>
 #include <stdlib.h>
-
-// #define SHOW_DEBUGS 1
+#include <pthread.h>
 #include <common/output/debug.h>
-#include <management/gpu/archs/dummy.h>
-#include <management/gpu/archs/eard.h>
-#include <management/gpu/archs/mgt_pvc_power_hwmon.h>
-#include <management/gpu/archs/nvml.h>
-#include <management/gpu/archs/oneapi.h>
-#include <management/gpu/archs/rsmi.h>
 #include <management/gpu/gpu.h>
+#include <management/gpu/archs/nvml.h>
+#include <management/gpu/archs/rsmi.h>
+#include <management/gpu/archs/eard.h>
+#include <management/gpu/archs/dummy.h>
+#include <management/gpu/archs/oneapi.h>
+#include <management/gpu/archs/mgt_pvc_power_hwmon.h>
 
 #ifndef USE_PVC_HWMON
 #warning "USE_PVC_HWMON not defined! Defining it to 0..."
@@ -35,8 +35,7 @@ static uint devs_count;
 
 __attribute__((used)) void mgt_gpu_load(int force_api)
 {
-    while (pthread_mutex_trylock(&lock))
-        ;
+    while (pthread_mutex_trylock(&lock));
     if (loaded) {
         goto unlock_load;
     }

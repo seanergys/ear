@@ -635,7 +635,6 @@ static void metrics_static_init(topology_t *tp)
 
 #if USE_GPUS
     sa(mgt_gpu_init(no_ctx));
-    sa(gpu_init(no_ctx));
 #if USE_CUPTI
     if (read_cupti_metrics) {
         sa(gpuproc_init(no_ctx));
@@ -652,7 +651,7 @@ static void metrics_static_init(topology_t *tp)
 
 #if USE_GPUS
     sa(mgt_gpu_count_devices(no_ctx, &mgt_gpu.devs_count));
-    sa(gpu_count_devices(no_ctx, &met_gpu.devs_count));
+    sa(gpu_get_devices(NULL, &met_gpu.devs_count));
 #if USE_CUPTI
     if (read_cupti_metrics) {
         sa(gpuproc_count_devices(no_ctx, &proc_gpu.devs_count));
@@ -873,7 +872,7 @@ static void metrics_global_start()
 
 #if USE_GPUS
         gpu_data_null(gpu_metrics_read1[APP]);
-        if (state_ok(gpu_read(no_ctx, gpu_metrics_read1[APP]))) {
+        if (state_ok(gpu_read(gpu_metrics_read1[APP]))) {
 
             // We set here the starting sample for partial start/stop flow
             gpu_data_copy(gpu_metrics_read2[LOO], gpu_metrics_read1[APP]);
@@ -1032,7 +1031,7 @@ static void metrics_global_stop()
 
 #if USE_GPUS
         /* GPU */
-        if (state_ok(gpu_read(no_ctx, gpu_metrics_read2[APP]))) {
+        if (state_ok(gpu_read(gpu_metrics_read2[APP]))) {
 
             gpu_data_diff(gpu_metrics_read2[APP], gpu_metrics_read1[APP], gpu_metrics_diff[APP]);
 
@@ -1307,7 +1306,7 @@ static int metrics_partial_stop(uint where)
 
     if (master) {
 #if USE_GPUS
-        if (state_ok(gpu_read(no_ctx, gpu_metrics_read2[LOO]))) {
+        if (state_ok(gpu_read(gpu_metrics_read2[LOO]))) {
 
             // gpu_loop_stopped = 1;
             gpu_data_diff(gpu_metrics_read2[LOO], gpu_metrics_read1[LOO], gpu_metrics_diff[LOO]);
@@ -2731,7 +2730,7 @@ state_t metrics_new_iteration(signature_t *sig)
         debug("Computing GPU util because of application gpu phase is IDLE");
 
         /* GPUs */
-        if (state_fail(gpu_read(no_ctx, gpu_metrics_busy))) {
+        if (state_fail(gpu_read(gpu_metrics_busy))) {
             verbose_warning("Error reading GPU data on new iteration.");
         }
         gpu_data_diff(gpu_metrics_busy, gpu_metrics_read1[LOO], gpu_metrics_busy_diff);

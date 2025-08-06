@@ -91,6 +91,7 @@ typedef struct {
 
 typedef struct nvml_s {
     nvmlReturn_t (*Init)(void);
+    nvmlReturn_t (*Shutdown)(void);
     nvmlReturn_t (*Count)(uint *devCount);
     nvmlReturn_t (*Handle)(uint index, nvmlDevice_t *device);
     nvmlReturn_t (*GetSerial)(nvmlDevice_t dev, char *serial, uint length);
@@ -125,6 +126,8 @@ state_t nvml_open(nvml_t *nvml);
 
 state_t nvml_close();
 
+// These devices are handlers, not a structure containing any readable information.
+// It is your responsibility to free the space allocated for these handlers.
 state_t nvml_get_devices(nvmlDevice_t **devs, uint *devs_count);
 
 void nvml_get_serials(const ullong **serials);

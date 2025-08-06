@@ -52,7 +52,7 @@ declr_up_action_init(_test_gpu)
     int i;
 
     // Counting devices
-    gpu_count_devices(no_ctx, &devs_count_met);
+    gpu_get_devices(NULL, &devs_count_met);
     mgt_gpu_count_devices(no_ctx, &devs_count_mgt);
     // If number of GPU devices differ
     if (devs_count_met != devs_count_mgt) {

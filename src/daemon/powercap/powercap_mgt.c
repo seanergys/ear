@@ -376,7 +376,7 @@ static state_t util_detect_main(void *p)
 
         dom_util[DOMAIN_DRAM] = pc_topology_info.socket_count;
         dom_util[DOMAIN_GPU]  = 0;
-        if (gpu_read_raw(no_ctx, gpu_detection_raw_data) != EAR_SUCCESS) {
+        if (gpu_read_raw(gpu_detection_raw_data) != EAR_SUCCESS) {
             error("Error reading GPU data in powercap");
         }
         for (i = 0; i < gpu_pc_num_gpus; i++) {
@@ -441,18 +441,18 @@ void util_monitoring_init()
 /* This function will load any plugin , detect components etc . It must me executed just once */
 state_t pmgt_init()
 {
-    state_t ret;
-    int i;
     policy_conf_t *my_policy;
     char basic_path[SZ_PATH];
+    apinfo_t info = {0};
+    state_t ret;
+    int i;
+
     topology_init(&pc_topology_info);
 #if USE_GPUS
-    gpu_load(NO_EARD);
-    gpu_get_api(&gpu_pc_model);
-    if (gpu_init(no_ctx) != EAR_SUCCESS) {
-        error("Initializing GPU in powercap");
-    }
-    gpu_count_devices(no_ctx, &gpu_pc_num_gpus);
+    gpu_load(API_FREE);
+    gpu_get_info(&info);
+    gpu_pc_model = info.api;
+    gpu_get_devices(NULL, &gpu_pc_num_gpus);
     if (gpu_pc_model == API_DUMMY) {
         memcpy(pdomains_def, pdomains_def_dummy, sizeof(pdomains_def));
         memcpy(pdomains, pdomains_def_dummy, sizeof(pdomains_def));

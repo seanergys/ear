@@ -11,13 +11,11 @@
 #ifndef METRICS_GPU_H
 #define METRICS_GPU_H
 
-#include <common/plugins.h>
-#include <common/states.h>
-#include <common/system/time.h>
 #include <common/types.h>
+#include <common/states.h>
+#include <common/plugins.h>
+#include <common/system/time.h>
 #include <metrics/common/apis.h>
-
-// #include <metrics/gpu/archs/dcgmi.h> // TODO: To be removed
 
 typedef struct gpu_devs_s {
     ullong serial;
@@ -40,54 +38,60 @@ typedef struct gpu_s {
 } gpu_t;
 
 typedef struct gpu_ops_s {
+    void    (*unload)      ();
     void    (*get_info)    (apinfo_t *info);
     void    (*get_devices) (gpu_devs_t **devs, uint *devs_count);
-    state_t (*init)        (ctx_t *c);
-    state_t (*dispose)     (ctx_t *c);
     void    (*set_monitoring_mode) (int mode);
-    state_t (*read)        (ctx_t *c, gpu_t *data);
-    state_t (*read_raw)    (ctx_t *c, gpu_t *data);
+    state_t (*read)        (gpu_t *data);
+    double  (*read_raw)    (gpu_t *data);
     void    (*data_diff)   (gpu_t *data2, gpu_t *data1, gpu_t *data_diff);
 } gpu_ops_t;
 
-// Discovers the low level API.
-void gpu_load(int force_api);
+// API building scheme
+#define GPU_F_LOAD(name)        void gpu_##name##_load(gpu_ops_t *ops, int options)
+#define GPU_F_UNLOAD(name)      void gpu_##name##_unload()
+#define GPU_F_GET_INFO(name)    void gpu_##name##_get_info(apinfo_t *info)
+#define GPU_F_GET_DEVICES(name) void gpu_##name##_get_devices(gpu_devs_t **devs, uint *devs_count)
+#define GPU_F_SET_MONITORING_MODE(name) void gpu_##name##_set_monitoring_mode(int mode)
+#define GPU_F_READ(name)        state_t gpu_##name##_read(gpu_t *d)
+#define GPU_F_READ_RAW(name)    state_t gpu_##name##_read_raw(gpu_t *d)
+#define GPU_F_DATA_DIFF(name)   void gpu_##name##_data_diff(gpu_t *d2, gpu_t *d1, gpu_t *dD)
 
-// Deprecated, switch to gpu_get_info
-void gpu_get_api(uint *api);
+#define GPU_DEFINES(name)  \
+    GPU_F_LOAD(name);      \
+    GPU_F_UNLOAD(name);    \
+    GPU_F_GET_INFO(name);  \
+    GPU_F_GET_DEVICES(name); \
+    GPU_F_SET_MONITORING_MODE(name); \
+    GPU_F_READ(name);      \
+    GPU_F_READ_RAW(name);  \
+    GPU_F_DATA_DIFF(name);
+
+// Discovers the low level API.
+void gpu_load(int options);
+
+void gpu_unload();
 
 // Returns all available static information (Work in progress)
 void gpu_get_info(apinfo_t *info);
 
-// Count devices by calling get_devices
-#define gpu_count_devices(c, devs_count) gpu_get_devices(NULL, devs_count)
-
-// Information about devices
+// Information about devices. Freeing devs allocation is your responsibility.
 void gpu_get_devices(gpu_devs_t **devs, uint *devs_count);
-
-// Initializes the context.
-state_t gpu_init(ctx_t *c);
-
-state_t gpu_dispose(ctx_t *c);
 
 // You can use it to increase the monitoring rate.
 void gpu_set_monitoring_mode(int mode);
 
 // Reads the GPU device data and stores it in the gpu_t array data (1 per device).
-state_t gpu_read(ctx_t *c, gpu_t *data);
-
-state_t gpu_metrics_set();
-
-state_t gpu_metrics_read();
+state_t gpu_read(gpu_t *data);
 
 // Reads the GPU device data directly from the hardware (not pooled).
-state_t gpu_read_raw(ctx_t *c, gpu_t *data);
+state_t gpu_read_raw(gpu_t *data);
 
 // Performs a gpu_read() over data2, a gpu_data_diff() and copies data2 in data1.
-state_t gpu_read_diff(ctx_t *c, gpu_t *data2, gpu_t *data1, gpu_t *data_diff);
+state_t gpu_read_diff(gpu_t *data2, gpu_t *data1, gpu_t *data_diff);
 
 // Performs a gpu_read() over data2, a gpu_data_diff() and copies data2 in data1.
-state_t gpu_read_copy(ctx_t *c, gpu_t *data2, gpu_t *data1, gpu_t *data_diff);
+state_t gpu_read_copy(gpu_t *data2, gpu_t *data1, gpu_t *data_diff);
 
 /** Helpers */
 // Substracts the elements of the gpu_t array (data_diff = data2 - data1).

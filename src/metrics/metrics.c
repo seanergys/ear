@@ -58,7 +58,6 @@ void metrics_load(metrics_info_t *m, topology_t *tp, char *nodepow_path, ullong 
 
     nodepow(init,&e_ctx);
      cpupow(init,no_ctx);
-        gpu_init(no_ctx);
 
     metrics_info_get(m);
 }
@@ -220,7 +219,7 @@ void metrics_read(metrics_read_t *mr)
       flops_read(        &mr->flp);
        temp_read(         mr->tmp, NULL);
         cpi_read(        &mr->cpi);
-        gpu_read(no_ctx,  mr->gpu);
+        gpu_read(         mr->gpu);
 }
 
 void metrics_read_copy(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff_t *mrD)
@@ -349,7 +348,7 @@ static state_t metrics_apis_update(void *whatever)
     return EAR_SUCCESS;
 }
 
-int main(int argc, char *argv[])
+    int main(int argc, char *argv[])
 {
     if (argc > 1) {
         if (atoi(argv[1])) {

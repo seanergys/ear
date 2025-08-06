@@ -134,6 +134,8 @@ typedef struct metrics_gpus_s {
     }
 
 /* Conditional put. */
+#define apis_pif(op, func, cond) apis_pin(op, func, cond)
+
 #define apis_pin(op, func, cond)                                                                                       \
     if (cond) {                                                                                                        \
         apis_put(op, func);                                                                                            \

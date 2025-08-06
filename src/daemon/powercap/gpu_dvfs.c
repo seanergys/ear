@@ -155,11 +155,6 @@ debug("Freq[%d]=%lu",j,f[i][j]);
 state_t gpu_dvfs_pc_thread_init(void *p)
 {
     gpu_load(NO_EARD);
-    if (gpu_init(no_ctx) != EAR_SUCCESS) {
-        debug("Error at gpu initialization");
-        gpu_dvfs_pc_enabled = 0;
-        return EAR_ERROR;
-    }
     gpu_data_alloc(&values_gpu_init);
     gpu_data_alloc(&values_gpu_end);
     gpu_data_alloc(&values_gpu_diff);
@@ -167,7 +162,7 @@ state_t gpu_dvfs_pc_thread_init(void *p)
     // printf_gpu_freq_list(gpu_freq_list,gpu_num_freqs);
     gpu_dvfs_pc_enabled = 1;
     debug("Power measurement initialized in gpu_dvfs_pc thread initialization");
-    if (gpu_read(no_ctx, values_gpu_init) != EAR_SUCCESS) {
+    if (gpu_read(values_gpu_init) != EAR_SUCCESS) {
         debug("Error in gpu_read in gpu_dvfs_pc");
         gpu_dvfs_pc_enabled = 0;
     }
@@ -184,7 +179,7 @@ state_t gpu_dvfs_pc_thread_main(void *p)
 
     if (!gpu_dvfs_pc_enabled)
         return EAR_SUCCESS;
-    if (gpu_read(no_ctx, values_gpu_end) != EAR_SUCCESS) {
+    if (gpu_read(values_gpu_end) != EAR_SUCCESS) {
         debug("Error in gpu_read gpu_dvfs_pc");
         return EAR_ERROR;
     }
@@ -465,7 +460,7 @@ static state_t int_set_powercap_value(ulong limit, ulong *gpu_util)
         return EAR_SUCCESS;
     }
 
-    if (gpu_read_raw(no_ctx, values_gpu_idle) != EAR_SUCCESS) {
+    if (gpu_read_raw(values_gpu_idle) != EAR_SUCCESS) {
         debug("Error in gpu_read_raw gpu_dvfs_pc (int_set_powercap)");
         return EAR_ERROR;
     }

@@ -81,9 +81,6 @@ extern char nodename[MAX_PATH_SIZE];
 extern int eard_must_exit;
 extern ulong eard_max_freq;
 extern pthread_barrier_t setup_barrier;
-#if USE_GPUS
-extern char gpu_str[256];
-#endif
 extern int num_uncore_counters; // Me extraña que esto funcione.
 static ulong node_energy_datasize;
 static edata_t node_energy_data;
@@ -105,55 +102,31 @@ static wide_buffer_t wb;
 manages_info_t man;
 metrics_info_t met;
 static metrics_read_t met_read;
-static metrics_t ug; // Obsolete, use metrics_info_t and metrics_read_t
-
-#if USE_GPUS
-static gpu_t *eard_read_gpu;
-#endif
-
-#define sf(function)                                                                                                   \
-    if (state_fail(s = function)) {                                                                                    \
-        error("when calling " #function);                                                                              \
-    }
-
 extern char **environ;
 
 void services_init(topology_t *tp)
 {
-    state_t s;
-
     management_load(&man, tp, API_FREE);
 
     cpufreq_load(tp, NO_EARD);
     imcfreq_load(tp, NO_EARD);
      bwidth_load(tp, NO_EARD);
        temp_load(tp, NO_EARD);
-#if USE_GPUS
-    gpu_load(NO_EARD);
-#endif
+        gpu_load(NO_EARD);
 
     cpufreq_get_info(&met.cpu);
     imcfreq_get_info(&met.imc);
      bwidth_get_info(&met.ram);
        temp_get_info(&met.tmp);
-
-#if USE_GPUS
-    gpu_get_api((uint *) &ug.api);
-#endif
-#if USE_GPUS
-    sf(gpu_init(no_ctx));
-#endif
-#if USE_GPUS
-    gpu_get_devices((gpu_devs_t **) &ug.avail_list, &ug.devs_count);
-#endif
+        gpu_get_info(&met.gpu);
 
     cpufreq_data_alloc((cpufreq_t **) &met_read.cpu, empty);
     imcfreq_data_alloc((imcfreq_t **) &met_read.imc, empty);
      bwidth_data_alloc((bwidth_t  **) &met_read.ram);
        temp_data_alloc(&met_read.tmp);
-#if USE_GPUS
-    gpu_data_alloc(&eard_read_gpu);
-#endif
+        gpu_data_alloc(&met_read.gpu);
+
+    gpu_get_devices((gpu_devs_t **) &met.gpu.list1, NULL);
 
     serial_alloc(&wb, SIZE_8KB);
     // Resetting values
@@ -202,18 +175,18 @@ void services_print(topology_t *tp, cluster_conf_t *cluster_conf)
     sprintf(&buffer[strlen(buffer)], "MAX_SOCKETS  : %u\n", MAX_SOCKETS_SUPPORTED);
     sprintf(&buffer[strlen(buffer)], "MAX_GPUS     : %u\n", MAX_GPUS_SUPPORTED);
 
-    scprintf_init(&ss, 44, 140, -1, '#'); // 0 to 49, 0 to 179
-    scprintf_divide(&ss, (int[]) {1, 1}, (int[]) {20, 74}, &id_topology, "topology");
-    scprintf_divide(&ss, (int[]) {1, 76}, (int[]) {12, 137}, &id_logo, "ear-logo");
-    scprintf_divide(&ss, (int[]) {14, 76}, (int[]) {33, 137}, &id_conf, "configuration");
-    scprintf_divide(&ss, (int[]) {22, 1}, (int[]) {33, 74}, &id_metrics, "metrics");
-    scprintf_divide(&ss, (int[]) {35, 1}, (int[]) {42, 74}, &id_manages, "management");
+    scprintf_init  (&ss, 44, 140, -1, '#'); // 0 to 49, 0 to 179
+    scprintf_divide(&ss, (int[]) { 1,  1}, (int[]) {20,  74}, &id_topology, "topology");
+    scprintf_divide(&ss, (int[]) { 1, 76}, (int[]) {12, 137}, &id_logo    , "ear-logo");
+    scprintf_divide(&ss, (int[]) {14, 76}, (int[]) {33, 137}, &id_conf    , "configuration");
+    scprintf_divide(&ss, (int[]) {22,  1}, (int[]) {33,  74}, &id_metrics , "metrics");
+    scprintf_divide(&ss, (int[]) {35,  1}, (int[]) {42,  74}, &id_manages , "management");
 
-    scsprintf(&ss, id_logo, 0, 0, logo);
-    scsprintf(&ss, id_conf, 0, 1, buffer);
+    scsprintf(&ss, id_logo    , 0, 0, logo);
+    scsprintf(&ss, id_conf    , 0, 1, buffer);
     scsprintf(&ss, id_topology, 0, 1, topology_tostr(tp, buffer, 1024));
-    scsprintf(&ss, id_metrics, 0, 1, metrics_info_tostr(&met, buffer));
-    scsprintf(&ss, id_manages, 0, 1, management_info_tostr(&man, buffer));
+    scsprintf(&ss, id_metrics , 0, 1, metrics_info_tostr(&met, buffer));
+    scsprintf(&ss, id_manages , 0, 1, management_info_tostr(&man, buffer));
 
     dprintf(verb_channel, "%s", scprintf(&ss));
     dprintf(verb_channel, "# Log:                                                                                      "
@@ -525,12 +498,10 @@ int services_mgt_gpu(eard_head_t *head, int fd_req, int fd_ack)
     state_t ret_s   = EAR_SUCCESS;
     char *ret_data  = NULL;
     size_t ret_size = 0;
-    uint u1;
-#if USE_GPUS
     size_t rpc_size = head->size;
+    uint u1;
     ulong **p1;
     uint *p2;
-#endif
 
     switch (rpc_id) {
         case RPC_MGT_GPU_GET_API:
@@ -1098,36 +1069,34 @@ int service_gpu(eard_head_t *head, int req_fd, int ack_fd)
 
     switch (call) {
         case RPC_MET_GPU_GET_API:
-            data = (char *) &ug.api;
+            data = (char *) &met.gpu.devs_count;
             size = sizeof(uint);
             break;
-#if USE_GPUS
         case RPC_MET_GPU_GET_DEVICES:
             serial_clean(&wb);
-            serial_add_elem(&wb, (char *) &ug.devs_count, sizeof(uint));
-            serial_add_elem(&wb, (char *) ug.avail_list, sizeof(gpu_devs_t) * ug.devs_count);
+            serial_add_elem(&wb, (char *) &met.gpu.devs_count, sizeof(uint));
+            serial_add_elem(&wb, (char *) met.gpu.list1, sizeof(gpu_devs_t) * met.gpu.devs_count);
             size = serial_size(&wb);
             data = serial_data(&wb);
             break;
         case RPC_MET_GPU_COUNT_DEVICES:
-            data = (char *) &ug.devs_count;
+            data = (char *) &met.gpu.devs_count;
             size = sizeof(uint);
             break;
         case RPC_MET_GPU_GET_METRICS:
-            if (state_fail(gpu_read(no_ctx, eard_read_gpu))) {
+            if (state_fail(gpu_read(met_read.gpu))) {
                 serror("Could not get management GPU metrics");
             }
-            data = (char *) eard_read_gpu;
-            size = sizeof(gpu_t) * ug.devs_count;
+            data = (char *) met_read.gpu;
+            size = sizeof(gpu_t) * met.gpu.devs_count;
             break;
         case RPC_MET_GPU_GET_METRICS_RAW:
-            if (state_fail(gpu_read_raw(no_ctx, eard_read_gpu))) {
+            if (state_fail(gpu_read_raw(met_read.gpu))) {
                 serror("Could not get management GPU metrics");
             }
-            data = (char *) eard_read_gpu;
-            size = sizeof(gpu_t) * ug.devs_count;
+            data = (char *) met_read.gpu;
+            size = sizeof(gpu_t) * met.gpu.devs_count;
             break;
-#endif
         case RPC_MET_GPU_IS_SUPPORTED:
             u1   = (uint) gpu_is_supported();
             data = (char *) &u1;
@@ -1149,13 +1118,13 @@ int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)
 
     switch (head->req_service) {
         case GPU_SUPPORTED:
-#if USE_GPUS
+            #if USE_GPUS
             verbose(0, "GPU_SUPPORTED check");
             ack = 1;
-#else
+            #else
             verbose(0, "GPU_NOT_SUPPORTED check");
             ack = 0;
-#endif
+            #endif
             if (write(ack_fd, &ack, sizeof(ack)) != sizeof(ack)) {
                 // Do something with the error
             }

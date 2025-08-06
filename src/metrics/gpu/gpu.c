@@ -8,18 +8,17 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-#include <pthread.h>
-#include <stdlib.h>
-
 // #define SHOW_DEBUGS 1
+
+#include <stdlib.h>
+#include <pthread.h>
 #include <common/output/debug.h>
-#include <metrics/gpu/archs/dummy.h>
 #include <metrics/gpu/archs/eard.h>
 #include <metrics/gpu/archs/nvml.h>
-#include <metrics/gpu/archs/oneapi.h>
-#include <metrics/gpu/archs/pvc_power_hwmon.h>
 #include <metrics/gpu/archs/rsmi.h>
-#include <metrics/gpu/gpu.h>
+#include <metrics/gpu/archs/dummy.h>
+#include <metrics/gpu/archs/oneapi.h>
+#include <metrics/gpu/archs/hwmon_pvc.h>
 
 #ifndef USE_PVC_HWMON
 #warning "USE_PVC_HWMON not defined! Defining it to 0..."
@@ -27,49 +26,47 @@
 #endif
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-static gpu_ops_t ops;
-static uint devs_count;
-static uint ok_load;
+static gpu_ops_t       ops;
+static uint            devs_count;
+static apinfo_t        info;
 
-void gpu_load(int force_api)
+void gpu_load(int options)
 {
-    while (pthread_mutex_trylock(&lock))
-        ;
-    if (ok_load) {
-        goto unlock_load;
+    while (pthread_mutex_trylock(&lock));
+    if (info.api != API_NONE) {
+        goto leave;
     }
-    if (API_IS(force_api, API_DUMMY)) {
+    if (API_IS(options, API_DUMMY)) {
         goto dummy;
     }
-    gpu_nvml_load(&ops, force_api);
-    gpu_rsmi_load(&ops, force_api);
-    if (USE_PVC_HWMON) {
-        if (state_fail(gpu_pvc_hwmon_load(&ops, force_api))) {
-            debug("GPU PVC HWMON Load error: %s", state_msg);
-        }
-    } else {
-        gpu_oneapi_load(&ops, force_api);
-    }
-    gpu_eard_load(&ops, API_IS(force_api, API_EARD));
+    gpu_nvml_load(&ops, options);
+    gpu_rsmi_load(&ops, options);
+    //gpu_hwmon_pvc_load(&ops, options);
+    gpu_oneapi_load(&ops, options);
+    gpu_eard_load(&ops, options);
 dummy:
-    gpu_dummy_load(&ops);
-    ok_load = 1;
-unlock_load:
+    gpu_dummy_load(&ops, options);
+    gpu_get_info(&info);
+leave:
     pthread_mutex_unlock(&lock);
 }
 
-void gpu_get_api(uint *api)
+void gpu_unload()
 {
-    apinfo_t info;
-    gpu_get_info(&info);
-    *api = info.api;
+    while (pthread_mutex_trylock(&lock));
+    if (ops.unload != NULL) {
+        ops.unload();
+        memset(&ops, 0, sizeof(gpu_ops_t));
+        memset(&info, 0, sizeof(apinfo_t));
+    }
+    pthread_mutex_unlock(&lock);
 }
 
 void gpu_get_info(apinfo_t *info)
 {
+    memset(info, 0, sizeof(apinfo_t));
     info->layer       = "GPU";
     info->api         = API_NONE;
-    info->devs_count  = 0;
     info->scope       = SCOPE_NODE;
     info->granularity = GRANULARITY_PERIPHERAL;
     if (ops.get_info != NULL) {
@@ -84,35 +81,6 @@ void gpu_get_devices(gpu_devs_t **devs, uint *devs_count)
     }
 }
 
-state_t gpu_init(ctx_t *c)
-{
-    state_t s = EAR_ERROR;
-    while (pthread_mutex_trylock(&lock))
-        ;
-    if (ops.init != NULL) {
-        if (state_fail(s = ops.init(c))) {
-            goto unlock_init;
-        }
-    }
-    // Number of devices are used in data functions
-    gpu_get_devices(NULL, &devs_count);
-unlock_init:
-    pthread_mutex_unlock(&lock);
-    return s;
-}
-
-state_t gpu_dispose(ctx_t *c)
-{
-    state_t s = EAR_SUCCESS;
-    while (pthread_mutex_trylock(&lock))
-        ;
-    if (ops.dispose != NULL) {
-        s = ops.dispose(c);
-    }
-    pthread_mutex_unlock(&lock);
-    return s;
-}
-
 void gpu_set_monitoring_mode(int mode)
 {
     if (ops.set_monitoring_mode != NULL) {
@@ -120,30 +88,30 @@ void gpu_set_monitoring_mode(int mode)
     }
 }
 
-state_t gpu_read(ctx_t *c, gpu_t *data)
+state_t gpu_read(gpu_t *data)
 {
-    preturn(ops.read, c, data);
+    preturn(ops.read, data);
 }
 
-state_t gpu_read_raw(ctx_t *c, gpu_t *data)
+state_t gpu_read_raw(gpu_t *data)
 {
-    preturn(ops.read_raw, c, data);
+    preturn(ops.read_raw, data);
 }
 
-state_t gpu_read_diff(ctx_t *c, gpu_t *data2, gpu_t *data1, gpu_t *data_diff)
+state_t gpu_read_diff(gpu_t *data2, gpu_t *data1, gpu_t *data_diff)
 {
     state_t s;
-    if (state_fail(s = gpu_read(c, data2))) {
+    if (state_fail(s = gpu_read(data2))) {
         return s;
     }
     gpu_data_diff(data2, data1, data_diff);
     return s;
 }
 
-state_t gpu_read_copy(ctx_t *c, gpu_t *data2, gpu_t *data1, gpu_t *data_diff)
+state_t gpu_read_copy(gpu_t *data2, gpu_t *data1, gpu_t *data_diff)
 {
     state_t s;
-    if (state_fail(s = gpu_read_diff(c, data2, data1, data_diff))) {
+    if (state_fail(s = gpu_read_diff(data2, data1, data_diff))) {
         return s;
     }
     gpu_data_copy(data1, data2);
@@ -196,8 +164,8 @@ static void static_data_diff(gpu_t *data2, gpu_t *data1, gpu_t *data_diff, int i
 void gpu_data_diff(gpu_t *data2, gpu_t *data1, gpu_t *data_diff)
 {
     int i;
-    gpu_data_null(data_diff);
 
+    gpu_data_null(data_diff);
     if (ops.data_diff != NULL) {
         return ops.data_diff(data2, data1, data_diff);
     }
