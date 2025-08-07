@@ -127,6 +127,7 @@ static ulong * powermon_freq_list;
 static int powermon_num_pstates;
 static periodic_metric_t current_sample;
 static double last_power_reported = 0;
+static double last_calculated_power = 0;
 static ulong  last_node_power     = 0;
 
 static uint *powermon_restore_cpufreq_list;
@@ -1135,7 +1136,7 @@ void job_init_powermon_app(powermon_app_t *pmapp, ehandler_t *ceh,
     // reset signature
     signature_init(&pmapp->app.signature);
 
-    init_power_signature(&pmapp->app.power_sig);
+    power_signature_init(&pmapp->app.power_sig);
 
     pmapp->app.power_sig.max_DC_power = 0;
     pmapp->app.power_sig.min_DC_power = 10000;
@@ -1256,7 +1257,7 @@ void report_powermon_app(powermon_app_t *app) {
 
     verbose_application_data(0, &app->app);
 
-    clean_db_power_signature(&app->app.power_sig, my_node_conf->max_sig_power);
+    power_signature_db_clean(&app->app.power_sig, my_node_conf->max_sig_power);
 
     report_application_in_file(&app->app);
 
@@ -2424,6 +2425,8 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
         }
     }
 
+    last_calculated_power = corrected_power;
+
     /* report periodic metric */
     if (report) {
 				periodic_metric_clean_before_db(&current_sample);
@@ -2855,7 +2858,7 @@ uint powermon_is_idle()
 
 uint powermon_current_power()
 {
-    return (uint)last_power_reported;
+    return (uint)last_calculated_power;
 }
 
 
@@ -3036,18 +3039,21 @@ static void set_default_powermon_end(powermon_app_t *app, uint idle)
   }
 
 #if USE_GPUS
-  /* GPUs */
-#if 0
-  if (idle && app->policy_freq && my_node_conf->gpu_def_freq)
-  {
-    /* EARD is not aware of the GPUs used */
-    ulong idle_gpu_freq;
-    /* We assume all the gpus are the same */
-    gpu_mgr_get_min(0, &idle_gpu_freq);
-    verbose(VCONF, "Set idle GPU freq %.2f GHz", (float) idle_gpu_freq / 1000000.0);
-    gpu_mgr_set_freq_all_gpus(idle_gpu_freq);
-  }
-#endif
+  /* Restore GPU frequency just when the node goes idle, and the Daemon is
+	 * configured as ForceFrequencies, or the EAR Library was loaded. */
+	if (idle && app->policy_freq) {
+		ulong idle_gpu_freq;
+		/* We check whether the gpu_def_freq is set.
+		 * Otherwise, we reset to the maximum GPU frequency. */
+		if(my_node_conf->gpu_def_freq) {
+			idle_gpu_freq = my_node_conf->gpu_def_freq;
+		} else {
+			gpu_mgr_get_max(0, &idle_gpu_freq);
+		}
+		/* We assume all the gpus are the same */
+		verbose(VCONF, "Set idle GPU freq %.3f GHz", (float) idle_gpu_freq / 1000000.0);
+		gpu_mgr_set_freq_all_gpus(idle_gpu_freq);
+	}
 #endif
 
   if (idle)

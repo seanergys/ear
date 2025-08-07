@@ -873,7 +873,6 @@ static void metrics_global_start()
 	aux_time = metrics_time();
 	app_start = aux_time;
     state_t s;
-	int ret;
 
     // Init energy savings fields
 	app_energy_saving.jid     = application.job.id;
@@ -957,10 +956,11 @@ static void metrics_global_start()
 
 	// New metrics
 	/* Energy */
-	debug(" node_dc_energy");
-	ret = energy_read(NULL, aux_energy);
-	if ((ret == EAR_ERROR) || energy_data_is_null(aux_energy)){
-		verbose_error_master("Reading Node energy at application start.");
+	debug("node_dc_energy");
+	if (state_fail(energy_read(NULL, aux_energy))) {
+		verbose_error_master("Energy node reading at application start returned an error.")
+	} else if (energy_data_is_null(aux_energy)) {
+		verbose_warning_master("Energy node data is null at application start.");
 	}
 
 	/* RAPL energy metrics */
