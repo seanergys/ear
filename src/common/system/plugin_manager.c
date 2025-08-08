@@ -19,15 +19,16 @@
 #include <common/utils/strscreen.h>
 #include <stdlib.h>
 
-#define MAX_SYMBOLS 4
-#define MAX_PLUGINS 128
-#define PM_DEFAULT_VERB 2
+#define MAX_SYMBOLS      4
+#define MAX_PLUGINS      128
+#define PM_DEFAULT_VERB  2
 
-typedef void(get_tag_f)(cchar **tag, cchar **tags_deps);
-typedef char *(action_init_f) (cchar * tag, void **data_alloc, void *data);
-typedef char *(action_periodic_f) (cchar * tag, void *data);
-typedef char *(post_data_f) (cchar * msg, void *data);
-typedef char *(fds_set_f) (afd_set_t * set);
+typedef void  (get_tag_f)         (cchar **tag, cchar **tags_deps);
+typedef char *(action_init_f)     (cchar *tag, void **data_alloc, void *data);
+typedef char *(action_periodic_f) (cchar *tag, void *data);
+typedef void  (action_close_f)    ();
+typedef char *(post_data_f)       (cchar *msg, void *data);
+typedef char *(fds_set_f)         (afd_set_t *set);
 
 static ulong monitor_period = 100;
 static ulong relax_period   = 100;
@@ -38,30 +39,30 @@ static ulong relax_period   = 100;
 // plugin2 [0] [0] [0]
 
 typedef struct plugin_s {
-    char path[4096];
-    char *file_name;
-    void *handler;
-    cchar *tag;
-    cchar *tags_deps;
-    char conf[512];
-    uint deps_table[MAX_PLUGINS]; // Not sorted, table of dependecy modes
-    action_init_f *action_init[MAX_PLUGINS];
+    char               path[4096];
+    char              *file_name;
+    void              *handler;
+    cchar             *tag;
+    cchar             *tags_deps;
+    char               conf[512];
+    uint               deps_table[MAX_PLUGINS]; // Not sorted, table of dependecy modes
+    action_init_f     *action_init[MAX_PLUGINS];
     action_periodic_f *action_periodic[MAX_PLUGINS];
-    fds_set_f *fds_register;
-    fds_set_f *fds_attend;
-    post_data_f *post_data;
-    void *data;
-    void *data_conf;
-    ullong time_accum;
-    ullong time_lapse; // In ms
-    timestamp_t time_origin;
-    uint time_param; // Time in parameter
-    uint one_time;   // Obsolete?
-    uint priority;
-    uint is_opened;
-    uint is_enabled;
-    uint is_paused;
-    uint is_silenced;
+    fds_set_f         *fds_register;
+    fds_set_f         *fds_attend;
+    post_data_f       *post_data;
+    void              *data;
+    void              *data_conf;
+    ullong             time_accum;
+    ullong             time_lapse; // In ms
+    timestamp_t        time_origin;
+    uint               time_param; // Time in parameter
+    uint               one_time;   // Obsolete?
+    uint               priority;
+    uint               is_opened;
+    uint               is_enabled;
+    uint               is_paused;
+    uint               is_silenced;
 } plugin_t;
 
 typedef struct plugins_s {
@@ -71,12 +72,12 @@ typedef struct plugins_s {
     uint count;
 } plugins_t;
 
-static plugins_t p;
-static char **priority_paths;
-static char date[128];
-static uint exit_called;
+static plugins_t   p;
+static char      **priority_paths;
+static char        date[128];
+static uint        exit_called;
 // static int         fds_status;
-static afd_set_t fds_active;
+static afd_set_t   fds_active;
 
 // static ullong      timeout;
 // static ullong      timeout_remaining;
@@ -476,6 +477,19 @@ next_fa:
 }
 #endif
 
+
+static int plugin_manager_after_close()
+{
+    action_close_f *action_close;
+    int i;
+
+    for (i = 0; i < p.count; ++i) {
+        if ((action_close = dlsym(p.plugins_sorted[i]->handler, "up_action_close")) != NULL) {
+            action_close();
+        }
+    }
+}
+
 static state_t plugins_main(void *whatever)
 {
     static timestamp_t time_now;
@@ -496,6 +510,7 @@ static state_t plugins_main(void *whatever)
     plugins_action_periodic(0, &time_now, time_passed);
     if (exit_called) {
         monitor_dispose();
+        plugin_manager_after_close();
     }
     //
     time_last = time_now;
