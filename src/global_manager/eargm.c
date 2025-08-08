@@ -806,9 +806,15 @@ int main(int argc, char *argv[])
     }
 
     create_tmp(my_cluster_conf.install.dir_temp);
-
+    char buf[20];
     if (my_cluster_conf.eargm.use_log) {
-        create_log(my_cluster_conf.install.dir_temp, "eargmd", fd_my_log);
+        char *gm_name = ear_getenv("EARGMNAME");
+        if (gm_name) {
+            sprintf(buf, "eargmd-%s", gm_name);
+            create_log(my_cluster_conf.install.dir_temp, buf, fd_my_log);
+        } else {
+            create_log(my_cluster_conf.install.dir_temp, "eargmd", fd_my_log);
+        }
     }
     TIMESTAMP_SET_EN(my_cluster_conf.eargm.use_log);
 

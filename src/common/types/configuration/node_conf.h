@@ -71,7 +71,7 @@ typedef struct range_def {
 } range_def_t;
 
 typedef struct node_range {
-    range_def_t range;
+    range_def_t r_def;
     int db_ip;
     int sec_ip;
     int *specific_tags;

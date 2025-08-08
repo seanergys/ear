@@ -204,7 +204,7 @@ static state_t get_context(ctx_t *c, hwfds_t **h)
 
 state_t grace_cpu_read(ctx_t *c, ullong *values)
 {
-    if ((values == NULL))
+    if (values == NULL)
         return EAR_ERROR;
     if (!grace_cpu_initialized)
         return EAR_ERROR;
