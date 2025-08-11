@@ -386,12 +386,12 @@ void state_verbose_signature(loop_t *sig, int master_rank, char *aname, char *nn
             (per_proc_verb_file && ll_accesses) ? ll_hits / (double) ll_accesses : sig->signature.cache.ll_hit_rate;
 
         verbose(SIG_VRB_LVL,
-                "\t          Cache: %-6s %-6s %-6s %-6s\n"
-                "\t  giga-misses/s: %-6.2f %-6.2f %-6.2f %-6.2f\n"
-                "\t    giga-hits/s: %-6.2f %-6.2f %-6.2f %-6.2f\n"
-                "\tgiga-accesses/s: %-6.2f %-6.2f %-6.2f %-6.2f\n"
-                "\t      miss rate: %-6.2f %-6.2f %-6.2f %-6.2f\n"
-                "\t       hit rate: %-6.2f %-6.2f %-6.2f %-6.2f",
+                "\t          Cache: %-8s %-8s %-8s %-8s\n"
+                "\t  giga-misses/s: %-8.2f %-8.2f %-8.2f %-8.2f\n"
+                "\t    giga-hits/s: %-8.2f %-8.2f %-8.2f %-8.2f\n"
+                "\tgiga-accesses/s: %-8.2f %-8.2f %-8.2f %-8.2f\n"
+                "\t      miss rate: %-8.2f %-8.2f %-8.2f %-8.2f\n"
+                "\t       hit rate: %-8.2f %-8.2f %-8.2f %-8.2f",
                 "L1d", "L2", "L3", "LL", l1d_miss_sec, l2_miss_sec, l3_miss_sec, ll_miss_sec, l1d_hit_sec, l2_hit_sec,
                 l3_hit_sec, ll_hit_sec, l1d_access_sec, l2_access_sec, l3_access_sec, ll_access_sec, l1d_miss_rate,
                 l2_miss_rate, l3_miss_rate, ll_miss_rate, l1d_hit_rate, l2_hit_rate, l3_hit_rate, ll_hit_rate);
@@ -403,9 +403,9 @@ void state_verbose_signature(loop_t *sig, int master_rank, char *aname, char *nn
         verbosen(SIG_VRB_LVL, "\t%s", proc_data_str);
 
 #if WF_SUPPORT
-        verbosen(SIG_VRB_LVL, "\n\tSocket\tCPU temperature (celsius)\tCPU power (W)\tDRAM power (W)");
+        verbosen(SIG_VRB_LVL, "\n\tSocket CPU temp. (celsius) CPU power (W) DRAM power (W)");
         for (uint s = 0; s < sig->signature.cpu_sig.devs_count; s++) {
-            verbosen(SIG_VRB_LVL, "\n\t%6u\t%-25lld\t%-3.2lf\t%3.2lf", s, sig->signature.cpu_sig.temp[s],
+            verbosen(SIG_VRB_LVL, "\n\t%6u %-19lld %-13.2lf %-14.2lf", s, sig->signature.cpu_sig.temp[s],
                      sig->signature.cpu_sig.cpu_power[s], sig->signature.cpu_sig.dram_power[s]);
         }
 #endif
