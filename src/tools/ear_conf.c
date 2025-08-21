@@ -14,6 +14,33 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+static char *buffer_serial;
+
+static void serialize_deserialize_test(char *ear_path)
+{
+    cluster_conf_t my_cluster_ser, my_cluster_deser;
+    uint size_serial;
+    printf("reading ear.conf for serialization test\n");
+    read_cluster_conf(ear_path, &my_cluster_ser);
+    if (state_fail(serialize_cluster_conf(&my_cluster_ser, &buffer_serial, &size_serial))) {
+        printf("Seralization fails\n");
+        exit(1);
+    }
+    printf("Serialization ok: Serial size %u\n", size_serial);
+    printf("Deserialization\n");
+
+    version_t conf_version;
+    version_set(&conf_version, 6, 0);
+
+    if (state_fail(deserialize_cluster_conf(&my_cluster_deser, buffer_serial, size_serial, &conf_version))) {
+        printf("Deserialization fails\n");
+        exit(1);
+    }
+    printf("Deserialization ok\n");
+    print_cluster_conf(&my_cluster_deser);
+    return;
+}
+
 int main(int argc, char *argv[])
 {
     cluster_conf_t my_cluster;
@@ -80,6 +107,8 @@ int main(int argc, char *argv[])
     printf("freeing cluster_conf again\n");
     free_cluster_conf(&my_cluster);
     printf("freed cluster_conf\n");
+
+    serialize_deserialize_test(ear_path);
 
     return 0;
 }
