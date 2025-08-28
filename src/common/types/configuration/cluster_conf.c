@@ -1613,6 +1613,7 @@ state_t deserialize_cluster_conf(cluster_conf_t *conf, char *ear_conf_buf, size_
     }
     serial_copy_elem(&ear_conf_serial, (char *) &conf->default_policy, NULL);
 
+<<<<<<< HEAD
     /* Priv users */
     serial_copy_elem(&ear_conf_serial, (char *) &conf->auth_users_count, NULL);
     if (conf->auth_users_count) {
@@ -1647,6 +1648,42 @@ state_t deserialize_cluster_conf(cluster_conf_t *conf, char *ear_conf_buf, size_
             serial_copy_elem(&ear_conf_serial, (char *) conf->auth_accounts[auth], NULL);
         }
     }
+=======
+	/* Priv users */
+	serial_copy_elem(&ear_conf_serial, (char *)&conf->num_priv_users, NULL);
+	if (conf->num_priv_users){
+		conf->priv_users = calloc(sizeof(char *), conf->num_priv_users);
+		for (uint auth = 0; auth < conf->num_priv_users; auth ++){
+			uint size_auth;
+			serial_copy_elem(&ear_conf_serial, (char *)&size_auth, NULL);
+			conf->priv_users[auth] = calloc(1,size_auth+1);	
+			serial_copy_elem(&ear_conf_serial, (char *)conf->priv_users[auth],NULL);
+		}
+	}
+	/* Priv groups */
+	serial_copy_elem(&ear_conf_serial, (char *)&conf->num_priv_groups, NULL);
+	if (conf->num_priv_groups){
+		conf->priv_groups = calloc(sizeof(char *), conf->num_priv_groups);
+		for (uint auth = 0; auth < conf->num_priv_groups; auth ++){
+			uint size_auth;
+			serial_copy_elem(&ear_conf_serial, (char *)&size_auth, NULL);
+			conf->priv_groups[auth] = calloc(1,size_auth+1);
+			serial_copy_elem(&ear_conf_serial, (char *)conf->priv_groups[auth], NULL);
+		}
+	}
+
+	/* Priv accounts */
+	serial_copy_elem(&ear_conf_serial, (char *)&conf->num_acc, NULL);
+	if (conf->num_acc){
+		conf->priv_acc = calloc(sizeof(char *), conf->num_acc);
+		for (uint auth = 0; auth < conf->num_acc; auth ++){
+			uint size_auth;
+			serial_copy_elem(&ear_conf_serial, (char *)&size_auth, NULL);
+			conf->priv_acc[auth] = calloc(1, size_auth+1);
+			serial_copy_elem(&ear_conf_serial, (char *)conf->priv_acc[auth], NULL);
+		}
+	}
+>>>>>>> v5.2
 
     /* Admin users: Just available since v6.0 */
     version_t admusr_min_v;
