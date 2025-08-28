@@ -1478,7 +1478,7 @@ state_t deserialize_cluster_conf(cluster_conf_t *conf, char *ear_conf_buf, size_
 			uint size_auth;
 			serial_copy_elem(&ear_conf_serial, (char *)&size_auth, NULL);
 			conf->priv_users[auth] = calloc(1,size_auth+1);	
-			serial_copy_elem(&ear_conf_serial, (char *)&conf->priv_users[auth],NULL);
+			serial_copy_elem(&ear_conf_serial, (char *)conf->priv_users[auth],NULL);
 		}
 	}
 	/* Priv groups */
@@ -1489,7 +1489,7 @@ state_t deserialize_cluster_conf(cluster_conf_t *conf, char *ear_conf_buf, size_
 			uint size_auth;
 			serial_copy_elem(&ear_conf_serial, (char *)&size_auth, NULL);
 			conf->priv_groups[auth] = calloc(1,size_auth+1);
-			serial_copy_elem(&ear_conf_serial, (char *)&conf->priv_groups[auth], NULL);
+			serial_copy_elem(&ear_conf_serial, (char *)conf->priv_groups[auth], NULL);
 		}
 	}
 
@@ -1501,7 +1501,7 @@ state_t deserialize_cluster_conf(cluster_conf_t *conf, char *ear_conf_buf, size_
 			uint size_auth;
 			serial_copy_elem(&ear_conf_serial, (char *)&size_auth, NULL);
 			conf->priv_acc[auth] = calloc(1, size_auth+1);
-			serial_copy_elem(&ear_conf_serial, (char *)&conf->priv_acc[auth], NULL);
+			serial_copy_elem(&ear_conf_serial, (char *)conf->priv_acc[auth], NULL);
 		}
 	}
 
