@@ -8,10 +8,11 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-#include <common/output/debug.h>
-#include <common/system/time.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <common/system/time.h>
+#include <common/output/debug.h>
+#include <common/math_operations.h>
 
 void timestamp_get(timestamp *ts)
 {
@@ -50,6 +51,24 @@ ullong timestamp_getconvert(ullong time_unit)
 }
 
 ullong timestamp_diff(timestamp *ts2, timestamp *ts1, ullong time_unit)
+{
+    #define __1E9LLU 1000000000LLU
+    ullong ts2_nsec = ts2->tv_nsec;
+    ullong ts1_nsec = ts1->tv_nsec;
+    ullong ts2_sec  = ts2->tv_sec;
+    ullong ts1_sec  = ts1->tv_sec;
+    if (ts1_sec > ts2_sec || ts2_nsec >= __1E9LLU || ts1_nsec >= __1E9LLU) {
+        return 0LLU;
+    }
+    if (ts1_sec == ts2_sec && ts1_nsec >= ts2_nsec) {
+        return 0LLU;
+    }
+    ts2_sec  = ts2_sec - ts1_sec - (ts1_nsec > ts2_nsec);
+    ts2_nsec = overflow_magic_u64(ts2_nsec, ts1_nsec, __1E9LLU);
+    return ((ts2_sec * __1E9LLU) + ts2_nsec) / time_unit;
+}
+
+ullong timestamp_diff_deprecated(timestamp *ts2, timestamp *ts1, ullong time_unit)
 {
     ullong initsec  = 0;
     ullong initnsec = 0;
