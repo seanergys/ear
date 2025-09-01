@@ -96,7 +96,7 @@ state_t mgt_cpufreq_eard_init(ctx_t *c)
 {
     char *buffer;
     size_t size;
-    state_t s;
+    state_t s = EAR_ERROR;
 
     // Lock must be added
     if (initialized) {

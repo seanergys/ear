@@ -189,7 +189,7 @@ static state_t get_context(ctx_t *c, hwfds_t **h)
 
 state_t acpi_power_meter_read(ctx_t *c, ullong *values)
 {
-    if ((values == NULL))
+    if (values == NULL)
         return EAR_ERROR;
     if (!acpi_power_meter_initialized)
         return EAR_ERROR;

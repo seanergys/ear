@@ -41,13 +41,9 @@ char *state_msg __attribute__((weak));
 int state_no __attribute__((weak));
 
 #define state_ok(state)          ((state) == EAR_SUCCESS)
-
 #define state_fail(state)        ((state) != EAR_SUCCESS)
-
 #define state_is(state1, state2) (state1 == state2)
-
 #define serror(str)              error("%s: %s (%d)", str, state_msg, state_no);
-
 #define sserror(format, ...)     error(format ": %s (%d)", __VA_ARGS__, state_msg, state_no);
 
 #define return_msg(no, msg)                                                                                            \
@@ -107,23 +103,22 @@ struct generr_s {
 
 /*
  *
- * Legacy
+ * Deprecated
  *
  */
 
 /* legacy errors */
-#define EAR_IGNORE            -16 //*
-#define EAR_ALLOC_ERROR       -3  //*
-#define EAR_READ_ERROR        -4
-#define EAR_OPEN_ERROR        -5
-#define EAR_NOT_READY         -9
-#define EAR_BUSY              -10
-#define EAR_MYSQL_ERROR       -14
-#define EAR_MYSQL_STMT_ERROR  -15
-#define EAR_SOCK_OP_ERROR     -18
-#define EAR_SOCK_DISCONNECTED -20
-#define EAR_NO_RESOURCES      -22 //*
-#define EAR_NOT_FOUND         -23 //*
+#define EAR_IGNORE              -16 //*
+#define EAR_ALLOC_ERROR         -3  //*
+#define EAR_READ_ERROR          -4
+#define EAR_OPEN_ERROR          -5
+#define EAR_NOT_READY           -9
+#define EAR_BUSY                -10
+#define EAR_MYSQL_ERROR         -14
+#define EAR_MYSQL_STMT_ERROR    -15
+#define EAR_SOCK_DISCONNECTED   -20
+#define EAR_NO_RESOURCES        -22 //*
+#define EAR_NOT_FOUND           -23 //*
 
 // TODO: this is a config not a state
 #define DYNAIS_ENABLED    1
@@ -136,12 +131,12 @@ int intern_error_num __attribute__((weak));
 
 #define state_return(state) return state;
 
-#define state_return_msg(state, error_num, error_str)                                                                  \
-    {                                                                                                                  \
-        intern_error_num = error_num;                                                                                  \
-        intern_error_str = error_str;                                                                                  \
-        return state;                                                                                                  \
-    }
+#define state_return_msg(state, error_num, error_str)  \
+{                                                      \
+    intern_error_num = error_num;                      \
+    intern_error_str = error_str;                      \
+    return state;                                      \
+}
 
 #define xtate_fail(s, function) ((s = function) != EAR_SUCCESS)
 

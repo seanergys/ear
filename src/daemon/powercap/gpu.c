@@ -29,8 +29,8 @@
 #include <management/gpu/gpu.h>
 #include <metrics/gpu/gpu.h>
 
-static ulong current_gpu_pc = 0;
-static ulong default_gpu_pc = 0;
+static ulong current_gpu_pc = POWER_CAP_UNLIMITED;
+static ulong default_gpu_pc = POWER_CAP_UNLIMITED;
 static uint gpu_pc_enabled  = 0;
 static uint c_status        = PC_STATUS_IDLE;
 static uint c_mode          = PC_MODE_LIMIT;
@@ -249,16 +249,18 @@ void plugin_get_settings(domain_settings_t *s)
 
 state_t set_powercap_value(uint pid, uint32_t domain, uint32_t *limit, uint32_t *gpu_util)
 {
-    debug("GPU: powermgr gpu power allocated %lu", *limit);
-    for (int32_t i = 0; i < gpu_pc_num_gpus; i++) {
-        gpu_pc_util[i] = gpu_util[i];
-    }
+    state_t ret = EAR_ERROR;
+    debug("GPU: powermgr gpu power allocated %u", *limit);
     if (domain == LEVEL_NODE || domain == LEVEL_DOMAIN) {
-        default_gpu_pc = *limit;
-        c_status       = PC_STATUS_OK;
-        return int_set_powercap_value((ulong) *limit, gpu_pc_util);
+        ret = int_set_powercap_value((ulong) *limit, (ulong *) gpu_util);
+
+        if (ret == EAR_SUCCESS) {
+            default_gpu_pc = *limit;
+            c_status       = PC_STATUS_OK;
+        }
     } else
-        return int_set_per_device_powercap_value(limit, gpu_pc_util);
+        ret = int_set_per_device_powercap_value(limit, gpu_pc_util);
+    return ret;
 }
 
 state_t reset_powercap_value()
@@ -302,14 +304,12 @@ static state_t int_set_per_device_powercap_value(uint32_t *limit, ulong *gpu_uti
     /* Set data */
     debug("%s", COL_BLU);
     debug("GPU: set_manual_powercap_value (first GPU: %u)", *limit);
-    // ret = mgt_gpu_power_cap_set(no_ctx, limit);
-    // if (ret == EAR_ERROR) debug("Error setting powercap");
     for (i = 0; i < gpu_pc_num_gpus; i++) {
         if (limit[i] == POWER_CAP_UNLIMITED) {
             limit[i] = gpu_pc_max_power[i];
         }
         gpu_pc_curr_power[i] = limit[i];
-        debug("GPU: util_gpu[%d]=%lu power_alloc=%lu", i, gpu_util[i], limit[i]);
+        debug("GPU: util_gpu[%d]=%lu power_alloc=%u", i, gpu_util[i], limit[i]);
     }
     ret = mgt_gpu_power_cap_set(no_ctx, gpu_pc_curr_power);
     if (ret == EAR_ERROR) {
@@ -488,7 +488,7 @@ uint get_powercap_status(domain_status_t *status)
     status->exceed = 0;
     for (i = 0; i < gpu_pc_num_gpus; i++) {
         /* gpu_pc_util is an average during a period , is more confident than an instantaneous measure*/
-        if ((t_freq[i] > gpu_freq[i]) && (gpu_pc_util[i] > 0)) {
+        if (tmp_stress && (t_freq[i] > gpu_freq[i]) && (gpu_pc_util[i] > 0)) {
             // debug("We cannot release power from GPU %d",i);
             if (c_status == PC_STATUS_RELEASE) {
                 debug("GPU status ASK_DEF, current_pc %lu and def_pc %lu", current_gpu_pc, default_gpu_pc);

@@ -39,7 +39,7 @@ void print_islands_conf(node_island_t *conf)
     for (i = 0; i < conf->num_ranges; i++) {
         char buffer[2048] = {0};
         size_t final_size = 0;
-        int32_t cut_nodes = concat_range("", &conf->ranges[i].range, 2048, &final_size, buffer);
+        int32_t cut_nodes = concat_range("", &conf->ranges[i].r_def, 2048, &final_size, buffer);
         if (cut_nodes > 0) {
             buffer[final_size]     = '.';
             buffer[final_size - 1] = '.';
