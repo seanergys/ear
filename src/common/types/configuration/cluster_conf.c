@@ -1521,7 +1521,7 @@ state_t serialize_cluster_conf(cluster_conf_t *conf, char **ear_conf_buf, size_t
         uint size_auth = strlen(conf->admin_users[admn]);
         serial_add_elem(&ear_conf_serial, (char *) &size_auth, sizeof(size_auth));
 
-        serial_add_elem(&ear_conf_serial, (char *) &conf->admin_users[admn], strlen(conf->admin_users[admn]));
+        serial_add_elem(&ear_conf_serial, (char *) conf->admin_users[admn], strlen(conf->admin_users[admn]));
     }
 
     debug("serial + authorized: users %u groups %u accounts %u admins %u", conf->auth_users_count,
@@ -1621,7 +1621,7 @@ state_t deserialize_cluster_conf(cluster_conf_t *conf, char *ear_conf_buf, size_
             uint size_auth;
             serial_copy_elem(&ear_conf_serial, (char *) &size_auth, NULL);
             conf->auth_users[auth] = calloc(1, size_auth + 1);
-            serial_copy_elem(&ear_conf_serial, (char *) &conf->auth_users[auth], NULL);
+            serial_copy_elem(&ear_conf_serial, (char *) conf->auth_users[auth], NULL);
         }
     }
     /* Priv groups */
@@ -1632,7 +1632,7 @@ state_t deserialize_cluster_conf(cluster_conf_t *conf, char *ear_conf_buf, size_
             uint size_auth;
             serial_copy_elem(&ear_conf_serial, (char *) &size_auth, NULL);
             conf->auth_groups[auth] = calloc(1, size_auth + 1);
-            serial_copy_elem(&ear_conf_serial, (char *) &conf->auth_groups[auth], NULL);
+            serial_copy_elem(&ear_conf_serial, (char *) conf->auth_groups[auth], NULL);
         }
     }
 
@@ -1644,7 +1644,7 @@ state_t deserialize_cluster_conf(cluster_conf_t *conf, char *ear_conf_buf, size_
             uint size_auth;
             serial_copy_elem(&ear_conf_serial, (char *) &size_auth, NULL);
             conf->auth_accounts[auth] = calloc(1, size_auth + 1);
-            serial_copy_elem(&ear_conf_serial, (char *) &conf->auth_accounts[auth], NULL);
+            serial_copy_elem(&ear_conf_serial, (char *) conf->auth_accounts[auth], NULL);
         }
     }
 
@@ -1660,7 +1660,7 @@ state_t deserialize_cluster_conf(cluster_conf_t *conf, char *ear_conf_buf, size_
                 uint size_auth;
                 serial_copy_elem(&ear_conf_serial, (char *) &size_auth, NULL);
                 conf->admin_users[admn] = calloc(1, size_auth + 1);
-                serial_copy_elem(&ear_conf_serial, (char *) &conf->admin_users[admn], NULL);
+                serial_copy_elem(&ear_conf_serial, (char *) conf->admin_users[admn], NULL);
             }
         }
     }
