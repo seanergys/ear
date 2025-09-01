@@ -146,6 +146,7 @@ struct avg_apps {
 void average_signatures(signature_t *dst, signature_t *src, int nums)
 {
 	int i;
+	dst->time = src->time / nums;
 	dst->EDP = src->EDP / nums;
 	dst->TPI = src->TPI / nums;
 	dst->CPI = src->CPI / nums;
@@ -153,6 +154,7 @@ void average_signatures(signature_t *dst, signature_t *src, int nums)
 	dst->avg_f = src->avg_f / nums;
 	dst->avg_imc_f = src->avg_imc_f / nums;
 	dst->def_f = src->def_f / nums;
+	dst->perc_MPI = src->perc_MPI / nums;
 #if USE_GPUS
 	dst->gpu_sig.num_gpus = src->gpu_sig.num_gpus;
 	for (i = 0; i < MAX_GPUS_SUPPORTED; i++) {
