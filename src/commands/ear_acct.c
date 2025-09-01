@@ -155,34 +155,27 @@ struct avg_apps {
 /* Averages the fields in signatures that make sense */
 void average_signatures(signature_t *dst, signature_t *src, int nums)
 {
-	int i;
-	dst->time = src->time / nums;
-	dst->EDP = src->EDP / nums;
-	dst->TPI = src->TPI / nums;
-	dst->CPI = src->CPI / nums;
-	dst->time = src->time / nums;
-	dst->avg_f = src->avg_f / nums;
-	dst->avg_imc_f = src->avg_imc_f / nums;
-	dst->def_f = src->def_f / nums;
-	dst->perc_MPI = src->perc_MPI / nums;
+    int i;
+    dst->time      = src->time / nums;
+    dst->EDP       = src->EDP / nums;
+    dst->TPI       = src->TPI / nums;
+    dst->CPI       = src->CPI / nums;
+    dst->avg_f     = src->avg_f / nums;
+    dst->avg_imc_f = src->avg_imc_f / nums;
+    dst->def_f     = src->def_f / nums;
+    dst->perc_MPI  = src->perc_MPI / nums;
 #if USE_GPUS
-	dst->gpu_sig.num_gpus = src->gpu_sig.num_gpus;
-	for (i = 0; i < MAX_GPUS_SUPPORTED; i++) {
-		dst->gpu_sig.gpu_data[i].GPU_freq =
-		    src->gpu_sig.gpu_data[i].GPU_freq / nums;
-		dst->gpu_sig.gpu_data[i].GPU_mem_freq =
-		    src->gpu_sig.gpu_data[i].GPU_mem_freq / nums;
-		dst->gpu_sig.gpu_data[i].GPU_util =
-		    src->gpu_sig.gpu_data[i].GPU_util / nums;
-		dst->gpu_sig.gpu_data[i].GPU_mem_util =
-		    src->gpu_sig.gpu_data[i].GPU_mem_util / nums;
+    dst->gpu_sig.num_gpus = src->gpu_sig.num_gpus;
+    for (i = 0; i < MAX_GPUS_SUPPORTED; i++) {
+        dst->gpu_sig.gpu_data[i].GPU_freq     = src->gpu_sig.gpu_data[i].GPU_freq / nums;
+        dst->gpu_sig.gpu_data[i].GPU_mem_freq = src->gpu_sig.gpu_data[i].GPU_mem_freq / nums;
+        dst->gpu_sig.gpu_data[i].GPU_util     = src->gpu_sig.gpu_data[i].GPU_util / nums;
+        dst->gpu_sig.gpu_data[i].GPU_mem_util = src->gpu_sig.gpu_data[i].GPU_mem_util / nums;
 #if WF_SUPPORT
-		dst->gpu_sig.gpu_data[i].GPU_temp =
-		    src->gpu_sig.gpu_data[i].GPU_temp / nums;
-		dst->gpu_sig.gpu_data[i].GPU_temp_mem =
-		    src->gpu_sig.gpu_data[i].GPU_temp_mem / nums;
+        dst->gpu_sig.gpu_data[i].GPU_temp     = src->gpu_sig.gpu_data[i].GPU_temp / nums;
+        dst->gpu_sig.gpu_data[i].GPU_temp_mem = src->gpu_sig.gpu_data[i].GPU_temp_mem / nums;
 #endif
-	}
+    }
 #endif
 }
 
@@ -227,11 +220,11 @@ void average_applications(application_t *apps, int num_apps, struct avg_apps **s
 
             acum_sig_metrics(&avg_apps[current].app.signature, &apps[i].signature);
             acum_power_sig_metrics(&avg_apps[current].app.power_sig, &apps[i].power_sig);
-            avg_apps[current].num_nodes++; //either way, we get a +1 to the nodes counter
-        } else { //new application
-            current++; 
-            memcpy(&avg_apps[current].app, &apps[i], sizeof(application_t)); //we copy the signature directly
-            avg_apps[current].num_nodes++; //either way, we get a +1 to the nodes counter
+            avg_apps[current].num_nodes++; // either way, we get a +1 to the nodes counter
+        } else {                           // new application
+            current++;
+            memcpy(&avg_apps[current].app, &apps[i], sizeof(application_t)); // we copy the signature directly
+            avg_apps[current].num_nodes++; // either way, we get a +1 to the nodes counter
         }
     }
     current++;
