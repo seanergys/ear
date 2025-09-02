@@ -58,7 +58,10 @@ void temp_unload()
 void temp_get_info(apinfo_t *info)
 {
     memset(info, 0, sizeof(apinfo_t));
-    ops.get_info(info);
+    info->layer = "TEMPERATURE";
+    if (ops.get_info != NULL) {
+        ops.get_info(info);
+    }
 }
 
 // Getters

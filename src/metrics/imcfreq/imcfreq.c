@@ -59,7 +59,10 @@ void imcfreq_unload()
 void imcfreq_get_info(apinfo_t *info)
 {
     memset(info, 0, sizeof(apinfo_t));
-    ops.get_info(info);
+    info->layer = "IMCFREQ";
+    if (ops.get_info != NULL) {
+        ops.get_info(info);
+    }
 }
 
 state_t imcfreq_read(imcfreq_t *i)

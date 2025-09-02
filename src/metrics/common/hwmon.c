@@ -368,7 +368,7 @@ void hwmon_close_labels(hwmon_t chips[], char *label)
 
     #define close_dev(dev_fd) \
     if (dev_fd >= 0) {        \
-        dprintf(STDOUT_FILENO, "closing " #dev_fd " %d\n", dev_fd);                      \
+        debug("closing " #dev_fd " %d\n", dev_fd); \
         close(dev_fd);        \
         dev_fd = -1;          \
     }
