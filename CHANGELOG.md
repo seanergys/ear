@@ -78,7 +78,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved CPU governor list message.
 
 
-## 5.1.10 - Unreleased
+## 5.1.10 - 2025-09-02
 
 ### Added
 - EARGM now reads EARGMNAME variable and writes to DB and log using this name, if available.
@@ -86,6 +86,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Setting the soft powercap to unlimited when the eargm is started or restarted.
 - Added reset modes (to default and to TDP) to management/cpupow.
 - The ereport command can now manage list of user groups.
+- Edcmon calls plugin_manager_close() when SIGINT or SIGTERM is received.
 
 ### Changed
 - Using current_power instead of avg_power in dcmi node energy.
@@ -99,6 +100,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed acpi_cpufreq.c segmentation fault error.
 - Fixed plugin_manager_close() and plugin_manager_after_close functions.
 - Fixes in gpu powercap init and logic.
+- Fixed serialization and deserialization of authorized users, groups and accounts.
 
 ## 5.1.9 - 2025-04-28
 
