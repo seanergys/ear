@@ -352,8 +352,14 @@ bool print_signature_format(signature_t *sig, char f, int32_t time_length)
             print_format(CPI_WIDTH, sig->CPI, 2);
             break;
         case GFLOPS: // gflops/watt
-            print_format(GFLOPS_WIDTH, sig->Gflops / sig->DC_power, 2);
-            break;
+        {
+            double gflops_watt = sig->Gflops;
+            for (int32_t i = 0; i < sig->gpu_sig.num_gpus; i++) {
+                gflops_watt += sig->gpu_sig.gpu_data[i].GPU_GFlops;
+            }
+            gflops_watt /= sig->DC_power;
+            print_format(GFLOPS_WIDTH, gflops_watt, 2);
+        } break;
         case TIME: // time
             print_format(TIME_WIDTH, sig->time, time_length);
             break;
