@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-// #define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <dlfcn.h>
 #include <unistd.h>
@@ -41,10 +41,13 @@ state_t plug_join(void *handle, void *calls[], const char *names[], uint n)
 static state_t static_open(char *path, void *calls[], const char *names[], uint n, int flags)
 {
     void *handle;
-    debug("Trying to access to '%s'", path);
-    if (access(path, X_OK) != 0) {
-        debug("Plugin %s cannot be accessed: %s", path, strerror(errno));
-        return_msg(EAR_ERROR, strerror(errno));
+
+    if (path != NULL) {
+        debug("Trying to access to '%s'", path);
+        if (access(path, X_OK) != 0) {
+            debug("Plugin %s cannot be accessed: %s", path, strerror(errno));
+            return_msg(EAR_ERROR, strerror(errno));
+        }
     }
     if ((handle = dlopen(path, flags)) == NULL) {
         debug("Plugin %s cannot be loaded: %s", path, dlerror());

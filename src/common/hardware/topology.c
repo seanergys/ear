@@ -107,10 +107,11 @@ static state_t topology_init_thread(topology_t *topo, uint thread)
     if ((fd = open(path, F_RD)) >= 0) {
         do {
             // aux2: number of bytes read. aux1: total bytes read.
-            aux2 = pread(fd, (void *) &buffer[aux1], SZ_NAME_LARGE, aux1);
-            aux1 += aux2;
-        } while (aux2 > 0);
+            aux2  = pread(fd, (void *) &buffer[aux1], SZ_NAME_LARGE, aux1);
+            aux1 += ((aux2 > 0) ? aux2 : 0);
+        } while (aux2 > 0 && aux1 < (SZ_NAME_LARGE - 1));
         // Parsing
+        buffer[aux1] = '\0';
         char *tok = strtok(buffer, ",");
         // core_id = thread from argument.
         // sibling_id = detected sibling (we are setting just one)
@@ -140,8 +141,10 @@ static state_t topology_init_thread(topology_t *topo, uint thread)
     if ((fd = open(path, O_RDONLY)) >= 0) {
         do {
             aux2 = pread(fd, (void *) &buffer[aux1], SZ_NAME_LARGE, aux1);
-            aux1 += aux2;
-        } while (aux2 > 0);
+            aux1 += (aux2 > 0 ? aux2 : 0);
+        } while (aux2 > 0 && aux1 < (SZ_NAME_LARGE - 1));
+        // Parsing
+        buffer[aux1] = '\0';
         topo->cpus[thread].socket_id = atoi(buffer);
         close(fd);
     } else {
@@ -161,8 +164,9 @@ static state_t topology_init_thread(topology_t *topo, uint thread)
         if ((fd = open(path, O_RDONLY)) >= 0) {
             do {
                 aux2 = pread(fd, (void *) &buffer[aux1], SZ_NAME_LARGE, aux1);
-                aux1 += aux2;
-            } while (aux2 > 0);
+                aux1 += (aux2 > 0 ? aux2 : 0);
+            } while (aux2 > 0 && aux1 < (SZ_NAME_LARGE - 1));
+            buffer[aux1] = '\0';
             aux3 = atoi(buffer);
             close(fd);
         } else {
@@ -176,8 +180,9 @@ static state_t topology_init_thread(topology_t *topo, uint thread)
         if ((fd = open(path, O_RDONLY)) >= 0) {
             do {
                 aux2 = pread(fd, (void *) &buffer[aux1], SZ_NAME_LARGE, aux1);
-                aux1 += aux2;
-            } while (aux2 > 0);
+                aux1 += (aux2 > 0 ? aux2 : 0);
+            } while (aux2 > 0 && aux1 < (SZ_NAME_LARGE - 1));
+            buffer[aux1] = '\0';
             topo->cpus[thread].l[aux3].id = (atoi(buffer));
             close(fd);
         } else {
