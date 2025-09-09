@@ -16,6 +16,7 @@
 #include <common/sizes.h>
 #include <common/states.h>
 #include <common/system/file.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -85,7 +86,8 @@ state_t topology_select(topology_t *t, topology_t *s, int component, int group, 
 
 static state_t topology_init_thread(topology_t *topo, uint thread)
 {
-    char buffer[SZ_NAME_LARGE];
+    const size_t buff_size = 28672;
+    char *buffer           = (char *) calloc(buff_size + 1, sizeof(char));
     char path[SZ_NAME_LARGE];
     int aux1 = 0;
     int aux2 = 0;
@@ -137,6 +139,7 @@ static state_t topology_init_thread(topology_t *topo, uint thread)
     sprintf(path, "/sys/devices/system/cpu/cpu%d/topology/physical_package_id", thread);
     aux1 = 0;
     aux2 = 0;
+    memset(buffer, 0, buff_size);
 
     if ((fd = open(path, O_RDONLY)) >= 0) {
         do {
@@ -160,6 +163,8 @@ static state_t topology_init_thread(topology_t *topo, uint thread)
         aux1 = 0; // Total bytes
         aux2 = 0; // Returned bytes
         aux3 = 0; // level
+        memset(buffer, 0, buff_size);
+
         // Getting level
         if ((fd = open(path, O_RDONLY)) >= 0) {
             do {
@@ -176,6 +181,7 @@ static state_t topology_init_thread(topology_t *topo, uint thread)
         sprintf(path, "/sys/devices/system/cpu/cpu%d/cache/index%d/id", thread, i);
         aux1 = 0; // Total bytes
         aux2 = 0; // Returned bytes
+        memset(buffer, 0, buff_size);
         // Getting id
         if ((fd = open(path, O_RDONLY)) >= 0) {
             do {
@@ -198,6 +204,7 @@ static state_t topology_init_thread(topology_t *topo, uint thread)
         }
         debug("CPU%d L%d id: %d", thread, aux3, topo->cpus[thread].l[aux3].id);
     }
+    free(buffer);
     return EAR_SUCCESS;
 }
 
