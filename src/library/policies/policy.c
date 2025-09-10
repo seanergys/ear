@@ -1860,9 +1860,12 @@ static state_t policy_gpu_freq_selection(polctx_t *c, signature_t *my_sig, node_
         return EAR_SUCCESS;
 
 #if USE_GPUS
-    if (verb_level >= POLICY_GPU) {
-        for (i = 0; i < c->num_gpus; i++) {
-            verbosen_master(POLICY_GPU, " GPU freq[%d] = %.3f ", i, (float) gpu_f[i] / GHZ_TO_KHZ);
+    if (verb_level >= POLICY_GPU)
+    {
+        for (i = 0; i < c->num_gpus; i++)
+        {
+            verbose_policy_info("Setting a GPU freq[%d] = %.3f (GHz)",
+                            i, (float)gpu_f[i] / GHZ_TO_KHZ);
         }
         verbose_master(POLICY_GPU, " ");
     }
