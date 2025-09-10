@@ -1804,11 +1804,11 @@ void powermon_new_job(powermon_app_t *pmapp, ehandler_t *eh, application_t *appI
 
     // save_eard_conf(&eard_dyn_conf);
 
-    verbose(VJOBPMON_BASIC, "%sJob created ctx %d (%lu,%lu) is_mpi %d procs %lu def_cpuf %lu%s", COL_BLU, ccontext,
-            current_ear_app[ccontext]->app.job.id, current_ear_app[ccontext]->app.job.step_id,
-            current_ear_app[ccontext]->app.is_mpi, current_ear_app[ccontext]->app.job.procs, pmapp->settings->def_freq,
-            COL_CLR);
-    verbose(VJOBPMON, "*******************");
+    verbose(VJOBPMON_BASIC , "%sJob created ctx %d (%lu,%lu) is_mpi %d procs %lu def_cpuf %lu%s governor '%s'",
+            COL_BLU, ccontext, current_ear_app[ccontext]->app.job.id,
+            current_ear_app[ccontext]->app.job.step_id, current_ear_app[ccontext]->app.is_mpi,
+            current_ear_app[ccontext]->app.job.procs, pmapp->settings->def_freq, pmapp->governor.name, COL_CLR);
+    verbose(VJOBPMON , "*******************");
 
     pmapp->sig_reported = 0;
 

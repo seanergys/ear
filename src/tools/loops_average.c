@@ -177,8 +177,6 @@ int main(int argc, char *argv[])
 
         /* Aggregate signatures with weights depending on the time */
         signature_apply_weight(&loops[i].signature, &loops[i].signature, loops[i].total_iterations - previous_time);
-        /* Workaround for Gflops which should be accumulated, NOT averaged */
-        loops[i].signature.Gflops /= loops[i].total_iterations - previous_time;
         acum_sig_metrics(&apps[app_idx].app.signature, &loops[i].signature);
         /* Workaround for perc_MPI which is not used by acum_sig_metrics */
         apps[app_idx].app.signature.perc_MPI += loops[i].signature.perc_MPI;
@@ -189,8 +187,7 @@ int main(int argc, char *argv[])
 
     printf("Printing a total of %d applications!\n", num_apps);
     for (int32_t i = 0; i < num_apps; i++) {
-        /* Workaround so we can use the function compute_avg_sig which averages Gflops and does not compute perc_MPI*/
-        apps[i].app.signature.Gflops *= apps[i].total_time;
+        /* Workaround so we can use the function compute_avg_sig which does not compute perc_MPI*/
         apps[i].app.signature.perc_MPI /= apps[i].total_time;
         compute_avg_sig(&apps[i].app.signature, &apps[i].app.signature, apps[i].total_time);
         apps[i].app.signature.time = apps[i].total_time; // time is the one that we must accumulate without averaging

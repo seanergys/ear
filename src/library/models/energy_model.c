@@ -15,6 +15,7 @@
 #include <library/common/utils.h>
 #include <library/common/verbose_lib.h>
 #include <library/models/energy_model.h>
+#include <common/config.h>
 
 #define freturn(call, ...)                                                                                             \
     {                                                                                                                  \

@@ -58,6 +58,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - v6.0 Improving earl-eard connect to avoid blocking.
 - v6.0 Fixed socket count in acpi_power.
 
+## 5.2.1 - 2025-09-02
+
+### Added
+- Added missing averaged values to eacct.
+- Added averaging of power signatures.
+
+### Changed
+- Updated powercap algorithms for gpu, cpu_generic. Using LEVEL_DOMAIN in set_powercap_value calls() in powercap_mgt.c.
+
+### Fixed
+- Updated the PACKAGE_VERSION in the configure.ac file
+- Add a missing ; in the application signature header csv
+- Fixed serialization/deserialization of authorized users, groups and accounts.
+- Fixed an error where eacct would average power consumed by multiple nodes of the application, instead of adding it.
+
 ## [5.2] - 2025-05-28
 
 ### Added
