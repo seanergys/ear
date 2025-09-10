@@ -153,23 +153,18 @@ void cache_data_print(cache_t *ca, double gbs, int fd)
 void cache_data_tostr(cache_t *ca, double gbs, char *buffer, size_t length)
 {
     snprintf(buffer, length,
-             "L1D: %10llu hits, %10llu misses, %10llu accesses, %10llu lines_in, %10llu lines_out, %0.2lf hit rate, "
-             "%0.2lf miss rate\n"
-             "L2 : %10llu hits, %10llu misses, %10llu accesses, %10llu lines_in, %10llu lines_out, %0.2lf hit rate, "
-             "%0.2lf miss rate\n"
-             "L3 : %10llu hits, %10llu misses, %10llu accesses, %10llu lines_in, %10llu lines_out, %0.2lf hit rate, "
-             "%0.2lf miss rate\n"
-             "LL : %10llu hits, %10llu misses, %10llu accesses, %10llu lines_in, %10llu lines_out, %0.2lf hit rate, "
-             "%0.2lf miss rate\n"
-             "LBW: %10llu hits, %10llu misses, %10llu accesses, %10llu lines_in, %10llu lines_out, %0.2lf hit rate, "
-             "%0.2lf miss rate\n"
-             "CAS: %0.2lf GB/s\n",
-             ca->l1d.hits, ca->l1d.misses, ca->l1d.accesses, ca->l1d.lines_in, ca->l1d.lines_out, ca->l1d.hit_rate,
-             ca->l1d.miss_rate, ca->l2.hits, ca->l2.misses, ca->l2.accesses, ca->l2.lines_in, ca->l2.lines_out,
-             ca->l2.hit_rate, ca->l2.miss_rate, ca->l3.hits, ca->l3.misses, ca->l3.accesses, ca->l3.lines_in,
-             ca->l3.lines_out, ca->l3.hit_rate, ca->l3.miss_rate, ca->ll->hits, ca->ll->misses, ca->ll->accesses,
-             ca->ll->lines_in, ca->ll->lines_out, ca->ll->hit_rate, ca->ll->miss_rate, ca->lbw->hits, ca->lbw->misses,
-             ca->lbw->accesses, ca->lbw->lines_in, ca->lbw->lines_out, ca->lbw->hit_rate, ca->lbw->miss_rate, gbs);
+    "L1D: %10llu hits, %10llu misses, %10llu accesses, %10llu lines_in, %10llu lines_out, %0.2lf hit rate, %0.2lf miss rate\n"
+    "L2 : %10llu hits, %10llu misses, %10llu accesses, %10llu lines_in, %10llu lines_out, %0.2lf hit rate, %0.2lf miss rate\n"
+    "L3 : %10llu hits, %10llu misses, %10llu accesses, %10llu lines_in, %10llu lines_out, %0.2lf hit rate, %0.2lf miss rate\n"
+    "LL : %10llu hits, %10llu misses, %10llu accesses, %10llu lines_in, %10llu lines_out, %0.2lf hit rate, %0.2lf miss rate\n"
+    "LBW: %10llu hits, %10llu misses, %10llu accesses, %10llu lines_in, %10llu lines_out, %0.2lf hit rate, %0.2lf miss rate\n"
+    "CAS: %0.2lf GB/s\n",
+    ca->l1d.hits , ca->l1d.misses , ca->l1d.accesses , ca->l1d.lines_in , ca->l1d.lines_out , ca->l1d.hit_rate , ca->l1d.miss_rate ,
+    ca->l2.hits  , ca->l2.misses  , ca->l2.accesses  , ca->l2.lines_in  , ca->l2.lines_out  , ca->l2.hit_rate  , ca->l2.miss_rate  ,
+    ca->l3.hits  , ca->l3.misses  , ca->l3.accesses  , ca->l3.lines_in  , ca->l3.lines_out  , ca->l3.hit_rate  , ca->l3.miss_rate  ,
+    ca->ll->hits , ca->ll->misses , ca->ll->accesses , ca->ll->lines_in , ca->ll->lines_out , ca->ll->hit_rate , ca->ll->miss_rate ,
+    ca->lbw->hits, ca->lbw->misses, ca->lbw->accesses, ca->lbw->lines_in, ca->lbw->lines_out, ca->lbw->hit_rate, ca->lbw->miss_rate,
+    gbs);
 }
 
 void cache_internals_print(int fd)
@@ -197,12 +192,15 @@ static double gbs;
 int main(int argc, char *argv[])
 {
     topology_init(&tp);
+
     cache_load(&tp, API_FREE);
     stress_alloc();
 
     cache_get_info(&info);
     apinfo_tostr(&info);
     printf("%s\n", info.api_str);
+
+    cache_internals_print(fderr);
 
     cache_init(no_ctx);
     cache_read(no_ctx, &c1);

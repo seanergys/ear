@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-// #define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <common/math_operations.h>
 #include <common/output/debug.h>
@@ -28,6 +28,7 @@ static offset_ops_t ofs;
 
 static void perfs_add(ullong event, uint type, ulong offset_result, const char *event_desc)
 {
+    debug("%s", event_desc);
     offsets_add(&ofs, offset_result, NO_OFFSET, NO_OFFSET, '=');
     if (state_fail(perf_open(&perfs[perfs_count], NULL, 0, type, event))) {
         debug("failed: %s", state_msg);
@@ -88,13 +89,15 @@ void cache_perf_load(topology_t *tp, cache_ops_t *ops)
         perfs_add(0x0018, PERF_TYPE_RAW, O2(l2, lines_out), "L2D_CACHE_WB");
         offsets_add(&ofs, O2(l1d, hits), O2(l1d, accesses), O2(l1d, misses), '-');
         offsets_add(&ofs, O2(l2, hits), O2(l2, accesses), O2(l2, misses), '-');
-        offsets_add(&ofs, O1(ll), O1(l2), 0, '&');
+        offsets_add(&ofs, O1(ll ), O1(l2), 0, '&');
         offsets_add(&ofs, O1(lbw), O1(l2), 0, '&');
     } else {
         perfs_add(L1_LDA, PERF_TYPE_HW, O2(l1d, accesses), "PERF_L1D_LOAD_ACCESS");
-        perfs_add(L1_LDM, PERF_TYPE_HW, O2(l1d, misses), "PERF_L1D_LOAD_MISS");
-        offsets_add(&ofs, O2(l1d, hits), O2(l1d, accesses), O2(l1d, misses), '-');
-        offsets_add(&ofs, O1(ll), O1(l1d), 0, '&');
+        perfs_add(L1_LDM, PERF_TYPE_HW, O2(l1d, misses  ), "PERF_L1D_LOAD_MISS"  );
+        offsets_add(&ofs, O2(l1d, hits    ), O2(l1d, accesses), O2(l1d, misses), '-');
+        offsets_add(&ofs, O2(l2 , accesses), O2(l1d, misses  ),               0, '=');
+        offsets_add(&ofs, O1(ll ), O1(l1d), 0, '&');
+        offsets_add(&ofs, O1(lbw), O1(l3 ), 0, '&'); // L3 will be 0, so it is ok
     }
     if (!perfs_count_opened_fds()) {
         debug("All PERFs failed to open");
