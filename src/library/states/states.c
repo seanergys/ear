@@ -807,18 +807,15 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
         /* If the policy is ok, we are in stable state and we increase
          * the number of iterations to compute the signature. */
         case SIGNATURE_STABLE:
-            verbose_master(4, "SIGNATURE_STABLE");
-            overhead_start(id_ovh_stable);
+            verbose_master(4,"SIGNATURE_STABLE");
 
             if (!lib_shared_region->master_ready) {
                 if (!dynais_used && ((iterations - begin_iter) < mpi_calls_iter)) {
-                    overhead_stop(id_ovh_stable);
                     return;
                 }
 
                 // I have executed N iterations more with a new frequency, we must check the signature
                 if (dynais_used && ((iterations - 1) % perf_count_period)) {
-                    overhead_stop(id_ovh_stable);
                     return;
                 }
             }
@@ -834,6 +831,7 @@ void states_new_iteration(int my_id, uint period, uint iterations, uint level, u
 #endif
             prev_cpufreq_khz = ear_frequency; // TODO: Why khz are prev, but pstate is curr?
             curr_pstate      = frequency_closest_pstate(ear_frequency);
+            overhead_start(id_ovh_stable);
 
             policy_get_default_freq(&node_freqs); // Slaves don't fill node_freqs
 

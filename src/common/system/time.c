@@ -69,9 +69,8 @@ ullong timestamp_diff(timestamp *ts2, timestamp *ts1, ullong time_unit)
         endsec--;
         endnsec += 1E9;
     }
-    stamp            = (double) (((endsec - initsec)) * 1E9) + (endnsec - initnsec);
-    ullong stamp_ull = (ullong) stamp;
-    return ((stamp_ull > 0) && time_unit ? stamp_ull / time_unit : 0);
+    stamp = (((endsec - initsec)) * 1E9) + overflow_zeros_u64(endnsec , initnsec);
+    return stamp / time_unit;
 }
 
 double timestamp_fdiff(timestamp *ts2, timestamp *ts1, ullong diff_unit, ullong prec_unit)

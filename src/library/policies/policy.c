@@ -20,6 +20,7 @@
 #include <dlfcn.h>
 #include <semaphore.h>
 
+#include <common/config.h>
 #include <common/environment.h>
 #include <common/hardware/hardware_info.h>
 #include <common/includes.h>
@@ -90,9 +91,11 @@ extern sem_t *lib_shared_lock_sem;
 // TODO: Can below macro be defined in a more coherent file?
 #define GHZ_TO_KHZ 1000000.0
 
-#define POLICY_MPI_CALL_ENABLED                                                                                        \
+#define POLICY_MPI_CALL_ENABLED_DEF                                                                                    \
     1 // Enables doing stuff at MPI call level.
       // Useful for fast overhead testing.
+
+static int POLICY_MPI_CALL_ENABLED = POLICY_MPI_CALL_ENABLED_DEF;
 
 #ifdef EARL_RESEARCH
 extern unsigned long ext_def_freq;
@@ -333,6 +336,16 @@ static ulong calls_cpufreq         = 0;
 
 timestamp init_last_phase, init_last_comp;
 
+static int policy_mpi_features_strategy()
+{
+    char *mode = ear_getenv(FLAG_MPI_MONITORING);
+    if (!mode)
+        return POLICY_MPI_CALL_ENABLED;
+    strtoup(mode);
+    verbose_master(2, "EARL: Policy MPI features mode %s", mode);
+    return (strcmp(mode, "ENABLED") == 0 ? 1 : 0);
+}
+
 /** This function loads specific CPU and GPU policy functions and calls the initialization functions. */
 state_t init_power_policy(settings_conf_t *app_settings, resched_t *res)
 {
@@ -440,6 +453,9 @@ state_t init_power_policy(settings_conf_t *app_settings, resched_t *res)
     }
 
     verbose_policy_info("System Min. IMC freq. limited: %llu kHz", min_imcfreq);
+
+    POLICY_MPI_CALL_ENABLED = policy_mpi_features_strategy();
+    verbose_policy_info("MPI policy actions: %s", (POLICY_MPI_CALL_ENABLED ? "Enabled" : "Disabled"));
 
     return policy_init();
 }
@@ -1860,12 +1876,9 @@ static state_t policy_gpu_freq_selection(polctx_t *c, signature_t *my_sig, node_
         return EAR_SUCCESS;
 
 #if USE_GPUS
-    if (verb_level >= POLICY_GPU)
-    {
-        for (i = 0; i < c->num_gpus; i++)
-        {
-            verbose_policy_info("Setting a GPU freq[%d] = %.3f (GHz)",
-                            i, (float)gpu_f[i] / GHZ_TO_KHZ);
+    if (verb_level >= POLICY_GPU) {
+        for (i = 0; i < c->num_gpus; i++) {
+            verbose_policy_info("Setting a GPU freq[%d] = %.3f (GHz)", i, (float) gpu_f[i] / GHZ_TO_KHZ);
         }
         verbose_master(POLICY_GPU, " ");
     }
