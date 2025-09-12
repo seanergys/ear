@@ -8,30 +8,30 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #define _GNU_SOURCE
-#include <math.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <sys/ioctl.h>
-#include <common/system/poll.h>
 #include <common/output/debug.h>
 #include <common/string_enhanced.h>
+#include <common/system/poll.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <math.h>
 #include <metrics/common/ipmi_driver.h>
 #include <metrics/common/ipmi_driver_frusdr.h>
 #include <metrics/common/ipmi_driver_parsing.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
 
 static ipmi_dev_t devs[IPMI_MAX_DEVS];
-static int        devs_count;
-static int        is_opened;
-static long       msg_counter;
-static afd_set_t  fds_group;
-static int        fds_status;
+static int devs_count;
+static int is_opened;
+static long msg_counter;
+static afd_set_t fds_group;
+static int fds_status;
 
 ipmi_addr_t *ipmi_has_addr(ipmi_dev_t *dev, int type, short channel, uchar slave_addr, uchar lun)
 {
@@ -45,18 +45,16 @@ ipmi_addr_t *ipmi_has_addr(ipmi_dev_t *dev, int type, short channel, uchar slave
         addr2 = (struct ipmi_ipmb_addr *) &dev->addrs[a].addr;
 
         if (type == IPMI_SYSTEM_INTERFACE_ADDR_TYPE) {
-            if (addr1->addr_type == type    &&
-                addr1->channel   == channel &&
-                addr1->lun       == lun) {
+            if (addr1->addr_type == type && addr1->channel == channel && addr1->lun == lun) {
                 return (ipmi_addr_t *) addr1;
             }
         } else if (type == IPMI_IPMB_ADDR_TYPE) {
-            if (addr2->addr_type  == type    &&
-                addr2->channel    == channel &&
-                addr2->lun        == lun     &&
+            if (addr2->addr_type == type && addr2->channel == channel && addr2->lun == lun &&
                 addr2->slave_addr == slave_addr) {
                 return (ipmi_addr_t *) addr2;
-    }}}
+            }
+        }
+    }
     return NULL;
 }
 
@@ -80,11 +78,11 @@ ipmi_addr_t *ipmi_add_addr(ipmi_dev_t *dev, int type, short channel, uchar slave
     addr1->channel   = channel;
     if (type == IPMI_SYSTEM_INTERFACE_ADDR_TYPE) {
         dev->addrs[dev->addrs_count].addr_len = sizeof(struct ipmi_system_interface_addr);
-        addr1->lun = lun;
+        addr1->lun                            = lun;
     } else if (type == IPMI_IPMB_ADDR_TYPE) {
         dev->addrs[dev->addrs_count].addr_len = sizeof(struct ipmi_ipmb_addr);
-        addr2->slave_addr = slave_addr;
-        addr2->lun = lun;
+        addr2->slave_addr                     = slave_addr;
+        addr2->lun                            = lun;
     }
     dev->addrs_count++;
     return (ipmi_addr_t *) addr1;
@@ -100,7 +98,7 @@ static state_t ipmi_open_dev_files()
         return EAR_SUCCESS;
     }
     // Initializing devices
-    memset(devs, 0, sizeof(ipmi_dev_t)*IPMI_MAX_DEVS);
+    memset(devs, 0, sizeof(ipmi_dev_t) * IPMI_MAX_DEVS);
     devs_count = 0;
     // Initializing aselect() struct
     afd_init(&fds_group);
@@ -116,7 +114,9 @@ static state_t ipmi_open_dev_files()
             if ((devs[devs_count].fd = open(devs[devs_count].path, O_RDWR)) < 0) {
                 sprintf(devs[devs_count].path, "/dev/ipmidev%d", i);
                 if ((devs[devs_count].fd = open(devs[devs_count].path, O_RDWR)) < 0) {
-                }}} // Ifs
+                }
+            }
+        } // Ifs
         if (devs[devs_count].fd < 0) {
             debug("FD- Unopened IPMI device file '%s': %s", devs[devs_count].path, strerror(errno));
             if (!devs_count) {
@@ -175,7 +175,7 @@ int ipmi_driver_devs_count()
 
 int ipmi_driver_has_hardware(char *string)
 {
-    char buffer[256] = { 0 };
+    char buffer[256] = {0};
     int d, b;
 
     strncpy(buffer, string, 255);
@@ -194,7 +194,7 @@ static int is_sensor(char *string, ipmi_dev_t *devs, int d, int r, ipmi_sensor_t
 {
     // Comparing two lower case strings
     if (strstr(devs[d].records[r].name_lower, string) != NULL) {
-        *alloc = realloc(*alloc, (*s+1)*sizeof(ipmi_sensor_t));
+        *alloc                 = realloc(*alloc, (*s + 1) * sizeof(ipmi_sensor_t));
         (*alloc)[*s].dev_no    = d;
         (*alloc)[*s].rec_no    = r;
         (*alloc)[*s].name      = devs[d].records[r].name;
@@ -206,7 +206,7 @@ static int is_sensor(char *string, ipmi_dev_t *devs, int d, int r, ipmi_sensor_t
         (*s)++;
         return 1;
     }
-    //debug("%d_%d %s (!= %s)", d, r, devs[d].records[r].name_lower, string);
+    // debug("%d_%d %s (!= %s)", d, r, devs[d].records[r].name_lower, string);
     return 0;
 }
 
@@ -215,7 +215,7 @@ int ipmi_driver_sensors_find(char *string, ipmi_sensor_t **sensors, uint *sensor
     ipmi_sensor_t *alloc = NULL;
     char string_tolow[64];
     uint list_count = 0;
-    char **list = NULL;
+    char **list     = NULL;
     int d, r, s, m, l;
     char buffer[64];
 
@@ -253,20 +253,21 @@ int ipmi_driver_sensors_find(char *string, ipmi_sensor_t **sensors, uint *sensor
                     m += 1;
                 }
             }
-            next_record:
-            ;
+        next_record:;
         }
     }
     strtoa_free(list);
-    if (sensors       != NULL) *sensors = alloc;
-    if (sensors_count != NULL) *sensors_count = s;
+    if (sensors != NULL)
+        *sensors = alloc;
+    if (sensors_count != NULL)
+        *sensors_count = s;
     return s;
 }
 
 state_t ipmi_driver_sensors_read(ipmi_sensor_t *sensors, uint sensors_count, ipmi_reading_t **values)
 {
     ipmi_addr_t *addr = NULL;
-    sdr_t *rec = NULL;
+    sdr_t *rec        = NULL;
     ipmi_cmd_t pkg;
     state_t st;
     int s;
@@ -305,16 +306,16 @@ void ipmi_driver_cmd_set_paddr(ipmi_cmd_t *pkg, ipmi_addr_t *addr)
     pkg->addr.addr.addr_type = addr->addr.addr_type;
     pkg->addr.addr.channel   = addr->addr.channel;
     if (addr->addr.addr_type == IPMI_SYSTEM_INTERFACE_ADDR_TYPE) {
-        pkg->addr.addr_len = sizeof(struct ipmi_system_interface_addr);
+        pkg->addr.addr_len                     = sizeof(struct ipmi_system_interface_addr);
         struct ipmi_system_interface_addr *dst = (struct ipmi_system_interface_addr *) &pkg->addr.addr;
         struct ipmi_system_interface_addr *src = (struct ipmi_system_interface_addr *) &addr->addr;
-        dst->lun = src->lun;
+        dst->lun                               = src->lun;
     } else if (addr->addr.addr_type == IPMI_IPMB_ADDR_TYPE) {
-        pkg->addr.addr_len = sizeof(struct ipmi_ipmb_addr);
+        pkg->addr.addr_len         = sizeof(struct ipmi_ipmb_addr);
         struct ipmi_ipmb_addr *dst = (struct ipmi_ipmb_addr *) &pkg->addr.addr;
         struct ipmi_ipmb_addr *src = (struct ipmi_ipmb_addr *) &addr->addr;
-        dst->slave_addr = src->slave_addr;
-        dst->lun = src->lun;
+        dst->slave_addr            = src->slave_addr;
+        dst->lun                   = src->lun;
     }
 }
 
@@ -324,14 +325,14 @@ void ipmi_driver_cmd_set_addr(ipmi_cmd_t *pkg, int type, short channel, uchar sl
     pkg->addr.addr.addr_type = type;
     pkg->addr.addr.channel   = channel;
     if (type == IPMI_SYSTEM_INTERFACE_ADDR_TYPE) {
-        pkg->addr.addr_len = sizeof(struct ipmi_system_interface_addr);
+        pkg->addr.addr_len                     = sizeof(struct ipmi_system_interface_addr);
         struct ipmi_system_interface_addr *dst = (struct ipmi_system_interface_addr *) &pkg->addr.addr;
-        dst->lun = lun;
+        dst->lun                               = lun;
     } else if (type == IPMI_IPMB_ADDR_TYPE) {
-        pkg->addr.addr_len = sizeof(struct ipmi_ipmb_addr);
+        pkg->addr.addr_len         = sizeof(struct ipmi_ipmb_addr);
         struct ipmi_ipmb_addr *dst = (struct ipmi_ipmb_addr *) &pkg->addr.addr;
-        dst->slave_addr = slave_addr;
-        dst->lun = lun;
+        dst->slave_addr            = slave_addr;
+        dst->lun                   = lun;
     }
 }
 
@@ -353,7 +354,7 @@ void ipmi_driver_cmd_null_msg_data(ipmi_cmd_t *pkg)
 #if SHOW_DEBUGS
 static void debug_raw(struct ipmi_msg *msg)
 {
-    char buffer_debug[256*3];
+    char buffer_debug[256 * 3];
     int i, c;
 
     c = sprintf(buffer_debug, "    ");
@@ -361,7 +362,8 @@ static void debug_raw(struct ipmi_msg *msg)
         c += sprintf(&buffer_debug[c], "%02x ", 0);
     }
     for (i = 0; i < msg->data_len; i++) {
-        if (i > 0 && (i % 32) == 0) c += sprintf(&buffer_debug[c], "\n    ");
+        if (i > 0 && (i % 32) == 0)
+            c += sprintf(&buffer_debug[c], "\n    ");
         c += sprintf(&buffer_debug[c], "%02x ", (int) msg->data[i]);
     }
     debug("%s", buffer_debug);

@@ -8,21 +8,21 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #include <common/output/debug.h>
 #include <metrics/common/hwmon.h>
 #include <metrics/temperature/archs/hwmon.h>
 
 static hwmon_t *chips;
-static uint     chips_count;
-static uint     sockets_count;
-static uint     items_count;
-static char  **labels_test;
-static char   *labels_amd17[]   = { "Tccd" , "Tctl", NULL }; // Tctl is the real temperature plus an offset
-static char   *labels_intel63[] = { "Package", NULL };
-static char    *label;
-static char    *driver_name;
+static uint chips_count;
+static uint sockets_count;
+static uint items_count;
+static char **labels_test;
+static char *labels_amd17[]   = {"Tccd", "Tctl", NULL}; // Tctl is the real temperature plus an offset
+static char *labels_intel63[] = {"Package", NULL};
+static char *label;
+static char *driver_name;
 
 TEMP_F_LOAD(hwmon)
 {
@@ -43,8 +43,8 @@ TEMP_F_LOAD(hwmon)
         debug("Failed: %s", state_msg);
         return;
     }
-    debug("HWMON opened")
-    while (labels_test != NULL && *labels_test != NULL) {
+    debug("HWMON opened") while (labels_test != NULL && *labels_test != NULL)
+    {
         debug("Counting label '%s'", *labels_test);
         if ((items_count = hwmon_count_items(chips, "input", *labels_test)) > 0) {
             label = *labels_test;
@@ -57,12 +57,12 @@ TEMP_F_LOAD(hwmon)
         return;
     }
     sockets_count = tp->socket_count;
-    debug("Detected %u HWMON '%s' chips with %u items in a system with %d sockets",
-        chips_count, label, items_count, sockets_count);
+    debug("Detected %u HWMON '%s' chips with %u items in a system with %d sockets", chips_count, label, items_count,
+          sockets_count);
     apis_put(ops->get_info, temp_hwmon_get_info);
-    apis_put(ops->init,     temp_hwmon_init);
-    apis_put(ops->dispose,  temp_hwmon_dispose);
-    apis_put(ops->read,     temp_hwmon_read);
+    apis_put(ops->init, temp_hwmon_init);
+    apis_put(ops->dispose, temp_hwmon_dispose);
+    apis_put(ops->read, temp_hwmon_read);
 }
 
 TEMP_F_GET_INFO(hwmon)
@@ -103,8 +103,10 @@ TEMP_F_READ(hwmon)
     while ((chip = hwmon_iter_chips(chips)) != NULL) {
         temp_in = ((llong) chip->devs_avg.input_toint) / 1000LL;
         temp_av = ((llong) chip->devs_avg.input_toint) / 1000LL;
-        if (temp    != NULL) temp[c]   = temp_in;
-        if (average != NULL) *average += temp_av;
+        if (temp != NULL)
+            temp[c] = temp_in;
+        if (average != NULL)
+            *average += temp_av;
         debug("Read temp %lld", temp_in);
         ++c;
     }

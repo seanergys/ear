@@ -46,34 +46,36 @@ static int perfs_count_opened_fds()
 void cpi_perf_load(topology_t *tp, cpi_ops_t *ops)
 {
     if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_ICELAKE_X) {
-        perfs_add(PERF_COUNT_HW_CPU_CYCLES  , PERF_TYPE_HARDWARE, O1(cycles)        , "PERF_COUNT_HW_CPU_CYCLES   ");
-        perfs_add(PERF_COUNT_HW_INSTRUCTIONS, PERF_TYPE_HARDWARE, O1(instructions)  , "PERF_COUNT_HW_INSTRUCTIONS ");
-        perfs_add(0x40004a3                 , PERF_TYPE_RAW     , O2(stalls, memory), "CYCLE_ACTIVITY.STALLS_TOTAL");
+        perfs_add(PERF_COUNT_HW_CPU_CYCLES, PERF_TYPE_HARDWARE, O1(cycles), "PERF_COUNT_HW_CPU_CYCLES   ");
+        perfs_add(PERF_COUNT_HW_INSTRUCTIONS, PERF_TYPE_HARDWARE, O1(instructions), "PERF_COUNT_HW_INSTRUCTIONS ");
+        perfs_add(0x40004a3, PERF_TYPE_RAW, O2(stalls, memory), "CYCLE_ACTIVITY.STALLS_TOTAL");
     } else if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_BROADWELL_X) {
-        perfs_add(PERF_COUNT_HW_CPU_CYCLES  , PERF_TYPE_HARDWARE, O1(cycles)           , "PERF_COUNT_HW_CPU_CYCLES   ");
-        perfs_add(PERF_COUNT_HW_INSTRUCTIONS, PERF_TYPE_HARDWARE, O1(instructions)     , "PERF_COUNT_HW_INSTRUCTIONS ");
-        perfs_add(0x40004a3                 , PERF_TYPE_RAW     , O2(stalls, memory)   , "CYCLE_ACTIVITY.STALLS_TOTAL");
-        perfs_add(0x00001a2                 , PERF_TYPE_RAW     , O2(stalls, resources), "RESOURCE_STALLS.ANY        ");
+        perfs_add(PERF_COUNT_HW_CPU_CYCLES, PERF_TYPE_HARDWARE, O1(cycles), "PERF_COUNT_HW_CPU_CYCLES   ");
+        perfs_add(PERF_COUNT_HW_INSTRUCTIONS, PERF_TYPE_HARDWARE, O1(instructions), "PERF_COUNT_HW_INSTRUCTIONS ");
+        perfs_add(0x40004a3, PERF_TYPE_RAW, O2(stalls, memory), "CYCLE_ACTIVITY.STALLS_TOTAL");
+        perfs_add(0x00001a2, PERF_TYPE_RAW, O2(stalls, resources), "RESOURCE_STALLS.ANY        ");
     } else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN) {
         // PMCx087 is inherited from Family 15h
-        perfs_add(PERF_COUNT_HW_CPU_CYCLES  , PERF_TYPE_HARDWARE, O1(cycles)              , "PERF_COUNT_HW_CPU_CYCLES     ");
-        perfs_add(PERF_COUNT_HW_INSTRUCTIONS, PERF_TYPE_HARDWARE, O1(instructions)        , "PERF_COUNT_HW_INSTRUCTIONS   ");
-        perfs_add(0x0000287                 , PERF_TYPE_RAW     , O2(stalls, fetch_decode), "IC_FETCH_STALL.DECODING_QUEUE");
-        perfs_add(0x0000187                 , PERF_TYPE_RAW     , O2(stalls, resources)   , "IC_FETCH_STALL.BACK_PRESSURE ");
+        perfs_add(PERF_COUNT_HW_CPU_CYCLES, PERF_TYPE_HARDWARE, O1(cycles), "PERF_COUNT_HW_CPU_CYCLES     ");
+        perfs_add(PERF_COUNT_HW_INSTRUCTIONS, PERF_TYPE_HARDWARE, O1(instructions), "PERF_COUNT_HW_INSTRUCTIONS   ");
+        perfs_add(0x0000287, PERF_TYPE_RAW, O2(stalls, fetch_decode), "IC_FETCH_STALL.DECODING_QUEUE");
+        perfs_add(0x0000187, PERF_TYPE_RAW, O2(stalls, resources), "IC_FETCH_STALL.BACK_PRESSURE ");
     } else {
-        perfs_add(PERF_COUNT_HW_CPU_CYCLES             , PERF_TYPE_HARDWARE, O1(cycles)              , "PERF_COUNT_HW_CPU_CYCLES     ");
-        perfs_add(PERF_COUNT_HW_INSTRUCTIONS           , PERF_TYPE_HARDWARE, O1(instructions)        , "PERF_COUNT_HW_INSTRUCTIONS   ");
-        perfs_add(PERF_COUNT_HW_STALLED_CYCLES_FRONTEND, PERF_TYPE_HARDWARE, O2(stalls, fetch_decode), "PERF_COUNT_HW_STALLS_FRONTEND");
-        perfs_add(PERF_COUNT_HW_STALLED_CYCLES_BACKEND , PERF_TYPE_HARDWARE, O2(stalls, memory)      , "PERF_COUNT_HW_STALLS_BACKEND ");
+        perfs_add(PERF_COUNT_HW_CPU_CYCLES, PERF_TYPE_HARDWARE, O1(cycles), "PERF_COUNT_HW_CPU_CYCLES     ");
+        perfs_add(PERF_COUNT_HW_INSTRUCTIONS, PERF_TYPE_HARDWARE, O1(instructions), "PERF_COUNT_HW_INSTRUCTIONS   ");
+        perfs_add(PERF_COUNT_HW_STALLED_CYCLES_FRONTEND, PERF_TYPE_HARDWARE, O2(stalls, fetch_decode),
+                  "PERF_COUNT_HW_STALLS_FRONTEND");
+        perfs_add(PERF_COUNT_HW_STALLED_CYCLES_BACKEND, PERF_TYPE_HARDWARE, O2(stalls, memory),
+                  "PERF_COUNT_HW_STALLS_BACKEND ");
     }
     if (!perfs_count_opened_fds()) {
         debug("All PERFs failed to open");
         return;
     }
     apis_put(ops->get_info, cpi_perf_get_info);
-    apis_put(ops->init    , cpi_perf_init    );
-    apis_put(ops->dispose , cpi_perf_dispose );
-    apis_put(ops->read    , cpi_perf_read    );
+    apis_put(ops->init, cpi_perf_init);
+    apis_put(ops->dispose, cpi_perf_dispose);
+    apis_put(ops->read, cpi_perf_read);
 }
 
 void cpi_perf_get_info(apinfo_t *info)
