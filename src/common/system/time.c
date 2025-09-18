@@ -10,6 +10,7 @@
 
 #include <stdio.h>
 #include <unistd.h>
+#include <common/math_operations.h>
 #include <common/system/time.h>
 #include <common/output/debug.h>
 
