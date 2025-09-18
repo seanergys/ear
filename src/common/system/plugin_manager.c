@@ -39,30 +39,30 @@ static ulong relax_period   = 100;
 // plugin2 [0] [0] [0]
 
 typedef struct plugin_s {
-    char path[4096];
-    char *file_name;
-    void *handler;
-    cchar *tag;
-    cchar *tags_deps;
-    char conf[512];
-    uint deps_table[MAX_PLUGINS]; // Not sorted, table of dependecy modes
-    action_init_f *action_init[MAX_PLUGINS];
+    char         path[4096];
+    char        *file_name;
+    void        *handler;
+    cchar       *tag;
+    cchar       *tags_deps;
+    char         conf[512];
+    uint         deps_table[MAX_PLUGINS]; // Not sorted, table of dependecy modes
+    action_init_f     *action_init[MAX_PLUGINS];
     action_periodic_f *action_periodic[MAX_PLUGINS];
-    fds_set_f *fds_register;
-    fds_set_f *fds_attend;
+    fds_set_f   *fds_register;
+    fds_set_f   *fds_attend;
     post_data_f *post_data;
-    void *data;
-    void *data_conf;
-    ullong time_accum;
-    ullong time_lapse; // In ms
-    timestamp_t time_origin;
-    uint time_param; // Time in parameter
-    uint one_time;   // Obsolete?
-    uint priority;
-    uint is_opened;
-    uint is_enabled;
-    uint is_paused;
-    uint is_silenced;
+    void        *data;
+    void        *data_conf;
+    ullong       time_accum;
+    ullong       time_lapse; // In ms
+    timestamp_t  time_origin;
+    uint         time_param; // Time in parameter
+    uint         one_time;   // Obsolete?
+    uint         priority;
+    uint         is_opened;
+    uint         is_enabled;
+    uint         is_paused;
+    uint         is_silenced;
 } plugin_t;
 
 typedef struct plugins_s {
@@ -84,15 +84,15 @@ static afd_set_t fds_active;
 
 static int plugins_dependencies_read(cchar *string, ullong father_time_lapse, uint priority, uint *father_deps_table)
 {
-    uint list1_count;
-    uint list2_count;
+    uint   list1_count;
+    uint   list2_count;
     char **list1;
     char **list2;
-    int priority_plus;
-    int time_inherit;
-    int mandatory;
-    int l, j;
-    char *c;
+    int    priority_plus;
+    int    time_inherit;
+    int    mandatory;
+    int    l, j;
+    char  *c;
 
     // Get list of plugins to load and times
     debug("plugin string: %s", string);
@@ -529,22 +529,20 @@ static int plugins_action_init_call(int i, int d, void **data_alloc, void *data)
         p.plugins_sorted[i]->action_init[d] = dlsym(p.plugins_sorted[i]->handler, buffer);
         // If NULL persist
         if (p.plugins_sorted[i]->action_init[d] == NULL) {
-            debug("[DEBUG] %s: function '%s'... NOT DETECTED", p.plugins_sorted[i]->file_name, buffer)
-                sprintf(buffer, "up_action_init");
+            debug("[DEBUG] %s: function '%s'... NOT DETECTED", p.plugins_sorted[i]->file_name, buffer);
+            sprintf(buffer, "up_action_init");
             p.plugins_sorted[i]->action_init[d] = dlsym(p.plugins_sorted[i]->handler, buffer);
         }
         // If is still NULL, this address is unreachable
         if (p.plugins_sorted[i]->action_init[d] == NULL) {
-            debug("[DEBUG] %s: function '%s'... NOT DETECTED", p.plugins_sorted[i]->file_name, buffer)
-                p.plugins_sorted[i]
-                    ->action_init[d] = (void *) UINT64_MAX;
+            debug("[DEBUG] %s: function '%s'... NOT DETECTED", p.plugins_sorted[i]->file_name, buffer);
+            p.plugins_sorted[i]->action_init[d] = (void *) UINT64_MAX;
             return 0;
         }
-        debug("[DEBUG] %s: function '%s' DETECTED", p.plugins_sorted[i]->file_name, buffer)
+        debug("[DEBUG] %s: function '%s' DETECTED", p.plugins_sorted[i]->file_name, buffer);
     }
-    debug("[DEBUG] %s: called 'action_init' with tag/data '%s'", p.plugins_sorted[i]->file_name,
-          p.plugins_sorted[d]->tag) sout =
-        p.plugins_sorted[i]->action_init[d](p.plugins_sorted[d]->tag, data_alloc, data);
+    debug("[DEBUG] %s: called 'action_init' with tag/data '%s'", p.plugins_sorted[i]->file_name, p.plugins_sorted[d]->tag);
+    sout = p.plugins_sorted[i]->action_init[d](p.plugins_sorted[d]->tag, data_alloc, data);
     return output_print(i, d, "Init status: ", sout);
 }
 
