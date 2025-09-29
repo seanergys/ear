@@ -60,8 +60,9 @@ typedef struct hwmon_s {
 // array there is a position for each chip found: one per hwmon folder whose
 // name is equal the name you passed. In each array position you can find also a
 // list of devices based on the device type you passed (i.e. "temp"), whose
-// variables are the items of the devices (i.e. input, max, label, etc).
-state_t hwmon_open(char *chip_name, char *dev_type, hwmon_t *chips[], uint *chips_count);
+// variables are the items of the devices (i.e. input, max, label, etc). If
+// label is not NULL, it will open only devices that contains the label string.
+state_t hwmon_open(char *chip_name, char *dev_type, char *label, hwmon_t *chips[], uint *chips_count);
 
 void hwmon_close(hwmon_t *chips[]);
 
@@ -85,7 +86,7 @@ hwmon_dev_t *hwmon_iter_devs(hwmon_t *chip, char *label);
 // is the average of all devices of all chips.
 void hwmon_calc_average(hwmon_t chips[], char *label);
 
-// Closes all file descriptors of files that are not related to this label.
+// Closes all file descriptors of files that are NOT related to this label.
 void hwmon_close_labels(hwmon_t chips[], char *label);
 
 #endif // METRICS_COMMON_HWMON

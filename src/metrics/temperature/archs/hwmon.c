@@ -43,8 +43,8 @@ TEMP_F_LOAD(hwmon)
         debug("Failed: %s", state_msg);
         return;
     }
-    debug("HWMON opened") while (labels_test != NULL && *labels_test != NULL)
-    {
+    debug("HWMON opened");
+    while (labels_test != NULL && *labels_test != NULL) {
         debug("Counting label '%s'", *labels_test);
         if ((items_count = hwmon_count_items(chips, "input", *labels_test)) > 0) {
             label = *labels_test;

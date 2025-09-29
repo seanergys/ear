@@ -25,11 +25,11 @@ static char          *label;
 
 state_t energy_cpu_hwmon_load(topology_t *tp_in)
 {
-    if (state_fail(hwmon_open("power_meter", "power", &chips, &chips_count))) {
-        return EAR_ERROR;
-    }
     if (tp_in->vendor == VENDOR_ARM && tp_in->model == MODEL_NEOVERSE_V2) {
-        label = "Module Power Socket"; 
+        label = "Module Power Socket";
+    }
+    if (state_fail(hwmon_open("power_meter", "power", label, &chips, &chips_count))) {
+        return EAR_ERROR;
     }
     if ((items_count = hwmon_count_items(chips, "average", label)) == 0) {
         hwmon_close(&chips);
