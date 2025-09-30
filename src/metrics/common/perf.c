@@ -467,7 +467,7 @@ static state_t _perf_open_files(perf_t **perfs, char *pmu_name, char *ev_name, u
     if (perfs_count != NULL) {
         *perfs_count = cpus_count;
     }
-    if (pid == -1 && cpus != NULL) {
+    if (pid == -1 && cpus != NULL && cpus[0] != no_cpu) {
         free(cpus);
     }
     if (cpus_count == 0) {

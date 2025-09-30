@@ -41,6 +41,7 @@ static uint test_device_name(int fd, const char *name)
 {
     char data[SZ_PATH];
     uint correct = 0;
+    memset(data, 0, SZ_PATH);
     if (state_ok(static_read(fd, data, SZ_PATH))) {
         int len = strlen(data);
         if (data[len - 1] == '\n') {
