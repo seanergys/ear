@@ -26,7 +26,9 @@ static char          *label;
 state_t energy_cpu_hwmon_load(topology_t *tp_in)
 {
     if (tp_in->vendor == VENDOR_ARM && tp_in->model == MODEL_NEOVERSE_V2) {
-        label = "Module Power Socket";
+        label = "CPU Power Socket"; // Energy is in micro Watts
+    } else {
+        // Energy is in micro Watts
     }
     if (state_fail(hwmon_open("power_meter", "power", label, &chips, &chips_count))) {
         return EAR_ERROR;
@@ -50,16 +52,23 @@ static state_t static_read(ullong *values)
     hwmon_read(chips);
     hwmon_calc_average(chips, NULL);
     while ((chip = hwmon_iter_chips(chips)) != NULL) {
+        // Converted to micro Joules
         values[i] += ((ullong) chip->devs_avg.average_toint) * (ullong) MONITORING_TIME;
-        debug("ENERGY[%d]: %llu += %llu * %d", i, values[i], ((ullong) chip->devs_avg.average_toint), MONITORING_TIME);
+        debug("ENERGY[%d]: %llu += %llu * %d", i, values[i],
+            ((ullong) chip->devs_avg.average_toint), MONITORING_TIME);
         i++;
     }
     return EAR_SUCCESS;
 }
 
-static state_t static_pool(void *x)
+static state_t static_pool(void *data)
 {
+    while (pthread_mutex_trylock(&lock));
     static_read(energy_uw);
+    if (data != NULL) {
+        memcpy(data, energy_uw, sizeof(ullong)*chips_count);
+    }
+    pthread_mutex_unlock(&lock);
     return EAR_SUCCESS;
 }
 
@@ -97,7 +106,5 @@ state_t energy_cpu_hwmon_count_devices(ctx_t *c, uint *devs_count_in)
 
 state_t energy_cpu_hwmon_read(ctx_t *c, ullong *values)
 {
-    // Thread locking in upper layer
-    memcpy(values, energy_uw, sizeof(ullong)*chips_count);
-    return EAR_SUCCESS;
+    return static_pool((void *) values);
 }
