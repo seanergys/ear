@@ -477,7 +477,7 @@ next_fa:
 }
 #endif
 
-static int plugin_manager_after_close()
+static void plugin_manager_after_close()
 {
     action_close_f *action_close;
     int i;

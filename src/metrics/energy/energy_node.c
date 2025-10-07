@@ -8,15 +8,15 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <common/config.h>
-#include <common/hardware/hardware_info.h>
 #include <common/includes.h>
 #include <common/output/debug.h>
-#include <common/system/symplug.h>
-#include <common/types/configuration/cluster_conf.h>
 #include <common/utils/string.h>
+#include <common/system/symplug.h>
+#include <common/hardware/hardware_info.h>
+#include <common/types/configuration/cluster_conf.h>
 #include <metrics/energy/energy_node.h>
 
 struct energy_op {
@@ -192,3 +192,54 @@ uint energy_data_is_null(ehandler_t *eh, edata_t e)
         return 1;
     }
 }
+
+#if TEST
+
+void *energy_alloc(void **data)
+{
+    size_t size = 0;
+    energy_datasize(NULL, &size);
+    *data = calloc(1, size);
+}
+
+void energy_copy(void *dataD, void *dataS)
+{
+    size_t size = 0;
+    energy_datasize(NULL, &size);
+    memcpy(dataD, dataS, size);
+}
+
+int main(int argc, char *argv[])
+{
+    ehandler_t ctx = {0};
+    void *energy1 = NULL;
+    void *energy2 = NULL;
+    ulong energyD = 0LU;
+    ulong units   = 0LU;
+
+    if (argc == 1) {
+        return 0;
+    }
+    if (state_fail(energy_load(argv[1]))) {
+        printf("energy_load() failed: %s\n", state_msg);
+        return 0;
+    }
+    if (state_fail(energy_init(&ctx))) {
+        printf("energy_init() failed: %s\n", state_msg);
+        return 0;
+    }
+    energy_units(&ctx, (uint *) &units);
+    energy_alloc(&energy1);
+    energy_alloc(&energy2);
+    sleep(1);
+    energy_dc_read(&ctx, energy1);
+    while (1) {
+        sleep(4);
+        energy_dc_read(&ctx, energy2);
+        energy_accumulated(&ctx, &energyD, energy1, energy2);
+        printf("######################################################### wattage: %lu W\n", energyD / (4LU*units));
+        energy_copy(energy1, energy2);
+    }
+    return 0;
+}
+#endif
