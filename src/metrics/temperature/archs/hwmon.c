@@ -39,12 +39,12 @@ TEMP_F_LOAD(hwmon)
     } else {
         return;
     }
-    if (state_fail(hwmon_open(driver_name, "temp", &chips, &chips_count))) {
+    if (state_fail(hwmon_open(driver_name, "temp", NULL, &chips, &chips_count))) {
         debug("Failed: %s", state_msg);
         return;
     }
-    debug("HWMON opened") while (labels_test != NULL && *labels_test != NULL)
-    {
+    debug("HWMON opened");
+    while (labels_test != NULL && *labels_test != NULL) {
         debug("Counting label '%s'", *labels_test);
         if ((items_count = hwmon_count_items(chips, "input", *labels_test)) > 0) {
             label = *labels_test;
@@ -57,12 +57,12 @@ TEMP_F_LOAD(hwmon)
         return;
     }
     sockets_count = tp->socket_count;
-    debug("Detected %u HWMON '%s' chips with %u items in a system with %d sockets", chips_count, label, items_count,
-          sockets_count);
+    debug("Detected %u HWMON '%s' chips with %u items in a system with %d sockets",
+          chips_count, label, items_count, sockets_count);
     apis_put(ops->get_info, temp_hwmon_get_info);
-    apis_put(ops->init, temp_hwmon_init);
-    apis_put(ops->dispose, temp_hwmon_dispose);
-    apis_put(ops->read, temp_hwmon_read);
+    apis_put(ops->init    , temp_hwmon_init);
+    apis_put(ops->dispose , temp_hwmon_dispose);
+    apis_put(ops->read    , temp_hwmon_read);
 }
 
 TEMP_F_GET_INFO(hwmon)
@@ -103,10 +103,8 @@ TEMP_F_READ(hwmon)
     while ((chip = hwmon_iter_chips(chips)) != NULL) {
         temp_in = ((llong) chip->devs_avg.input_toint) / 1000LL;
         temp_av = ((llong) chip->devs_avg.input_toint) / 1000LL;
-        if (temp != NULL)
-            temp[c] = temp_in;
-        if (average != NULL)
-            *average += temp_av;
+        if (temp != NULL) temp[c] = temp_in;
+        if (average != NULL) *average += temp_av;
         debug("Read temp %lld", temp_in);
         ++c;
     }

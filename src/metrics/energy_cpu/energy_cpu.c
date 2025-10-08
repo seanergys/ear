@@ -8,21 +8,22 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
-#include <common/output/debug.h>
+#include <stdlib.h>
 #include <common/plugins.h>
 #include <common/system/lock.h>
-#include <metrics/energy_cpu/archs/acpi_power.h>
-#include <metrics/energy_cpu/archs/cpu_util.h>
-#include <metrics/energy_cpu/archs/dummy.h>
-#include <metrics/energy_cpu/archs/eard.h>
-#include <metrics/energy_cpu/archs/grace_cpu_power.h>
-#include <metrics/energy_cpu/archs/linux_powercap.h>
+#include <common/output/debug.h>
+#include <metrics/energy_cpu/energy_cpu.h>
 #include <metrics/energy_cpu/archs/msr.h>
 #include <metrics/energy_cpu/archs/perf.h>
-#include <metrics/energy_cpu/energy_cpu.h>
-#include <stdlib.h>
+#include <metrics/energy_cpu/archs/eard.h>
+#include <metrics/energy_cpu/archs/dummy.h>
+#include <metrics/energy_cpu/archs/hwmon.h>
+#include <metrics/energy_cpu/archs/cpu_util.h>
+#include <metrics/energy_cpu/archs/acpi_power.h>
+#include <metrics/energy_cpu/archs/grace_cpu_power.h>
+#include <metrics/energy_cpu/archs/linux_powercap.h>
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static uint api             = API_DUMMY;
@@ -60,6 +61,7 @@ state_t energy_cpu_load(topology_t *tp, uint force_api)
         ops.data_tostr    = energy_cpu_data_tostr; */
         api = API_RAPL;
         debug("selected rapl_msr energy_cpu (api %u)", api);
+#if 1
     } else if (state_ok(energy_cpu_eard_load(tp, API_IS(force_api, API_EARD)))) {
         ops.init          = energy_cpu_eard_init;
         ops.dispose       = energy_cpu_eard_dispose;
@@ -67,6 +69,7 @@ state_t energy_cpu_load(topology_t *tp, uint force_api)
         ops.count_devices = energy_cpu_eard_count_devices;
         api               = API_EARD;
         debug("selected eard energy_cpu (api %u)", api);
+#endif
     } else if (state_ok(linux_powercap_load(tp))) {
         ops.init          = linux_powercap_init;
         ops.dispose       = linux_powercap_dispose;
@@ -74,6 +77,12 @@ state_t energy_cpu_load(topology_t *tp, uint force_api)
         ops.count_devices = linux_powercap_count_devices;
         api               = API_LINUX_POWERCAP;
         debug("selected linux_powercap (api %u)", api);
+    } else if (state_ok(energy_cpu_hwmon_load(tp))) {
+        ops.init          = energy_cpu_hwmon_init;
+        ops.dispose       = energy_cpu_hwmon_dispose;
+        ops.read          = energy_cpu_hwmon_read;
+        ops.count_devices = energy_cpu_hwmon_count_devices;
+        api = API_HWMON;
     } else if (state_ok(grace_cpu_load(tp))) {
 
         ops.init          = grace_cpu_init;
