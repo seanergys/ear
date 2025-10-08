@@ -8,28 +8,28 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
-#include <common/system/time.h>
 #include <common/output/debug.h>
+#include <common/system/time.h>
 #include <metrics/common/ipmi.h>
 
 typedef struct power_data {
-    uint64_t    cur;
-    uint64_t    min;
-    uint64_t    max;
-    uint64_t    avg;
-    uint64_t    timeframe;
+    uint64_t cur;
+    uint64_t min;
+    uint64_t max;
+    uint64_t avg;
+    uint64_t timeframe;
     timestamp_t timestamp; // We use our timestamp because DCMI fails
 } power_data_t;
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static suscription_t *sus;
-static uint           devs_count;
-static uint           opened;
-static power_data_t   power_last[IPMI_MAX_DEVS];
-static power_data_t   power_cur[IPMI_MAX_DEVS];
-static double         energy_acum; // mJ
+static uint devs_count;
+static uint opened;
+static power_data_t power_last[IPMI_MAX_DEVS];
+static power_data_t power_cur[IPMI_MAX_DEVS];
+static double energy_acum; // mJ
 
 static state_t power_reading(power_data_t *pr)
 {
@@ -52,11 +52,11 @@ static state_t power_reading(power_data_t *pr)
         if (pkg.msg_recv_data[0] != 0) {
             return_msg(EAR_ERROR, "invalid completion code")
         }
-        power_read[d]->cur       = (uint64_t) *((uint16_t *) &rsp->data[1]);
-        power_read[d]->min       = (uint64_t) *((uint16_t *) &rsp->data[3]);
-        power_read[d]->max       = (uint64_t) *((uint16_t *) &rsp->data[5]);
-        power_read[d]->avg       = (uint64_t) *((uint16_t *) &rsp->data[7]);
-        //power_read[d]->timestamp = (uint64_t) *((uint32_t *) &rsp->data[9]);
+        power_read[d]->cur = (uint64_t) *((uint16_t *) &rsp->data[1]);
+        power_read[d]->min = (uint64_t) *((uint16_t *) &rsp->data[3]);
+        power_read[d]->max = (uint64_t) *((uint16_t *) &rsp->data[5]);
+        power_read[d]->avg = (uint64_t) *((uint16_t *) &rsp->data[7]);
+        // power_read[d]->timestamp = (uint64_t) *((uint32_t *) &rsp->data[9]);
         power_read[d]->timeframe = (uint64_t) *((uint32_t *) &rsp->data[13]);
     }
 }
@@ -66,10 +66,9 @@ static uint64_t energy_reading()
     uint64_t energy_acum = 0;
     double time, energy;
     int d;
-    memcpy(power_last, power_cur, sizeof(power_data_t)*IPMI_MAX_DEVS)
-    power_reading(power_cur);
+    memcpy(power_last, power_cur, sizeof(power_data_t) * IPMI_MAX_DEVS) power_reading(power_cur);
     for (d = 0; d < devs_count; ++d) {
-        time = timestamp_fdiff(&power_cur[d].timestamp, &power_last[d].timestamp, TIME_SECS, TIME_MSECS);
+        time   = timestamp_fdiff(&power_cur[d].timestamp, &power_last[d].timestamp, TIME_SECS, TIME_MSECS);
         energy = ((double) power_cur.avg) * 1000.0 * time; // Energy is reported in mJ
         energy_acum += (uint64_t) energy;
     }
@@ -78,7 +77,8 @@ static uint64_t energy_reading()
 
 static state_t thread_main(void *p)
 {
-    while (pthread_mutex_trylock(&lock));
+    while (pthread_mutex_trylock(&lock))
+        ;
     energy_acum += energy_reading;
     pthread_mutex_unlock(&lock);
     return EAR_SUCCESS;
@@ -89,7 +89,8 @@ state_t energy_init(void **c)
     power_data_t pd[IPMI_MAX_DEVS];
     state_t s = EAR_SUCCESS;
 
-    while (pthread_mutex_trylock(&lock));
+    while (pthread_mutex_trylock(&lock))
+        ;
     if (opened) {
         goto leave;
     }
@@ -101,7 +102,7 @@ state_t energy_init(void **c)
     if (state_fail(s = power_reading(pd))) {
         goto leave;
     }
-    sus = suscription();
+    sus             = suscription();
     sus->call_init  = NULL;
     sus->call_main  = thread_main;
     sus->time_relax = ear_max(pd[0].timeframe, 2000); // 2 seconds
@@ -116,7 +117,8 @@ leave:
 
 state_t energy_dispose(void **c)
 {
-    while (pthread_mutex_trylock(&lock));
+    while (pthread_mutex_trylock(&lock))
+        ;
     if (opened) {
         monitor_unregister(sus);
     }
@@ -126,17 +128,14 @@ state_t energy_dispose(void **c)
 
 state_t energy_datasize(size_t *size)
 {
-
 }
 
 state_t energy_frequency(ulong *freq_us)
 {
-
 }
 
 state_t energy_to_str(char *str, void *energy_values)
 {
-
 }
 
 state_t energy_units(uint *units)
@@ -152,20 +151,20 @@ state_t energy_accumulated(uint64_t *energy, void *read1, void *read2)
 
 state_t energy_dc_read(void *c, void *energy_mj)
 {
-    while (pthread_mutex_trylock(&lock));
+    while (pthread_mutex_trylock(&lock))
+        ;
     energy_acum += energy_reading;
     energy_mj = (void *) &energy_acum;
     pthread_mutex_unlock(&lock);
     return EAR_SUCCESS;
 }
 
-state_t energy_dc_time_read(void *c, edata_t energy_mj, ulong *time_ms) 
+state_t energy_dc_time_read(void *c, edata_t energy_mj, ulong *time_ms)
 {
-
 }
 
-uint energy_data_is_null(edata_t e)  
+uint energy_data_is_null(edata_t e)
 {
-    ulong *pe=(ulong *)e;
+    ulong *pe = (ulong *) e;
     return (*pe == 0);
 }

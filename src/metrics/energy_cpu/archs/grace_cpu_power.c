@@ -88,7 +88,7 @@ state_t grace_cpu_load(topology_t *topo)
     while (pthread_mutex_trylock(&lock))
         ;
     if (socket_count == 0) {
-        if (state_ok(s = hwmon_find_drivers("Grace Power Socket 0", NULL, NULL))) {
+        if (state_ok(s = hwmon_find_drivers("Grace Power Socket", NULL, NULL))) {
             socket_count = topo->socket_count;
         }
     }
@@ -116,7 +116,7 @@ state_t grace_cpu_init(ctx_t *c)
     debug("asking for init");
     // Looking for ids
     debug("grace_cpu_init looking for devices");
-    if (xtate_fail(s, hwmon_find_drivers("Grace Power Socket 0", &ids, &id_count))) {
+    if (xtate_fail(s, hwmon_find_drivers("Grace Power Socket", &ids, &id_count))) {
         pthread_mutex_unlock(&lock);
         return s;
     }
@@ -204,7 +204,7 @@ static state_t get_context(ctx_t *c, hwfds_t **h)
 
 state_t grace_cpu_read(ctx_t *c, ullong *values)
 {
-    if ((values == NULL))
+    if (values == NULL)
         return EAR_ERROR;
     if (!grace_cpu_initialized)
         return EAR_ERROR;

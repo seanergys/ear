@@ -86,7 +86,7 @@ energy_redfish.so: energy_redfish.o $(ener_DEPS) $(redfish_DEPS)
 	$(CC) $(CC_FLAGS) $(CFLAGS) -shared $< -o $@ $(redfish_DEPS) $(ener_DEPS)
 
 energy_cpu_gpu.so:energy_cpu_gpu.o $(ener_DEPS)
-	$(CC) $(CC_FLAGS) $(CFLAGS) -shared $< -o $@ $(ener_DEPS) -lm 
+	$(CC) $(CC_FLAGS) $(CFLAGS) -shared $< -o $@ $(ener_DEPS) -lm
 
 energy_cray_pm.so:energy_cray_pm.o $(ener_DEPS) $(cray_DEPS)
 	$(CC) $(CC_FLAGS) $(CFLAGS) -shared $< -o $@ $(ener_DEPS) $(cray_DEPS) -lm
@@ -95,10 +95,10 @@ energy_cray_pm.so:energy_cray_pm.o $(ener_DEPS) $(cray_DEPS)
 	$(CC) $(CFLAGS) -pthread -c $< 
 
 energy_rapl.so: energy_rapl.o $(rapl_DEPS) $(ener_DEPS)
-	$(CC) $(CC_FLAGS) $(CFLAGS) -shared $< -o $@ $(rapl_DEPS) $(ener_DEPS) -lm 
+	$(CC) $(CC_FLAGS) $(CFLAGS) -shared $< -o $@ $(rapl_DEPS) $(ener_DEPS) -lm
 
 %.so: %.o $(ener_DEPS)
-	$(CC) $(CC_FLAGS) $(CFLAGS) -pthread -shared $< -o $@ $(ener_DEPS) 
+	$(CC) $(CC_FLAGS) $(CFLAGS) -pthread -shared $< -o $@ $(ener_DEPS) -lm
 
 energy_eard_nm.so:energy_eard_nm.c
 	$(CC) $(CC_FLAGS) -DEAR_NM_TMP=\"$(EAR_OFFICIAL_TMP)\" -I$(EAR_OFFICIAL_NM_INSTALL_PATH)/include $(CFLAGS) -pthread -shared $< -o $@ $(ener_DEPS) -L$(EAR_OFFICIAL_NM_INSTALL_PATH)/lib -lear_api

@@ -85,14 +85,10 @@ static void *load_mpi_version(void *handler)
 
 static int load_mpi_functions(void *handler, mpic_t *calls_c, mpif_t *calls_f)
 {
-    if (handler == NULL)
-        return 0;
-    if (calls_c->Init == NULL)
-        plug_join(handler, (void **) calls_c, mpic_names, MPIC_N);
-    if (calls_f->init == NULL)
-        plug_join(handler, (void **) calls_f, mpif_names, MPIF_N);
-    if (calls_f->init == NULL)
-        plug_join(handler, (void **) calls_f, mpif_names_, MPIF_N);
+    if (handler       == NULL) return 0;
+    if (calls_c->Init == NULL) plug_join(handler, (void **) calls_c, mpic_names , MPIC_N);
+    if (calls_f->init == NULL) plug_join(handler, (void **) calls_f, mpif_names , MPIF_N);
+    if (calls_f->init == NULL) plug_join(handler, (void **) calls_f, mpif_names_, MPIF_N);
     verbose(2, "LOADER: address of MPI_Init (C): %p", calls_c->Init);
     verbose(2, "LOADER: address of mpi_init (F): %p", calls_f->init);
     return (calls_c->Init != NULL);
@@ -160,11 +156,6 @@ static char *build_libear_path(void *call_mpi_version)
     if (buffer_path == NULL && buffer_hack == NULL) {
         return NULL;
     }
-    // Hack overrides normal path, its a complete absolute path to the library
-    if (buffer_hack != NULL) {
-        buffer_path = buffer_hack;
-        return buffer_hack;
-    }
     // FLAG_LOAD_MPI_VERSION => fakes an MPI_Get_version call
     //      HACK_MPI_VERSION => writes an extension, in form of $val.so (without so)
     verbose(2, "LOADER: env EAR_LOAD_MPI_VERSION  => %s", ear_getenv(FLAG_LOAD_MPI_VERSION));
@@ -177,20 +168,26 @@ static char *build_libear_path(void *call_mpi_version)
     } else if (call_mpi_version != NULL) {
         ((int (*)(char *, int *)) call_mpi_version)(buffer_version, &length);
     } else {
+        verbose(2, "LOADER: MPI version can not be read, no library can be loaded");
         return NULL;
     }
     verbose(2, "LOADER: version string '%s'", buffer_version);
     // Passing to lowercase
     strtolow(buffer_version);
     // Comparing the string to get the version
-    _found_intel = append_extension(buffer_version, "intel", INTEL_EXT, buffer_path);
-    _found_open  = append_extension(buffer_version, "open mpi", OPENMPI_EXT, buffer_path);
-    _found_open |= append_extension(buffer_version, "ompi", OPENMPI_EXT, buffer_path);
-    _found_mvapich = append_extension(buffer_version, "mvapich", INTEL_EXT, buffer_path);
-    _found_fujitsu = append_extension(buffer_version, "fujitsu", FUJITSU_MPI_EXT, buffer_path);
-    _found_cray    = append_extension(buffer_version, "cray mpich", CRAY_MPI_EXT, buffer_path);
-    _found_hack    = append_extension(buffer_version, "hack", HACK_EXT, buffer_path);
+    _found_intel   = append_extension(buffer_version, "intel"     ,       INTEL_EXT, buffer_path);
+    _found_open    = append_extension(buffer_version, "open mpi"  ,     OPENMPI_EXT, buffer_path);
+    _found_open   |= append_extension(buffer_version, "ompi"      ,     OPENMPI_EXT, buffer_path);
+    _found_mvapich = append_extension(buffer_version, "mvapich"   ,       INTEL_EXT, buffer_path);
+    _found_fujitsu = append_extension(buffer_version, "fujitsu"   , FUJITSU_MPI_EXT, buffer_path);
+    _found_cray    = append_extension(buffer_version, "cray mpich",    CRAY_MPI_EXT, buffer_path);
+    _found_hack    = append_extension(buffer_version, "hack"      ,        HACK_EXT, buffer_path);
     verbose(2, "LOADER: EAR library compatible with this MPI: %s", buffer_path);
+    // Hack overrides normal path, its a complete absolute path to the library
+    if (buffer_hack != NULL) {
+        buffer_path = buffer_hack;
+    }
+    verbose(2, "LOADER: final EAR library to load: %s", buffer_path);
     return buffer_path;
 }
 
@@ -220,13 +217,10 @@ static int load_and_set_ear_functions(void *handler)
     verbose(2, "LOADER: address ear_mpic_setnext: %p", libear_setnext_c);
     verbose(2, "LOADER: address ear_mpif_setnext: %p", libear_setnext_f);
     // Disabling Fortran symbols for intel
-    if (_found_intel)
-        libear_setnext_f = NULL;
+    if (_found_intel) libear_setnext_f = NULL;
     // Loading LIBEAR MPI functions
-    if (libear_setnext_c != NULL)
-        plug_join(handler, libear_c, ear_mpic_names, MPIC_N);
-    if (libear_setnext_f != NULL)
-        plug_join(handler, libear_f, ear_mpif_names, MPIF_N);
+    if (libear_setnext_c != NULL) plug_join(handler, libear_c, ear_mpic_names, MPIC_N);
+    if (libear_setnext_f != NULL) plug_join(handler, libear_f, ear_mpif_names, MPIF_N);
     verbose(2, "LOADER: address ear_mpic_Init: %p", ear_mpic.Init);
     verbose(2, "LOADER: address ear_mpif_init: %p", ear_mpif.init);
     // Loading LIBEAR constructor/destructor
@@ -242,10 +236,8 @@ override:
         if (libear_f[i] == NULL)
             libear_f[i] = libmpi_f[i];
     // Passing MPI functions to LIBEAR MPI functions
-    if (libear_setnext_c != NULL)
-        libear_setnext_c((mpic_t *) libmpi_c);
-    if (libear_setnext_f != NULL)
-        libear_setnext_f((mpif_t *) libmpi_f);
+    if (libear_setnext_c != NULL) libear_setnext_c((mpic_t *) libmpi_c);
+    if (libear_setnext_f != NULL) libear_setnext_f((mpif_t *) libmpi_f);
     built_mpi_structure = 1;
     return 1;
 }
@@ -286,8 +278,7 @@ int load_libear_mpi_given_libmpi(char *libmpi_path)
                     // Fail, because if no MPI symbols, we are in trouble.
                     usage_and_exit();
                 }
-            } else
-                return 0;
+            } else return 0;
         }
     }
     // Looking for PMPI_Get_library_version function

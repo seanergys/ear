@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - v6.0 New API for reading metrics through Linux hwmon.
 - v6.0 NVIDIA Grace Hopper devices support.
 - v6.0 Added AdminUsers to provide more privileges than AuthorizedUsers.
-- v6.0 Added --force option to the SLURM Plugin.
+- v6.0 Added --force option to the erun command.
 - v6.0 Added a mechanism to dynamically increase the timeout window in msg_internals when a node connects but does not return data.
 - v6.0 Added stall cycles to CPI API.
 - v6.0 Application CPU usage field added in the EAR Database.
@@ -26,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - v6.0 IPMI API
 - v6.0 Non-interactive version of the edb_create command.
 - v6.0 Now the topology module stores a socket index.
+- v6.0 Node sharing strategy added.
+- v6.0 Added non-computational power support to soft powercap.
 
 ### Changed
 - development Updated AMD with changes for ZEN3, ZEN4 and ZEN5.
@@ -37,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - v6.0 Added pointer recalculation in cache\_data\_copy.
 - v6.0 Changed eacct's energy field from Joules to KWh.
 - v6.0 eacct's -n flag now just counts for jobs.
-- v6.0 EAR source code collows clang-format style.
+- v6.0 EAR source code follows clang-format style.
 - v6.0 GPU energy savings are reported if a GPU optimization policy is being used.
 
 ### Fixed
@@ -53,6 +55,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - v6.0 Small bug fixes in the CPU power models:
   - Do not check DRAM power since it is not available on AMD.
   - Initialize all arrays before using them.
+- v6.0 Improving earl-eard connect to avoid blocking.
+- v6.0 Fixed socket count in acpi_power.
+
+## 5.2.1 - 2025-09-02
+
+### Added
+- Added missing averaged values to eacct.
+- Added averaging of power signatures.
+
+### Changed
+- Updated powercap algorithms for gpu, cpu_generic. Using LEVEL_DOMAIN in set_powercap_value calls() in powercap_mgt.c.
+
+### Fixed
+- Updated the PACKAGE_VERSION in the configure.ac file
+- Add a missing ; in the application signature header csv
+- Fixed serialization/deserialization of authorized users, groups and accounts.
+- Fixed an error where eacct would average power consumed by multiple nodes of the application, instead of adding it.
+
+## 5.2.1 - 2025-09-02
+
+### Added
+- Added missing averaged values to eacct.
+- Added averaging of power signatures.
+
+### Changed
+- Updated powercap algorithms for gpu, cpu_generic. Using LEVEL_DOMAIN in set_powercap_value calls() in powercap_mgt.c.
+
+### Fixed
+- Updated the PACKAGE_VERSION in the configure.ac file
+- Add a missing ; in the application signature header csv
+- Fixed serialization/deserialization of authorized users, groups and accounts.
+- Fixed an error where eacct would average power consumed by multiple nodes of the application, instead of adding it.
 
 ## [5.2] - 2025-05-28
 
@@ -72,6 +106,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixes related to setting powercap to single devices and domains.
 - Fixed typo in cpupow define.
 - Improved CPU governor list message.
+
+
+## 5.1.10 - 2025-09-02
+
+### Added
+- EARGM now reads EARGMNAME variable and writes to DB and log using this name, if available.
+- EARGM reads "ip:port" to support multiple eargms in the same node.
+- Setting the soft powercap to unlimited when the eargm is started or restarted.
+- Added reset modes (to default and to TDP) to management/cpupow.
+- The ereport command can now manage list of user groups.
+- Edcmon calls plugin_manager_close() when SIGINT or SIGTERM is received.
+
+### Changed
+- Using current_power instead of avg_power in dcmi node energy.
+- Powermonitor is now reporting last_calculated_power instead of last_power_reported in powermon_current_power().
+
+### Fixed
+- Set the maximum CPUFreq. value when the nominal+1000 is not available on systems using intel_cpufreq driver.
+- Fix powercap reset to the wrong value for AMD CPUs.
+- Change setgid bits in the rpm spec file.
+- Cleaned CPUPOW warnings.
+- Fixed acpi_cpufreq.c segmentation fault error.
+- Fixed plugin_manager_close() and plugin_manager_after_close functions.
+- Fixes in gpu powercap init and logic.
+- Fixed serialization and deserialization of authorized users, groups and accounts.
 
 ## 5.1.9 - 2025-04-28
 

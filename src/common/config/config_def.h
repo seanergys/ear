@@ -90,7 +90,7 @@
 /**@}*/
 
 /** Forces EARD and EARGM to be executed as root. */
-#define RUN_AS_ROOT 0
+#define RUN_AS_ROOT 1
 
 /** Maximum number of tries when doing non-blocking communications. */
 #define MAX_SOCKET_COMM_TRIES 40000000
@@ -145,6 +145,7 @@
 #define DEFAULT_POWER                     300
 #define GRACE_T1                          3
 #define MAX_TIME_DYNAIS_WITHOUT_SIGNATURE 15
+#define METRICS_OVH                       0
 
 /*
  * To be used by default in eard and eard_dummy

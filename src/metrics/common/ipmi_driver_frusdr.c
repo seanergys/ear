@@ -8,28 +8,28 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <common/output/debug.h>
 #include <metrics/common/ipmi_driver.h>
 #include <metrics/common/ipmi_driver_frusdr.h>
 #include <metrics/common/ipmi_driver_parsing.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 static uchar fru_buffer[1048576];
 
 static void ipmi_driver_sdrs_traversal(ipmi_cmd_t *pkg, ipmi_dev_t *dev, ipmi_addr_t *addr, ushort next_record_id)
 {
     ipmi_addr_t *new_addr = NULL;
-    sdr_t *rec = NULL;
+    sdr_t *rec            = NULL;
 
     if (next_record_id == 0xFFFF) {
         return;
     }
     // Preparing the package message
-    pkg->msg_send.data[2] = (next_record_id     ) & 0xFF;
+    pkg->msg_send.data[2] = (next_record_id) & 0xFF;
     pkg->msg_send.data[3] = (next_record_id >> 8) & 0xFF;
     pkg->msg_send.data[4] = 0x00; // Offset
     pkg->msg_send.data[5] = 0xFF; // Length
@@ -54,13 +54,13 @@ static void ipmi_driver_sdrs_traversal(ipmi_cmd_t *pkg, ipmi_dev_t *dev, ipmi_ad
     }
     // Allocating new space if required (in blocks of 64 records)
     if ((dev->records_count % 64) == 0) {
-        dev->records = realloc(dev->records, (dev->records_count+64)*sizeof(sdr_t));
-        memset(&dev->records[dev->records_count], 0, 64*sizeof(sdr_t));
+        dev->records = realloc(dev->records, (dev->records_count + 64) * sizeof(sdr_t));
+        memset(&dev->records[dev->records_count], 0, 64 * sizeof(sdr_t));
     }
     // Parsing, in case is BMC-Locator, get the address
     rec = &dev->records[dev->records_count];
 
-    switch(ipmi_driver_parse_sdr(pkg->msg_recv_data, rec, addr)) {
+    switch (ipmi_driver_parse_sdr(pkg->msg_recv_data, rec, addr)) {
         case 0x11: // New FRU detected
             // Nothing by now because we can't build complex IPMB addresses.
             break;
@@ -69,8 +69,10 @@ static void ipmi_driver_sdrs_traversal(ipmi_cmd_t *pkg, ipmi_dev_t *dev, ipmi_ad
             if (!rec->bmc_sdr || rec->new_addr_channel == 0x00) {
                 break;
             }
-            if (!ipmi_has_addr(dev, IPMI_IPMB_ADDR_TYPE, rec->new_addr_channel, rec->new_addr_slave, rec->new_addr_lun)) {
-                new_addr = ipmi_add_addr(dev, IPMI_IPMB_ADDR_TYPE, rec->new_addr_channel, rec->new_addr_slave, rec->new_addr_lun);
+            if (!ipmi_has_addr(dev, IPMI_IPMB_ADDR_TYPE, rec->new_addr_channel, rec->new_addr_slave,
+                               rec->new_addr_lun)) {
+                new_addr = ipmi_add_addr(dev, IPMI_IPMB_ADDR_TYPE, rec->new_addr_channel, rec->new_addr_slave,
+                                         rec->new_addr_lun);
             }
             break;
     }
@@ -115,9 +117,9 @@ static int ipmi_driver_frus_read_offset(ipmi_dev_t *dev, ipmi_cmd_t *pkg, uchar 
     uint org_offset = offset;
     uint max_length = 256;
     uint fru_length = 0;
-    uint length = 0;
-    uint finish = 0;
-    uint marker = 0;
+    uint length     = 0;
+    uint finish     = 0;
+    uint marker     = 0;
 
     // Reading length of the string
     ipmi_driver_cmd_set_msg(pkg, IPMI_NETFN_STORAGE_REQUEST, 0x11, 4);
@@ -136,16 +138,16 @@ static int ipmi_driver_frus_read_offset(ipmi_dev_t *dev, ipmi_cmd_t *pkg, uchar 
     // DATA [1:1] Bytes returned
     // DATA [2:2] FRU version
     // DATA [3:3] FRU length
-    fru_length = pkg->msg_recv_data[3]*8;
+    fru_length = pkg->msg_recv_data[3] * 8;
     if (fru_length == 0) {
-       debug("FRU%d error: length is 0", f);
-       return 0;
+        debug("FRU%d error: length is 0", f);
+        return 0;
     }
 calc_length:
     offset = org_offset;
     length = fru_length;
     finish = offset + length;
-    
+
     if (length > max_length) {
         // According to IPMI documentation:
         //   - The IPMB standard overall message length for ‘non-bridging’ messages
@@ -167,9 +169,7 @@ calc_length:
         if (pkg->msg_recv_data[0] != 0x00) {
             debug("FRU%d (len %u) reading state failed: 0x%d", f, length, pkg->msg_recv_data[0]);
             // This meands that the requested data is too big so we have to reduce the requested size.
-            if (pkg->msg_recv_data[0] == 0xc7 ||
-                pkg->msg_recv_data[0] == 0xc8 ||
-                pkg->msg_recv_data[0] == 0xca) {
+            if (pkg->msg_recv_data[0] == 0xc7 || pkg->msg_recv_data[0] == 0xc8 || pkg->msg_recv_data[0] == 0xca) {
                 if (max_length > 32) {
                     max_length = 32;
                     goto calc_length;
@@ -179,15 +179,15 @@ calc_length:
         }
         // Copying TODO: failing, marker is overflowing
         memcpy(&fru_buffer[marker], &pkg->msg_recv_data[2], pkg->msg_recv_data[1]);
-        //debug_fru_bytes("FRU BUFFER    DATA ", &fru_buffer[00], 32);
-        //debug_fru_bytes("FRU BUFFER    DATA ", &fru_buffer[32], 32);
-        //debug_fru_bytes("FRU BUFFER    DATA ", &fru_buffer[64], 32);
-        // Recalculating the batch pointers
-        //debug("offset/marker/length: %u/%u/%u (before)", offset, marker, length);
+        // debug_fru_bytes("FRU BUFFER    DATA ", &fru_buffer[00], 32);
+        // debug_fru_bytes("FRU BUFFER    DATA ", &fru_buffer[32], 32);
+        // debug_fru_bytes("FRU BUFFER    DATA ", &fru_buffer[64], 32);
+        //  Recalculating the batch pointers
+        // debug("offset/marker/length: %u/%u/%u (before)", offset, marker, length);
         offset = offset + pkg->msg_recv_data[1];
         marker = marker + pkg->msg_recv_data[1];
-        length = ((finish - offset) < max_length)? finish - offset: max_length;
-        //debug("offset/marker/length: %u/%u/%u (after)", offset, marker, length);
+        length = ((finish - offset) < max_length) ? finish - offset : max_length;
+        // debug("offset/marker/length: %u/%u/%u (after)", offset, marker, length);
     } while (offset < finish);
     return 1;
 }
@@ -223,6 +223,7 @@ void ipmi_driver_frus_discover(ipmi_dev_t *devs, uint devs_count)
 {
     struct fru_header {
         uchar version;
+
         union {
             struct {
                 uchar internal;
@@ -231,8 +232,10 @@ void ipmi_driver_frus_discover(ipmi_dev_t *devs, uint devs_count)
                 uchar product;
                 uchar multi;
             } offset;
+
             uchar offsets[5];
         };
+
         uchar pad;
         uchar checksum;
     } header;
@@ -245,7 +248,7 @@ void ipmi_driver_frus_discover(ipmi_dev_t *devs, uint devs_count)
     // By now we are just reading the FRU in the INTERFACE address (or main address).
     // But in the future maybe we have to process the SDR types 10h, 11h and 12h and
     // find these devices in other addresses that includes FRU information. You can
-    // see how ipmitool does it in function ipmi_fru_print(). 
+    // see how ipmitool does it in function ipmi_fru_print().
     for (d = 0; d < devs_count; ++d) {
         ipmi_driver_cmd_set_paddr(&pkg, &devs[d].addrs[0]);
         for (f = 0x00; f < 0xff; ++f) {
@@ -257,8 +260,10 @@ void ipmi_driver_frus_discover(ipmi_dev_t *devs, uint devs_count)
             }
             // If the ID fails, we will try 10 additional times
             if (pkg.msg_recv_data[0] != 0x00) {
-                if (holes == 3) break;
-                else continue;
+                if (holes == 3)
+                    break;
+                else
+                    continue;
             }
             holes = 0;
             // Parsing the FRU inventory if it is correct
@@ -279,30 +284,31 @@ void ipmi_driver_frus_discover(ipmi_dev_t *devs, uint devs_count)
                 break;
             }
             memcpy(&header, pkg.msg_recv_data + 2, 8);
-            #if 0
+#if 0
             debug("fru.header.version:         0x%x", header.version);
             debug("fru.header.offset.internal: 0x%x", header.offset.internal * 8);
             debug("fru.header.offset.chassis:  0x%x", header.offset.chassis  * 8);
             debug("fru.header.offset.board:    0x%x", header.offset.board    * 8);
             debug("fru.header.offset.product:  0x%x", header.offset.product  * 8);
             debug("fru.header.offset.multi:    0x%x", header.offset.multi    * 8);
-            #endif
+#endif
             // We found that if a FRU reading fails for a type offset, it will also
             // fail for the other types, so we continue to save execution time.
             if (header.offset.chassis != 0) {
-                if (!ipmi_driver_frus_read_chassis(&devs[d], &pkg, f, ((uint) header.offset.chassis)*8)) {
+                if (!ipmi_driver_frus_read_chassis(&devs[d], &pkg, f, ((uint) header.offset.chassis) * 8)) {
                     continue;
                 }
             }
             if (header.offset.board != 0) {
-                if (!ipmi_driver_frus_read_board(&devs[d], &pkg, f, ((uint) header.offset.board)*8)) {
+                if (!ipmi_driver_frus_read_board(&devs[d], &pkg, f, ((uint) header.offset.board) * 8)) {
                     continue;
                 }
             }
             if (header.offset.product != 0) {
-                if (!ipmi_driver_frus_read_product(&devs[d], &pkg, f, ((uint) header.offset.product)*8)) {
+                if (!ipmi_driver_frus_read_product(&devs[d], &pkg, f, ((uint) header.offset.product) * 8)) {
                     continue;
                 }
             }
-    }}
+        }
+    }
 }

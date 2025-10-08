@@ -11,28 +11,27 @@
 // #define SHOW_DEBUGS 1
 
 #include <common/config.h>
+#include <common/hardware/hardware_info.h>
 #include <common/includes.h>
 #include <common/output/debug.h>
-#include <common/utils/string.h>
 #include <common/system/symplug.h>
-#include <common/hardware/hardware_info.h>
 #include <common/types/configuration/cluster_conf.h>
+#include <common/utils/string.h>
 #include <metrics/energy/energy_node.h>
 
-struct energy_op
-{
-    state_t (*init)               (void **c);
-    state_t (*dispose)            (void **c);
-    state_t (*datasize)           (size_t *size);
-    state_t (*frequency)          (ulong *freq);
-    state_t (*dc_read)            (void *c, edata_t emj);
-    state_t (*dc_time_read)       (void *c, edata_t emj, ulong *tms);
-    state_t (*ac_read)            (void *c, edata_t em);
-    state_t (*units)              (uint *uints);
-    state_t (*accumulated)        (ulong *e,edata_t init, edata_t end);
-    state_t (*energy_to_str)      (char *str,edata_t end);
-    state_t (*power_limit)        (void *c, ulong limit,ulong target);
-    uint    (*is_null)            (edata_t end);
+struct energy_op {
+    state_t (*init)(void **c);
+    state_t (*dispose)(void **c);
+    state_t (*datasize)(size_t *size);
+    state_t (*frequency)(ulong *freq);
+    state_t (*dc_read)(void *c, edata_t emj);
+    state_t (*dc_time_read)(void *c, edata_t emj, ulong *tms);
+    state_t (*ac_read)(void *c, edata_t em);
+    state_t (*units)(uint *uints);
+    state_t (*accumulated)(ulong *e, edata_t init, edata_t end);
+    state_t (*energy_to_str)(char *str, edata_t end);
+    state_t (*power_limit)(void *c, ulong limit, ulong target);
+    uint (*is_null)(edata_t end);
 } energy_ops;
 
 const char *energy_names[] = {
@@ -56,7 +55,7 @@ static int energy_nops     = 12;
 state_t energy_load(char *energy_obj)
 {
     uint list_count = 0;
-    char **list = NULL;
+    char **list     = NULL;
     state_t ret;
 
     if (energy_loaded) {

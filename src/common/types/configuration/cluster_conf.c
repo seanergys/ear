@@ -206,7 +206,6 @@ static void _add_ips_and_names_from_range(char *base, range_def_t *r, int32_t **
 
 int get_ip_and_names_from_ranges(cluster_conf_t *my_conf, int **num_ips, int ***ips, char ****names)
 {
-#warning PENDING_TO_TEST
     int i, j;
     int **aux_ips;
     char ***aux_names;
@@ -228,7 +227,7 @@ int get_ip_and_names_from_ranges(cluster_conf_t *my_conf, int **num_ips, int ***
 
     for (i = 0; i < my_conf->num_islands; i++) {
         for (j = 0; j < my_conf->islands[i].num_ranges; j++) {
-            range_def_t range = my_conf->islands[i].ranges[j].range;
+            range_def_t range = my_conf->islands[i].ranges[j].r_def;
             _add_ips_and_names_from_range("", &range, &aux_ips[current_range], &ip_counter[current_range],
                                           &aux_names[current_range], my_conf);
             current_range++;
@@ -304,7 +303,6 @@ static void _add_ips_from_range(char *base, range_def_t *r, int32_t **ips, int32
 
 int get_ip_ranges(cluster_conf_t *my_conf, int **num_ips, int ***ips)
 {
-#warning PENDING_TO_TEST
     int i, j;
     int **aux_ips;
     int *ip_counter;
@@ -324,7 +322,7 @@ int get_ip_ranges(cluster_conf_t *my_conf, int **num_ips, int ***ips)
 
     for (i = 0; i < my_conf->num_islands; i++) {
         for (j = 0; j < my_conf->islands[i].num_ranges; j++) {
-            range_def_t range = my_conf->islands[i].ranges[j].range;
+            range_def_t range = my_conf->islands[i].ranges[j].r_def;
             _add_ips_from_range("", &range, &aux_ips[current_range], &ip_counter[current_range], my_conf);
             current_range++;
         }
@@ -344,7 +342,7 @@ int get_range_ips(cluster_conf_t *my_conf, char *nodename, int **ips)
         if (range_idx < 0)
             continue;
 
-        range_def_t range = my_conf->islands[i].ranges[range_idx].range;
+        range_def_t range = my_conf->islands[i].ranges[range_idx].r_def;
 
         _add_ips_from_range("", &range, ips, &total_ips, my_conf);
         return total_ips;
@@ -1498,14 +1496,14 @@ state_t serialize_cluster_conf(cluster_conf_t *conf, char **ear_conf_buf, size_t
     for (uint auth = 0; auth < conf->auth_users_count; auth++) {
         uint size_auth = strlen(conf->auth_users[auth]);
         serial_add_elem(&ear_conf_serial, (char *) &size_auth, sizeof(size_auth));
-        serial_add_elem(&ear_conf_serial, (char *) &conf->auth_users[auth], strlen(conf->auth_users[auth]));
+        serial_add_elem(&ear_conf_serial, (char *) conf->auth_users[auth], strlen(conf->auth_users[auth]));
     }
     /* Priv groups */
     serial_add_elem(&ear_conf_serial, (char *) &conf->auth_groups_count, sizeof(conf->auth_groups_count));
     for (uint auth = 0; auth < conf->auth_groups_count; auth++) {
         uint size_auth = strlen(conf->auth_groups[auth]);
         serial_add_elem(&ear_conf_serial, (char *) &size_auth, sizeof(size_auth));
-        serial_add_elem(&ear_conf_serial, (char *) &conf->auth_groups[auth], strlen(conf->auth_groups[auth]));
+        serial_add_elem(&ear_conf_serial, (char *) conf->auth_groups[auth], strlen(conf->auth_groups[auth]));
     }
 
     /* Priv accounts */
@@ -1513,7 +1511,7 @@ state_t serialize_cluster_conf(cluster_conf_t *conf, char **ear_conf_buf, size_t
     for (uint auth = 0; auth < conf->auth_acc_count; auth++) {
         uint size_auth = strlen(conf->auth_accounts[auth]);
         serial_add_elem(&ear_conf_serial, (char *) &size_auth, sizeof(size_auth));
-        serial_add_elem(&ear_conf_serial, (char *) &conf->auth_accounts[auth], strlen(conf->auth_accounts[auth]));
+        serial_add_elem(&ear_conf_serial, (char *) conf->auth_accounts[auth], strlen(conf->auth_accounts[auth]));
     }
 
     /* Admin users */
@@ -1523,7 +1521,7 @@ state_t serialize_cluster_conf(cluster_conf_t *conf, char **ear_conf_buf, size_t
         uint size_auth = strlen(conf->admin_users[admn]);
         serial_add_elem(&ear_conf_serial, (char *) &size_auth, sizeof(size_auth));
 
-        serial_add_elem(&ear_conf_serial, (char *) &conf->admin_users[admn], strlen(conf->admin_users[admn]));
+        serial_add_elem(&ear_conf_serial, (char *) conf->admin_users[admn], strlen(conf->admin_users[admn]));
     }
 
     debug("serial + authorized: users %u groups %u accounts %u admins %u", conf->auth_users_count,
@@ -1580,7 +1578,8 @@ state_t serialize_cluster_conf(cluster_conf_t *conf, char **ear_conf_buf, size_t
 }
 
 /* ear_conf_buf points to a serialized region. conf is the output. Memory is not internally allocated for it */
-state_t deserialize_cluster_conf(cluster_conf_t *conf, char *ear_conf_buf, size_t conf_size, const version_t *src_version)
+state_t deserialize_cluster_conf(cluster_conf_t *conf, char *ear_conf_buf, size_t conf_size,
+                                 const version_t *src_version)
 {
     state_t s = EAR_SUCCESS;
     wide_buffer_t ear_conf_serial;
@@ -1622,7 +1621,7 @@ state_t deserialize_cluster_conf(cluster_conf_t *conf, char *ear_conf_buf, size_
             uint size_auth;
             serial_copy_elem(&ear_conf_serial, (char *) &size_auth, NULL);
             conf->auth_users[auth] = calloc(1, size_auth + 1);
-            serial_copy_elem(&ear_conf_serial, (char *) &conf->auth_users[auth], NULL);
+            serial_copy_elem(&ear_conf_serial, (char *) conf->auth_users[auth], NULL);
         }
     }
     /* Priv groups */
@@ -1633,7 +1632,7 @@ state_t deserialize_cluster_conf(cluster_conf_t *conf, char *ear_conf_buf, size_
             uint size_auth;
             serial_copy_elem(&ear_conf_serial, (char *) &size_auth, NULL);
             conf->auth_groups[auth] = calloc(1, size_auth + 1);
-            serial_copy_elem(&ear_conf_serial, (char *) &conf->auth_groups[auth], NULL);
+            serial_copy_elem(&ear_conf_serial, (char *) conf->auth_groups[auth], NULL);
         }
     }
 
@@ -1645,7 +1644,7 @@ state_t deserialize_cluster_conf(cluster_conf_t *conf, char *ear_conf_buf, size_
             uint size_auth;
             serial_copy_elem(&ear_conf_serial, (char *) &size_auth, NULL);
             conf->auth_accounts[auth] = calloc(1, size_auth + 1);
-            serial_copy_elem(&ear_conf_serial, (char *) &conf->auth_accounts[auth], NULL);
+            serial_copy_elem(&ear_conf_serial, (char *) conf->auth_accounts[auth], NULL);
         }
     }
 
@@ -1661,7 +1660,7 @@ state_t deserialize_cluster_conf(cluster_conf_t *conf, char *ear_conf_buf, size_
                 uint size_auth;
                 serial_copy_elem(&ear_conf_serial, (char *) &size_auth, NULL);
                 conf->admin_users[admn] = calloc(1, size_auth + 1);
-                serial_copy_elem(&ear_conf_serial, (char *) &conf->admin_users[admn], NULL);
+                serial_copy_elem(&ear_conf_serial, (char *) conf->admin_users[admn], NULL);
             }
         }
     }

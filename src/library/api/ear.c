@@ -300,10 +300,9 @@ static state_t check_eard_earl_compatibility(state_t eard_connect_state, eard_st
             (eard_conf->gpus_support_enabled != USE_GPUS)) {
             st = EAR_ERROR;
         }
-    } else
-	{
-		st = EAR_SUCCESS;
-	}
+    } else {
+        st = EAR_SUCCESS;
+    }
     return st;
 }
 
@@ -1453,6 +1452,16 @@ static void configure_sigactions()
     sigaction(SIGBUS, &segv_action, NULL);
 }
 
+static int get_loop_strategy()
+{
+    char *mode = ear_getenv(FLAG_LOOP_STRATEGY);
+    if (!mode)
+        return ear_guided;
+    strtoup(mode);
+    verbose_master(2, "EARL: Loop detection mode %s", mode);
+    return (strcmp(mode, "TIME") == 0 ? TIME_GUIDED : DYNAIS_GUIDED);
+}
+
 /*****************************************************************************************************************************************************/
 /*****************************************************************************************************************************************************/
 /*****************************************************************************************************************************************************/
@@ -1500,6 +1509,7 @@ void ear_init()
 
     // Environment initialization
     ear_lib_environment();
+    ear_guided = get_loop_strategy();
 
     verb_level   = get_ear_verbose();
     verb_channel = 2; // Default: stderr
@@ -1911,8 +1921,8 @@ void ear_init()
     debug("Using ser cconf path %s", ser_cluster_conf_path);
     ser_cluster_conf = attach_ser_cluster_conf_shared_area(ser_cluster_conf_path, &ser_cluster_conf_size);
     debug("Serialized cluster conf requires %lu bytes", ser_cluster_conf_size);
-		verbose_info2_master("Deserializing the cluster conf")
-    deserialize_cluster_conf(&cconf, ser_cluster_conf, ser_cluster_conf_size, &eard_conf.version);
+    verbose_info2_master("Deserializing the cluster conf")
+        deserialize_cluster_conf(&cconf, ser_cluster_conf, ser_cluster_conf_size, &eard_conf.version);
 
     debug("END Shared region creation section");
     /* Processes in same node connectes each other*/
@@ -2241,6 +2251,7 @@ void ear_init()
     if (!module_mpi_is_enabled()) {
         ear_guided = TIME_GUIDED;
     }
+    verbose_master(2, "EARL[%d] LOOP strategy %s", getpid(), (ear_guided == TIME_GUIDED) ? "Time" : "Dynais");
 #if 0
         if (ear_guided == TIME_GUIDED){
 #endif
@@ -2602,6 +2613,8 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
             case PERIODIC_MODE_OFF: {
                 switch (dynais_enabled) {
                     case DYNAIS_ENABLED: {
+// DYNAIS_ENABLED is only enabled for MPI applications
+#if MPI
                         /* First time EAR computes a signature using dynais, check_periodic_mode is set to 0 */
                         if (check_periodic_mode == 0) {
                             ear_mpi_call_dynais_on(call_type, buf, dest);
@@ -2658,6 +2671,8 @@ void ear_mpi_call(mpi_call call_type, p2i buf, p2i dest)
                                 ear_mpi_call_dynais_on(call_type, buf, dest);
                             }
                         }
+
+#endif
                     } break;
                     case DYNAIS_DISABLED:
                         /** That case means we have computed some signature and we have decided to set dynais disabled
@@ -3024,10 +3039,11 @@ state_t earl_periodic_actions(void *no_arg)
 
         verbose_master(EARL_GUIDED_LVL, "%d: Phase time_guided %d dynais_guided %d period %u", my_node_id,
                        new_ear_guided == TIME_GUIDED, new_ear_guided == DYNAIS_GUIDED, lib_period);
-
+#if MPI
         if (new_ear_guided != DYNAIS_GUIDED) {
             _go_to_time_guided(new_ear_guided);
         }
+#endif
         ear_guided = new_ear_guided;
     }
 

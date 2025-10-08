@@ -1127,7 +1127,7 @@ int main(int argc, char *argv[])
                     if (rc < 0) {
                         printf("Error connecting with node %s\n", optarg);
                     } else {
-                        if (!ear_node_get_power(&power)) {
+                        if (state_fail(ear_node_get_power(&power))) {
                             printf("Could not retrieve power for node %s\n", optarg);
                         } else {
                             printf("Power for node %s: %luW\n", optarg, power.power);
@@ -1217,7 +1217,7 @@ int main(int argc, char *argv[])
     }
 
     if (get_power) {
-        if (!ear_get_power(&my_cluster_conf, &power, nodes, num_nodes)) {
+        if (state_fail(ear_get_power(&my_cluster_conf, &power, nodes, num_nodes))) {
             printf("Could not retrieve cluster power\n");
         } else {
             printf("Total cluster power reported by %li nodes: %luW\n", power.num_nodes, power.power);

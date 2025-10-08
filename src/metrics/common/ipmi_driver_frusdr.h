@@ -17,4 +17,4 @@ void ipmi_driver_sdrs_discover(ipmi_dev_t *devs, uint devs_count);
 
 void ipmi_driver_frus_discover(ipmi_dev_t *devs, uint devs_count);
 
-#endif //METRICS_COMMON_IPMI_DRIVER_FRUSDR_H
+#endif // METRICS_COMMON_IPMI_DRIVER_FRUSDR_H

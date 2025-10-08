@@ -145,6 +145,7 @@ void cache_data_print(cache_t *ca, double gbs, int fd)
 
 void cache_data_tostr(cache_t *ca, double gbs, char *buffer, size_t length)
 {
+    // clang-format off
     snprintf(buffer, length,
     "L1D: %10llu hits, %10llu misses, %10llu accesses, %10llu lines_in, %10llu lines_out, %0.2lf hit rate, %0.2lf miss rate\n"
     "L2 : %10llu hits, %10llu misses, %10llu accesses, %10llu lines_in, %10llu lines_out, %0.2lf hit rate, %0.2lf miss rate\n"
@@ -158,6 +159,7 @@ void cache_data_tostr(cache_t *ca, double gbs, char *buffer, size_t length)
     ca->ll->hits , ca->ll->misses , ca->ll->accesses , ca->ll->lines_in , ca->ll->lines_out , ca->ll->hit_rate , ca->ll->miss_rate ,
     ca->lbw->hits, ca->lbw->misses, ca->lbw->accesses, ca->lbw->lines_in, ca->lbw->lines_out, ca->lbw->hit_rate, ca->lbw->miss_rate,
     gbs);
+    // clang-format on
 }
 
 void cache_internals_print(int fd)

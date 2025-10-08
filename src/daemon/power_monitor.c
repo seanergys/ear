@@ -122,8 +122,9 @@ static power_data_t p_pmon;
 static ulong *powermon_freq_list;
 static int powermon_num_pstates;
 static periodic_metric_t current_sample;
-static double last_power_reported = 0;
-static ulong last_node_power      = 0;
+static double last_power_reported   = 0;
+static double last_calculated_power = 0;
+static ulong last_node_power        = 0;
 
 static uint *powermon_restore_cpufreq_list;
 
@@ -1805,11 +1806,11 @@ void powermon_new_job(powermon_app_t *pmapp, ehandler_t *eh, application_t *appI
 
     // save_eard_conf(&eard_dyn_conf);
 
-    verbose(VJOBPMON_BASIC, "%sJob created ctx %d (%lu,%lu) is_mpi %d procs %lu def_cpuf %lu%s", COL_BLU, ccontext,
-            current_ear_app[ccontext]->app.job.id, current_ear_app[ccontext]->app.job.step_id,
-            current_ear_app[ccontext]->app.is_mpi, current_ear_app[ccontext]->app.job.procs, pmapp->settings->def_freq,
-            COL_CLR);
-    verbose(VJOBPMON, "*******************");
+    verbose(VJOBPMON_BASIC , "%sJob created ctx %d (%lu,%lu) is_mpi %d procs %lu def_cpuf %lu%s governor '%s'",
+            COL_BLU, ccontext, current_ear_app[ccontext]->app.job.id,
+            current_ear_app[ccontext]->app.job.step_id, current_ear_app[ccontext]->app.is_mpi,
+            current_ear_app[ccontext]->app.job.procs, pmapp->settings->def_freq, pmapp->governor.name, COL_CLR);
+    verbose(VJOBPMON , "*******************");
 
     pmapp->sig_reported = 0;
 
@@ -2343,6 +2344,8 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
         }
     }
 
+    last_calculated_power = corrected_power;
+
     /* report periodic metric */
     if (report) {
         periodic_metric_clean_before_db(&current_sample);
@@ -2781,7 +2784,7 @@ uint powermon_is_idle()
 
 uint powermon_current_power()
 {
-    return (uint) last_power_reported;
+    return (uint) last_calculated_power;
 }
 
 uint powermon_get_powercap_def()
