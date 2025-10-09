@@ -71,8 +71,7 @@ state_t energy_init(void **x)
     state_t s = EAR_SUCCESS;
     char *hint;
 
-    while (pthread_mutex_trylock(&lock))
-        ;
+    while (pthread_mutex_trylock(&lock)) ;
     if (devs_count) {
         goto leave;
     }
@@ -82,18 +81,10 @@ state_t energy_init(void **x)
     // Detecting sensors depending on hardware
     if ((hint = getenv("EAR_ENERGY_ARG")) != NULL) {
         switch (atoi(hint)) {
-            case 1:
-                opt = opt_sd650e;
-                break;
-            case 2:
-                opt = opt_sd650p;
-                break;
-            case 3:
-                opt = opt_dcmi;
-                break;
-            case 4:
-                opt = opt_inmp;
-                break;
+            case 1: opt = opt_sd650e; break;
+            case 2: opt = opt_sd650p; break;
+            case 3: opt = opt_dcmi;   break;
+            case 4: opt = opt_inmp;   break;
         }
         debug("EAR_ENERGY_ARG: %s", hint);
     } else if (ipmi_has_hardware("SD650"))

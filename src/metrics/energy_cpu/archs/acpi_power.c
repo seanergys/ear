@@ -8,7 +8,8 @@
  * SPDX-License-Identifier: EPL-2.0
  **********************************************************************/
 
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
+
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
@@ -263,19 +264,23 @@ static state_t acpi_power_static_read(ctx_t *c, llong *power, llong *acum)
     if (acum != NULL)
         *acum = 0;
     for (i = 0; i < h->id_count; ++i) {
-        // debug("I %d has %d Fds", i, h->fd_count[i]);
+        debug("I %d has %d Fds", i, h->fd_count[i]);
         for (k = 0; k < h->fd_count[i]; k++) {
             memset(data, 0, sizeof(data));
-            //	debug("Reading ID %d,%d  fd=%d", i, k, h->fds[i][k]);
+            debug("Reading ID %d,%d  fd=%d", i, k, h->fds[i][k]);
 
             if (xtate_fail(s, hwmon_read_files(h->fds[i][k], data, SZ_PATH))) {
                 // return s;
                 debug("read failed with data %s", data);
             }
-            //	debug("read %s", data);
+            debug("aux2 %lld", aux2);
+            debug("read %s", data);
             aux1 = atoll(data);
+            debug("aux1 %lld", aux1);
             power[i] += aux1;
             aux2 += aux1;
+            debug("power[%d] %lld", i, power[i]);
+            debug("aux2 %lld", aux2);
         }
     }
     //

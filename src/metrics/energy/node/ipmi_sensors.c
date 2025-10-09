@@ -99,8 +99,7 @@ static state_t energy_pool(void *data)
     double ftime;
     int s;
 
-    while (pthread_mutex_trylock(&lock))
-        ;
+    while (pthread_mutex_trylock(&lock));
     //
     if (state_fail(st = ipmi_sensors_read(sensors, sensors_count, &sensors_readings))) {
         goto_state(leave, st = EAR_ERROR);

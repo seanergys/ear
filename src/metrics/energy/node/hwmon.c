@@ -1,0 +1,159 @@
+/*********************************************************************
+ * Copyright (c) 2024 Energy Aware Solutions, S.L
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ **********************************************************************/
+
+//#define SHOW_DEBUGS 1
+
+#include <stdlib.h>
+#include <pthread.h>
+#include <common/output/debug.h>
+#include <common/system/monitor.h>
+#include <common/math_operations.h>
+#include <common/hardware/topology.h>
+#include <metrics/common/hwmon.h>
+
+#define MONITORING_TIME 3
+
+static hwmon_t       *chips;
+static uint           chips_count;
+static uint           items_count;
+static suscription_t *sus;
+static ullong        *energy_uj;
+static ullong        *power_uw_lvv;
+static char          *label;
+static topology_t     tp;
+static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+
+static state_t static_pool(void *data);
+
+static state_t static_monitor_init()
+{
+    if (sus == NULL) {
+        sus             = suscription();
+        sus->call_main  = static_pool;
+        sus->call_init  = NULL;
+        sus->time_relax = MONITORING_TIME * 1000;
+        sus->time_burst = MONITORING_TIME * 1000;
+        sus->suscribe(sus);
+    }
+    return EAR_SUCCESS;
+}
+
+state_t energy_init(void **c)
+{
+    topology_init(&tp);
+    if (tp.vendor == VENDOR_ARM && tp.model == MODEL_NEOVERSE_V2) {
+        if (tp.socket_count > 1) {
+            label = "Grace Power Socket"; // Energy is in micro Watts
+        } else {
+            label = "Module Power Socket"; // Energy is in micro Watts
+        }
+    }
+    if (state_fail(hwmon_open("power_meter", "power", label, &chips, &chips_count))) {
+        return EAR_ERROR;
+    }
+    if ((items_count = hwmon_count_items(chips, "average", label)) == 0) {
+        hwmon_close(&chips);
+        return EAR_ERROR;
+    }
+    debug("chips_count  : %d", chips_count);
+    debug("items_count  : %d", items_count);
+    debug("sockets_count: %d", tp.socket_count);
+    energy_uj = calloc(1, sizeof(ullong)); // Single value because is the whole node
+    power_uw_lvv = calloc(chips_count, sizeof(ullong)); // Per chip
+    return static_monitor_init();
+}
+
+static state_t static_read(ullong *value_uj)
+{
+    ullong power_uw = 0LLU;
+    hwmon_t *chip;
+    int i = 0;
+
+    hwmon_read(chips);
+    hwmon_calc_average(chips, NULL);
+    while ((chip = hwmon_iter_chips(chips)) != NULL) {
+        // If returned 0
+        if ((power_uw = (ullong) chip->devs_avg.average_toint) == 0LLU) {
+            power_uw = power_uw_lvv[i];
+        } else {
+            power_uw_lvv[i] = power_uw;
+        }
+        // Converted to micro Joules
+        *value_uj += power_uw * (ullong) MONITORING_TIME;
+        debug("CHIP[%d]: %llu += %llu * %d", i, *value_uj, power_uw, MONITORING_TIME);
+        i++;
+    }
+    return EAR_SUCCESS;
+}
+
+static state_t static_pool(void *data)
+{
+    while (pthread_mutex_trylock(&lock));
+    static_read(energy_uj);
+    pthread_mutex_unlock(&lock);
+    return EAR_SUCCESS;
+}
+
+state_t energy_dispose(void **c)
+{
+    if (sus != NULL) {
+        monitor_unregister(sus);
+        sus = NULL;
+    }
+    if (chips != NULL) {
+        hwmon_close(&chips);
+        chips = NULL;
+    }
+    return EAR_SUCCESS;
+}
+
+state_t energy_dc_read(void *c, void *data)
+{
+    if (data != NULL) {
+        memcpy(data, energy_uj, sizeof(ullong)*1);
+    }
+    return EAR_SUCCESS;
+}
+
+state_t energy_datasize(size_t *size)
+{
+    *size = sizeof(ullong) * chips_count;
+    return EAR_SUCCESS;
+}
+
+state_t energy_units(uint *units)
+{
+    *units = 1000; // mJ
+    return EAR_SUCCESS;
+}
+
+state_t energy_accumulated(ulong *energy_mj, void *data1, void *data2)
+{
+    ullong *readings2 = (ullong *) data2;
+    ullong *readings1 = (ullong *) data1;
+
+    *energy_mj = 0LU;
+    if (readings2 != 0LLU && readings1 != 0LLU) {
+        *energy_mj += (ulong) (overflow_zeros_u64(readings2[0], readings1[0]) / 1000LLU); // Converting to mili Joules
+        debug("energy: %lu mJ (%llu uJ - %llu uJ)", *energy_mj, readings2[0], readings1[0]);
+    }
+    return EAR_SUCCESS;
+}
+
+state_t energy_to_str(char *buffer, void *data)
+{
+    sprintf(buffer, "%llu", *((ullong *) data));
+    return EAR_SUCCESS;
+}
+
+uint energy_data_is_null(void *data)
+{
+    return ((ullong *) data) == 0LLU;
+}
