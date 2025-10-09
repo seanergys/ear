@@ -35,7 +35,7 @@ static void close_all()
 
 GPU_F_LOAD(hwmon_pvc)
 {
-    if (state_fail(hwmon_open("i915", "energy", &chips, &chips_count))) {
+    if (state_fail(hwmon_open("i915", "energy", NULL, &chips, &chips_count))) {
         debug("Failed: %s", state_msg);
         return;
     }

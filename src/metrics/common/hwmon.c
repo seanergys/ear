@@ -444,8 +444,8 @@ int main(int argc, char *argv[])
     uint cores_count = 0;
     hwmon_t *chips   = NULL;
 
-     if (state_fail(hwmon_open("coretemp", "temp", &chips, &chips_count))) {
-    //if (state_fail(hwmon_open("power_meter", "power", &chips, &chips_count))) {
+     if (state_fail(hwmon_open("coretemp", "temp", NULL, &chips, &chips_count))) {
+    //if (state_fail(hwmon_open("power_meter", "power", NULL, &chips, &chips_count))) {
         debug("Failed: %s", state_msg);
         return 0;
     }
