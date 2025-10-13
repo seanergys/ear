@@ -608,14 +608,14 @@ state_t application_create_header_str(char *header_dst, size_t header_dst_size, 
     size_t header_len = strlen(HEADER_JOB) + strlen(HEADER_BASE) + strlen(HEADER_SIGN) +
                         num_gpus * USE_GPUS * strlen(HEADER_GPU_SIG) + strlen(ext_header) + 1 + strlen(cpu_sig_hdr) +
                         strlen(HEADER_POWER_SIG);
-    if (header) {
-        header_len += strlen(header);
+    if (header_prefix) {
+        header_len += strlen(header_prefix);
     }
 
     char *HEADER = calloc(header_len, sizeof(char));
 
-    if (header) {
-        strncat(HEADER, header, header_len - 1);
+    if (header_prefix) {
+        strncat(HEADER, header_prefix, header_len - 1);
     }
 
     strncat(HEADER, HEADER_JOB, header_len - strlen(HEADER) - 1);
