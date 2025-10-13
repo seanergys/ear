@@ -665,6 +665,10 @@ void print_full_apps(application_t *apps, int num_apps, bool is_csv, char *forma
 {
     if (is_csv) {
         if (!strcmp(csv_path, "no_file")) {
+            char header[8192] = {0};
+            // num_gpus is ignored.
+            application_create_header_str(header, sizeof(header), NULL, 0, 1, 0);
+            dprintf(STDOUT_FILENO, "%s\n", header);
             for (int i = 0; i < num_apps; i++)
                 print_application_fd(STDOUT_FILENO, &apps[i], my_conf.database.report_sig_detail, 1, 0);
         } else {
@@ -673,7 +677,7 @@ void print_full_apps(application_t *apps, int num_apps, bool is_csv, char *forma
             }
         }
     } else {
-        print_header_format(format, APP_TYPE);
+        print_header_format(format);
         for (int i = 0; i < num_apps; i++) {
             print_app_format(&apps[i], format, 1);
         }
@@ -745,13 +749,20 @@ void print_short_apps(application_t *apps, int num_apps, bool is_csv, char *form
         printf("Format string cannot be null\n");
         return;
     }
+
     if (num_apps == 0)
         printf("No applications retrieved\n");
+
     struct avg_apps *sorted_apps = NULL;
     int new_num_apps             = 0;
     average_applications(apps, num_apps, &sorted_apps, &new_num_apps);
+
     if (is_csv) {
         if (!strcmp(csv_path, "no_file")) {
+            char header[8192] = {0};
+            // num_gpus is ignored.
+            application_create_header_str(header, sizeof(header), NULL, 0, 1, 0);
+            dprintf(STDOUT_FILENO, "%s\n", header);
             for (int i = 0; i < new_num_apps; i++)
                 print_application_fd(STDOUT_FILENO, &sorted_apps[i].app, my_conf.database.report_sig_detail, 1, 0);
         } else {
@@ -761,7 +772,7 @@ void print_short_apps(application_t *apps, int num_apps, bool is_csv, char *form
         }
     } else {
         int i;
-        print_header_format(format, APP_TYPE);
+        print_header_format(format);
         for (i = 0; i < new_num_apps; i++) {
             print_app_format(&sorted_apps[i].app, format, sorted_apps[i].num_nodes);
         }
