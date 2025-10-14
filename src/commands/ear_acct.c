@@ -677,7 +677,7 @@ void print_full_apps(application_t *apps, int num_apps, bool is_csv, char *forma
             }
         }
     } else {
-        print_header_format(format);
+        print_header_format(format, APP_TYPE);
         for (int i = 0; i < num_apps; i++) {
             print_app_format(&apps[i], format, 1);
         }
@@ -772,7 +772,7 @@ void print_short_apps(application_t *apps, int num_apps, bool is_csv, char *form
         }
     } else {
         int i;
-        print_header_format(format);
+        print_header_format(format, APP_TYPE);
         for (i = 0; i < new_num_apps; i++) {
             print_app_format(&sorted_apps[i].app, format, sorted_apps[i].num_nodes);
         }
