@@ -77,18 +77,22 @@ state_t disable_powercap()
     return execute(cmd);
 }
 
-state_t set_powercap_value(uint32_t pid, uint32_t domain, uint32_t limit, uint32_t *cpu_util)
+state_t set_powercap_value(uint32_t pid, uint32_t domain, uint32_t *limit, uint32_t *cpu_util)
 {
     char cmd[1024];
     if (!policy_enabled)
         return EAR_SUCCESS;
-    debug("GH:inm_set_powercap_value policy %u limit %u", pid, limit);
-    c_limit = limit;
+    if (domain == LEVEL_DEVICE) {
+        warning("Per device powercap not implemented for Grace Hopper, returning before applying it.");
+        return EAR_ERROR;
+    }
+    debug("GH:inm_set_powercap_value policy %u limit %u", pid, *limit);
+    c_limit = *limit;
     pc_on   = 1;
     if (c_limit == POWER_CAP_UNLIMITED) {
         return disable_powercap();
     }
-    sprintf(cmd, GH_SET_POWERCAP, limit);
+    sprintf(cmd, GH_SET_POWERCAP, *limit);
     debug(cmd);
     return execute(cmd);
 }
