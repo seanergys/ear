@@ -284,11 +284,12 @@ static metrics_t met_energy;
 static metrics_t met_flops;
 static metrics_t met_cache;
 static metrics_t met_cpi;
+static metrics_t met_gpu;
 static metrics_t mgt_cpuprio;
 
 #if USE_GPUS
 static metrics_gpus_t mgt_gpu;
-static metrics_gpus_t met_gpu;
+static metrics_gpus_t _met_gpu;
 #if USE_CUPTI
 static uint read_cupti_metrics = DEF_READ_CUPTI_METRICS;
 static metrics_gpus_t proc_gpu;
@@ -373,7 +374,11 @@ const metrics_gpus_t *metrics_gpus_get(uint api)
         case MGT_GPU:
             return &mgt_gpu;
         case MET_GPU:
-            return &met_gpu;
+            // The other parameters are not used
+            _met_gpu.api          = met_gpu.api;
+            _met_gpu.ok           = met_gpu.ok;
+            _met_gpu.devs_count   = met_gpu.devs_count;
+            return &_met_gpu;
         default:
             return NULL;
     }
@@ -572,7 +577,10 @@ static void metrics_static_init(topology_t *tp)
     debug("Asking for GPU apis");
     debug("mgt_gpu_get_api");
     mgt_gpu_get_api(&mgt_gpu.api);
-    gpu_get_api(&met_gpu.api);
+    gpu_get_info(&met_gpu);
+
+
+
 #if USE_CUPTI
     if (read_cupti_metrics) {
         gpuproc_get_api(&proc_gpu.api);
@@ -596,7 +604,6 @@ static void metrics_static_init(topology_t *tp)
 #if USE_GPUS
     mgt_gpu.ok = (mgt_gpu.api > API_DUMMY);
     met_gpu.ok = (met_gpu.api > API_DUMMY);
-
 #if EARL_LIGHT
     if (mgt_gpu.ok && (mgt_gpu.ok != API_EARD)) {
         verbose_info2_master("GPU API is %u", met_gpu.api);
@@ -635,7 +642,6 @@ static void metrics_static_init(topology_t *tp)
 
 #if USE_GPUS
     sa(mgt_gpu_init(no_ctx));
-    sa(gpu_init(no_ctx));
 #if USE_CUPTI
     if (read_cupti_metrics) {
         sa(gpuproc_init(no_ctx));
@@ -652,7 +658,7 @@ static void metrics_static_init(topology_t *tp)
 
 #if USE_GPUS
     sa(mgt_gpu_count_devices(no_ctx, &mgt_gpu.devs_count));
-    sa(gpu_count_devices(no_ctx, &met_gpu.devs_count));
+    sa(gpu_get_devices(NULL, &met_gpu.devs_count));
 #if USE_CUPTI
     if (read_cupti_metrics) {
         sa(gpuproc_count_devices(no_ctx, &proc_gpu.devs_count));
@@ -713,7 +719,6 @@ static void metrics_static_init(topology_t *tp)
         apis_print(met_cpi.api    , "MET_CPI    : ");
 #if USE_GPUS
         apis_print(mgt_gpu.api, "MGT_GPU    : ");
-        apis_print(met_gpu.api, "MET_GPU    : ");
 #if USE_CUPTI
         if (read_cupti_metrics) {
             apis_print(proc_gpu.api, "PROC_GPU    : ");
@@ -873,7 +878,7 @@ static void metrics_global_start()
 
 #if USE_GPUS
         gpu_data_null(gpu_metrics_read1[APP]);
-        if (state_ok(gpu_read(no_ctx, gpu_metrics_read1[APP]))) {
+        if (state_ok(gpu_read(gpu_metrics_read1[APP]))) {
 
             // We set here the starting sample for partial start/stop flow
             gpu_data_copy(gpu_metrics_read2[LOO], gpu_metrics_read1[APP]);
@@ -1032,7 +1037,7 @@ static void metrics_global_stop()
 
 #if USE_GPUS
         /* GPU */
-        if (state_ok(gpu_read(no_ctx, gpu_metrics_read2[APP]))) {
+        if (state_ok(gpu_read(gpu_metrics_read2[APP]))) {
 
             gpu_data_diff(gpu_metrics_read2[APP], gpu_metrics_read1[APP], gpu_metrics_diff[APP]);
 
@@ -1307,7 +1312,7 @@ static int metrics_partial_stop(uint where)
 
     if (master) {
 #if USE_GPUS
-        if (state_ok(gpu_read(no_ctx, gpu_metrics_read2[LOO]))) {
+        if (state_ok(gpu_read(gpu_metrics_read2[LOO]))) {
 
             // gpu_loop_stopped = 1;
             gpu_data_diff(gpu_metrics_read2[LOO], gpu_metrics_read1[LOO], gpu_metrics_diff[LOO]);
@@ -2731,7 +2736,7 @@ state_t metrics_new_iteration(signature_t *sig)
         debug("Computing GPU util because of application gpu phase is IDLE");
 
         /* GPUs */
-        if (state_fail(gpu_read(no_ctx, gpu_metrics_busy))) {
+        if (state_fail(gpu_read(gpu_metrics_busy))) {
             verbose_warning("Error reading GPU data on new iteration.");
         }
         gpu_data_diff(gpu_metrics_busy, gpu_metrics_read1[LOO], gpu_metrics_busy_diff);

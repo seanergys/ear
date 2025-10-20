@@ -85,12 +85,12 @@ void print_job_fd(int fd, job_t *job)
     strftime(buf_end, sizeof(buf_end), "%Y-%m-%d %H:%M:%S", ts);
 
 #if WF_SUPPORT
-    sprintf(job_buff, "%lu;%lu;%lu;%s;%s;%s;%s;%s;%lu;%lu;%s;%s;%lu;%lu;%s;%lf;%lu;%c;%lu", job->id, job->step_id,
+    sprintf(job_buff, "%lu;%lu;%lu;%s;%s;%s;%s;%s;%lu;%lu;%s;%s;%lu;%lu;%s;%lf;%lu;%u;%lu", job->id, job->step_id,
             job->local_id, job->user_id, job->group_id, job->user_acc, job->app_id, job->energy_tag, job->start_time,
             job->end_time, buf_start, buf_end, job->start_mpi_time, job->end_mpi_time, job->policy, job->th, job->procs,
             job->type, job->def_f);
 #else
-    sprintf(job_buff, "%lu;%lu;%s;%s;%s;%s;%s;%lu;%lu;%s;%s;%lu;%lu;%s;%lf;%lu;%c;%lu", job->id, job->step_id,
+    sprintf(job_buff, "%lu;%lu;%s;%s;%s;%s;%s;%lu;%lu;%s;%s;%lu;%lu;%s;%lf;%lu;%u;%lu", job->id, job->step_id,
             job->user_id, job->group_id, job->user_acc, job->app_id, job->energy_tag, job->start_time, job->end_time,
             buf_start, buf_end, job->start_mpi_time, job->end_mpi_time, job->policy, job->th, job->procs, job->type,
             job->def_f);

@@ -11,18 +11,18 @@
 // #define SHOW_DEBUGS 1
 
 #define _GNU_SOURCE
-#include <common/config.h>
-#include <common/output/debug.h>
-#include <common/utils/string.h>
-#include <dlfcn.h>
 #include <errno.h>
-#include <library/loader/loader.h>
-#include <library/loader/module_common.h>
-#include <library/loader/module_mpi.h>
+#include <dlfcn.h>
 #include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <common/config.h>
+#include <common/output/debug.h>
+#include <common/utils/string.h>
+#include <library/loader/loader.h>
+#include <library/loader/module_common.h>
+#include <library/loader/module_mpi.h>
 
 static int init()
 {
@@ -100,11 +100,11 @@ static int is_a_forced_load(char **bin_names)
 
 void __attribute__((constructor)) loader()
 {
-    char *bins_invalid[] = {"bash", "hydra", NULL};
-    char *bins_forced[]  = {"python", "python3", "julia", NULL};
-    char *syms_openmp[]  = {"omp_get_max_threads", "mkl_get_max_threads", NULL};
-    char *syms_cuda[]    = {"cudaRuntimeGetVersion", NULL};
-    char *libs_oneapi[]  = {"libsycl.so", NULL};
+    char *bins_invalid[] = { "bash", "hydra", NULL };
+    char *bins_forced[]  = { "python", "python3", "julia", NULL };
+    char *syms_openmp[]  = { "omp_get_max_threads", "mkl_get_max_threads", NULL };
+    char *syms_cuda[]    = { "cudaRuntimeGetVersion", NULL };
+    char *libs_oneapi[]  = { "libsycl.so", NULL };
     // If FLAG_LOAD_MPI environment variable is set, the loader assumes the MPI
     // version of the library is the version the user wants and no other library
     // is loaded before. This is required because in example, if EAR MPI library
@@ -117,23 +117,11 @@ void __attribute__((constructor)) loader()
     if (!is_a_valid_program(bins_invalid)) {
         return;
     }
-    if (load_libear_mpi()) {
-        return;
-    }
-    if (load_libear_nonspec(OPENMP_EXT, syms_openmp, NULL)) {
-        return;
-    }
-    if (load_libear_nonspec(CUDA_EXT, syms_cuda, NULL)) {
-        return;
-    }
-    if (load_libear_nonspec(ONEAPI_EXT, NULL, libs_oneapi)) {
-        return;
-    }
-    if (!is_a_forced_load(bins_forced)) {
-        return;
-    }
-    if (load_libear_nonspec(DEF_EXT, NULL, NULL)) {
-        return;
-    }
+    if (load_libear_mpi()) { return; }
+    if (load_libear_nonspec(OPENMP_EXT, syms_openmp, NULL       )) { return; }
+    if (load_libear_nonspec(  CUDA_EXT, syms_cuda  , NULL       )) { return; }
+    if (load_libear_nonspec(ONEAPI_EXT, NULL       , libs_oneapi)) { return; }
+    if (!is_a_forced_load(bins_forced)) { return; }
+    if (load_libear_nonspec(   DEF_EXT, NULL       , NULL       )) { return; }
     return;
 }

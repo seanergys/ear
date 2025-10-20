@@ -124,7 +124,7 @@ state_t dcgmi_lib_ampere_init(uint api, uint all_events, dcgmi_lib_t *dcgmi_data
             {-1, -1}  // dcgm_nvlink_rx_bytes
         };
 
-        int (*ampere_event_info)[DCGMI_LIB_SUPPORTED_EVENTS][2] =
+        int(*ampere_event_info)[DCGMI_LIB_SUPPORTED_EVENTS][2] =
             (all_events) ? &ampere_event_info_all : &ampere_event_info_part;
 
         memcpy(*event_info, *ampere_event_info, DCGMI_LIB_SUPPORTED_EVENTS * 2 * sizeof(int));

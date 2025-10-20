@@ -179,6 +179,8 @@
 #define FLAG_MIN_USEC_MPI      "EAR_MIN_USEC_MPI_OPT" // Minimum time to apply MPI optimization
 #define FLAG_MPI_SAMPLING_ENABLED                                                                                      \
     "EAR_MPI_SAMPLING_ENABLED" // Allows MPI sampling monitoring to be enabled(1) or disabled (0). Default is 1.
+#define FLAG_LOOP_STRATEGY  "EAR_LOOP_STRATEGY"  // Specifies is EARL is dynamic or time guided
+#define FLAG_MPI_MONITORING "EAR_MPI_MONITORING" // Specifies if EARL has to take actions in MPI or not
 
 #define FLAG_NO_AFFINITY_MASK                                                                                          \
     "EARL_NO_AFFINITY_MASK"                   // Prevents EARL from using the affinity mask. Only for special use cases

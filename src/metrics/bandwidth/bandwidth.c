@@ -50,7 +50,7 @@ void bwidth_load(topology_t *tp, int options)
     bwidth_intel143_load(tp, &ops, options);
     bwidth_perf_load(tp, &ops, options);
     bwidth_likwid_load(tp, &ops, options);
-    //bwidth_eard_load(tp, &ops, options);
+    bwidth_eard_load(tp, &ops, options);
 dummy:
     bwidth_dummy_load(tp, &ops, options);
     // Saving some additional data

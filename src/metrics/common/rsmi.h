@@ -11,8 +11,8 @@
 #ifndef METRICS_COMMON_RSMI_H
 #define METRICS_COMMON_RSMI_H
 
-#include <common/states.h>
 #include <common/types.h>
+#include <common/states.h>
 #ifdef RSMI_BASE
 #include <rocm_smi/rocm_smi.h>
 #endif
@@ -55,6 +55,7 @@ typedef struct {
 #define RSMI_CLK_TYPE_MEM              0
 #define RSMI_FREQ_IND_MAX              0
 #endif
+
 typedef rsmi_utilization_counter_t rsmi_util_t;
 typedef rsmi_frequencies_t rsmi_freqs_t;
 typedef rsmi_status_t rsmi_status_t;
@@ -62,6 +63,7 @@ typedef int rsmi_enum_t;
 
 typedef struct rsmi_s {
     rsmi_status_t (*init)(ullong flags);
+    rsmi_status_t (*shut_down)(void);
     rsmi_status_t (*devs_count)(uint *devs_count);
     rsmi_status_t (*get_serial)(uint dev_idx, char *serial_num, uint len);
     rsmi_status_t (*get_energy)(uint dev_idx, ullong *power, float *resolution, ullong *ts);

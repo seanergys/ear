@@ -122,7 +122,7 @@ state_t dcgmi_lib_turing_init(uint api, uint all_events, dcgmi_lib_t *dcgmi_data
             {-1, -1}  // nvlink_rx_bytes
         };
 
-        int (*turing_event_info)[DCGMI_LIB_SUPPORTED_EVENTS][2] =
+        int(*turing_event_info)[DCGMI_LIB_SUPPORTED_EVENTS][2] =
             (all_events) ? &turing_event_info_all : &turing_event_info_part;
 
         memcpy(*event_info, *turing_event_info, DCGMI_LIB_SUPPORTED_EVENTS * 2 * sizeof(int));

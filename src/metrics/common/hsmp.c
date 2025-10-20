@@ -71,7 +71,7 @@ state_t hsmp_open(topology_t *tp, mode_t mode)
                     debug("no HSMP API can be opened");
                     api = HSMP_API_FAILED;
                 }
-						}
+            }
         }
     }
     pthread_mutex_unlock(&lock);
@@ -105,8 +105,8 @@ state_t hsmp_close()
         }
         count -= 1;
     } else {
-			   debug("HSMP already closed");
-		}
+        debug("HSMP already closed");
+    }
     pthread_mutex_unlock(&lock);
     return s;
 }
@@ -120,9 +120,12 @@ static state_t unlock(state_t s)
 state_t hsmp_send(int socket, uint function, uint *args, uint *reps)
 {
     while (pthread_mutex_trylock(&lock));
-    if (api == HSMP_API_DRIVER) return unlock(hsmp_driver_send(socket, function, args, reps));
-    if (api == HSMP_API_ESMI  ) return unlock(hsmp_esmi_send(socket, function, args, reps));
-    if (api == HSMP_API_PCI   ) return unlock(hsmp_pci_send(socket, function, args, reps));
+    if (api == HSMP_API_DRIVER)
+        return unlock(hsmp_driver_send(socket, function, args, reps));
+    if (api == HSMP_API_ESMI)
+        return unlock(hsmp_esmi_send(socket, function, args, reps));
+    if (api == HSMP_API_PCI)
+        return unlock(hsmp_pci_send(socket, function, args, reps));
     pthread_mutex_unlock(&lock);
     return_msg(EAR_ERROR, Generr.api_uninitialized);
 }
@@ -136,41 +139,45 @@ static void hsmp_test_print_functions(cpu_t *cpu, strtable_t *tb, char *api_str,
     uint f8ar    = 0; // Function 8 argument
     uint f5ar    = 0;
 
-    #define ht(dependent, a0, a1, r0, r1, function, line)                                                                  \
+#define ht(dependent, a0, a1, r0, r1, function, line)                                                                  \
     args[0] = a0;                                                                                                      \
     args[1] = a1;                                                                                                      \
     reps[0] = r0;                                                                                                      \
     reps[1] = r1;                                                                                                      \
     if (!dependent || state_ok(s)) {                                                                                   \
         if (state_ok(s = hsmp_send(cpu->socket_id, function, args, reps))) {                                           \
-            tprintf2(tb, "%s||%s||%s||%d||%d||%d||%s||%d||%d||%d||-", api_str, perms_str, #function, cpu->socket_id,   \
-                     cpu->id, cpu->apicid, "OK", (int) args[0], (int) reps[0], (int) reps[1]);                         \
+            tprintf2(tb, "%s||%s||%s||%d||%d||%d||%s||%d||%d||%d||-",                                                  \
+                api_str, perms_str, #function, cpu->socket_id,   \
+                cpu->id, cpu->apicid, "OK", (int) args[0], (int) reps[0], (int) reps[1]);                         \
             line;                                                                                                      \
         } else {                                                                                                       \
-            tprintf2(tb, "%s||%s||%s||%d||%d||%d||%s||%d||%d||%d||%s", api_str, perms_str, #function, cpu->socket_id,  \
-                     cpu->id, cpu->apicid, "FAILED", (int) args[0], (int) reps[0], (int) reps[1], state_msg);          \
+            tprintf2(tb, "%s||%s||%s||%d||%d||%d||%s||%d||%d||%d||%s",                                                 \
+                api_str, perms_str, #function, cpu->socket_id,  \
+                cpu->id, cpu->apicid, "FAILED", (int) args[0], (int) reps[0], (int) reps[1], state_msg);          \
         }                                                                                                              \
     }
-    ht(0,   68, -1,  0, -1, HSMP_TEST, );
-    ht(0,   -1, -1,  0, -1, HSMP_GET_SMU_VER, );
-    ht(0,   -1, -1,  0, -1, HSMP_GET_PROTO_VER, );
-    ht(0,   -1, -1,  0, -1, HSMP_GET_SOCKET_POWER, );
+    // clang-format off
+    ht(0,   68, -1,  0, -1, HSMP_TEST                      , );
+    ht(0,   -1, -1,  0, -1, HSMP_GET_SMU_VER               , );
+    ht(0,   -1, -1,  0, -1, HSMP_GET_PROTO_VER             , );
+    ht(0,   -1, -1,  0, -1, HSMP_GET_SOCKET_POWER          , );
     ht(0,   -1, -1,  0, -1, HSMP_GET_SOCKET_POWER_LIMIT, f5ar = reps[0]);
-    ht(0, f5ar, -1, -1, -1, HSMP_SET_SOCKET_POWER_LIMIT, );
+    ht(0, f5ar, -1, -1, -1, HSMP_SET_SOCKET_POWER_LIMIT    , );
     ht(0,   -1, -1,  0, -1, HSMP_GET_SOCKET_POWER_LIMIT_MAX, );
     ht(0, fAar, -1,  0, -1, HSMP_GET_BOOST_LIMIT, f8ar = (cpu->apicid << 16) | reps[0]);
-    ht(1, f8ar, -1, -1, -1, HSMP_SET_BOOST_LIMIT, );
-    // ht(1, -1, -1, -1, -1, HSMP_SET_BOOST_LIMIT_SOCKET,); // If pthe revious work...
-    ht(0,   -1, -1,  0, -1, HSMP_GET_PROC_HOT, );
-    // ht(1, -1, -1, -1, -1, HSMP_SET_XGMI_LINK_WIDTH,); // We don't use this.
-    ht(0,    0, -1, -1, -1, HSMP_SET_DF_PSTATE, );
-    ht(0,   -1, -1, -1, -1, HSMP_SET_AUTO_DF_PSTATE, );
-    ht(0,   -1, -1,  0,  0, HSMP_GET_FCLK_MCLK, );
-    ht(0,   -1, -1,  0, -1, HSMP_GET_CCLK_THROTTLE_LIMIT, );
-    ht(0,   -1, -1,  0, -1, HSMP_GET_C0_PERCENT, );
-    // ht(0, -1, -1, -1, -1, HSMP_SET_NBIO_DPM_LEVEL,); // We don't use this. By now.
-    ht(0,   -1, -1,  0, -1, HSMP_GET_DDR_BANDWIDTH, );
+    ht(1, f8ar, -1, -1, -1, HSMP_SET_BOOST_LIMIT           , );
+  //ht(1,   -1, -1, -1, -1, HSMP_SET_BOOST_LIMIT_SOCKET    , ); // If pthe revious work...
+    ht(0,   -1, -1,  0, -1, HSMP_GET_PROC_HOT              , );
+  //ht(1,   -1, -1, -1, -1, HSMP_SET_XGMI_LINK_WIDTH       , ); // We don't use this.
+    ht(0,    0, -1, -1, -1, HSMP_SET_DF_PSTATE             , );
+    ht(0,   -1, -1, -1, -1, HSMP_SET_AUTO_DF_PSTATE        , );
+    ht(0,   -1, -1,  0,  0, HSMP_GET_FCLK_MCLK             , );
+    ht(0,   -1, -1,  0, -1, HSMP_GET_CCLK_THROTTLE_LIMIT   , );
+    ht(0,   -1, -1,  0, -1, HSMP_GET_C0_PERCENT            , );
+  //ht(0,   -1, -1, -1, -1, HSMP_SET_NBIO_DPM_LEVEL        , ); // We don't use this. By now.
+    ht(0,   -1, -1,  0, -1, HSMP_GET_DDR_BANDWIDTH         , );
     // More functions from family 1A
+    // clang-format on
 }
 
 void hsmp_test_print()

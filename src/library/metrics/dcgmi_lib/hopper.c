@@ -116,7 +116,7 @@ state_t dcgmi_lib_hopper_init(uint api, uint all_events, dcgmi_lib_t *dcgmi_data
             {-1, -1}  //  nvlink_rx_bytes
         };
 
-        int (*hopper_event_info)[DCGMI_LIB_SUPPORTED_EVENTS][2] =
+        int(*hopper_event_info)[DCGMI_LIB_SUPPORTED_EVENTS][2] =
             (all_events) ? &hopper_event_info_all : &hopper_event_info_partial;
 
 #if 0

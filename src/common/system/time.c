@@ -10,6 +10,7 @@
 
 #include <stdio.h>
 #include <unistd.h>
+#include <common/math_operations.h>
 #include <common/system/time.h>
 #include <common/output/debug.h>
 #include <common/math_operations.h>
@@ -66,31 +67,6 @@ ullong timestamp_diff(timestamp *ts2, timestamp *ts1, ullong time_unit)
     ts2_sec  = ts2_sec - ts1_sec - (ts1_nsec > ts2_nsec);
     ts2_nsec = overflow_magic_u64(ts2_nsec, ts1_nsec, __1E9LLU);
     return ((ts2_sec * __1E9LLU) + ts2_nsec) / time_unit;
-}
-
-ullong timestamp_diff_deprecated(timestamp *ts2, timestamp *ts1, ullong time_unit)
-{
-    ullong initsec  = 0;
-    ullong initnsec = 0;
-    ullong endsec   = 0;
-    ullong endnsec  = 0;
-    double stamp    = 0;
-
-    if ((ts1->tv_sec == ts2->tv_sec) && (ts1->tv_nsec == ts2->tv_nsec)) {
-        return 0LLU;
-    }
-    initsec  = (ullong) ts1->tv_sec;
-    initnsec = (ullong) ts1->tv_nsec;
-    endsec   = (ullong) ts2->tv_sec;
-    endnsec  = (ullong) ts2->tv_nsec;
-
-    if (endnsec < initnsec) {
-        endsec--;
-        endnsec += 1E9;
-    }
-    stamp            = (double) (((endsec - initsec)) * 1E9) + (endnsec - initnsec);
-    ullong stamp_ull = (ullong) stamp;
-    return ((stamp_ull > 0) && time_unit ? stamp_ull / time_unit : 0);
 }
 
 double timestamp_fdiff(timestamp *ts2, timestamp *ts1, ullong diff_unit, ullong prec_unit)

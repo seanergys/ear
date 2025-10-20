@@ -10,18 +10,17 @@
 
 // #define SHOW_DEBUGS 1
 
+#include <signal.h>
+#include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <sys/resource.h>
 #include <common/system/plugin_manager.h>
-#include <signal.h>
-#include <stdlib.h>
-#include <string.h>  // memset
 
 static void handle_signal(int sig, siginfo_t *si, void *unused)
 {
-    (void)si;    // Suppress unused parameter warning
-    (void)unused; // Suppress unused parameter warning
-    
+    (void) si;    // Suppress unused parameter warning
+    (void) unused; // Suppress unused parameter warning
     verbose(0,"Received signal %d", sig);
     plugin_manager_close();
 }

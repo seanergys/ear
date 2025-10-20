@@ -83,7 +83,7 @@ state_t gpu_pc_thread_init(void *p)
 {
 
     mgt_gpu_freq_list(no_ctx, &gpu_freq_list, &gpu_num_freqs);
-    if (gpu_read(no_ctx, values_gpu_init) != EAR_SUCCESS) {
+    if (gpu_read(values_gpu_init) != EAR_SUCCESS) {
         debug("Error in gpu_read in gpu_dvfs_pc");
         return EAR_ERROR;
     }
@@ -101,7 +101,7 @@ state_t gpu_pc_thread_main(void *p)
 
     if (!gpu_pc_enabled)
         return EAR_SUCCESS;
-    if (gpu_read(no_ctx, values_gpu_end) != EAR_SUCCESS) {
+    if (gpu_read(values_gpu_end) != EAR_SUCCESS) {
         debug("Error in gpu_read gpu_dvfs_pc");
         return EAR_ERROR;
     }
@@ -209,9 +209,6 @@ state_t enable(suscription_t *sus)
         mgt_gpu_power_cap_get_rank(no_ctx, gpu_pc_min_power, gpu_pc_max_power);
     }
     gpu_load(NO_EARD);
-    if (gpu_init(no_ctx) != EAR_SUCCESS) {
-        error("Initializing GPU in GPU powercap plugin");
-    }
     gpu_data_alloc(&gpu_pc_power_data);
     gpu_data_alloc(&values_gpu_init);
     gpu_data_alloc(&values_gpu_end);

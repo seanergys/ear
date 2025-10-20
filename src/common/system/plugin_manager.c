@@ -10,14 +10,14 @@
 
 // #define SHOW_DEBUGS 1
 
-#include <common/config/config_env.h>
+#include <stdlib.h>
 #include <common/output/debug.h>
 #include <common/system/monitor.h>
-#include <common/system/plugin_manager.h>
 #include <common/system/symplug.h>
-#include <common/utils/args.h>
 #include <common/utils/strscreen.h>
-#include <stdlib.h>
+#include <common/config/config_env.h>
+#include <common/system/plugin_manager.h>
+#include <common/utils/args.h>
 
 #define MAX_SYMBOLS      4
 #define MAX_PLUGINS      128
@@ -84,15 +84,15 @@ static afd_set_t   fds_active;
 
 static int plugins_dependencies_read(cchar *string, ullong father_time_lapse, uint priority, uint *father_deps_table)
 {
-    uint list1_count;
-    uint list2_count;
+    uint   list1_count;
+    uint   list2_count;
     char **list1;
     char **list2;
-    int priority_plus;
-    int time_inherit;
-    int mandatory;
-    int l, j;
-    char *c;
+    int    priority_plus;
+    int    time_inherit;
+    int    mandatory;
+    int    l, j;
+    char  *c;
 
     // Get list of plugins to load and times
     debug("plugin string: %s", string);
@@ -477,8 +477,7 @@ next_fa:
 }
 #endif
 
-
-static int plugin_manager_after_close()
+static void plugin_manager_after_close()
 {
     action_close_f *action_close;
     int i;
@@ -530,22 +529,20 @@ static int plugins_action_init_call(int i, int d, void **data_alloc, void *data)
         p.plugins_sorted[i]->action_init[d] = dlsym(p.plugins_sorted[i]->handler, buffer);
         // If NULL persist
         if (p.plugins_sorted[i]->action_init[d] == NULL) {
-            debug("[DEBUG] %s: function '%s'... NOT DETECTED", p.plugins_sorted[i]->file_name, buffer)
-                sprintf(buffer, "up_action_init");
+            debug("[DEBUG] %s: function '%s'... NOT DETECTED", p.plugins_sorted[i]->file_name, buffer);
+            sprintf(buffer, "up_action_init");
             p.plugins_sorted[i]->action_init[d] = dlsym(p.plugins_sorted[i]->handler, buffer);
         }
         // If is still NULL, this address is unreachable
         if (p.plugins_sorted[i]->action_init[d] == NULL) {
-            debug("[DEBUG] %s: function '%s'... NOT DETECTED", p.plugins_sorted[i]->file_name, buffer)
-                p.plugins_sorted[i]
-                    ->action_init[d] = (void *) UINT64_MAX;
+            debug("[DEBUG] %s: function '%s'... NOT DETECTED", p.plugins_sorted[i]->file_name, buffer);
+            p.plugins_sorted[i]->action_init[d] = (void *) UINT64_MAX;
             return 0;
         }
-        debug("[DEBUG] %s: function '%s' DETECTED", p.plugins_sorted[i]->file_name, buffer)
+        debug("[DEBUG] %s: function '%s' DETECTED", p.plugins_sorted[i]->file_name, buffer);
     }
-    debug("[DEBUG] %s: called 'action_init' with tag/data '%s'", p.plugins_sorted[i]->file_name,
-          p.plugins_sorted[d]->tag) sout =
-        p.plugins_sorted[i]->action_init[d](p.plugins_sorted[d]->tag, data_alloc, data);
+    debug("[DEBUG] %s: called 'action_init' with tag/data '%s'", p.plugins_sorted[i]->file_name, p.plugins_sorted[d]->tag);
+    sout = p.plugins_sorted[i]->action_init[d](p.plugins_sorted[d]->tag, data_alloc, data);
     return output_print(i, d, "Init status: ", sout);
 }
 

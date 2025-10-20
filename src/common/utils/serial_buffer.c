@@ -283,7 +283,6 @@ int serial_dictionary_pop(serial_buffer_t *b, char *tag, char *param, size_t exp
             serial_point_next_elem(b, NULL); // Extra space
             param_next = serial_point_next_elem(b, &size);
             memset(param, 0, expected_size);
-
             if (expected_size >= size) {
                 memcpy(param, param_next, size);
             } else {

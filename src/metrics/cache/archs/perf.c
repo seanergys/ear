@@ -28,6 +28,7 @@ static offset_ops_t ofs;
 
 static void perfs_add(ullong event, uint type, ulong offset_result, const char *event_desc)
 {
+    debug("%s", event_desc);
     offsets_add(&ofs, offset_result, NO_OFFSET, NO_OFFSET, '=');
     if (state_ok(perf_open(&perfs[perfs_count], NULL, 0, type, event))) {
         if (state_fail(perf_start(&perfs[perfs_count]))) {
@@ -97,9 +98,11 @@ CACHE_F_LOAD(perf)
         offsets_add(&ofs, O1(lbw), O1(l2), 0, '&');
     } else {
         perfs_add(L1_LDA, PERF_TYPE_HW, O2(l1d, accesses), "PERF_L1D_LOAD_ACCESS");
-        perfs_add(L1_LDM, PERF_TYPE_HW, O2(l1d, misses  ), "PERF_L1D_LOAD_MISS  ");
-        offsets_add(&ofs, O2(l1d, hits), O2(l1d, accesses), O2(l1d, misses), '-');
-        offsets_add(&ofs, O1(ll), O1(l1d), 0, '&');
+        perfs_add(L1_LDM, PERF_TYPE_HW, O2(l1d, misses  ), "PERF_L1D_LOAD_MISS"  );
+        offsets_add(&ofs, O2(l1d, hits    ), O2(l1d, accesses), O2(l1d, misses), '-');
+        offsets_add(&ofs, O2(l2 , accesses), O2(l1d, misses  ),               0, '=');
+        offsets_add(&ofs, O1(ll ), O1(l1d), 0, '&');
+        offsets_add(&ofs, O1(lbw), O1(l3 ), 0, '&'); // L3 will be 0, so it is ok
     }
     if (!perfs_count_opened_fds()) {
         debug("All PERFs failed to open");

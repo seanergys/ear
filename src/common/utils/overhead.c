@@ -58,8 +58,9 @@ void overhead_suscribe(const char *description, uint *id)
         // Times
         overhead_getwall(&global_wall_start);
         global_cpu_start = clock();
-        init = 1;
+        init             = 1;
     }
+
     *id                    = queue_last;
     queue[*id].description = description;
     queue[*id].call_count  = 0;
@@ -91,13 +92,16 @@ void overhead_stop(uint id)
     // Accums
     queue[id].call_count += 1;
     queue[id].wall_accum += wall;
-    queue[id].wall_last   = wall;
-    queue[id].cpu_accum  += cpu;
-    queue[id].cpu_last    = cpu;
+    queue[id].wall_last = wall;
+    queue[id].cpu_accum += cpu;
+    queue[id].cpu_last = cpu;
     // Min max
-    if (queue[id].wall_min == 0  ) queue[id].wall_min = wall;
-    if (wall > queue[id].wall_max) queue[id].wall_max = wall;
-    if (wall < queue[id].wall_min) queue[id].wall_min = wall;
+    if (queue[id].wall_min == 0)
+        queue[id].wall_min = wall;
+    if (wall > queue[id].wall_max)
+        queue[id].wall_max = wall;
+    if (wall < queue[id].wall_min)
+        queue[id].wall_min = wall;
 }
 
 void overhead_report(int print_header)
@@ -128,8 +132,7 @@ void overhead_report(int print_header)
         overhead_print_header();
     }
 
-    tprintf2(&st, "-||%0.3lf s||-||-||-||-||-|||%0.3lf s||-||-|||global",
-        global_wall_secs, global_cpu_secs);
+    tprintf2(&st, "-||%0.3lf s||-||-||-||-||-|||%0.3lf s||-||-|||global", global_wall_secs, global_cpu_secs);
 
     for (id = 0; id < queue_last; ++id) {
         wall_msecs      = queue[id].wall_accum / 1000.0;
@@ -152,17 +155,22 @@ void overhead_report(int print_header)
         // if (percent_clock > 100.0) {
         //     percent_clock = 0.0;
         // }
-        tprintf2(&st, "%llu||%0.3lf s||%0.3lf ms||%0.3lf ms||%0.3lf ms||%0.3lf ms||%0.2lf %%|||%0.3lf s||%0.3lf ms||%0.2lf %%|||%s",
-            queue[id].call_count, wall_secs, wall_call_msecs, wall_last_msecs, wall_max_msecs, wall_min_msecs, wall_percent, cpu_secs,
-            cpu_call_msecs, cpu_percent, queue[id].description);
+
+        tprintf2(&st,
+                 "%llu||%0.3lf s||%0.3lf ms||%0.3lf ms||%0.3lf ms||%0.3lf ms||%0.2lf %%|||%0.3lf s||%0.3lf ms||%0.2lf "
+                 "%%|||%s",
+                 queue[id].call_count, wall_secs, wall_call_msecs, wall_last_msecs, wall_max_msecs, wall_min_msecs,
+                 wall_percent, cpu_secs, cpu_call_msecs, cpu_percent, queue[id].description);
     }
 }
 
 void overhead_print_header()
 {
     // cpu/#calls %%cpu
-    tprintf2(&st, "#calls||wall accum||wall/#calls||wall last||wall max||wall min||%%wall time|||cpu accum||cpu/#calls||%%cpu time|||description");
-    tprintf2(&st, "------||----------||-----------||---------||--------||--------||----------|||---------||----------||---------|||-----------");
+    tprintf2(&st, "#calls||wall accum||wall/#calls||wall last||wall max||wall min||%%wall time|||cpu "
+                  "accum||cpu/#calls||%%cpu time|||description");
+    tprintf2(&st, "------||----------||-----------||---------||--------||--------||----------|||---------||----------||"
+                  "---------|||-----------");
 }
 
 #if TEST

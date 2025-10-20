@@ -16,10 +16,10 @@
  * It is basically used for loading EAR plug-ins.
  */
 
-#include <common/plugins.h> // Not used
-#include <common/states.h>
-#include <common/types.h>
 #include <dlfcn.h>
+#include <common/types.h>
+#include <common/states.h>
+#include <common/plugins.h> // Not used
 
 /** Reads a set of symbol names from a dynamic loaded shared object.
  * NULL pointers are not checked.
@@ -33,11 +33,12 @@
  * \return EAR_ERROR If any symbol was found. */
 state_t plug_join(void *handle, void *calls[], const char *names[], uint n);
 
-// Old name
-state_t symplug_open(char *path, void *calls[], const char *names[], uint n);
-
 state_t plug_open(char *path, void *calls[], const char *names[], uint n, int flags);
 
-state_t plug_test(void *calls[], uint n);
+// This version returns the dlopen() handler instead a state.
+void *plug_open2(char *path, void *calls[], const char *names[], uint n, int flags);
+
+// Old name (depcrecated)
+state_t symplug_open(char *path, void *calls[], const char *names[], uint n);
 
 #endif // COMMON_SYSTEM_SYMPLUG_H

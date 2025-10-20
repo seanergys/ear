@@ -11,19 +11,19 @@
 #ifndef METRICS_COMMON_IPMI_H
 #define METRICS_COMMON_IPMI_H
 
-#include <linux/ipmi.h>
 #include <common/states.h>
+#include <linux/ipmi.h>
 
-//  _____ _____  __  __ _____ 
+//  _____ _____  __  __ _____
 // |_   _|  __ \|  \/  |_   _|
-//   | | | |__) | \  / | | |  
-//   | | |  ___/| |\/| | | |  
-//  _| |_| |    | |  | |_| |_ 
+//   | | | |__) | \  / | | |
+//   | | |  ___/| |\/| | | |
+//  _| |_| |    | |  | |_| |_
 // |_____|_|    |_|  |_|_____|
 //
 // What we don't support by now?
 //   - SDRs and FRUs in IMPB addresses (other than INTERFACE).
-//   - Full sensors with linearization functions other than 0x00. 
+//   - Full sensors with linearization functions other than 0x00.
 //   - Compact sensors.
 // These missing features can be added as we require it.
 
@@ -37,11 +37,11 @@ typedef struct ipmi_addr_s {
 // This structure includes all the data required to send a message. It is also
 // named as Command Package.
 typedef struct ipmi_cmd_s {
-    ipmi_addr_t      addr;
-    struct ipmi_msg  msg_send;
-    uchar            msg_send_data[64];
-    uchar            msg_recv_data[256];
-    uint             msg_recv_data_len;
+    ipmi_addr_t addr;
+    struct ipmi_msg msg_send;
+    uchar msg_send_data[64];
+    uchar msg_recv_data[256];
+    uint msg_recv_data_len;
 } ipmi_cmd_t;
 
 typedef struct ipmi_reading_s {
@@ -50,14 +50,14 @@ typedef struct ipmi_reading_s {
 } ipmi_reading_t;
 
 typedef struct ipmi_sensor_s {
-    uchar        dev_no; // device (/dev/ipmi#)
-    uchar        rec_no; // record
-    const char  *name;
-    uchar        available;
-    uchar        units;
-    uchar        rate;
-    const char  *units_str;
-    uchar        instance;
+    uchar dev_no; // device (/dev/ipmi#)
+    uchar rec_no; // record
+    const char *name;
+    uchar available;
+    uchar units;
+    uchar rate;
+    const char *units_str;
+    uchar instance;
 } ipmi_sensor_t;
 
 state_t ipmi_open();
@@ -95,4 +95,4 @@ void ipmi_cmd_set_msg(ipmi_cmd_t *req, uchar netfn, uchar cmd, ushort data_len);
 // Sends the request (req) to the device specified by its number.
 state_t ipmi_cmd_send(int dev_no, ipmi_cmd_t *req);
 
-#endif //METRICS_COMMON_IPMI_H
+#endif // METRICS_COMMON_IPMI_H

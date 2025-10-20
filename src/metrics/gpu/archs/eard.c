@@ -11,27 +11,27 @@
 // #define SHOW_DEBUGS 1
 // #define FAKE_GPUS   1
 
-#include <common/config/config_install.h>
+#include <stdlib.h>
 #include <common/output/debug.h>
 #include <common/utils/serial_buffer.h>
+#include <common/config/config_install.h>
 #include <daemon/local_api/eard_api_rpc.h>
 #include <metrics/gpu/archs/eard.h>
-#include <stdlib.h>
 
-static int eard;
-static uint root_devs_count = 0;
-static uint user_devs_count = 0;
+static uint        root_devs_count = 0;
+static uint        user_devs_count = 0;
 static gpu_devs_t *root_devs;
 static gpu_devs_t *user_devs;
-static uint eard_api;
+static uint        eard_api;
 
-void gpu_eard_load(gpu_ops_t *ops, int _eard)
+GPU_F_LOAD(eard)
 {
     wide_buffer_t b;
     state_t s;
 
-    eard = _eard;
-    if (!eard) {
+    // We don't test if an API is already loaded because EARD option prevents
+    // GPU pooling.
+    if (!API_IS(options, API_EARD)) {
         debug("EARD (daemon) not required");
         return;
     }
@@ -67,10 +67,10 @@ void gpu_eard_load(gpu_ops_t *ops, int _eard)
         user_devs = calloc(user_devs_count, sizeof(gpu_devs_t));
         memcpy(user_devs, root_devs, user_devs_count * sizeof(gpu_devs_t));
     }
-#if FAKE_GPUS
+    #if FAKE_GPUS
     user_devs_count = 1;
-#endif
-#if SHOW_DEBUGS
+    #endif
+    #if SHOW_DEBUGS
     int i;
 
     for (i = 0; i < root_devs_count; ++i) {
@@ -79,25 +79,30 @@ void gpu_eard_load(gpu_ops_t *ops, int _eard)
     for (i = 0; i < user_devs_count; ++i) {
         debug("user D%d: %d_%llu", i, user_devs[i].index, user_devs[i].serial);
     }
-#endif
+    #endif
     // If something already loaded
-    apis_put(ops->get_info, gpu_eard_get_info);
+    apis_put(ops->unload     , gpu_eard_unload     );
+    apis_put(ops->get_info   , gpu_eard_get_info   );
     apis_put(ops->get_devices, gpu_eard_get_devices);
-    apis_put(ops->init, gpu_eard_init);
-    apis_put(ops->dispose, gpu_eard_dispose);
-    apis_set(ops->read, gpu_eard_read);
-    apis_set(ops->read_raw, gpu_eard_read_raw);
+    apis_set(ops->read       , gpu_eard_read       );
+    apis_set(ops->read_raw   , gpu_eard_read_raw   );
     debug("Loaded metrics/gpu/EARD");
 }
 
-void gpu_eard_get_info(apinfo_t *info)
+GPU_F_UNLOAD(eard)
+{
+    if (root_devs != NULL) free(root_devs);
+    if (user_devs != NULL) free(user_devs);
+}
+
+GPU_F_GET_INFO(eard)
 {
     info->api        = API_EARD;
     info->api_under  = eard_api;
     info->devs_count = user_devs_count;
 }
 
-void gpu_eard_get_devices(gpu_devs_t **devs, uint *devs_count)
+GPU_F_GET_DEVICES(eard)
 {
     if (devs != NULL) {
         *devs = calloc(user_devs_count, sizeof(gpu_devs_t));
@@ -106,16 +111,6 @@ void gpu_eard_get_devices(gpu_devs_t **devs, uint *devs_count)
     if (devs_count != NULL) {
         *devs_count = (uint) user_devs_count;
     }
-}
-
-state_t gpu_eard_init(ctx_t *c)
-{
-    return EAR_SUCCESS;
-}
-
-state_t gpu_eard_dispose(ctx_t *c)
-{
-    return EAR_SUCCESS;
 }
 
 static state_t static_read(uint call, gpu_t *data)
@@ -145,18 +140,18 @@ static state_t static_read(uint call, gpu_t *data)
     return EAR_SUCCESS;
 }
 
-state_t gpu_eard_read(ctx_t *c, gpu_t *data)
+GPU_F_READ(eard)
 {
-    state_t s = static_read(RPC_MET_GPU_GET_METRICS, data);
-#if SHOW_DEBUGS
-    gpu_data_print(data, debug_channel);
-#endif
+    state_t s = static_read(RPC_MET_GPU_GET_METRICS, d);
+    #if SHOW_DEBUGS
+    gpu_data_print(d, debug_channel);
+    #endif
     return s;
 }
 
-state_t gpu_eard_read_raw(ctx_t *c, gpu_t *data)
+GPU_F_READ_RAW(eard)
 {
-    return static_read(RPC_MET_GPU_GET_METRICS_RAW, data);
+    return static_read(RPC_MET_GPU_GET_METRICS_RAW, d);
 }
 
 int gpu_eard_is_supported()
@@ -165,10 +160,10 @@ int gpu_eard_is_supported()
     static int called    = 0;
     // This is an independent function. It works always, with independence of the load
     // of the EARD GPU API, although is using RPCs to the EAR Daemon.
-    if (!eard || !eards_connected()) {
-#if FAKE_EAR_NOT_INSTALLED
+    if (!eard_api || !eards_connected()) {
+        #if FAKE_EAR_NOT_INSTALLED
         verbose(0, " FAKE_EAR_NOT_INSTALLED supported %u", supported);
-#endif
+        #endif
         return supported;
     }
     if (!called) {

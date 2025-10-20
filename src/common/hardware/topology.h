@@ -35,13 +35,13 @@
 #define MODEL_CASCADELAKE_X   85 // ¿Same as Skylake but higher stepping?
 #define MODEL_SAPPHIRE_RAPIDS 143
 // AMD models (https://en.wikichip.org/wiki/amd/cpuid)
-#define FAMILY_BOBCAT      20
-#define FAMILY_BULLDOZER   21
-#define FAMILY_JAGUAR      22
-#define FAMILY_ZEN         0x17 // Also 23, includes ZEN2 and ZEN+
-#define FAMILY_ZEN3        0x19 // Also 25, includes ZEN4
+#define FAMILY_BOBCAT        20
+#define FAMILY_BULLDOZER     21
+#define FAMILY_JAGUAR        22
+#define FAMILY_ZEN           0x17 // Also 23, includes ZEN2 and ZEN+
+#define FAMILY_ZEN3          0x19 // Also 25, includes ZEN4
 #define MODEL_IS_ZEN4(model) (model >= 0x61 || (model >= 0x11 && model < 0x21))
-#define FAMILY_ZEN5        0x1A // Also 26
+#define FAMILY_ZEN5          0x1A // Also 26
 // ARM family (architecture)
 #define MODEL_A8  0x01
 #define FAMILY_A8 0x01
@@ -76,13 +76,13 @@ typedef struct cl_s {
 } cl_t;
 
 typedef struct cpu_s {
-    int id;         //
-    int apicid;     // Taken from
-    int is_thread;  // If is the secondary thread in a core.
-    int sibling_id; // The thread sibling within a core.
-    int core_id;    // Basically the minor sibling id
-    int socket_id;  // Socket id taken from 'physical_package_id' file
-    int socket_idx; // Socket index from 0 to socket_count, best option to work with arrays
+    int id;                //
+    int apicid;            // Taken from
+    int is_thread;         // If is the secondary thread in a core.
+    int sibling_id;        // The thread sibling within a core.
+    int core_id;           // Basically the minor sibling id
+    int socket_id;         // Socket id taken from 'physical_package_id' file
+    int socket_idx;        // Socket index from 0 to socket_count, best option to work with arrays
     cl_t l[TOPO_CL_COUNT]; // Index = level, 0 doesn't exists
 } cpu_t;
 

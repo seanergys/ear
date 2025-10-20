@@ -227,7 +227,11 @@ state_t oneapi_open_core(ze_t *ze);
 
 state_t oneapi_open_sysman(ze_t *ze);
 
+void oneapi_close();
+
 state_t oneapi_get_handlers(ze_handlers_t **handlers, uint *devs_count);
+
+void oneapi_free_handlers(ze_handlers_t **handlers, uint *devs_count);
 
 char *oneapi_strerror(ze_result_t z);
 
