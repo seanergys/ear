@@ -504,7 +504,7 @@ void oneapi_free_handlers(ze_handlers_t **handlers, uint *handlers_count)
         *handlers = NULL;
     }
     if (handlers_count != NULL) {
-        *handlers_count = NULL;
+        *handlers_count = 0;
     }
 }
 

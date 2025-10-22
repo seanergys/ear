@@ -76,7 +76,7 @@ void gpu_get_info(apinfo_t *info)
 void gpu_get_devices(gpu_devs_t **devs, uint *devs_count)
 {
     if (ops.get_devices != NULL) {
-        ops.get_devices(devs, info.devs_count);
+        ops.get_devices(devs, devs_count);
     }
 }
 
