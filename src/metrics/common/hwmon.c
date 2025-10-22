@@ -222,7 +222,7 @@ state_t hwmon_open(char *chip_name, char *dev_type, char *label, hwmon_t *chips[
             if (test == -1) {
                 goto next;
             }
-            // Testing if at least on device label is present in this chip
+            // Testing if at least one device label is present in this chip
             if (!test_chip_labels(folder_path, dev_type, label)) {
                 debug("HWMON chip does not contain any device type with label %s", label);
                 goto next;

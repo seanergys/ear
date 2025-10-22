@@ -29,15 +29,25 @@ static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 state_t energy_cpu_hwmon_load(topology_t *tp_in)
 {
-    //return EAR_ERROR;
-    if (tp_in->vendor == VENDOR_ARM && tp_in->model == MODEL_NEOVERSE_V2) {
-        // label = "CPU Power Socket"; // Energy is in micro Watts (this is the CPU)
-        label = "Grace Power Socket"; // Energy is in micro Watts (this is the PKG)
-    } else {
-        // Energy is in micro Watts
-    }
+    int socket_items_count;
+    int sysio_items_count;
+    int node1_items_count;
+    int node2_items_count;
+    int pkg_items_count;
+
     if (state_fail(hwmon_open("power_meter", "power", label, &chips, &chips_count))) {
         return EAR_ERROR;
+    }
+    if (tp_in->vendor == VENDOR_ARM && tp_in->model == MODEL_NEOVERSE_V2) {
+        // Energy is in micro Watts
+        if ((pkg_items_count = hwmon_count_items(chips, "average", "CPU Power Socket")) == 0) {
+            return EAR_ERROR;
+        }
+        node1_items_count  = hwmon_count_items(chips, "average", "Module Power Socket");
+        socket_items_count = hwmon_count_items(chips, "average", "Grace Power Socket");
+        sysio_items_count  = hwmon_count_items(chips, "average", "SysIO Power Socket");
+        hwmon_close_labels(chips, "Module Power Socket");
+        node2_items_count  = hwmon_count_items(chips, "average", "Module Power Socket");
     }
     if ((items_count = hwmon_count_items(chips, "average", label)) == 0) {
         hwmon_close(&chips);
@@ -46,6 +56,11 @@ state_t energy_cpu_hwmon_load(topology_t *tp_in)
     debug("chips_count  : %d", chips_count);
     debug("items_count  : %d", items_count);
     debug("sockets_count: %d", tp_in->socket_count);
+    debug("socket_items_count: %d", socket_items_count);
+    debug("sysio_items_count : %d", sysio_items_count);
+    debug("node1_items_count : %d", node1_items_count);
+    debug("node2_items_count : %d (after close)", node2_items_count);
+    debug("pkg_items_count   : %d", pkg_items_count);
     energy_uj    = calloc(chips_count, sizeof(ullong));
     power_uw_lvv = calloc(chips_count, sizeof(ullong));
     return EAR_SUCCESS;

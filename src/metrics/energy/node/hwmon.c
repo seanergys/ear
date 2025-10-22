@@ -25,7 +25,7 @@ static uint           chips_count;
 static uint           items_count;
 static suscription_t *sus;
 static ullong        *energy_uj;
-static ullong        *power_uw_lvv;
+static double        *power_uw_last; // Last valid value
 static char          *label;
 static topology_t     tp;
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
@@ -66,30 +66,38 @@ state_t energy_init(void **c)
     debug("items_count  : %d", items_count);
     debug("sockets_count: %d", tp.socket_count);
     energy_uj = calloc(1, sizeof(ullong)); // Single value because is the whole node
-    power_uw_lvv = calloc(chips_count, sizeof(ullong)); // Per chip
+    power_uw_last = calloc(chips_count, sizeof(ullong)); // Per chip
     return static_monitor_init();
 }
 
 static state_t static_read(ullong *value_uj)
 {
-    ullong power_uw = 0LLU;
+    static timestamp_t ts_last;
+    double power_uw;
+    double time_us;
+    timestamp_t ts;
     hwmon_t *chip;
     int i = 0;
 
     hwmon_read(chips);
     hwmon_calc_average(chips, NULL);
+    timestamp_get(&ts);
+    if ((time_us = timestamp_fdiff(&ts, &ts_last, TIME_USECS, TIME_NSECS)) < 0.1) {
+        return EAR_SUCCESS;
+    }
     while ((chip = hwmon_iter_chips(chips)) != NULL) {
         // If returned 0
-        if ((power_uw = (ullong) chip->devs_avg.average_toint) == 0LLU) {
-            power_uw = power_uw_lvv[i];
+        if ((power_uw = (double) chip->devs_avg.average_toint) == 0LLU) {
+            power_uw = power_uw_last[i];
         } else {
-            power_uw_lvv[i] = power_uw;
+            power_uw_last[i] = power_uw;
         }
         // Converted to micro Joules
-        *value_uj += power_uw * (ullong) MONITORING_TIME;
-        debug("CHIP[%d]: %llu += %llu * %d", i, *value_uj, power_uw, MONITORING_TIME);
+        *value_uj += (ullong) (power_uw * time_us);
+        debug("CHIP[%d]: %llu += %0.3lf * %0.3lf", i, *value_uj, power_uw, time_us);
         i++;
     }
+    ts_last = ts;
     return EAR_SUCCESS;
 }
 
@@ -97,6 +105,9 @@ static state_t static_pool(void *data)
 {
     while (pthread_mutex_trylock(&lock));
     static_read(energy_uj);
+    if (data != NULL) {
+        memcpy(data, energy_uj, sizeof(ullong)*1);
+    }
     pthread_mutex_unlock(&lock);
     return EAR_SUCCESS;
 }
@@ -116,9 +127,7 @@ state_t energy_dispose(void **c)
 
 state_t energy_dc_read(void *c, void *data)
 {
-    if (data != NULL) {
-        memcpy(data, energy_uj, sizeof(ullong)*1);
-    }
+    static_pool(data);
     return EAR_SUCCESS;
 }
 
