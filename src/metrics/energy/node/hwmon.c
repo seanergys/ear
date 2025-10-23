@@ -55,6 +55,9 @@ state_t energy_init(void **c)
         } else {
             label = "Module Power Socket"; // Energy is in micro Watts
         }
+    } else {
+        // By now, when "power_meter" is found with no label, it only has one
+        // chip and one device (node manager), and returns the node consumption.
     }
     if (state_fail(hwmon_open("power_meter", "power", label, &chips, &chips_count))) {
         return EAR_ERROR;
@@ -67,7 +70,7 @@ state_t energy_init(void **c)
     debug("items_count  : %d", items_count);
     debug("sockets_count: %d", tp.socket_count);
     energy_uj = calloc(1, sizeof(ullong)); // Single value because is the whole node
-    power_uw_last = calloc(chips_count, sizeof(ullong)); // Per chip
+    power_uw_last = calloc(chips_count, sizeof(double)); // Per chip
     timestamp_get(&ts_last);
     return static_monitor_init();
 }
@@ -75,7 +78,7 @@ state_t energy_init(void **c)
 static state_t static_read(ullong *value_uj)
 {
     double power_uw;
-    double time_us;
+    double time_s;
     timestamp_t ts;
     hwmon_t *chip;
     ullong aux;
@@ -84,21 +87,21 @@ static state_t static_read(ullong *value_uj)
     hwmon_read(chips);
     hwmon_calc_average(chips, NULL);
     timestamp_get(&ts);
-    if ((time_us = timestamp_fdiff(&ts, &ts_last, TIME_SECS, TIME_MSECS)) < 0.1) {
+    if ((time_s = timestamp_fdiff(&ts, &ts_last, TIME_SECS, TIME_MSECS)) < 0.1) {
         return EAR_SUCCESS;
     }
     while ((chip = hwmon_iter_chips(chips)) != NULL) {
         // If returned 0
-        if ((power_uw = (double) chip->devs_avg.average_toint) == 0LLU) {
+        if ((power_uw = (double) chip->devs_avg.average_toint) < 0.001) {
             power_uw = power_uw_last[i];
         } else {
             power_uw_last[i] = power_uw;
         }
         // Converted to micro Joules
-        aux = (ullong) (power_uw * time_us);
+        aux = (ullong) (power_uw * time_s);
         *value_uj += aux;
         //*value_uj += ((ullong) (power_uw)) * MONITORING_TIME;
-        debug("CHIP[%d]: %llu += %llu = %0.lf * (%0.3lf us)", i, *value_uj, aux, power_uw, time_us);
+        debug("CHIP[%d]: %llu += %llu = %0.lf * (%0.3lf us)", i, *value_uj, aux, power_uw, time_s);
         i++;
     }
     ts_last = ts;
