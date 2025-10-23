@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **********************************************************************/
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <pthread.h>
@@ -27,6 +27,7 @@ static suscription_t *sus;
 static ullong        *energy_uj;
 static double        *power_uw_last; // Last valid value
 static char          *label;
+static timestamp_t ts_last;
 static topology_t     tp;
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
@@ -67,22 +68,23 @@ state_t energy_init(void **c)
     debug("sockets_count: %d", tp.socket_count);
     energy_uj = calloc(1, sizeof(ullong)); // Single value because is the whole node
     power_uw_last = calloc(chips_count, sizeof(ullong)); // Per chip
+    timestamp_get(&ts_last);
     return static_monitor_init();
 }
 
 static state_t static_read(ullong *value_uj)
 {
-    static timestamp_t ts_last;
     double power_uw;
     double time_us;
     timestamp_t ts;
     hwmon_t *chip;
+    ullong aux;
     int i = 0;
 
     hwmon_read(chips);
     hwmon_calc_average(chips, NULL);
     timestamp_get(&ts);
-    if ((time_us = timestamp_fdiff(&ts, &ts_last, TIME_USECS, TIME_NSECS)) < 0.1) {
+    if ((time_us = timestamp_fdiff(&ts, &ts_last, TIME_SECS, TIME_MSECS)) < 0.1) {
         return EAR_SUCCESS;
     }
     while ((chip = hwmon_iter_chips(chips)) != NULL) {
@@ -93,8 +95,10 @@ static state_t static_read(ullong *value_uj)
             power_uw_last[i] = power_uw;
         }
         // Converted to micro Joules
-        *value_uj += (ullong) (power_uw * time_us);
-        debug("CHIP[%d]: %llu += %0.3lf * %0.3lf", i, *value_uj, power_uw, time_us);
+        aux = (ullong) (power_uw * time_us);
+        *value_uj += aux;
+        //*value_uj += ((ullong) (power_uw)) * MONITORING_TIME;
+        debug("CHIP[%d]: %llu += %llu = %0.lf * (%0.3lf us)", i, *value_uj, aux, power_uw, time_us);
         i++;
     }
     ts_last = ts;

@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **********************************************************************/
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <pthread.h>
 #include <common/output/debug.h>
@@ -23,31 +23,25 @@ static uint           chips_count;
 static uint           items_count;
 static suscription_t *sus;
 static ullong        *energy_uj; // Per chip
-static ullong        *power_uw_lvv; // Last valid value, per chip
+static ullong        *power_uw_last; // Last valid value, per chip
 static char          *label;
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 state_t energy_cpu_hwmon_load(topology_t *tp_in)
 {
-    int socket_items_count;
-    int sysio_items_count;
-    int node1_items_count;
-    int node2_items_count;
-    int pkg_items_count;
-
     if (state_fail(hwmon_open("power_meter", "power", label, &chips, &chips_count))) {
         return EAR_ERROR;
     }
     if (tp_in->vendor == VENDOR_ARM && tp_in->model == MODEL_NEOVERSE_V2) {
-        // Energy is in micro Watts
-        if ((pkg_items_count = hwmon_count_items(chips, "average", "CPU Power Socket")) == 0) {
+        if (!hwmon_count_items(chips, "average", "CPU Power Socket")) {
             return EAR_ERROR;
         }
-        node1_items_count  = hwmon_count_items(chips, "average", "Module Power Socket");
-        socket_items_count = hwmon_count_items(chips, "average", "Grace Power Socket");
-        sysio_items_count  = hwmon_count_items(chips, "average", "SysIO Power Socket");
+        // Energy is in micro Watts
+        debug("Module counts: %d", hwmon_count_items(chips, "average", "Module Power Socket"));
+        debug("Grace  counts: %d", hwmon_count_items(chips, "average", "Grace Power Socket" ));
+        debug("CPU    counts: %d", hwmon_count_items(chips, "average", "CPU Power Socket"   ));
+        debug("SysIO  counts: %d", hwmon_count_items(chips, "average", "SysIO Power Socket" ));
         hwmon_close_labels(chips, "Module Power Socket");
-        node2_items_count  = hwmon_count_items(chips, "average", "Module Power Socket");
     }
     if ((items_count = hwmon_count_items(chips, "average", label)) == 0) {
         hwmon_close(&chips);
@@ -56,14 +50,17 @@ state_t energy_cpu_hwmon_load(topology_t *tp_in)
     debug("chips_count  : %d", chips_count);
     debug("items_count  : %d", items_count);
     debug("sockets_count: %d", tp_in->socket_count);
-    debug("socket_items_count: %d", socket_items_count);
-    debug("sysio_items_count : %d", sysio_items_count);
-    debug("node1_items_count : %d", node1_items_count);
-    debug("node2_items_count : %d (after close)", node2_items_count);
-    debug("pkg_items_count   : %d", pkg_items_count);
-    energy_uj    = calloc(chips_count, sizeof(ullong));
-    power_uw_lvv = calloc(chips_count, sizeof(ullong));
+    energy_uj     = calloc(chips_count, sizeof(ullong));
+    power_uw_last = calloc(chips_count, sizeof(ullong));
     return EAR_SUCCESS;
+}
+
+static state_t static_read_generic()
+{
+}
+
+static state_t static_read_grace()
+{
 }
 
 static state_t static_read(ullong *values)
@@ -75,16 +72,20 @@ static state_t static_read(ullong *values)
     hwmon_read(chips);
     hwmon_calc_average(chips, NULL);
     while ((chip = hwmon_iter_chips(chips)) != NULL) {
+        while((dev = hwmon_iter_devs(chip[i])) != NULL) {
+        }
+#if 0
         // If returned 0
         if ((power_uw = (ullong) chip->devs_avg.average_toint) == 0LLU) {
-            power_uw = power_uw_lvv[i];
+            power_uw = power_uw_last[i];
         } else {
-            power_uw_lvv[i] = power_uw;
+            power_uw_last[i] = power_uw;
         }
         // Converted to micro Joules. The values are set in position 1 because this API
         // order is 0 to DRAM and 1 to PKG.
         values[1] += power_uw * (ullong) MONITORING_TIME;
         debug("CHIP[%d]: %llu += %llu * %d", i, values[1], power_uw, MONITORING_TIME);
+#endif
         i++;
     }
     return EAR_SUCCESS;

@@ -61,7 +61,7 @@ state_t energy_cpu_load(topology_t *tp, uint force_api)
         ops.data_tostr    = energy_cpu_data_tostr; */
         api = API_RAPL;
         debug("selected rapl_msr energy_cpu (api %u)", api);
-#if 1
+#if 0
     } else if (state_ok(energy_cpu_eard_load(tp, API_IS(force_api, API_EARD)))) {
         ops.init          = energy_cpu_eard_init;
         ops.dispose       = energy_cpu_eard_dispose;
