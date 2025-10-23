@@ -222,7 +222,7 @@ state_t hwmon_open(char *chip_name, char *dev_type, char *label, hwmon_t *chips[
             if (test == -1) {
                 goto next;
             }
-            // Testing if at least on device label is present in this chip
+            // Testing if at least one device label is present in this chip
             if (!test_chip_labels(folder_path, dev_type, label)) {
                 debug("HWMON chip does not contain any device type with label %s", label);
                 goto next;
@@ -412,6 +412,8 @@ hwmon_dev_t *hwmon_iter_devs(hwmon_t *chip, char *label)
 
 void hwmon_close_labels(hwmon_t chips[], char *label)
 {
+    int negative = 0;
+    int match;
     int d = 0; // d of device
     int c = 0; // c of chip
 
@@ -421,9 +423,17 @@ void hwmon_close_labels(hwmon_t chips[], char *label)
         close(dev_fd);        \
         dev_fd = -1;          \
     }
+    if (label != NULL) {
+        negative = (label[0] == '!');
+        if (negative) {
+            label = &label[1];
+        }
+    }
     while (!chips[c].is_null) {
         while (!chips[c].devs[d].is_null) {
-            if (label == NULL || strcasestr(chips[c].devs[d].label, label) == NULL) {
+            match = (label == NULL) ? 1 : (strcasestr(chips[c].devs[d].label, label) != NULL);
+            if ((!negative && match) || (negative && !match)) {
+                debug("closing '%s' file descriptors", chips[c].devs[d].label);
                 close_dev(chips[c].devs[d].input_fd);
                 close_dev(chips[c].devs[d].label_fd);
                 close_dev(chips[c].devs[d].max_fd);
