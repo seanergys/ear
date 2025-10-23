@@ -61,7 +61,7 @@ state_t energy_cpu_load(topology_t *tp, uint force_api)
         ops.data_tostr    = energy_cpu_data_tostr; */
         api = API_RAPL;
         debug("selected rapl_msr energy_cpu (api %u)", api);
-#if 0
+#if 1
     } else if (state_ok(energy_cpu_eard_load(tp, API_IS(force_api, API_EARD)))) {
         ops.init          = energy_cpu_eard_init;
         ops.dispose       = energy_cpu_eard_dispose;
@@ -84,7 +84,6 @@ state_t energy_cpu_load(topology_t *tp, uint force_api)
         ops.count_devices = energy_cpu_hwmon_count_devices;
         api = API_HWMON;
     } else if (state_ok(grace_cpu_load(tp))) {
-
         ops.init          = grace_cpu_init;
         ops.dispose       = grace_cpu_dispose;
         ops.read          = grace_cpu_read;
@@ -267,7 +266,7 @@ double energy_cpu_compute_power(double energy, double elapsed_time)
 {
     if (elapsed_time > 0) {
         double computed_power = ((energy / 1000000000.0) / elapsed_time);
-        debug("computed power: %lf", computed_power);
+        //debug("computed power: %lf", computed_power);
         return computed_power;
     }
     return (double) 0;

@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **********************************************************************/
 
-#define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <pthread.h>
 #include <common/output/debug.h>
@@ -76,6 +76,7 @@ state_t energy_cpu_hwmon_load(topology_t *tp_in)
     if ((items_pkg_count = hwmon_count_items(chips_pkg.chips, "average", NULL)) == 0) {
         return chips_close_all(EAR_ERROR);
     }
+    timestamp_get(&ts_last);
     return EAR_SUCCESS;
 }
 
@@ -98,10 +99,12 @@ static void static_read_single(chips_t *chips, double time_s)
         } else {
             chips->power_uw_last[i] = power_uw;
         }
-        aux_uw = (ullong) (power_uw * time_s);
+        // grace_cpu_power.c class is calculating time in mS, so we add another 1000.0 to copy its behaviour
+        aux_uw = (ullong) (power_uw * time_s * 1000.0);
         chips->energy_uj[i] += aux_uw;
-        debug("CHIP[%d]: %llu += %llu = %0.lf * (%0.3lf us)",
-            i, chips->energy_uj[i], aux_uw, power_uw, time_s);
+        debug("CHIP[%d]: %llu += %llu = %0.lf * (%0.3lf us) (%s)",
+            i, chips->energy_uj[i], aux_uw, power_uw, time_s, chips->chips[0].devs[0].label);
+        ++i;
     }
 }
 
@@ -123,11 +126,21 @@ static state_t static_read()
 
 static state_t static_pool(void *data)
 {
+    ullong *values = (ullong *) data;
+    int i, j;
+
     while (pthread_mutex_trylock(&lock));
     static_read(); // converted to micro Watts
     // It is 2 because this apis is DRAM[0]+PKG[1]
-    if (data != NULL) {
-        // Copy
+    for (i = j = 0; data != NULL && j < chips_pkg.chips_count; i += NUM_PACKS, j += 1) {
+        values[i+0] = 0LLU;
+        if (chips_socket.energy_uj[j] != 0 && chips_pkg.energy_uj[j] != 0 && chips_sysio.energy_uj[j] != 0) {
+            values[i+0] = chips_socket.energy_uj[j] - (chips_pkg.energy_uj[j] + chips_sysio.energy_uj[j]);
+            if (values[i+0] >= chips_socket.energy_uj[j]) {
+                values[i+0] = 0LLU;
+            }
+        }
+        values[i+1] = chips_pkg.energy_uj[j];
     }
     pthread_mutex_unlock(&lock);
     return EAR_SUCCESS;
