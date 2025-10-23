@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **********************************************************************/
 
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
@@ -290,7 +290,7 @@ static state_t grace_cpu_static_read(ctx_t *c, llong *power, llong *acum)
                 // return s;
                 debug("read failed with data %s", data);
             }
-            //	debug("read %s", data);
+            debug("read %s", data);
             aux1 = atoll(data);
             verbose(VGRACE_CPU_VL, "GH CPU: Partial power read %lld", aux1);
             power[i] += aux1;

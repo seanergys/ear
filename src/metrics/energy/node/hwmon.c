@@ -25,8 +25,9 @@ static uint           chips_count;
 static uint           items_count;
 static suscription_t *sus;
 static ullong        *energy_uj;
-static ullong        *power_uw_lvv;
+static double        *power_uw_last; // Last valid value
 static char          *label;
+static timestamp_t ts_last;
 static topology_t     tp;
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
@@ -54,6 +55,9 @@ state_t energy_init(void **c)
         } else {
             label = "Module Power Socket"; // Energy is in micro Watts
         }
+    } else {
+        // By now, when "power_meter" is found with no label, it only has one
+        // chip and one device (node manager), and returns the node consumption.
     }
     if (state_fail(hwmon_open("power_meter", "power", label, &chips, &chips_count))) {
         return EAR_ERROR;
@@ -66,30 +70,41 @@ state_t energy_init(void **c)
     debug("items_count  : %d", items_count);
     debug("sockets_count: %d", tp.socket_count);
     energy_uj = calloc(1, sizeof(ullong)); // Single value because is the whole node
-    power_uw_lvv = calloc(chips_count, sizeof(ullong)); // Per chip
+    power_uw_last = calloc(chips_count, sizeof(double)); // Per chip
+    timestamp_get(&ts_last);
     return static_monitor_init();
 }
 
 static state_t static_read(ullong *value_uj)
 {
-    ullong power_uw = 0LLU;
+    double power_uw;
+    double time_s;
+    timestamp_t ts;
     hwmon_t *chip;
+    ullong aux;
     int i = 0;
 
     hwmon_read(chips);
     hwmon_calc_average(chips, NULL);
+    timestamp_get(&ts);
+    if ((time_s = timestamp_fdiff(&ts, &ts_last, TIME_SECS, TIME_MSECS)) < 0.1) {
+        return EAR_SUCCESS;
+    }
     while ((chip = hwmon_iter_chips(chips)) != NULL) {
         // If returned 0
-        if ((power_uw = (ullong) chip->devs_avg.average_toint) == 0LLU) {
-            power_uw = power_uw_lvv[i];
+        if ((power_uw = (double) chip->devs_avg.average_toint) < 0.001) {
+            power_uw = power_uw_last[i];
         } else {
-            power_uw_lvv[i] = power_uw;
+            power_uw_last[i] = power_uw;
         }
         // Converted to micro Joules
-        *value_uj += power_uw * (ullong) MONITORING_TIME;
-        debug("CHIP[%d]: %llu += %llu * %d", i, *value_uj, power_uw, MONITORING_TIME);
+        aux = (ullong) (power_uw * time_s);
+        *value_uj += aux;
+        //*value_uj += ((ullong) (power_uw)) * MONITORING_TIME;
+        debug("CHIP[%d]: %llu += %llu = %0.lf * (%0.3lf us)", i, *value_uj, aux, power_uw, time_s);
         i++;
     }
+    ts_last = ts;
     return EAR_SUCCESS;
 }
 
@@ -97,6 +112,9 @@ static state_t static_pool(void *data)
 {
     while (pthread_mutex_trylock(&lock));
     static_read(energy_uj);
+    if (data != NULL) {
+        memcpy(data, energy_uj, sizeof(ullong)*1);
+    }
     pthread_mutex_unlock(&lock);
     return EAR_SUCCESS;
 }
@@ -116,9 +134,7 @@ state_t energy_dispose(void **c)
 
 state_t energy_dc_read(void *c, void *data)
 {
-    if (data != NULL) {
-        memcpy(data, energy_uj, sizeof(ullong)*1);
-    }
+    static_pool(data);
     return EAR_SUCCESS;
 }
 
