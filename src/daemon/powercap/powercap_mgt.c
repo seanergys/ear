@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <unistd.h>
 
 #include <common/config.h>
@@ -60,6 +61,7 @@ typedef struct powercap_symbols {
     state_t (*disable)();
     state_t (*set_powercap_value)(uint pid, uint domain, uint *limits, ulong *util);
     state_t (*get_powercap_value)(uint pid, uint *powercap);
+    state_t (*get_powercap_value_per_device)(ulong *powercaps);
     uint (*is_powercap_policy_enabled)(uint pid);
     void (*set_status)(uint status);
     void (*set_pc_mode)(uint mode);
@@ -115,7 +117,7 @@ static powercapsym_t pcsyms_fun[NUM_DOMAINS];
 
 static float security_range = 1.0;
 // static void *pcsyms_obj[NUM_DOMAINS] ={ NULL,NULL,NULL,NULL};
-const int pcsyms_n = 20;
+const int pcsyms_n = 21; // Increased from 20 to 21
 
 static suscription_t *sus[NUM_DOMAINS];
 
@@ -124,6 +126,7 @@ const char *pcsyms_names[] = {
     "disable",
     "set_powercap_value",
     "get_powercap_value",
+    "get_powercap_value_per_device",
     "is_powercap_policy_enabled",
     "set_status",
     "set_pc_mode",
@@ -755,6 +758,7 @@ state_t pmgt_reset_pdomain()
     return EAR_SUCCESS;
 }
 
+/* Gets powercap per domain */
 state_t pmgt_get_powercap_value(pwr_mgt_t *phandler, uint pid, ulong *powercap)
 {
     state_t ret, gret = EAR_ERROR;
@@ -771,6 +775,15 @@ state_t pmgt_get_powercap_value(pwr_mgt_t *phandler, uint pid, ulong *powercap)
             gret = ret;
     }
     return gret;
+}
+
+/* Gets powercap per device in a specified domain */
+state_t pmgt_get_powercap_value_per_device(uint domain, ulong *powercaps)
+{
+    if (domain >= NUM_DOMAINS || !domains_loaded[domain] || powercaps == NULL) {
+        return EAR_ERROR;
+    }
+    return freturn(pcsyms_fun[domain].get_powercap_value_per_device, powercaps);
 }
 
 uint pmgt_is_powercap_enabled(pwr_mgt_t *phandler, uint pid)
@@ -796,6 +809,25 @@ void pmgt_print_powercap_value(pwr_mgt_t *phandler, int fd)
         if (domains_loaded[i])
             freturn(pcsyms_fun[i].print_powercap_value, fd);
     }
+}
+
+uint pmgt_get_cpu_devices()
+{
+    return pc_topology_info.socket_count;
+}
+
+uint pmgt_get_dram_devices()
+{
+    return pc_topology_info.socket_count; // DRAM devices typically match CPU sockets
+}
+
+uint pmgt_get_gpu_devices()
+{
+#if USE_GPUS
+    return gpu_pc_num_gpus;
+#else
+    return 0;
+#endif
 }
 
 void pmgt_powercap_to_str(pwr_mgt_t *phandler, char *b)
