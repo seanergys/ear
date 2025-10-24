@@ -246,6 +246,7 @@ state_t pc_monitor_thread_init(void *p)
 
 state_t pc_monitor_thread_main(void *p)
 {
+    powercap_verify_all_devices();
     return EAR_SUCCESS;
 }
 
@@ -255,8 +256,8 @@ void powercap_monitor_init()
     sus_powercap_monitor             = suscription();
     sus_powercap_monitor->call_main  = pc_monitor_thread_main;
     sus_powercap_monitor->call_init  = pc_monitor_thread_init;
-    sus_powercap_monitor->time_relax = 1000;
-    sus_powercap_monitor->time_burst = 1000;
+    sus_powercap_monitor->time_relax = 5000;
+    sus_powercap_monitor->time_burst = 5000;
     sus_powercap_monitor->suscribe(sus_powercap_monitor);
 #endif
 }
@@ -944,4 +945,122 @@ uint powercap_get_stored_device_value(uint domain, uint device_id)
             debug("powercap_get_stored_device_value: unsupported domain %u", domain);
             return 0;
     }
+}
+
+state_t powercap_verify_device_values(uint domain)
+{
+    uint    device_count = 0;
+    uint    stored_value, actual_value;
+    state_t overall_result = EAR_SUCCESS;
+    int     mismatches     = 0;
+
+    if (!is_powercap_on(&my_pc_opt)) {
+        debug("powercap_verify_device: powercap is disabled");
+        return EAR_SUCCESS;
+    }
+
+    // if (is_powercap_unlimited()) {
+    //     debug("powercap_verify_device: powercap is unlimited");
+    //     return EAR_SUCCESS;
+    // }
+
+    if (domain >= NUM_DOMAINS) {
+        debug("powercap_verify_device: invalid domain %u", domain);
+        return EAR_ERROR;
+    }
+
+    // Determine device count based on domain
+    switch (domain) {
+        case DOMAIN_CPU:
+            device_count = stored_cpu_count;
+            break;
+        case DOMAIN_DRAM:
+            device_count = stored_dram_count;
+            break;
+        case DOMAIN_GPU:
+#if USE_GPUS
+            device_count = stored_gpu_count;
+#else
+            device_count = 0; // No GPUs if not compiled with GPU support
+#endif
+            break;
+        default:
+            debug("powercap_verify_device: unsupported domain %u", domain);
+            return EAR_ERROR;
+    }
+
+    debug("powercap_verify_device: checking domain %u with %u devices", domain, device_count);
+
+    if (device_count == 0) {
+        debug("powercap_verify_device: no devices found for domain %u", domain);
+        return EAR_SUCCESS;
+    }
+
+    for (uint i = 0; i < device_count; i++) {
+        stored_value = powercap_get_stored_device_value(domain, i);
+        actual_value = powercap_get_actual_device_value(domain, i);
+
+        if (actual_value == 0) {
+            error("powercap_verify_device: failed to get actual value for domain %u device %u", domain, i);
+            continue;
+        }
+
+        debug("powercap_verify_device: domain=%u device=%u stored=%u actual=%u", domain, i, stored_value, actual_value);
+
+        if (stored_value != actual_value) {
+            verbose(VEARD_PC, "%sWARNING: device powercap mismatch - domain %u device %u: stored=%u, actual=%u%s",
+                    COL_YLW, domain, i, stored_value, actual_value, COL_CLR);
+            // Try to set the power cap again?
+            mismatches++;
+            overall_result = EAR_WARNING;
+        }
+    }
+
+    if (mismatches == 0) {
+        debug("powercap_verify_device: all device values match for domain %u", domain);
+    }
+
+    return overall_result;
+}
+
+state_t powercap_verify_all_devices()
+{
+    state_t cpu_result, dram_result, gpu_result;
+    state_t overall_result = EAR_SUCCESS;
+
+    if (!is_powercap_on(&my_pc_opt)) {
+        debug("powercap_verify_all_devices: powercap is disabled");
+        return EAR_SUCCESS;
+    }
+
+    // This checks the value of the node by default.
+    // if (is_powercap_unlimited()) {
+    //     debug("powercap_verify_all_devices: powercap is unlimited");
+    //     return EAR_SUCCESS;
+    // }
+
+    debug("powercap_verify_all_devices: starting verification of all device domains");
+
+    // Verify CPU devices
+    cpu_result = powercap_verify_device_values(DOMAIN_CPU);
+    if (cpu_result != EAR_SUCCESS)
+        overall_result = cpu_result;
+
+    // Verify DRAM devices
+    dram_result = powercap_verify_device_values(DOMAIN_DRAM);
+    if (dram_result != EAR_SUCCESS)
+        overall_result = dram_result;
+
+    // Verify GPU devices
+    gpu_result = powercap_verify_device_values(DOMAIN_GPU);
+    if (gpu_result != EAR_SUCCESS)
+        overall_result = gpu_result;
+
+    if (overall_result == EAR_SUCCESS) {
+        debug("powercap_verify_all_devices: all device powercaps verified successfully");
+    } else {
+        debug("powercap_verify_all_devices: found powercap mismatches in one or more domains");
+    }
+
+    return overall_result;
 }
