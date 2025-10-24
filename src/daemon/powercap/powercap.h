@@ -48,4 +48,9 @@ ulong powercap_elapsed_last_powercap();
 void powercap_new_job();
 void powercap_end_job();
 
+uint powercap_get_actual_device_value(uint domain, uint device_id);
+uint powercap_get_stored_device_value(uint domain, uint device_id);
+state_t powercap_set_stored_device_value(uint domain, uint device_id, uint powercap_value);
+void powercap_update_all_device_storage(uint domain, uint powercap_value);
+
 #endif

@@ -62,6 +62,20 @@ extern int num_contexts;
 
 static timestamp_t last_powercap_reallocation_time;
 
+// Per-device powercap storage
+static uint32_t *stored_cpu_powercaps  = NULL;
+static uint32_t *stored_dram_powercaps = NULL;
+#if USE_GPUS
+static uint32_t *stored_gpu_powercaps = NULL;
+#endif
+static uint stored_cpu_count  = 0;
+static uint stored_dram_count = 0;
+#if USE_GPUS
+static uint stored_gpu_count = 0;
+#endif
+// Per-domain powercap storage
+static uint32_t stored_domain_powercaps[NUM_DOMAINS];
+
 #if POWERCAP_MON
 static suscription_t *sus_powercap_monitor;
 #endif
@@ -73,6 +87,155 @@ void get_date_str(char *msg, int size)
     time(&rawtime);
     current_t = localtime(&rawtime);
     strftime(msg, size, "%c", current_t);
+}
+
+static void powercap_init_device_storage()
+{
+    uint i;
+    // Initialize CPU device storage
+    stored_cpu_count = pmgt_get_cpu_devices();
+    if (stored_cpu_count > 0) {
+        stored_cpu_powercaps = calloc(stored_cpu_count, sizeof(uint32_t));
+        if (stored_cpu_powercaps == NULL) {
+            error("Failed to allocate memory for CPU powercap storage");
+            stored_cpu_count = 0;
+        } else {
+            for (i = 0; i < stored_cpu_count; i++) {
+                stored_cpu_powercaps[i] = POWER_CAP_UNLIMITED;
+            }
+            debug("Initialized CPU powercap storage for %u devices to unlimited", stored_cpu_count);
+        }
+    }
+
+    // Initialize DRAM device storage
+    stored_dram_count = pmgt_get_dram_devices();
+    if (stored_dram_count > 0) {
+        stored_dram_powercaps = calloc(stored_dram_count, sizeof(uint32_t));
+        if (stored_dram_powercaps == NULL) {
+            error("Failed to allocate memory for DRAM powercap storage");
+            stored_dram_count = 0;
+        } else {
+            for (i = 0; i < stored_dram_count; i++) {
+                stored_dram_powercaps[i] = POWER_CAP_UNLIMITED;
+            }
+            debug("Initialized DRAM powercap storage for %u devices to unlimited", stored_dram_count);
+        }
+    }
+
+#if USE_GPUS
+    // Initialize GPU device storage
+    stored_gpu_count = pmgt_get_gpu_devices();
+    if (stored_gpu_count > 0) {
+        stored_gpu_powercaps = calloc(stored_gpu_count, sizeof(uint32_t));
+        if (stored_gpu_powercaps == NULL) {
+            error("Failed to allocate memory for GPU powercap storage");
+            stored_gpu_count = 0;
+        } else {
+            for (i = 0; i < stored_gpu_count; i++) {
+                stored_gpu_powercaps[i] = POWER_CAP_UNLIMITED;
+            }
+            debug("Initialized GPU powercap storage for %u devices to unlimited", stored_gpu_count);
+        }
+    }
+#endif
+}
+
+static void powercap_cleanup_device_storage()
+{
+    if (stored_cpu_powercaps != NULL) {
+        free(stored_cpu_powercaps);
+        stored_cpu_powercaps = NULL;
+        stored_cpu_count     = 0;
+    }
+
+    if (stored_dram_powercaps != NULL) {
+        free(stored_dram_powercaps);
+        stored_dram_powercaps = NULL;
+        stored_dram_count     = 0;
+    }
+
+#if USE_GPUS
+    if (stored_gpu_powercaps != NULL) {
+        free(stored_gpu_powercaps);
+        stored_gpu_powercaps = NULL;
+        stored_gpu_count     = 0;
+    }
+#endif
+}
+
+state_t powercap_set_stored_device_value(uint domain, uint device_id, uint powercap_value)
+{
+    if (domain >= NUM_DOMAINS) {
+        debug("powercap_set_stored_device_value: invalid domain %u", domain);
+        return EAR_ERROR;
+    }
+
+    switch (domain) {
+        case DOMAIN_CPU:
+            if (device_id >= stored_cpu_count || stored_cpu_powercaps == NULL) {
+                debug("powercap_set_stored_device_value: invalid CPU device %u (count: %u)", device_id,
+                      stored_cpu_count);
+                return EAR_ERROR;
+            }
+            stored_cpu_powercaps[device_id] = powercap_value;
+            break;
+
+        case DOMAIN_DRAM:
+            if (device_id >= stored_dram_count || stored_dram_powercaps == NULL) {
+                debug("powercap_set_stored_device_value: invalid DRAM device %u (count: %u)", device_id,
+                      stored_dram_count);
+                return EAR_ERROR;
+            }
+            stored_dram_powercaps[device_id] = powercap_value;
+            break;
+
+        case DOMAIN_GPU:
+#if USE_GPUS
+            if (device_id >= stored_gpu_count || stored_gpu_powercaps == NULL) {
+                debug("powercap_set_stored_device_value: invalid GPU device %u (count: %u)", device_id,
+                      stored_gpu_count);
+                return EAR_ERROR;
+            }
+            stored_gpu_powercaps[device_id] = powercap_value;
+#else
+            debug("powercap_set_stored_device_value: GPU domain not supported");
+            return EAR_ERROR;
+#endif
+            break;
+
+        default:
+            debug("powercap_set_stored_device_value: unsupported domain %u", domain);
+            return EAR_ERROR;
+    }
+
+    debug("powercap_set_stored_device_value: domain=%u device=%u value=%u", domain, device_id, powercap_value);
+    return EAR_SUCCESS;
+}
+
+void powercap_update_all_device_storage(uint domain, uint powercap_value)
+{
+    uint device_count = 0;
+
+    switch (domain) {
+        case DOMAIN_CPU:
+            device_count = stored_cpu_count;
+            break;
+        case DOMAIN_DRAM:
+            device_count = stored_dram_count;
+            break;
+        case DOMAIN_GPU:
+#if USE_GPUS
+            device_count = stored_gpu_count;
+#endif
+            break;
+        default:
+            return;
+    }
+
+    // Set the same powercap value for all devices in this domain
+    for (uint i = 0; i < device_count; i++) {
+        powercap_set_stored_device_value(domain, i, powercap_value);
+    }
 }
 
 /***** These two functions monitors node power for status update *****/
@@ -196,6 +359,7 @@ void powercap_end()
     if (pmgt_disable(pcmgr) != EAR_SUCCESS) {
         error("pmgt_disable");
     }
+    powercap_cleanup_device_storage();
 }
 
 void powercap_process_message(char *action, char *mode, char *level, int32_t num_values, int32_t values[num_values])
@@ -269,6 +433,7 @@ int powercap_init()
     debug("powercap initialization finished");
     powercap_monitor_init();
     update_node_powercap_opt_shared_info();
+    powercap_init_device_storage();
     return EAR_SUCCESS;
 }
 
@@ -670,4 +835,113 @@ void powercap_new_job()
 void powercap_end_job()
 {
     pmgt_end_job(pcmgr);
+}
+
+uint powercap_get_actual_device_value(uint domain, uint device_id)
+{
+    state_t ret;
+    ulong  *actual_powercaps = NULL;
+    uint    num_devices      = 0;
+    uint    powercap_value   = 0;
+
+    if (pcmgr == NULL) {
+        debug("powercap_get_actual_device_value: powercap manager not initialized");
+        return 0;
+    }
+
+    if (domain >= NUM_DOMAINS) {
+        debug("powercap_get_actual_device_value: invalid domain %u", domain);
+        return 0;
+    }
+
+    switch (domain) {
+        case DOMAIN_CPU:
+            num_devices = stored_cpu_count;
+            break;
+        case DOMAIN_DRAM:
+            num_devices = stored_dram_count;
+            break;
+        case DOMAIN_GPU:
+#if USE_GPUS
+            num_devices = stored_gpu_count;
+#endif
+            break;
+        default:
+            debug("powercap_get_actual_device_value: unsupported domain %u", domain);
+            return 0;
+    }
+
+    if (num_devices == 0) {
+        debug("powercap_get_actual_device_value: no devices for domain %u", domain);
+        return 0;
+    }
+
+    if (device_id >= num_devices) {
+        debug("powercap_get_actual_device_value: invalid device_id %u for domain %u (num_devices: %u)", device_id,
+              domain, num_devices);
+        return 0;
+    }
+
+    actual_powercaps = calloc(num_devices, sizeof(ulong));
+    if (actual_powercaps == NULL) {
+        error("powercap_get_actual_device_value: failed to allocate memory for actual_powercaps");
+        return 0;
+    }
+
+    ret = pmgt_get_powercap_value_per_device(domain, actual_powercaps);
+
+    if (ret != EAR_SUCCESS) {
+        debug("powercap_get_actual_device_value: failed to get powercap for domain %u", domain);
+        powercap_value = 0;
+    } else {
+        powercap_value = actual_powercaps[device_id];
+    }
+
+    free(actual_powercaps);
+
+    debug("actual device powercap: domain=%u device=%u value=%u", domain, device_id, powercap_value);
+    return powercap_value;
+}
+
+uint powercap_get_stored_device_value(uint domain, uint device_id)
+{
+    if (domain >= NUM_DOMAINS) {
+        debug("powercap_get_stored_device_value: invalid domain %u", domain);
+        return 0;
+    }
+
+    switch (domain) {
+        case DOMAIN_CPU:
+            if (device_id >= stored_cpu_count || stored_cpu_powercaps == NULL) {
+                debug("powercap_get_stored_device_value: invalid CPU device %u (count: %u)", device_id,
+                      stored_cpu_count);
+                return 0;
+            }
+            return stored_cpu_powercaps[device_id];
+
+        case DOMAIN_DRAM:
+            if (device_id >= stored_dram_count || stored_dram_powercaps == NULL) {
+                debug("powercap_get_stored_device_value: invalid DRAM device %u (count: %u)", device_id,
+                      stored_dram_count);
+                return 0;
+            }
+            return stored_dram_powercaps[device_id];
+
+        case DOMAIN_GPU:
+#if USE_GPUS
+            if (device_id >= stored_gpu_count || stored_gpu_powercaps == NULL) {
+                debug("powercap_get_stored_device_value: invalid GPU device %u (count: %u)", device_id,
+                      stored_gpu_count);
+                return 0;
+            }
+            return stored_gpu_powercaps[device_id];
+#else
+            debug("powercap_get_stored_device_value: GPU domain not supported");
+            return 0;
+#endif
+
+        default:
+            debug("powercap_get_stored_device_value: unsupported domain %u", domain);
+            return 0;
+    }
 }

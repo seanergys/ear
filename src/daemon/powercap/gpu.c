@@ -23,6 +23,7 @@
 #include <common/states.h>
 #include <common/system/execute.h>
 #include <common/system/monitor.h>
+#include <daemon/powercap/powercap.h>
 #include <daemon/powercap/powercap_mgt.h>
 #include <daemon/powercap/powercap_status.h>
 #include <daemon/powercap/powercap_status_conf.h>
@@ -287,6 +288,7 @@ state_t increase_powercap_allocation(uint increase)
 state_t restore_powercap()
 {
     int i;
+    powercap_update_all_device_storage(DOMAIN_GPU, POWER_CAP_UNLIMITED);
     for (i = 0; i < gpu_pc_num_gpus; i++) {
         gpu_pc_curr_power[i] = gpu_pc_max_power[i];
     }
@@ -306,6 +308,7 @@ static state_t int_set_per_device_powercap_value(uint32_t *limit, ulong *gpu_uti
             limit[i] = gpu_pc_max_power[i];
         }
         gpu_pc_curr_power[i] = limit[i];
+        powercap_set_stored_device_value(DOMAIN_GPU, i, gpu_pc_curr_power[i]);
         debug("GPU: util_gpu[%d]=%lu power_alloc=%u", i, gpu_util[i], limit[i]);
     }
     ret = mgt_gpu_power_cap_set(no_ctx, gpu_pc_curr_power);
@@ -356,6 +359,7 @@ static state_t int_set_powercap_value(ulong limit, ulong *gpu_util)
     if (ret == EAR_ERROR)
         debug("Error setting powercap");
     for (i = 0; i < gpu_pc_num_gpus; i++) {
+        powercap_set_stored_device_value(DOMAIN_GPU, i, gpu_pc_curr_power[i]);
         debug("GPU: util_gpu[%d]=%lu power_alloc=%lu", i, gpu_util[i], gpu_pc_curr_power[i]);
     }
     memcpy(gpu_pc_util, gpu_util, sizeof(ulong) * gpu_pc_num_gpus);
