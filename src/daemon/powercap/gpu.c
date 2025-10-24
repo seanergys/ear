@@ -371,8 +371,8 @@ state_t get_powercap_value(uint pid, ulong *powercap)
 {
     /* copy data */
     debug("GPU::get_powercap_value");
-    *powercap = current_gpu_pc;
-    return EAR_SUCCESS;
+    // Get real powercap using APIs
+    return mgt_gpu_power_cap_get_current(no_ctx, powercap);
 }
 
 uint is_powercap_policy_enabled(uint pid)
