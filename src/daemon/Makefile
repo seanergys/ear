@@ -93,7 +93,7 @@ clean: clean.components clean.others rclean; #Do not add eard.gclean
 ######## SUBFOLDERS
 
 %.components:
-#	@ $(MAKE) -C 'app_api' $*
+	@ $(MAKE) -C 'app_api' $*
 	@ $(MAKE) -C 'remote_api' $*
 	@ $(MAKE) -C 'local_api' $*
 	@ $(MAKE) -C 'powercap' $*
