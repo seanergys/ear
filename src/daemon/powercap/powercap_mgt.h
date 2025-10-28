@@ -69,6 +69,11 @@ void pmgt_powercap_node_reallocation();
 /* Returns the current node status using its domains status */
 void pmgt_get_status(pmgt_status_t *status);
 
+/* Get number of devices that can be power capped for each domain */
+uint pmgt_get_cpu_devices();  // Returns number of CPU sockets that can be power capped
+uint pmgt_get_dram_devices(); // Returns number of DRAM devices that can be power capped
+uint pmgt_get_gpu_devices();  // Returns number of GPUs that can be power capped
+
 #if SYN_TEST
 void pmgt_set_burst(int b);
 #endif
