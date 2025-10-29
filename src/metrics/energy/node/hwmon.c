@@ -18,7 +18,7 @@
 #include <common/hardware/topology.h>
 #include <metrics/common/hwmon.h>
 
-#define MONITORING_TIME 3
+#define MONITORING_TIME 2
 
 static hwmon_t       *chips;
 static uint           chips_count;
@@ -36,6 +36,7 @@ static state_t static_pool(void *data);
 static state_t static_monitor_init()
 {
     if (sus == NULL) {
+        debug("Subscription done");
         sus             = suscription();
         sus->call_main  = static_pool;
         sus->call_init  = NULL;
@@ -48,8 +49,10 @@ static state_t static_monitor_init()
 
 state_t energy_init(void **c)
 {
+    debug("energy_init");
     topology_init(&tp);
     if (tp.vendor == VENDOR_ARM && tp.model == MODEL_NEOVERSE_V2) {
+	debug("VENDOR_ARM && MODEL_NEOVERSE_V2");
         if (tp.socket_count > 1) {
             label = "Grace Power Socket"; // Energy is in micro Watts
         } else {
@@ -59,10 +62,13 @@ state_t energy_init(void **c)
         // By now, when "power_meter" is found with no label, it only has one
         // chip and one device (node manager), and returns the node consumption.
     }
+    debug("Using label:%s", label);
     if (state_fail(hwmon_open("power_meter", "power", label, &chips, &chips_count))) {
+	debug("hwmon_open for power_meter failed");
         return EAR_ERROR;
     }
     if ((items_count = hwmon_count_items(chips, "average", label)) == 0) {
+	debug("No items found");
         hwmon_close(&chips);
         return EAR_ERROR;
     }
@@ -84,6 +90,7 @@ static state_t static_read(ullong *value_uj)
     ullong aux;
     int i = 0;
 
+    debug("static_read");
     hwmon_read(chips);
     hwmon_calc_average(chips, NULL);
     timestamp_get(&ts);
@@ -110,6 +117,7 @@ static state_t static_read(ullong *value_uj)
 
 static state_t static_pool(void *data)
 {
+    debug("static_pool");
     while (pthread_mutex_trylock(&lock));
     static_read(energy_uj);
     if (data != NULL) {
@@ -173,3 +181,16 @@ uint energy_data_is_null(void *data)
 {
     return ((ullong *) data) == 0LLU;
 }
+
+state_t energy_not_privileged_init()
+{
+    return energy_init(NULL);
+}
+
+uint energy_is_privileged()
+{
+    // This function needs more robustness.
+    // We should call the static read and check state
+    return 0;
+}
+
