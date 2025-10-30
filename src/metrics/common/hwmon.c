@@ -263,9 +263,8 @@ state_t hwmon_open(char *chip_name, char *dev_type, char *label, hwmon_t *chips[
 void hwmon_close(hwmon_t **chips)
 {
     int c = 0; // c of chip
-    if (chips == NULL) {
-        return;
-    }
+    if ( chips == NULL) { return; }
+    if (*chips == NULL) { return; }
     hwmon_close_labels(*chips, NULL);
     while ((*chips)[c].devs != NULL && !(*chips)[c].is_null) {
         free((*chips)[c].devs);
