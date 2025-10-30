@@ -8,13 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - development Added flops to ZEN5.
+
+### Changed
+- development Updated AMD with changes for ZEN3, ZEN4 and ZEN5.
+
+## v6.0 - 2025-10-29
+
+### Added
 - v6.0 GPU GFLOPS field added in the EAR Database.
 - v6.0 Added quality of life functions to management/cpupow API.
 - v6.0 New API for reading metrics through Linux hwmon.
-- v6.0 NVIDIA Grace Hopper devices support.
+- v6.0 NVIDIA Grace Hopper and Grace Grace devices support.
 - v6.0 Added AdminUsers to provide more privileges than AuthorizedUsers.
 - v6.0 Added --force option to the erun command.
-- v6.0 Added a mechanism to dynamically increase the timeout window in msg_internals when a node connects but does not return data.
+- v6.0 Added a mechanism to dynamically increase the timeout window in msg\_internals when a node connects but does not return data.
 - v6.0 Added stall cycles to CPI API.
 - v6.0 Application CPU usage field added in the EAR Database.
 - v6.0 Temperature readings through Linux hwmon.
@@ -24,13 +31,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - v6.0 Added HSMP opening mode control.
 - v6.0 Added an option to ereport to query by user\_group.
 - v6.0 IPMI API
-- v6.0 Non-interactive version of the edb_create command.
+- v6.0 Non-interactive version of the edb\_create command.
 - v6.0 Now the topology module stores a socket index.
 - v6.0 Node sharing strategy added.
 - v6.0 Added non-computational power support to soft powercap.
 
 ### Changed
-- development Updated AMD with changes for ZEN3, ZEN4 and ZEN5.
 - v6.0 Renamed DBIP and DBSECIP in ear.conf to EARDBD\_IP and EARDBD\_MIRROR\_IP to better reflect what it is.
 - v6.0 Energy node API.
 - v6.0 EAR Loader improved.
@@ -56,7 +62,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Do not check DRAM power since it is not available on AMD.
   - Initialize all arrays before using them.
 - v6.0 Improving earl-eard connect to avoid blocking.
-- v6.0 Fixed socket count in acpi_power.
+- v6.0 Fixed socket count in acpi\_power.
+
+## 5.2.2 - 2025-10-23
+
+### Added
+
+- Default EAR Library strategy controlled through an environment variable.
+- Per-device setting support on missing powercap plugins.
+
+### Fixed
+
+- Fixed bad GFLOPS estimation in the loops\_average\_tool.
+- Fixed Intel MPI compatibility in EAR Loader.
 
 ## 5.2.1 - 2025-09-02
 
@@ -65,22 +83,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added averaging of power signatures.
 
 ### Changed
-- Updated powercap algorithms for gpu, cpu_generic. Using LEVEL_DOMAIN in set_powercap_value calls() in powercap_mgt.c.
+- Updated powercap algorithms for gpu, cpu\_generic. Using LEVEL\_DOMAIN in set\_powercap\_value calls() in powercap\_mgt.c.
+- `eacct` man page updated.
+- eacct '-c no_file' prints application header.
 
 ### Fixed
 - Updated the PACKAGE_VERSION in the configure.ac file
 - Add a missing ; in the application signature header csv
 - Fixed serialization/deserialization of authorized users, groups and accounts.
 - Fixed an error where eacct would average power consumed by multiple nodes of the application, instead of adding it.
-
-## 5.2.1 - 2025-09-02
-
-### Added
-- Added missing averaged values to eacct.
-- Added averaging of power signatures.
-
-### Changed
-- Updated powercap algorithms for gpu, cpu_generic. Using LEVEL_DOMAIN in set_powercap_value calls() in powercap_mgt.c.
 
 ### Fixed
 - Updated the PACKAGE_VERSION in the configure.ac file

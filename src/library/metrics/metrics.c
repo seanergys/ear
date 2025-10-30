@@ -483,6 +483,16 @@ void metrics_lib_reset()
     flops_unload();
 }
 
+static uint api_mode(uint master, uint eard, uint per_process)
+{
+	// If connected, return what's already selected
+	if (eards_connected() || !EARL_LIGHT) return eard;
+	// API_EARD means I'm master
+	if ((eard == API_EARD) && !eards_connected()) return API_FREE;
+	if ((eard == NO_EARD) && (per_process)) return API_FREE;
+	if ((eard == NO_EARD) && (!per_process)) return API_DUMMY;
+}
+
 static void metrics_static_init(topology_t *tp)
 {
     char buffer[SZ_BUFFER_EXTRA];
@@ -499,7 +509,8 @@ static void metrics_static_init(topology_t *tp)
     debug("temperature load");
     sa(temp_load(tp, eard));
     debug("energy_cpu_load");
-    sa(energy_cpu_load(tp, eard));
+    sa(energy_cpu_load(tp, api_mode(master, eard, 0)));
+
     debug("cpufreq_load");
     sa(cpufreq_load(tp, eard));
     debug("imcfreq_load");
