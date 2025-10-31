@@ -1515,7 +1515,7 @@ state_t serialize_cluster_conf(cluster_conf_t *conf, char **ear_conf_buf, size_t
     }
 
     /* Admin users */
-    serial_add_elem(&ear_conf_serial, (char *) conf->admin_users_count, sizeof(conf->admin_users_count));
+    serial_add_elem(&ear_conf_serial, (char *) &conf->admin_users_count, sizeof(conf->admin_users_count));
 
     for (uint admn = 0; admn < conf->admin_users_count; admn++) {
         uint size_auth = strlen(conf->admin_users[admn]);
