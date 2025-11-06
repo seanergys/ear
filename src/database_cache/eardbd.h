@@ -31,7 +31,7 @@
 
 #define EDB_NTYPES                    7
 #define EDB_MAX_CONNECTIONS           2048
-#define EDB_OFFLINE                   1 // Enable to test EARDBD in local
+#define EDB_OFFLINE                   0 // Enable to test EARDBD in local
 // These are the type of the events passed by sockets.
 #define EDB_TYPE_ENERGY_REP           1
 #define EDB_TYPE_APP_MPI              2

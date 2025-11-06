@@ -98,6 +98,7 @@ deploy-eardbd:
       alias: mariadb
   script:
     - $TESTDIR/scripts/create_db.sh ear-db ear-db/etc/ear/ear.conf
+    - ls -ltr ear-db/sbin/
     - $TESTDIR/scripts/deploy_eardbd.sh ear-db ear-db/etc
   artifacts:
     when: always
