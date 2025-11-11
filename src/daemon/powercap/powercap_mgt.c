@@ -783,7 +783,7 @@ state_t pmgt_get_powercap_value_per_device(uint domain, ulong *powercaps)
     if (domain >= NUM_DOMAINS || !domains_loaded[domain] || powercaps == NULL) {
         return EAR_ERROR;
     }
-    return freturn(pcsyms_fun[domain].get_powercap_value_per_device, powercaps);
+    return freturn(pcsyms_fun[domain].get_powercap_value, 0, powercaps);
 }
 
 uint pmgt_is_powercap_enabled(pwr_mgt_t *phandler, uint pid)

@@ -838,72 +838,6 @@ void powercap_end_job()
     pmgt_end_job(pcmgr);
 }
 
-uint powercap_get_actual_device_value(uint domain, uint device_id)
-{
-    state_t ret;
-    ulong  *actual_powercaps = NULL;
-    uint    num_devices      = 0;
-    uint    powercap_value   = 0;
-
-    if (pcmgr == NULL) {
-        debug("powercap_get_actual_device_value: powercap manager not initialized");
-        return 0;
-    }
-
-    if (domain >= NUM_DOMAINS) {
-        debug("powercap_get_actual_device_value: invalid domain %u", domain);
-        return 0;
-    }
-
-    switch (domain) {
-        case DOMAIN_CPU:
-            num_devices = stored_cpu_count;
-            break;
-        case DOMAIN_DRAM:
-            num_devices = stored_dram_count;
-            break;
-        case DOMAIN_GPU:
-#if USE_GPUS
-            num_devices = stored_gpu_count;
-#endif
-            break;
-        default:
-            debug("powercap_get_actual_device_value: unsupported domain %u", domain);
-            return 0;
-    }
-
-    if (num_devices == 0) {
-        debug("powercap_get_actual_device_value: no devices for domain %u", domain);
-        return 0;
-    }
-
-    if (device_id >= num_devices) {
-        debug("powercap_get_actual_device_value: invalid device_id %u for domain %u (num_devices: %u)", device_id,
-              domain, num_devices);
-        return 0;
-    }
-
-    actual_powercaps = calloc(num_devices, sizeof(ulong));
-    if (actual_powercaps == NULL) {
-        error("powercap_get_actual_device_value: failed to allocate memory for actual_powercaps");
-        return 0;
-    }
-
-    ret = pmgt_get_powercap_value_per_device(domain, actual_powercaps);
-
-    if (ret != EAR_SUCCESS) {
-        debug("powercap_get_actual_device_value: failed to get powercap for domain %u", domain);
-        powercap_value = 0;
-    } else {
-        powercap_value = actual_powercaps[device_id];
-    }
-
-    free(actual_powercaps);
-
-    debug("actual device powercap: domain=%u device=%u value=%u", domain, device_id, powercap_value);
-    return powercap_value;
-}
-
 uint powercap_get_stored_device_value(uint domain, uint device_id)
 {
     if (domain >= NUM_DOMAINS) {
@@ -949,20 +883,17 @@ uint powercap_get_stored_device_value(uint domain, uint device_id)
 
 state_t powercap_verify_device_values(uint domain)
 {
-    uint    device_count = 0;
-    uint    stored_value, actual_value;
-    state_t overall_result = EAR_SUCCESS;
-    int     mismatches     = 0;
+    uint     device_count = 0;
+    uint     stored_value;
+    state_t  overall_result = EAR_SUCCESS;
+    int      mismatches     = 0;
+    ulong   *actual_values  = NULL;
+    state_t  ret;
 
     if (!is_powercap_on(&my_pc_opt)) {
         debug("powercap_verify_device: powercap is disabled");
         return EAR_SUCCESS;
     }
-
-    // if (is_powercap_unlimited()) {
-    //     debug("powercap_verify_device: powercap is unlimited");
-    //     return EAR_SUCCESS;
-    // }
 
     if (domain >= NUM_DOMAINS) {
         debug("powercap_verify_device: invalid domain %u", domain);
@@ -996,9 +927,22 @@ state_t powercap_verify_device_values(uint domain)
         return EAR_SUCCESS;
     }
 
+    actual_values = calloc(device_count, sizeof(ulong));
+    if (actual_values == NULL) {
+        error("powercap_verify_device: failed to allocate memory for actual_values");
+        return EAR_ERROR;
+    }
+
+    ret = pmgt_get_powercap_value_per_device(domain, actual_values);
+    if (ret != EAR_SUCCESS) {
+        error("powercap_verify_device: failed to get actual values for domain %u", domain);
+        free(actual_values);
+        return EAR_ERROR;
+    }
+
     for (uint i = 0; i < device_count; i++) {
         stored_value = powercap_get_stored_device_value(domain, i);
-        actual_value = powercap_get_actual_device_value(domain, i);
+        uint actual_value = actual_values[i];
 
         if (actual_value == 0) {
             error("powercap_verify_device: failed to get actual value for domain %u device %u", domain, i);
@@ -1015,6 +959,8 @@ state_t powercap_verify_device_values(uint domain)
             overall_result = EAR_WARNING;
         }
     }
+
+    free(actual_values);
 
     if (mismatches == 0) {
         debug("powercap_verify_device: all device values match for domain %u", domain);
