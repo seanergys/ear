@@ -7,10 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- development Added flops to ZEN5.
+- development Secret key between EARDBD and EARDBD API.
 
 ### Changed
-- development Updated AMD with changes for ZEN3, ZEN4 and ZEN5.
+- development CPI, cache, temperature, flops, cpufreq, bandwidth, gpu and imcefreq APIs.
 
 ## v6.0 - 2025-10-29
 
