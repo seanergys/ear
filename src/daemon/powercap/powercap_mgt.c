@@ -117,7 +117,7 @@ static powercapsym_t pcsyms_fun[NUM_DOMAINS];
 
 static float security_range = 1.0;
 // static void *pcsyms_obj[NUM_DOMAINS] ={ NULL,NULL,NULL,NULL};
-const int pcsyms_n = 21; // Increased from 20 to 21
+const int pcsyms_n = 20;
 
 static suscription_t *sus[NUM_DOMAINS];
 
@@ -126,7 +126,6 @@ const char *pcsyms_names[] = {
     "disable",
     "set_powercap_value",
     "get_powercap_value",
-    "get_powercap_value_per_device",
     "is_powercap_policy_enabled",
     "set_status",
     "set_pc_mode",
@@ -778,7 +777,7 @@ state_t pmgt_get_powercap_value(pwr_mgt_t *phandler, uint pid, ulong *powercap)
 }
 
 /* Gets powercap per device in a specified domain */
-state_t pmgt_get_powercap_value_per_device(uint domain, ulong *powercaps)
+state_t pmgt_get_powercap_value_per_device(uint domain, uint *powercaps)
 {
     if (domain >= NUM_DOMAINS || !domains_loaded[domain] || powercaps == NULL) {
         return EAR_ERROR;
