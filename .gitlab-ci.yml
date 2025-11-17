@@ -6,8 +6,6 @@ workflow:
     - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
       when: never
     - if: $CI_COMMIT_BRANCH
-variables:
-  CI_DEBUG_SERVICES: "true"
 
 stages:          # List of stages for jobs, and their order of execution
   - build
@@ -20,7 +18,7 @@ compile-no-mpi-loader:
   stage: build
   script:
     # This script compiles, installs, and test the correctness of the installation
-    - $TESTDIR/compile_no_mpi_loader.sh
+    - $TESTDIR/build/compile_no_mpi_loader.sh
   artifacts:
     untracked: false
     when: on_success
@@ -37,9 +35,8 @@ compile-no-mpi:
 compile-mpi:
   stage: build
   script:
-    - export CONFIG_SITE="$TESTDIR/config-sites/config.ompi.site"
-    - MAKE_FEATURES="MPI_CFLAGS='$(pkgconf ompi-c --cflags)'" CONFIGURE_FLAGS="--prefix=$PWD/ear-ompi" $TESTDIR/compile.sh
-    - make install
+    # This script compiles, installs, and test the correctness of the installation
+    - $TESTDIR/build/compile_ompi.sh
   artifacts:
     when: on_success
     expire_in: 1 days
@@ -58,14 +55,6 @@ compile-mpi-mysql:
     expire_in: 1 days
     paths:
       - "ear-db"
-
-test-install-mpi:
-  stage: test
-  needs: [compile-mpi]
-  script:
-    - echo "Checking installation for OpenMPI installation"
-    - $TESTDIR/test_install.sh ear-ompi
-    - $TESTDIR/test_install_ompi.sh ear-ompi
 
 test-install-db:
   stage: test
@@ -126,7 +115,8 @@ deploy-eard:
 
 test-earl-mpi-lite:
   stage: test
-  needs: [compile-mpi, test-install-mpi]
+  needs: [compile-mpi]
+  timeout: 10 minutes
   script:
     - export PATH=$(pkgconf --variable=exec_prefix ompi-f90)/bin:$PATH
     - $TESTDIR/scripts/compile_nas.sh $TESTDIR/apps/NPB3.4.3/NPB3.4-MPI bt B
@@ -141,6 +131,7 @@ test-earl-mpi-lite:
 test-earl-omp-lite:
   stage: test
   needs: [compile-no-mpi-loader]
+  timeout: 10 minutes
   script:
     - $TESTDIR/scripts/compile_nas.sh $TESTDIR/apps/NPB3.4.3/NPB3.4-OMP bt B
     - export EAR_ETC=ear-no-mpi-loader/etc ; export EAR_INSTALL_PATH=ear-no-mpi-loader ; export EAR_TMP=/tmp ; export OMP_NUM_THREADS=2
@@ -154,6 +145,7 @@ test-earl-omp-lite:
 test-earl-mkl-lite:
   stage: test
   needs: [compile-no-mpi-loader]
+  timeout: 30 minutes
   script:
     # Install oneMKL and Intel compilers
     - |
