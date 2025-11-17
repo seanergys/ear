@@ -402,6 +402,10 @@ int32_t parse_range_list(const char *source, range_def_t **range_list)
             goto next;
         }
 
+        if (offset >= sizeof(current_range->prefix) - 1) {
+            error("Node prefix does not fit.");
+            return 0;
+        }
         current_range->prefix[offset] = *source;
         offset++;
 
