@@ -1542,6 +1542,7 @@ state_t serialize_cluster_conf(cluster_conf_t *conf, char **ear_conf_buf, size_t
     debug("serial + DB");
 
     /* Tags */
+    debug("Adding %u tags", conf->num_tags);
     serial_add_elem(&ear_conf_serial, (char *) &conf->num_tags, sizeof(conf->num_tags));
     if (conf->num_tags)
         serial_add_elem(&ear_conf_serial, (char *) conf->tags, sizeof(tag_t) * conf->num_tags);
@@ -1682,6 +1683,7 @@ state_t deserialize_cluster_conf(cluster_conf_t *conf, char *ear_conf_buf, size_
     /* Tags */
     serial_copy_elem(&ear_conf_serial, (char *) &conf->num_tags, NULL);
     if (conf->num_tags) {
+        debug("%u TAGS found ", conf->num_tags);
         conf->tags = calloc(sizeof(tag_t), conf->num_tags);
         serial_copy_elem(&ear_conf_serial, (char *) conf->tags, NULL);
     }
