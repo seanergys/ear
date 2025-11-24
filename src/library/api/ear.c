@@ -281,7 +281,7 @@ static state_t earl_log_backup(char *pathname, size_t pathname_size);
 static state_t check_eard_earl_compatibility(state_t eard_connect_state, eard_state_t *eard_conf)
 {
     state_t st = EAR_SUCCESS;
-    version_set(eard_conf, VERSION_MAJOR, 0);
+    version_set(&eard_conf->version, VERSION_MAJOR, 0);
     if (state_fail(eard_connect_state)) {
         return EAR_ERROR;
     }
