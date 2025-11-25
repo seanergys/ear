@@ -375,9 +375,9 @@ const metrics_gpus_t *metrics_gpus_get(uint api)
             return &mgt_gpu;
         case MET_GPU:
             // The other parameters are not used
-            _met_gpu.api          = met_gpu.api;
-            _met_gpu.ok           = met_gpu.ok;
-            _met_gpu.devs_count   = met_gpu.devs_count;
+            _met_gpu.api        = met_gpu.api;
+            _met_gpu.ok         = met_gpu.ok;
+            _met_gpu.devs_count = met_gpu.devs_count;
             return &_met_gpu;
         default:
             return NULL;
@@ -485,29 +485,23 @@ void metrics_lib_reset()
 
 static uint api_mode(uint master, uint eard, uint per_process)
 {
-	// If connected, return what's already selected
-	if (eards_connected() || !EARL_LIGHT) return eard;
-	// API_EARD means I'm master
-	if ((eard == API_EARD) && !eards_connected()) return API_FREE;
-	if ((eard == NO_EARD) && (per_process)) return API_FREE;
-	if ((eard == NO_EARD) && (!per_process)) return API_DUMMY;
-}
-
-static uint api_mode(uint master, uint eard, uint per_process)
-{
-	// If connected, return what's already selected
-	if (eards_connected() || !EARL_LIGHT) return eard;
-	// API_EARD means I'm master
-	if ((eard == API_EARD) && !eards_connected()) return API_FREE;
-	if ((eard == NO_EARD) && (per_process)) return API_FREE;
-	if ((eard == NO_EARD) && (!per_process)) return API_DUMMY;
+    // If connected, return what's already selected
+    if (eards_connected() || !EARL_LIGHT)
+        return eard;
+    // API_EARD means I'm master
+    if ((eard == API_EARD) && !eards_connected())
+        return API_FREE;
+    if ((eard == NO_EARD) && (per_process))
+        return API_FREE;
+    if ((eard == NO_EARD) && (!per_process))
+        return API_DUMMY;
 }
 
 static void metrics_static_init(topology_t *tp)
 {
     char buffer[SZ_BUFFER_EXTRA];
 
-    #define sa(function) function;
+#define sa(function) function;
 
     master = (masters_info.my_master_rank >= 0);
     eard   = ((master) ? API_EARD : NO_EARD);
@@ -576,14 +570,14 @@ static void metrics_static_init(topology_t *tp)
     sa(mgt_cpufreq_get_api(&mgt_cpufreq.api));
     sa(mgt_imcfreq_get_api(&mgt_imcfreq.api));
     sa(mgt_cpuprio_get_api(&mgt_cpuprio.api));
-     sa(energy_cpu_get_api(&met_energy.api));
+    sa(energy_cpu_get_api(&met_energy.api));
 
     cpufreq_get_info(&met_cpufreq);
     imcfreq_get_info(&met_imcfreq);
-     bwidth_get_info(&met_bwidth );
-      flops_get_info(&met_flops  );
-       temp_get_info(&met_temp   );
-        cpi_get_info(&met_cpi    );
+    bwidth_get_info(&met_bwidth);
+    flops_get_info(&met_flops);
+    temp_get_info(&met_temp);
+    cpi_get_info(&met_cpi);
 
     debug("CPU APIs ready");
     if (met_cpufreq.api == API_DUMMY)
@@ -600,8 +594,6 @@ static void metrics_static_init(topology_t *tp)
     mgt_gpu_get_api(&mgt_gpu.api);
     gpu_get_info(&met_gpu);
 
-
-
 #if USE_CUPTI
     if (read_cupti_metrics) {
         gpuproc_get_api(&proc_gpu.api);
@@ -615,12 +607,12 @@ static void metrics_static_init(topology_t *tp)
     mgt_cpuprio.ok = (mgt_cpuprio.api > API_DUMMY);
     met_cpufreq.ok = (met_cpufreq.api > API_DUMMY);
     met_imcfreq.ok = (met_imcfreq.api > API_DUMMY);
-    met_bwidth.ok  = (met_bwidth.api  > API_DUMMY);
-    met_energy.ok  = (met_energy.api  > API_DUMMY);
+    met_bwidth.ok  = (met_bwidth.api > API_DUMMY);
+    met_energy.ok  = (met_energy.api > API_DUMMY);
     met_cache.ok   = 1;
     met_flops.ok   = 1;
-    met_temp.ok    = (met_temp.api    > API_DUMMY);
-    met_cpi.ok     = (met_cpi.api     > API_DUMMY);
+    met_temp.ok    = (met_temp.api > API_DUMMY);
+    met_cpi.ok     = (met_cpi.api > API_DUMMY);
 
 #if USE_GPUS
     mgt_gpu.ok = (mgt_gpu.api > API_DUMMY);
@@ -675,7 +667,7 @@ static void metrics_static_init(topology_t *tp)
     // Count
     sa(mgt_cpufreq_count_devices(no_ctx, &mgt_cpufreq.devs_count));
     sa(mgt_imcfreq_count_devices(no_ctx, &mgt_imcfreq.devs_count));
-     sa(energy_cpu_count_devices(no_ctx, &met_energy.devs_count));
+    sa(energy_cpu_count_devices(no_ctx, &met_energy.devs_count));
 
 #if USE_GPUS
     sa(mgt_gpu_count_devices(no_ctx, &mgt_gpu.devs_count));
@@ -733,11 +725,11 @@ static void metrics_static_init(topology_t *tp)
         apis_print(mgt_cpuprio.api, "MGT_PRIO   : ");
         apis_print(met_cpufreq.api, "MET_CPUFREQ: ");
         apis_print(met_imcfreq.api, "MET_IMCFREQ: ");
-        apis_print(met_energy.api , "MET_ENERGY : ");
-        apis_print(met_bwidth.api , "MET_BWIDTH : ");
-        apis_print(met_flops.api  , "MET_FLOPS  : ");
-        apis_print(met_temp.api   , "MET_TEMP:    ");
-        apis_print(met_cpi.api    , "MET_CPI    : ");
+        apis_print(met_energy.api, "MET_ENERGY : ");
+        apis_print(met_bwidth.api, "MET_BWIDTH : ");
+        apis_print(met_flops.api, "MET_FLOPS  : ");
+        apis_print(met_temp.api, "MET_TEMP:    ");
+        apis_print(met_cpi.api, "MET_CPI    : ");
 #if USE_GPUS
         apis_print(mgt_gpu.api, "MGT_GPU    : ");
 #if USE_CUPTI
