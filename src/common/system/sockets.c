@@ -10,17 +10,17 @@
 
 // #define SHOW_DEBUGS 1
 
-#include <time.h>
-#include <errno.h>
-#include <stdio.h>
-#include <fcntl.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <pthread.h>
-#include <sys/types.h>
 #include <common/output/debug.h>
 #include <common/system/sockets.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
+#include <time.h>
+#include <unistd.h>
 
 static pthread_mutex_t lock_send = PTHREAD_MUTEX_INITIALIZER;
 
@@ -218,35 +218,37 @@ state_t sockets_close_fd(int fd)
 
 static state_t static_send(int fd, char *data, size_t size)
 {
-	ssize_t bytes_left = (ssize_t) size;
-	ssize_t bytes_sent = 0;
-	int flags;
-	// Better return an error than receive a signal.
-	flags = MSG_NOSIGNAL;
-	// In the near future, it will be better to include a non-blocking
-	// implementation with a controlled retry system.
-	while(bytes_left > 0) {
-		// TCP protocol
-		if ((bytes_sent = send(fd, data + bytes_sent, bytes_left, flags)) < 0) {
-			debug("fd '%d', %ld to add to %ld/%ld (errno: %d, strerrno: %s)",
-				  fd, bytes_sent, size - bytes_left, size, errno, strerror(errno));
-			switch (bytes_sent) {
-				case ENETUNREACH:
-				case ENETDOWN:
-				case ECONNRESET:
-				case ENOTCONN:
-				case EPIPE:
-				case EDESTADDRREQ:
-					return_msg(EAR_SOCK_DISCONNECTED, strerror(errno));
-				case EAGAIN:
-					return_msg(EAR_NOT_READY, strerror(errno));
-				default:
-					return_msg(EAR_ERROR, strerror(errno));
-			}
-		}
-		bytes_left -= bytes_sent;
-	}
-	return EAR_SUCCESS;
+    ssize_t bytes_left = (ssize_t) size;
+    ssize_t bytes_sent = 0;
+    int flags;
+    // Better return an error than receive a signal.
+    flags = MSG_NOSIGNAL;
+    // In the near future, it will be better to include a non-blocking
+    // implementation with a controlled retry system.
+    while (bytes_left > 0) {
+        // TCP protocol
+        if ((bytes_sent = send(fd, data + bytes_sent, bytes_left, flags)) < 0) {
+            debug("fd '%d', %ld to add to %ld/%ld (errno: %d, strerrno: %s)", fd, bytes_sent, size - bytes_left, size,
+                  errno, strerror(errno));
+            switch (errno) {
+                case ENETUNREACH:
+                case ENETDOWN:
+                case ECONNRESET:
+                case ENOTCONN:
+                case EPIPE:
+                case EDESTADDRREQ:
+                    return_msg(EAR_ERROR, strerror(errno));
+                case EAGAIN:
+                    return_msg(EAR_NOT_READY, strerror(errno));
+                default:
+                    return_msg(EAR_ERROR, strerror(errno));
+            }
+        } else if (bytes_sent == 0) {
+            return_msg(EAR_ERROR, "Disconnected");
+        }
+        bytes_left -= bytes_sent;
+    }
+    return EAR_SUCCESS;
 }
 
 static state_t static_unlock(state_t s)
@@ -283,66 +285,72 @@ state_t sockets_send(int fd, uint type, char *data, size_t size, ullong extra)
 
 static state_t static_recv(int fd, char *buffer, ssize_t size, int block)
 {
-	ssize_t bytes_left = size;
-	ssize_t bytes_recv = 0;
-	ssize_t bytes_acum = 0;
-	int intents        = 0;
-	int flags          = 0;
+    ssize_t bytes_left = size;
+    ssize_t bytes_recv = 0;
+    ssize_t bytes_acum = 0;
+    int intents        = 0;
+    int flags          = 0;
 
-	if (!block) {
-		flags = MSG_DONTWAIT;
-	}
-	while (bytes_left > 0) {
-		//
-		if ((bytes_recv = recv(fd, (void *) &buffer[bytes_acum], bytes_left, flags)) == 0) {
-			return_msg(EAR_ERROR, "Disconnected from socket");
-		}
-		else if (bytes_recv < 0) {
-			debug("fd '%d', %ld to add to %ld/%ld (intent: %d, errno: %d, strerrno: %s)",
-				  fd, bytes_recv, size - bytes_left, size, intents, errno, strerror(errno));
-			switch (errno) {
-				case ENOTCONN:
-				case ETIMEDOUT:
-				case ECONNRESET:
-                    return_msg(EAR_SOCK_DISCONNECTED, strerror(errno));
-					break;
-				case EINVAL: // Not sure about this
-				case EAGAIN:
-					if (!block && intents < NON_BLOCK_TRYS) {
-						intents += 1;
-					} else {
+    if (!block) {
+        flags = MSG_DONTWAIT;
+    }
+    while (bytes_left > 0) {
+        //
+        if ((bytes_recv = recv(fd, (void *) &buffer[bytes_acum], bytes_left, flags)) < 0) {
+            debug("fd '%d', %ld to add to %ld/%ld (intent: %d, errno: %d, strerrno: %s)", fd, bytes_recv,
+                  size - bytes_left, size, intents, errno, strerror(errno));
+            switch (errno) {
+                case ENOTCONN:
+                case ETIMEDOUT:
+                case ECONNRESET:
+                    return_msg(EAR_ERROR, strerror(errno));
+                    break;
+                case EINVAL: // Not sure about this
+                case EAGAIN:
+                    if (!block && intents < NON_BLOCK_TRYS) {
+                        intents += 1;
+                    } else {
                         return_msg(EAR_TIMEOUT, strerror(errno));
-					}
-					break;
-				default:
-					return_msg(EAR_ERROR, strerror(errno));
-			}
-		} else {
-			bytes_acum += bytes_recv;
-			bytes_left -= bytes_recv;
-		}
-	}
-	return EAR_SUCCESS;
+                    }
+                    break;
+                default:
+                    return_msg(EAR_ERROR, strerror(errno));
+            }
+        } else if (bytes_recv == 0) {
+            return_msg(EAR_ERROR, "Disconnected");
+        }
+        bytes_acum += bytes_recv;
+        bytes_left -= bytes_recv;
+    }
+    return EAR_SUCCESS;
 }
 
 state_t sockets_recv_header(int fd, uint *type, size_t *size, ullong *extra, uint block)
 {
-	state_t s = EAR_SUCCESS;
-	struct header_s {
-		size_t size;
-		ullong extra;
-		uint type;
-	} header;
-	// Initializing data
-	header.type  = 0;
-	header.size  = 0;
-	header.extra = 0;
-	// Receiving header
-	s = static_recv(fd, (char *) &header, sizeof(header), block);
-	if (type  != NULL) { *type  = header.type;  }
-	if (size  != NULL) { *size  = header.size;  }
-	if (extra != NULL) { *extra = header.extra; }
-	return s;
+    state_t s = EAR_SUCCESS;
+
+    struct header_s {
+        size_t size;
+        ullong extra;
+        uint type;
+    } header;
+
+    // Initializing data
+    header.type  = 0;
+    header.size  = 0;
+    header.extra = 0;
+    // Receiving header
+    s = static_recv(fd, (char *) &header, sizeof(header), block);
+    if (type != NULL) {
+        *type = header.type;
+    }
+    if (size != NULL) {
+        *size = header.size;
+    }
+    if (extra != NULL) {
+        *extra = header.extra;
+    }
+    return s;
 }
 
 state_t sockets_recv(int fd, char *data, size_t size, uint block)
