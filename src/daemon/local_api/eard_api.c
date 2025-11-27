@@ -54,6 +54,10 @@
 
 #define FDS_FILENAME          ".eard_connection_info"
 
+#ifndef TEST
+#define TEST 0
+#endif
+
 static int connecting = 0;
 
 /* These pipes are used for local communication between ear library and eard */
@@ -134,10 +138,13 @@ int eards_read(int fd, char *buff, int size, uint wait_mode)
     to_recv         = size;
 
     long int max_ms = 500;
-    char *max_ms_c  = ear_getenv("EARD_API_TIMEOUT_MS");
-    if (max_ms_c) {
-        // No error checking needed since it will not go into production.
-        max_ms = atol(max_ms_c);
+    /* A modern compiler is smart enough to discard below code. */
+    if (TEST) {
+        char *max_ms_c = ear_getenv("EARD_API_TIMEOUT_MS");
+        if (max_ms_c) {
+            // No error checking needed since it will not go into production.
+            max_ms = atol(max_ms_c);
+        }
     }
 
     uint try_usleep_usecs = 5000; // The sleep time per try
@@ -200,10 +207,13 @@ int eards_write(int fd, char *buff, int size)
     to_send         = size;
 
     long int max_ms = 500;
-    char *max_ms_c  = ear_getenv("EARD_API_TIMEOUT_MS");
-    if (max_ms_c) {
-        // No error checking needed since it will not go into production.
-        max_ms = atol(max_ms_c);
+    /* A modern compiler is smart enough to discard below code. */
+    if (TEST) {
+        char *max_ms_c = ear_getenv("EARD_API_TIMEOUT_MS");
+        if (max_ms_c) {
+            // No error checking needed since it will not go into production.
+            max_ms = atol(max_ms_c);
+        }
     }
 
     uint try_usleep_usecs = 5000; // The sleep time per try
