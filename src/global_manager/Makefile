@@ -14,7 +14,6 @@ comm_BINS = \
     $(SRCDIR)/common/libdb.a \
 	$(SRCDIR)/report/report.o \
     $(SRCDIR)/common/libcommon.a 
-	
 
 
 eargmd_OBJS = \
@@ -33,6 +32,8 @@ eargmd_BINS = \
     eargmd
 endif
 endif
+
+LDFLAGS += $(OPENSSL_LDFLAGS)
 
 ######## RULES
 
