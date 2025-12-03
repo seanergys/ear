@@ -114,8 +114,8 @@ static int eards_open(char *path, int flags, int *ear_fd_req, uint max_tries)
             tries++;
         else if (fd >= 0)
             connected = 1;
-	else
-		break;
+        else
+            break;
         if ((max_tries > 1) && (!connected))
             usleep(5000);
     } while ((tries < max_tries) && !connected);
@@ -541,8 +541,7 @@ void eards_connection_failure()
 
 void eards_new_process_disconnect()
 {
-// This function closes the EARD fd for new processes to connect again
-#warning "This part is pending to be tested"
+    // This function closes the EARD fd for new processes to connect again
     close(ear_fd_req);
     close(ear_fd_req_global);
     close(ear_fd_ack);
