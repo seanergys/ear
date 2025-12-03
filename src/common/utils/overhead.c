@@ -10,48 +10,57 @@
 
 // #define SHOW_DEBUGS 1
 
+#define _GNU_SOURCE
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
 #include <common/output/debug.h>
 #include <common/output/verbose.h>
 #include <common/system/time.h>
 #include <common/utils/overhead.h>
 #include <common/utils/strtable.h>
-#include <unistd.h>
 
 #define N_QUEUE 256
 
+// clang-format off
 typedef struct ohdata_s {
-    const char *description;
-    timestamp_t wall_start;
-    timestamp_t wall_stop;
-    double wall_accum; // us
-    double wall_max;   // us
-    double wall_min;   // us
-    double wall_last;
-    clock_t cpu_start;
-    clock_t cpu_stop;
-    double cpu_accum;
-    double cpu_last;
-    ullong call_count;
-    uint active;
+    const char  *description;
+    timestamp_t  wall_start;
+    timestamp_t  wall_stop;
+    double       wall_accum; // us
+    double       wall_max;   // us
+    double       wall_min;   // us
+    double       wall_last;
+    clock_t      cpu_start;
+    clock_t      cpu_stop;
+    double       cpu_accum;
+    double       cpu_last;
+    ullong       call_count;
+    uint         enabled;
 } ohdata_t;
 
 static timestamp_t global_wall_start;
-static clock_t global_cpu_start;
-static ohdata_t queue[N_QUEUE];
-static uint queue_last;
-static uint init;
-static strtable_t st;
+static clock_t     global_cpu_start;
+static ohdata_t    queue[N_QUEUE];
+static uint        queue_last;
+static uint        init;
+static strtable_t  st;
+// clang-format on
 
 void overhead_getwall(timestamp *ts)
 {
     timestamp_getprecise(ts);
 }
 
-void overhead_suscribe(const char *description, uint *id)
+void overhead_subscribe(const char *description, uint *id)
 {
-#if !ENABLE_OVERHEAD
+    char *environment_control = NULL;
+    int enable = 0;
+
+    #if !ENABLE_OVERHEAD
     return;
-#endif
+    #endif
+
     if (!init) {
         // Formatting report table
         tprintf_init2(&st, verb_channel, STR_MODE_DEF, "10 14 14 14 14 14 14 14 14 14 32");
@@ -60,19 +69,26 @@ void overhead_suscribe(const char *description, uint *id)
         global_cpu_start = clock();
         init             = 1;
     }
-
+    if ((environment_control = getenv("EAR_OVERHEAD_ENABLE")) != NULL) {
+        if (strcasestr(environment_control, "all") || strcasestr(environment_control, description)) {
+            enable = 1;
+        }
+    }
     *id                    = queue_last;
     queue[*id].description = description;
     queue[*id].call_count  = 0;
-    queue[*id].active      = 1;
+    queue[*id].enabled     = enable;
     queue_last++;
 }
 
 void overhead_start(uint id)
 {
-#if !ENABLE_OVERHEAD
+    #if !ENABLE_OVERHEAD
     return;
-#endif
+    #endif
+    if (!queue[id].enabled) {
+        return;
+    }
     queue[id].cpu_start = clock();
     overhead_getwall(&queue[id].wall_start);
 }
@@ -81,9 +97,13 @@ void overhead_stop(uint id)
 {
     double wall;
     double cpu;
-#if !ENABLE_OVERHEAD
+
+    #if !ENABLE_OVERHEAD
     return;
-#endif
+    #endif
+    if (!queue[id].enabled) {
+        return;
+    }
     overhead_getwall(&queue[id].wall_stop);
     queue[id].cpu_stop = clock();
     // Differences
@@ -92,23 +112,31 @@ void overhead_stop(uint id)
     // Accums
     queue[id].call_count += 1;
     queue[id].wall_accum += wall;
-    queue[id].wall_last = wall;
-    queue[id].cpu_accum += cpu;
-    queue[id].cpu_last = cpu;
+    queue[id].wall_last   = wall;
+    queue[id].cpu_accum  += cpu;
+    queue[id].cpu_last    = cpu;
     // Min max
-    if (queue[id].wall_min == 0)
-        queue[id].wall_min = wall;
-    if (wall > queue[id].wall_max)
-        queue[id].wall_max = wall;
-    if (wall < queue[id].wall_min)
-        queue[id].wall_min = wall;
+    if (queue[id].wall_min == 0)   queue[id].wall_min = wall;
+    if (wall > queue[id].wall_max) queue[id].wall_max = wall;
+    if (wall < queue[id].wall_min) queue[id].wall_min = wall;
+}
+
+static int check_if_enabled()
+{
+    int id;
+    for (id = 0; id < queue_last; ++id) {
+        if (queue[id].enabled) {
+            return 1;
+        }
+    }
+    return 0;
 }
 
 void overhead_report(int print_header)
 {
-#if !ENABLE_OVERHEAD
+    #if !ENABLE_OVERHEAD
     return;
-#endif
+    #endif
     double global_wall_secs;
     double global_cpu_secs;
     double wall_last_msecs;
@@ -125,16 +153,27 @@ void overhead_report(int print_header)
     double cpu_percent;
     int id;
 
+    // Check at least one element is enabled
+    for (id = 0; id < queue_last; ++id) {
+        if (queue[id].enabled) {
+            break;
+        }
+    }
+    if (id >= queue_last) {
+        return;
+    }
+    // Calculating global time (the time between the initialization and now)
     global_wall_secs = ((double) timestamp_diffnow(&global_wall_start, TIME_USECS)) / 1000000.0;
     global_cpu_secs  = ((double) (clock() - global_cpu_start)) / ((double) CLOCKS_PER_SEC);
-
     if (print_header) {
         overhead_print_header();
     }
-
-    tprintf2(&st, "-||%0.3lf s||-||-||-||-||-|||%0.3lf s||-||-|||global", global_wall_secs, global_cpu_secs);
-
+    tprintf2(&st, "-||%0.3lf s||-||-||-||-||-|||%0.3lf s||-||-|||global",
+        global_wall_secs, global_cpu_secs);
     for (id = 0; id < queue_last; ++id) {
+        if (!queue[id].enabled) {
+            continue;
+        }
         wall_msecs      = queue[id].wall_accum / 1000.0;
         wall_secs       = wall_msecs / 1000.0;
         wall_last_msecs = queue[id].wall_last / 1000.0;
@@ -155,22 +194,20 @@ void overhead_report(int print_header)
         // if (percent_clock > 100.0) {
         //     percent_clock = 0.0;
         // }
-
-        tprintf2(&st,
-                 "%llu||%0.3lf s||%0.3lf ms||%0.3lf ms||%0.3lf ms||%0.3lf ms||%0.2lf %%|||%0.3lf s||%0.3lf ms||%0.2lf "
-                 "%%|||%s",
-                 queue[id].call_count, wall_secs, wall_call_msecs, wall_last_msecs, wall_max_msecs, wall_min_msecs,
-                 wall_percent, cpu_secs, cpu_call_msecs, cpu_percent, queue[id].description);
+        // clang-format off
+        tprintf2(&st,"%llu||%0.3lf s||%0.3lf ms||%0.3lf ms||%0.3lf ms||%0.3lf ms||%0.2lf %%|||%0.3lf s||%0.3lf ms||%0.2lf %%|||%s",
+            queue[id].call_count, wall_secs, wall_call_msecs, wall_last_msecs, wall_max_msecs, wall_min_msecs, wall_percent,
+            cpu_secs, cpu_call_msecs, cpu_percent, queue[id].description);
+        // clang-format on
     }
 }
 
 void overhead_print_header()
 {
-    // cpu/#calls %%cpu
-    tprintf2(&st, "#calls||wall accum||wall/#calls||wall last||wall max||wall min||%%wall time|||cpu "
-                  "accum||cpu/#calls||%%cpu time|||description");
-    tprintf2(&st, "------||----------||-----------||---------||--------||--------||----------|||---------||----------||"
-                  "---------|||-----------");
+    // clang-format off
+    tprintf2(&st, "#calls||wall accum||wall/#calls||wall last||wall max||wall min||%%wall time|||cpu accum||cpu/#calls||%%cpu time|||description");
+    tprintf2(&st, "------||----------||-----------||---------||--------||--------||----------|||---------||----------||---------|||-----------");
+    // clang-format on
 }
 
 #if TEST
@@ -181,9 +218,9 @@ int main(int argc, char *argv[])
     uint id3;
     int i;
 
-    overhead_suscribe("CPUFreq read", &id1);
-    overhead_suscribe("PIPE communication", &id2);
-    overhead_suscribe("GPU read", &id3);
+    overhead_subscribe("CPUFreq read", &id1);
+    overhead_subscribe("PIPE communication", &id2);
+    overhead_subscribe("GPU read", &id3);
 
     for (i = 0; i < 2; ++i) {
         overhead_start(id1);
@@ -196,7 +233,7 @@ int main(int argc, char *argv[])
         sleep(1);
         overhead_stop(id3);
     }
-    overhead_report();
+    overhead_report(1);
     return 0;
 }
 #endif

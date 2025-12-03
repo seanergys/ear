@@ -56,7 +56,7 @@ dummy:
     // Saving some additional data
     bwidth_get_info(&info);
     line_size = (double) tp->cache_line_size;
-    overhead_suscribe("metrics/bandwidth", &oid);
+    overhead_subscribe("metrics/bandwidth", &oid);
 leave:
     pthread_mutex_unlock(&lock);
 }
