@@ -71,6 +71,8 @@ FREEIPMI_LDFLAGS   = @FREEIPMI_LDFLAGS@
 DLB_LIBS           = @DLB_LIBS@
 DLB_CPPFLAGS       = @DLB_CPPFLAGS@
 DLB_LDFLAGS        = @DLB_LDFLAGS@
+OPENSSL_BASE       = @OPENSSL_BASE@
+OPENSSL_LDFLAGS    = @OPENSSL_LDFLAGS@
 # Installation directories and options
 ROOTDIR            = $(shell pwd)
 SRCDIR             = $(ROOTDIR)/src
@@ -81,7 +83,7 @@ datarootdir        = @datarootdir@
 DOCDIR             = @docdir@
 CHOWN_USR          = @USER@
 CHOWN_GRP          = @GROUP@
-CONSTANTS          = -DSEC_KEY=10001 -DESTIMATE_PERF=0 -DSYSTEM_TYPE=@SYSTEM_TYPE@ -DUSE_PVC_HWMON=@USE_PVC_HWMON@
+CONSTANTS          = -DSEC_KEY=10001 -DESTIMATE_PERF=0 -DSYSTEM_TYPE=@SYSTEM_TYPE@ -DUSE_PVC_HWMON=@USE_PVC_HWMON@ @OPENSSL_CONSTANT@
 REPLACE            =
 
 ######## EXPORTS

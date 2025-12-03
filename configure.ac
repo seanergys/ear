@@ -18,6 +18,7 @@ m4_include([m4/ac_oar.m4])
 m4_include([m4/ac_gsl.m4])
 m4_include([m4/ac_dlb.m4])
 m4_include([m4/ac_countdown.m4])
+m4_include([m4/ac_openssl.m4])
 
 # INIT
 AC_PREREQ([2.69])
@@ -71,6 +72,7 @@ X_AC_SLURM
 X_AC_OAR
 X_AC_PBS
 X_AC_DLB
+X_AC_OPENSSL
 X_AC_COUNTDOWN
 
 #################
