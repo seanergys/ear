@@ -1357,7 +1357,7 @@ static void _free_island_contents(node_island_t *is)
 
 void remove_islands_by_tag(cluster_conf_t conf[static 1], const char *tag)
 {
-    if (conf == NULL || tag == NULL)
+    if (tag == NULL)
         return;
     debug("Removing node with earmg different than %s", tag);
 
@@ -1413,7 +1413,7 @@ void remove_islands_by_tag(cluster_conf_t conf[static 1], const char *tag)
 
 void remove_islands_by_eargm(cluster_conf_t conf[static 1], eargm_def_t *e_def)
 {
-    if (conf == NULL || e_def == NULL)
+    if (e_def == NULL)
         return;
     debug("Removing node with earmg different than %d", e_def->id);
 
@@ -1441,8 +1441,6 @@ void remove_islands_by_eargm(cluster_conf_t conf[static 1], eargm_def_t *e_def)
 
 void remove_islands_by_island_id(cluster_conf_t conf[static 1], int32_t id)
 {
-    if (conf == NULL)
-        return;
     debug("Removing nodes with island id different than %d", id);
 
     int i;
@@ -1652,7 +1650,7 @@ state_t deserialize_cluster_conf(cluster_conf_t *conf, char *ear_conf_buf, size_
     /* Admin users: Just available since v6.0 */
     version_t admusr_min_v;
     version_set(&admusr_min_v, 6, 0);
-    if (version_is(VERSION_GE, src_version, &admusr_min_v)) {
+    if (version_is(VERSION_GE, (version_t *) src_version, &admusr_min_v)) {
         serial_copy_elem(&ear_conf_serial, (char *) &conf->admin_users_count, NULL);
         if (conf->admin_users_count) {
             conf->admin_users = calloc(sizeof(char *), conf->admin_users_count);
