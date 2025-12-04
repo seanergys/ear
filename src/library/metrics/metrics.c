@@ -252,17 +252,17 @@ static bwidth_t *bwidth_read1[2];
 static bwidth_t *bwidth_read2[2];
 static bwidth_t *bwidth_diff[2];
 static ullong bwidth_cas[2];
-static flops_t flops_read1[2];
-static flops_t flops_read2[2];
-static flops_t flops_diff[2];
+static flops_t *flops_read1[2];
+static flops_t *flops_read2[2];
+static flops_t *flops_diff[2];
 static cache_t cache_read1[2];
 static cache_t cache_read2[2];
 static cache_t cache_diff[2];
 static char cache_description[1024];
 static double cache_bwidth[2];
-static cpi_t cpi_read1[2];
-static cpi_t cpi_read2[2];
-static cpi_t cpi_diff[2];
+static cpi_t *cpi_read1[2];
+static cpi_t *cpi_read2[2];
+static cpi_t *cpi_diff[2];
 static double cpi_avrg[2];
 #if USE_GPUS
 static gpu_t *gpu_metrics_read1[2];
@@ -522,11 +522,11 @@ static void metrics_static_init(topology_t *tp)
     debug("bwidth_load");
     sa(bwidth_load(tp, eard));
     debug("flops_load");
-    sa(flops_load(tp, eard));
+    sa(flops_load(tp, SCOPE_PROCESS));
     debug("cache_load");
     sa(cache_load(tp, eard));
     debug("cpi_load");
-    sa(cpi_load(tp, eard));
+    sa(cpi_load(tp, SCOPE_PROCESS));
     sa(mgt_cpuprio_load(tp, eard));
 
 #if USE_GPUS
@@ -753,6 +753,20 @@ static void metrics_static_init(topology_t *tp)
     imcfreq_data_alloc(&imcfreq_read2[0], &imcfreq_diff[0]);
     imcfreq_data_alloc(&imcfreq_read2[1], &imcfreq_diff[1]);
 
+    bwidth_data_alloc(&bwidth_read1[0]);
+    bwidth_data_alloc(&bwidth_read1[1]);
+    bwidth_data_alloc(&bwidth_read2[0]);
+    bwidth_data_alloc(&bwidth_read2[1]);
+    bwidth_data_alloc(&bwidth_diff[0]);
+    bwidth_data_alloc(&bwidth_diff[1]);
+
+    flops_data_alloc(&flops_read1[LOO]);
+    flops_data_alloc(&flops_read1[APP]);
+    flops_data_alloc(&flops_read2[LOO]);
+    flops_data_alloc(&flops_read2[APP]);
+    flops_data_alloc(&flops_diff[LOO]);
+    flops_data_alloc(&flops_diff[APP]);
+
     temp_data_alloc(&temp_read1[LOO]);
     temp_data_alloc(&temp_read1[APP]);
     temp_data_alloc(&temp_read2[LOO]);
@@ -760,12 +774,12 @@ static void metrics_static_init(topology_t *tp)
     temp_data_alloc(&temp_diff[LOO]);
     temp_data_alloc(&temp_diff[APP]);
 
-    bwidth_data_alloc(&bwidth_read1[0]);
-    bwidth_data_alloc(&bwidth_read1[1]);
-    bwidth_data_alloc(&bwidth_read2[0]);
-    bwidth_data_alloc(&bwidth_read2[1]);
-    bwidth_data_alloc(&bwidth_diff[0]);
-    bwidth_data_alloc(&bwidth_diff[1]);
+    cpi_data_alloc(&cpi_read1[LOO]);
+    cpi_data_alloc(&cpi_read1[APP]);
+    cpi_data_alloc(&cpi_read2[LOO]);
+    cpi_data_alloc(&cpi_read2[APP]);
+    cpi_data_alloc(&cpi_diff[LOO]);
+    cpi_data_alloc(&cpi_diff[APP]);
 
 #if USE_GPUS
     gpu_data_alloc(&gpu_metrics_read1[LOO]);
@@ -958,20 +972,20 @@ static void metrics_global_start()
     /* To be used in partial_start */
     bwidth_data_copy(bwidth_read2[LOO], bwidth_read1[APP]);
 
-    flops_read(&flops_read1[APP]);
+    flops_read(flops_read1[APP]);
     debug("flops_read ready");
     /* To be used in partial_start */
-    flops_data_copy(&flops_read2[LOO], &flops_read1[APP]);
+    flops_data_copy(flops_read2[LOO], flops_read1[APP]);
 
     cache_read(&cache_read1[APP]);
     debug("cache_read ready");
     /* To be used in partial_start */
     cache_data_copy(&cache_read2[LOO], &cache_read1[APP]);
 
-    cpi_read(&cpi_read1[APP]);
+    cpi_read(cpi_read1[APP]);
     debug("cpi_read ready");
     /* To be used in partial_start */
-    cpi_data_copy(&cpi_read2[LOO], &cpi_read1[APP]);
+    cpi_data_copy(cpi_read2[LOO], cpi_read1[APP]);
 }
 
 static void metrics_global_stop()
@@ -1118,9 +1132,9 @@ static void metrics_global_stop()
     bwidth_read_diff(bwidth_read2[APP], bwidth_read1[APP], NULL, &bwidth_cas[APP], NULL);
     if (master)
         lib_shared_region->cas_counters = bwidth_cas[APP];
-    flops_read_diff(&flops_read2[APP], &flops_read1[APP], NULL, NULL);
+    flops_read_diff(flops_read2[APP], flops_read1[APP], NULL, NULL);
     cache_read_diff(&cache_read2[APP], &cache_read1[APP], &cache_diff[APP], &cache_bwidth[APP]);
-    cpi_read_diff(&cpi_read2[APP], &cpi_read1[APP], &cpi_diff[APP], &cpi_avrg[APP]);
+    cpi_read_diff(cpi_read2[APP], cpi_read1[APP], cpi_diff[APP], &cpi_avrg[APP]);
 
     metric_cond(
         proc_ps_ok,
@@ -1205,9 +1219,9 @@ static void metrics_partial_start()
 
     // New metrics
     bwidth_data_copy(bwidth_read1[LOO], bwidth_read2[LOO]);
-    flops_data_copy(&flops_read1[LOO], &flops_read2[LOO]);
+    flops_data_copy(flops_read1[LOO], flops_read2[LOO]);
     cache_data_copy(&cache_read1[LOO], &cache_read2[LOO]);
-    cpi_data_copy(&cpi_read1[LOO], &cpi_read2[LOO]);
+    cpi_data_copy(cpi_read1[LOO], cpi_read2[LOO]);
 
     debug("partial_start ends");
 }
@@ -1465,9 +1479,9 @@ static int metrics_partial_stop(uint where)
     bwidth_read_diff(bwidth_read2[LOO], bwidth_read1[LOO], bwidth_diff[LOO], &bwidth_cas[LOO], NULL);
     if (master)
         lib_shared_region->cas_counters = bwidth_cas[LOO];
-    flops_read_diff(&flops_read2[LOO], &flops_read1[LOO], &flops_diff[LOO], NULL);
+    flops_read_diff(flops_read2[LOO], flops_read1[LOO], flops_diff[LOO], NULL);
     cache_read_diff(&cache_read2[LOO], &cache_read1[LOO], &cache_diff[LOO], &cache_bwidth[LOO]);
-    cpi_read_diff(&cpi_read2[LOO], &cpi_read1[LOO], &cpi_diff[LOO], &cpi_avrg[LOO]);
+    cpi_read_diff(cpi_read2[LOO], cpi_read1[LOO], cpi_diff[LOO], &cpi_avrg[LOO]);
 
 #if USE_CUPTI
     if (read_cupti_metrics) {
@@ -1484,7 +1498,7 @@ static int metrics_partial_stop(uint where)
     // New accumulations: by now these application metrics are taken accumulating loop values.
     // Not sure if required this way in the future, is just because if there are too long apps
     // that could overflow these metric counters.
-    flops_data_accum(&flops_diff[APP], &flops_diff[LOO], NULL);
+    flops_data_accum(flops_diff[APP], flops_diff[LOO], NULL);
 
     return EAR_SUCCESS;
 }
@@ -1638,9 +1652,9 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 
     /* FLOPS */
     /* flops_data_accum used in this way just computes the Gflops */
-    flops_data_accum(&flops_diff[sign_app_loop_idx], NULL, &metrics->Gflops);
+    flops_data_accum(flops_diff[sign_app_loop_idx], NULL, &metrics->Gflops);
     /* Copies the FP instruction vector in FLOPS */
-    flops_help_toold(&flops_diff[sign_app_loop_idx], metrics->FLOPS);
+    flops_help_toold(flops_diff[sign_app_loop_idx], metrics->FLOPS);
 
     /* num_th is 1 if perf supports accumulating per thread counters */
     uint num_th     = ear_get_num_threads();
@@ -1649,15 +1663,15 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
         metrics->FLOPS[i] = metrics->FLOPS[i] * num_th;
 
     /* CPI */
-    metrics->cycles = cpi_diff[sign_app_loop_idx].cycles * num_th;
+    metrics->cycles = cpi_diff[sign_app_loop_idx][0].cycles * num_th;
     ;
-    metrics->instructions = ear_max(cpi_diff[sign_app_loop_idx].instructions, 1) * num_th;
+    metrics->instructions = ear_max(cpi_diff[sign_app_loop_idx][0].instructions, 1) * num_th;
     ;
-    metrics->stalls.fetch_decode = cpi_diff[sign_app_loop_idx].stalls.fetch_decode * num_th;
+    metrics->stalls.fetch_decode = cpi_diff[sign_app_loop_idx][0].stalls.fetch_decode * num_th;
     ;
-    metrics->stalls.resources = cpi_diff[sign_app_loop_idx].stalls.resources * num_th;
+    metrics->stalls.resources = cpi_diff[sign_app_loop_idx][0].stalls.resources * num_th;
     ;
-    metrics->stalls.memory = cpi_diff[sign_app_loop_idx].stalls.memory * num_th;
+    metrics->stalls.memory = cpi_diff[sign_app_loop_idx][0].stalls.memory * num_th;
     ;
     metrics->CPI = cpi_avrg[sign_app_loop_idx];
 
@@ -2718,7 +2732,7 @@ state_t metrics_new_iteration(signature_t *sig)
 
         /* We should check the CPI */
         if (last_phase_bw) {
-            cpi_read_diff(&cpi_read2[LOO], &cpi_read1[LOO], &cpi_diff[LOO], &cpi_avrg[LOO]);
+            cpi_read_diff(cpi_read2[LOO], cpi_read1[LOO], cpi_diff[LOO], &cpi_avrg[LOO]);
             sig->CPI = cpi_avrg[LOO];
             verbose_master(3, "Busy Waiting phase and current CPI %.2lf (BW? %u)", sig->CPI,
                            sig->CPI < phases_limits.cpi_busy_waiting);
@@ -2734,8 +2748,8 @@ state_t metrics_new_iteration(signature_t *sig)
 
         /* FLOPS are used to determine the CPU BUSY waiting
          *  WARNING: Currently below code won't be executed never. */
-        flops_read_diff(&flops_read2[LOO], &flops_read1[LOO], &flops_diff[LOO], &sig->Gflops);
-        flops_help_toold(&flops_diff[LOO], sig->FLOPS);
+        flops_read_diff(flops_read2[LOO], flops_read1[LOO], flops_diff[LOO], &sig->Gflops);
+        flops_help_toold(flops_diff[LOO], sig->FLOPS);
 
         sig->time = elap_sec;
         debug("GFlops in metrics for validation: %lf", sig->Gflops);

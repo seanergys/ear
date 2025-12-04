@@ -134,8 +134,10 @@ static state_t static_free(state_t s, char *error)
         nvml.Shutdown();
     }
     memset(&nvml, 0, sizeof(nvml_t));
-    dlclose(handler);
-    handler = NULL;
+    if (handler != NULL) {
+        dlclose(handler);
+        handler = NULL;
+    }
     if (error == NULL) {
         return s;
     }

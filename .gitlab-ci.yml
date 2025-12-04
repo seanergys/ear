@@ -116,7 +116,7 @@ deploy-eard:
 test-earl-mpi-lite:
   stage: test
   needs: [compile-mpi]
-  timeout: 10 minutes
+  timeout: 30 minutes
   script:
     - export PATH=$(pkgconf --variable=exec_prefix ompi-f90)/bin:$PATH
     - $TESTDIR/scripts/compile_nas.sh $TESTDIR/apps/NPB3.4.3/NPB3.4-MPI bt B

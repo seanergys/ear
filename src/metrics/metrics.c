@@ -43,17 +43,25 @@ static int id_tpo;
 
 void metrics_load(metrics_info_t *m, topology_t *tp, char *nodepow_path, ullong mflags)
 {
+    int options_flops = SCOPE_NODE;
+    int options_cpi   = SCOPE_NODE;
+
+    if (mflags != 0LLU) {
+        options_flops = MFLAG_UNZIP(mflags, MET_FLOPS);
+        options_cpi   = MFLAG_UNZIP(mflags, MET_CPI  );
+    }
+
     self_tp = tp;
 
     nodepow(load, nodepow_path);
     cpufreq_load(tp, MFLAG_UNZIP(mflags, MET_CPUFREQ));
     imcfreq_load(tp, MFLAG_UNZIP(mflags, MET_IMCFREQ));
-     cpupow(load,tp, MFLAG_UNZIP(mflags, MET_CPUPOW));
+     cpupow(load,tp, MFLAG_UNZIP(mflags, MET_CPUPOW ));
      bwidth_load(tp, MFLAG_UNZIP(mflags, MET_BWIDTH ));
       cache_load(tp, MFLAG_UNZIP(mflags, MET_CACHE  ));
-      flops_load(tp, MFLAG_UNZIP(mflags, MET_FLOPS  ));
+      flops_load(tp, options_flops                   );
        temp_load(tp, MFLAG_UNZIP(mflags, MET_TEMP   ));
-        cpi_load(tp, MFLAG_UNZIP(mflags, MET_CPI    ));
+        cpi_load(tp, options_cpi                     );
         gpu_load(    MFLAG_UNZIP(mflags, MET_GPU    ));
 
     nodepow(init,&e_ctx);
@@ -216,9 +224,9 @@ void metrics_read(metrics_read_t *mr)
      cpupow(read,no_ctx,  mr->pow);
      bwidth_read(         mr->ram);
       cache_read(        &mr->cch);
-      flops_read(        &mr->flp);
+      flops_read(         mr->flp);
        temp_read(         mr->tmp, NULL);
-        cpi_read(        &mr->cpi);
+        cpi_read(         mr->cpi);
         gpu_read(         mr->gpu);
 }
 
@@ -237,7 +245,9 @@ void metrics_data_alloc(metrics_read_t *mr1, metrics_read_t *mr2, metrics_diff_t
         imcfreq_data_alloc(&mr1->imc, empty);
          cpupow(data_alloc, no_ctx, &mr1->pow, NULL);
          bwidth_data_alloc(&mr1->ram);
+          flops_data_alloc(&mr1->flp);
            temp_data_alloc(&mr1->tmp);
+            cpi_data_alloc(&mr1->cpi);
             gpu_data_alloc(&mr1->gpu);
     }
     if (mr2) {
@@ -246,14 +256,18 @@ void metrics_data_alloc(metrics_read_t *mr1, metrics_read_t *mr2, metrics_diff_t
         imcfreq_data_alloc(&mr2->imc, empty);
          cpupow(data_alloc, no_ctx, &mr2->pow, NULL);
          bwidth_data_alloc(&mr2->ram);
+          flops_data_alloc(&mr2->flp);
            temp_data_alloc(&mr2->tmp);
+            cpi_data_alloc(&mr2->cpi);
             gpu_data_alloc(&mr2->gpu);
     }
     if (mrD) {
         cpufreq_data_alloc(empty, &mrD->cpu_diff);
         imcfreq_data_alloc(empty, &mrD->imc_diff);
          cpupow(data_alloc, no_ctx, &mrD->pow_diff, NULL);
+          flops_data_alloc(&mrD->flp_diff);
            temp_data_alloc(&mrD->tmp_diff);
+            cpi_data_alloc(&mrD->cpi_diff);
             gpu_data_alloc(&mrD->gpu_diff);
     }
 }
@@ -271,9 +285,9 @@ void metrics_data_diff(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff_t 
      cpupow(data_diff, no_ctx,    mr1->pow, mr2->pow, mrD->pow_diff);
      bwidth_data_diff( mr2->ram,  mr1->ram, NULL,    &mrD->ram_diff, &mrD->ram_avrg);
       cache_data_diff(&mr2->cch, &mr1->cch,          &mrD->cch_diff, &mrD->cch_avrg);
-      flops_data_diff(&mr2->flp, &mr1->flp,          &mrD->flp_diff, &mrD->flp_avrg);
+      flops_data_diff( mr2->flp,  mr1->flp,           mrD->flp_diff, &mrD->flp_avrg);
        temp_data_diff( mr2->tmp,  mr1->tmp,           mrD->tmp_diff, &mrD->tmp_avrg);
-        cpi_data_diff(&mr2->cpi, &mr1->cpi,          &mrD->cpi_diff, &mrD->cpi_avrg);
+        cpi_data_diff( mr2->cpi,  mr1->cpi,           mrD->cpi_diff, &mrD->cpi_avrg);
         gpu_data_diff( mr2->gpu,  mr1->gpu,           mrD->gpu_diff);
 
     cpupow_tellmemore(mrD->pow_diff, &mrD->pow_pack, &mrD->pow_dram, mrD->time);
@@ -290,9 +304,9 @@ void metrics_data_copy(metrics_read_t *mrD, metrics_read_t *mrS)
      bwidth_data_copy( mrD->ram,  mrS->ram);
      cpupow(data_copy,   no_ctx,  mrD->pow, mrS->pow);
       cache_data_copy(&mrD->cch, &mrS->cch);
-      flops_data_copy(&mrD->flp, &mrS->flp);
+      flops_data_copy( mrD->flp,  mrS->flp);
        temp_data_copy( mrD->tmp,  mrS->tmp);
-        cpi_data_copy(&mrD->cpi, &mrS->cpi);
+        cpi_data_copy( mrD->cpi,  mrS->cpi);
         gpu_data_copy( mrD->gpu,  mrS->gpu);
 }
 

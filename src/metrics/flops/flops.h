@@ -43,7 +43,7 @@ typedef struct flops_s {
     ullong d256;
     ullong f512; // 512 field is also used as MAX VECTOR LENGTH flops,
     ullong d512; // i.e. the ARM's SVE. But in the future maybe union could be.
-    double gflops;
+    double gflops; //
     union {
         timestamp_t time;
         double secs;
@@ -82,11 +82,16 @@ void flops_get_info(apinfo_t *info);
 
 state_t flops_read(flops_t *fl);
 
-state_t flops_read_diff(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs);
+state_t flops_read_diff(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gflops_tot);
 
-state_t flops_read_copy(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs);
+state_t flops_read_copy(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gflops_tot);
 
-void flops_data_diff(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs);
+/* It returns the difference (flD) and the total gflops of all devices. */
+void flops_data_diff(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gflops_tot);
+
+void flops_data_alloc(flops_t **fl);
+
+void flops_data_free(flops_t **fl);
 
 void flops_data_copy(flops_t *dst, flops_t *src);
 
@@ -95,7 +100,7 @@ void flops_data_print(flops_t *flD, double gfs, int fd);
 void flops_data_tostr(flops_t *flD, double gfs, char *buffer, size_t length);
 
 /* Accumulates flops differences and return its data in GFLOPs (accepts NULL). */
-void flops_data_accum(flops_t *fA, flops_t *fD, double *gfs);
+void flops_data_accum(flops_t *fA, flops_t *fD, double *gflops_tot);
 
 void flops_internals_print(int fd);
 
