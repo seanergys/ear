@@ -26,7 +26,10 @@ void cpi_dummy_unload()
 
 void cpi_dummy_get_info(apinfo_t *info)
 {
-    info->api = API_DUMMY;
+    info->api         = API_DUMMY;
+    info->devs_count  = 1;
+    info->scope       = SCOPE_PROCESS;
+    info->granularity = GRANULARITY_PROCESS;
 }
 
 state_t cpi_dummy_read(cpi_t *ci)

@@ -26,6 +26,7 @@ typedef struct cpi_s {
     ullong   instructions;
     ullong   cycles;
     stalls_t stalls;
+    double   cpi; // (cycles / instructions) or average cycle consumed per instruction
 } cpi_t;
 
 typedef struct cpi_ops_s {
@@ -40,10 +41,10 @@ typedef struct cpi_ops_s {
 #define CPI_F_GET_INFO(name) void    cpi_##name##_get_info(apinfo_t *info)
 #define CPI_F_READ(name)     state_t cpi_##name##_read(cpi_t *cpi)
 
-#define CPI_DEFINES(name)                                                                                              \
-    CPI_F_LOAD(name);                                                                                     \
-    CPI_F_UNLOAD(name);                                                                                 \
-    CPI_F_GET_INFO(name);                                                                             \
+#define CPI_DEFINES(name)    \
+    CPI_F_LOAD(name);        \
+    CPI_F_UNLOAD(name);      \
+    CPI_F_GET_INFO(name);    \
     CPI_F_READ(name);
 
 // Primer problema, necesitamos el debug en el load
@@ -55,16 +56,20 @@ void cpi_get_info(apinfo_t *info);
 
 state_t cpi_read(cpi_t *ci);
 
-state_t cpi_read_diff(cpi_t *ci2, cpi_t *ci1, cpi_t *ciD, double *cpi);
+state_t cpi_read_diff(cpi_t *ci2, cpi_t *ci1, cpi_t *ciD, double *cpis_avg);
 
-state_t cpi_read_copy(cpi_t *ci2, cpi_t *ci1, cpi_t *ciD, double *cpi);
+state_t cpi_read_copy(cpi_t *ci2, cpi_t *ci1, cpi_t *ciD, double *cpis_avg);
 
-void cpi_data_diff(cpi_t *ci2, cpi_t *ci1, cpi_t *ciD, double *cpi);
+void cpi_data_diff(cpi_t *ci2, cpi_t *ci1, cpi_t *ciD, double *cpis_avg);
+
+void cpi_data_alloc(cpi_t **ci);
+
+void cpi_data_free(cpi_t **ci);
 
 void cpi_data_copy(cpi_t *src, cpi_t *dst);
 
-void cpi_data_print(cpi_t *ciD, double cpi, int fd);
+void cpi_data_print(cpi_t *ciD, double cpis_avg, int fd);
 
-void cpi_data_tostr(cpi_t *ciD, double cpi, char *buffer, size_t length);
+void cpi_data_tostr(cpi_t *ciD, double cpis_avg, char *buffer, size_t length);
 
 #endif // METRICS_CPI_H

@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-// #define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <string.h>
 #include <pthread.h>
@@ -56,11 +56,8 @@ void cpi_unload()
 void cpi_get_info(apinfo_t *info)
 {
     memset(info, 0, sizeof(apinfo_t));
-    info->layer       = "CPI";
-    info->api         = API_NONE;
-    info->devs_count  = 1;
-    info->scope       = SCOPE_PROCESS;
-    info->granularity = GRANULARITY_PROCESS;
+    info->layer = "CPI";
+    info->api   = API_NONE;
     if (ops.get_info != NULL) {
         ops.get_info(info);
     }
@@ -72,51 +69,66 @@ state_t cpi_read(cpi_t *ci)
 }
 
 // Helpers
-state_t cpi_read_diff(cpi_t *ci2, cpi_t *ci1, cpi_t *ciD, double *cpi)
+state_t cpi_read_diff(cpi_t *ci2, cpi_t *ci1, cpi_t *ciD, double *cpis_avg)
 {
     state_t s;
     if (state_fail(s = ops.read(ci2))) {
         return s;
     }
-    cpi_data_diff(ci2, ci1, ciD, cpi);
+    cpi_data_diff(ci2, ci1, ciD, cpis_avg);
     return s;
 }
 
-state_t cpi_read_copy(cpi_t *ci2, cpi_t *ci1, cpi_t *ciD, double *cpi)
+state_t cpi_read_copy(cpi_t *ci2, cpi_t *ci1, cpi_t *ciD, double *cpis_avg)
 {
     state_t s;
-    if (state_fail(s = cpi_read_diff(ci2, ci1, ciD, cpi))) {
+    if (state_fail(s = cpi_read_diff(ci2, ci1, ciD, cpis_avg))) {
         return s;
     }
     cpi_data_copy(ci1, ci2);
     return s;
 }
 
-void cpi_data_diff(cpi_t *ci2, cpi_t *ci1, cpi_t *ciD, double *cpi)
+void cpi_data_diff(cpi_t *ci2, cpi_t *ci1, cpi_t *ciD, double *cpis_avg)
 {
-    static double cpi_copy = 0.0;
+    double aux = 0.0;
+    int i;
 
-    memset(ciD, 0, sizeof(cpi_t));
-    ciD->instructions        = overflow_zeros_u64(ci2->instructions, ci1->instructions);
-    ciD->cycles              = overflow_zeros_u64(ci2->cycles, ci1->cycles);
-    ciD->stalls.fetch_decode = overflow_zeros_u64(ci2->stalls.fetch_decode, ci1->stalls.fetch_decode);
-    ciD->stalls.resources    = overflow_zeros_u64(ci2->stalls.resources, ci1->stalls.resources);
-    ciD->stalls.memory       = overflow_zeros_u64(ci2->stalls.memory, ci1->stalls.memory);
-#if SHOW_DEBUGS
-    cpi_data_print(ciD, 0.0, fderr);
-#endif
-    // If instructions is 0, we convert them to 1
-    if (ciD->instructions == 0 || ciD->cycles == 0) {
-        ciD->instructions = (ciD->instructions > 0) ? ciD->instructions : 1;
-        ciD->cycles       = (ciD->cycles > 0) ? ciD->cycles : 1;
-        // And if CPI is not NULL, we return the last valid CPI
-        if (cpi != NULL) {
-            *cpi = cpi_copy;
+    // clang-format off
+    memset(ciD, 0, sizeof(cpi_t)*info.devs_count);
+    for (i = 0; i < info.devs_count; ++i) {
+        ciD[i].instructions        = overflow_zeros_u64(ci2[i].instructions       , ci1[i].instructions       );
+        ciD[i].cycles              = overflow_zeros_u64(ci2[i].cycles             , ci1[i].cycles             );
+        ciD[i].stalls.fetch_decode = overflow_zeros_u64(ci2[i].stalls.fetch_decode, ci1[i].stalls.fetch_decode);
+        ciD[i].stalls.resources    = overflow_zeros_u64(ci2[i].stalls.resources   , ci1[i].stalls.resources   );
+        ciD[i].stalls.memory       = overflow_zeros_u64(ci2[i].stalls.memory      , ci1[i].stalls.memory      );
+        if (ciD[i].instructions != 0 && ciD[i].cycles != 0) {
+            ciD[i].cpi = ((double) ciD[i].cycles) / ((double) ciD[i].instructions);
         }
-    } else if (cpi != NULL) {
-        *cpi = ((double) ciD->cycles) / ((double) ciD->instructions);
-        // Saving valid CPI
-        cpi_copy = *cpi;
+        aux += ciD[i].cpi;
+    }
+    aux = aux / (double) info.devs_count;
+    if (cpis_avg != NULL) {
+        *cpis_avg = aux;
+    }
+    #if SHOW_DEBUGS
+    cpi_data_print(ciD, aux, fderr);
+    #endif
+    // clang-format on
+}
+
+void cpi_data_alloc(cpi_t **ci)
+{
+    if (ci != NULL) {
+        *ci = calloc(info.devs_count, sizeof(cpi_t));
+    }
+}
+
+void cpi_data_free(cpi_t **ci)
+{
+    if (ci != NULL) {
+        free(*ci);
+        *ci = NULL;
     }
 }
 
@@ -125,24 +137,21 @@ void cpi_data_copy(cpi_t *dst, cpi_t *src)
     memcpy(dst, src, sizeof(cpi_t));
 }
 
-void cpi_data_print(cpi_t *ci, double cpi, int fd)
+void cpi_data_print(cpi_t *ci, double cpis_avg, int fd)
 {
     char buffer[SZ_BUFFER];
-    cpi_data_tostr(ci, cpi, buffer, SZ_BUFFER);
+    cpi_data_tostr(ci, cpis_avg, buffer, SZ_BUFFER);
     dprintf(fd, "%s", buffer);
 }
 
-void cpi_data_tostr(cpi_t *ci, double cpi, char *buffer, size_t length)
+void cpi_data_tostr(cpi_t *ci, double cpis_avg, char *buffer, size_t length)
 {
-    snprintf(buffer, length,
-        "Instructions      : %llu\n"
-        "Cycles            : %llu (cpi: %0.2lf)\n"
-        "Stalls (fetch-dec): %llu\n"
-        "Stalls (resources): %llu\n"
-        "Stalls (memory)   : %llu\n",
-        ci->instructions,
-        ci->cycles, cpi,
-        ci->stalls.fetch_decode,
-        ci->stalls.resources,
-        ci->stalls.memory);
+    int i, b;
+    for (i = b = 0; i < info.devs_count; ++i) {
+        b += sprintf(&buffer[b], "DEV%d %014llu ins, %014llu cycles, %0.2lf cpi, %llu-%llu-%llu stalls\n",
+            i, ci[i].instructions, ci[i].cycles, ci[i].cpi,
+            ci[i].stalls.fetch_decode,
+            ci[i].stalls.resources,
+            ci[i].stalls.memory);
+    }
 }
