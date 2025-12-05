@@ -1003,9 +1003,9 @@ state_t powercap_verify_all_devices()
         overall_result = gpu_result;
 
     if (overall_result == EAR_SUCCESS) {
-        debug("powercap_verify_all_devices: all device powercaps verified successfully");
+        verbose(VEARD_PC, "powercap_verify_all_devices: all device powercaps verified successfully");
     } else {
-        debug("powercap_verify_all_devices: found powercap mismatches in one or more domains");
+        verbose(VEARD_PC, "powercap_verify_all_devices: found powercap mismatches in one or more domains");
     }
 
     return overall_result;
