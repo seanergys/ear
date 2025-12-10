@@ -603,7 +603,7 @@ state_t pmgt_init()
         memcpy(pdomains_min, pdomains_min_dummy, sizeof(pdomains_def));
     }
     debug("Initialzing GPU util");
-    if (domains_loaded[DOMAIN_GPU]) {
+    if (domains_loaded[DOMAIN_GPU] || !domains_loaded[DOMAIN_GPU]) {
         current_util[DOMAIN_GPU] = calloc(gpu_pc_num_gpus, sizeof(ulong));
         for (i = 0; i < gpu_pc_num_gpus; i++)
             current_util[DOMAIN_GPUS][i] = 0;

@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-// #define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <dlfcn.h>
 #include <stdlib.h>
@@ -19,12 +19,11 @@
 #include <metrics/common/nvml.h>
 #include <metrics/gpu/archs/nvml.h>
 
-// static nvml_t nvml;
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static nvml_t          nvml;
 static nvmlDevice_t   *handlers;
-static suscription_t  *sus;
 static uint            handlers_count;
+static suscription_t  *sus;
 static gpu_t          *pool;
 static uint            is_pooling;
 
@@ -56,7 +55,7 @@ GPU_F_LOAD(nvml)
     timestamp_t time;
     int i;
 
-    debug("Received API %d", force_api);
+    debug("Received API %d", options);
     if (api_already_loaded(ops)) {
         return;
     }
@@ -71,14 +70,10 @@ GPU_F_LOAD(nvml)
         debug("nvml_open failed: %s", state_msg);
         return;
     }
-    debug("nvml_get_devices");
-    if (state_fail(nvml_get_devices(&handlers, &handlers_count))) {
-        debug("nvml_get_devices failed: %s", state_msg);
-        close_all();
-        return;
-    }
     // Allocation
+    nvml_get_handlers(&handlers, &handlers_count);
     pool = calloc(handlers_count, sizeof(gpu_t));
+    debug("Detected handlers: %d", handlers_count);
     // Atfork control
     pthread_atfork(NULL, NULL, load_atfork);
     // Initializing pool
@@ -95,11 +90,11 @@ GPU_F_LOAD(nvml)
         sus->suscribe(sus);
     }
     //
-    apis_pif(ops->unload     , gpu_nvml_unload     , 1);
-    apis_pif(ops->get_info   , gpu_nvml_get_info   , 1);
-    apis_pif(ops->get_devices, gpu_nvml_get_devices, 1);
-    apis_pif(ops->read       , gpu_nvml_read       , is_pooling);
-    apis_pif(ops->read_raw   , gpu_nvml_read_raw   , 1);
+    apis_pif(ops->unload      , gpu_nvml_unload      , 1);
+    apis_pif(ops->get_info    , gpu_nvml_get_info    , 1);
+    apis_pif(ops->topology_get, gpu_nvml_topology_get, 1);
+    apis_pif(ops->read        , gpu_nvml_read        , is_pooling);
+    apis_pif(ops->read_raw    , gpu_nvml_read_raw    , 1);
     debug("Loaded NVML");
 }
 
@@ -120,26 +115,9 @@ GPU_F_GET_INFO(nvml)
     }
 }
 
-GPU_F_GET_DEVICES(nvml)
+GPU_F_TOPOLOGY_GET(nvml)
 {
-    char serial[32];
-    nvmlReturn_t r;
-    int i;
-
-    if (devs != NULL) {
-        *devs = calloc(handlers_count, sizeof(gpu_devs_t));
-        //
-        for (i = 0; i < handlers_count; ++i) {
-            if ((r = nvml.GetSerial(handlers[i], serial, 32)) != NVML_SUCCESS) {
-                return_msg(, nvml.ErrorString(r));
-            }
-            (*devs)[i].serial = (ullong) atoll(serial);
-            (*devs)[i].index  = i;
-        }
-    }
-    if (devs_count != NULL) {
-        *devs_count = handlers_count;
-    }
+    nvml_get_devices(&tp->devs, &tp->devs_count, 1);
 }
 
 static int static_read(int i, gpu_t *metric)

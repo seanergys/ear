@@ -80,11 +80,11 @@ GPU_F_LOAD(rsmi)
         sus->time_burst = 1000;
         sus->suscribe(sus);
     }
-    apis_pif(ops->unload     , gpu_rsmi_unload     , 1);
-    apis_pif(ops->get_info   , gpu_rsmi_get_info   , 1);
-    apis_pif(ops->get_devices, gpu_rsmi_get_devices, 1);
-    apis_pif(ops->read       , gpu_rsmi_read       , is_pooling);
-    apis_pif(ops->read_raw   , gpu_rsmi_read_raw   , 1);
+    apis_pif(ops->unload      , gpu_rsmi_unload      , 1);
+    apis_pif(ops->get_info    , gpu_rsmi_get_info    , 1);
+    apis_pif(ops->topology_get, gpu_rsmi_topology_get, 1);
+    apis_pif(ops->read        , gpu_rsmi_read        , is_pooling);
+    apis_pif(ops->read_raw    , gpu_rsmi_read_raw    , 1);
     debug("Loaded RSMI");
 }
 
@@ -99,27 +99,9 @@ GPU_F_GET_INFO(rsmi)
     info->devs_count = handlers_count;
 }
 
-GPU_F_GET_DEVICES(rsmi)
+GPU_F_TOPOLOGY_GET(rsmi)
 {
-    char serial[32];
-    rsmi_status_t r;
-    int i;
-
-    if (devs != NULL) {
-        *devs = calloc(handlers_count, sizeof(gpu_devs_t));
-        //
-        for (i = 0; i < handlers_count; ++i) {
-            if ((r = rsmi.get_serial(i, serial, 32)) != RSMI_STATUS_SUCCESS) {
-                return_msg(, "RSMI error");
-            }
-            debug("D%d: %s", i, serial);
-            (*devs)[i].serial = (ullong) atoll(serial);
-            (*devs)[i].index  = i;
-        }
-    }
-    if (devs_count != NULL) {
-        *devs_count = handlers_count;
-    }
+    rsmi_get_devices(&tp->devs, &tp->devs_count);
 }
 
 static int is_working(int i)

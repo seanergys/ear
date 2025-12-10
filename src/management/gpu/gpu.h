@@ -17,60 +17,31 @@
 #include <common/types.h>
 #include <metrics/gpu/gpu.h>
 
-// The API
-//
-// This is an API to control the frequency and power of the node GPUs.
-//
-// Props:
-// 	- Thread safe: yes.
-//	- User mode: no.
-//
-// Folders:
-//	- archs: different GPU controllers, such as Nvidia NMVL.
-//
-// Future work:
-//	- NVML can be compiled without CUDA include, just redefining its symbols in
-//	  our nvml.h.
-//	- Add a reset function per device (ref: mgt_gpu_freq_limit_reset).
-//	- Add a set limit function per device (ref: mgt_gpu_freq_limit_set).
-//
-// Use example:
-//		mgt_gpu_load(NULL);
-//		mgt_gpu_init(&context);
-//		mgt_gpu_alloc_array(&context, &freq_khz, &dev_count);
-// 		mgt_gpu_freq_limit_get_current(&context, freq_khz);
-//		mgt_gpu_freq_list(&context, &list_khz, &list_len);
-//		for (d = 0; i < &dev_count; ++d)
-//			for (f = 0; f < list_len[d]; ++f)
-//				printf("freq %lu khz\n", list_khz[d][f]);
-//		mgt_gpu_dispose(&context);
-
 // Flags
 #define FREQ_TOP    0
 #define FREQ_BOTTOM 1
 
-// APIs
-
+// clang-format off
 typedef struct mgt_gpu_ops_s {
-
-    void (*get_api)(uint *api);
-    state_t (*init[4])(ctx_t *c);
-    state_t (*dispose[4])(ctx_t *c);
-    state_t (*get_devices)(ctx_t *c, gpu_devs_t **devs, uint *devs_count);
-    state_t (*count_devices)(ctx_t *c, uint *dev_count);
-    state_t (*alloc_array)(ctx_t *c, ulong **list, uint *dev_count);
-    state_t (*freq_limit_get_current)(ctx_t *c, ulong *freq_list);
-    state_t (*freq_limit_get_default)(ctx_t *c, ulong *freq_list);
-    state_t (*freq_limit_get_max)(ctx_t *c, ulong *freq_list);
-    state_t (*freq_limit_reset)(ctx_t *c);
-    state_t (*freq_limit_set)(ctx_t *c, ulong *freq_list);
-    state_t (*freq_list)(ctx_t *c, const ulong ***freq_list, const uint **len_list);
-    state_t (*power_cap_get_current)(ctx_t *c, ulong *watt_list);
-    state_t (*power_cap_get_default)(ctx_t *c, ulong *watt_list);
-    state_t (*power_cap_get_rank)(ctx_t *c, ulong *watt_list_min, ulong *watt_list_max);
-    state_t (*power_cap_reset)(ctx_t *c);
-    state_t (*power_cap_set)(ctx_t *c, ulong *watt_list);
+    void    (*get_api)                (uint *api);
+    state_t (*init[4])                (ctx_t *c);
+    state_t (*dispose[4])             (ctx_t *c);
+    state_t (*get_devices)            (ctx_t *c, gpu_devs_t **devs, uint *devs_count);
+    state_t (*count_devices)          (ctx_t *c, uint *dev_count);
+    state_t (*alloc_array)            (ctx_t *c, ulong **list, uint *dev_count);
+    state_t (*freq_limit_get_current) (ctx_t *c, ulong *freq_list);
+    state_t (*freq_limit_get_default) (ctx_t *c, ulong *freq_list);
+    state_t (*freq_limit_get_max)     (ctx_t *c, ulong *freq_list);
+    state_t (*freq_limit_reset)       (ctx_t *c);
+    state_t (*freq_limit_set)         (ctx_t *c, ulong *freq_list);
+    state_t (*freq_list)              (ctx_t *c, const ulong ***freq_list, const uint **len_list);
+    state_t (*power_cap_get_current)  (ctx_t *c, ulong *watt_list);
+    state_t (*power_cap_get_default)  (ctx_t *c, ulong *watt_list);
+    state_t (*power_cap_get_rank)     (ctx_t *c, ulong *watt_list_min, ulong *watt_list_max);
+    state_t (*power_cap_reset)        (ctx_t *c);
+    state_t (*power_cap_set)          (ctx_t *c, ulong *watt_list);
 } mgt_gpu_ops_t;
+// clang-format on
 
 // Discovers the low level API. Returns function pointers, but is not required.
 void mgt_gpu_load(int force_api);

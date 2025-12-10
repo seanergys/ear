@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-// #define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -80,7 +80,15 @@ __attribute__((used)) state_t mgt_gpu_dispose(ctx_t *c)
 
 state_t mgt_gpu_get_devices(ctx_t *c, gpu_devs_t **devs, uint *devs_count)
 {
-    preturn(ops.get_devices, c, devs, devs_count);
+    if (ops.get_devices != NULL) {
+        ops.get_devices(c, devs, devs_count);
+        #if SHOW_DEBUGS
+        if (devs != NULL) {
+            gpu_topology_t tp = { .devs = *devs, .devs_count = *devs_count };
+            gpu_topology_print(&tp, debug_channel);
+        }
+        #endif
+    }
 }
 
 __attribute__((used)) state_t mgt_gpu_count_devices(ctx_t *c, uint *dev_count)
