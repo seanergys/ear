@@ -37,14 +37,15 @@
 #include <daemon/remote_api/dynamic_configuration.h>
 #include <daemon/shared_configuration.h>
 #include <management/management.h>
-#include <metrics/bandwidth/bandwidth.h>
-#include <metrics/common/msr.h>
-#include <metrics/cpufreq/cpufreq.h>
-#include <metrics/energy/cpu.h>
-#include <metrics/energy/energy_node.h>
-#include <metrics/energy_cpu/energy_cpu.h>
+#include <metrics/metrics.h>
 #include <metrics/gpu/gpu.h>
+#include <metrics/common/msr.h>
+#include <metrics/energy/cpu.h>
+#include <metrics/cpufreq/cpufreq.h>
 #include <metrics/imcfreq/imcfreq.h>
+#include <metrics/energy/energy_node.h>
+#include <metrics/bandwidth/bandwidth.h>
+#include <metrics/energy_cpu/energy_cpu.h>
 #include <metrics/temperature/temperature.h>
 #include <report/report.h>
 #if USE_GPUS
@@ -114,11 +115,11 @@ void services_init(topology_t *tp)
        temp_load(tp, NO_EARD);
         gpu_load(NO_EARD);
 
-    cpufreq_get_info(&met.cpu);
-    imcfreq_get_info(&met.imc);
-     bwidth_get_info(&met.ram);
-       temp_get_info(&met.tmp);
-        gpu_get_info(&met.gpu);
+    // This has to be before allocating space. Because here we are using the
+    // miscellaneous void pointers in apinfo_t to save some data, and some APIs
+    // get_info functions perform memsets to 0, nullifying these void pointers.
+    metrics_info_get(&met);
+    management_info_get(&man);
 
     cpufreq_data_alloc((cpufreq_t **) &met_read.cpu, empty);
     imcfreq_data_alloc((imcfreq_t **) &met_read.imc, empty);
@@ -126,7 +127,7 @@ void services_init(topology_t *tp)
        temp_data_alloc(&met_read.tmp);
         gpu_data_alloc(&met_read.gpu);
 
-    gpu_get_devices((gpu_devs_t **) &met.gpu.list1, NULL);
+    gpu_get_devices((gpu_devs_t **) &met.gpu.list1, &met.gpu.list1_count);
 
     serial_alloc(&wb, SIZE_8KB);
     // Resetting values
@@ -156,9 +157,6 @@ void services_print(topology_t *tp, cluster_conf_t *cluster_conf)
                  "     \\:\\ \\/__/        /:/  /      |:|\\/__/     \\:\\/:/  /  \n"
                  "      \\:\\__\\         /:/  /       |:|  |        \\__/__/   \n"
                  "       \\/__/         \\/__/         \\|__|                    ";
-
-    metrics_info_get(&met);
-    management_info_get(&man);
 
     gethostname(buf_host, 128);
     sprintf(buffer, "component    : EARD (EAR Daemon/Node Manager)\n");
@@ -494,14 +492,15 @@ int services_mgt_imcfreq(eard_head_t *head, int req_fd, int ack_fd)
 
 int services_mgt_gpu(eard_head_t *head, int fd_req, int fd_ack)
 {
-    uint rpc_id     = head->req_service;
-    state_t ret_s   = EAR_SUCCESS;
-    char *ret_data  = NULL;
-    size_t ret_size = 0;
-    size_t rpc_size = head->size;
-    uint u1;
-    ulong **p1;
-    uint *p2;
+    static gpu_topology_t tp       = {0};
+    uint                  rpc_id   = head->req_service;
+    state_t               ret_s    = EAR_SUCCESS;
+    char                 *ret_data = NULL;
+    size_t                ret_size = 0;
+    size_t                rpc_size = head->size;
+    uint                  u1       = 0U;
+    ulong               **p1       = NULL;
+    uint                 *p2       = NULL;
 
     switch (rpc_id) {
         case RPC_MGT_GPU_GET_API:
@@ -510,9 +509,18 @@ int services_mgt_gpu(eard_head_t *head, int fd_req, int fd_ack)
             break;
 #if USE_GPUS
         case RPC_MGT_GPU_GET_DEVICES:
+            u1 = 0U; // Returning 0 makes EARD API to fail but not crash
+            state_msg = "RPC_MGT_GPU_GET_DEVICES is disabled";
+            ret_data = (char *) &u1;
+            ret_size = sizeof(uint);
+            break;
+        case RPC_MGT_GPU_TOPOLOGY_GET:
+            if (tp.devs_count == 0) {
+                mgt_gpu_get_devices(no_ctx, &tp.devs, &tp.devs_count);
+            }
             serial_clean(&wb);
-            serial_add_elem(&wb, (char *) &man.gpu.devs_count, sizeof(uint));
-            serial_add_elem(&wb, (char *) man.gpu.list1, sizeof(gpu_devs_t) * man.gpu.devs_count);
+            serial_add_elem(&wb, (char *) &tp, sizeof(gpu_topology_t));
+            serial_add_elem(&wb, (char *) tp.devs, sizeof(gpu_devs_t) * tp.devs_count);
             ret_size = serial_size(&wb);
             ret_data = serial_data(&wb);
             break;
@@ -1061,6 +1069,7 @@ void eard_close_comm(int req_fd, int ack_fd)
 
 int service_gpu(eard_head_t *head, int req_fd, int ack_fd)
 {
+    static gpu_topology_t tp = {0};
     uint call   = head->req_service;
     state_t s   = EAR_SUCCESS;
     char *data  = NULL;
@@ -1069,13 +1078,22 @@ int service_gpu(eard_head_t *head, int req_fd, int ack_fd)
 
     switch (call) {
         case RPC_MET_GPU_GET_API:
-            data = (char *) &met.gpu.devs_count;
+            data = (char *) &met.gpu.api;
             size = sizeof(uint);
             break;
-        case RPC_MET_GPU_GET_DEVICES:
+        case RPC_MET_GPU_GET_DEVICES: // Deprecated
+            u1 = 0U; // Returning 0 makes EARD API to fail but not crash
+            state_msg = "RPC_MET_GPU_GET_DEVICES is disabled";
+            data = (char *) &u1;
+            size = sizeof(uint);
+            break;
+        case RPC_MET_GPU_TOPOLOGY_GET:
+            if (tp.devs_count == 0) {
+                gpu_topology_get(&tp);
+            }
             serial_clean(&wb);
-            serial_add_elem(&wb, (char *) &met.gpu.devs_count, sizeof(uint));
-            serial_add_elem(&wb, (char *) met.gpu.list1, sizeof(gpu_devs_t) * met.gpu.devs_count);
+            serial_add_elem(&wb, (char *) &tp, sizeof(gpu_topology_t));
+            serial_add_elem(&wb, (char *) tp.devs, sizeof(gpu_devs_t) * tp.devs_count);
             size = serial_size(&wb);
             data = serial_data(&wb);
             break;

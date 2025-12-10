@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -31,7 +31,7 @@
 #define NVML_N               0
 #else
 #define NVML_PATH CUDA_BASE
-#define NVML_N    30
+#define NVML_N    37
 #endif
 
 static const char *nvml_names[] = {
@@ -65,14 +65,21 @@ static const char *nvml_names[] = {
     "nvmlGpmSampleAlloc",
     "nvmlGpmSampleGet",
     "nvmlGpmQueryDeviceSupport",
+    "nvmlDeviceGetName", // MIG
+    "nvmlDeviceGetMigMode",
+    "nvmlDeviceGetMaxMigDeviceCount",
+    "nvmlDeviceGetMigDeviceHandleByIndex",
+    "nvmlDeviceGetUUID",
+    "nvmlDeviceGetMemoryInfo_v2",
+    "nvmlDeviceGetComputeRunningProcesses_v3",
 };
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static void           *handler;
-static nvmlDevice_t   *devices;
+static nvmlDevice_t   *handlers;
+static uint            handlers_count;
 static ullong         *serials;
 static nvml_t          nvml;
-static uint            devs_count;
 static uint            counter;
 
 static state_t static_open()
@@ -121,9 +128,9 @@ static state_t static_open()
 
 static state_t static_free(state_t s, char *error)
 {
-    if (devices != NULL) {
-        free(devices);
-        devices = NULL;
+    if (handlers != NULL) {
+        free(handlers);
+        handlers = NULL;
     }
     if (serials != NULL) {
         free(serials);
@@ -154,27 +161,28 @@ static state_t static_init()
         debug("nvml.Init");
         return static_free(EAR_ERROR, (char *) nvml.ErrorString(r));
     }
-    if ((r = nvml.Count(&devs_count)) != NVML_SUCCESS) {
-        debug("nvml.Count %u", devs_count);
+    if ((r = nvml.Count(&handlers_count)) != NVML_SUCCESS) {
+        debug("nvml.Count %u", handlers_count);
         return static_free(EAR_ERROR, (char *) nvml.ErrorString(r));
     }
-    debug("nvml.Count %u", devs_count);
-    if (((int) devs_count) <= 0) {
+    debug("nvml.Count %u", handlers_count);
+    if (((int) handlers_count) <= 0) {
         return static_free(EAR_ERROR, Generr.gpus_not);
     }
-    if ((devices = calloc(devs_count, sizeof(nvmlDevice_t))) == NULL) {
+    if ((handlers = calloc(handlers_count, sizeof(nvmlDevice_t))) == NULL) {
         return static_free(EAR_ERROR, strerror(errno));
     }
-    if ((serials = calloc(devs_count, sizeof(ullong))) == NULL) {
+    if ((serials = calloc(handlers_count, sizeof(ullong))) == NULL) {
         return static_free(EAR_ERROR, strerror(errno));
     }
     // Some fillings
-    for (d = 0; d < devs_count; ++d) {
-        if ((r = nvml.Handle(d, &devices[d])) != NVML_SUCCESS) {
+    for (d = 0; d < handlers_count; ++d) {
+        // By now we now the MIG devices can not be read. So, these
+        if ((r = nvml.Handle(d, &handlers[d])) != NVML_SUCCESS) {
             debug("nvmlDeviceGetHandleByIndex returned %d (%s)", r, nvml.ErrorString(r));
             return static_free(EAR_ERROR, (char *) nvml.ErrorString(r));
         }
-        if ((r = nvml.GetSerial(devices[d], buffer, 32)) == NVML_SUCCESS) {
+        if ((r = nvml.GetSerial(handlers[d], buffer, 32)) == NVML_SUCCESS) {
             serials[d] = (ullong) atoll(buffer);
             debug("Dev %d serial %llu", d, serials[d]);
         }
@@ -222,17 +230,65 @@ state_t nvml_close()
     return EAR_SUCCESS;
 }
 
-state_t nvml_get_devices(nvmlDevice_t **devs, uint *devs_count_in)
+static void get_device_info(gpu_devs_t *dev, uint is_subdevice)
 {
-    debug("nvml_get_devices using %d devices allocating %d bytes", devs_count, sizeof(nvmlDevice_t) * devs_count);
+    nvmlMemory_v2_t mem = {0};
+    char serial[32] = {0};
+
+    nvml.GetName             (*((nvmlDevice_t *) dev->handler), dev->name, sizeof(dev->name));
+    nvml.GetUUID             (*((nvmlDevice_t *) dev->handler), dev->uuid, sizeof(dev->uuid));
+    nvml.GetMemoryInfo_v2    (*((nvmlDevice_t *) dev->handler), &mem);
+    nvml.GetMaxMigDeviceCount(*((nvmlDevice_t *) dev->handler), &dev->subdevices_count);
+    nvml.GetSerial           (*((nvmlDevice_t *) dev->handler), serial, 32);
+    dev->serial              = (ullong) atoll(serial);
+    dev->is_readable         = is_subdevice ? 0: 1;
+    dev->is_subdevice        = is_subdevice;
+    dev->has_subdevices      = is_subdevice ? 0: dev->subdevices_count > 0;
+    dev->mem_total           = mem.total;
+}
+
+void nvml_get_devices(gpu_devs_t **devs, uint *devs_count_in, int add_subdevices)
+{
+    nvmlMemory_v2_t mem = {0};
+    uint            aux;
+    nvmlReturn_t    r;
+    int             m; // main
+    int             n;
+    int             s; // sub
+
+    for (m = 0; m < handlers_count; ++m) {
+        aux = 0U;
+        nvml.GetMaxMigDeviceCount(handlers[m], &aux);
+        *devs_count_in += aux;
+    }
+    *devs = calloc(*devs_count_in, sizeof(gpu_devs_t));
+    debug("Detected %u NVML devices including MIGs", *devs_count_in);
+    //
+    for (m = 0; m < handlers_count; ++m) {
+        (*devs)[n].handler = &handlers[m];
+        get_device_info(&(*devs)[n], 0);
+        for (s = 0; add_subdevices && s < (*devs)[n].subdevices_count; ++s) {
+            (*devs)[n+1+s].handler = calloc(1, sizeof(nvmlDevice_t));
+            r = nvml.GetMigDeviceHandleByIndex(handlers[m], s, (*devs)[n+1+s].handler);
+            if (r == NVML_ERROR_NOT_FOUND) {
+                break;
+            }
+            get_device_info(&(*devs)[n+1+s], 1);
+        }
+        n = n + 1 + s;
+    }
+    *devs_count_in = n;
+}
+
+void nvml_get_handlers(nvmlDevice_t **devs, uint *devs_count_in)
+{
     if (devs != NULL) {
-        *devs = calloc(devs_count, sizeof(nvmlDevice_t));
-        memcpy(*devs, devices, sizeof(nvmlDevice_t) * devs_count);
+        *devs = calloc(handlers_count, sizeof(nvmlDevice_t));
+        memcpy(*devs, handlers, sizeof(nvmlDevice_t) * handlers_count);
     }
     if (devs_count_in != NULL) {
-        *devs_count_in = devs_count;
+        *devs_count_in = handlers_count;
     }
-    return EAR_SUCCESS;
 }
 
 void nvml_get_serials(const ullong **serials_in)
@@ -243,7 +299,7 @@ void nvml_get_serials(const ullong **serials_in)
 int nvml_is_serial(ullong serial)
 {
     int d;
-    for (d = 0; d < devs_count; ++d) {
+    for (d = 0; d < handlers_count; ++d) {
         if (serials[d] == serial) {
             return 1;
         }
@@ -261,12 +317,3 @@ int nvml_is_privileged()
     // Provisional
     return (getuid() == 0);
 }
-
-#if TEST
-int main(int argc, char **argv)
-{
-    nvml_t nvml;
-    nvml_open(&nvml);
-    return 0;
-}
-#endif

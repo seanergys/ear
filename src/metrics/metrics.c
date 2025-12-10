@@ -362,7 +362,7 @@ static state_t metrics_apis_update(void *whatever)
     return EAR_SUCCESS;
 }
 
-    int main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
     if (argc > 1) {
         if (atoi(argv[1])) {

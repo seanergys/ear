@@ -8,8 +8,8 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-// #define SHOW_DEBUGS 1
-// #define FAKE_GPUS   1
+//#define SHOW_DEBUGS 1
+//#define FAKE_GPUS  1
 
 #include <common/output/debug.h>
 #include <metrics/gpu/archs/dummy.h>
@@ -22,11 +22,11 @@
 
 GPU_F_LOAD(dummy)
 {
-    apis_put(ops->unload     , gpu_dummy_unload     );
-    apis_put(ops->get_info   , gpu_dummy_get_info   );
-    apis_put(ops->get_devices, gpu_dummy_get_devices);
-    apis_put(ops->read       , gpu_dummy_read       );
-    apis_put(ops->read_raw   , gpu_dummy_read_raw   );
+    apis_put(ops->unload      , gpu_dummy_unload      );
+    apis_put(ops->get_info    , gpu_dummy_get_info    );
+    apis_put(ops->topology_get, gpu_dummy_topology_get);
+    apis_put(ops->read        , gpu_dummy_read        );
+    apis_put(ops->read_raw    , gpu_dummy_read_raw    );
 }
 
 GPU_F_UNLOAD(dummy)
@@ -45,24 +45,27 @@ GPU_F_GET_INFO(dummy)
     #endif
 }
 
-GPU_F_GET_DEVICES(dummy)
+GPU_F_TOPOLOGY_GET(dummy)
 {
-    if (devs != NULL) {
+    uint devs_count = 1;
+    uint i;
+
+    #if FAKE_GPUS
+    devs_count = FAKE_N;
+    #endif
+    tp->devs       = calloc(devs_count, sizeof(gpu_devs_t));
+    tp->devs_count = devs_count;
+    for (i = 0; i < devs_count; ++i) {
+        tp->devs[i].index        =  i;
+        tp->devs[i].index_device = -1;
+        tp->devs[i].serial       =  i;
+        tp->devs[i].is_readable  =  1;
         #if FAKE_GPUS
-        *devs             = calloc(4, sizeof(gpu_devs_t));
-        (*devs)[0].serial = (*devs)[0].index = 0;
-        (*devs)[1].serial = (*devs)[1].index = 1;
-        (*devs)[2].serial = (*devs)[2].index = 2;
-        (*devs)[3].serial = (*devs)[3].index = 3;
+        sprintf(tp->devs[i].name, "Fake Device %d", i);
+        sprintf(tp->devs[i].uuid, "fake-%d", i);
         #else
-        *devs = calloc(1, sizeof(gpu_devs_t));
-        #endif
-    }
-    if (devs_count != NULL) {
-        #if FAKE_GPUS
-        *devs_count = FAKE_N;
-        #else
-        *devs_count = 1;
+        sprintf(tp->devs[i].name, "Dummy Device %d", i);
+        sprintf(tp->devs[i].uuid, "dummy-%d", i);
         #endif
     }
 }

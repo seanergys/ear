@@ -34,7 +34,7 @@ void cpufreq_load(topology_t *tp, int options)
         goto dummy;
     }
     cpufreq_intel63_load(tp, &ops, options);
-    //cpufreq_eard_load(tp, &ops, options);
+    cpufreq_eard_load(tp, &ops, options);
 dummy:
     cpufreq_dummy_load(tp, &ops, options);
     cpufreq_get_info(&info);

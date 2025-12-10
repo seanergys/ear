@@ -112,13 +112,13 @@ GPU_F_LOAD(oneapi)
         sus->time_burst = ONE_API_BURST;
         sus->suscribe(sus);
     }
-    apis_pif(ops->unload     , gpu_oneapi_unload     , 1);
-    apis_pif(ops->get_info   , gpu_oneapi_get_info   , 1);
-    apis_pif(ops->get_devices, gpu_oneapi_get_devices, 1);
+    apis_pif(ops->unload      , gpu_oneapi_unload      , 1);
+    apis_pif(ops->get_info    , gpu_oneapi_get_info    , 1);
+    apis_pif(ops->topology_get, gpu_oneapi_topology_get, 1);
     apis_pif(ops->set_monitoring_mode, gpu_oneapi_set_monitoring_mode, 1);
-    apis_pif(ops->read       , gpu_oneapi_read       , is_pooling);
-    apis_pif(ops->read_raw   , gpu_oneapi_read_raw   , 1);
-    apis_pif(ops->data_diff  , gpu_oneapi_data_diff  , 1);
+    apis_pif(ops->read        , gpu_oneapi_read        , is_pooling);
+    apis_pif(ops->read_raw    , gpu_oneapi_read_raw    , 1);
+    apis_pif(ops->data_diff   , gpu_oneapi_data_diff   , 1);
 }
 
 GPU_F_UNLOAD(oneapi)
@@ -132,20 +132,9 @@ GPU_F_GET_INFO(oneapi)
     info->devs_count = handlers_count;
 }
 
-GPU_F_GET_DEVICES(oneapi)
+GPU_F_TOPOLOGY_GET(oneapi)
 {
-    int dv;
-    if (devs != NULL) {
-        *devs = calloc(handlers_count, sizeof(gpu_devs_t));
-        //
-        for (dv = 0; dv < handlers_count; ++dv) {
-            (*devs)[dv].serial = handlers[dv].uuid;
-            (*devs)[dv].index  = dv;
-        }
-    }
-    if (devs_count != NULL) {
-        *devs_count = handlers_count;
-    }
+    oneapi_get_devices(&tp->devs, &tp->devs_count);
 }
 
 GPU_F_SET_MONITORING_MODE(oneapi)

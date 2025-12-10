@@ -217,16 +217,7 @@ state_t mgt_gpu_oneapi_dispose(ctx_t *c)
 
 state_t mgt_gpu_oneapi_get_devices(ctx_t *c, gpu_devs_t **devs_in, uint *devs_count_in)
 {
-    int dv;
-    *devs_in = calloc(devs_count, sizeof(gpu_devs_t));
-    //
-    for (dv = 0; dv < devs_count; ++dv) {
-        (*devs_in)[dv].serial = devs[dv].uuid;
-        (*devs_in)[dv].index  = dv;
-    }
-    if (devs_count_in != NULL) {
-        *devs_count_in = devs_count;
-    }
+    oneapi_get_devices(devs_in, devs_count_in);
     return EAR_SUCCESS;
 }
 

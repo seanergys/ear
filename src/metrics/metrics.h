@@ -97,9 +97,6 @@ typedef struct metrics_diff_s {
 void metrics_load(metrics_info_t *m, topology_t *tp, char *nodepow_path, ullong mflags);
 
 // This function is composed by get_info() functions of the different metrics.
-// It is perfectly safe to call metrics_info_get() or single xxx_get_info()
-// functions just after calling load(). It is not required to wait to call
-// init() because the data returned by get_info() is set during load() calling.
 void metrics_info_get(metrics_info_t *m);
 
 char *metrics_info_tostr(metrics_info_t *m, char *buffer);
