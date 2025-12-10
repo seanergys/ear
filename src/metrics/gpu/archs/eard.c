@@ -8,8 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-// #define SHOW_DEBUGS 1
-// #define FAKE_GPUS   1
+//#define SHOW_DEBUGS 1
 
 #include <stdlib.h>
 #include <common/output/debug.h>
@@ -18,11 +17,11 @@
 #include <daemon/local_api/eard_api_rpc.h>
 #include <metrics/gpu/archs/eard.h>
 
-static uint        root_devs_count = 0;
-static uint        user_devs_count = 0;
-static gpu_devs_t *root_devs;
-static gpu_devs_t *user_devs;
-static uint        eard_api;
+static uint           eard_api;
+static gpu_topology_t tp_root;
+static gpu_topology_t tp_user;
+static gpu_topology_t tp_root_rd; // readable devices only
+static gpu_topology_t tp_user_rd; // readable devices only
 
 GPU_F_LOAD(eard)
 {
@@ -41,81 +40,75 @@ GPU_F_LOAD(eard)
     }
     debug("EARD (daemon) is connected");
     if (state_fail(s = eard_rpc(RPC_MET_GPU_GET_API, NULL, 0, (char *) &eard_api, sizeof(uint)))) {
-        debug("Received: %s", state_msg) return;
+        debug("Bad reception: %s", state_msg) return;
+        return;
     }
     if (eard_api == API_NONE || eard_api == API_DUMMY) {
         debug("EARD (daemon) has loaded DUMMY/NONE API");
         return;
     }
     // Get a list of devices in root space
-    if (state_fail(s = eard_rpc_buffered(RPC_MET_GPU_GET_DEVICES, NULL, 0, (char **) &b, NULL))) {
+    if (state_fail(s = eard_rpc_buffered(RPC_MET_GPU_TOPOLOGY_GET, NULL, 0, (char **) &b, NULL))) {
+        debug("Bad reception: %s", state_msg);
         return;
     }
-    serial_copy_elem(&b, (char *) &root_devs_count, NULL);
-    debug("Received from EARD %u GPUs", root_devs_count);
-    if (root_devs_count == 0) {
+    serial_copy_elem(&b, (char *) &tp_root, NULL);
+    debug("Received from EARD a topology of %u GPUs", tp_root.devs_count);
+    if (tp_root.devs_count == 0) {
         debug("There are no GPUs");
         return;
     }
-    root_devs       = (gpu_devs_t *) serial_copy_elem(&b, NULL, NULL);
-    user_devs_count = root_devs_count;
+    tp_root.devs = (gpu_devs_t *) serial_copy_elem(&b, NULL, NULL);
+    // Getting the user part
+    tp_user.devs_count = tp_root.devs_count;
     // Get a list of devices in user space
-    if (ops->get_devices != NULL) {
-        ops->get_devices(&user_devs, &user_devs_count);
+    if (ops->topology_get != NULL) {
+        ops->topology_get(&tp_user);
     } else {
         // If not, just copy root devices
-        user_devs = calloc(user_devs_count, sizeof(gpu_devs_t));
-        memcpy(user_devs, root_devs, user_devs_count * sizeof(gpu_devs_t));
+        tp_user.devs = calloc(tp_user.devs_count, sizeof(gpu_devs_t));
+        memcpy(tp_user.devs, tp_root.devs, tp_user.devs_count * sizeof(gpu_devs_t));
     }
-    #if FAKE_GPUS
-    user_devs_count = 1;
-    #endif
-    #if SHOW_DEBUGS
-    int i;
-
-    for (i = 0; i < root_devs_count; ++i) {
-        debug("root D%d: %d_%llu", i, root_devs[i].index, root_devs[i].serial);
-    }
-    for (i = 0; i < user_devs_count; ++i) {
-        debug("user D%d: %d_%llu", i, user_devs[i].index, user_devs[i].serial);
-    }
-    #endif
+    gpu_topology_select(&tp_root, &tp_root_rd, GPU_TP_SEL_READABLE);
+    gpu_topology_select(&tp_user, &tp_user_rd, GPU_TP_SEL_READABLE);
+    debug("TP root (ALL) has %d devs", tp_root.devs_count);
+    debug("TP root (RD ) has %d devs", tp_root_rd.devs_count);
+    debug("TP user (ALL) has %d devs", tp_user.devs_count);
+    debug("TP user (RD ) has %d devs", tp_user_rd.devs_count);
     // If something already loaded
-    apis_put(ops->unload     , gpu_eard_unload     );
-    apis_put(ops->get_info   , gpu_eard_get_info   );
-    apis_put(ops->get_devices, gpu_eard_get_devices);
-    apis_set(ops->read       , gpu_eard_read       );
-    apis_set(ops->read_raw   , gpu_eard_read_raw   );
-    debug("Loaded metrics/gpu/EARD");
+    apis_put(ops->unload      , gpu_eard_unload      );
+    apis_put(ops->get_info    , gpu_eard_get_info    );
+    apis_put(ops->topology_get, gpu_eard_topology_get);
+    apis_set(ops->read        , gpu_eard_read        );
+    apis_set(ops->read_raw    , gpu_eard_read_raw    );
+    debug("Loaded EARD");
 }
 
 GPU_F_UNLOAD(eard)
 {
-    if (root_devs != NULL) free(root_devs);
-    if (user_devs != NULL) free(user_devs);
+    gpu_topology_free(&tp_root);
+    gpu_topology_free(&tp_user);
+    gpu_topology_free(&tp_root_rd);
+    gpu_topology_free(&tp_user_rd);
 }
 
 GPU_F_GET_INFO(eard)
 {
     info->api        = API_EARD;
     info->api_under  = eard_api;
-    info->devs_count = user_devs_count;
+    info->devs_count = tp_user_rd.devs_count;
 }
 
-GPU_F_GET_DEVICES(eard)
+GPU_F_TOPOLOGY_GET(eard)
 {
-    if (devs != NULL) {
-        *devs = calloc(user_devs_count, sizeof(gpu_devs_t));
-        memcpy(*devs, user_devs, user_devs_count * sizeof(gpu_devs_t));
-    }
-    if (devs_count != NULL) {
-        *devs_count = (uint) user_devs_count;
-    }
+    tp->devs_count = tp_user.devs_count;
+    tp->devs       = calloc(tp_user.devs_count, sizeof(gpu_devs_t));
+    memcpy(tp->devs, tp_user.devs, tp_user.devs_count * sizeof(gpu_devs_t));
 }
 
 static state_t static_read(uint call, gpu_t *data)
 {
-    size_t size = ((size_t) root_devs_count) * sizeof(gpu_t);
+    size_t size = ((size_t) tp_root_rd.devs_count) * sizeof(gpu_t);
     gpu_t root_data[MAX_GPUS_SUPPORTED];
     int u, r, f;
     state_t s;
@@ -124,9 +117,9 @@ static state_t static_read(uint call, gpu_t *data)
     if (state_fail(s = eard_rpc(call, NULL, 0, (char *) root_data, size))) {
         return s;
     }
-    for (r = f = 0; r < root_devs_count; ++r, f = 0) {
-        for (u = 0; u < user_devs_count; ++u) {
-            if (user_devs[u].serial == root_devs[r].serial) {
+    for (r = f = 0; r < tp_root_rd.devs_count; ++r, f = 0) {
+        for (u = 0; u < tp_user_rd.devs_count; ++u) {
+            if (tp_user_rd.devs[u].serial == tp_root_rd.devs[r].serial) {
                 data[u] = root_data[r];
                 f       = 1;
             }

@@ -15,9 +15,9 @@
 #include <string.h>
 
 #ifndef DEBUG_ENABLED
-// #define DEBUG_ENABLED     1
+#define DEBUG_ENABLED     0
 #endif
-int  debug_channel	       __attribute__((weak)) = 2;
+int  debug_channel         __attribute__((weak)) = 2;
 int adebug_enabled         __attribute__((weak)) = 0;
 
 // Set
