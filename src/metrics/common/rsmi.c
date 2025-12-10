@@ -70,6 +70,7 @@ static const char *rsmi_names[] = {
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static rsmi_t          rsmi;
 static void           *handler;
+static uint            handlers_count;
 static int             counter;
 
 static state_t library_load()
@@ -99,16 +100,15 @@ static state_t library_load()
 
 static state_t library_init()
 {
-    uint devs;
     if (rsmi.init(0) != RSMI_STATUS_SUCCESS) {
         debug("rsmi.init(0) failed");
         return EAR_ERROR;
     }
-    if (rsmi.devs_count(&devs) != RSMI_STATUS_SUCCESS) {
-        debug("rsmi.devs_count(&devs) failed");
+    if (rsmi.devs_count(&handlers_count) != RSMI_STATUS_SUCCESS) {
+        debug("rsmi.devs_count(&handlers_count) failed");
         return EAR_ERROR;
     }
-    if (devs == 0) {
+    if (handlers_count == 0) {
         return_msg(EAR_ERROR, "no devices detected");
     }
     return EAR_SUCCESS;
@@ -121,6 +121,7 @@ static void library_destroy()
     }
     memset(&rsmi, 0, sizeof(rsmi_t));
     dlclose(handler);
+    handlers_count = 0U;
     handler = NULL;
 }
 
@@ -162,6 +163,31 @@ state_t rsmi_close()
         --counter;
     }
     return EAR_SUCCESS;
+}
+
+void rsmi_get_devices(gpu_devs_t **devs, uint *devs_count)
+{
+    char serial[32];
+    int i;
+
+    if (devs_count != NULL) {
+        *devs_count = handlers_count;
+    }
+    if (devs == NULL) {
+        return;
+    }
+    *devs = calloc(handlers_count, sizeof(gpu_devs_t));
+    for (i = 0; i < handlers_count; ++i) {
+        (*devs)[i].index            =  i;
+        (*devs)[i].index_device     = -1;
+        (*devs)[i].is_readable      =  1;
+        (*devs)[i].is_subdevice     =  0;
+        (*devs)[i].has_subdevices   =  0;
+        (*devs)[i].subdevices_count =  0;
+        if (rsmi.get_serial(i, serial, 32) == RSMI_STATUS_SUCCESS) {
+            (*devs)[i].serial       = (ullong) atoll(serial);
+        }
+    }
 }
 
 int rsmi_is_privileged()

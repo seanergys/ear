@@ -13,6 +13,7 @@
 
 #include <common/types.h>
 #include <common/states.h>
+#include <metrics/gpu/gpu.h>
 #ifdef RSMI_BASE
 #include <rocm_smi/rocm_smi.h>
 #endif
@@ -91,6 +92,8 @@ typedef struct rsmi_s {
 state_t rsmi_open(rsmi_t *rsmi);
 
 state_t rsmi_close();
+
+void rsmi_get_devices(gpu_devs_t **devs, uint *devs_count);
 
 int rsmi_is_privileged();
 

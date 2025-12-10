@@ -508,6 +508,29 @@ void oneapi_free_handlers(ze_handlers_t **handlers, uint *handlers_count)
     }
 }
 
+void oneapi_get_devices(gpu_devs_t **devs, uint *devs_count)
+{
+    char serial[32];
+    int i;
+
+    if (devs_count != NULL) {
+        *devs_count = hs_count;
+    }
+    if (devs == NULL) {
+        return;
+    }
+    *devs = calloc(hs_count, sizeof(gpu_devs_t));
+    for (i = 0; i < hs_count; ++i) {
+        (*devs)[i].index            =  i;
+        (*devs)[i].index_device     = -1;
+        (*devs)[i].is_readable      =  1;
+        (*devs)[i].is_subdevice     =  0;
+        (*devs)[i].has_subdevices   =  0;
+        (*devs)[i].subdevices_count =  0;
+        (*devs)[i].serial           = hs[i].uuid;
+    }
+}
+
 char *oneapi_strerror(ze_result_t z)
 {
     // ze.StrError(devs[dv].driver, (const char **) &pointer);

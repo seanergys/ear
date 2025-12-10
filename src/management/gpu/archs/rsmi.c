@@ -167,26 +167,10 @@ state_t mgt_gpu_rsmi_dispose(ctx_t *c)
     return static_dispose(c, EAR_SUCCESS, NULL);
 }
 
+
 state_t mgt_gpu_rsmi_get_devices(ctx_t *c, gpu_devs_t **devs_in, uint *devs_count_in)
 {
-    char serial[32];
-    rsmi_status_t r;
-    int i;
-
-    *devs_in = calloc(devs_count, sizeof(gpu_devs_t));
-    //
-    for (i = 0; i < devs_count; ++i) {
-        if ((r = rsmi.get_serial(i, serial, 32)) != RSMI_STATUS_SUCCESS) {
-            return_msg(EAR_ERROR, "RSMI error");
-        }
-        debug("D%d: %s", i, serial);
-        (*devs_in)[i].serial = (ullong) atoll(serial);
-        (*devs_in)[i].index  = i;
-    }
-    if (devs_count_in != NULL) {
-        *devs_count_in = devs_count;
-    }
-
+    rsmi_get_devices(devs_in, devs_count_in);
     return EAR_SUCCESS;
 }
 

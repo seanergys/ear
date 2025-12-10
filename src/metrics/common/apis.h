@@ -93,6 +93,7 @@ typedef struct apinfo_s {
     char *scope_str;
     uint  bits; // Unused
     uint  dev_model;
+    // This is a miscellaneous extra-space
     union {
         void *list1;
         void *avail_list;

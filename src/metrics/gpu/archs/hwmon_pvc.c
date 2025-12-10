@@ -45,11 +45,11 @@ GPU_F_LOAD(hwmon_pvc)
         return;
     }
     debug("items_count: %u", items_count);
-    apis_pif(ops->unload     , gpu_hwmon_pvc_unload     , 1);
-    apis_pif(ops->get_info   , gpu_hwmon_pvc_get_info   , 1);
-    apis_pif(ops->get_devices, gpu_hwmon_pvc_get_devices, 1);
-    apis_pif(ops->read       , gpu_hwmon_pvc_read       , 1);
-    apis_pif(ops->read_raw   , gpu_hwmon_pvc_read_raw   , 1);
+    apis_pif(ops->unload      , gpu_hwmon_pvc_unload      , 1);
+    apis_pif(ops->get_info    , gpu_hwmon_pvc_get_info    , 1);
+    apis_pif(ops->topology_get, gpu_hwmon_pvc_topology_get, 1);
+    apis_pif(ops->read        , gpu_hwmon_pvc_read        , 1);
+    apis_pif(ops->read_raw    , gpu_hwmon_pvc_read_raw    , 1);
     debug("Loaded HWMON_PVC");
 }
 
@@ -66,13 +66,22 @@ GPU_F_GET_INFO(hwmon_pvc)
     info->scope       = SCOPE_NODE;
 }
 
-GPU_F_GET_DEVICES(hwmon_pvc)
+GPU_F_TOPOLOGY_GET(hwmon_pvc)
 {
-    if (devs != NULL) {
-        *devs = calloc(items_count, sizeof(gpu_devs_t));
-    }
-    if (devs_count != NULL) {
-        *devs_count = items_count;
+    char serial[32];
+    int i;
+
+    tp->devs_count = items_count;
+    tp->devs       = calloc(items_count, sizeof(gpu_devs_t));
+
+    for (i = 0; i < items_count; ++i) {
+        tp->devs[i].index            =  i;
+        tp->devs[i].index_device     = -1;
+        tp->devs[i].is_readable      =  1;
+        tp->devs[i].is_subdevice     =  0;
+        tp->devs[i].has_subdevices   =  0;
+        tp->devs[i].subdevices_count =  0;
+        tp->devs[i].serial           = (ullong) i;
     }
 }
 
