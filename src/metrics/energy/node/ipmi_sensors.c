@@ -97,9 +97,10 @@ static state_t energy_pool(void *data)
     timestamp_t ts = {0};
     double fpower;
     double ftime;
-    int s;
+    int s = 0;
 
-    while (pthread_mutex_trylock(&lock));
+    while (pthread_mutex_trylock(&lock))
+        ;
     //
     if (state_fail(st = ipmi_sensors_read(sensors, sensors_count, &sensors_readings))) {
         goto_state(leave, st = EAR_ERROR);
@@ -130,7 +131,7 @@ leave:
         memcpy(data, pool, sizeof(consumption_t) * sensors_count);
     }
     pthread_mutex_unlock(&lock);
-    return s;
+    return st;
 }
 
 state_t energy_dc_read(void *x, void *data)

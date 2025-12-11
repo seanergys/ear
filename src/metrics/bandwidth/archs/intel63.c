@@ -19,32 +19,32 @@
 #include <unistd.h>
 
 // Haswell
-static ushort hwell_ids[9]        = {0x2FB4, 0x2FB5, 0x2FB0, 0x2FB1, 0x2FD4, 0x2FD5, 0x2FD0, 0x2FD1, 0x00};
-static char  *hwell_dfs[9]        = {"14.0", "14.1", "15.0", "15.1", "17.0", "17.1", "18.0", "18.1", NULL};
-static off_t  hwell_ctls_addr[2]  = {0xF4, 0xD8};
-static off_t  hwell_ctrs_addr[1]  = {0xA0};
-static uint   hwell_cmds_start[2] = {0x030000, 0x420F04};
+static ushort hwell_ids[9]      = {0x2FB4, 0x2FB5, 0x2FB0, 0x2FB1, 0x2FD4, 0x2FD5, 0x2FD0, 0x2FD1, 0x00};
+static char *hwell_dfs[9]       = {"14.0", "14.1", "15.0", "15.1", "17.0", "17.1", "18.0", "18.1", NULL};
+static off_t hwell_ctls_addr[2] = {0xF4, 0xD8};
+static off_t hwell_ctrs_addr[1] = {0xA0};
+static uint hwell_cmds_start[2] = {0x030000, 0x420F04};
 // static uint hwell_ids_count = 8;
 // static uint hwell_dfs_count = 8;
-static uint   hwell_ctls_count = 2;
-static uint   hwell_ctrs_count = 1;
+static uint hwell_ctls_count = 2;
+static uint hwell_ctrs_count = 1;
 // Broadwell
 static ushort bwell_ids[9] = {0x6FB4, 0x6FB5, 0x6FB0, 0x6FB1, 0x6FD4, 0x6FD5, 0x6FD0, 0x6FD1, 0x00};
 // static uint bwell_ids_count = 8;
 // Skylake
-static ushort  slake_ids[4] = {0x2042, 0x2046, 0x204A, 0x00};
-static char   *slake_dfs[9]  = {"0a.2", "0a.6", "0b.2", "0b.6", "0c.2", "0c.6", "0d.2", "0d.6", NULL};
+static ushort slake_ids[4] = {0x2042, 0x2046, 0x204A, 0x00};
+static char *slake_dfs[9]  = {"0a.2", "0a.6", "0b.2", "0b.6", "0c.2", "0c.6", "0d.2", "0d.6", NULL};
 // static uint slake_ids_count = 3;
 // static uint slake_dfs_count = 8;
 //
 static pci_t *pcis;
-static uint   pcis_count;
+static uint pcis_count;
 static off_t *ctls_addr;
 static off_t *ctrs_addr;
-static uint  *cmds_start;
-static uint   ctls_count;
-static uint   ctrs_count;
-static uint   devs_count;
+static uint *cmds_start;
+static uint ctls_count;
+static uint ctrs_count;
+static uint devs_count;
 
 static void close_all()
 {
@@ -92,9 +92,9 @@ BWIDTH_F_LOAD(intel63)
     devs_count = pcis_count * ctrs_count;
     debug("PCIs count: %d", pcis_count);
     //
-    apis_put(ops->unload  , bwidth_intel63_unload);
+    apis_put(ops->unload, bwidth_intel63_unload);
     apis_put(ops->get_info, bwidth_intel63_get_info);
-    apis_put(ops->read    , bwidth_intel63_read);
+    apis_put(ops->read, bwidth_intel63_read);
 }
 
 BWIDTH_F_UNLOAD(intel63)

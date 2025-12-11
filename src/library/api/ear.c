@@ -184,9 +184,10 @@ static char *creport_earl_events;
 uint ear_periodic_mode   = PERIODIC_MODE_OFF;
 uint mpi_calls_in_period = 10000;
 uint mpi_calls_per_second;
-static unsigned long long int total_mpi_calls = 0;
-static uint dynais_timeout                    = MAX_TIME_DYNAIS_WITHOUT_SIGNATURE;
-uint lib_period                               = PERIOD;
+static unsigned long long int __attribute__((unused))total_mpi_calls = 0;
+static unsigned long __attribute__((unused)) dynais_calls            = 0;
+static uint dynais_timeout = MAX_TIME_DYNAIS_WITHOUT_SIGNATURE;
+uint lib_period            = PERIOD;
 
 // MPI_CALLS_TO_CHECK_PERIODIC is defined to MAX_MPI_CALLS_SECOND
 static uint check_every = MPI_CALLS_TO_CHECK_PERIODIC;
@@ -257,8 +258,7 @@ uint per_proc_verb_file = 0;
 
 uint exclusive = 1;
 ear_classify_t phases_limits;
-static ulong dynais_calls = 0;
-uint limit_exceeded       = 0;
+uint limit_exceeded = 0;
 
 extern ulong perf_accuracy_min_time;
 static uint exiting = 0;
@@ -276,7 +276,6 @@ static uint must_masters_synchronize();
 static void create_earl_verbose_files();
 
 /** Make a copy of pathname and store it to a file called pathname.bckp */
-static state_t earl_log_backup(char *pathname, size_t pathname_size);
 
 static state_t check_eard_earl_compatibility(state_t eard_connect_state, eard_state_t *eard_conf)
 {
@@ -3151,6 +3150,7 @@ void ear_destructor()
 }
 #endif
 
+#if 0
 static state_t earl_log_backup(char *pathname, size_t pathname_size)
 {
     state_t st        = EAR_SUCCESS;
@@ -3192,6 +3192,7 @@ static state_t earl_log_backup(char *pathname, size_t pathname_size)
 
     return st;
 }
+#endif
 
 static void create_earl_verbose_files()
 {

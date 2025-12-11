@@ -74,6 +74,7 @@ X_AC_PBS
 X_AC_DLB
 X_AC_OPENSSL
 X_AC_COUNTDOWN
+X_AC_CMOCKA
 
 #################
 # POST-FEATURES #
@@ -139,7 +140,8 @@ AC_CONFIG_FILES([Makefile
 				 etc/rpms/specs/ear_ln.spec
 				 etc/rpms/specs/ear_cn.spec
 				 etc/rpms/specs/ear_sn.spec
-                 src/daemon/app_api/Makefile])
+                 src/daemon/app_api/Makefile
+				 tests/daemon/Makefile])
 AC_CONFIG_FILES([etc/rpms/rpmbuild.sh], [chmod +x etc/rpms/rpmbuild.sh])
 AC_OUTPUT
 AX_AFTER_OUTPUT
