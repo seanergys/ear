@@ -8,33 +8,35 @@
  * SPDX-License-Identifier: EPL-2.0
  **********************************************************************/
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
-#include <pthread.h>
 #include <common/output/debug.h>
 #include <common/system/monitor.h>
 #include <metrics/common/hwmon.h>
 #include <metrics/energy_cpu/archs/hwmon.h>
+#include <pthread.h>
 
 #define MONITORING_TIME 2
 
 typedef struct chips_s {
     hwmon_t *chips;
-    uint     chips_count;
-    ullong  *energy_uj; // Accumulated value, per chip
-    double  *power_uw_last; // Last valid value, per chip
+    uint chips_count;
+    ullong *energy_uj;     // Accumulated value, per chip
+    double *power_uw_last; // Last valid value, per chip
 } chips_t;
 
-static chips_t         chips_socket;
-static chips_t         chips_pkg;
-static chips_t         chips_sysio;
-static suscription_t  *sus;
-static timestamp_t     ts_last;
+static chips_t chips_socket;
+static chips_t chips_pkg;
+static chips_t chips_sysio;
+static suscription_t *sus;
+static timestamp_t ts_last;
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 static void chips_open(chips_t *chips, char *label)
 {
-    hwmon_open("power_meter", "power", label, &chips->chips, &chips->chips_count);
+    if (state_fail(hwmon_open("power_meter", "power", label, &chips->chips, &chips->chips_count))) {
+        return;
+    }
     chips->energy_uj     = calloc(chips_pkg.chips_count, sizeof(ullong));
     chips->power_uw_last = calloc(chips_pkg.chips_count, sizeof(double));
     debug("%s #chips: %u", label, chips->chips_count);
@@ -42,12 +44,12 @@ static void chips_open(chips_t *chips, char *label)
 
 static void chips_close(chips_t *chips)
 {
-    if (chips != NULL) {
+    if (chips->chips != NULL) {
         hwmon_close(&chips->chips);
         free(chips->power_uw_last);
         free(chips->energy_uj);
         chips->chips_count = 0;
-        chips->chips = NULL;
+        chips->chips       = NULL;
     }
 }
 
@@ -65,8 +67,8 @@ state_t energy_cpu_hwmon_load(topology_t *tp_in)
 
     if (tp_in->vendor == VENDOR_ARM && tp_in->model == MODEL_NEOVERSE_V2) {
         chips_open(&chips_socket, "Grace Power Socket");
-        chips_open(&chips_pkg   , "CPU Power Socket"  ); // Includes caches, so it is package
-        chips_open(&chips_sysio , "SysIO Power Socket");
+        chips_open(&chips_pkg, "CPU Power Socket"); // Includes caches, so it is package
+        chips_open(&chips_sysio, "SysIO Power Socket");
     } else {
         chips_open(&chips_pkg, NULL); // Is like acpi_power.c
     }
@@ -83,11 +85,11 @@ state_t energy_cpu_hwmon_load(topology_t *tp_in)
 static void static_read_single(chips_t *chips, double time_s)
 {
     double power_uw = 0.0;
-    hwmon_t *chip = NULL;
-    ullong aux_uw = 0.0;
-    int i = 0;
+    hwmon_t *chip   = NULL;
+    ullong aux_uw   = 0.0;
+    int i           = 0;
 
-    if (chips == NULL) {
+    if (chips->chips == NULL) {
         return;
     }
     hwmon_read(chips->chips);
@@ -102,8 +104,8 @@ static void static_read_single(chips_t *chips, double time_s)
         // grace_cpu_power.c class is calculating time in mS, so we add another 1000.0 to copy its behaviour
         aux_uw = (ullong) (power_uw * time_s * 1000.0);
         chips->energy_uj[i] += aux_uw;
-        debug("Process %d: CHIP[%d]: %llu += %llu = %0.lf * (%0.3lf us) (%s)",
-            getpid(), i, chips->energy_uj[i], aux_uw, power_uw, time_s, chips->chips[0].devs[0].label);
+        debug("Process %d: CHIP[%d]: %llu += %llu = %0.lf * (%0.3lf us) (%s)", getpid(), i, chips->energy_uj[i], aux_uw,
+              power_uw, time_s, chips->chips[0].devs[0].label);
         ++i;
     }
 }
@@ -118,8 +120,8 @@ static state_t static_read()
         return EAR_SUCCESS;
     }
     static_read_single(&chips_socket, time_s);
-    static_read_single(&chips_pkg   , time_s);
-    static_read_single(&chips_sysio , time_s);
+    static_read_single(&chips_pkg, time_s);
+    static_read_single(&chips_sysio, time_s);
     ts_last = ts;
     return EAR_SUCCESS;
 }
@@ -129,20 +131,21 @@ static state_t static_pool(void *data)
     ullong *values = (ullong *) data;
     int j;
 
-    while (pthread_mutex_trylock(&lock));
+    while (pthread_mutex_trylock(&lock))
+        ;
     static_read(); // converted to micro Watts
     // It is 2 because this apis is DRAM[0]+PKG[1]
     for (j = 0; data != NULL && j < chips_pkg.chips_count; j += 1) {
-        values[j+0] = 0LLU;
+        values[j + 0] = 0LLU;
         if (chips_socket.energy_uj[j] != 0 && chips_pkg.energy_uj[j] != 0 && chips_sysio.energy_uj[j] != 0) {
-            debug("vector [%d] info [%d]", j, j)
-            values[j+0] = chips_socket.energy_uj[j] - (chips_pkg.energy_uj[j] + chips_sysio.energy_uj[j]);
-            if (values[j+0] >= chips_socket.energy_uj[j]) {
-                values[j+0] = 0LLU;
+            debug("vector [%d] info [%d]", j, j) values[j + 0] =
+                chips_socket.energy_uj[j] - (chips_pkg.energy_uj[j] + chips_sysio.energy_uj[j]);
+            if (values[j + 0] >= chips_socket.energy_uj[j]) {
+                values[j + 0] = 0LLU;
             }
         }
-        debug("vector [%d] info [%d]", j+chips_pkg.chips_count, j)
-        values[j + chips_pkg.chips_count] = chips_pkg.energy_uj[j];
+        debug("vector [%d] info [%d]", j + chips_pkg.chips_count, j) values[j + chips_pkg.chips_count] =
+            chips_pkg.energy_uj[j];
     }
     pthread_mutex_unlock(&lock);
     return EAR_SUCCESS;
