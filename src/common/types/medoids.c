@@ -15,7 +15,9 @@
  * and COPYING.EPL files.
  */
 
+#define SHOW_DEBUGS 1
 #include <common/config.h>
+#include <common/output/debug.h>
 #include <common/output/verbose.h>
 #include <common/types/medoids.h>
 #include <unistd.h>
@@ -28,6 +30,7 @@ static void create_filename(char *filename, char *path, char *prefix, char *arch
     strcat(filename, ".data");
 }
 
+#if 0
 void medoids_print(medoids_t *phases)
 {
     double *medoid = phases->cpu_bound;
@@ -58,6 +61,7 @@ void extremes_print(extremes_t *extremes)
     extreme = extremes->gflops_extreme;
     debug("K-medoids data: gflops mean -> %lf std -> %lf", extreme[1], extreme[0]);
 }
+#endif
 
 state_t load_medoids(char *path, char *architecture, medoids_t *final_medoids)
 {

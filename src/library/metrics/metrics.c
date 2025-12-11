@@ -1459,10 +1459,10 @@ static int metrics_partial_stop(uint where)
         energy_cpu_data_diff(no_ctx, last_rapl, aux_rapl, metrics_rapl[LOO]);
 
         // Manual RAPL accumulation
-        ullong total_RAPL_energy = 0;
+        // ullong total_RAPL_energy = 0;
         for (int i = 0; i < rapl_elements; i++) {
             metrics_rapl[APP][i] += metrics_rapl[LOO][i];
-            total_RAPL_energy += metrics_rapl[LOO][i];
+            // total_RAPL_energy += metrics_rapl[LOO][i];
             debug("energy CPU: %llu", metrics_rapl[LOO][i]);
         }
 
