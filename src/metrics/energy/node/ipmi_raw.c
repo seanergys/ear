@@ -68,7 +68,7 @@ static int send_oem_message(int d, ipmi_cmd_t *pkg)
     return 1;
 }
 
-state_t energy_init(void **x)
+state_t energy_load(void **x)
 {
     state_t s = EAR_SUCCESS;
     char *hint;
@@ -122,7 +122,7 @@ leave:
     return s;
 }
 
-state_t energy_dispose(void **x)
+state_t energy_unload(void **x)
 {
     return EAR_SUCCESS;
 }

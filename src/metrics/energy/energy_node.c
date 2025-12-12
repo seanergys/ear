@@ -12,121 +12,248 @@
 // #define SHOW_DEBUGS 1
 
 #include <common/config.h>
+#include <common/environment_common.h>
+#include <common/hardware/hardware_info.h>
 #include <common/includes.h>
 #include <common/output/debug.h>
-#include <common/utils/string.h>
 #include <common/system/symplug.h>
-#include <common/hardware/hardware_info.h>
 #include <common/types/configuration/cluster_conf.h>
+#include <common/utils/string.h>
 #include <metrics/energy/energy_node.h>
+#include <pthread.h>
+/* Static plugins headers */
+#include <metrics/energy/node/energy_cpu_gpu.h>
+#include <metrics/energy/node/energy_dcmi.h>
+#include <metrics/energy/node/energy_dummy.h>
 
-struct energy_op {
-    state_t (*init)(void **c);
-    state_t (*dispose)(void **c);
-    state_t (*datasize)(size_t *size);
-    state_t (*frequency)(ulong *freq);
-    state_t (*dc_read)(void *c, edata_t emj);
-    state_t (*dc_time_read)(void *c, edata_t emj, ulong *tms);
-    state_t (*ac_read)(void *c, edata_t em);
-    state_t (*units)(uint *uints);
-    state_t (*accumulated)(ulong *e, edata_t init, edata_t end);
-    state_t (*energy_to_str)(char *str, edata_t end);
-    state_t (*power_limit)(void *c, ulong limit, ulong target);
-    uint (*is_null)(edata_t end);
-} energy_ops;
+struct energy_op energy_ops;
 
-const char *energy_names[] = {
-        "energy_init",
-        "energy_dispose",
-        "energy_datasize",
-        "energy_frequency",
-        "energy_dc_read",
-        "energy_dc_ti   me_read",
-        "energy_ac_read",
-        "energy_units",
-        "energy_accumulated",
-        "energy_to_str",
-        "energy_power_limit",
-        "energy_data_is_null"
-};
+const char *energy_names[] = {"energy_load",        "energy_unload",       "energy_datasize",    "energy_frequency",
+                              "energy_dc_read",     "energy_dc_time_read", "energy_ac_read",     "energy_units",
+                              "energy_accumulated", "energy_to_str",       "energy_power_limit", "energy_data_is_null"};
 
-static int energy_loaded   = 0;
-static int energy_nops     = 12;
+static int energy_loaded    = 0;
+static int energy_nops      = 12;
+static void *energy_context = NULL;
+static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
-state_t energy_load(char *energy_obj)
+static void split_plugin_args(const char *plugin_name, char *name_no_args)
 {
-    uint list_count = 0;
-    char **list     = NULL;
-    state_t ret     = EAR_SUCCESS;
-    char *var       = NULL;
-
-    if (energy_loaded) {
-        return_msg(EAR_ERROR, Generr.api_initialized);
-    }
-    if (!energy_obj) {
-        return_msg(EAR_ERROR, Generr.input_null);
-    }
+    char *args;
+    strncpy(name_no_args, plugin_name, MAX_PATH_SIZE);
     // In case energy_obj = plugin.so:arg1:arg2:arg3
     // - energy_obj will be rewritten as plugin.so
     // - and EAR_ENERGY_ARGS will be arg1:arg2:arg3
     // This is specially required in IPMI plugins. Take a look into these
     // plugins to see how this environment variable is used.
-    if (strchr(energy_obj, '"' )) { remove_chars(energy_obj, '"'); }
-    if (strchr(energy_obj, '\'')) { remove_chars(energy_obj, '\''); }
-    if (strchr(energy_obj, ':')) {
-        if (strtoa((const char *) energy_obj, ':', &list, &list_count)) {
-            if (list_count > 0) {
-                var = strchr(energy_obj, ':') + 1;
-                setenv("EAR_ENERGY_ARGS", var, 1);
-                debug("EAR_ENERGY_ARGS %s", var);
+    if (strchr(name_no_args, '"' )) { remove_chars(name_no_args, '"'); }
+    if (strchr(name_no_args, '\'')) { remove_chars(name_no_args, '\''); }
+    args = strchr(name_no_args, ':');
+    if (args != NULL) {
+        *args = '\0';
+        args++;
+        setenv("EAR_ENERGY_ARGS", args, 1);
+        debug("EAR_ENERGY_ARGS %s", args);
+    }
+}
+
+static state_t load_dynamic_plugin(const char *dir_plug, const char *plugin_name)
+{
+    char energy_obj[MAX_PATH_SIZE];
+    char name_no_args[MAX_PATH_SIZE];
+
+    if (plugin_name == NULL || dir_plug == NULL) {
+        return EAR_ERROR;
+    }
+
+    // Split plugin name and arguments
+    split_plugin_args(plugin_name, name_no_args);
+
+    snprintf(energy_obj, sizeof(energy_obj), "%s/energy/%s", dir_plug, name_no_args);
+    debug("loading shared object '%s'", energy_obj);
+
+    if (state_fail(symplug_open(energy_obj, (void **) &energy_ops, energy_names, energy_nops))) {
+        return EAR_ERROR;
+    }
+
+    return energy_ops.load(&energy_context);
+}
+
+state_t energy_load(int options)
+{
+    cluster_conf_t cluster_conf;
+    my_node_conf_t *node_conf = NULL;
+    char ear_conf_path[MAX_PATH_SIZE];
+    state_t ret     = EAR_ERROR;
+    char *hack_path = NULL;
+    char *dir_plug  = NULL;
+    int conf_loaded = 0;
+    char install_path_buf[MAX_PATH_SIZE];
+
+    pthread_mutex_lock(&lock);
+    debug("energy_load: entry");
+
+    if (energy_loaded) {
+        debug("energy_load: already loaded");
+        pthread_mutex_unlock(&lock);
+        return_msg(EAR_ERROR, Generr.api_initialized);
+    }
+
+    // HACK: Allow loading specific plugin via environment variable
+    hack_path = getenv("HACK_ENERGY_PLUGIN");
+    if (hack_path != NULL) {
+        char hack_path_no_args[MAX_PATH_SIZE];
+        char *args;
+
+        debug("Loading HACK energy plugin: %s", hack_path);
+
+        split_plugin_args(hack_path, hack_path_no_args);
+
+        if (state_ok(symplug_open(hack_path_no_args, (void **) &energy_ops, energy_names, energy_nops))) {
+            if (state_ok(energy_ops.load(&energy_context))) {
+                ret = EAR_SUCCESS;
+                goto end;
             }
-            energy_obj = list[0];
         }
     }
-    debug("loading shared object '%s'", energy_obj);
-    if (state_fail(ret = symplug_open(energy_obj, (void **) &energy_ops, energy_names, energy_nops))) {
-        debug("symplug_open() returned %d (%s)", ret, state_msg);
+
+    // If DUMMY is requested, we go straight for it.
+    if (API_IS(options, API_DUMMY)) {
+        debug("energy_load: DUMMY requested");
+        goto dummy;
+    }
+
+    if (API_IS(options, API_EARD)) {
+        verbose(VCONF, "EARD API not yet available");
+    }
+
+    memset(&cluster_conf, 0, sizeof(cluster_conf));
+
+    if (get_ear_conf_path(ear_conf_path) != EAR_SUCCESS ||
+        read_cluster_conf(ear_conf_path, &cluster_conf) != EAR_SUCCESS) {
+
+        debug("energy_load: could not load EAR configuration");
+        char *ear_install_path = get_ear_install_path();
+        if (ear_install_path != NULL) {
+            snprintf(install_path_buf, sizeof(install_path_buf), "%s/lib/plugins", ear_install_path);
+            dir_plug = install_path_buf;
+            debug("Could not load EAR configuration. Using fallback plugins directory: %s", dir_plug);
+        } else {
+            debug("Could not load EAR configuration to find plugins directory. Trying static plugins.");
+            dir_plug = NULL;
+        }
     } else {
+        debug("energy_load: EAR configuration loaded");
+        conf_loaded = 1;
+        dir_plug    = cluster_conf.install.dir_plug;
+    }
+
+    // Only attempt to get node configuration if cluster config was loaded
+    if (conf_loaded) {
+        char nodename[MAX_PATH_SIZE];
+        if (gethostname(nodename, sizeof(nodename)) < 0) {
+            error("Error getting node name (%s)", strerror(errno));
+            goto end;
+        }
+
+        node_conf = get_my_node_conf(&cluster_conf, nodename);
+
+        // Try loading plugins in order of priority.
+        if (node_conf != NULL) {
+            debug("energy_load: node_conf found, trying %s", node_conf->energy_plugin);
+            if (state_ok(load_dynamic_plugin(dir_plug, node_conf->energy_plugin))) {
+                ret = EAR_SUCCESS;
+                goto end;
+            }
+        }
+        // By default cluster_conf.install.obj_ener gets DEFAULT_ENERGY_PLUGIN
+        debug("energy_load: trying cluster conf plugin %s", cluster_conf.install.obj_ener);
+        if (state_ok(load_dynamic_plugin(dir_plug, cluster_conf.install.obj_ener))) {
+            ret = EAR_SUCCESS;
+            goto end;
+        }
+    } else {
+        // Fallback: try default plugin directly
+        debug("energy_load: trying default plugin directly");
+        if (state_ok(load_dynamic_plugin(dir_plug, DEFAULT_ENERGY_PLUGIN))) {
+            ret = EAR_SUCCESS;
+            goto end;
+        }
+    }
+
+    debug("energy_load: trying static plugins");
+    if (state_ok(energy_cpu_gpu_load_plugin(&energy_ops, &energy_context))) {
+        if (state_ok(energy_ops.load(&energy_context))) {
+            ret = EAR_SUCCESS;
+            debug("Loaded static plugin: energy_cpu_gpu");
+            goto end;
+        }
+    }
+
+    if (state_ok(energy_dcmi_load_plugin(&energy_ops, &energy_context))) {
+        if (state_ok(energy_ops.load(&energy_context))) {
+            ret = EAR_SUCCESS;
+            debug("Loaded static plugin: energy_dcmi");
+            goto end;
+        }
+    }
+
+dummy:
+    debug("energy_load: trying dummy plugin");
+    if (state_ok(energy_dummy_load_plugin(&energy_ops, &energy_context))) {
+        if (state_ok(energy_ops.load(&energy_context))) {
+            ret = EAR_SUCCESS;
+            debug("Loaded static plugin: energy_dummy");
+            goto end;
+        }
+    }
+
+end:
+    if (state_ok(ret)) {
         energy_loaded = 1;
+    } else {
+        error("No energy plugin found");
     }
-    debug("loaded shared object '%s'", energy_obj);
-    if (list != NULL) {
-        strtoa_free(list);
+
+    if (node_conf != NULL) {
+        free(node_conf);
     }
+    if (conf_loaded) {
+        free_cluster_conf(&cluster_conf);
+    }
+    pthread_mutex_unlock(&lock);
     return ret;
 }
 
-state_t energy_init(ehandler_t *eh)
+state_t energy_is_loaded()
 {
-    if (!energy_loaded) {
-        return_msg(EAR_ERROR, Generr.api_uninitialized);
-    }
-    return energy_ops.init(&eh->context);
+    return energy_loaded ? EAR_SUCCESS : EAR_ERROR;
 }
 
-state_t energy_dispose(ehandler_t *eh)
+state_t energy_unload()
 {
     state_t s = EAR_SUCCESS;
 
-    if (energy_ops.dispose != NULL) {
-        s = energy_ops.dispose(&eh->context);
+    if (energy_ops.unload != NULL) {
+        s = energy_ops.unload(&energy_context);
     }
+    energy_loaded = 0;
 
     return s;
 }
 
-state_t energy_handler_clean(ehandler_t *eh)
-{
-    memset(eh, 0, sizeof(eh->context));
-    return EAR_SUCCESS;
-}
+// state_t energy_handler_clean(ehandler_t *eh)
+// {
+//     // memset(eh, 0, sizeof(eh->context));
+//     return EAR_SUCCESS;
+// }
 
-state_t energy_datasize(ehandler_t *eh, size_t *size)
+state_t energy_datasize(size_t *size)
 {
     preturn(energy_ops.datasize, size);
 }
 
-state_t energy_frequency(ehandler_t *eh, ulong *fus)
+state_t energy_frequency(ulong *fus)
 {
     int intents = 0;
     timestamp ts1;
@@ -135,7 +262,7 @@ state_t energy_frequency(ehandler_t *eh, ulong *fus)
     ulong e2;
     void *c;
 
-    c = (void *) eh->context;
+    c = energy_context;
 
     // Dedicated frequency
     if (energy_ops.frequency != NULL) {
@@ -146,7 +273,7 @@ state_t energy_frequency(ehandler_t *eh, ulong *fus)
         return EAR_UNDEFINED;
     }
     // Generic frequency
-    if (state_ok(energy_ops.dc_read(eh->context, &e1))) {
+    if (state_ok(energy_ops.dc_read(energy_context, &e1))) {
         do {
             energy_ops.dc_read(c, &e2);
             intents++;
@@ -171,45 +298,45 @@ state_t energy_frequency(ehandler_t *eh, ulong *fus)
     return EAR_SUCCESS;
 }
 
-state_t energy_dc_read(ehandler_t *eh, edata_t emj)
+state_t energy_dc_read(edata_t emj)
 {
-    preturn(energy_ops.dc_read, eh->context, emj);
+    preturn(energy_ops.dc_read, energy_context, emj);
 }
 
-state_t energy_dc_time_read(ehandler_t *eh, edata_t emj, ulong *tms)
+state_t energy_dc_time_read(edata_t emj, ulong *tms)
 {
-    preturn(energy_ops.dc_time_read, eh->context, emj, tms);
+    preturn(energy_ops.dc_time_read, energy_context, emj, tms);
 }
 
-state_t energy_ac_read(ehandler_t *eh, edata_t emj)
+state_t energy_ac_read(edata_t emj)
 {
-    preturn(energy_ops.ac_read, eh->context, emj);
+    preturn(energy_ops.ac_read, energy_context, emj);
 }
 
 /* Energy units are 1=Joules, 1000=mJ, 1000000=uJ, 1000000000nJ */
-state_t energy_units(ehandler_t *eh, uint *units)
+state_t energy_units(uint *units)
 {
     *units = 1;
     preturn(energy_ops.units, units);
 }
 
-state_t energy_accumulated(ehandler_t *eh, unsigned long *e, edata_t init, edata_t end)
+state_t energy_accumulated(unsigned long *e, edata_t init, edata_t end)
 {
     *e = 0;
     preturn(energy_ops.accumulated, e, init, end);
 }
 
-state_t energy_to_str(ehandler_t *eh, char *str, edata_t e)
+state_t energy_to_str(char *str, edata_t e)
 {
     preturn(energy_ops.energy_to_str, str, e);
 }
 
-state_t energy_set_power_limit(ehandler_t *eh, ulong limit, ulong target)
+state_t energy_set_power_limit(ulong limit, ulong target)
 {
-    preturn(energy_ops.power_limit, eh->context, limit, target);
+    preturn(energy_ops.power_limit, energy_context, limit, target);
 }
 
-uint energy_data_is_null(ehandler_t *eh, edata_t e)
+uint energy_data_is_null(edata_t e)
 {
     if (energy_ops.is_null != NULL) {
         preturn(energy_ops.is_null, e);

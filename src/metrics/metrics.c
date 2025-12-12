@@ -25,7 +25,6 @@
 #define nodepow(f, ...) energy_##f(__VA_ARGS__)
 #define cpupow(f, ...)  energy_cpu_##f(__VA_ARGS__)
 
-static ehandler_t e_ctx;
 static topology_t *self_tp;
 // Screen
 static strtable_t st __attribute__((unused));
@@ -54,7 +53,7 @@ void metrics_load(metrics_info_t *m, topology_t *tp, cluster_conf_t *clus, my_no
     if (options == NULL) {
         options = default_options;
     }
-    nodepow(load, NULL);
+    nodepow(load, options[MET_OPT_NODEPOW]);
     cpufreq_load(tp, options[MET_OPT_CPUFREQ]);
     imcfreq_load(tp, options[MET_OPT_IMCFREQ]);
      cpupow(load,tp, options[MET_OPT_CPUPOW] );
@@ -209,12 +208,12 @@ static char *cpupow_data_tostr(ullong *diffs, double secs, char *buffer, size_t 
 
 void nodepow_read(void *nod)
 {
-    nodepow(dc_read, &e_ctx, nod);
+    nodepow(dc_read, nod);
 }
 
 void nodepow_data_diff(void *nod2, void *nod1, ulong *nodD)
 {
-    nodepow(accumulated, &e_ctx, nodD, nod1, nod2);
+    nodepow(accumulated, nodD, nod1, nod2);
 }
 
 void nodepow_data_copy(void *nodD, void *nodS)
@@ -410,7 +409,7 @@ static state_t metrics_apis_init(void *whatever)
 {
     unused(whatever);
     topology_init(&tp);
-    metrics_load(&m, &tp, NULL, metrics_envtoops("OPTS", 10));
+    metrics_load(&m, &tp, NULL, NULL, metrics_envtoops("OPTS", 10);
     metrics_init_screen(&m, &tp);
     metrics_data_alloc(&mr1, &mr2, &mrD);
     metrics_read(&mr1);

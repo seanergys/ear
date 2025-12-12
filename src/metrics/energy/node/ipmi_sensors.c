@@ -40,7 +40,7 @@ static uint *opt        = NULL;
 
 static state_t energy_pool(void *data);
 
-state_t energy_init(void **x)
+state_t energy_load(void **x)
 {
     state_t s = EAR_SUCCESS;
     char *sensor_env = NULL;
@@ -97,7 +97,7 @@ leave:
 
 // clang-format on
 
-state_t energy_dispose(void **x)
+state_t energy_unload(void **x)
 {
     return EAR_SUCCESS;
 }

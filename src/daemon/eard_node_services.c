@@ -1175,7 +1175,7 @@ int eard_node_energy(eard_head_t *head, int req_fd, int ack_fd)
     verbose(VEARD_LAPI_DEBUG, "EARD old node_energy");
     switch (head->req_service) {
         case READ_DC_ENERGY:
-            energy_dc_read(&handler_energy, node_energy_data);
+            energy_dc_read(node_energy_data);
             if (write(ack_fd, node_energy_data, node_energy_datasize) != node_energy_datasize) {
                 // Do something with the error
             }
@@ -1497,10 +1497,10 @@ state_t eard_local_api(char *ear_owner)
     }
 
     // Energy node metrics
-    energy_datasize(&handler_energy, &node_energy_datasize);
+    energy_datasize(&node_energy_datasize);
     verbose(VEARD_LAPI, "EARD main thread: node_energy_datasize %lu", node_energy_datasize);
     node_energy_data = (edata_t) malloc(node_energy_datasize);
-    energy_frequency(&handler_energy, &energy_freq);
+    energy_frequency(&energy_freq);
     verbose(VCONF, "energy: power performance accuracy %lu usec", energy_freq);
 
     // RAPL metrics
