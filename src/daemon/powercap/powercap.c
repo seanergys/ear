@@ -32,7 +32,9 @@
 #include <daemon/powercap/powercap_status.h>
 #include <daemon/shared_configuration.h>
 
-#define POWERCAP_MON   1
+#ifndef POWERCAP_MON
+#define POWERCAP_MON   0    // Powercap monitor disabled by default
+#endif
 #define MAX_PERC_POWER 90
 
 uint32_t current_mode = PC_MODE_AUTO;
@@ -78,6 +80,7 @@ static uint32_t stored_domain_powercaps[NUM_DOMAINS];
 
 #if POWERCAP_MON
 static suscription_t *sus_powercap_monitor;
+static bool powercap_monitor_running = false;
 #endif
 
 void get_date_str(char *msg, int size)
@@ -256,9 +259,43 @@ void powercap_monitor_init()
     sus_powercap_monitor             = suscription();
     sus_powercap_monitor->call_main  = pc_monitor_thread_main;
     sus_powercap_monitor->call_init  = pc_monitor_thread_init;
-    sus_powercap_monitor->time_relax = 5000;
-    sus_powercap_monitor->time_burst = 5000;
+    sus_powercap_monitor->time_relax = 10000;
+    sus_powercap_monitor->time_burst = 10000;
     sus_powercap_monitor->suscribe(sus_powercap_monitor);
+    powercap_monitor_running = true;
+#endif
+}
+
+void powercap_monitor_start()
+{
+#if POWERCAP_MON
+    sus_powercap_monitor->suscribe(sus_powercap_monitor);
+    powercap_monitor_running = true;
+#endif
+}
+
+void powercap_monitor_stop()
+{
+#if POWERCAP_MON
+    monitor_unregister(sus_powercap_monitor);
+    powercap_monitor_running = false;
+#endif
+}
+
+void powercap_monitor_set_time(int time_relax, int time_burst)
+{
+#if POWERCAP_MON
+    if (time_relax == sus_powercap_monitor->time_relax && time_burst == sus_powercap_monitor->time_burst) {
+        return;
+    }
+    if (time_relax >= 5000 && time_burst >= 5000) { // 5 seconds minimum
+        sus_powercap_monitor->time_relax = time_relax;
+        sus_powercap_monitor->time_burst = time_burst;
+        if (powercap_monitor_running) {
+            powercap_monitor_stop();
+            powercap_monitor_start();
+        }
+    }
 #endif
 }
 
@@ -373,6 +410,29 @@ void powercap_process_message(char *action, char *mode, char *level, int32_t num
                 debug("deactivate action received: deactivating manual mode");
                 current_mode = PC_MODE_AUTO;
                 return; // deactivate should ignore all other arguments
+            }
+        } else if (!strcasecmp(mode, "monitor")) {
+            debug("mode monitor specified");
+            if (action != NULL) {
+                if (!strcasecmp(action, "enable")) {
+                    debug("monitor enable");
+                    powercap_monitor_start();
+                    return;
+                }
+                if (!strcasecmp(action, "disable")) {
+                    debug("monitor disable");
+                    powercap_monitor_stop();
+                    return;
+                }
+                if (!strcasecmp(action, "set")) {
+                    if (num_values >= 2) {
+                        debug("monitor set time %d %d", values[0], values[1]);
+                        powercap_monitor_set_time(values[0], values[1]);
+                    } else {
+                        error("monitor set requires 2 values");
+                    }
+                    return;
+                }
             }
         }
     }
