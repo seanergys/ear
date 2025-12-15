@@ -8,27 +8,25 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-// #define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
-#include <common/output/debug.h>
-#include <common/system/sockets.h>
+#include <poll.h>
+#include <time.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
-#include <time.h>
 #include <unistd.h>
+#include <pthread.h>
+#include <sys/types.h>
+#include <sys/syscall.h>
+#include <common/output/debug.h>
+#include <common/system/sockets.h>
 
-static pthread_mutex_t lock_send = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t fd_busy_lock  = PTHREAD_MUTEX_INITIALIZER;
+static uchar           fd_busy[4096] = { 0 };
 
-/*
- *
- * Common initialization
- *
- */
 state_t sockets_init(socket_t *socket, char *host, uint port, uint protocol)
 {
     if (protocol != TCP && protocol != UDP) {
@@ -218,19 +216,44 @@ state_t sockets_close_fd(int fd)
 
 static state_t static_send(int fd, char *data, size_t size)
 {
+    struct pollfd pfd = {.fd = fd, .events = POLLOUT};
     ssize_t bytes_left = (ssize_t) size;
     ssize_t bytes_sent = 0;
+    int poll_ret;
     int flags;
+
     // Better return an error than receive a signal.
-    flags = MSG_NOSIGNAL;
+    flags = MSG_NOSIGNAL | MSG_DONTWAIT;
     // In the near future, it will be better to include a non-blocking
     // implementation with a controlled retry system.
     while (bytes_left > 0) {
         // TCP protocol
         if ((bytes_sent = send(fd, data + bytes_sent, bytes_left, flags)) < 0) {
-            debug("fd '%d', %ld to add to %ld/%ld (errno: %d, strerrno: %s)", fd, bytes_sent, size - bytes_left, size,
-                  errno, strerror(errno));
+            debug("send(): fd '%d' error after %ld bytes sent (errno: %d, strerrno: %s)",
+                  fd, size - bytes_left, errno, strerror(errno));
             switch (errno) {
+                //case EWOULDBLOCK: // Same EGAIN number
+                case EAGAIN:
+                    if ((poll_ret = poll(&pfd, 1, 500)) < 0) { // 0.5 ms
+                        if (errno == EINTR) {
+                            continue;  // Interrupted, retry
+                        }
+                        debug("poll(): fd '%d' error (errno: %d, strerror: %s)",
+                              fd, errno, strerror(errno));
+                        return_msg(EAR_ERROR, strerror(errno));
+                    } else if (poll_ret == 0) {
+                        debug("poll(): fd '%d' timeout after %d ms", fd, 500);
+                        return_msg(EAR_ERROR, "send timeout");
+                    }
+                    // Checking poll events
+                    if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL)) {
+                        debug("poll(): fd '%d' socket error detected by poll", fd);
+                        return_msg(EAR_ERROR, "socket error");
+                    }
+                    // Socket ready (POLLOUT), retry send in next iteration
+                    continue;
+                case EINTR:
+                    continue; // Interrupted by signal, retry immediately
                 case ENETUNREACH:
                 case ENETDOWN:
                 case ECONNRESET:
@@ -238,22 +261,40 @@ static state_t static_send(int fd, char *data, size_t size)
                 case EPIPE:
                 case EDESTADDRREQ:
                     return_msg(EAR_ERROR, strerror(errno));
-                case EAGAIN:
-                    return_msg(EAR_NOT_READY, strerror(errno));
                 default:
                     return_msg(EAR_ERROR, strerror(errno));
             }
         } else if (bytes_sent == 0) {
+            // Connection reset
+            debug("send(): fd '%d' returned zero (errno: %d, strerrno: %s)",
+                  fd, errno, strerror(errno));
             return_msg(EAR_ERROR, "Disconnected");
+        } else {
+            bytes_left -= bytes_sent;
         }
-        bytes_left -= bytes_sent;
     }
     return EAR_SUCCESS;
 }
 
-static state_t static_unlock(state_t s)
+static void static_fd_lock(int fd)
 {
-    pthread_mutex_unlock(&lock_send);
+    while (1) {
+        pthread_mutex_lock(&fd_busy_lock);
+        if (!fd_busy[fd]) {
+            fd_busy[fd] = 1;
+            pthread_mutex_unlock(&fd_busy_lock);
+            return;
+        }
+        pthread_mutex_unlock(&fd_busy_lock);
+        usleep(100);
+    }
+}
+
+static state_t static_fd_unlock(int fd, state_t s)
+{
+    pthread_mutex_lock(&fd_busy_lock);
+    fd_busy[fd] = 0;
+    pthread_mutex_unlock(&fd_busy_lock);
     return s;
 }
 
@@ -267,60 +308,80 @@ state_t sockets_send(int fd, uint type, char *data, size_t size, ullong extra)
         uint type;
     } header = {.size = size, .extra = extra, .type = type};
 
-    // Locking (I don't know why).
-    pthread_mutex_lock(&lock_send);
+    static_fd_lock(fd);
     // Sending header
     if (state_fail(s = static_send(fd, (char *) &header, sizeof(header)))) {
-        return static_unlock(s);
+        return static_fd_unlock(fd, s);
     }
-    // Sending content
+    // Sending content (if maybe the caller only wants to send the header).
     if (data != NULL && size > 0) {
-        if (state_fail(s = static_send(fd, data, size))) {
-            return static_unlock(s);
-        }
+        s = static_send(fd, data, size);
     }
     // Unlocking
-    return static_unlock(EAR_SUCCESS);
+    return static_fd_unlock(fd, s);
 }
 
 static state_t static_recv(int fd, char *buffer, ssize_t size, int block)
 {
+    struct pollfd pfd = {.fd = fd, .events = POLLIN};
     ssize_t bytes_left = size;
     ssize_t bytes_recv = 0;
     ssize_t bytes_acum = 0;
-    int intents        = 0;
-    int flags          = 0;
+    int poll_ret = 0;
+    int intents = 0;
+    int flags = 0;
 
     if (!block) {
         flags = MSG_DONTWAIT;
     }
     while (bytes_left > 0) {
         //
-        if ((bytes_recv = recv(fd, (void *) &buffer[bytes_acum], bytes_left, flags)) < 0) {
-            debug("fd '%d', %ld to add to %ld/%ld (intent: %d, errno: %d, strerrno: %s)", fd, bytes_recv,
-                  size - bytes_left, size, intents, errno, strerror(errno));
+        if ((bytes_recv = recv(fd, (void *) &buffer[bytes_acum], bytes_left, flags)) == 0) {
+            return_msg(EAR_ERROR, "Disconnected from socket");
+        } else if (bytes_recv < 0) {
+            debug("fd '%d', %ld to add to %ld/%ld (intent: %d, errno: %d, strerrno: %s)",
+                  fd, bytes_recv, size - bytes_left, size, intents, errno, strerror(errno));
             switch (errno) {
+                case EAGAIN:
+                    if (block) {
+                        debug("recv(): fd '%d' unexpected EAGAIN in blocking mode", fd);
+                        return_msg(EAR_ERROR, "unexpected error");
+                    }
+                    if ((poll_ret = poll(&pfd, 1, 500)) < 0) { // 0.5 ms
+                        if (errno == EINTR) {
+                            continue;  // Interrupted, retry
+                        }
+                        debug("poll(): fd '%d' error (errno: %d, strerror: %s)",
+                              fd, errno, strerror(errno));
+                        return_msg(EAR_ERROR, strerror(errno));
+                    } else if (poll_ret == 0) {
+                        debug("poll(): fd '%d' timeout after %d ms", fd, 500);
+                        return_msg(EAR_ERROR, "recv timeout");
+                    }
+                    // Checking poll events
+                    if (pfd.revents & (POLLHUP | POLLERR | POLLNVAL)) {
+                        debug("fd '%d', socket error detected by poll", fd);
+                        return_msg(EAR_ERROR, "socket error or disconnected");
+                    }
+                    continue;
+                case EINTR:
+                    continue; // Interrupted by signal, retry immediately
                 case ENOTCONN:
                 case ETIMEDOUT:
                 case ECONNRESET:
-                    return_msg(EAR_ERROR, strerror(errno));
-                    break;
+                case ECONNREFUSED:
+                case EPIPE:
                 case EINVAL: // Not sure about this
-                case EAGAIN:
-                    if (!block && intents < NON_BLOCK_TRYS) {
-                        intents += 1;
-                    } else {
-                        return_msg(EAR_TIMEOUT, strerror(errno));
-                    }
-                    break;
+                    return_msg(EAR_ERROR, strerror(errno));
                 default:
                     return_msg(EAR_ERROR, strerror(errno));
             }
         } else if (bytes_recv == 0) {
             return_msg(EAR_ERROR, "Disconnected");
+        } else {
+            bytes_acum += bytes_recv;
+            bytes_left -= bytes_recv;
         }
-        bytes_acum += bytes_recv;
-        bytes_left -= bytes_recv;
     }
     return EAR_SUCCESS;
 }
@@ -355,6 +416,8 @@ state_t sockets_recv_header(int fd, uint *type, size_t *size, ullong *extra, uin
 
 state_t sockets_recv(int fd, char *data, size_t size, uint block)
 {
+    // We don't include lock system because normally you don't receive using
+    // multiple threads from the same file descriptor.
     return static_recv(fd, data, size, block);
 }
 
