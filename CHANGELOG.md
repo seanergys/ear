@@ -97,6 +97,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed typo in cpupow define.
 - Improved CPU governor list message.
 
+## 5.1.11 - 2025-11-18
+
+### Fixed
+- Fixed Intel MPI compatibility in EAR Loader.
+- Fixed switch error in sockets.c.
 
 ## 5.1.10 - 2025-09-02
 
