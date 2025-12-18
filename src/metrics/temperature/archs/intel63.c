@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #include <assert.h>
 #include <common/output/debug.h>
@@ -31,7 +31,7 @@ static state_t old_init()
     state_t s;
     int i;
 
-    throt = calloc(self_tp.cpu_count, sizeof(ullong));
+    throt = calloc((uint) self_tp.cpu_count, sizeof(llong));
     //
     for (i = 0; i < self_tp.cpu_count; ++i) {
         if (state_fail(s = msr_read(self_tp.cpus[i].id, &data, sizeof(llong), MSR_TEMPERATURE_TARGET))) {
@@ -78,8 +78,8 @@ TEMP_F_LOAD(intel63)
         return;
     }
     apis_put(ops->get_info, temp_intel63_get_info);
-    apis_put(ops->unload  , temp_intel63_unload);
-    apis_put(ops->read    , temp_intel63_read);
+    apis_put(ops->unload, temp_intel63_unload);
+    apis_put(ops->read, temp_intel63_read);
 }
 
 TEMP_F_UNLOAD(intel63)

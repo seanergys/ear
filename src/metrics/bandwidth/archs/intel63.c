@@ -112,34 +112,19 @@ BWIDTH_F_GET_INFO(intel63)
 
 BWIDTH_F_READ(intel63)
 {
-    // In the future the counter could be dynamically selected
-    return pci_mwrite32(pcis, pcis_count, (const uint *) cmds_start, ctls_addr, ctls_count);
-}
-
-state_t bwidth_intel63_dispose(ctx_t *c)
-{
-    return EAR_SUCCESS;
-}
-
-state_t bwidth_intel63_count_devices(ctx_t *c, uint *devs_count_in)
-{
-    *devs_count_in = devs_count + 1;
-    return EAR_SUCCESS;
-}
-
-state_t bwidth_intel63_read(ctx_t *c, bwidth_t *bw)
-{
+    ullong cas = 0LLU;
     int p, t, i;
 
     timestamp_get(&b[devs_count].time);
     for (p = i = 0; p < pcis_count; ++p) {
         for (t = 0; t < ctrs_count; ++t, ++i) {
-            bw[i].cas = 0LLU;
-            pci_read(&pcis[p], &bw[i].cas, sizeof(ullong), ctrs_addr[t]);
-            bw[i].cas = bw[i].cas & 0x0000ffffffffffff;
-            debug("IMC%d/%u: %llu (read)", i, devs_count - 1, bw[i].cas);
+            b[i].cas = 0LLU;
+            pci_read(&pcis[p], &b[i].cas, sizeof(ullong), ctrs_addr[t]);
+            b[i].cas = b[i].cas & 0x0000ffffffffffff;
+            debug("IMC%d/%u: %llu (read)", i, devs_count - 1, b[i].cas);
+            cas += b[i].cas;
         }
     }
-
+    debug("CAS %llu", cas);
     return EAR_SUCCESS;
 }
