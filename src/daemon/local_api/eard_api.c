@@ -30,6 +30,7 @@
 #include <metrics/imcfreq/imcfreq.h>
 #include <pthread.h>
 #include <sched.h>
+#include <semaphore.h>
 #include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -99,6 +100,9 @@ static char app_directory_pathname[MAX_PATH_SIZE];
     unlink(ear_commack);                                                                                               \
     unlink(ear_commreq);
 
+static char sem_file_global_pipe[1024];
+static sem_t *global_earl_eard_sem;
+
 static state_t create_base_path(char *base_path, size_t base_path_sz, char *tmp_path, uint job_step_id,
                                 uint app_local_id);
 
@@ -147,11 +151,14 @@ int eards_read(int fd, char *buff, int size, uint wait_mode)
         }
     }
 
-    uint try_usleep_usecs = 5000; // The sleep time per try
+    // Iteration period at which we are going to sleep if there is
+    // an error reading the file.
+    uint sleep_iteration_period = 10;
+    uint try_usleep_usecs       = 5000; // The sleep time per try
 
     /* Compute the maximum number of tries based on per
      * try usleep time and time timeout. */
-    uint max_tries = (max_ms * 1000) / try_usleep_usecs;
+    uint max_tries = sleep_iteration_period * (max_ms * 1000) / try_usleep_usecs;
     /* Give more time on the initial connection.
      * TODO: This function should be generic, not taking into account
      * the EARL conext. */
@@ -168,10 +175,12 @@ int eards_read(int fd, char *buff, int size, uint wait_mode)
         } else if (ret < 0) {
             if ((errno == EWOULDBLOCK) || (errno == EAGAIN)) {
                 /* If the read was bad, but because of non-block, we give another chance.*/
-                usleep(try_usleep_usecs); // We sleep just when we need to wait.
+                if (tries % sleep_iteration_period == 0)
+                    usleep(try_usleep_usecs); // We sleep just when we need to wait.
             } else {
                 /* If there was a problem with the read call, we return the error. */
-                verbose(2, "%sWarning%s Reading from fd %d: %d (%s)", COL_YLW, COL_CLR, fd, errno, strerror(errno));
+                verbose(2, "%sWarning%s Reading from fd %d: %d (%s). Bytes recevied: %u. Bytes to receive: %u", COL_YLW,
+                        COL_CLR, fd, errno, strerror(errno), received, to_recv);
                 return ret;
             }
         } else if (ret == 0) {
@@ -216,11 +225,14 @@ int eards_write(int fd, char *buff, int size)
         }
     }
 
-    uint try_usleep_usecs = 5000; // The sleep time per try
+    // Iteration period at which we are going to sleep if there is
+    // an error writing to the file.
+    uint sleep_iteration_period = 10;
+    uint try_usleep_usecs       = 5000; // The sleep time per try
 
     /* Compute the maximum number of tries based on per
      * try usleep time and time timeout. */
-    uint max_tries = (max_ms * 1000) / try_usleep_usecs;
+    uint max_tries = sleep_iteration_period * (max_ms * 1000) / try_usleep_usecs;
     /* Give more time on the initial connection.
      * TODO: This function should be generic, not taking into account
      * the EARL conext. */
@@ -229,18 +241,22 @@ int eards_write(int fd, char *buff, int size)
 
     uint tries = 0;
     do {
-        int ret = write(fd, buff + sent, size);
+        int ret = write(fd, buff + sent, to_send);
         if (ret > 0) {
             /* write call was good. update control variables */
             sent += ret;
             to_send -= ret;
         } else if (ret < 0) {
-            if ((errno == EWOULDBLOCK) || (errno == EAGAIN))
-                /* If the write was bad, but because of non-block, we give another chance.*/
-                usleep(try_usleep_usecs); // We sleep just when we need to wait.
-            else {
+            if ((errno == EWOULDBLOCK) || (errno == EAGAIN)) {
+                /* If the write was bad, but because of non-block, we give another chance. */
+
+                /* Sleep every sleep_iteration_period iterations */
+                if (tries % sleep_iteration_period == 0)
+                    usleep(try_usleep_usecs); // We sleep just when we need to wait.
+            } else {
                 /* If there was a problem with the write call, we return the error. */
-                verbose(2, "%sWarning%s Writing to fd %d: %d (%s)", COL_YLW, COL_CLR, fd, errno, strerror(errno));
+                verbose(2, "%sWarning%s Error writing to fd %d: %d (%s). Bytes sent: %d. Bytes pending: %d", COL_YLW,
+                        COL_CLR, fd, errno, strerror(errno), sent, to_send);
                 return ret;
             }
         } else {
@@ -352,6 +368,7 @@ int eards_connect(application_t *my_app, ulong lid)
 #if FAKE_EAR_NOT_INSTALLED
     return_print(EAR_ERROR, "FAKE_EAR_NOT_INSTALLED applied");
 #endif
+
     // These files connect EAR with EAR_COMM
     // TODO: Should we use get_ear_tmp()?
     ear_tmp = ear_getenv(ENV_PATH_TMP);
@@ -360,6 +377,14 @@ int eards_connect(application_t *my_app, ulong lid)
         if (ear_tmp == NULL) {
             ear_tmp = ear_getenv("HOME");
         }
+    }
+
+    xsnprintf(sem_file_global_pipe, sizeof(sem_file_global_pipe), "earl_eard_connect.sem", ear_tmp);
+    debug("Using semaphore %s", sem_file_global_pipe);
+    global_earl_eard_sem =
+        sem_open(sem_file_global_pipe, O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH, 1);
+    if (global_earl_eard_sem == SEM_FAILED) {
+        error("Creating sempahore %s (%s)", sem_file_global_pipe, strerror(errno));
     }
 
     if (gethostname(nodename, sizeof(nodename)) < 0) {
@@ -451,16 +476,32 @@ int eards_connect(application_t *my_app, ulong lid)
     req.req_service = CONNECT_EARD_NODE_SERVICES;
     req.sec         = create_sec_tag();
     debug("sec: %lu", req.sec);
-
+    verbose(2, "Trying to connect with EARD");
     if (ear_fd_req_global >= 0) {
         debug("Sending connection request to EARD\n");
+        {
+            struct timespec ts;
+            clock_gettime(CLOCK_REALTIME, &ts);
+            ts.tv_sec += 10;
+            if (sem_timedwait(global_earl_eard_sem, &ts) < 0) {
+                connecting        = 0;
+                ear_fd_req_global = -1;
+                verbose(2, "%sError%s Sem timeout....not connected (%s)", COL_RED, COL_CLR, strerror(errno));
+                return_print(EAR_ERROR, "Error sending connection request");
+            }
+        }
+        verbose(2, "Sem acquired....sending connection");
         if (warning_api(eards_write(ear_fd_req_global, (char *) &req, sizeof(req)), sizeof(req),
                         "writting req_service in ear_daemon_client_connect")) {
             connecting        = 0;
             ear_fd_req_global = -1;
+            verbose(2, "Sem released");
+            sem_post(global_earl_eard_sem);
             return_print(EAR_ERROR, "Error sending connection request");
         }
     }
+    verbose(2, "Sem released");
+    sem_post(global_earl_eard_sem);
 
     /* At this point we have sent the data for connecting with EARD */
     if (ear_fd_req_global >= 0) {
@@ -583,6 +624,7 @@ void eards_disconnect()
     }
 
     CLOSE_LOCAL_COMM();
+    sem_close(global_earl_eard_sem);
     AFD_ZERO(&eard_api_client_fd);
 
 #if WF_SUPPORT

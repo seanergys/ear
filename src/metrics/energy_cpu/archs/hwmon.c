@@ -137,15 +137,16 @@ static state_t static_pool(void *data)
     // It is 2 because this apis is DRAM[0]+PKG[1]
     for (j = 0; data != NULL && j < chips_pkg.chips_count; j += 1) {
         values[j + 0] = 0LLU;
-        if (chips_socket.energy_uj[j] != 0 && chips_pkg.energy_uj[j] != 0 && chips_sysio.energy_uj[j] != 0) {
-            debug("vector [%d] info [%d]", j, j) values[j + 0] =
-                chips_socket.energy_uj[j] - (chips_pkg.energy_uj[j] + chips_sysio.energy_uj[j]);
-            if (values[j + 0] >= chips_socket.energy_uj[j]) {
-                values[j + 0] = 0LLU;
+        // If we successfully opened socket and sysio
+        if (chips_socket.energy_uj != NULL && chips_sysio.energy_uj != NULL) {
+            if (chips_socket.energy_uj[j] != 0 && chips_pkg.energy_uj[j] != 0 && chips_sysio.energy_uj[j] != 0) {
+                values[j + 0] = chips_socket.energy_uj[j] - (chips_pkg.energy_uj[j] + chips_sysio.energy_uj[j]);
+                if (values[j + 0] >= chips_socket.energy_uj[j]) {
+                    values[j + 0] = 0LLU;
+                }
             }
         }
-        debug("vector [%d] info [%d]", j + chips_pkg.chips_count, j) values[j + chips_pkg.chips_count] =
-            chips_pkg.energy_uj[j];
+        values[j + chips_pkg.chips_count] = chips_pkg.energy_uj[j];
     }
     pthread_mutex_unlock(&lock);
     return EAR_SUCCESS;

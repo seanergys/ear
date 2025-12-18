@@ -497,6 +497,22 @@ static uint api_mode(uint master, uint eard, uint per_process)
         return API_DUMMY;
 }
 
+static uint api_mode(uint master, uint eard, uint per_process)
+{
+    // If connected, return what's already selected
+    if (eards_connected() || !EARL_LIGHT)
+        return eard;
+    // API_EARD means I'm master
+    if ((eard == API_EARD) && !eards_connected())
+        return API_FREE;
+    if ((eard == NO_EARD) && (per_process))
+        return API_FREE;
+    if ((eard == NO_EARD) && (!per_process))
+        return API_DUMMY;
+
+    return API_DUMMY;
+}
+
 static void metrics_static_init(topology_t *tp)
 {
     char buffer[SZ_BUFFER_EXTRA];
