@@ -30,7 +30,6 @@ static void create_filename(char *filename, char *path, char *prefix, char *arch
     strcat(filename, ".data");
 }
 
-#if 0
 void medoids_print(medoids_t *phases)
 {
     double *medoid = phases->cpu_bound;
