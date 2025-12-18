@@ -47,6 +47,7 @@ void medoids_print(medoids_t *phases)
           medoid[1], medoid[2], medoid[3]);
 }
 
+#if 0
 void extremes_print(extremes_t *extremes)
 {
     double *extreme = extremes->cpi_extreme;
