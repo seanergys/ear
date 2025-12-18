@@ -42,6 +42,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - v6.0 Several minor fixes in IMCFreq amd19 management API.
 - v6.0 Fixed errors with ereport's -G option.
 
+## 5.2.3 - 2025-12-18
+
+### Fixed
+
+- Initialize JOB\_TYPE field in CSV.
+- Sockets API.
 
 ## 5.2.2 - 2025-10-23
 
