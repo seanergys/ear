@@ -20,9 +20,9 @@
 
 #include <common/config.h>
 #include <common/states.h> //clean
+#include <metrics/energy/energy_node.h>
 #include <metrics/energy/node/energy_cpu_gpu.h>
 #include <metrics/energy/node/energy_nm.h>
-#include <metrics/energy/node/energy_node.h>
 
 static uint gpu_num         = 0;
 static uint gpu_num_no_priv = 0;
@@ -46,7 +46,7 @@ static uint energy_cpu_count   = 0;
 static gpu_t *gpu_data         = NULL;
 static uint cpu_energy_loaded = 0, gpu_energy_loaded = 0;
 
-state_t energy_load(void **c)
+ENERGY_NODE_F_LOAD(cpu_gpu)
 {
     topology_t tp;
     state_t s;
@@ -81,7 +81,7 @@ state_t energy_load(void **c)
     return EAR_SUCCESS;
 }
 
-state_t energy_unload(void **c)
+ENERGY_NODE_F_UNLOAD(cpu_gpu)
 {
     if ((c == NULL) || (*c == NULL))
         return EAR_ERROR;
@@ -100,26 +100,26 @@ state_t energy_unload(void **c)
     return EAR_SUCCESS;
 }
 
-uint energy_is_privileged()
+uint energy_cpu_gpu_is_privileged()
 {
     return 0;
 }
 
-state_t energy_datasize(size_t *size)
+ENERGY_NODE_F_DATASIZE(cpu_gpu)
 {
     verbose(VCPU_GPU, "CPU-GPU plugin:data size %lu", sizeof(cpu_gpu_t));
     *size = sizeof(cpu_gpu_t);
     return EAR_SUCCESS;
 }
 
-state_t energy_frequency(ulong *freq_us)
+ENERGY_NODE_F_FREQUENCY(cpu_gpu)
 {
     verbose(VCPU_GPU, "CPU-GPU plugin: freq");
     *freq_us = 1000000;
     return EAR_SUCCESS;
 }
 
-state_t energy_dc_read(void *c, edata_t energy_mj)
+ENERGY_NODE_F_DC_READ(cpu_gpu)
 {
     verbose(VCPU_GPU, "CPU-GPU plugin: READ");
     cpu_gpu_t *penergy_mj = (cpu_gpu_t *) energy_mj;
@@ -148,7 +148,7 @@ state_t energy_dc_read(void *c, edata_t energy_mj)
     return EAR_SUCCESS;
 }
 
-state_t energy_dc_time_read(void *c, edata_t energy_mj, ulong *time_ms)
+ENERGY_NODE_F_DC_TIME_READ(cpu_gpu)
 {
     verbose(VCPU_GPU, "CPU-GPU plugin: TIME ENERGY READ");
     if (!cpu_energy_loaded || !gpu_energy_loaded)
@@ -160,11 +160,11 @@ state_t energy_dc_time_read(void *c, edata_t energy_mj, ulong *time_ms)
     *time_ms = t.tv_sec * 1000 + t.tv_usec / 1000;
 
     /* Energy */
-    energy_dc_read(c, energy_mj);
+    energy_cpu_gpu_dc_read(c, energy_mj);
     return EAR_SUCCESS;
 }
 
-state_t energy_ac_read(void *c, edata_t energy_mj)
+ENERGY_NODE_F_AC_READ(cpu_gpu)
 {
     cpu_gpu_t *penergy_mj = (cpu_gpu_t *) energy_mj;
 
@@ -177,14 +177,14 @@ state_t energy_ac_read(void *c, edata_t energy_mj)
     return EAR_SUCCESS;
 }
 
-state_t energy_units(uint *units)
+ENERGY_NODE_F_UNITS(cpu_gpu)
 {
     verbose(VCPU_GPU, "CPU-GPU plugin: Units");
     *units = 1000;
     return EAR_SUCCESS;
 }
 
-state_t energy_accumulated(unsigned long *e, edata_t init, edata_t end)
+ENERGY_NODE_F_ACCUMULATED(cpu_gpu)
 {
     verbose(VCPU_GPU, "CPU-GPU plugin: energy_accumulated");
     cpu_gpu_t *pinit = (cpu_gpu_t *) init;
@@ -230,10 +230,10 @@ state_t energy_accumulated(unsigned long *e, edata_t init, edata_t end)
 static char cpu_buff[1024];
 static char gpu_buff[1024];
 
-state_t energy_to_str(char *str, edata_t e)
+ENERGY_NODE_F_TO_STR(cpu_gpu)
 {
     verbose(VCPU_GPU, "CPU-GPU:  to str");
-    cpu_gpu_t *pe = (cpu_gpu_t *) e;
+    cpu_gpu_t *pe = (cpu_gpu_t *) energy_mj;
 
     if (pe == NULL)
         return EAR_ERROR;
@@ -247,10 +247,10 @@ state_t energy_to_str(char *str, edata_t e)
     return EAR_SUCCESS;
 }
 
-uint energy_data_is_null(edata_t e)
+ENERGY_NODE_F_IS_NULL(cpu_gpu)
 {
     verbose(VCPU_GPU, "CPU-GPU: energy_data_is_null");
-    cpu_gpu_t *pe = (cpu_gpu_t *) e;
+    cpu_gpu_t *pe = (cpu_gpu_t *) energy_mj;
 
     if (!pe) {
         verbose(VCPU_GPU, "CPU-GPU: Energy data is a null pointer.");
@@ -268,6 +268,28 @@ uint energy_data_is_null(edata_t e)
     }
 
     return 1;
+}
+
+ENERGY_NODE_F_POWER_LIMIT(cpu_gpu)
+{
+    return EAR_ERROR;
+}
+
+ENERGY_NODE_F_LOAD_PLUGIN(cpu_gpu)
+{
+    ops->load          = energy_cpu_gpu_load;
+    ops->unload        = energy_cpu_gpu_unload;
+    ops->datasize      = energy_cpu_gpu_datasize;
+    ops->frequency     = energy_cpu_gpu_frequency;
+    ops->dc_read       = energy_cpu_gpu_dc_read;
+    ops->dc_time_read  = energy_cpu_gpu_dc_time_read;
+    ops->ac_read       = energy_cpu_gpu_ac_read;
+    ops->units         = energy_cpu_gpu_units;
+    ops->accumulated   = energy_cpu_gpu_accumulated;
+    ops->energy_to_str = energy_cpu_gpu_to_str;
+    ops->power_limit   = energy_cpu_gpu_power_limit;
+    ops->is_null       = energy_cpu_gpu_data_is_null;
+    return EAR_SUCCESS;
 }
 
 state_t energy_not_privileged_init()

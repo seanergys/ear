@@ -19,8 +19,8 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <math.h>
+#include <metrics/energy/energy_node.h>
 #include <metrics/energy/node/energy_dcmi.h>
-#include <metrics/energy/node/energy_node.h>
 #include <pthread.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -487,7 +487,7 @@ state_t dcmi_thread_init(void *p)
  * MAIN FUNCTIONS
  */
 
-state_t energy_load(void **c)
+ENERGY_NODE_F_LOAD(dcmi)
 {
     struct ipmi_data out;
     state_t st;
@@ -542,7 +542,7 @@ state_t energy_load(void **c)
     return EAR_SUCCESS;
 }
 
-state_t energy_unload(void **c)
+ENERGY_NODE_F_UNLOAD(dcmi)
 {
     if ((c == NULL) || (*c == NULL)) {
         verbose(2, "DCMI context is NULL in energy dispose");
@@ -565,7 +565,7 @@ state_t energy_unload(void **c)
     return EAR_SUCCESS;
 }
 
-state_t energy_datasize(size_t *size)
+ENERGY_NODE_F_DATASIZE(dcmi)
 {
     debug("energy_datasize %lu\n", sizeof(ulong));
 
@@ -574,20 +574,20 @@ state_t energy_datasize(size_t *size)
     return EAR_SUCCESS;
 }
 
-state_t energy_frequency(ulong *freq_us)
+ENERGY_NODE_F_FREQUENCY(dcmi)
 {
     *freq_us = dcmi_timeframe;
     return EAR_SUCCESS;
 }
 
-state_t energy_to_str(char *str, edata_t e)
+ENERGY_NODE_F_TO_STR(dcmi)
 {
-    ulong *pe = (ulong *) e;
+    ulong *pe = (ulong *) energy_mj;
     sprintf(str, "%lu", *pe);
     return EAR_SUCCESS;
 }
 
-unsigned long diff_node_energy(ulong init, ulong end)
+unsigned long energy_dcmi_diff_node_energy(ulong init, ulong end)
 {
     ulong ret = 0;
     if (end >= init) {
@@ -598,23 +598,23 @@ unsigned long diff_node_energy(ulong init, ulong end)
     return ret;
 }
 
-state_t energy_units(uint *units)
+ENERGY_NODE_F_UNITS(dcmi)
 {
     *units = 1000;
     return EAR_SUCCESS;
 }
 
-state_t energy_accumulated(unsigned long *e, edata_t init, edata_t end)
+ENERGY_NODE_F_ACCUMULATED(dcmi)
 {
     ulong *pinit = (ulong *) init, *pend = (ulong *) end;
 
-    ulong total = diff_node_energy(*pinit, *pend);
+    ulong total = energy_dcmi_diff_node_energy(*pinit, *pend);
     *e          = total;
     return EAR_SUCCESS;
 }
 
 // TODO: re-factor the code along with thread_main and energy_dc_time_read
-state_t energy_dc_read(void *c, edata_t energy_mj)
+ENERGY_NODE_F_DC_READ(dcmi)
 {
     ulong *penergy_mj = (ulong *) energy_mj;
     timestamp_t curr_time;
@@ -668,7 +668,7 @@ state_t energy_dc_read(void *c, edata_t energy_mj)
     return st;
 }
 
-state_t energy_dc_time_read(void *c, edata_t energy_mj, ulong *time_ms)
+ENERGY_NODE_F_DC_TIME_READ(dcmi)
 {
     ulong *penergy_mj = (ulong *) energy_mj;
     state_t st        = EAR_SUCCESS;
@@ -717,8 +717,34 @@ state_t energy_dc_time_read(void *c, edata_t energy_mj, ulong *time_ms)
     return st;
 }
 
-uint energy_data_is_null(edata_t e)
+ENERGY_NODE_F_IS_NULL(dcmi)
 {
-    ulong *pe = (ulong *) e;
+    ulong *pe = (ulong *) energy_mj;
     return (*pe == 0);
+}
+
+ENERGY_NODE_F_AC_READ(dcmi)
+{
+    return EAR_ERROR;
+}
+
+ENERGY_NODE_F_POWER_LIMIT(dcmi)
+{
+    return EAR_ERROR;
+}
+
+ENERGY_NODE_F_LOAD_PLUGIN(dcmi)
+{
+    ops->load          = energy_dcmi_load;
+    ops->unload        = energy_dcmi_unload;
+    ops->datasize      = energy_dcmi_datasize;
+    ops->frequency     = energy_dcmi_frequency;
+    ops->dc_read       = energy_dcmi_dc_read;
+    ops->dc_time_read  = energy_dcmi_dc_time_read;
+    ops->ac_read       = energy_dcmi_ac_read;
+    ops->units         = energy_dcmi_units;
+    ops->accumulated   = energy_dcmi_accumulated;
+    ops->energy_to_str = energy_dcmi_to_str;
+    ops->power_limit   = energy_dcmi_power_limit;
+    ops->is_null       = energy_dcmi_data_is_null;
 }

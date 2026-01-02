@@ -12,6 +12,7 @@
 #define METRICS_NODE_IPMI_DCMI_POWER_H
 
 #include <stdint.h>
+#include <metrics/energy/energy_node.h>
 
 #define IPMI_BUF_SIZE                   1024
 #define IPMI_SYSTEM_INTERFACE_ADDR_TYPE 0x0c
@@ -207,5 +208,7 @@ struct ipmi_intf {
     uint8_t addr;
     uint8_t channel;
 };
+
+ENERGY_NODE_DEFINES(dcmi)
 
 #endif

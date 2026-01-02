@@ -16,6 +16,50 @@
 #include <common/types/configuration/cluster_conf.h>
 #include <metrics/accumulators/types.h>
 
+#define ENERGY_NODE_F_LOAD_PLUGIN(name) state_t energy_ ##name ##_load_plugin (struct energy_op *ops, void **c)
+#define ENERGY_NODE_F_LOAD(name)        state_t energy_ ##name ##_load (void **c)
+#define ENERGY_NODE_F_UNLOAD(name)      state_t energy_ ##name ##_unload (void **c)
+#define ENERGY_NODE_F_DATASIZE(name)    state_t energy_ ##name ##_datasize (size_t *size)
+#define ENERGY_NODE_F_FREQUENCY(name)   state_t energy_ ##name ##_frequency (ulong *freq_us)
+#define ENERGY_NODE_F_DC_READ(name)     state_t energy_ ##name ##_dc_read (void *c, edata_t energy_mj)
+#define ENERGY_NODE_F_DC_TIME_READ(name) state_t energy_ ##name ##_dc_time_read (void *c, edata_t energy_mj, ulong *time_ms)
+#define ENERGY_NODE_F_AC_READ(name)     state_t energy_ ##name ##_ac_read (void *c, edata_t energy_mj)
+#define ENERGY_NODE_F_UNITS(name)       state_t energy_ ##name ##_units (uint *units)
+#define ENERGY_NODE_F_ACCUMULATED(name) state_t energy_ ##name ##_accumulated (ulong *e, edata_t init, edata_t end)
+#define ENERGY_NODE_F_TO_STR(name)      state_t energy_ ##name ##_to_str (char *str, edata_t energy_mj)
+#define ENERGY_NODE_F_POWER_LIMIT(name) state_t energy_ ##name ##_power_limit (void *c, ulong limit, ulong target)
+#define ENERGY_NODE_F_IS_NULL(name)     uint energy_ ##name ##_data_is_null (edata_t energy_mj)
+
+struct energy_op {
+    state_t (*load)(void **c);
+    state_t (*unload)(void **c);
+    state_t (*datasize)(size_t *size);
+    state_t (*frequency)(ulong *freq);
+    state_t (*dc_read)(void *c, edata_t emj);
+    state_t (*dc_time_read)(void *c, edata_t emj, ulong *tms);
+    state_t (*ac_read)(void *c, edata_t em);
+    state_t (*units)(uint *uints);
+    state_t (*accumulated)(ulong *e, edata_t init, edata_t end);
+    state_t (*energy_to_str)(char *str, edata_t end);
+    state_t (*power_limit)(void *c, ulong limit, ulong target);
+    uint (*is_null)(edata_t end);
+};
+
+#define ENERGY_NODE_DEFINES(name) \
+    ENERGY_NODE_F_LOAD_PLUGIN (name); \
+    ENERGY_NODE_F_LOAD        (name); \
+    ENERGY_NODE_F_UNLOAD      (name); \
+    ENERGY_NODE_F_DATASIZE    (name); \
+    ENERGY_NODE_F_FREQUENCY   (name); \
+    ENERGY_NODE_F_DC_READ     (name); \
+    ENERGY_NODE_F_DC_TIME_READ(name); \
+    ENERGY_NODE_F_AC_READ     (name); \
+    ENERGY_NODE_F_UNITS       (name); \
+    ENERGY_NODE_F_ACCUMULATED (name); \
+    ENERGY_NODE_F_TO_STR      (name); \
+    ENERGY_NODE_F_POWER_LIMIT (name); \
+    ENERGY_NODE_F_IS_NULL     (name);
+
 /* These two functions breaks load from initialization and simplifies the path
  * to the energy plugin, it's pending to add in EARD */
 state_t energy_load(int options);

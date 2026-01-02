@@ -16,7 +16,7 @@
 #include <common/output/debug.h>
 #include <common/states.h>
 #include <common/system/time.h>
-#include <metrics/energy/node/energy_node.h>
+#include <metrics/energy/energy_node.h>
 
 static timestamp_t start_time;
 static uint init;
@@ -25,7 +25,7 @@ static uint init;
  * MAIN FUNCTIONS
  */
 
-state_t energy_load(void **c)
+ENERGY_NODE_F_LOAD(dummy)
 {
     if (!init) {
         timestamp_get(&start_time);
@@ -36,25 +36,25 @@ state_t energy_load(void **c)
     return EAR_SUCCESS;
 }
 
-state_t energy_unload(void **c)
+ENERGY_NODE_F_UNLOAD(dummy)
 {
     return EAR_SUCCESS;
 }
 
-state_t energy_datasize(size_t *size)
+ENERGY_NODE_F_DATASIZE(dummy)
 {
     debug("energy_datasize %lu\n", sizeof(unsigned long));
     *size = sizeof(unsigned long);
     return EAR_SUCCESS;
 }
 
-state_t energy_frequency(ulong *freq_us)
+ENERGY_NODE_F_FREQUENCY(dummy)
 {
     *freq_us = 1000000;
     return EAR_SUCCESS;
 }
 
-state_t energy_to_str(char *str, edata_t e)
+ENERGY_NODE_F_TO_STR(dummy)
 {
     sprintf(str, "NA-dummy");
     return EAR_SUCCESS;
@@ -65,13 +65,13 @@ unsigned long diff_node_energy(ulong init, ulong end)
     return end - init;
 }
 
-state_t energy_units(uint *units)
+ENERGY_NODE_F_UNITS(dummy)
 {
     *units = 1000;
     return EAR_SUCCESS;
 }
 
-state_t energy_accumulated(unsigned long *e, edata_t init, edata_t end)
+ENERGY_NODE_F_ACCUMULATED(dummy)
 {
     ulong *pinit = (ulong *) init, *pend = (ulong *) end;
 
@@ -80,7 +80,7 @@ state_t energy_accumulated(unsigned long *e, edata_t init, edata_t end)
     return EAR_SUCCESS;
 }
 
-state_t energy_dc_read(void *c, edata_t energy_mj)
+ENERGY_NODE_F_DC_READ(dummy)
 {
 
     ulong *penergy_mj = (ulong *) energy_mj;
@@ -93,7 +93,7 @@ state_t energy_dc_read(void *c, edata_t energy_mj)
     return EAR_SUCCESS;
 }
 
-state_t energy_dc_time_read(void *c, edata_t energy_mj, ulong *time_ms)
+ENERGY_NODE_F_DC_TIME_READ(dummy)
 {
     ulong *penergy_mj = (ulong *) energy_mj;
 
@@ -106,8 +106,35 @@ state_t energy_dc_time_read(void *c, edata_t energy_mj, ulong *time_ms)
     return EAR_SUCCESS;
 }
 
-uint energy_data_is_null(edata_t e)
+ENERGY_NODE_F_IS_NULL(dummy)
 {
-    ulong *pe = (ulong *) e;
+    ulong *pe = (ulong *) energy_mj;
     return (*pe == 0);
+}
+
+ENERGY_NODE_F_AC_READ(dummy)
+{
+    return EAR_ERROR;
+}
+
+ENERGY_NODE_F_POWER_LIMIT(dummy)
+{
+    return EAR_ERROR;
+}
+
+ENERGY_NODE_F_LOAD_PLUGIN(dummy)
+{
+    ops->load          = energy_dummy_load;
+    ops->unload        = energy_dummy_unload;
+    ops->datasize      = energy_dummy_datasize;
+    ops->frequency     = energy_dummy_frequency;
+    ops->dc_read       = energy_dummy_dc_read;
+    ops->dc_time_read  = energy_dummy_dc_time_read;
+    ops->ac_read       = energy_dummy_ac_read;
+    ops->units         = energy_dummy_units;
+    ops->accumulated   = energy_dummy_accumulated;
+    ops->energy_to_str = energy_dummy_to_str;
+    ops->power_limit   = energy_dummy_power_limit;
+    ops->is_null       = energy_dummy_data_is_null;
+    return EAR_SUCCESS;
 }
