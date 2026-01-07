@@ -18,6 +18,9 @@ m4_include([m4/ac_oar.m4])
 m4_include([m4/ac_gsl.m4])
 m4_include([m4/ac_dlb.m4])
 m4_include([m4/ac_countdown.m4])
+m4_include([m4/ac_curl.m4])
+m4_include([m4/ac_jansson.m4])
+m4_include([m4/ac_microhttpd.m4])
 
 # INIT
 AC_PREREQ([2.69])
@@ -73,6 +76,9 @@ X_AC_PBS
 X_AC_DLB
 X_AC_COUNTDOWN
 X_AC_CMOCKA
+X_AC_CURL
+X_AC_JANSSON
+X_AC_MICROHTTPD
 
 #################
 # POST-FEATURES #
