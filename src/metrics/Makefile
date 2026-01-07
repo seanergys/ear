@@ -101,7 +101,6 @@ all: all.components metrics.o libmetrics.a
 
 post: test
 	@ $(MAKE) -C 'gpu' post || exit
-	@ $(MAKE) -C 'common' post || exit
 
 metrics.o: metrics.c
 	$(CC) $(CC_FLAGS) -I$(SRCDIR) -fPIC -c $<

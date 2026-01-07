@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 
 #include <common/config.h>
 #include <common/includes.h>
@@ -70,6 +70,8 @@ state_t energy_load(char *energy_obj)
     // - and EAR_ENERGY_ARGS will be arg1:arg2:arg3
     // This is specially required in IPMI plugins. Take a look into these
     // plugins to see how this environment variable is used.
+    if (strchr(energy_obj, '"' )) { remove_chars(energy_obj, '"'); }
+    if (strchr(energy_obj, '\'')) { remove_chars(energy_obj, '\''); }
     if (strchr(energy_obj, ':')) {
         if (strtoa((const char *) energy_obj, ':', &list, &list_count)) {
             if (list_count > 0) {

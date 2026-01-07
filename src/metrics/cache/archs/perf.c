@@ -23,7 +23,6 @@
 
 static perf_t       perfs[6];
 static uint         perfs_count;
-static uint         started;
 static offset_ops_t ofs;
 
 static void perfs_add(ullong event, uint type, ulong offset_result, const char *event_desc)

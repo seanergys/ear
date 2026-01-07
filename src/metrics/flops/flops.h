@@ -64,7 +64,7 @@ typedef struct flops_ops_s {
 #define FLOPS_F_GET_INFO(name)  void flops_##name##_get_info(apinfo_t *info)
 #define FLOPS_F_READ(name)      state_t flops_##name##_read(flops_t *fl)
 #define FLOPS_F_DATA_DIFF(name) void flops_##name##_data_diff(flops_t *fl2, flops_t *fl1, flops_t *flD, double *gfs)
-#define FLOPS_F_INTERNALS_TOSTR(name) state_t flops_##name##_internals_tostr(char *buffer, int length)
+#define FLOPS_F_INTERNALS_TOSTR(name) void flops_##name##_internals_tostr(char *buffer, int length)
 
 #define FLOPS_DEFINES(name)  \
     FLOPS_F_LOAD(name);      \

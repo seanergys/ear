@@ -35,7 +35,6 @@ static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static gpu_t         *pool; // change to sysmans_pool
 static timestamp_t    pool_time1;
 static timestamp_t    pool_time2;
-static uint           is_initialized;
 static uint           is_pooling;
 static suscription_t *sus;
 static ze_handlers_t *handlers;
