@@ -53,7 +53,7 @@ repo_BINS += \
         examon.so
 endif
 
-ifeq ($(FEAT_DB_PROMETHEUS), 1)
+ifeq ($(HAVE_MICROHTTPD), 1)
 repo_BINS += \
 		prometheus.so
 endif
@@ -84,7 +84,7 @@ eardbd.so: eardbd.c $(SRCDIR)/database_cache/eardbd_api.c $(repo_DEPS)
 	$(CC) $(CFLAGS) -shared -o $@ $^
 
 prometheus.so: prometheus.c $(repo_DEPS)
-	$(CC) $(CFLAGS) -shared -o prometheus.so prometheus.c -lmicrohttpd
+	$(CC) $(CFLAGS) -shared -o prometheus.so prometheus.c $(MICROHTTPD_CFLAGS) $(MICROHTTPD_LDFLAGS)
 
 mysql.so: mysql.c $(DB_MYSQL_STATIC)
 	$(CC) $(CFLAGS) $(DB_CFLAGS) $(DB_MYSQL_STATIC) -shared -o $@ $^ $(DB_MYSQL_LDFLAGS)

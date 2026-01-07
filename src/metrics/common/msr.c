@@ -83,7 +83,6 @@ static int static_open(uint cpu, mode_t mode)
 state_t msr_test(topology_t *tp, mode_t mode)
 {
     int fd = -1;
-    state_t s;
     int cpu;
 
     if (!tp->initialized) {

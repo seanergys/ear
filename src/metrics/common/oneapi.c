@@ -510,7 +510,6 @@ void oneapi_free_handlers(ze_handlers_t **handlers, uint *handlers_count)
 
 void oneapi_get_devices(gpu_devs_t **devs, uint *devs_count)
 {
-    char serial[32];
     int i;
 
     if (devs_count != NULL) {

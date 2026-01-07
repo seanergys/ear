@@ -249,7 +249,6 @@ static void get_device_info(gpu_devs_t *dev, uint is_subdevice)
 
 void nvml_get_devices(gpu_devs_t **devs, uint *devs_count_in, int add_subdevices)
 {
-    nvmlMemory_v2_t mem = {0};
     uint            aux;
     nvmlReturn_t    r;
     int             m; // main

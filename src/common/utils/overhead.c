@@ -121,17 +121,6 @@ void overhead_stop(uint id)
     if (wall < queue[id].wall_min) queue[id].wall_min = wall;
 }
 
-static int check_if_enabled()
-{
-    int id;
-    for (id = 0; id < queue_last; ++id) {
-        if (queue[id].enabled) {
-            return 1;
-        }
-    }
-    return 0;
-}
-
 void overhead_report(int print_header)
 {
     #if !ENABLE_OVERHEAD

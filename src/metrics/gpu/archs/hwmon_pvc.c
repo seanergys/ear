@@ -68,7 +68,6 @@ GPU_F_GET_INFO(hwmon_pvc)
 
 GPU_F_TOPOLOGY_GET(hwmon_pvc)
 {
-    char serial[32];
     int i;
 
     tp->devs_count = items_count;
