@@ -10,11 +10,27 @@
 
 #include <common/output/verbose.h>
 #include <common/system/user.h>
+#include <pwd.h>
 #include <string.h>
+#include <sys/types.h>
 
 int user_is_root()
 {
     return getuid() == 0;
+}
+
+// Returns the uid, gid for a given username
+state_t user_all_ids_by_user_get(user_t *user, char *username)
+{
+
+    struct passwd *pw = getpwnam(username);
+    if (!pw) {
+        return EAR_ERROR;
+    }
+
+    user->ruid = pw->pw_uid;
+    user->rgid = pw->pw_gid;
+    return EAR_SUCCESS;
 }
 
 state_t user_all_ids_get(user_t *user)
