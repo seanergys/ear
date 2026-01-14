@@ -36,6 +36,9 @@ int user_is_root();
 /** Get complete user information */
 state_t user_all_ids_get(user_t *user);
 
+/** Get UID, GID for a given user */
+state_t user_all_ids_by_user_get(user_t *user, char *username);
+
 /** Get real user id */
 state_t user_ruid_get(uid_t *uid, char *uname);
 
