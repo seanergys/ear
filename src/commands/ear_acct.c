@@ -909,7 +909,7 @@ void read_events(char *user, query_adds_t *q_a)
 		fd = open(csv_path, O_WRONLY | O_CREAT | O_TRUNC , S_IRUSR|S_IWUSR|S_IRGRP);
 	}
 
-	if (fd > 0) {
+	if (fd >= 0) {
 		strcpy(query, EVENTS_QUERY_RAW);
 	} else {
 		strcpy(query, EVENTS_QUERY);
