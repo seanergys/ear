@@ -108,6 +108,8 @@ void print_cluster_conf(cluster_conf_t *conf)
     for (i = 0; i < conf->admin_users_count; i++)
         verbose(VCCONF, "--->admin: %s", conf->admin_users[i]);
 
+    verbose(VCCONF, "EAR files owner: %s", conf->ear_owner);
+
     verbosen(VCCONF, ">>>>> Specific node configurations section <<<<<");
     for (i = 0; i < conf->num_nodes; i++)
         print_node_conf(&conf->nodes[i]);

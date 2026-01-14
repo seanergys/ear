@@ -23,6 +23,7 @@
 #include <daemon/local_api/eard_api.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <management/gpu/gpu.h>
 #include <metrics/common/apis.h>
 #include <metrics/cpufreq/cpufreq.h>
@@ -100,7 +101,6 @@ static char app_directory_pathname[MAX_PATH_SIZE];
     unlink(ear_commack);                                                                                               \
     unlink(ear_commreq);
 
-static char sem_file_global_pipe[1024];
 static sem_t *global_earl_eard_sem;
 
 static state_t create_base_path(char *base_path, size_t base_path_sz, char *tmp_path, uint job_step_id,
@@ -112,6 +112,8 @@ static state_t create_app_directory(char *path);
 
 /** Saves EARD connection info to be restored in the case the client lose this info. */
 static state_t eards_save_connection(char *tmp, ulong job_id, ulong step_id, ulong local_id);
+
+static state_t create_global_pipe_semaphore();
 
 static int eards_open(char *path, int flags, int *ear_fd_req, uint max_tries)
 {
@@ -379,12 +381,8 @@ int eards_connect(application_t *my_app, ulong lid)
         }
     }
 
-    xsnprintf(sem_file_global_pipe, sizeof(sem_file_global_pipe), "earl_eard_connect.sem", ear_tmp);
-    debug("Using semaphore %s", sem_file_global_pipe);
-    global_earl_eard_sem =
-        sem_open(sem_file_global_pipe, O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH, 1);
-    if (global_earl_eard_sem == SEM_FAILED) {
-        error("Creating sempahore %s (%s)", sem_file_global_pipe, strerror(errno));
+    if (state_fail(create_global_pipe_semaphore())) {
+        return_print(EAR_ERROR, "Creating the eard local API communitaction semaphore.");
     }
 
     if (gethostname(nodename, sizeof(nodename)) < 0) {
@@ -904,6 +902,30 @@ static state_t create_app_directory(char *path)
     return EAR_SUCCESS;
 }
 #endif
+
+static state_t create_global_pipe_semaphore()
+{
+    state_t st = EAR_SUCCESS;
+
+    char sem_file_global_pipe[NAME_MAX - 4];
+    xsnprintf(sem_file_global_pipe, sizeof(sem_file_global_pipe), "/earl_eard_connect.sem");
+    debug("Using semaphore %s", sem_file_global_pipe);
+
+    /* Set the process umask to give rw permission to any user. */
+    mode_t old_mask = umask(0);
+
+    global_earl_eard_sem =
+        sem_open(sem_file_global_pipe, O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH, 1);
+    if (global_earl_eard_sem == SEM_FAILED) {
+        error("Creating local API communitaction sempahore %s (%s)", sem_file_global_pipe, strerror(errno));
+        st = EAR_ERROR;
+    }
+
+    /* Restore the old mask */
+    umask(old_mask);
+
+    return st;
+}
 
 #if TEST
 /* clang-format off */
