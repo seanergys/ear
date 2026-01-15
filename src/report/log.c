@@ -20,6 +20,7 @@ extern char *program_invocation_short_name;
 
 #include <common/output/verbose.h>
 #include <common/states.h>
+#include <common/system/file.h>
 #include <common/types/configuration/cluster_conf.h>
 #include <common/types/types.h>
 #include <report/report.h>

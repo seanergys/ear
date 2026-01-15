@@ -834,8 +834,8 @@ void create_job_area(uint ID, char *user)
 void clean_job_area(uint ID)
 {
     char job_path[MAX_PATH_SIZE];
-    
-    /* 
+
+    /*
      * Protect the idle context (job-step 0-0, which produces ID=0).
      * The idle context is created at daemon startup and should persist
      * across all jobs.
@@ -844,7 +844,7 @@ void clean_job_area(uint ID)
         verbose(VJOBPMON + 1, "Skipping cleanup for idle context (ID=0)");
         return;
     }
-    
+
     xsnprintf(job_path, sizeof(job_path), "%s/%u", ear_tmp, ID);
 
     // folder_remove handles recursive deletion of files and subdirectories

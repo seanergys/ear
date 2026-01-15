@@ -254,9 +254,9 @@ state_t ear_create_tmp(char *path, char *ear_owner)
             /* Successfully created.
              * Set permissions to 1777 (sticky bit) to allow shared usage (e.g. by erun)
              * while preventing users from deleting each other's files. */
-             // S_ISVTX | S_IRWXU | S_IRWXG | S_IRWXO = 01777
+            // S_ISVTX | S_IRWXU | S_IRWXG | S_IRWXO = 01777
             if (chmod(tmp, S_ISVTX | S_IRWXU | S_IRWXG | S_IRWXO) < 0) {
-                 debug("Warning: could not chmod %s: %s", tmp, strerror(errno));
+                debug("Warning: could not chmod %s: %s", tmp, strerror(errno));
             }
             ear_chown_path(tmp, "ear");
         }
