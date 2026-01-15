@@ -106,7 +106,7 @@ void *create_shared_area(char *path, mode_t file_perms_bits, char *data, int are
         umask(my_mask);
         return NULL;
     }
-    
+
     /* Unlink any existing file to ensure we create a new one safely.
      * This avoids the "File exists" error when O_EXCL is used and debris remains. */
     unlinkat(dir_fd, file_buf, 0);

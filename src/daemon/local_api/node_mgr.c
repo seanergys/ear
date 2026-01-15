@@ -108,7 +108,7 @@ state_t nodemgr_server_init(char *tmp, ear_njob_t **nodelist, char *ear_owner)
         verbose(WF_SUPPORT_VERB, " EAR Error, nodemgr_lock cannot be initialized");
         return EAR_ERROR;
     }
-    
+
     /* Enforce non-root ownership (ear_owner)
      * we are doing it here and not in nodemgr_lock_init
      * becasue nodemgr_lock_init is called by both the daemon
