@@ -75,6 +75,8 @@
 
 /* POSTGRESQL QUERIES */
 #elif DB_PSQL
+#include <libpq-fe.h>
+
 #define MET_TIME                                                                                                       \
     "SELECT MIN(start_time), MAX(end_time) FROM Periodic_metrics WHERE start_time"                                     \
     ">= %d AND end_time <= %d"

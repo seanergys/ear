@@ -282,3 +282,9 @@ uint energy_data_is_null(void *data)
 {
     return ((consumption_t *) data)->energy == 0;
 }
+
+state_t energy_frequency(ulong *freq_us)
+{
+    *freq_us = 10000;
+    return EAR_SUCCESS;
+}
