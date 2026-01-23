@@ -128,7 +128,7 @@ void services_init(topology_t *tp)
 {
     state_t s;
 
-    management_load(&man, tp, API_FREE);
+    management_load(&man, tp, NULL);
 
     cpufreq_load(tp, NO_EARD);
     imcfreq_load(tp, NO_EARD);

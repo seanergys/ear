@@ -41,33 +41,36 @@ static int id_log;
 static int id_api;
 static int id_tpo;
 
-void metrics_load(metrics_info_t *m, topology_t *tp, char *nodepow_path, ullong mflags)
+void metrics_load(metrics_info_t *m, topology_t *tp, char *nodepow_path, uint *options)
 {
     self_tp = tp;
 
+    if (options == NULL) {
+        options = (uint []) {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    }
+
     nodepow(load, nodepow_path);
-    cpufreq_load(tp, MFLAG_UNZIP(mflags, MET_CPUFREQ));
-    imcfreq_load(tp, MFLAG_UNZIP(mflags, MET_IMCFREQ));
-    cpupow(load, tp, MFLAG_UNZIP(mflags, MET_CPUPOW));
-    bwidth_load(tp, MFLAG_UNZIP(mflags, MET_BWIDTH));
-    cache_load(tp, MFLAG_UNZIP(mflags, MET_CACHE));
-    flops_load(tp, MFLAG_UNZIP(mflags, MET_FLOPS));
-    temp_load(tp, MFLAG_UNZIP(mflags, MET_TEMP));
-    cpi_load(tp, MFLAG_UNZIP(mflags, MET_CPI));
-    gpu_load(MFLAG_UNZIP(mflags, MET_GPU));
+    cpufreq_load(tp, options[MET_OPT_CPUFREQ]);
+    imcfreq_load(tp, options[MET_OPT_IMCFREQ]);
+     cpupow(load,tp, options[MET_OPT_CPUPOW ]);
+     bwidth_load(tp, options[MET_OPT_BWIDTH ]);
+      cache_load(tp, options[MET_OPT_CACHE  ]);
+      flops_load(tp, options[MET_OPT_FLOPS  ]);
+       temp_load(tp, options[MET_OPT_TEMP   ]);
+        cpi_load(tp, options[MET_OPT_CPI    ]);
+        gpu_load(    options[MET_OPT_GPU    ]);
 
     nodepow(init, &e_ctx);
     cpufreq_init(no_ctx);
     imcfreq_init(no_ctx);
-    cpupow(init, no_ctx);
-    bwidth_init(no_ctx);
-    cache_init(no_ctx);
-    flops_init(no_ctx);
-    temp_init();
-    cpi_init(no_ctx);
-    gpu_init(no_ctx);
+     cpupow(init, no_ctx);
+     bwidth_init(no_ctx);
+      cache_init(no_ctx);
+      flops_init(no_ctx);
+       temp_init();
+        cpi_init(no_ctx);
+        gpu_init(no_ctx);
 
-    //
     metrics_info_get(m);
 }
 
@@ -355,6 +358,26 @@ char *metrics_data_tostr(metrics_diff_t *mrD)
     return scprintf(&ss);
 }
 
+uint *metrics_envtoops(char *var_name, uint options_expected)
+{
+    static uint *options = NULL;
+    uint options_count = 0;
+
+    if (getenv(var_name) != NULL) {
+        strtoat(getenv(var_name), ',', (void **) &options, &options_count, ID_UINT);
+        #if SHOW_DEBUGS
+        for (int i = 0; i < options_count; i++) {
+            debug("OPT %d: %u", i, options[i]);
+        }
+        #endif
+        if (options_count < options_expected) {
+            fprintf(stderr, "Number of options in the list is less than %d.\n", options_expected);
+            exit(EXIT_FAILURE);
+        }
+    }
+    return options;
+}
+
 #if TEST
 #include <common/system/monitor.h>
 #include <daemon/local_api/eard_api.h>
@@ -370,7 +393,7 @@ static metrics_diff_t mrD;
 static state_t metrics_apis_init(void *whatever)
 {
     topology_init(&tp);
-    metrics_load(&m, &tp, NULL, atoull(getenv("MFLAGS")));
+    metrics_load(&m, &tp, NULL, metrics_envtoops("OPTS", 10));
     metrics_init_screen(&m, &tp);
     metrics_data_alloc(&mr1, &mr2, &mrD);
     metrics_read(&mr1);
