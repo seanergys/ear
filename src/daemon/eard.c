@@ -765,13 +765,13 @@ int main(int argc, char *argv[])
         error(" Error reading cluster configuration\n");
         _exit(1);
     }
-    compute_default_pstates_per_policy(my_cluster_conf.num_policies, my_cluster_conf.power_policies);
 
     // Services
     services_init(&node_desc);
     services_print(&node_desc, &my_cluster_conf);
 
-    // Depcrecated frequency service (cleaning pending)
+    // Depcrecated frequency service (cleaning pending).
+    // Warning: if this is removed, the compute_default_pstates_per_policy function below will cause problems
     if (frequency_init(0) < 0) {
         verbose(VEARD_INIT, "frequency information can't be initialized");
         _exit(1);
@@ -782,6 +782,9 @@ int main(int argc, char *argv[])
         error( " Node %s not found in ear.conf, exiting\n", nodename);
         _exit(0);
     }
+
+    // Check the policies settings AFTER frequency init
+    compute_default_pstates_per_policy(my_cluster_conf.num_policies, my_cluster_conf.power_policies);
 
     // More Cluster and Node configuration
     verbose(VEARD_INIT,"%d Nodes detected in ear.conf configuration",my_cluster_conf.cluster_num_nodes);
