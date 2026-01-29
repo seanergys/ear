@@ -777,14 +777,15 @@ int main(int argc, char *argv[])
         _exit(1);
     }
 
+    // Check the policies settings AFTER frequency init
+    compute_default_pstates_per_policy(my_cluster_conf.num_policies, my_cluster_conf.power_policies);
+
+
     // Reading Node configuration
     if ((my_node_conf = get_my_node_conf(&my_cluster_conf, nodename)) == NULL) {
         error( " Node %s not found in ear.conf, exiting\n", nodename);
         _exit(0);
     }
-
-    // Check the policies settings AFTER frequency init
-    compute_default_pstates_per_policy(my_cluster_conf.num_policies, my_cluster_conf.power_policies);
 
     // More Cluster and Node configuration
     verbose(VEARD_INIT,"%d Nodes detected in ear.conf configuration",my_cluster_conf.cluster_num_nodes);
