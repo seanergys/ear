@@ -21,13 +21,17 @@
 #include <management/management.h>
 #include <stdlib.h>
 
-void management_load(manages_info_t *m, topology_t *tp, ullong mflags)
+void management_load(manages_info_t *m, topology_t *tp, uint *options)
 {
-    mgt_cpufreq_load(tp, MFLAG_UNZIP(mflags, MET_CPUFREQ));
-    mgt_cpuprio_load(tp, MFLAG_UNZIP(mflags, MET_CPUFREQ));
-    mgt_imcfreq_load(tp, MFLAG_UNZIP(mflags, MET_IMCFREQ), NULL);
-    mgt_cpupow_load(tp, MFLAG_UNZIP(mflags, MET_CPUPOW));
-    mgt_gpu_load(MFLAG_UNZIP(mflags, MET_GPU));
+    if (options == NULL) {
+        options = (uint []) {0, 0, 0, 0};
+    }
+
+    mgt_cpufreq_load(tp, options[MGT_OPT_CPUFREQ]);
+    mgt_imcfreq_load(tp, options[MGT_OPT_IMCFREQ], NULL);
+    mgt_cpuprio_load(tp, API_FREE);
+     mgt_cpupow_load(tp, options[MGT_OPT_CPUPOW ]);
+        mgt_gpu_load(    options[MGT_OPT_GPU    ]);
 
     mgt_cpufreq_init(no_ctx);
     mgt_cpuprio_init();
@@ -197,7 +201,7 @@ static topology_t tp;
 static state_t monitor_apis_init(void *whatever)
 {
     topology_init(&tp);
-    management_load(&man, &tp, atoull(getenv("MFLAGS")));
+    management_load(&man, &tp, metrics_envtoops("OPTS", 4));
     management_init_screen(&man, &tp);
     return EAR_SUCCESS;
 }

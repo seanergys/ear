@@ -2697,6 +2697,7 @@ state_t metrics_new_iteration(signature_t *sig)
 {
 
     if (!(master)) {
+        debug("Not master");
         return EAR_ERROR;
     }
 
@@ -2709,6 +2710,7 @@ state_t metrics_new_iteration(signature_t *sig)
         elap_sec     = f_time / 1000000;
 
         if (elap_sec <= last_elap_sec) {
+            debug("Not enough time");
             return EAR_ERROR;
         }
     }
@@ -2979,10 +2981,12 @@ static state_t energy_lib_init(settings_conf_t *conf)
     }
 
     if (state_fail(ret)) {
-        ret = utils_build_valid_plugin_path(my_plug_path, sizeof(my_plug_path), "energy", conf->installation.obj_ener,
-                                            conf);
+        char clean_ener_obj[SZ_PATH];
+        strcpy(clean_ener_obj, conf->installation.obj_ener);
+        strtok(clean_ener_obj, ":");
+        ret = utils_build_valid_plugin_path(my_plug_path, sizeof(my_plug_path), "energy", clean_ener_obj, conf);
         if (state_fail(ret)) {
-            verbose_error_master("Energy plug-in %s not found.", conf->installation.obj_ener);
+            verbose_error_master("Energy plug-in %s not found.", clean_ener_obj);
             return EAR_NOT_FOUND;
         }
     }
