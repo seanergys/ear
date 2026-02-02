@@ -662,9 +662,9 @@ void update_eargm_with_preconf(cluster_conf_t *conf, eargm_preconf_t *preconf)
             conf->eargm.defcon_power_lower);
 
     if (preconf->suspend_action != NULL)
-        strncpy(conf->eargm.powercap_limit_action, preconf->suspend_action, GENERIC_NAME);
+        strncpy(conf->eargm.powercap_limit_action, preconf->suspend_action, GENERIC_NAME - 1);
     if (preconf->resume_action != NULL)
-        strncpy(conf->eargm.powercap_lower_action, preconf->resume_action, GENERIC_NAME);
+        strncpy(conf->eargm.powercap_lower_action, preconf->resume_action, GENERIC_NAME - 1);
 }
 
 bool parse_args(int32_t argc, char *argv[], eargm_preconf_t *preconf)
@@ -705,7 +705,7 @@ bool parse_args(int32_t argc, char *argv[], eargm_preconf_t *preconf)
                 read           = true;
                 break;
             case 'c':
-                strncpy(my_ear_conf_path, optarg, sizeof(my_ear_conf_path));
+                strncpy(my_ear_conf_path, optarg, sizeof(my_ear_conf_path) - 1);
                 read = true;
                 break;
             case 'p':

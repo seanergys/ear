@@ -613,7 +613,7 @@ state_t application_create_header_str(char *header_dst, size_t header_dst_size, 
     char *HEADER = calloc(header_len, sizeof(char));
 
     if (header_prefix) {
-        strncat(HEADER, header_prefix, header_len - 1);
+        strcpy(HEADER, header_prefix);
     }
 
     strncat(HEADER, HEADER_JOB, header_len - strlen(HEADER) - 1);

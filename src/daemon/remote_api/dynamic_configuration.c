@@ -368,7 +368,7 @@ int dynconf_red_pstates(uint p_states)
     settings_conf_t *dyn_conf;
     resched_t *resched_conf;
     uint def_pstate, max_pstate;
-    ulong new_def_freq, new_max_freq;
+    ulong new_def_freq, new_max_freq = 0;
     int variation = (int) p_states;
     for (i = 0; i <= max_context_created; i++) {
         if (current_ear_app[i] != NULL) {
