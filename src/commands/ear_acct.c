@@ -1032,7 +1032,7 @@ void read_jobs_from_loops(query_adds_t *q_a)
         char *aux = strrchr(csv_path, '/');
         if (aux != NULL) {
             aux++; // move the pointer from the '/' to the next part
-            strncpy(tmp_path, csv_path, strlen(csv_path) - strlen(aux));
+            snprintf(tmp_path, strlen(csv_path) - strlen(aux), "%s", csv_path);
             strcat(tmp_path, "out_jobs.");
             strcat(tmp_path, aux);
         } else {
@@ -1437,7 +1437,7 @@ int main(int argc, char *argv[])
                 query_adds.end_time = mktime(&tinfo);
                 break;
             case 'F':
-                strncpy(format, optarg, sizeof(format));
+                strncpy(format, optarg, sizeof(format) - 1);
                 break;
             case 'h':
                 free_cluster_conf(&my_conf);

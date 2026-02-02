@@ -8,11 +8,23 @@ workflow:
     - if: $CI_COMMIT_BRANCH
 
 stages:          # List of stages for jobs, and their order of execution
+  - quality
   - build
   - test
   - deploy
 
-image: registry.gitlab.bsc.es/ear_team/ear-ci
+image: registry.gitlab.bsc.es/ear_team/ear-ci:v6
+
+debugs_disabled:
+  stage: quality
+  script:
+    - if grep -rIE -e "^[[:blank:]]*#define[[:blank:]]+SHOW_DEBUGS" -e "^[[:blank:]]*#define[[:blank:]]+DEBUG_ENABLED[[:blank:]]+1" src; then false; else true; fi
+
+clang-format:
+  stage: quality
+  script:
+    - dnf install -y clang-tools-extra-19.1.7-2.module+el8.10.0+1965+112b558b
+    - find src/ -name "*.[ch]" -exec clang-format --Werror --fail-on-incomplete-format --dry-run {} +
 
 compile-no-mpi-loader:
   stage: build

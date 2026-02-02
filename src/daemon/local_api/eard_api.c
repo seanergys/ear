@@ -140,8 +140,7 @@ int eards_read(int fd, char *buff, int size, uint wait_mode)
 {
 #if USE_NON_BLOCKING_IO
     uint to_recv, received = 0;
-    uint must_abort = 0;
-    to_recv         = size;
+    to_recv = size;
 
     long int max_ms = 500;
     /* A modern compiler is smart enough to discard below code. */
@@ -199,7 +198,7 @@ int eards_read(int fd, char *buff, int size, uint wait_mode)
     } while (tries < max_tries && to_recv > 0);
 
     if (tries == max_tries && to_recv > 0) {
-        verbose(2, "%sWarning%s Reading from fd %d. Timeout reached: %d ms. Bytes read: %u. Bytes left: %u.", COL_YLW,
+        verbose(2, "%sWarning%s Reading from fd %d. Timeout reached: %ld ms. Bytes read: %u. Bytes left: %u.", COL_YLW,
                 COL_CLR, fd, max_ms, received, to_recv);
         return -1;
     }
@@ -214,8 +213,7 @@ int eards_write(int fd, char *buff, int size)
 {
 #if USE_NON_BLOCKING_IO
     uint to_send, sent = 0;
-    uint must_abort = 0;
-    to_send         = size;
+    to_send = size;
 
     long int max_ms = 500;
     /* A modern compiler is smart enough to discard below code. */
@@ -269,7 +267,7 @@ int eards_write(int fd, char *buff, int size)
     } while (tries < max_tries && to_send > 0);
 
     if (tries == max_tries && to_send > 0) {
-        verbose(2, "%sWarning%s Writing fd %d. Timeout reached: %d ms. Bytes sent: %u. Bytes left: %u.", COL_YLW,
+        verbose(2, "%sWarning%s Writing fd %d. Timeout reached: %ld ms. Bytes sent: %u. Bytes left: %u.", COL_YLW,
                 COL_CLR, fd, max_ms, sent, to_send);
         return -1;
     }
