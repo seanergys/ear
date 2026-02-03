@@ -45,6 +45,7 @@ void metrics_load(metrics_info_t *m, topology_t *tp, char *nodepow_path, uint *o
 {
     self_tp = tp;
 
+    /* clang-format off */
     if (options == NULL) {
         options = (uint []) {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     }
@@ -70,6 +71,7 @@ void metrics_load(metrics_info_t *m, topology_t *tp, char *nodepow_path, uint *o
        temp_init();
         cpi_init(no_ctx);
         gpu_init(no_ctx);
+    /* clang-format on */
 
     metrics_info_get(m);
 }
@@ -361,15 +363,15 @@ char *metrics_data_tostr(metrics_diff_t *mrD)
 uint *metrics_envtoops(char *var_name, uint options_expected)
 {
     static uint *options = NULL;
-    uint options_count = 0;
+    uint options_count   = 0;
 
     if (getenv(var_name) != NULL) {
         strtoat(getenv(var_name), ',', (void **) &options, &options_count, ID_UINT);
-        #if SHOW_DEBUGS
+#if SHOW_DEBUGS
         for (int i = 0; i < options_count; i++) {
             debug("OPT %d: %u", i, options[i]);
         }
-        #endif
+#endif
         if (options_count < options_expected) {
             fprintf(stderr, "Number of options in the list is less than %d.\n", options_expected);
             exit(EXIT_FAILURE);
