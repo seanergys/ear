@@ -65,7 +65,8 @@ void command_register(cchar *command, cchar *format, callback_t callback)
     keys[keys_count].format       = format;
     keys[keys_count].callback     = callback;
     keys[keys_count].params_count = format_count(format);
-    debug("Registered command %s with %u parameters", keys[keys_count].command, keys[keys_count].params_count);
+    debug("Registered command %s with %u parameters",
+        keys[keys_count].command, keys[keys_count].params_count);
     ++keys_count;
 }
 
@@ -107,8 +108,7 @@ static void *command_read(void *x)
         }
     }
     // Waiting here until the parent dies
-    while (is_closing)
-        ;
+    while (is_closing);
     return NULL;
 }
 
