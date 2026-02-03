@@ -19,30 +19,33 @@
 #define declr_up_action_init(suffix)     char *up_action_init##suffix(cchar *tag, void **data_alloc, void *data)
 #define declr_up_action_periodic(suffix) char *up_action_periodic##suffix(cchar *tag, void *data)
 #define declr_up_action_close()          char *up_action_close()
-#define declr_up_post_data()             char *up_post_data(cchar *msg, void *data)
-#define declr_up_fds_register()          char *up_fds_register(afd_set_t *set)
-#define declr_up_fds_attend()            char *up_fds_attend(afd_set_t *set)
+#define declr_up_message_receive(suffix) char *up_message_receive##suffix(cchar *tag_msg, void *data)
+#define declr_up_poll_attend(suffix)     char *up_poll_attend##suffix(cchar *tag_fd, int fd)
 
+// Helpers
 #define is_tag(t)                        (strcmp(t, tag) == 0)
-#define is_msg(t)                        (strcmp(t, msg) == 0)
-
 #define ARG0(var)                        (var != NULL)
 #define ARG1(var)                        ARG0(var) && (var[1] != NULL)
 #define ARG2(var)                        ARG1(var) && (var[2] != NULL)
 #define ARGE(...)                        __VA_ARGS__
 #define ARG(v, n)                        ARGE(ARG##n)(v)
 
-// Init as main binary function
+// Init as main binary function.
 int plugin_manager_main(int argc, char *argv[]);
-// Init as a component of a binary
+// Init as a component of a multiple purposes binary.
 int plugin_manager_init(char *files, char *paths);
 // Closes Plugin Manager main thread.
 void plugin_manager_close();
-// Wait until Plugin Manager exits.
+// Wait until Plugin Manager main thread exits.
 void plugin_manager_wait();
 // Asking for an action. Intended to be called from plugins.
-void *plugin_manager_action(cchar *tag);
-// Passing data to plugins. Intended to be called outside PM.
-void plugin_mananger_post(cchar *msg, void *data);
+void *plugin_manager_action_trigger(cchar *tag);
+// Passing data to plugins. Intended to be called outside plugins.
+void plugin_manager_message_send(cchar *tag_msg, void *data);
+// Add a fd to the Plugin Manager internal poll/select(). Argument 'tag' is the
+// own plugin tag and 'tag_fd' is the tag associated to the registered 'fd'.
+int plugin_manager_poll_add(cchar *tag, cchar *tag_fd, int fd);
+// Remove a file descriptor from the PM main poll/select().
+void plugin_manager_poll_remove(int fd);
 
 #endif // PLUGIN_MANAGER_H

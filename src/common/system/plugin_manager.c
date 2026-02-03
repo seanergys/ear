@@ -8,30 +8,30 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-// #define SHOW_DEBUGS 1
+//#define SHOW_DEBUGS 1
 
+#define _GNU_SOURCE
 #include <stdlib.h>
+#include <common/utils/args.h>
 #include <common/output/debug.h>
 #include <common/system/monitor.h>
 #include <common/system/symplug.h>
 #include <common/utils/strscreen.h>
 #include <common/config/config_env.h>
 #include <common/system/plugin_manager.h>
-#include <common/utils/args.h>
+#include <common/system/poll.h>
 
 #define MAX_SYMBOLS      4
 #define MAX_PLUGINS      128
 #define PM_DEFAULT_VERB  2
+#define MAX_MSGS_CACHE   32
 
 typedef void  (get_tag_f)         (cchar **tag, cchar **tags_deps);
 typedef char *(action_init_f)     (cchar *tag, void **data_alloc, void *data);
 typedef char *(action_periodic_f) (cchar *tag, void *data);
 typedef void  (action_close_f)    ();
-typedef char *(post_data_f)       (cchar *msg, void *data);
-typedef char *(fds_set_f)         (afd_set_t *set);
-
-static ulong monitor_period = 100;
-static ulong relax_period   = 100;
+typedef char *(message_receive_f) (cchar *tag_msg, void *data);
+typedef char *(poll_attend_f)     (cchar *tag_fd, int fd);
 
 // Example of dependency table:
 // plugin0 [0] [1] [0]: It means that for plugin0, the plugin1 is mandatory
@@ -48,15 +48,13 @@ typedef struct plugin_s {
     uint               deps_table[MAX_PLUGINS]; // Not sorted, table of dependecy modes
     action_init_f     *action_init[MAX_PLUGINS];
     action_periodic_f *action_periodic[MAX_PLUGINS];
-    fds_set_f         *fds_register;
-    fds_set_f         *fds_attend;
-    post_data_f       *post_data;
+    //message_receive_f *message_receive;
     void              *data;
     void              *data_conf;
     ullong             time_accum;
     ullong             time_lapse; // In ms
     timestamp_t        time_origin;
-    uint               time_param; // Time in parameter
+    uint               time_lapse_is_set; // ¿Is there time in parameter? Boolean.
     uint               one_time;   // Obsolete?
     uint               priority;
     uint               is_opened;
@@ -66,30 +64,40 @@ typedef struct plugin_s {
 } plugin_t;
 
 typedef struct plugins_s {
-    plugin_t **plugins_sorted;
-    plugin_t *plugins;
-    uint max_priority;
-    uint count;
+    plugin_t         **plugins_sorted;
+    plugin_t          *plugins;
+    uint               max_priority;
+    uint               count;
 } plugins_t;
 
-static plugins_t   p;
+typedef struct pmfd_set_s {
+    uint               plugin_index;
+    poll_attend_f     *poll_attend;
+    cchar             *tag;
+} pmfd_set_t;
+
+typedef struct msg_cache_s {
+    char tag_msg[128];
+    void *handler;
+} msg_cache_t;
+
+static ulong       monitor_period = 100;
+static ulong       relax_period   = 100;
+static plugins_t   p; // Struct that holds all plugins context
 static char      **priority_paths;
 static char        date[128];
 static uint        exit_called;
-// static int         fds_status;
-static afd_set_t   fds_active;
+static afd_set_t   fds_active; // FDs of our internal poll
+static pmfd_set_t  f[AFD_MAX]; // Struct that holds all file-descriptors context
 
-// static ullong      timeout;
-// static ullong      timeout_remaining;
-
-static int plugins_dependencies_read(cchar *string, ullong father_time_lapse, uint priority, uint *father_deps_table)
+static int plugins_dependencies_read(cchar *string, ullong time_lapse_legator, uint priority, uint *deps_table_legator)
 {
     uint   list1_count;
     uint   list2_count;
     char **list1;
     char **list2;
     int    priority_plus;
-    int    time_inherit;
+    int    time_lapse_inherit;
     int    mandatory;
     int    l, j;
     char  *c;
@@ -106,11 +114,11 @@ static int plugins_dependencies_read(cchar *string, ullong father_time_lapse, ui
         debug("list1[%d]: %s", l, list1[l]);
         // Cleaning
         memset(&p.plugins[p.count], 0, sizeof(plugin_t));
-        list2         = NULL;
-        list2_count   = 0;
-        priority_plus = 0;
-        time_inherit  = 0;
-        mandatory     = 0;
+        list2              = NULL;
+        list2_count        = 0;
+        priority_plus      = 0;
+        time_lapse_inherit = 0;
+        mandatory          = 0;
         // Configuration = file:time:conf1:conf2
         if (strtoa(list1[l], ':', &list2, &list2_count) != NULL) {
             for (j = 1; list2[j] != NULL; ++j) {
@@ -119,7 +127,7 @@ static int plugins_dependencies_read(cchar *string, ullong father_time_lapse, ui
             // If time is valid
             if (list2_count > 1 && strlen(list2[1]) > 0 && strisnum(list2[1])) {
                 p.plugins[p.count].time_lapse = (ullong) atoi(list2[1]);
-                p.plugins[p.count].time_param = p.plugins[p.count].time_lapse > 0;
+                p.plugins[p.count].time_lapse_is_set = p.plugins[p.count].time_lapse > 0;
                 // If configuration exists
                 if (list2_count > 2) {
                     // strncpy(p.plugins[p.count].conf, list2[2], sizeof(p.plugins[p.count].conf));
@@ -147,7 +155,7 @@ static int plugins_dependencies_read(cchar *string, ullong father_time_lapse, ui
                 mandatory = 1;
             }
             if (*c == '<') {
-                time_inherit = 1;
+                time_lapse_inherit = 1;
             }
             if (*c == '^') {
                 priority_plus = MAX_PLUGINS;
@@ -180,30 +188,37 @@ static int plugins_dependencies_read(cchar *string, ullong father_time_lapse, ui
         if (p.plugins[p.count].priority > p.max_priority) {
             p.max_priority = p.plugins[p.count].priority;
         }
-        // Time lapse
-        if (!p.plugins[p.count].time_param && time_inherit && father_time_lapse > 0) {
-            p.plugins[p.count].time_lapse = father_time_lapse;
+        // Time-lapse
+        if (!p.plugins[p.count].time_lapse_is_set && time_lapse_inherit && time_lapse_legator > 0) {
+            p.plugins[p.count].time_lapse = time_lapse_legator;
         }
-        // Looking this new plugin in the already processed plugins
+
+        // Comparing this new added plugin in the already processed plugins
         for (j = 0; j < p.count; ++j) {
-            // If found
-            if (strcmp(p.plugins[p.count].file_name, p.plugins[j].file_name) == 0) {
+            plugin_t *p_inheritor = &p.plugins[p.count];
+            plugin_t *p_revisited = &p.plugins[j];
+            // If the revisited plugin is the same of the new inheritor
+            if (strcmp(p_revisited->file_name, p_inheritor->file_name) == 0) {
                 // Replacing priority if has increased its value
-                if (p.plugins[j].priority < p.plugins[p.count].priority) {
-                    p.plugins[j].priority = p.plugins[p.count].priority;
+                if (p_revisited->priority < p_inheritor->priority) {
+                    p_revisited->priority = p_inheritor->priority;
                 }
-                // Replacing timelapse
-                if (!p.plugins[j].time_param && time_inherit && p.plugins[j].time_lapse > father_time_lapse &&
-                    father_time_lapse != 0) {
-                    p.plugins[j].time_lapse = father_time_lapse;
-                }
+                // Replacing timelapse if:
+                //   1) The time-lapse between actions is set to be inherited by the legator plugin.
+                //   2) The legator plugin has its action-time-lapse set.
+                //   3.1) If the time-lapse of the inheritor plugin is 0.
+                //   3.2) Or if the time of the legator plugin is lesser than the inheritor.
+                if (time_lapse_inherit && (time_lapse_legator > 0) ) {
+                    if (!p_revisited->time_lapse_is_set || time_lapse_legator < p_revisited->time_lapse) {
+                        p_revisited->time_lapse = time_lapse_legator;
+                }}
                 // Replacing if the plugin is silenced
-                if (p.plugins[p.count].is_silenced) {
-                    p.plugins[j].is_silenced = 1;
+                if (p_inheritor->is_silenced) {
+                    p_revisited->is_silenced = 1;
                 }
                 // Replacing dependency type
-                if (father_deps_table != NULL) {
-                    father_deps_table[j] = (uint) mandatory;
+                if (deps_table_legator != NULL) {
+                    deps_table_legator[j] = (uint) mandatory;
                 }
                 break;
             }
@@ -213,14 +228,13 @@ static int plugins_dependencies_read(cchar *string, ullong father_time_lapse, ui
             continue;
         }
         // If not found, update the father dependency table
-        if (father_deps_table != NULL) {
-            father_deps_table[p.count] = mandatory;
+        if (deps_table_legator != NULL) {
+            deps_table_legator[p.count] = mandatory;
         }
-        // Not found, so this is a new plugin
+        // Not found, so this is a newly added plugin
         p.count += 1;
     }
     strtoa_free(list1);
-
     return 1;
 }
 
@@ -233,8 +247,8 @@ static void plugins_open_sort(uint priority, uint index)
     }
     for (i = 0; i < p.count; ++i) {
         if (priority == p.plugins[i].priority) {
-            adebug("[Debug] %s: time lapse '%4llu', time_param %u, priority '%u'", p.plugins[i].path,
-                   p.plugins[i].time_lapse, p.plugins[i].time_param, p.plugins[i].priority);
+            adebug("[Debug] %s: time lapse '%4llu', time_lapse_is_set %u, priority '%u'", p.plugins[i].path,
+                   p.plugins[i].time_lapse, p.plugins[i].time_lapse_is_set, p.plugins[i].priority);
             p.plugins_sorted[index++] = &p.plugins[i];
         }
     }
@@ -307,11 +321,12 @@ static int plugins_open()
         }
         // Maybe we can explore in the future a multi tag system
         get_tag(&plug->tag, &plug->tags_deps);
-        debug("[DEBUG] %s after call get_tag(): tag '%s', tags_deps '%s'", plug->path, (char *) plug->tag,
-              (char *) plug->tags_deps);
+        debug("[DEBUG] %s after call get_tag(): tag '%s', tags_deps '%s'",
+              plug->path, (char *) plug->tag, (char *) plug->tags_deps);
         plug->is_opened = 1;
         // Loading dependencies
         if (plug->tags_deps != NULL) {
+            // Reading (2) all the plugins specified in the dependency tags.
             plugins_dependencies_read(plug->tags_deps, plug->time_lapse, plug->priority, plug->deps_table);
         }
     }
@@ -327,7 +342,8 @@ static int plugins_open()
         // Enabling if all the dependenciesare opened.
         plug->is_enabled = plug->is_opened && (j == p.count);
         verbose(4, "[Summary] %s %s: called every %06llu ms with priority %u%s",
-                (plug->is_opened) ? "Opened" : "Not opened", plug->file_name, plug->time_lapse, plug->priority,
+                (plug->is_opened) ? "Opened" : "Not opened",
+                plug->file_name, plug->time_lapse, plug->priority,
                 (plug->is_enabled) ? "" : ", but disabled");
         enabled_count += plug->is_enabled;
     }
@@ -338,7 +354,7 @@ static void output_print_format()
 {
     time_t ti    = time(NULL);
     struct tm tm = *localtime(&ti);
-    sprintf(date, "%d/%d %d:%d:%d", tm.tm_mday, tm.tm_mon + 1, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    sprintf(date, "%d/%d %d:%02d:%02d", tm.tm_mday, tm.tm_mon + 1, tm.tm_hour, tm.tm_min, tm.tm_sec);
     date[strlen(date)] = '\0';
 }
 
@@ -454,29 +470,6 @@ next_ap:
     plugins_action_periodic(i + 1, time_now, time_passed);
 }
 
-#if 0
-static void plugins_fds_attend(int i)
-{
-    char *sout;
-    // Base case
-    if (i == p.count) {
-        return;
-    }
-    if (p.plugins_sorted[i]->fds_attend == (void *) UINT64_MAX) {
-        goto next_fa;
-    }
-    p.plugins_sorted[i]->fds_attend = dlsym(p.plugins_sorted[i]->handler, "up_fds_attend");
-    if (p.plugins_sorted[i]->fds_attend != NULL) {
-        sout = p.plugins_sorted[i]->fds_attend(&fds_active);
-        output_print(i, i, "FDs attend status: ", sout);
-    } else {
-        p.plugins_sorted[i]->fds_attend = (void *) UINT64_MAX;
-    }
-next_fa:
-    plugins_fds_attend(i+1);
-}
-#endif
-
 static void plugin_manager_after_close()
 {
     action_close_f *action_close;
@@ -485,6 +478,37 @@ static void plugin_manager_after_close()
     for (i = 0; i < p.count; ++i) {
         if ((action_close = dlsym(p.plugins_sorted[i]->handler, "up_action_close")) != NULL) {
             action_close();
+        }
+    }
+}
+
+static void plugins_poll_attend_fds()
+{
+    char *sout;
+    int fd;
+
+    for (fd = fds_active.fd_min; fd <= fds_active.fd_max; fd++) {
+        if (AFD_ISSET(fd, &fds_active)) {
+            if (f[fd].poll_attend != NULL) {
+                sout = f[fd].poll_attend(f[fd].tag, fd);
+                output_print(f[fd].plugin_index, 0, "", sout);
+            }
+        }
+    }
+}
+
+static void plugins_poll_attend()
+{
+    int fds_status;
+
+    if ((fds_status = aselect(&fds_active, 1LLU, NULL)) != -1) {
+        //dprintf(STDERR_FILENO, "fds_status %d\n", fds_status);
+        if (fds_status > 0) {
+            plugins_poll_attend_fds();
+        } else if (fds_status == 0) {
+            // Timed out
+        } else {
+            // Error
         }
     }
 }
@@ -502,16 +526,16 @@ static state_t plugins_main(void *whatever)
     }
     // Formatting the date
     output_print_format();
-    // Time calculation
     timestamp_get(&time_now);
     time_passed = timestamp_diff(&time_now, &time_last, TIME_MSECS);
-    // Main call
+    // Periodic plugin functions call
     plugins_action_periodic(0, &time_now, time_passed);
+    plugins_poll_attend();
+    // Exit control
     if (exit_called) {
         monitor_dispose();
         plugin_manager_after_close();
     }
-    //
     time_last = time_now;
     return EAR_SUCCESS;
 }
@@ -543,7 +567,7 @@ static int plugins_action_init_call(int i, int d, void **data_alloc, void *data)
     }
     debug("[DEBUG] %s: called 'action_init' with tag/data '%s'", p.plugins_sorted[i]->file_name, p.plugins_sorted[d]->tag);
     sout = p.plugins_sorted[i]->action_init[d](p.plugins_sorted[d]->tag, data_alloc, data);
-    return output_print(i, d, "Init status: ", sout);
+    return output_print(i, d, "", sout);
 }
 
 static void plugins_action_init(int i)
@@ -581,28 +605,13 @@ next_ai:
     plugins_action_init(i + 1);
 }
 
-static void plugins_fds_register(int i)
-{
-    char *sout;
-    // Base case
-    if (i == p.count) {
-        return;
-    }
-    p.plugins_sorted[i]->fds_register = dlsym(p.plugins_sorted[i]->handler, "up_fds_register");
-    if (p.plugins_sorted[i]->fds_register != NULL) {
-        sout = p.plugins_sorted[i]->fds_register(&fds_active);
-        output_print(i, i, "FDs register status: ", sout);
-    }
-    plugins_fds_register(i + 1);
-}
-
 static state_t plugins_init(void *whatever)
 {
     int enabled = 0;
     if ((enabled = plugins_open())) {
         plugins_open_sort(p.max_priority, 0);
+        afd_init(&fds_active);
         plugins_action_init(0);
-        plugins_fds_register(0);
     }
     if (!enabled) {
         monitor_dispose();
@@ -621,10 +630,12 @@ static int plugin_manager_configure(int argc, char *argv[])
         verbose(0, "Options:");
         verbose(0, "    --plugins    List of plus sign separated plugins to load.");
         verbose(0, "    --paths      List of colon separated priority paths to search plugins.");
-        verbose(0, "    --verbose    Show how the things are going internally.");
+        verbose(0, "    --verbose    Set the verbose level (1 to 4).");
         verbose(0, "    --silence    Hide messages returned by plugins.");
-        verbose(0, "    --monitor    Period at which the plugin wake ups for monitoring. Def=100 ms  ");
-        verbose(0, "    --relax      Period to be used during low monitoring periods. Def=100 ms  ");
+        verbose(0, "    --monitor    Period at which the system wake ups to check if there is any\n");
+        verbose(0, "                 plugin ready. Default 100 ms");
+        verbose(0, "    --relax      Period at which the system wakes up to check if there is any\n. Def=100 ms  ");
+        verbose(0, "                 plugin ready in relaxed mode. Default 100 ms");
         verbose(0, "    --help       If you see it you already typed --help.");
         return 0;
     }
@@ -639,10 +650,8 @@ static int plugin_manager_configure(int argc, char *argv[])
         return 0;
     }
     if (args_get(argc, argv, "verbose", verb_lvl)) {
-        if (verb_lvl[0] == '\0')
-            VERB_SET_LV(PM_DEFAULT_VERB)
-        else
-            VERB_SET_LV(atoi(verb_lvl))
+        if (verb_lvl[0] == '\0') { VERB_SET_LV(PM_DEFAULT_VERB); }
+        else                     { VERB_SET_LV(atoi(verb_lvl)); }
     }
     if (args_get(argc, argv, "silence", NULL)) {
         VERB_SET_EN(0);
@@ -655,13 +664,15 @@ static int plugin_manager_configure(int argc, char *argv[])
     if (args_get(argc, argv, "relax", params)) {
         relax_period = strtoul(params, NULL, 10);
     }
-    verbose(0, "UPM configuration: plugins \'%s\' verbose %u monitor periods[burst %lu, relax %lu]", buffer,
-            VERB_GET_LV(), monitor_period, relax_period);
+    verbose(0, "UPM configuration: plugins \'%s\' verbose %u monitor periods[burst %lu, relax %lu]",
+        buffer, VERB_GET_LV(), monitor_period, relax_period);
+    // Hidden parameters
     if (args_get(argc, argv, "debug", NULL)) {
         ADEBUG_SET_EN(1);
     }
     p.plugins        = calloc(MAX_PLUGINS, sizeof(plugin_t));
     p.plugins_sorted = calloc(MAX_PLUGINS, sizeof(plugin_t *));
+    // Reading (1) all the plugins specified in the --plugins argument.
     return plugins_dependencies_read(buffer, 0LLU, 0, NULL);
 }
 
@@ -672,25 +683,6 @@ int plugin_manager_main(int argc, char *argv[])
     if (!plugin_manager_configure(argc, argv)) {
         verbose(0, "[ERROR] No plugins to load.") return 0;
     }
-#if 0
-    afd_init(&fds_active);
-    plugins_init(NULL);
-    // 100 milliseconds
-    timeout = 100LLU;
-    while (!exit_called) {
-        if ((fds_status = aselect(&fds_active, timeout, &timeout_remaining)) != -1) {
-            if (fds_status > 0) {
-                printf("fds_status > 0\n");
-                plugins_fds_attend(0);
-                timeout = timeout_remaining;
-            } else if (fds_status == 0) {
-                printf("fds_status == 0\n");
-                plugins_main(NULL);
-                timeout = 100LLU;
-            }
-        }
-    }
-#else
     // Suscriptions
     suscription_t *sus = suscription();
     sus->call_init     = plugins_init;
@@ -703,8 +695,6 @@ int plugin_manager_main(int argc, char *argv[])
     if (state_fail(monitor_init())) {
         verbose(0, "Monitor failed: %s", state_msg);
     }
-#endif
-
     return 1;
 }
 
@@ -748,19 +738,54 @@ void *plugin_manager_action(cchar *tag)
     return NULL;
 }
 
-void plugin_mananger_post(cchar *msg, void *data)
+void plugin_manager_message_send(cchar *tag_msg, void *data)
 {
+    message_receive_f *call = NULL;
+    char buffer[256];
+    char *sout;
     int i;
+
     for (i = 0; i < p.count; ++i) {
-        if (p.plugins_sorted[i]->post_data == (void *) UINT64_MAX) {
-            continue;
+        sprintf(buffer, "up_message_receive_%s", tag_msg);
+        call = dlsym(p.plugins_sorted[i]->handler, buffer);
+        if (call == NULL) {
+            call = dlsym(p.plugins_sorted[i]->handler, "up_message_receive");
         }
-        if (p.plugins_sorted[i]->post_data == NULL) {
-            if ((p.plugins_sorted[i]->post_data = dlsym(p.plugins_sorted[i]->handler, "up_post_data")) == NULL) {
-                p.plugins_sorted[i]->post_data = (void *) UINT64_MAX;
-                continue;
+        if (call != NULL) {
+            sout = call(tag_msg, data);
+            output_print(i, 0, "", sout);
+        }
+    }
+}
+
+int plugin_manager_poll_add(cchar *tag_own, cchar *tag, int fd)
+{
+    char buffer[256];
+    int i;
+
+    for (i = 0; i < p.count; ++i) {
+        if (strcmp(p.plugins_sorted[i]->tag, tag_own) == 0) {
+            f[fd].plugin_index = i;
+            f[fd].tag = tag;
+            if (tag != NULL) {
+                sprintf(buffer, "up_poll_attend_%s", tag);
+                f[fd].poll_attend = dlsym(p.plugins_sorted[i]->handler, buffer);
+            }
+            if (f[fd].poll_attend == NULL) {
+                f[fd].poll_attend = dlsym(p.plugins_sorted[i]->handler, "up_poll_attend");
+            }
+            if (f[fd].poll_attend != NULL) {
+                AFD_SET(fd, &fds_active);
+                return 1;
             }
         }
-        p.plugins_sorted[i]->post_data(msg, data);
     }
+    return 0;
+}
+
+void plugin_manager_poll_remove(int fd)
+{
+    f[fd].plugin_index = UINT32_MAX;
+    f[fd].poll_attend = NULL;
+    AFD_CLR(fd, &fds_active);
 }
