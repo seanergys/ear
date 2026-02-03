@@ -24,14 +24,16 @@
 void management_load(manages_info_t *m, topology_t *tp, uint *options)
 {
     if (options == NULL) {
-        options = (uint []) {0, 0, 0, 0};
+        options = (uint[]) {0, 0, 0, 0};
     }
 
+    /* clang-format off */
     mgt_cpufreq_load(tp, options[MGT_OPT_CPUFREQ]);
     mgt_imcfreq_load(tp, options[MGT_OPT_IMCFREQ], NULL);
     mgt_cpuprio_load(tp, API_FREE);
      mgt_cpupow_load(tp, options[MGT_OPT_CPUPOW ]);
         mgt_gpu_load(    options[MGT_OPT_GPU    ]);
+    /* clang-format on */
 
     mgt_cpufreq_init(no_ctx);
     mgt_cpuprio_init();

@@ -79,16 +79,16 @@ typedef struct metrics_diff_s {
     ulong nod_avrg; // Total node energy
 } metrics_diff_t;
 
-#define MET_OPT_CPUFREQ  0
-#define MET_OPT_IMCFREQ  1
-#define MET_OPT_BWIDTH   2
-#define MET_OPT_FLOPS    3
-#define MET_OPT_CACHE    4
-#define MET_OPT_TEMP     5
-#define MET_OPT_CPI      6
-#define MET_OPT_GPU      7
-#define MET_OPT_CPUPOW   8
-#define MET_OPT_NODEPOW  9
+#define MET_OPT_CPUFREQ 0
+#define MET_OPT_IMCFREQ 1
+#define MET_OPT_BWIDTH  2
+#define MET_OPT_FLOPS   3
+#define MET_OPT_CACHE   4
+#define MET_OPT_TEMP    5
+#define MET_OPT_CPI     6
+#define MET_OPT_GPU     7
+#define MET_OPT_CPUPOW  8
+#define MET_OPT_NODEPOW 9
 
 // This function contains load() and init() functions of the different metrics.
 void metrics_load(metrics_info_t *m, topology_t *tp, char *nodepow_path, uint *options);
