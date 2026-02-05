@@ -75,7 +75,10 @@ int read_application_text_file(char *path, application_t **apps, char is_extende
     }
 
     // Reading the header
-    fscanf(fd, "%s\n", line);
+    if (fscanf(fd, "%s\n", line) == EOF) {
+        fclose(fd);
+        return EAR_ERROR;
+    }
     lines = 0;
 
     while (fscanf(fd, "%s\n", line) > 0) {
@@ -88,7 +91,10 @@ int read_application_text_file(char *path, application_t **apps, char is_extende
 
     // Rewind
     rewind(fd);
-    fscanf(fd, "%s\n", line);
+    if (fscanf(fd, "%s\n", line) == EOF) {
+        fclose(fd);
+        return EAR_ERROR;
+    }
 
     i = 0;
     a = apps_aux;
@@ -115,7 +121,9 @@ int print_application_fd(int fd, application_t *app, int new_line, char is_exten
     char buff[512];
     print_job_fd(fd, &app->job);
     sprintf(buff, ";%u;%u;%s;", app->is_mpi, app->is_learning, app->node_id);
-    write(fd, buff, strlen(buff));
+    if (write(fd, buff, strlen(buff)) < 0) {
+        error("Writing application attributes: %d", errno);
+    }
 
     if (!app->is_mpi) {
         signature_init(&app->signature);
@@ -213,22 +221,6 @@ int scan_application_fd(FILE *fd, application_t *app, char is_extended)
                      &a->signature.instructions, &a->signature.Gflops);
 
     return ret;
-}
-
-/*
- *
- * I don't know what is this
- *
- */
-
-void print_application_fd_binary(int fd, application_t *app)
-{
-    write(fd, app, sizeof(application_t));
-}
-
-void read_application_fd_binary(int fd, application_t *app)
-{
-    read(fd, app, sizeof(application_t));
 }
 
 /*
