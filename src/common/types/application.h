@@ -78,10 +78,6 @@ int scan_application_fd(FILE *fd, application_t *app, char is_extended);
 #define create_ID(id, sid) (id * 100 + sid)
 #define EID(app)           (app->job.local_id)
 
-void read_application_fd_binary(int fd, application_t *app);
-
-void print_application_fd_binary(int fd, application_t *app);
-
 /*
  *
  * We have to take a look these print functions and clean

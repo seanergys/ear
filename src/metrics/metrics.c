@@ -9,7 +9,7 @@
  **************************************************************************/
 
 // #define SHOW_DEBUGS 1
-
+/* clang-format off */
 #include <common/config/config_install.h>
 #include <common/output/debug.h>
 #include <common/utils/overhead.h>
@@ -43,11 +43,12 @@ static int id_tpo;
 
 void metrics_load(metrics_info_t *m, topology_t *tp, char *nodepow_path, uint *options)
 {
+    uint default_options[10] = {0};
     self_tp = tp;
 
     /* clang-format off */
     if (options == NULL) {
-        options = (uint []) {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+        options = default_options;
     }
 
     nodepow(load, nodepow_path);
@@ -208,7 +209,7 @@ static char *cpupow_data_tostr(ullong *diffs, double secs, char *buffer, size_t 
     int i, j;
 
     buffer[0] = '\0';
-    for (i = j = 0; i < self_tp->socket_count; ++i) {
+    for (i = j = 0; i < self_tp->socket_count && (size_t) j < length; ++i) {
         power = cpupow(compute_power, diffs[self_tp->socket_count + i], secs);
         j += sprintf(&buffer[j], "%0.1lf ", power);
         mean += power;
@@ -241,7 +242,7 @@ ATTR_UNUSED static void nodepow_read_copy(void *nod2, void *nod1, ulong *nodD)
 
 static char *nodepow_data_tostr(ulong avrg, char *buffer, size_t length)
 {
-    sprintf(buffer, "!%lu", avrg);
+    snprintf(buffer, length, "!%lu", avrg);
     return buffer;
 }
 
@@ -337,10 +338,6 @@ void metrics_data_copy(metrics_read_t *mrD, metrics_read_t *mrS)
     gpu_data_copy(mrD->gpu, mrS->gpu);
 }
 
-void metrics_data_null(metrics_diff_t *mrD)
-{
-}
-
 void metrics_data_print(metrics_diff_t *mrD, int fd)
 {
     char *string = metrics_data_tostr(mrD);
@@ -394,6 +391,7 @@ static metrics_diff_t mrD;
 
 static state_t metrics_apis_init(void *whatever)
 {
+    unused(whatever);
     topology_init(&tp);
     metrics_load(&m, &tp, NULL, metrics_envtoops("OPTS", 10));
     metrics_init_screen(&m, &tp);
@@ -404,6 +402,7 @@ static state_t metrics_apis_init(void *whatever)
 
 static state_t metrics_apis_update(void *whatever)
 {
+    unused(whatever);
     metrics_read_copy(&mr2, &mr1, &mrD);
     metrics_data_print(&mrD, 0);
     return EAR_SUCCESS;
