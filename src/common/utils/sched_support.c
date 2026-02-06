@@ -178,7 +178,9 @@ void sched_local_barrier(char *file, int N)
         } else { // First process
             curr = 1;
         }
-        write(fd, &curr, sizeof(int));
+        if (write(fd, &curr, sizeof(int)) < 0) {
+            error("Writing sched_local_barrier: %d", errno);
+        }
         close(fd);
     } else {
         error("sched_local_barrier timeout");
@@ -195,7 +197,9 @@ void sched_local_barrier(char *file, int N)
         fd = open(file, O_RDONLY);
         // Read
         if (fd >= 0) {
-            read(fd, &value, sizeof(int));
+            if (read(fd, &value, sizeof(int)) < 0) {
+                error("Reading on sched_local_barrier: %d", errno);
+            }
             close(fd);
         } else {
             error("That should not happen! (%s)", strerror(errno));

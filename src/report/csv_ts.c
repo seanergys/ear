@@ -90,6 +90,7 @@ state_t report_init(report_id_t *id, cluster_conf_t *cconf)
 
     snprintf(csv_log_file, sizeof(csv_log_file) - 1, "%s_%s", (csv_log_file_env) ? csv_log_file_env : "ear", nodename);
     strncpy(csv_loop_log_file, csv_log_file, sizeof(csv_log_file) - 1);
+    csv_loop_log_file[sizeof(csv_log_file) - 1] = '\0';
 
     strncat(csv_log_file, "_apps.csv", sizeof(csv_log_file) - strlen(csv_log_file) - 1);
     strncat(csv_loop_log_file, "_loops.csv", sizeof(csv_loop_log_file) - strlen(csv_loop_log_file) - 1);

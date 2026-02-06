@@ -120,7 +120,7 @@ int generate_node_names_from_list(cluster_conf_t *my_cluster_conf, ip_table_t **
     ip_table_t *new_ips = calloc(num_hosts, sizeof(ip_table_t));
     for (int32_t i = 0; i < num_hosts; i++) {
         my_node_conf_t *aux_node_conf;
-        strncpy(new_ips[i].name, hosts[i], strlen(hosts[i]));
+        snprintf(new_ips[i].name, strlen(hosts[i]), "%s", hosts[i]);
         aux_node_conf = get_my_node_conf(my_cluster_conf, hosts[i]);
         if (aux_node_conf == NULL)
             fprintf(stderr, "Error reading node %s configuration\n", hosts[i]);
@@ -203,14 +203,14 @@ void print_ips(ip_table_t *ips, int num_ips, char mode)
             printf("  %6s  %5s  %2s", "policy", "pfreq", "th");
         printf("\n");
     }
-    char temp[GENERIC_NAME];
-    char final[GENERIC_NAME];
+    char temp[GENERIC_NAME]  = {0};
+    char final[GENERIC_NAME] = {0};
     char step_id[12];
     for (i = 0; i < num_ips; i++) {
         if (ips[i].counter) {
             if (mode != ERR_ONLY) {
                 printf("%10s\t", ips[i].name);
-                if (ips[i].step_id == BATCH_STEP)
+                if ((uint32_t) ips[i].step_id == BATCH_STEP)
                     sprintf(step_id, "%-8s", "sbatch");
                 else if (ips[i].step_id == INTERACT_STEP)
                     sprintf(step_id, "%-8s", "interact");
@@ -555,7 +555,7 @@ int eardbd_status_all(cluster_conf_t *conf, eardbd_table_t **edbstatus)
                 break;
             }
             if (!found) {
-                strncpy(aux_t[count].name, conf->islands[i].db_ips[j], EARDBD_LEN);
+                strncpy(aux_t[count].name, conf->islands[i].db_ips[j], EARDBD_LEN - 1);
                 count++;
             }
         }
@@ -702,8 +702,8 @@ void process_app_status(int num_status, app_status_t *status, char is_master)
 void generate_ip(ip_table_t *ips, char *node_name)
 {
     my_node_conf_t *aux_node_conf;
-    strncpy(ips[0].name, node_name,
-            strlen(node_name) - strlen(my_cluster_conf.net_ext)); // remove net_ext from the actual name
+    snprintf(ips[0].name, strlen(node_name) - strlen(my_cluster_conf.net_ext), "%s",
+             node_name); // remove net_ext from the actual name
     aux_node_conf = get_my_node_conf(&my_cluster_conf, node_name);
     if (aux_node_conf == NULL)
         fprintf(stderr, "Error reading node %s configuration\n", node_name);

@@ -387,6 +387,7 @@ state_t loop_print_fd(int fd, loop_t *loop, int ts, ullong currtime, int single_
         dprintf(fd, "%lu", loop->total_iterations);
     }
     dprintf(fd, "\n");
+    return EAR_SUCCESS;
 }
 
 void loop_serialize(serial_buffer_t *b, loop_t *loop)

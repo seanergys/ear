@@ -225,6 +225,7 @@ uint energy_data_is_null(void *data)
 
 state_t energy_not_privileged_init()
 {
+    return EAR_SUCCESS;
 }
 
 uint energy_is_privileged()

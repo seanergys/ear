@@ -9,7 +9,7 @@
  **************************************************************************/
 
 // #define SHOW_DEBUGS 1
-
+/* clang-format off */
 #include <common/config/config_install.h>
 #include <common/output/debug.h>
 #include <common/output/verbose.h>
@@ -23,8 +23,10 @@
 
 void management_load(manages_info_t *m, topology_t *tp, uint *options)
 {
+    uint default_options[10] = {0};
+
     if (options == NULL) {
-        options = (uint []) {0, 0, 0, 0};
+        options = default_options;
     }
 
     mgt_cpufreq_load(tp, options[MGT_OPT_CPUFREQ]);
@@ -36,8 +38,8 @@ void management_load(manages_info_t *m, topology_t *tp, uint *options)
     mgt_cpufreq_init(no_ctx);
     mgt_cpuprio_init();
     mgt_imcfreq_init(no_ctx);
-    mgt_cpupow_init();
-    mgt_gpu_init(no_ctx);
+     mgt_cpupow_init();
+        mgt_gpu_init(no_ctx);
 
     management_info_get(m);
 }
@@ -200,6 +202,7 @@ static topology_t tp;
 
 static state_t monitor_apis_init(void *whatever)
 {
+    unused(whatever);
     topology_init(&tp);
     management_load(&man, &tp, metrics_envtoops("OPTS", 4));
     management_init_screen(&man, &tp);
@@ -208,6 +211,7 @@ static state_t monitor_apis_init(void *whatever)
 
 static state_t monitor_apis_update(void *whatever)
 {
+    unused(whatever);
     return EAR_SUCCESS;
 }
 
@@ -218,7 +222,6 @@ int main(int argc, char *argv[])
             eards_connection();
         }
     }
-
     // Monitoring
     monitor_init();
     suscription_t *sus = suscription();

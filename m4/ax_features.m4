@@ -103,6 +103,11 @@ AC_DEFUN([AX_BEFORE_FEATURES],
     FEAT_MPI_LIBRARY=1
     FEAT_MPI_LOADER=1
 
+	if test -z "$CC_FLAGS"; then
+		echo "Hello"
+		CC_FLAGS="-Wall -Werror -O2 -g"
+	fi
+
 	if test -z "$MPICC"; then
 		if which mpicc &> /dev/null; then
 			MPICC="`which mpicc`"

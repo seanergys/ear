@@ -39,7 +39,7 @@ state_t nodemgr_lock_init(char *tmp)
 
     if (fd_node_mgr_lck >= 0)
         close(fd_node_mgr_lck);
-    strncpy(node_mgr_tmp, tmp, sizeof(node_mgr_tmp));
+    strncpy(node_mgr_tmp, tmp, sizeof(node_mgr_tmp) - 1);
     xsnprintf(node_mgr_lock, sizeof(node_mgr_lock), "%s/%s", node_mgr_tmp, LOCK_NODE_MGR_LCK);
 
     if (ear_file_is_regular(node_mgr_lock)) {

@@ -39,14 +39,14 @@ int main(int argc, char *argv[])
 
     monitor_init();
 
-	char energy_plugin[1024];
-	sprintf(energy_plugin,"%s/%s", conf.install.dir_plug,conf.install.obj_ener);
+    char energy_plugin[1024];
+    sprintf(energy_plugin, "%s/%s", conf.install.dir_plug, conf.install.obj_ener);
 
-	printf("Loading plugin %s \n", energy_plugin);
-	if (state_fail(energy_load(energy_plugin))){
-		printf("energy load for plugin '%s' failure\n", 	energy_plugin);
-		return EXIT_FAILURE;
-	}
+    printf("Loading plugin %s \n", energy_plugin);
+    if (state_fail(energy_load(energy_plugin))) {
+        printf("energy load for plugin '%s' failure\n", energy_plugin);
+        return EXIT_FAILURE;
+    }
 
     if (state_fail(energy_init(&eh))) {
         printf("energy_init failed: %s", state_msg);
