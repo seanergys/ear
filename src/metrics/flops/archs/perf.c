@@ -73,8 +73,6 @@ static int perfs_count_opened_fds()
 
 FLOPS_F_LOAD(perf)
 {
-    int i;
-
     if (SCOPE_IS(options, SCOPE_NODE)) {
         perfs_count = tp->cpu_count;
         perfs       = calloc(tp->cpu_count, sizeof(perfs_t));

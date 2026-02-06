@@ -253,7 +253,7 @@ void nvml_get_devices(gpu_devs_t **devs, uint *devs_count_in, int add_subdevices
     uint aux;
     nvmlReturn_t r;
     int m; // main
-    int n;
+    int n = 0;
     int s; // sub
 
     for (m = 0; m < handlers_count; ++m) {
