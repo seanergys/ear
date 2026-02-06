@@ -20,9 +20,9 @@ static uint cpus_count;
 CPUFREQ_F_LOAD(dummy)
 {
     cpus_count = tp->cpu_count;
-    apis_put(ops->unload  , cpufreq_dummy_unload);
+    apis_put(ops->unload, cpufreq_dummy_unload);
     apis_put(ops->get_info, cpufreq_dummy_get_info);
-    apis_put(ops->read    , cpufreq_dummy_read);
+    apis_put(ops->read, cpufreq_dummy_read);
     debug("loaded dummy");
 }
 

@@ -1235,8 +1235,8 @@ void job_end_powermon_app(powermon_app_t *pmapp, ehandler_t *ceh)
         pmapp->app.power_sig.DRAM_power = accum_dram_power(&app_power);
         pmapp->app.power_sig.PCK_power  = accum_cpu_power(&app_power);
         // CPU Frequency
-        state_assert(
-            s, cpufreq_read_diff(freq_job2, pmapp->freq_job1, pmapp->freq_diff, &pmapp->app.power_sig.avg_f), );
+        state_assert(s,
+                     cpufreq_read_diff(freq_job2, pmapp->freq_job1, pmapp->freq_diff, &pmapp->app.power_sig.avg_f), );
         ulong lcpus;
         if (pmapp->app.is_mpi) {
             pstate_freqtoavg(pmapp->app_info->node_mask, pmapp->freq_diff, freq_count, &pmapp->app.power_sig.avg_f,

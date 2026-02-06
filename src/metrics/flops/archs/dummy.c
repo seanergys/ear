@@ -10,21 +10,21 @@
 
 // #define SHOW_DEBUGS 1
 
-#include <string.h>
 #include <common/output/debug.h>
 #include <metrics/flops/archs/dummy.h>
+#include <string.h>
 
 FLOPS_F_LOAD(dummy)
 {
-    apis_put(ops->unload   , flops_dummy_unload);
-    apis_put(ops->get_info , flops_dummy_get_info);
-    apis_put(ops->read     , flops_dummy_read);
+    apis_put(ops->unload, flops_dummy_unload);
+    apis_put(ops->get_info, flops_dummy_get_info);
+    apis_put(ops->read, flops_dummy_read);
     apis_put(ops->data_diff, flops_dummy_data_diff);
     apis_put(ops->internals_tostr, flops_dummy_internals_tostr);
 }
+
 FLOPS_F_UNLOAD(dummy)
 {
-
 }
 
 FLOPS_F_GET_INFO(dummy)

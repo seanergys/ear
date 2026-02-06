@@ -6,19 +6,19 @@
  * which is available at https://www.eclipse.org/legal/epl-2.0/
  *
  * SPDX-License-Identifier: EPL-2.0
-     **************************************************************************/
+ **************************************************************************/
 
-    // #define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
-    #include <string.h>
-    #include <common/output/debug.h>
-    #include <metrics/cache/archs/dummy.h>
+#include <common/output/debug.h>
+#include <metrics/cache/archs/dummy.h>
+#include <string.h>
 
-    CACHE_F_LOAD(dummy)
+CACHE_F_LOAD(dummy)
 {
-    apis_put(ops->unload  , cache_dummy_unload);
+    apis_put(ops->unload, cache_dummy_unload);
     apis_put(ops->get_info, cache_dummy_get_info);
-    apis_put(ops->read    , cache_dummy_read);
+    apis_put(ops->read, cache_dummy_read);
     apis_put(ops->internals_tostr, cache_dummy_internals_tostr);
     debug("Loaded DUMMY");
 }

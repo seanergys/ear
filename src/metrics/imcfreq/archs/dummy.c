@@ -8,14 +8,14 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
-#include <stdio.h>
 #include <common/output/debug.h>
 #include <metrics/imcfreq/archs/dummy.h>
+#include <stdio.h>
 
 static imcfreq_ops_t *ops_static;
-static uint           devs_count;
+static uint devs_count;
 
 IMCFREQ_F_LOAD(dummy)
 {
@@ -23,9 +23,9 @@ IMCFREQ_F_LOAD(dummy)
     devs_count = tp_in->socket_count;
     ops_static = ops;
     // Filling each gap
-    apis_put(ops->unload  , imcfreq_dummy_unload);
+    apis_put(ops->unload, imcfreq_dummy_unload);
     apis_put(ops->get_info, imcfreq_dummy_get_info);
-    apis_put(ops->read    , imcfreq_dummy_read);
+    apis_put(ops->read, imcfreq_dummy_read);
 }
 
 IMCFREQ_F_UNLOAD(dummy)

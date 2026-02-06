@@ -8,15 +8,15 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
+#include <common/output/debug.h>
+#include <metrics/common/msr.h>
+#include <metrics/imcfreq/archs/intel63.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <common/output/debug.h>
-#include <metrics/common/msr.h>
-#include <metrics/imcfreq/archs/intel63.h>
 
 #define GLBL_CMD_UNF 0x2000000000000000
 #define UBOX_CMD_STA 0x400000 //
@@ -26,13 +26,13 @@
 // Memory Family Uncore Performance Monitoring Reference Manual'. Several unit
 // counter control registers are still 32b, some 64b. All are addressable as 64b
 // registers.
-static off_t      address_global_ctl;
-static off_t      address_unit_ctl;
-static off_t      address_unit_ctr;
-static ullong     command_global_ctl;
-static ullong     command_unit_ctl;
-static ullong     mask_global_ctl;
-static ullong     mask_unit_ctl;
+static off_t address_global_ctl;
+static off_t address_unit_ctl;
+static off_t address_unit_ctr;
+static ullong command_global_ctl;
+static ullong command_unit_ctl;
+static ullong mask_global_ctl;
+static ullong mask_unit_ctl;
 static topology_t tp;
 
 static void close_msrs(int max_cpu)
@@ -69,9 +69,9 @@ IMCFREQ_F_LOAD(intel63)
             return;
         }
     }
-    apis_put(ops->unload  , imcfreq_intel63_unload);
+    apis_put(ops->unload, imcfreq_intel63_unload);
     apis_put(ops->get_info, imcfreq_intel63_get_info);
-    apis_set(ops->read    , imcfreq_intel63_read);
+    apis_set(ops->read, imcfreq_intel63_read);
     debug("Loaded Intel63");
 }
 
@@ -106,8 +106,7 @@ IMCFREQ_F_READ(intel63)
         if (state_fail(s = imcfreq_intel63_ext_read_cpu(tp.cpus[cpu].id, &list[cpu].freq))) {
             return s;
         }
-        debug("U_MSR_PMON_FIXED_CTR%d: read %lu (address 0x%lx)",
-            tp.cpus[cpu].id, list[cpu].freq, address_unit_ctr);
+        debug("U_MSR_PMON_FIXED_CTR%d: read %lu (address 0x%lx)", tp.cpus[cpu].id, list[cpu].freq, address_unit_ctr);
         list[cpu].error = state_fail(s);
     }
     return EAR_SUCCESS;
@@ -160,8 +159,7 @@ state_t imcfreq_intel63_ext_enable_cpu(int cpu)
     debug("CPU%d: unfreezing", cpu);
     // Get global controller configuration
     if (state_fail(s = msr_read(cpu, &aux, sizeof(ullong), address_global_ctl))) {
-        debug("U_MSR_PMON_GLOBAL_CTL%d: read failed '%s' (address 0x%lx)",
-            cpu, state_msg, address_global_ctl);
+        debug("U_MSR_PMON_GLOBAL_CTL%d: read failed '%s' (address 0x%lx)", cpu, state_msg, address_global_ctl);
         return s;
     }
     // Writting global controller configuration
@@ -169,23 +167,20 @@ state_t imcfreq_intel63_ext_enable_cpu(int cpu)
     aux = (aux & mask_global_ctl) | command_global_ctl;
     debug("U_MSR_PMON_GLOBAL_CTL%d: writting new command 0x%llx (address 0x%lx)", cpu, aux, address_global_ctl);
     if (state_fail(s = msr_write(cpu, &aux, sizeof(ullong), address_global_ctl))) {
-        debug("U_MSR_PMON_GLOBAL_CTL%d: writing 0x%llx failed '%s' (address 0x%lx)",
-            cpu, command_global_ctl, state_msg, address_global_ctl);
+        debug("U_MSR_PMON_GLOBAL_CTL%d: writing 0x%llx failed '%s' (address 0x%lx)", cpu, command_global_ctl, state_msg,
+              address_global_ctl);
         return s;
     }
     // Get unit controller configuration
     if (state_fail(s = msr_read(cpu, &aux, sizeof(ullong), address_unit_ctl))) {
-        debug("U_MSR_PMON_FIXED_CTL%d: read failed '%s' (address 0x%lx)",
-            cpu, state_msg, address_unit_ctl);
+        debug("U_MSR_PMON_FIXED_CTL%d: read failed '%s' (address 0x%lx)", cpu, state_msg, address_unit_ctl);
         return s;
     }
     // Writting unit controllar configuration
     aux = (aux & mask_unit_ctl) | command_unit_ctl;
-    debug("U_MSR_PMON_FIXED_CTL%d: writting new command 0x%llx (address 0x%lx)",
-          cpu, aux, address_unit_ctl);
+    debug("U_MSR_PMON_FIXED_CTL%d: writting new command 0x%llx (address 0x%lx)", cpu, aux, address_unit_ctl);
     if (state_fail(s = msr_write(cpu, &aux, sizeof(ullong), address_unit_ctl))) {
-        debug("U_MSR_PMON_FIXED_CTL%d: write failed '%s' (address 0x%lx)",
-            cpu, state_msg, address_unit_ctl);
+        debug("U_MSR_PMON_FIXED_CTL%d: write failed '%s' (address 0x%lx)", cpu, state_msg, address_unit_ctl);
         return s;
     }
     return EAR_SUCCESS;

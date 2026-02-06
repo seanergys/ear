@@ -8,27 +8,28 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
+#include <common/output/debug.h>
+#include <metrics/common/offsets.h>
+#include <metrics/common/perf.h>
+#include <metrics/cpi/archs/perf.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <common/output/debug.h>
-#include <metrics/common/perf.h>
-#include <metrics/common/offsets.h>
-#include <metrics/cpi/archs/perf.h>
 
 typedef struct perfs_s {
-    perf_t       perfs[4];
-    uint         perfs_count;
+    perf_t perfs[4];
+    uint perfs_count;
     offset_ops_t ofs;
 } perfs_t;
 
 // Generic
 static perfs_t *perfs;
-static uint     perfs_count;
-static uint     scope;
+static uint perfs_count;
+static uint scope;
 
-static void add_perf(perfs_t *p, ullong event, uint type, ulong offset_result, pid_t pid, uint cpu, const char *event_desc)
+static void add_perf(perfs_t *p, ullong event, uint type, ulong offset_result, pid_t pid, uint cpu,
+                     const char *event_desc)
 {
     offsets_add(&p->ofs, offset_result, NO_OFFSET, NO_OFFSET, '=');
     if (state_ok(perf_open_cpu(&p->perfs[p->perfs_count], NULL, pid, type, event, 0, cpu))) {
@@ -140,7 +141,7 @@ void cpi_perf_get_info(apinfo_t *info)
     info->api         = API_PERF;
     info->devs_count  = perfs_count;
     info->scope       = scope;
-    info->granularity = (scope == SCOPE_NODE) ? GRANULARITY_CPU: GRANULARITY_PROCESS;
+    info->granularity = (scope == SCOPE_NODE) ? GRANULARITY_CPU : GRANULARITY_PROCESS;
 }
 
 state_t cpi_perf_read(cpi_t *ci)
@@ -150,9 +151,9 @@ state_t cpi_perf_read(cpi_t *ci)
     int i, j;
 
     for (i = 0; i < perfs_count; ++i) {
-        #if SHOW_DEBUGS
+#if SHOW_DEBUGS
         dprintf(debug_channel, "DEV%d ", i);
-        #endif
+#endif
         for (j = 0; j < perfs[i].perfs_count; ++j) {
             // We assume 0 means unopened file descriptor
             if (perfs[i].perfs[j].fd <= 0) {
@@ -163,14 +164,14 @@ state_t cpi_perf_read(cpi_t *ci)
                 return s;
             }
             offsets_calc_one(&perfs[i].ofs, (void *) &ci[i], j, value, 0LLU);
-            #if SHOW_DEBUGS
+#if SHOW_DEBUGS
             dprintf(debug_channel, "%14lld ", value);
-            #endif
+#endif
         }
         offsets_calc_all(&perfs[i].ofs, (void *) &ci[i]);
-        #if SHOW_DEBUGS
+#if SHOW_DEBUGS
         dprintf(debug_channel, "\n");
-        #endif
+#endif
     }
     return EAR_SUCCESS;
 }

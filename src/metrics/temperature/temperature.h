@@ -16,9 +16,9 @@
 #include <common/states.h>
 
 typedef struct temp_ops_s {
-    void    (*unload)   ();
-    void    (*get_info) (apinfo_t *info);
-    state_t (*read)     (llong *temp, llong *average);
+    void (*unload)();
+    void (*get_info)(apinfo_t *info);
+    state_t (*read)(llong *temp, llong *average);
 } temp_ops_t;
 
 #define TEMP_F_LOAD(name)     void temp_##name##_load(topology_t *tp, temp_ops_t *ops, int options)
@@ -26,10 +26,10 @@ typedef struct temp_ops_s {
 #define TEMP_F_GET_INFO(name) void temp_##name##_get_info(apinfo_t *info)
 #define TEMP_F_READ(name)     state_t temp_##name##_read(llong *temp, llong *average)
 
-#define TEMP_DEFINES(name)         \
-    TEMP_F_LOAD(name);             \
-    TEMP_F_UNLOAD(name);           \
-    TEMP_F_GET_INFO(name);         \
+#define TEMP_DEFINES(name)                                                                                             \
+    TEMP_F_LOAD(name);                                                                                                 \
+    TEMP_F_UNLOAD(name);                                                                                               \
+    TEMP_F_GET_INFO(name);                                                                                             \
     TEMP_F_READ(name);
 
 void temp_load(topology_t *tp, int options);

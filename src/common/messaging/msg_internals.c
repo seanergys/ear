@@ -109,7 +109,7 @@ static state_t _msg_encrypt_buffer(const size_t buff_len, const unsigned char in
         memcpy(key, &sec_key, sizeof(uint32_t));
     }
 #endif
-    unsigned char iv[12]  = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+    unsigned char iv[12] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
 
     /* Init the cipher with they key and initial values */
     if (!EVP_EncryptInit_ex2(ctx, cipher, key, iv, NULL)) {
@@ -178,7 +178,7 @@ static state_t _msg_decrypt_buffer(const size_t buff_len, unsigned char in_buffe
         memcpy(key, &sec_key, sizeof(uint32_t));
     }
 #endif
-    unsigned char iv[12]  = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+    unsigned char iv[12] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
 
     /* Init the cipher with the key and initial values */
     if (!EVP_DecryptInit_ex2(ctx, cipher, key, iv, NULL)) {

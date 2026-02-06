@@ -65,15 +65,15 @@
 #define SCOPE_PROCESS          0x200
 #define SCOPE_NODE             0x300
 #define O_NO_LOOP              0x1000
-#define MONITORING_MODE_STOP  -1
+#define MONITORING_MODE_STOP   -1
 #define MONITORING_MODE_IDLE   0
 #define MONITORING_MODE_RUN    1
 
 //  8 bits for API        (256 possibilities)
 //  4 bits for SCOPE      (8 possibilities)
 // 20 bits for OTHER OPTS (20 slots)
-#define API_IS(options, api)     ((options & 0x0FF) == api)
-#define SCOPE_IS(options, scope) ((options & 0xF00) == scope)
+#define API_IS(options, api)           ((options & 0x0FF) == api)
+#define SCOPE_IS(options, scope)       ((options & 0xF00) == scope)
 #define OPTION_IS_SET(options, option) ((options & option) == option)
 
 typedef struct ctx_s {
@@ -82,35 +82,41 @@ typedef struct ctx_s {
 
 typedef struct apinfo_s {
     char *layer;
-    uint  api;
-    uint  api_under; // API used by EAR DAEMON
-    uint ok; // Obsolete value, future union?
+    uint api;
+    uint api_under; // API used by EAR DAEMON
+    uint ok;        // Obsolete value, future union?
     char *api_str;
-    uint  devs_count;
-    uint  granularity;
+    uint devs_count;
+    uint granularity;
     char *granularity_str;
-    uint  scope;
+    uint scope;
     char *scope_str;
-    uint  bits; // Unused
-    uint  dev_model;
+    uint bits; // Unused
+    uint dev_model;
+
     // This is a miscellaneous extra-space
     union {
         void *list1;
         void *avail_list;
     };
+
     union {
         void *list2;
         void *current_list;
     };
+
     void *list3;
+
     union {
         uint list1_count;
         uint avail_count;
     };
+
     union {
         uint list2_count;
         uint current_count;
     };
+
     uint list3_count;
 } apinfo_t;
 

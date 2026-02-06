@@ -26,9 +26,9 @@ IMCFREQ_F_LOAD(amd17)
     }
     sockets_count = tp_in->socket_count;
     // Bypassing
-    apis_set(ops->unload   , imcfreq_amd17_unload);
-    apis_set(ops->get_info , imcfreq_amd17_get_info);
-    apis_set(ops->read     , imcfreq_amd17_read);
+    apis_set(ops->unload, imcfreq_amd17_unload);
+    apis_set(ops->get_info, imcfreq_amd17_get_info);
+    apis_set(ops->read, imcfreq_amd17_read);
     apis_set(ops->data_diff, imcfreq_amd17_data_diff);
     debug("AMD17 loaded full API");
 }

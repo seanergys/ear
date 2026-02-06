@@ -10,12 +10,9 @@
 
 // #define SHOW_DEBUGS 1
 
-#include <stdlib.h>
-#include <pthread.h>
-#include <metrics/common/apis.h>
+#include <common/math_operations.h>
 #include <common/output/debug.h>
 #include <common/utils/overhead.h>
-#include <common/math_operations.h>
 #include <metrics/bandwidth/archs/amd17.h>
 #include <metrics/bandwidth/archs/amd17df.h>
 #include <metrics/bandwidth/archs/amd19.h>
@@ -26,16 +23,20 @@
 #include <metrics/bandwidth/archs/intel63.h>
 #include <metrics/bandwidth/archs/likwid.h>
 #include <metrics/bandwidth/archs/perf.h>
+#include <metrics/common/apis.h>
+#include <pthread.h>
+#include <stdlib.h>
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-static double          line_size;
-static bwidth_ops_t    ops;
-static apinfo_t        info;
-static uint            oid; // Overhead calculation
+static double line_size;
+static bwidth_ops_t ops;
+static apinfo_t info;
+static uint oid; // Overhead calculation
 
 void bwidth_load(topology_t *tp, int options)
 {
-    while (pthread_mutex_trylock(&lock));
+    while (pthread_mutex_trylock(&lock))
+        ;
     if (info.api != API_NONE) {
         goto leave;
     }
@@ -63,7 +64,8 @@ leave:
 
 void bwidth_unload()
 {
-    while (pthread_mutex_trylock(&lock));
+    while (pthread_mutex_trylock(&lock))
+        ;
     if (info.api != API_NONE) {
         ops.unload();
         memset(&ops, 0, sizeof(bwidth_ops_t));
@@ -243,8 +245,10 @@ double bwidth_help_castogbs(ullong cas, double secs)
     // CAS to CAS/s
     gbs = (((double) cas) / secs);
     // CAS/s to BYTES/s
-    if (ops.castob != NULL) gbs = ops.castob(gbs);
-    else gbs = gbs * line_size;
+    if (ops.castob != NULL)
+        gbs = ops.castob(gbs);
+    else
+        gbs = gbs * line_size;
     // BYTES/s to GB/s
     gbs = (gbs / ((double) 1E9));
     return gbs;

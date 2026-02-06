@@ -26,11 +26,11 @@ static char *ice_dfs[2]  = {"00.1", NULL};
 // static uint   ice_dfs_count    = 1;
 //
 static pci_t *pcis;
-static uint   pcis_count;
-static uint   imc_maps_count;
-static uint   imc_ctrs_count;
+static uint pcis_count;
+static uint imc_maps_count;
+static uint imc_ctrs_count;
 static void **imc_maps;
-static uint  *imc_ctrs;
+static uint *imc_ctrs;
 
 static void close_all()
 {
@@ -102,9 +102,9 @@ BWIDTH_F_LOAD(intel106)
         return;
     }
     // In the future it can be initialized in read only mode
-    apis_put(ops->unload  , bwidth_intel106_unload);
+    apis_put(ops->unload, bwidth_intel106_unload);
     apis_put(ops->get_info, bwidth_intel106_get_info);
-    apis_put(ops->read    , bwidth_intel106_read);
+    apis_put(ops->read, bwidth_intel106_read);
 }
 
 BWIDTH_F_UNLOAD(intel106)
@@ -128,8 +128,8 @@ BWIDTH_F_READ(intel106)
 
     timestamp_get(&b[imc_ctrs_count].time);
     for (i = j = 0; i < imc_maps_count; ++i, j += 2) {
-        addr0         = ((addr_t) imc_maps[i]) + ((addr_t) imc_ctrs[j + 0]);
-        addr1         = ((addr_t) imc_maps[i]) + ((addr_t) imc_ctrs[j + 1]);
+        addr0        = ((addr_t) imc_maps[i]) + ((addr_t) imc_ctrs[j + 0]);
+        addr1        = ((addr_t) imc_maps[i]) + ((addr_t) imc_ctrs[j + 1]);
         b[j + 0].cas = (ullong) * ((ullong *) (addr0));
         b[j + 1].cas = (ullong) * ((ullong *) (addr1));
         b[j + 0].cas = b[j + 0].cas & 0x0000ffffffffffff;

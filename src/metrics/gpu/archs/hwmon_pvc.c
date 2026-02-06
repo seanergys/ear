@@ -8,16 +8,16 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
-#include <dlfcn.h>
-#include <stdlib.h>
-#include <pthread.h>
 #include <common/output/debug.h>
 #include <common/system/monitor.h>
 #include <common/system/symplug.h>
+#include <dlfcn.h>
 #include <metrics/common/hwmon.h>
 #include <metrics/gpu/archs/hwmon_pvc.h>
+#include <pthread.h>
+#include <stdlib.h>
 
 static hwmon_t *chips;
 static uint chips_count;
@@ -29,7 +29,7 @@ static void close_all()
         hwmon_close(&chips);
         chips_count = 0;
         items_count = 0;
-        chips = NULL;
+        chips       = NULL;
     }
 }
 
@@ -45,11 +45,11 @@ GPU_F_LOAD(hwmon_pvc)
         return;
     }
     debug("items_count: %u", items_count);
-    apis_pif(ops->unload      , gpu_hwmon_pvc_unload      , 1);
-    apis_pif(ops->get_info    , gpu_hwmon_pvc_get_info    , 1);
+    apis_pif(ops->unload, gpu_hwmon_pvc_unload, 1);
+    apis_pif(ops->get_info, gpu_hwmon_pvc_get_info, 1);
     apis_pif(ops->topology_get, gpu_hwmon_pvc_topology_get, 1);
-    apis_pif(ops->read        , gpu_hwmon_pvc_read        , 1);
-    apis_pif(ops->read_raw    , gpu_hwmon_pvc_read_raw    , 1);
+    apis_pif(ops->read, gpu_hwmon_pvc_read, 1);
+    apis_pif(ops->read_raw, gpu_hwmon_pvc_read_raw, 1);
     debug("Loaded HWMON_PVC");
 }
 
@@ -74,12 +74,12 @@ GPU_F_TOPOLOGY_GET(hwmon_pvc)
     tp->devs       = calloc(items_count, sizeof(gpu_devs_t));
 
     for (i = 0; i < items_count; ++i) {
-        tp->devs[i].index            =  i;
+        tp->devs[i].index            = i;
         tp->devs[i].index_device     = -1;
-        tp->devs[i].is_readable      =  1;
-        tp->devs[i].is_subdevice     =  0;
-        tp->devs[i].has_subdevices   =  0;
-        tp->devs[i].subdevices_count =  0;
+        tp->devs[i].is_readable      = 1;
+        tp->devs[i].is_subdevice     = 0;
+        tp->devs[i].has_subdevices   = 0;
+        tp->devs[i].subdevices_count = 0;
         tp->devs[i].serial           = (ullong) i;
     }
 }

@@ -8,15 +8,15 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
-#include <stdlib.h>
-#include <unistd.h>
-#include <pthread.h>
+#include <common/config/config_env.h>
 #include <common/output/debug.h>
 #include <common/system/symplug.h>
-#include <common/config/config_env.h>
 #include <metrics/common/nvml.h>
+#include <pthread.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 // Provisional
 #define HACK_NVML_FILE "HACK_NVML_FILE"
@@ -75,28 +75,28 @@ static const char *nvml_names[] = {
 };
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-static void           *handler;
-static nvmlDevice_t   *handlers;
-static uint            handlers_count;
-static ullong         *serials;
-static nvml_t          nvml;
-static uint            counter;
+static void *handler;
+static nvmlDevice_t *handlers;
+static uint handlers_count;
+static ullong *serials;
+static nvml_t nvml;
+static uint counter;
 
 static state_t static_open()
 {
-    #define open_test(path)                                                                      \
-    debug("Opening %s", path);                                                                   \
-    if ((handler = plug_open2(path, (void **) &nvml, nvml_names, NVML_N, RTLD_NOW | RTLD_LOCAL)) != NULL) { \
-        return EAR_SUCCESS;                                                                      \
+#define open_test(path)                                                                                                \
+    debug("Opening %s", path);                                                                                         \
+    if ((handler = plug_open2(path, (void **) &nvml, nvml_names, NVML_N, RTLD_NOW | RTLD_LOCAL)) != NULL) {            \
+        return EAR_SUCCESS;                                                                                            \
     }
-    #define build_path_and_test(base_path)                                                       \
-    if (base_path) {                                                                             \
-        char path[MAX_PATH_SIZE];                                                                \
-        strncpy(path, base_path, sizeof(path) - 1);                                              \
-        strncat(path, "/lib64/libnvidia-ml.so", sizeof(path) - strlen(path) - 1);                \
-        open_test(path);                                                                         \
-        strncat(path, ".1", sizeof(path) - strlen(path) - 1);                                    \
-        open_test(path);                                                                         \
+#define build_path_and_test(base_path)                                                                                 \
+    if (base_path) {                                                                                                   \
+        char path[MAX_PATH_SIZE];                                                                                      \
+        strncpy(path, base_path, sizeof(path) - 1);                                                                    \
+        strncat(path, "/lib64/libnvidia-ml.so", sizeof(path) - strlen(path) - 1);                                      \
+        open_test(path);                                                                                               \
+        strncat(path, ".1", sizeof(path) - strlen(path) - 1);                                                          \
+        open_test(path);                                                                                               \
     }
     // Looking for nvidia library in tipical paths.
     open_test(ear_getenv(HACK_NVML_FILE));
@@ -121,7 +121,7 @@ static state_t static_open()
     open_test("/usr/lib/libnvidia-ml.so.1");
     open_test("/usr/lib/aarch64-linux-gnu/libnvidia-ml.so");
     open_test("/.singularity.d/libs/libnvidia-ml.so") open_test("/.singularity.d/libs/libnvidia-ml.so.1")
-    open_test(EAR_INSTALL_PATH "/lib/deps/libnvidia-ml.so.1");
+        open_test(EAR_INSTALL_PATH "/lib/deps/libnvidia-ml.so.1");
     open_test(EAR_INSTALL_PATH "/lib/deps/libnvidia-ml.so");
     return_msg(EAR_ERROR, "Can not load libnvidia-ml.so");
 }
@@ -193,11 +193,12 @@ static state_t static_init()
 state_t nvml_open(nvml_t *nvml_in)
 {
     state_t s = EAR_SUCCESS;
-    #ifndef CUDA_BASE
+#ifndef CUDA_BASE
     debug("No CUDA_BASE path provided");
     return EAR_ERROR;
-    #endif
-    while (pthread_mutex_trylock(&lock));
+#endif
+    while (pthread_mutex_trylock(&lock))
+        ;
     if (counter) {
         ++counter;
         goto fini;
@@ -233,27 +234,27 @@ state_t nvml_close()
 static void get_device_info(gpu_devs_t *dev, uint is_subdevice)
 {
     nvmlMemory_v2_t mem = {0};
-    char serial[32] = {0};
+    char serial[32]     = {0};
 
-    nvml.GetName             (*((nvmlDevice_t *) dev->handler), dev->name, sizeof(dev->name));
-    nvml.GetUUID             (*((nvmlDevice_t *) dev->handler), dev->uuid, sizeof(dev->uuid));
-    nvml.GetMemoryInfo_v2    (*((nvmlDevice_t *) dev->handler), &mem);
+    nvml.GetName(*((nvmlDevice_t *) dev->handler), dev->name, sizeof(dev->name));
+    nvml.GetUUID(*((nvmlDevice_t *) dev->handler), dev->uuid, sizeof(dev->uuid));
+    nvml.GetMemoryInfo_v2(*((nvmlDevice_t *) dev->handler), &mem);
     nvml.GetMaxMigDeviceCount(*((nvmlDevice_t *) dev->handler), &dev->subdevices_count);
-    nvml.GetSerial           (*((nvmlDevice_t *) dev->handler), serial, 32);
-    dev->serial              = (ullong) atoll(serial);
-    dev->is_readable         = is_subdevice ? 0: 1;
-    dev->is_subdevice        = is_subdevice;
-    dev->has_subdevices      = is_subdevice ? 0: dev->subdevices_count > 0;
-    dev->mem_total           = mem.total;
+    nvml.GetSerial(*((nvmlDevice_t *) dev->handler), serial, 32);
+    dev->serial         = (ullong) atoll(serial);
+    dev->is_readable    = is_subdevice ? 0 : 1;
+    dev->is_subdevice   = is_subdevice;
+    dev->has_subdevices = is_subdevice ? 0 : dev->subdevices_count > 0;
+    dev->mem_total      = mem.total;
 }
 
 void nvml_get_devices(gpu_devs_t **devs, uint *devs_count_in, int add_subdevices)
 {
-    uint            aux;
-    nvmlReturn_t    r;
-    int             m; // main
-    int             n;
-    int             s; // sub
+    uint aux;
+    nvmlReturn_t r;
+    int m; // main
+    int n;
+    int s; // sub
 
     for (m = 0; m < handlers_count; ++m) {
         aux = 0U;
@@ -267,12 +268,12 @@ void nvml_get_devices(gpu_devs_t **devs, uint *devs_count_in, int add_subdevices
         (*devs)[n].handler = &handlers[m];
         get_device_info(&(*devs)[n], 0);
         for (s = 0; add_subdevices && s < (*devs)[n].subdevices_count; ++s) {
-            (*devs)[n+1+s].handler = calloc(1, sizeof(nvmlDevice_t));
-            r = nvml.GetMigDeviceHandleByIndex(handlers[m], s, (*devs)[n+1+s].handler);
+            (*devs)[n + 1 + s].handler = calloc(1, sizeof(nvmlDevice_t));
+            r                          = nvml.GetMigDeviceHandleByIndex(handlers[m], s, (*devs)[n + 1 + s].handler);
             if (r == NVML_ERROR_NOT_FOUND) {
                 break;
             }
-            get_device_info(&(*devs)[n+1+s], 1);
+            get_device_info(&(*devs)[n + 1 + s], 1);
         }
         n = n + 1 + s;
     }
@@ -308,11 +309,11 @@ int nvml_is_serial(ullong serial)
 
 int nvml_is_privileged()
 {
-    #if 0
+#if 0
     nvmlEnableState_t e;
     if ((r = nvml.GetAPIRestriction(devs[d], NVML_APP_CLOCKS_PERMISSIONS    , &e)) != NVML_SUCCESS) {}
     if ((r = nvml.GetAPIRestriction(devs[d], NVML_BOOSTED_CLOCKS_PERMISSIONS, &e)) != NVML_SUCCESS) {}
-    #endif
+#endif
     // Provisional
     return (getuid() == 0);
 }

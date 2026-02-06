@@ -8,25 +8,26 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
-#include <stdlib.h>
-#include <pthread.h>
-#include <common/output/debug.h>
 #include <common/math_operations.h>
-#include <metrics/cpufreq/cpufreq.h>
-#include <metrics/cpufreq/archs/eard.h>
+#include <common/output/debug.h>
 #include <metrics/cpufreq/archs/dummy.h>
+#include <metrics/cpufreq/archs/eard.h>
 #include <metrics/cpufreq/archs/intel63.h>
+#include <metrics/cpufreq/cpufreq.h>
+#include <pthread.h>
+#include <stdlib.h>
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-static cpufreq_ops_t   ops;
-static apinfo_t        info;
-static cpufreq_base_t  bf;
+static cpufreq_ops_t ops;
+static apinfo_t info;
+static cpufreq_base_t bf;
 
 void cpufreq_load(topology_t *tp, int options)
 {
-    while (pthread_mutex_trylock(&lock));
+    while (pthread_mutex_trylock(&lock))
+        ;
     if (info.api != API_NONE) {
         goto leave;
     }
@@ -42,12 +43,12 @@ dummy:
     cpufreq_base_init(tp, &bf);
 leave:
     pthread_mutex_unlock(&lock);
-    
 }
 
 void cpufreq_unload()
 {
-    while (pthread_mutex_trylock(&lock));
+    while (pthread_mutex_trylock(&lock))
+        ;
     if (info.api != API_NONE) {
         ops.unload();
         memset(&ops, 0, sizeof(cpufreq_ops_t));
@@ -104,7 +105,7 @@ void cpufreq_data_diff(cpufreq_t *f2, cpufreq_t *f1, ulong *fD, ulong *fA)
         return;
     }
     if (fA != NULL) {
-        fA[0] = (f2[0].state == 2)? bf.frequency: 0;
+        fA[0] = (f2[0].state == 2) ? bf.frequency : 0;
     }
     for (d = 0; d < info.devs_count; ++d) {
         if (fD != NULL) {
@@ -115,11 +116,10 @@ void cpufreq_data_diff(cpufreq_t *f2, cpufreq_t *f1, ulong *fD, ulong *fA)
         }
         mperf_diff = overflow_magic_u64((ullong) f2[d].freq_mperf, (ullong) f1[d].freq_mperf, MAXBITS64);
         aperf_diff = overflow_magic_u64((ullong) f2[d].freq_aperf, (ullong) f1[d].freq_aperf, MAXBITS64);
-        #if 1
-        debug("CPU%d: APERF %lu - %lu = %lu, MPERF %lu - %lu = %lu", d,
-			f2[d].freq_aperf, f1[d].freq_aperf, aperf_diff,
-			f2[d].freq_mperf, f1[d].freq_mperf, mperf_diff);
-        #endif
+#if 1
+        debug("CPU%d: APERF %lu - %lu = %lu, MPERF %lu - %lu = %lu", d, f2[d].freq_aperf, f1[d].freq_aperf, aperf_diff,
+              f2[d].freq_mperf, f1[d].freq_mperf, mperf_diff);
+#endif
         if (aperf_diff == 0 || mperf_diff == 0) {
             continue;
         }
@@ -138,8 +138,10 @@ void cpufreq_data_diff(cpufreq_t *f2, cpufreq_t *f1, ulong *fD, ulong *fA)
         // computed the average frequency of a specific CPU.
         aperf_pcnt = (aperf_diff * 100LU) / mperf_diff;
         freq_aux   = (bf.frequency * aperf_pcnt) / 100LU;
-        if (fD != NULL) fD[d]  = freq_aux;
-        if (fA != NULL) fA[0] += freq_aux;
+        if (fD != NULL)
+            fD[d] = freq_aux;
+        if (fA != NULL)
+            fA[0] += freq_aux;
         valid_count += 1LU;
     }
     if (fA != NULL && valid_count > 0LU) {
@@ -205,20 +207,20 @@ char *cpufreq_data_tostr(ulong *freqs, ulong average, char *buffer, size_t lengt
 }
 
 #if TEST
-#include <time.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include <unistd.h>
-#include <fcntl.h>
 
 static topology_t tp;
-static apinfo_t   info;
-static cpufreq_t  t1[16];
-static cpufreq_t  t2[16];
-static ulong      tD[16];
-static ulong      tA;
-static pid_t      pid;
-static int        forked;
+static apinfo_t info;
+static cpufreq_t t1[16];
+static cpufreq_t t2[16];
+static ulong tD[16];
+static ulong tA;
+static pid_t pid;
+static int forked;
 
 static int count_fds()
 {
@@ -248,7 +250,7 @@ reread:
     cpufreq_data_print(tD, tA, STDOUT_FILENO);
     if (!forked) {
         sleep(1);
-        pid = fork();
+        pid    = fork();
         forked = 1;
         if (pid == 0) {
             sleep(1);

@@ -11,10 +11,10 @@
 #ifndef METRICS_CACHE_H
 #define METRICS_CACHE_H
 
-#include <common/states.h>
-#include <common/plugins.h>
-#include <common/system/time.h>
 #include <common/hardware/topology.h>
+#include <common/plugins.h>
+#include <common/states.h>
+#include <common/system/time.h>
 
 typedef struct cache_level_s {
     ullong accesses;
@@ -27,20 +27,20 @@ typedef struct cache_level_s {
 } cache_level_t;
 
 typedef struct cache_s {
-    cache_level_t  l1d;
-    cache_level_t  l2;
-    cache_level_t  l3;
+    cache_level_t l1d;
+    cache_level_t l2;
+    cache_level_t l3;
     cache_level_t *ll;
     cache_level_t *lbw; // Level used to calc bandwidth
-    timestamp_t    time;
+    timestamp_t time;
 } cache_t;
 
 typedef struct coche_ops_s {
-    void    (*unload)          ();
-    void    (*get_info)        (apinfo_t *info);
-    state_t (*read)            (cache_t *ca);
-    void    (*data_diff)       (cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs);
-    void    (*internals_tostr) (char *buffer, int length);
+    void (*unload)();
+    void (*get_info)(apinfo_t *info);
+    state_t (*read)(cache_t *ca);
+    void (*data_diff)(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs);
+    void (*internals_tostr)(char *buffer, int length);
 } cache_ops_t;
 
 // API building scheme
@@ -50,11 +50,11 @@ typedef struct coche_ops_s {
 #define CACHE_F_READ(name)      state_t cache_##name##_read(cache_t *ca)
 #define CACHE_F_INTERNALS(name) void cache_##name##_internals_tostr(char *buffer, int length)
 
-#define CACHE_DEFINES(name)  \
-    CACHE_F_LOAD     (name); \
-    CACHE_F_UNLOAD   (name); \
-    CACHE_F_GET_INFO (name); \
-    CACHE_F_READ     (name); \
+#define CACHE_DEFINES(name)                                                                                            \
+    CACHE_F_LOAD(name);                                                                                                \
+    CACHE_F_UNLOAD(name);                                                                                              \
+    CACHE_F_GET_INFO(name);                                                                                            \
+    CACHE_F_READ(name);                                                                                                \
     CACHE_F_INTERNALS(name)
 
 void cache_load(topology_t *tp, int options);

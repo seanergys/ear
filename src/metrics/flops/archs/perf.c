@@ -8,26 +8,27 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
-#include <common/system/time.h>
-#include <common/output/debug.h>
 #include <common/math_operations.h>
+#include <common/output/debug.h>
+#include <common/system/time.h>
 #include <metrics/common/perf.h>
 #include <metrics/flops/archs/perf.h>
 
 typedef struct perfs_s {
     perf_t perfs[8];
-    int    offsets[8];
+    int offsets[8];
     double weights[8];
-    uint   perfs_count;
+    uint perfs_count;
 } perfs_t;
 
 static perfs_t *perfs;
-static uint     perfs_count;
-static uint     scope;
+static uint perfs_count;
+static uint scope;
 
-static void add_perf(perfs_t *p, ullong event, uint type, int offset, double weight, pid_t pid, uint cpu, cchar *event_desc)
+static void add_perf(perfs_t *p, ullong event, uint type, int offset, double weight, pid_t pid, uint cpu,
+                     cchar *event_desc)
 {
     // Opening perf event (some events might be accepted but don't work)
     if (state_ok(perf_open_cpu(&p->perfs[p->perfs_count], NULL, pid, type, (ulong) event, 0, cpu))) {
@@ -84,14 +85,14 @@ FLOPS_F_LOAD(perf)
         scope       = SCOPE_PROCESS;
     }
     if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_HASWELL_X) {
-        add(0x02c7, PERF_TYPE_RAW, 0,  1.0, "FP_ARITH_INST_RETIRED.SCALAR_SINGLE     ");
-        add(0x01c7, PERF_TYPE_RAW, 1,  1.0, "FP_ARITH_INST_RETIRED.SCALAR_DOUBLE     ");
-        add(0x08c7, PERF_TYPE_RAW, 2,  4.0, "FP_ARITH_INST_RETIRED.128B_PACKED_SINGLE");
-        add(0x04c7, PERF_TYPE_RAW, 3,  2.0, "FP_ARITH_INST_RETIRED.128B_PACKED_DOUBLE");
-        add(0x20c7, PERF_TYPE_RAW, 4,  8.0, "FP_ARITH_INST_RETIRED.256B_PACKED_SINGLE");
-        add(0x10c7, PERF_TYPE_RAW, 5,  4.0, "FP_ARITH_INST_RETIRED.256B_PACKED_DOUBLE");
+        add(0x02c7, PERF_TYPE_RAW, 0, 1.0, "FP_ARITH_INST_RETIRED.SCALAR_SINGLE     ");
+        add(0x01c7, PERF_TYPE_RAW, 1, 1.0, "FP_ARITH_INST_RETIRED.SCALAR_DOUBLE     ");
+        add(0x08c7, PERF_TYPE_RAW, 2, 4.0, "FP_ARITH_INST_RETIRED.128B_PACKED_SINGLE");
+        add(0x04c7, PERF_TYPE_RAW, 3, 2.0, "FP_ARITH_INST_RETIRED.128B_PACKED_DOUBLE");
+        add(0x20c7, PERF_TYPE_RAW, 4, 8.0, "FP_ARITH_INST_RETIRED.256B_PACKED_SINGLE");
+        add(0x10c7, PERF_TYPE_RAW, 5, 4.0, "FP_ARITH_INST_RETIRED.256B_PACKED_DOUBLE");
         add(0x80c7, PERF_TYPE_RAW, 6, 16.0, "FP_ARITH_INST_RETIRED.512B_PACKED_SINGLE");
-        add(0x40c7, PERF_TYPE_RAW, 7,  8.0, "FP_ARITH_INST_RETIRED.512B_PACKED_DOUBLE");
+        add(0x40c7, PERF_TYPE_RAW, 7, 8.0, "FP_ARITH_INST_RETIRED.512B_PACKED_DOUBLE");
     } else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN) {
         if (tp->family >= FAMILY_ZEN5) {
             // This ZEN5 register contains type selection (float and double). 0h
@@ -133,9 +134,9 @@ FLOPS_F_LOAD(perf)
     if (!perfs_count_opened_fds()) {
         return;
     }
-    apis_put(ops->unload   , flops_perf_unload);
-    apis_put(ops->get_info , flops_perf_get_info);
-    apis_put(ops->read     , flops_perf_read);
+    apis_put(ops->unload, flops_perf_unload);
+    apis_put(ops->get_info, flops_perf_get_info);
+    apis_put(ops->read, flops_perf_read);
     apis_put(ops->data_diff, flops_perf_data_diff);
     apis_put(ops->internals_tostr, flops_perf_internals_tostr);
     debug("Loaded PERF");
@@ -167,7 +168,7 @@ FLOPS_F_GET_INFO(perf)
     info->api         = API_PERF;
     info->devs_count  = perfs_count;
     info->scope       = scope;
-    info->granularity = (scope == SCOPE_NODE) ? GRANULARITY_CPU: GRANULARITY_PROCESS;
+    info->granularity = (scope == SCOPE_NODE) ? GRANULARITY_CPU : GRANULARITY_PROCESS;
     info->bits        = 64;
 }
 
@@ -179,15 +180,15 @@ FLOPS_F_READ(perf)
     int i, j;
 
     // Cleaning flops_t structure
-    memset(fl, 0, sizeof(flops_t)*perfs_count);
+    memset(fl, 0, sizeof(flops_t) * perfs_count);
     // Getting time
     timestamp_get(&fl[0].time);
     // Reading
     for (i = 0; i < perfs_count; ++i) {
         p = (ullong *) &fl[i];
-        #if SHOW_DEBUGS
+#if SHOW_DEBUGS
         dprintf(debug_channel, "DEV%d reads ", i);
-        #endif
+#endif
         for (j = 0; j < perfs[i].perfs_count; ++j) {
             // We assume 0 means unopened file descriptor
             if (perfs[i].perfs[j].fd <= 0) {
@@ -198,21 +199,22 @@ FLOPS_F_READ(perf)
                 return s;
             }
             p[j] = value;
-            #if SHOW_DEBUGS
-            if ((j % 2) == 1) dprintf(debug_channel, "[%14lld %14lld] ", p[j-1], p[j]);
-            //dprintf(debug_channel, "%14lld[%d] ", value, perfs[i].offsets[j]);
-            #endif
+#if SHOW_DEBUGS
+            if ((j % 2) == 1)
+                dprintf(debug_channel, "[%14lld %14lld] ", p[j - 1], p[j]);
+// dprintf(debug_channel, "%14lld[%d] ", value, perfs[i].offsets[j]);
+#endif
         }
-        #if SHOW_DEBUGS
+#if SHOW_DEBUGS
         dprintf(debug_channel, "\n");
-        #endif
+#endif
     }
     return EAR_SUCCESS;
 }
 
 FLOPS_F_DATA_DIFF(perf)
 {
-    static flops_t *flA = NULL; //Auxiliar in case flD is NULL
+    static flops_t *flA = NULL; // Auxiliar in case flD is NULL
     ullong *p1          = NULL;
     ullong *p2          = NULL;
     ullong *pD          = NULL;
@@ -222,11 +224,11 @@ FLOPS_F_DATA_DIFF(perf)
     int i;
 
     if (flD != NULL) {
-        memset(flD, 0, sizeof(flops_t)*perfs_count);
+        memset(flD, 0, sizeof(flops_t) * perfs_count);
     } else if (flA == NULL) {
         flA = calloc(perfs_count, sizeof(flops_t));
     } else {
-        memset(flA, 0, sizeof(flops_t)*perfs_count);
+        memset(flA, 0, sizeof(flops_t) * perfs_count);
     }
     // Reading milliseconds and converting to seconds for decimals
     if ((secs = timestamp_fdiff(&fl2[0].time, &fl1[0].time, TIME_SECS, TIME_MSECS)) == 0LLU) {
@@ -237,7 +239,7 @@ FLOPS_F_DATA_DIFF(perf)
     for (i = 0; i < perfs_count; ++i) {
         p1 = (ullong *) &fl1[i];
         p2 = (ullong *) &fl2[i];
-        pD = (flD != NULL)? (ullong *) &flD[i]: (ullong *) &flA[i];
+        pD = (flD != NULL) ? (ullong *) &flD[i] : (ullong *) &flA[i];
         // Is overflow_zero because sometimes values at time X are under
         // values al time Y, being X greater than Y. This is because of
         // perf's multiplexing process.
@@ -249,14 +251,16 @@ FLOPS_F_DATA_DIFF(perf)
         pD[perfs[i].offsets[5]] = (ullong) (((double) overflow_zeros_u64(p2[5], p1[5])) * perfs[i].weights[5]);
         pD[perfs[i].offsets[6]] = (ullong) (((double) overflow_zeros_u64(p2[6], p1[6])) * perfs[i].weights[6]);
         pD[perfs[i].offsets[7]] = (ullong) (((double) overflow_zeros_u64(p2[7], p1[7])) * perfs[i].weights[7]);
-        gflops_i = ((double) pD[0]) + ((double) pD[1]) + ((double) pD[2]) + ((double) pD[3]) +
-                   ((double) pD[4]) + ((double) pD[5]) + ((double) pD[6]) + ((double) pD[7]);
+        gflops_i = ((double) pD[0]) + ((double) pD[1]) + ((double) pD[2]) + ((double) pD[3]) + ((double) pD[4]) +
+                   ((double) pD[5]) + ((double) pD[6]) + ((double) pD[7]);
         gflops_i = (gflops_i / secs) / ((double) 1E9);
-        gflops  += (gflops_i);
-        if (flD != NULL) flD[i].gflops = gflops_i;
-        if (flD != NULL) flD[i].secs   = secs;
+        gflops += (gflops_i);
+        if (flD != NULL)
+            flD[i].gflops = gflops_i;
+        if (flD != NULL)
+            flD[i].secs = secs;
     }
-    //gflops = (gflops / secs) / ((double) 1E9);
+    // gflops = (gflops / secs) / ((double) 1E9);
     if (gfs != NULL) {
         *gfs = gflops;
     }
@@ -268,8 +272,7 @@ FLOPS_F_INTERNALS_TOSTR(perf)
     cchar *state[]  = {"failed", "loaded"};
     int i, c;
     for (i = c = 0; i < perfs[0].perfs_count; ++i) {
-        c += sprintf(&buffer[c], "FLOPS %s: %s event %s * %-2.2lf\n",
-            offstr[perfs[0].offsets[i]], state[perfs[0].perfs[i].fd > 0],
-            perfs[0].perfs[i].event_name, perfs[0].weights[i]);
+        c += sprintf(&buffer[c], "FLOPS %s: %s event %s * %-2.2lf\n", offstr[perfs[0].offsets[i]],
+                     state[perfs[0].perfs[i].fd > 0], perfs[0].perfs[i].event_name, perfs[0].weights[i]);
     }
 }

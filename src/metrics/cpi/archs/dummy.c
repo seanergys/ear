@@ -15,9 +15,9 @@
 
 CPI_F_LOAD(dummy)
 {
-    apis_put(ops->unload  , cpi_dummy_unload  );
+    apis_put(ops->unload, cpi_dummy_unload);
     apis_put(ops->get_info, cpi_dummy_get_info);
-    apis_put(ops->read    , cpi_dummy_read    );
+    apis_put(ops->read, cpi_dummy_read);
 }
 
 void cpi_dummy_unload()

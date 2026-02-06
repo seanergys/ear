@@ -16,10 +16,10 @@
  * It is basically used for loading EAR plug-ins.
  */
 
-#include <dlfcn.h>
-#include <common/types.h>
-#include <common/states.h>
 #include <common/plugins.h> // Not used
+#include <common/states.h>
+#include <common/types.h>
+#include <dlfcn.h>
 
 /** Reads a set of symbol names from a dynamic loaded shared object.
  * NULL pointers are not checked.
