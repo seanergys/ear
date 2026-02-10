@@ -16,6 +16,7 @@ stages:          # List of stages for jobs, and their order of execution
 image: registry.gitlab.bsc.es/ear_team/ear-ci:v6
 
 debugs_disabled:
+  image: alpine:3.23
   stage: quality
   script:
     - if grep -rIE -e "^[[:blank:]]*#define[[:blank:]]+SHOW_DEBUGS" -e "^[[:blank:]]*#define[[:blank:]]+DEBUG_ENABLED[[:blank:]]+1" src; then false; else true; fi
@@ -62,27 +63,10 @@ compile-mpi-mysql:
     - MAKE_FEATURES="MPI_CFLAGS='$(pkgconf ompi-c --cflags)'" CONFIGURE_FLAGS="--prefix=$PWD/ear-db" $TESTDIR/compile.sh
     - make install
     - make etc.install
-  artifacts:
-    when: on_success
-    expire_in: 1 days
-    paths:
-      - "ear-db"
-
-test-install-db:
-  stage: test
-  needs: [compile-mpi-mysql]
-  variables:
-    MARIADB_ROOT_PASSWORD: my-secret-pw
-  services:
-    - name: mariadb:latest
-      alias: mariadb
-  script:
     - echo "Checking DB installation"
     - $TESTDIR/test_install.sh ear-db
     - $TESTDIR/test_install_db.sh ear-db
     - $TESTDIR/test_install_etc.sh ear-db
-    - cp ear-db/etc/ear/ear.conf.full.template ear-db/etc/ear/ear.conf
-    - $TESTDIR/scripts/create_db.sh ear-db ear-db/etc/ear/ear.conf
   artifacts:
     when: on_success
     expire_in: 1 days
@@ -91,26 +75,29 @@ test-install-db:
 
 deploy-eardbd:
   stage: deploy
-  needs: [test-install-db]
+  needs: [compile-mpi-mysql]
   variables:
     MARIADB_ROOT_PASSWORD: my-secret-pw
   services:
-    - name: mariadb:latest
+    - name: mariadb:11-ubi9
       alias: mariadb
   script:
+    - cp ear-db/etc/ear/ear.conf.full.template ear-db/etc/ear/ear.conf
     - $TESTDIR/scripts/create_db.sh ear-db ear-db/etc/ear/ear.conf
     - ls -ltr ear-db/sbin/
     - $TESTDIR/scripts/deploy_eardbd.sh ear-db ear-db/etc
   artifacts:
     when: always
     paths:
+      - "ear-db"
       - eardbd.out
       - ear-db/etc/ear/ear.conf
 
 deploy-eard:
   stage: deploy
-  needs: [test-install-db]
+  needs: [compile-mpi-mysql]
   script:
+    - cp ear-db/etc/ear/ear.conf.full.template ear-db/etc/ear/ear.conf
     - $TESTDIR/scripts/deploy_eard.sh ear-db ear-db/etc
   after_script:
     - mkdir ear_tmp
