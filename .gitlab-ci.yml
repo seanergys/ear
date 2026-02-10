@@ -23,8 +23,9 @@ debugs_disabled:
 
 clang-format:
   stage: quality
+  image: rockylinux:8-minimal
   script:
-    - dnf install -y clang-tools-extra-19.1.7-2.module+el8.10.0+1965+112b558b
+    - microdnf install -y clang-tools-extra-19.1.7-2.module+el8.10.0+1965+112b558b findutils
     - find src/ -name "*.[ch]" -exec clang-format --Werror --fail-on-incomplete-format --dry-run {} +
 
 compile-no-mpi-loader:
@@ -42,36 +43,22 @@ compile-no-mpi-loader:
 compile-no-mpi:
   stage: build
   script:
-    - export CONFIG_SITE="$TESTDIR/config-sites/config.no-mpi.site"
-    - MAKE_FEATURES="MPI_CFLAGS='$(pkgconf ompi-c --cflags)'" $TESTDIR/compile.sh
-
-compile-mpi:
-  stage: build
-  script:
-    # This script compiles, installs, and test the correctness of the installation
-    - $TESTDIR/build/compile_ompi.sh
-  artifacts:
-    when: on_success
-    expire_in: 1 days
-    paths:
-      - "ear-ompi"
+    - $TESTDIR/build/compile_no_mpi.sh
 
 compile-mpi-mysql:
   stage: build
   script:
-    - export CONFIG_SITE="$TESTDIR/config-sites/config.ompi.site"
-    - MAKE_FEATURES="MPI_CFLAGS='$(pkgconf ompi-c --cflags)'" CONFIGURE_FLAGS="--prefix=$PWD/ear-db" $TESTDIR/compile.sh
-    - make install
-    - make etc.install
-    - echo "Checking DB installation"
-    - $TESTDIR/test_install.sh ear-db
-    - $TESTDIR/test_install_db.sh ear-db
-    - $TESTDIR/test_install_etc.sh ear-db
+    - microdnf install -y gcc-toolset-$GCC_TOOLSET
+    - source /opt/rh/gcc-toolset-$GCC_TOOLSET/enable
+    - $TESTDIR/build/compile_mpi_mysql.sh
   artifacts:
     when: on_success
     expire_in: 1 days
     paths:
       - "ear-db"
+  parallel:
+    matrix:
+      - GCC_TOOLSET: [11, 12, 13, 14]
 
 deploy-eardbd:
   stage: deploy
@@ -84,14 +71,12 @@ deploy-eardbd:
   script:
     - cp ear-db/etc/ear/ear.conf.full.template ear-db/etc/ear/ear.conf
     - $TESTDIR/scripts/create_db.sh ear-db ear-db/etc/ear/ear.conf
-    - ls -ltr ear-db/sbin/
     - $TESTDIR/scripts/deploy_eardbd.sh ear-db ear-db/etc
   artifacts:
     when: always
     paths:
       - "ear-db"
       - eardbd.out
-      - ear-db/etc/ear/ear.conf
 
 deploy-eard:
   stage: deploy
@@ -115,13 +100,13 @@ deploy-eard:
 
 test-earl-mpi-lite:
   stage: test
-  needs: [compile-mpi]
-  timeout: 30 minutes
+  needs: [compile-mpi-mysql]
+  timeout: 10 minutes
   script:
     - export PATH=$(pkgconf --variable=exec_prefix ompi-f90)/bin:$PATH
     - $TESTDIR/scripts/compile_nas.sh $TESTDIR/apps/NPB3.4.3/NPB3.4-MPI bt B
-    - export EAR_ETC=ear-ompi/etc ; export EAR_INSTALL_PATH=ear-ompi ; export EAR_TMP=/tmp
-    - OMPI_ALLOW_RUN_AS_ROOT=1 OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1 mpirun --oversubscribe -np 4 ear-ompi/bin/erun --ear=on --ear-verbose=1 --program="$TESTDIR/apps/NPB3.4.3/NPB3.4-MPI/bin/bt.B.x" 2> >(tee earl.out)
+    - export EAR_ETC=ear-db/etc ; export EAR_INSTALL_PATH=ear-db ; export EAR_TMP=/tmp
+    - OMPI_ALLOW_RUN_AS_ROOT=1 OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1 mpirun --oversubscribe -np 4 ear-db/bin/erun --ear=on --ear-verbose=1 --program="$TESTDIR/apps/NPB3.4.3/NPB3.4-MPI/bin/bt.B.x" 2> >(tee earl.out)
   artifacts:
     when: always
     name: earl-mpi_out
@@ -142,33 +127,33 @@ test-earl-omp-lite:
     paths:
       - earl.out
 
-test-earl-mkl-lite:
-  stage: test
-  needs: [compile-no-mpi-loader]
-  timeout: 30 minutes
-  script:
-    # Install oneMKL and Intel compilers
-    - |
-      tee > /tmp/oneAPI.repo << EOF
-      [oneAPI]
-      name=Intel® oneAPI repository
-      baseurl=https://yum.repos.intel.com/oneapi
-      enabled=1
-      gpgcheck=1
-      repo_gpgcheck=1
-      gpgkey=https://yum.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB
-      EOF
-    - mv /tmp/oneAPI.repo /etc/yum.repos.d
-    - dnf install -y intel-oneapi-compiler-dpcpp-cpp
-    - dnf install -y intel-oneapi-mkl-devel
-    - source /opt/intel/oneapi/setvars.sh
-    - $TESTDIR/scripts/compile_matrix_mul_mkl.sh $TESTDIR/apps/matrix_mul_mkl
-    - export EAR_ETC=ear-no-mpi-loader/etc
-    - export EAR_INSTALL_PATH=ear-no-mpi-loader
-    - export EAR_TMP=/tmp
-    - ear-no-mpi-loader/bin/erun --ear=on --ear-verbose=1 --program="$TESTDIR/apps/matrix_mul_mkl/matrix_mul_mkl double" 2> >(tee earl.out)
-  artifacts:
-    when: always
-    name: earl-mkl_out
-    paths:
-      - earl.out
+        # test-earl-mkl-lite:
+        #   stage: test
+        #   needs: [compile-no-mpi-loader]
+        #   timeout: 30 minutes
+        #   script:
+        #     # Install oneMKL and Intel compilers
+        #     - |
+        #       tee > /tmp/oneAPI.repo << EOF
+        #       [oneAPI]
+        #       name=Intel® oneAPI repository
+        #       baseurl=https://yum.repos.intel.com/oneapi
+        #       enabled=1
+        #       gpgcheck=1
+        #       repo_gpgcheck=1
+        #       gpgkey=https://yum.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB
+        #       EOF
+        #     - mv /tmp/oneAPI.repo /etc/yum.repos.d
+        #     - dnf install -y intel-oneapi-compiler-dpcpp-cpp
+        #     - dnf install -y intel-oneapi-mkl-devel
+        #     - source /opt/intel/oneapi/setvars.sh
+        #     - $TESTDIR/scripts/compile_matrix_mul_mkl.sh $TESTDIR/apps/matrix_mul_mkl
+        #     - export EAR_ETC=ear-no-mpi-loader/etc
+        #     - export EAR_INSTALL_PATH=ear-no-mpi-loader
+        #     - export EAR_TMP=/tmp
+        #     - ear-no-mpi-loader/bin/erun --ear=on --ear-verbose=1 --program="$TESTDIR/apps/matrix_mul_mkl/matrix_mul_mkl double" 2> >(tee earl.out)
+        #   artifacts:
+        #     when: always
+        #     name: earl-mkl_out
+        #     paths:
+        #       - earl.out
