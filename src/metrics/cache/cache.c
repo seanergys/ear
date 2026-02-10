@@ -174,36 +174,3 @@ void cache_internals_tostr(char *buffer, int length)
 {
     ops.internals_tostr(buffer, length);
 }
-
-#if TEST
-#include <common/utils/stress.h>
-
-static topology_t tp;
-static apinfo_t info;
-static cache_t c1;
-static cache_t c2;
-static cache_t cD;
-static double gbs;
-
-int main(int argc, char *argv[])
-{
-    topology_init(&tp);
-
-    cache_load(&tp, API_FREE);
-    stress_alloc();
-
-    cache_get_info(&info);
-    apinfo_tostr(&info);
-    printf("%s\n", info.api_str);
-
-    cache_internals_print(fderr);
-
-    cache_init(no_ctx);
-    cache_read(no_ctx, &c1);
-    // sleep(1);
-    stress_bandwidth(1000);
-    cache_read_diff(no_ctx, &c2, &c1, &cD, &gbs);
-
-    return 0;
-}
-#endif

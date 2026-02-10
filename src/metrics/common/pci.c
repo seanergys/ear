@@ -85,13 +85,17 @@ state_t pci_scan(ushort vendor, ushort *ids, char **dfs, mode_t mode, pci_t **pc
             }
             ret_n_opened++;
             // Taking and comparing vendor
-            pread(fd, &vid, sizeof(vid), 0);
+            if (pread(fd, &vid, sizeof(vid), 0) != sizeof(vid)) {
+                continue;
+            }
             if (vid != vendor) {
                 close(fd);
                 continue;
             }
             // Taking id
-            pread(fd, &rid, sizeof(rid), 2);
+            if (pread(fd, &rid, sizeof(rid), 2) != sizeof(rid)) {
+                continue;
+            }
             // Looking for IDs
             for (i = 0; i < ids_count; ++i) {
                 if (rid == ids[i]) {
@@ -171,7 +175,9 @@ state_t pci_mwrite32(pci_t *pcis, uint pcis_count, const uint *buffer, off_t *ad
             debug("PCI%d (fd %d), in address %lx written value 0x%x (%u bytes)", p, pcis[p].fd, addrs[a], buffer[a],
                   written);
 #else
-            pwrite(pcis[p].fd, &buffer[a], sizeof(uint), addrs[a]);
+            if (pwrite(pcis[p].fd, &buffer[a], sizeof(uint), addrs[a]) != sizeof(uint)) {
+                continue;
+            }
 #endif
         }
     }
