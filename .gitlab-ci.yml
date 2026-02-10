@@ -48,7 +48,7 @@ compile-no-mpi:
 compile-mpi-mysql:
   stage: build
   script:
-    - microdnf install -y gcc-toolset-$GCC_TOOLSET
+    - dnf install -y gcc-toolset-$GCC_TOOLSET
     - source /opt/rh/gcc-toolset-$GCC_TOOLSET/enable
     - $TESTDIR/build/compile_mpi_mysql.sh
   artifacts:
