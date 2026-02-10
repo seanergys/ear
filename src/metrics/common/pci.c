@@ -9,15 +9,15 @@
  **************************************************************************/
 
 // #define SHOW_DEBUGS 1
-
-#include <common/output/debug.h>
-#include <common/sizes.h>
-#include <common/system/folder.h>
+// clang-format off
 #include <fcntl.h>
-#include <metrics/common/pci.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <common/sizes.h>
+#include <common/output/debug.h>
+#include <common/system/folder.h>
+#include <metrics/common/pci.h>
 
 static char *strdfs(uint dfs, char *string)
 {

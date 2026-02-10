@@ -10,17 +10,17 @@
 
 // #define SHOW_DEBUGS 1
 /* clang-format off */
-#include <common/config/config_install.h>
-#include <common/output/debug.h>
-#include <common/utils/overhead.h>
-#include <common/utils/special.h>
-#include <common/utils/stress.h>
-#include <common/utils/strscreen.h>
-#include <common/utils/strtable.h>
-#include <metrics/metrics.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <common/output/debug.h>
+#include <common/utils/stress.h>
+#include <common/utils/special.h>
+#include <common/utils/overhead.h>
+#include <common/utils/strtable.h>
+#include <common/utils/strscreen.h>
+#include <common/config/config_install.h>
+#include <metrics/metrics.h>
 
 #define nodepow(f, ...) energy_##f(__VA_ARGS__)
 #define cpupow(f, ...)  energy_cpu_##f(__VA_ARGS__)
@@ -46,7 +46,6 @@ void metrics_load(metrics_info_t *m, topology_t *tp, char *nodepow_path, uint *o
     uint default_options[10] = {0};
     self_tp = tp;
 
-    /* clang-format off */
     if (options == NULL) {
         options = default_options;
     }
@@ -64,7 +63,6 @@ void metrics_load(metrics_info_t *m, topology_t *tp, char *nodepow_path, uint *o
 
     nodepow(init, &e_ctx);
      cpupow(init, no_ctx);
-    /* clang-format on */
 
     metrics_info_get(m);
 }
