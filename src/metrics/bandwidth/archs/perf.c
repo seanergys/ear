@@ -8,17 +8,17 @@
  * SPDX-License-Identifier: EPL-2.0
  **********************************************************************/
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
-#include <stdlib.h>
-#include <common/system/time.h>
 #include <common/output/debug.h>
-#include <metrics/common/perf.h>
+#include <common/system/time.h>
 #include <metrics/bandwidth/archs/perf.h>
+#include <metrics/common/perf.h>
+#include <stdlib.h>
 
 static perf_t *perfs;
-static uint    perfs_count;
-static double  castob; // cas to bytes
+static uint perfs_count;
+static double castob; // cas to bytes
 
 static void close_all()
 {
@@ -70,8 +70,7 @@ BWIDTH_F_LOAD(perf)
             if (state_fail(perf_open_files(&perfs, "uncore_imc_free_running_0", "data_total", &perfs_count))) {
             }
         }
-    }
-    else if (tp->vendor == VENDOR_ARM && tp->model == MODEL_NEOVERSE_V2) {
+    } else if (tp->vendor == VENDOR_ARM && tp->model == MODEL_NEOVERSE_V2) {
         if (state_ok(perf_open_files(&perfs, "nvidia_scf_pmu_%d", "cmem_rd_data,cmem_wr_total_bytes", &perfs_count))) {
             perf_set_scale(perfs, perfs_count, "cmem_wr_total_bytes", 1.0 / 32.0);
             castob = 32.0;
@@ -87,10 +86,10 @@ BWIDTH_F_LOAD(perf)
             close_all();
         }
     }
-    apis_put(ops->unload  , bwidth_perf_unload);
+    apis_put(ops->unload, bwidth_perf_unload);
     apis_put(ops->get_info, bwidth_perf_get_info);
-    apis_put(ops->read    , bwidth_perf_read);
-    apis_put(ops->castob  , bwidth_perf_castob);
+    apis_put(ops->read, bwidth_perf_read);
+    apis_put(ops->castob, bwidth_perf_castob);
     debug("Loaded PERF")
 }
 

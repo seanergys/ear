@@ -20,25 +20,25 @@
 typedef struct cpufreq_s {
     ulong freq_aperf;
     ulong freq_mperf;
-    uint  state;
+    uint state;
 } cpufreq_t;
 
 typedef struct cpufreq_ops_s {
-    void    (*unload)    ();
-    void    (*get_info)  (apinfo_t *info);
-    state_t (*read)      (cpufreq_t *f);
+    void (*unload)();
+    void (*get_info)(apinfo_t *info);
+    state_t (*read)(cpufreq_t *f);
 } cpufreq_ops_t;
 
 // API building scheme
-#define CPUFREQ_F_LOAD(name)      void cpufreq_##name##_load(topology_t *tp, cpufreq_ops_t *ops, int options)
-#define CPUFREQ_F_UNLOAD(name)    void cpufreq_##name##_unload()
-#define CPUFREQ_F_GET_INFO(name)  void cpufreq_##name##_get_info(apinfo_t *info)
-#define CPUFREQ_F_READ(name)      state_t cpufreq_##name##_read(cpufreq_t *f)
+#define CPUFREQ_F_LOAD(name)     void cpufreq_##name##_load(topology_t *tp, cpufreq_ops_t *ops, int options)
+#define CPUFREQ_F_UNLOAD(name)   void cpufreq_##name##_unload()
+#define CPUFREQ_F_GET_INFO(name) void cpufreq_##name##_get_info(apinfo_t *info)
+#define CPUFREQ_F_READ(name)     state_t cpufreq_##name##_read(cpufreq_t *f)
 
-#define CPUFREQ_DEFINES(name)  \
-    CPUFREQ_F_LOAD(name);      \
-    CPUFREQ_F_UNLOAD(name);    \
-    CPUFREQ_F_GET_INFO(name);  \
+#define CPUFREQ_DEFINES(name)                                                                                          \
+    CPUFREQ_F_LOAD(name);                                                                                              \
+    CPUFREQ_F_UNLOAD(name);                                                                                            \
+    CPUFREQ_F_GET_INFO(name);                                                                                          \
     CPUFREQ_F_READ(name);
 
 void cpufreq_load(topology_t *tp, int options);

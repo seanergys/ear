@@ -10,17 +10,17 @@
 
 // #define SHOW_DEBUGS 1
 
+#include <common/output/debug.h>
+#include <common/sizes.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <metrics/common/msr.h>
+#include <metrics/cpufreq/archs/intel63.h>
+#include <metrics/cpufreq/cpufreq_base.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <common/sizes.h>
-#include <common/output/debug.h>
-#include <metrics/common/msr.h>
-#include <metrics/cpufreq/archs/intel63.h>
-#include <metrics/cpufreq/cpufreq_base.h>
 
 #define MSR_IA32_APERF 0x000000E8
 #define MSR_IA32_MPERF 0x000000E7
@@ -39,8 +39,8 @@ CPUFREQ_F_LOAD(intel63)
 {
     int cpu;
 
-    if ((tp->vendor == VENDOR_INTEL && tp->model  >= MODEL_HASWELL_X) ||
-        (tp->vendor == VENDOR_AMD   && tp->family >= FAMILY_ZEN    )) {
+    if ((tp->vendor == VENDOR_INTEL && tp->model >= MODEL_HASWELL_X) ||
+        (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN)) {
         // Compatible
     } else {
         return;
@@ -58,9 +58,9 @@ CPUFREQ_F_LOAD(intel63)
     }
     topology_copy(&tp_own, tp);
     // If reading MSR is allowed
-    apis_put(ops->unload  , cpufreq_intel63_unload);
+    apis_put(ops->unload, cpufreq_intel63_unload);
     apis_put(ops->get_info, cpufreq_intel63_get_info);
-    apis_put(ops->read    , cpufreq_intel63_read);
+    apis_put(ops->read, cpufreq_intel63_read);
     debug("loaded intel63");
 }
 
@@ -85,8 +85,8 @@ CPUFREQ_F_READ(intel63)
 
     debug("cpufreq_intel63_read");
     for (cpu = 0; cpu < tp_own.cpu_count; ++cpu) {
-        s1 = msr_read(tp_own.cpus[cpu].id, &f[cpu].freq_mperf, sizeof(ulong), MSR_IA32_MPERF);
-        s2 = msr_read(tp_own.cpus[cpu].id, &f[cpu].freq_aperf, sizeof(ulong), MSR_IA32_APERF);
+        s1           = msr_read(tp_own.cpus[cpu].id, &f[cpu].freq_mperf, sizeof(ulong), MSR_IA32_MPERF);
+        s2           = msr_read(tp_own.cpus[cpu].id, &f[cpu].freq_aperf, sizeof(ulong), MSR_IA32_APERF);
         f[cpu].state = (state_fail(s1) || state_fail(s2)); // Reading error, set 0
     }
     return EAR_SUCCESS;

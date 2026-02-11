@@ -46,9 +46,9 @@
 //		sockets_send(socket.fd, type, data, data_size, 0LLU);
 //
 
-#define BACKLOG        2048
-#define TCP            SOCK_STREAM
-#define UDP            SOCK_DGRAM
+#define BACKLOG 2048
+#define TCP     SOCK_STREAM
+#define UDP     SOCK_DGRAM
 
 typedef struct socket {
     struct addrinfo *info;
@@ -111,4 +111,4 @@ void sockets_get_hostname_fd(int fd, char *buffer, int length);
 
 void sockets_get_ip(struct sockaddr_storage *host_addr, long *ip);
 
-#endif //COMMON_SOCKETS_H
+#endif // COMMON_SOCKETS_H

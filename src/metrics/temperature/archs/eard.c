@@ -45,9 +45,9 @@ TEMP_F_LOAD(eard)
         return;
     }
     read_values = calloc(self_info.devs_count, sizeof(llong));
-    apis_set(ops->unload  , temp_eard_unload);
+    apis_set(ops->unload, temp_eard_unload);
     apis_set(ops->get_info, temp_eard_get_info);
-    apis_set(ops->read    , temp_eard_read);
+    apis_set(ops->read, temp_eard_read);
 }
 
 TEMP_F_UNLOAD(eard)
@@ -72,7 +72,8 @@ TEMP_F_READ(eard)
     state_t s;
     int i;
 
-    if (state_fail(s = eard_rpc(RPC_MET_TEMP_READ, NULL, 0, (char *) read_values, self_info.devs_count * sizeof(llong)))) {
+    if (state_fail(
+            s = eard_rpc(RPC_MET_TEMP_READ, NULL, 0, (char *) read_values, self_info.devs_count * sizeof(llong)))) {
         return s;
     }
     // Calculating the average

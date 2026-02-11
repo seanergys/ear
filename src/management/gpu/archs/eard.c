@@ -8,13 +8,13 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
-#include <stdlib.h>
-#include <common/utils/serial_buffer.h>
 #include <common/config/config_install.h>
+#include <common/utils/serial_buffer.h>
 #include <daemon/local_api/eard_api_rpc.h>
 #include <management/gpu/archs/eard.h>
+#include <stdlib.h>
 
 // clang-format off
 static int            eard;
@@ -78,7 +78,7 @@ static state_t recv_static_data(mgt_gpu_ops_t *ops)
     }
     debug("TP root (ALL) has %d devs", tp_root.devs_count);
     debug("TP user (ALL) has %d devs", tp_user.devs_count);
-    #ifdef SHOW_DEBUGS
+#ifdef SHOW_DEBUGS
     debug("Global GPUs:");
     for (i = 0; i < tp_root.devs_count; ++i) {
         debug("GPU%d: %u_%llu", i, tp_root.devs[i].index, tp_root.devs[i].serial);
@@ -87,7 +87,7 @@ static state_t recv_static_data(mgt_gpu_ops_t *ops)
     for (i = 0; i < tp_user.devs_count; ++i) {
         debug("GPU%d: %u_%llu", i, tp_user.devs[i].index, tp_user.devs[i].serial);
     }
-    #endif
+#endif
     /*
      * Second part
      */
@@ -173,22 +173,22 @@ void mgt_gpu_eard_load(mgt_gpu_ops_t *ops, int _eard)
     if (state_fail(recv_static_data(ops))) {
         return;
     }
-    apis_put(ops->init                  , mgt_gpu_eard_init                  );
-    apis_put(ops->dispose               , mgt_gpu_eard_dispose               );
-    apis_put(ops->get_api               , mgt_gpu_eard_get_api               );
-    apis_put(ops->get_devices           , mgt_gpu_eard_get_devices           );
-    apis_put(ops->count_devices         , mgt_gpu_eard_count_devices         );
+    apis_put(ops->init, mgt_gpu_eard_init);
+    apis_put(ops->dispose, mgt_gpu_eard_dispose);
+    apis_put(ops->get_api, mgt_gpu_eard_get_api);
+    apis_put(ops->get_devices, mgt_gpu_eard_get_devices);
+    apis_put(ops->count_devices, mgt_gpu_eard_count_devices);
     apis_put(ops->freq_limit_get_current, mgt_gpu_eard_freq_limit_get_current);
     apis_put(ops->freq_limit_get_default, mgt_gpu_eard_freq_limit_get_default);
-    apis_put(ops->freq_limit_get_max    , mgt_gpu_eard_freq_limit_get_max    );
-    apis_put(ops->power_cap_get_current , mgt_gpu_eard_power_cap_get_current );
-    apis_put(ops->power_cap_get_default , mgt_gpu_eard_power_cap_get_default );
-    apis_put(ops->power_cap_get_rank    , mgt_gpu_eard_power_cap_get_rank    );
-    apis_put(ops->freq_limit_reset      , mgt_gpu_eard_freq_limit_reset      );
-    apis_put(ops->freq_limit_set        , mgt_gpu_eard_freq_limit_set        );
-    apis_put(ops->freq_list             , mgt_gpu_eard_freq_list             );
-    apis_put(ops->power_cap_reset       , mgt_gpu_eard_power_cap_reset       );
-    apis_put(ops->power_cap_set         , mgt_gpu_eard_power_cap_set         );
+    apis_put(ops->freq_limit_get_max, mgt_gpu_eard_freq_limit_get_max);
+    apis_put(ops->power_cap_get_current, mgt_gpu_eard_power_cap_get_current);
+    apis_put(ops->power_cap_get_default, mgt_gpu_eard_power_cap_get_default);
+    apis_put(ops->power_cap_get_rank, mgt_gpu_eard_power_cap_get_rank);
+    apis_put(ops->freq_limit_reset, mgt_gpu_eard_freq_limit_reset);
+    apis_put(ops->freq_limit_set, mgt_gpu_eard_freq_limit_set);
+    apis_put(ops->freq_list, mgt_gpu_eard_freq_list);
+    apis_put(ops->power_cap_reset, mgt_gpu_eard_power_cap_reset);
+    apis_put(ops->power_cap_set, mgt_gpu_eard_power_cap_set);
     debug("Loaded EARD");
 }
 
@@ -248,7 +248,8 @@ state_t mgt_gpu_eard_freq_limit_get_current(ctx_t *c, ulong *khz)
 {
     ulong aux[128]; // khz
     return shuffle_in(
-        khz, aux, eard_rpc(RPC_MGT_GPU_GET_FREQ_LIMIT_CURRENT, NULL, 0, (char *) aux, tp_root.devs_count * sizeof(ulong)));
+        khz, aux,
+        eard_rpc(RPC_MGT_GPU_GET_FREQ_LIMIT_CURRENT, NULL, 0, (char *) aux, tp_root.devs_count * sizeof(ulong)));
 }
 
 state_t mgt_gpu_eard_freq_limit_get_default(ctx_t *c, ulong *khz)
@@ -314,14 +315,14 @@ state_t mgt_gpu_eard_freq_list(ctx_t *c, const ulong ***list_khz, const uint **l
     debug("mgt_gpu_eard_freq_list");
     *list_khz = (const ulong **) user_freqs_available;
     *list_len = (const uint *) user_freqs_count;
-    #if SHOW_DEBUGS
+#if SHOW_DEBUGS
     for (int i = 0; i < tp_user.devs_count; i++) {
         debug("GPU %d avail freqs: %u", i, user_freqs_count[i]);
         for (int j = 0; j < user_freqs_count[i]; i++) {
             debug("freq %d: %lu", j, user_freqs_available[i][j]);
         }
     }
-    #endif
+#endif
     return EAR_SUCCESS;
 }
 

@@ -302,4 +302,5 @@ state_t mgt_gpu_dummy_power_cap_set(ctx_t *c, ulong *watts)
     }
     return EAR_SUCCESS;
 }
+
 // clang-format on

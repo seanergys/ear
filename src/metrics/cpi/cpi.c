@@ -8,24 +8,25 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
-#include <string.h>
-#include <pthread.h>
-#include <common/output/debug.h>
 #include <common/math_operations.h>
+#include <common/output/debug.h>
 #include <metrics/common/apis.h>
-#include <metrics/cpi/cpi.h>
-#include <metrics/cpi/archs/perf.h>
 #include <metrics/cpi/archs/dummy.h>
+#include <metrics/cpi/archs/perf.h>
+#include <metrics/cpi/cpi.h>
+#include <pthread.h>
+#include <string.h>
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-static cpi_ops_t       ops;
-static apinfo_t        info;
+static cpi_ops_t ops;
+static apinfo_t info;
 
 void cpi_load(topology_t *tp, int options)
 {
-    while (pthread_mutex_trylock(&lock));
+    while (pthread_mutex_trylock(&lock))
+        ;
     if (info.api != API_NONE) {
         goto leave;
     }
@@ -44,7 +45,8 @@ leave:
 
 void cpi_unload()
 {
-    while (pthread_mutex_trylock(&lock));
+    while (pthread_mutex_trylock(&lock))
+        ;
     if (info.api != API_NONE) {
         ops.unload();
         memset(&ops, 0, sizeof(cpi_ops_t));
@@ -148,10 +150,8 @@ void cpi_data_tostr(cpi_t *ci, double cpis_avg, char *buffer, size_t length)
 {
     int i, b;
     for (i = b = 0; i < info.devs_count; ++i) {
-        b += sprintf(&buffer[b], "DEV%d %014llu ins, %014llu cycles, %0.2lf cpi, %llu-%llu-%llu stalls\n",
-            i, ci[i].instructions, ci[i].cycles, ci[i].cpi,
-            ci[i].stalls.fetch_decode,
-            ci[i].stalls.resources,
-            ci[i].stalls.memory);
+        b += sprintf(&buffer[b], "DEV%d %014llu ins, %014llu cycles, %0.2lf cpi, %llu-%llu-%llu stalls\n", i,
+                     ci[i].instructions, ci[i].cycles, ci[i].cpi, ci[i].stalls.fetch_decode, ci[i].stalls.resources,
+                     ci[i].stalls.memory);
     }
 }

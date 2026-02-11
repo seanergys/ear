@@ -8,21 +8,21 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
+#include <asm/unistd.h>
+#include <common/output/debug.h>
+#include <common/string_enhanced.h>
+#include <common/system/file.h>
+#include <common/system/folder.h>
+#include <common/utils/string.h>
 #include <errno.h>
-#include <unistd.h>
+#include <metrics/common/file.h>
+#include <metrics/common/perf.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
 #include <sys/syscall.h>
-#include <asm/unistd.h>
-#include <common/system/file.h>
-#include <common/output/debug.h>
-#include <common/utils/string.h>
-#include <common/system/folder.h>
-#include <common/string_enhanced.h>
-#include <metrics/common/file.h>
-#include <metrics/common/perf.h>
+#include <unistd.h>
 
 // Future TO-DO:
 // - Add a control and static manager for already open events (duplicates are
@@ -78,12 +78,12 @@ state_t perf_open_cpu(perf_t *perf, perf_t *group, pid_t pid, uint type, ulong e
     if (cpu < 0) {
         perf->attr.exclusive = options;
         perf->attr.disabled  = 1;
-        #if ESTIMATE_PERF == 0
+#if ESTIMATE_PERF == 0
         perf->attr.inherit = 1;
-        #if PERF_ATTR_SIZE_VER6
+#if PERF_ATTR_SIZE_VER6
         perf->attr.inherit_thread = 1;
-        #endif
-        #endif
+#endif
+#endif
         perf->attr.exclude_kernel = 1;
         perf->attr.exclude_hv     = 1;
     }
@@ -91,7 +91,7 @@ state_t perf_open_cpu(perf_t *perf, perf_t *group, pid_t pid, uint type, ulong e
     perf->fd               = syscall(__NR_perf_event_open, &perf->attr, pid, cpu, gp_fd, 0);
     // Used in some cases
     perf->scale = 1.0;
-    #ifdef SHOW_DEBUGS
+#ifdef SHOW_DEBUGS
     debug("input: event 0x%lx, group %p and fd %d type %u size %u cpu %d group fd %d", event, group, perf->fd,
           perf->attr.type, perf->attr.size, cpu, gp_fd);
     if (perf->fd == -1) {
@@ -99,7 +99,7 @@ state_t perf_open_cpu(perf_t *perf, perf_t *group, pid_t pid, uint type, ulong e
     } else {
         debug("ok");
     }
-    #endif
+#endif
     if (perf->fd == -1) {
         return_msg(EAR_ERROR, strerror(errno));
     }
@@ -124,15 +124,15 @@ state_t perf_reset(perf_t *perf)
         gp_flag = PERF_IOC_FLAG_GROUP;
     }
     ret = ioctl(perf->fd, PERF_EVENT_IOC_RESET, gp_flag);
-    #ifdef SHOW_DEBUGS
+#ifdef SHOW_DEBUGS
     if (ret == -1) {
         debug("ioctl of fd %d returned %d (no: %d, s: %s)", perf->fd, ret, errno, strerror(errno));
     } else {
         debug("ok fd %d and group %p", perf->fd, perf->group);
     }
-    #else
+#else
     (void) (ret);
-    #endif
+#endif
     if (perf->fd == -1) {
         return_msg(EAR_ERROR, strerror(errno));
     }
@@ -147,15 +147,15 @@ state_t perf_start(perf_t *perf)
         gp_flag = PERF_IOC_FLAG_GROUP;
     }
     ret = ioctl(perf->fd, PERF_EVENT_IOC_ENABLE, gp_flag);
-    #ifdef SHOW_DEBUGS
+#ifdef SHOW_DEBUGS
     if (ret == -1) {
         debug("ioctl of fd %d returned %d (no: %d, s: %s)", perf->fd, ret, errno, strerror(errno));
     } else {
         debug("ok fd %d and group %p", perf->fd, perf->group);
     }
-    #else
+#else
     (void) (ret);
-    #endif
+#endif
     if (perf->fd == -1) {
         return_msg(EAR_ERROR, strerror(errno));
     }
@@ -170,15 +170,15 @@ state_t perf_stop(perf_t *perf)
         gp_flag = PERF_IOC_FLAG_GROUP;
     }
     ret = ioctl(perf->fd, PERF_EVENT_IOC_DISABLE, gp_flag);
-    #ifdef SHOW_DEBUGS
+#ifdef SHOW_DEBUGS
     if (ret == -1) {
         debug("ioctl of fd %d returned %d (no: %d, s: %s)", perf->fd, ret, errno, strerror(errno));
     } else {
         debug("ok fd %d and group %p", perf->fd, perf->group);
     }
-    #else
+#else
     (void) (ret);
-    #endif
+#endif
     if (perf->fd == -1) {
         return_msg(EAR_ERROR, strerror(errno));
     }

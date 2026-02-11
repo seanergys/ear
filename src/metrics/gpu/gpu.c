@@ -8,31 +8,32 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
-#include <stdlib.h>
-#include <stddef.h>
-#include <pthread.h>
 #include <common/output/debug.h>
-#include <metrics/gpu/archs/eard.h>
-#include <metrics/gpu/archs/nvml.h>
-#include <metrics/gpu/archs/rsmi.h>
 #include <metrics/gpu/archs/dummy.h>
-#include <metrics/gpu/archs/oneapi.h>
+#include <metrics/gpu/archs/eard.h>
 #include <metrics/gpu/archs/hwmon_pvc.h>
+#include <metrics/gpu/archs/nvml.h>
+#include <metrics/gpu/archs/oneapi.h>
+#include <metrics/gpu/archs/rsmi.h>
+#include <pthread.h>
+#include <stddef.h>
+#include <stdlib.h>
 
-//#ifndef USE_PVC_HWMON
-//#warning "USE_PVC_HWMON not defined! Defining it to 0..."
-//#define USE_PVC_HWMON 0
-//#endif
+// #ifndef USE_PVC_HWMON
+// #warning "USE_PVC_HWMON not defined! Defining it to 0..."
+// #define USE_PVC_HWMON 0
+// #endif
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-static gpu_ops_t       ops;
-static apinfo_t        info;
+static gpu_ops_t ops;
+static apinfo_t info;
 
 void gpu_load(int options)
 {
-    while (pthread_mutex_trylock(&lock));
+    while (pthread_mutex_trylock(&lock))
+        ;
     if (info.api != API_NONE) {
         goto leave;
     }
@@ -41,7 +42,7 @@ void gpu_load(int options)
     }
     gpu_nvml_load(&ops, options);
     gpu_rsmi_load(&ops, options);
-    //gpu_hwmon_pvc_load(&ops, options);
+    // gpu_hwmon_pvc_load(&ops, options);
     gpu_oneapi_load(&ops, options);
     gpu_eard_load(&ops, options);
 dummy:
@@ -53,7 +54,8 @@ leave:
 
 void gpu_unload()
 {
-    while (pthread_mutex_trylock(&lock));
+    while (pthread_mutex_trylock(&lock))
+        ;
     if (ops.unload != NULL) {
         ops.unload();
         memset(&ops, 0, sizeof(gpu_ops_t));
@@ -79,9 +81,9 @@ void gpu_topology_get(gpu_topology_t *tp)
     if (ops.topology_get != NULL) {
         ops.topology_get(tp);
     }
-    #if SHOW_DEBUGS
+#if SHOW_DEBUGS
     gpu_topology_print(tp, debug_channel);
-    #endif
+#endif
 }
 
 void gpu_topology_free(gpu_topology_t *tp)
@@ -94,12 +96,11 @@ void gpu_topology_free(gpu_topology_t *tp)
 
 static void gpu_topology_print_device(gpu_devs_t *dev, int i, int fd)
 {
-    char *str_sub[2] = { "MAIN", "SUB"};
-    char *str_rd[2]  = { "", " RD" };
+    char *str_sub[2] = {"MAIN", "SUB"};
+    char *str_rd[2]  = {"", " RD"};
 
-    dprintf(fd, "GPU%d %s, UUID: %s, Serial: %llu [%s%s]\n",
-        i, dev->name, dev->uuid, dev->serial,
-        str_sub[dev->is_subdevice], str_rd[dev->is_readable]);
+    dprintf(fd, "GPU%d %s, UUID: %s, Serial: %llu [%s%s]\n", i, dev->name, dev->uuid, dev->serial,
+            str_sub[dev->is_subdevice], str_rd[dev->is_readable]);
 }
 
 void gpu_topology_print(gpu_topology_t *tp, int fd)
@@ -120,13 +121,17 @@ void gpu_topology_select(gpu_topology_t *tp, gpu_topology_t *tp_new, uint type)
     tp_new->devs_count = 0LLU;
     // Counting readable revices
     for (i = 0; i < tp->devs_count; ++i) {
-        if (type == GPU_TP_SEL_MAIN    ) tp_new->devs_count += !tp->devs[i].is_subdevice;
-        if (type == GPU_TP_SEL_READABLE) tp_new->devs_count +=  tp->devs[i].is_readable;
+        if (type == GPU_TP_SEL_MAIN)
+            tp_new->devs_count += !tp->devs[i].is_subdevice;
+        if (type == GPU_TP_SEL_READABLE)
+            tp_new->devs_count += tp->devs[i].is_readable;
     }
     tp_new->devs = calloc(tp_new->devs_count, sizeof(gpu_devs_t));
     for (i = j = 0; i < tp->devs_count; ++i) {
-        if (type == GPU_TP_SEL_MAIN     &&  tp->devs[i].is_subdevice) continue;
-        if (type == GPU_TP_SEL_READABLE && !tp->devs[i].is_readable ) continue;
+        if (type == GPU_TP_SEL_MAIN && tp->devs[i].is_subdevice)
+            continue;
+        if (type == GPU_TP_SEL_READABLE && !tp->devs[i].is_readable)
+            continue;
         memcpy(&tp_new->devs[j++], &tp->devs[i], sizeof(gpu_devs_t));
     }
 }
@@ -135,15 +140,18 @@ void gpu_get_devices(gpu_devs_t **devs, uint *devs_count)
 {
     gpu_topology_t tp     = {0};
     gpu_topology_t tp_new = {0};
-    
+
     gpu_topology_get(&tp);
     gpu_topology_select(&tp, &tp_new, GPU_TP_SEL_READABLE);
-    #if SHOW_DEBUGS
+#if SHOW_DEBUGS
     gpu_topology_print(&tp_new, debug_channel);
-    #endif
-    if (devs       != NULL) *devs       = tp_new.devs;
-    if (devs_count != NULL) *devs_count = tp_new.devs_count;
-    if (devs       == NULL) gpu_topology_free(&tp_new);
+#endif
+    if (devs != NULL)
+        *devs = tp_new.devs;
+    if (devs_count != NULL)
+        *devs_count = tp_new.devs_count;
+    if (devs == NULL)
+        gpu_topology_free(&tp_new);
     gpu_topology_free(&tp);
 }
 
@@ -254,7 +262,7 @@ void gpu_data_merge(gpu_t *data_diff, gpu_t *data_merge)
         data_merge->temp_gpu += data_diff[i].temp_gpu;
         data_merge->temp_mem += data_diff[i].temp_mem;
         data_merge->energy_j += data_diff[i].energy_j;
-        data_merge->power_w  += data_diff[i].power_w;
+        data_merge->power_w += data_diff[i].power_w;
     }
     // Static
     data_merge->time    = data_diff[0].time;
@@ -327,10 +335,10 @@ int gpu_is_supported()
 
 int main(int argc, char *argv[])
 {
-    apinfo_t info = {0};
+    apinfo_t info     = {0};
     gpu_topology_t tp = {0};
-    gpu_devs_t *devs = NULL;
-    uint devs_count = 0;
+    gpu_devs_t *devs  = NULL;
+    uint devs_count   = 0;
 
     eards_connection();
     gpu_load(API_EARD);

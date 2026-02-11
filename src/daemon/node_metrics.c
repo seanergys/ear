@@ -91,7 +91,7 @@ int init_node_metrics_data(nm_t *id, nm_data_t *nm)
 
     cpufreq_data_alloc(&nm->freq_cpu, &nm->freq_cpu_diff);
     imcfreq_data_alloc(&nm->freq_imc, NULL);
-       temp_data_alloc(&nm->temp);
+    temp_data_alloc(&nm->temp);
 
     nm->freq_cpu_count = cpu_info.devs_count;
     nm->freq_imc_count = imc_info.devs_count;
@@ -160,7 +160,7 @@ int dispose_node_metrics(nm_t *id)
         return EAR_ERROR;
     }
     imcfreq_unload();
-       temp_unload();
+    temp_unload();
 
     return EAR_SUCCESS;
 }

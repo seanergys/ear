@@ -109,7 +109,7 @@ static state_t _msg_encrypt_buffer(const size_t buff_len, const unsigned char in
         memcpy(key, &sec_key, sizeof(uint32_t));
     }
 #endif
-    unsigned char iv[12]  = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+    unsigned char iv[12] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
 
     /* Init the cipher with they key and initial values */
     if (!EVP_EncryptInit_ex2(ctx, cipher, key, iv, NULL)) {
@@ -178,7 +178,7 @@ static state_t _msg_decrypt_buffer(const size_t buff_len, unsigned char in_buffe
         memcpy(key, &sec_key, sizeof(uint32_t));
     }
 #endif
-    unsigned char iv[12]  = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+    unsigned char iv[12] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
 
     /* Init the cipher with the key and initial values */
     if (!EVP_DecryptInit_ex2(ctx, cipher, key, iv, NULL)) {
@@ -1448,9 +1448,9 @@ void send_command_all(request_t command, cluster_conf_t *my_cluster_conf)
 
 request_header_t data_all_nodes(request_t *command, cluster_conf_t *my_cluster_conf, void **data)
 {
-    int i, j, k, rc, total_ranges, final_size = 0, default_type = EAR_ERROR, num_sfds = 0, offset_send = 0,
-                                   offset_read = 0;
-    int **ips, *ip_counts, *sfds;
+    int i = 0, j = 0, k = 0, rc = 0, total_ranges = 0, final_size = 0, default_type = EAR_ERROR, num_sfds = 0,
+        offset_send = 0, offset_read = 0;
+    int **ips = NULL, *ip_counts = NULL, *sfds = NULL;
     struct sockaddr_in temp;
     request_header_t head;
     char *temp_data, *all_data = NULL;

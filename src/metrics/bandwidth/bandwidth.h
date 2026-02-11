@@ -29,24 +29,24 @@ typedef struct bwidth_s {
 } bwidth_t;
 
 typedef struct bwidth_ops_s {
-    void    (*unload)    ();
-    void    (*get_info)  (apinfo_t *info);
-    state_t (*read)      (bwidth_t *b);
-    double  (*castob)    (double cas);
+    void (*unload)();
+    void (*get_info)(apinfo_t *info);
+    state_t (*read)(bwidth_t *b);
+    double (*castob)(double cas);
 } bwidth_ops_t;
 
 // API building scheme
-#define BWIDTH_F_LOAD(name)      void bwidth_##name##_load(topology_t *tp, bwidth_ops_t *ops, int options)
-#define BWIDTH_F_UNLOAD(name)    void bwidth_##name##_unload()
-#define BWIDTH_F_GET_INFO(name)  void bwidth_##name##_get_info(apinfo_t *info)
-#define BWIDTH_F_READ(name)      state_t bwidth_##name##_read(bwidth_t *b)
-#define BWIDTH_F_CASTOB(name)    double bwidth_##name##_castob(double cas)
+#define BWIDTH_F_LOAD(name)     void bwidth_##name##_load(topology_t *tp, bwidth_ops_t *ops, int options)
+#define BWIDTH_F_UNLOAD(name)   void bwidth_##name##_unload()
+#define BWIDTH_F_GET_INFO(name) void bwidth_##name##_get_info(apinfo_t *info)
+#define BWIDTH_F_READ(name)     state_t bwidth_##name##_read(bwidth_t *b)
+#define BWIDTH_F_CASTOB(name)   double bwidth_##name##_castob(double cas)
 
-#define BWIDTH_DEFINES(name)  \
-    BWIDTH_F_LOAD(name);      \
-    BWIDTH_F_UNLOAD(name);    \
-    BWIDTH_F_GET_INFO(name);  \
-    BWIDTH_F_READ(name);      \
+#define BWIDTH_DEFINES(name)                                                                                           \
+    BWIDTH_F_LOAD(name);                                                                                               \
+    BWIDTH_F_UNLOAD(name);                                                                                             \
+    BWIDTH_F_GET_INFO(name);                                                                                           \
+    BWIDTH_F_READ(name);                                                                                               \
     BWIDTH_F_CASTOB(name);
 
 void bwidth_load(topology_t *tp, int options);

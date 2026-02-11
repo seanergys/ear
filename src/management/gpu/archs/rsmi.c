@@ -167,7 +167,6 @@ state_t mgt_gpu_rsmi_dispose(ctx_t *c)
     return static_dispose(c, EAR_SUCCESS, NULL);
 }
 
-
 state_t mgt_gpu_rsmi_get_devices(ctx_t *c, gpu_devs_t **devs_in, uint *devs_count_in)
 {
     rsmi_get_devices(devs_in, devs_count_in);

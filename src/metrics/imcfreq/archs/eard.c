@@ -45,9 +45,9 @@ IMCFREQ_F_LOAD(eard)
     if (!devs_count) {
         return;
     }
-    apis_put(ops->unload  , imcfreq_eard_unload);
+    apis_put(ops->unload, imcfreq_eard_unload);
     apis_put(ops->get_info, imcfreq_eard_get_info);
-    apis_put(ops->read    , imcfreq_eard_read);
+    apis_put(ops->read, imcfreq_eard_read);
     debug("EARD loaded full API");
 }
 
