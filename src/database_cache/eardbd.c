@@ -153,6 +153,9 @@ static void init_general_configuration(int argc, char **argv, cluster_conf_t *co
         edb_error("while getting ear.conf path");
     }
 
+    verb2("reading '%s' configuration file", extra_buffer);
+    read_cluster_conf(extra_buffer, conf_clus);
+
     ear_create_tmp(conf_clus->install.dir_temp, conf_clus->ear_owner);
 
     // Output redirection
