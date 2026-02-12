@@ -8,21 +8,21 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
+// clang-format off
 // #define SHOW_DEBUGS 1
-
-#include <asm/unistd.h>
-#include <common/output/debug.h>
-#include <common/string_enhanced.h>
-#include <common/system/file.h>
-#include <common/system/folder.h>
-#include <common/utils/string.h>
 #include <errno.h>
-#include <metrics/common/file.h>
-#include <metrics/common/perf.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
 #include <sys/syscall.h>
-#include <unistd.h>
+#include <asm/unistd.h>
+#include <common/system/file.h>
+#include <common/output/debug.h>
+#include <common/utils/string.h>
+#include <common/system/folder.h>
+#include <common/string_enhanced.h>
+#include <metrics/common/file.h>
+#include <metrics/common/perf.h>
 
 // Future TO-DO:
 // - Add a control and static manager for already open events (duplicates are
@@ -89,9 +89,10 @@ state_t perf_open_cpu(perf_t *perf, perf_t *group, pid_t pid, uint type, ulong e
     }
     perf->attr.read_format = PERF_FORMAT_TOTAL_TIME_ENABLED | PERF_FORMAT_TOTAL_TIME_RUNNING | gp_flag;
     perf->fd               = syscall(__NR_perf_event_open, &perf->attr, pid, cpu, gp_fd, 0);
-    // Used in some cases
-    perf->scale = 1.0;
-#ifdef SHOW_DEBUGS
+    perf->pid   = pid;
+    perf->cpu   = cpu;
+    perf->scale = 1.0; // Used in some cases
+    #ifdef SHOW_DEBUGS
     debug("input: event 0x%lx, group %p and fd %d type %u size %u cpu %d group fd %d", event, group, perf->fd,
           perf->attr.type, perf->attr.size, cpu, gp_fd);
     if (perf->fd == -1) {

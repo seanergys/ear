@@ -8,44 +8,84 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-#ifndef _IO_H
-#define _IO_H
-#include <common/plugins.h>
-#include <common/states.h>
+#ifndef METRICS_IO_H
+#define METRICS_IO_H
+// clang-format off
+
 #include <common/types.h>
+#include <common/states.h>
+#include <common/hardware/topology.h>
+#include <metrics/common/apis.h>
 
-#define IO_PATH "/proc/%d/io"
-
-typedef struct io_data {
+typedef struct io_s {
+    pid_t  pid;
     ullong rchar;
     ullong wchar;
     ullong syscr;
     ullong syscw;
-    ullong read_bytes;
-    ullong write_bytes;
+    union {
+        ullong read_bytes;
+        ullong rstor;
+    };
+    union {
+        ullong write_bytes;
+        ullong wstor;
+    };
     ullong cancelled;
-} io_data_t;
+} io_t;
 
-/** Initializes io info for a given pid */
-state_t io_init(ctx_t *c, pid_t pid);
-/** Reads io data associated with the pid used in io_init and stores it in iodata. iodata must be a valib pointer */
-state_t io_read(ctx_t *c, io_data_t *iodata);
-/** Allocates memory for a io_data_t type */
-state_t io_alloc(io_data_t **iodata);
-/** Releases a previously allocated type with io_alloc */
-state_t io_free(io_data_t *iodata);
-/** Prints iodata in stdout */
-state_t io_print(io_data_t *iodata);
-/** Generates a string in msg with the content of iodata */
-state_t io_tostr(io_data_t *iodata, char *msg, size_t len);
-/** Computes the difference between two iodata readings */
-state_t io_diff(io_data_t *diff, io_data_t *iodata_init, io_data_t *iodata_end);
-/** Copies from src to dst */
-state_t io_copy(io_data_t *dst, io_data_t *src);
-/** Releases the context previously opened with io_init */
-state_t io_dispose(ctx_t *c);
-/** Accumulate data from \p src to \p dst. The
- * context \p c is for design purposes, but not used. */
-state_t io_accum(ctx_t *c, io_data_t *dst, io_data_t *src);
+#define io_data_t io_t
 
-#endif
+typedef struct io_ops_s {
+    void    (*unload)     ();
+    state_t (*update)     (uint option, void *value);
+    void    (*pids_clean) ();
+    void    (*get_info)   (apinfo_t *info);
+    state_t (*read)       (io_t *io);
+    void    (*data_diff)  (io_t *io2, io_t *io1, ulong *io_diff);
+} io_ops_t;
+
+#define IO_F_LOAD(name)       void io_##name##_load(topology_t *tp, io_ops_t *ops, int options)
+#define IO_F_UNLOAD(name)     void io_##name##_unload()
+#define IO_F_UPDATE(name)     state_t io_##name##_update(uint option, void *value)
+#define IO_F_GET_INFO(name)   void io_##name##_get_info(apinfo_t *info)
+#define IO_F_READ(name)       state_t io_##name##_read(io_t *io)
+#define IO_F_DATA_DIFF(name)  void io_##name##_data_diff(io_t *io2, io_t *io1, ulong *io_diff)
+
+#define IO_DEFINES(name)         \
+    IO_F_LOAD(name);             \
+    IO_F_UNLOAD(name);           \
+    IO_F_UPDATE(name);           \
+    IO_F_GET_INFO(name);         \
+    IO_F_READ(name);             \
+    IO_F_DATA_DIFF(name);
+
+void io_load(topology_t *tp, int options);
+
+void io_unload();
+
+state_t io_update(uint option, void *value);
+
+void io_get_info(apinfo_t *info);
+
+state_t io_read(io_t *io);
+
+state_t io_read_diff(io_t *io2, io_t *io1, io_t *io_diff);
+
+state_t io_read_copy(io_t *io2, io_t *io1, io_t *io_diff);
+// Frequency is KHz
+void io_data_diff(io_t *io2, io_t *io1, io_t *io_diff);
+
+// Helpers
+void io_data_alloc(io_t **io);
+
+void io_data_free(io_t **io);
+
+void io_data_copy(io_t *io2, io_t *io1);
+
+void io_data_print(io_t *io_diff, int fd);
+
+char *io_data_tostr(io_t *io_diff, char *buffer, size_t length);
+
+// clang-format on
+#endif // METRICS_IO_H

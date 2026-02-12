@@ -8,17 +8,17 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-// #define SHOW_DEBUGS 1
-
-#include <common/output/debug.h>
-#include <common/system/time.h>
-#include <metrics/flops/archs/dummy.h>
-#include <metrics/flops/archs/perf.h>
-#include <metrics/flops/flops.h>
-#include <pthread.h>
+// clang-format off
+//#define SHOW_DEBUGS 1
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
+#include <common/system/time.h>
+#include <common/output/debug.h>
+#include <metrics/flops/flops.h>
+#include <metrics/flops/archs/perf.h>
+#include <metrics/flops/archs/dummy.h>
 
 // 0       1       2      3      4      5      6      7      8
 // CPU-SP, CPU-DP, 128SP, 128DP, 256SP, 256DP, 512HP, 512SP, 512DP
@@ -54,6 +54,11 @@ void flops_unload()
         memset(&info, 0, sizeof(apinfo_t));
     }
     pthread_mutex_unlock(&lock);
+}
+
+state_t flops_update(uint option, void *value)
+{
+    return ops.update(option, value);
 }
 
 void flops_get_info(apinfo_t *info)
@@ -128,8 +133,11 @@ void flops_data_tostr(flops_t *flD, double gflops_tot, char *buffer, size_t leng
     int i;
 
     for (i = 0; i < info.devs_count; ++i) {
-        added += sprintf(&buffer[added], "DEV%d insts ", i);
-        added += sprintf(&buffer[added], "[%14llu %14llu] ", flD[i].f64, flD[i].d64);
+        if (flD[i].pid == 0) {
+            continue;
+        }
+        added += sprintf(&buffer[added], "dev%d pid%4d insts ", i, flD[i].pid);
+        added += sprintf(&buffer[added], "[%14llu %14llu] ", flD[i].f64 , flD[i].d64 );
         added += sprintf(&buffer[added], "[%14llu %14llu] ", flD[i].f128, flD[i].d128);
         added += sprintf(&buffer[added], "[%14llu %14llu] ", flD[i].f256, flD[i].d256);
         added += sprintf(&buffer[added], "[%14llu %14llu] ", flD[i].f512, flD[i].d512);
@@ -215,3 +223,66 @@ ullong *flops_help_toold(flops_t *flD, ullong *flops)
     }
     return flops;
 }
+
+#if TEST
+#include <time.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
+
+static topology_t tp;
+static apinfo_t   info;
+static flops_t   *t1;
+static flops_t   *t2;
+static flops_t   *tD;
+static double     tA;
+static pid_t      pid;
+static int        forked;
+
+static int count_fds()
+{
+    int dummy_fd = open("/dev/null", O_RDONLY);
+    close(dummy_fd);
+    return dummy_fd;
+}
+
+int main(int argc, char *argv[])
+{
+    int i, j, k = 0;
+
+    topology_init(&tp);
+reload:
+    dprintf(STDOUT_FILENO, "%d: Loading... (%d fds)\n", getpid(), count_fds());
+    flops_load(&tp, SCOPE_JOB | API_FREE);
+    flops_get_info(&info);
+    apinfo_tostr(&info);
+    dprintf(STDOUT_FILENO, "%d: Loaded %s (%s:%s), with %u devices and %d fds\n",
+        getpid(), info.api_str, info.scope_str, info.granularity_str, info.devs_count, count_fds());
+    flops_data_alloc(&t1);
+    flops_data_alloc(&t2);
+    flops_data_alloc(&tD);
+reread:
+    flops_read(t1);
+    sleep(2);
+    for (i = j = 0; i < 1000000; ++i) {
+        j += 1;
+    }
+    flops_data_print(t1, 0.0, STDOUT_FILENO);
+    flops_read_diff(t2, t1, tD, &tA);
+    flops_data_print(t2, 0.0, STDOUT_FILENO);
+    flops_data_print(tD, 0.0, STDOUT_FILENO);
+    flops_data_copy(t1, t2);
+    dprintf(STDOUT_FILENO, "%d: Printing...\n", getpid());
+    #if 1
+    if (k++ < 1) {
+        flops_update(UPD_PID_ADD, (void *) 7337);
+        flops_update(UPD_PID_ADD, (void *) 7327);
+    } else {
+        flops_update(UPD_PIDS_CLEAN, NULL);
+    }
+    #endif
+    goto reread;
+    return 0;
+}
+#endif

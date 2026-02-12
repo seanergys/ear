@@ -88,7 +88,7 @@
 #include <daemon/local_api/node_mgr.h>
 #include <daemon/shared_configuration.h>
 
-#include <metrics/io/io.h>
+#include <metrics/io/io_old.h>
 #include <metrics/proc/stat.h>
 
 #include <report/report.h>
