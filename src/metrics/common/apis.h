@@ -10,6 +10,7 @@
 
 #ifndef METRICS_COMMON_APIS_H
 #define METRICS_COMMON_APIS_H
+// clang-format off
 
 #include <common/types/generic.h>
 
@@ -20,6 +21,7 @@
 #define all_devs               -1
 #define all_cpus               all_devs
 #define all_cores              -2
+#define API_MASK               0xFF
 #define API_NONE               0
 #define API_FREE               API_NONE
 #define API_DUMMY              1
@@ -46,8 +48,8 @@
 #define API_ACPI_POWER         22
 #define API_GRACE_CPU          23
 #define API_HWMON              24
+#define API_FILE               25
 #define API_PVC_HWMON          30
-
 #define GRANULARITY_NONE       0
 #define GRANULARITY_DUMMY      1
 #define GRANULARITY_PROCESS    2
@@ -60,14 +62,19 @@
 #define GRANULARITY_CCD        8
 #define GRANULARITY_IMC        9
 #define GRANULARITY_SOCKET     10
+#define GRANULARITY_NODE       11
+#define SCOPE_MASK             0xF00
 #define SCOPE_NONE             0x000
 #define SCOPE_DUMMY            0x100 // ¿Isn't it useless?
 #define SCOPE_PROCESS          0x200
+#define SCOPE_JOB              0x400
 #define SCOPE_NODE             0x300
 #define O_NO_LOOP              0x1000
 #define MONITORING_MODE_STOP   -1
 #define MONITORING_MODE_IDLE   0
 #define MONITORING_MODE_RUN    1
+#define UPD_PID_ADD            1 //For update() functions
+#define UPD_PIDS_CLEAN         2
 
 //  8 bits for API        (256 possibilities)
 //  4 bits for SCOPE      (8 possibilities)
@@ -191,4 +198,5 @@ void apinfo_tostr(apinfo_t *info);
         p1 = p2;                                                                                                       \
     }
 
+// clang-format on
 #endif

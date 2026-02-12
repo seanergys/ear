@@ -10,9 +10,10 @@
 
 #ifndef METRICS_COMMON_PERF_H
 #define METRICS_COMMON_PERF_H
+// clang-format off
 
-#include <common/states.h>
 #include <common/types.h>
+#include <common/states.h>
 #include <linux/perf_event.h>
 
 // Options (combine with &)
@@ -21,13 +22,15 @@
 
 typedef struct perf_s {
     struct perf_event_attr attr;
-    void *group;
-    int fd;
+    void  *group;
+    int    fd;
     double scale;
-    char unit[16];       // Used in files
-    char event_name[64]; // Used in files
-    char pmu_name[64];   // Used in files
-    llong aux;
+    char   unit[16];       // Used in files
+    char   event_name[64]; // Used in files
+    char   pmu_name[64];   // Used in files
+    pid_t  pid;
+    int    cpu;
+    llong  aux;
 } perf_t;
 
 /* For per-process events */
@@ -50,4 +53,5 @@ state_t perf_close(perf_t *perf);
 
 state_t perf_read(perf_t *perf, llong *value);
 
+// clang-format on
 #endif // METRICS_COMMON_PERF_H
