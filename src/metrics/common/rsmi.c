@@ -10,13 +10,13 @@
 
 // #define SHOW_DEBUGS 1
 
-#include <unistd.h>
-#include <stdlib.h>
-#include <pthread.h>
-#include <common/states.h>
 #include <common/output/debug.h>
+#include <common/states.h>
 #include <common/system/symplug.h>
 #include <metrics/common/rsmi.h>
+#include <pthread.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 #ifndef RSMI_BASE
 #define RSMI_PATH ""
@@ -68,23 +68,23 @@ static const char *rsmi_names[] = {
 // fclk -> ¿df clock? It seems
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-static rsmi_t          rsmi;
-static void           *handler;
-static uint            handlers_count;
-static int             counter;
+static rsmi_t rsmi;
+static void *handler;
+static uint handlers_count;
+static int counter;
 
 static state_t library_load()
 {
-    #define _open_test(path)                                                                       \
-    debug("Openning %s", path);                                                                    \
-    if ((handler = plug_open2(path, (void **) &rsmi, rsmi_names, RSMI_N, RTLD_NOW | RTLD_LOCAL)) != NULL) { \
-        return EAR_SUCCESS;                                                                        \
-    } else {                                                                                       \
-        debug("Failed: %s", state_msg);                                                            \
+#define _open_test(path)                                                                                               \
+    debug("Openning %s", path);                                                                                        \
+    if ((handler = plug_open2(path, (void **) &rsmi, rsmi_names, RSMI_N, RTLD_NOW | RTLD_LOCAL)) != NULL) {            \
+        return EAR_SUCCESS;                                                                                            \
+    } else {                                                                                                           \
+        debug("Failed: %s", state_msg);                                                                                \
     }
 
-    #define open_test(path)          \
-    _open_test(path RSMI_LIB);       \
+#define open_test(path)                                                                                                \
+    _open_test(path RSMI_LIB);                                                                                         \
     _open_test(path RSMI_LIB ".1");
 
     _open_test(getenv("HACK_RSMI_FILE"));
@@ -122,17 +122,18 @@ static void library_destroy()
     memset(&rsmi, 0, sizeof(rsmi_t));
     dlclose(handler);
     handlers_count = 0U;
-    handler = NULL;
+    handler        = NULL;
 }
 
 state_t rsmi_open(rsmi_t *rsmi_in)
 {
     state_t s = EAR_SUCCESS;
-    #ifndef RSMI_BASE
+#ifndef RSMI_BASE
     debug("No RSMI_BASE path provided");
     return EAR_ERROR;
-    #endif
-    while (pthread_mutex_trylock(&lock));
+#endif
+    while (pthread_mutex_trylock(&lock))
+        ;
     if (counter) {
         ++counter;
         goto fini;
@@ -178,14 +179,14 @@ void rsmi_get_devices(gpu_devs_t **devs, uint *devs_count)
     }
     *devs = calloc(handlers_count, sizeof(gpu_devs_t));
     for (i = 0; i < handlers_count; ++i) {
-        (*devs)[i].index            =  i;
+        (*devs)[i].index            = i;
         (*devs)[i].index_device     = -1;
-        (*devs)[i].is_readable      =  1;
-        (*devs)[i].is_subdevice     =  0;
-        (*devs)[i].has_subdevices   =  0;
-        (*devs)[i].subdevices_count =  0;
+        (*devs)[i].is_readable      = 1;
+        (*devs)[i].is_subdevice     = 0;
+        (*devs)[i].has_subdevices   = 0;
+        (*devs)[i].subdevices_count = 0;
         if (rsmi.get_serial(i, serial, 32) == RSMI_STATUS_SUCCESS) {
-            (*devs)[i].serial       = (ullong) atoll(serial);
+            (*devs)[i].serial = (ullong) atoll(serial);
         }
     }
 }

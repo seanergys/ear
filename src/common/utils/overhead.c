@@ -11,14 +11,14 @@
 // #define SHOW_DEBUGS 1
 
 #define _GNU_SOURCE
-#include <string.h>
-#include <stdlib.h>
-#include <unistd.h>
 #include <common/output/debug.h>
 #include <common/output/verbose.h>
 #include <common/system/time.h>
 #include <common/utils/overhead.h>
 #include <common/utils/strtable.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 #define N_QUEUE 256
 
@@ -55,11 +55,11 @@ void overhead_getwall(timestamp *ts)
 void overhead_subscribe(const char *description, uint *id)
 {
     char *environment_control = NULL;
-    int enable = 0;
+    int enable                = 0;
 
-    #if !ENABLE_OVERHEAD
+#if !ENABLE_OVERHEAD
     return;
-    #endif
+#endif
 
     if (!init) {
         // Formatting report table
@@ -83,9 +83,9 @@ void overhead_subscribe(const char *description, uint *id)
 
 void overhead_start(uint id)
 {
-    #if !ENABLE_OVERHEAD
+#if !ENABLE_OVERHEAD
     return;
-    #endif
+#endif
     if (!queue[id].enabled) {
         return;
     }
@@ -98,9 +98,9 @@ void overhead_stop(uint id)
     double wall;
     double cpu;
 
-    #if !ENABLE_OVERHEAD
+#if !ENABLE_OVERHEAD
     return;
-    #endif
+#endif
     if (!queue[id].enabled) {
         return;
     }
@@ -112,20 +112,23 @@ void overhead_stop(uint id)
     // Accums
     queue[id].call_count += 1;
     queue[id].wall_accum += wall;
-    queue[id].wall_last   = wall;
-    queue[id].cpu_accum  += cpu;
-    queue[id].cpu_last    = cpu;
+    queue[id].wall_last = wall;
+    queue[id].cpu_accum += cpu;
+    queue[id].cpu_last = cpu;
     // Min max
-    if (queue[id].wall_min == 0)   queue[id].wall_min = wall;
-    if (wall > queue[id].wall_max) queue[id].wall_max = wall;
-    if (wall < queue[id].wall_min) queue[id].wall_min = wall;
+    if (queue[id].wall_min == 0)
+        queue[id].wall_min = wall;
+    if (wall > queue[id].wall_max)
+        queue[id].wall_max = wall;
+    if (wall < queue[id].wall_min)
+        queue[id].wall_min = wall;
 }
 
 void overhead_report(int print_header)
 {
-    #if !ENABLE_OVERHEAD
+#if !ENABLE_OVERHEAD
     return;
-    #endif
+#endif
     double global_wall_secs;
     double global_cpu_secs;
     double wall_last_msecs;
@@ -157,8 +160,7 @@ void overhead_report(int print_header)
     if (print_header) {
         overhead_print_header();
     }
-    tprintf2(&st, "-||%0.3lf s||-||-||-||-||-|||%0.3lf s||-||-|||global",
-        global_wall_secs, global_cpu_secs);
+    tprintf2(&st, "-||%0.3lf s||-||-||-||-||-|||%0.3lf s||-||-|||global", global_wall_secs, global_cpu_secs);
     for (id = 0; id < queue_last; ++id) {
         if (!queue[id].enabled) {
             continue;

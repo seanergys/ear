@@ -8,32 +8,38 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
+// clang-format off
 // #define SHOW_DEBUGS 1
-
 #include <common/output/debug.h>
 #include <metrics/cpi/archs/dummy.h>
 
 CPI_F_LOAD(dummy)
 {
-    apis_put(ops->unload  , cpi_dummy_unload  );
-    apis_put(ops->get_info, cpi_dummy_get_info);
-    apis_put(ops->read    , cpi_dummy_read    );
+    apis_put(ops->unload    , cpi_dummy_unload  );
+    apis_put(ops->update,     cpi_dummy_update  );
+    apis_put(ops->get_info  , cpi_dummy_get_info);
+    apis_put(ops->read      , cpi_dummy_read    );
 }
 
-void cpi_dummy_unload()
+CPI_F_UNLOAD(dummy)
 {
 }
 
-void cpi_dummy_get_info(apinfo_t *info)
+CPI_F_UPDATE(dummy)
+{
+    return EAR_SUCCESS;
+}
+
+CPI_F_GET_INFO(dummy)
 {
     info->api         = API_DUMMY;
-    info->devs_count  = 1;
-    info->scope       = SCOPE_PROCESS;
+    info->scope       = SCOPE_DUMMY;
     info->granularity = GRANULARITY_PROCESS;
+    info->devs_count  = 1;
 }
 
-state_t cpi_dummy_read(cpi_t *ci)
+CPI_F_READ(dummy)
 {
-    memset(ci, 0, sizeof(cpi_t));
+    memset(cpi, 0, sizeof(cpi_t));
     return EAR_SUCCESS;
 }

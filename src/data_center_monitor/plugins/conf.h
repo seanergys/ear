@@ -11,9 +11,9 @@
 #ifndef UP_CONFIG_H
 #define UP_CONFIG_H
 
-#include <metrics/metrics.h>
 #include <common/system/plugin_manager.h>
 #include <common/types/configuration/cluster_conf.h>
+#include <metrics/metrics.h>
 
 typedef struct conf_s {
     char hostname[256]; // Alias

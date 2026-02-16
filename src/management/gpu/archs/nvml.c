@@ -10,11 +10,11 @@
 
 // #define SHOW_DEBUGS 1
 
-#include <stdlib.h>
 #include <common/output/debug.h>
 #include <common/system/symplug.h>
 #include <management/gpu/archs/nvml.h>
 #include <metrics/common/nvml.h>
+#include <stdlib.h>
 
 // clang-format off
 static nvml_t        nvml;
@@ -36,7 +36,7 @@ static state_t static_dispose(state_t s, char *error)
 {
     int d;
 
-    #define static_free(v)                                                                                                 \
+#define static_free(v)                                                                                                 \
     if (v != NULL) {                                                                                                   \
         free(v);                                                                                                       \
         v = NULL;                                                                                                      \
@@ -63,8 +63,8 @@ static state_t static_init()
     uint c1, c2, aux;
     int d, m, g;
 
-    // Allocation
-    #define static_alloc(v, l, s)                                                                                          \
+// Allocation
+#define static_alloc(v, l, s)                                                                                          \
     if ((v = calloc(l, s)) == NULL) {                                                                                  \
         return static_dispose(EAR_ERROR, strerror(errno));                                                             \
     }
@@ -90,8 +90,8 @@ static state_t static_init()
             return static_dispose(EAR_ERROR, myErrorString(r));
         }
         power_max_default[d] = ((ulong) aux) / 1000LU;
-        power_max[d]         = ((ulong) c2)  / 1000LU;
-        power_min[d]         = ((ulong) c1)  / 1000LU;
+        power_max[d]         = ((ulong) c2) / 1000LU;
+        power_min[d]         = ((ulong) c1) / 1000LU;
         debug("D%d default: %lu W", d, power_max_default[d]);
         debug("D%d new max: %lu W", d, power_max[d]);
         debug("D%d new min: %lu W", d, power_min[d]);

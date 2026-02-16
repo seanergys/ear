@@ -8,6 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
+/* clang-format off */
 #ifndef METRICS_COMMON_ONEAPI_H
 #define METRICS_COMMON_ONEAPI_H
 
@@ -239,5 +240,6 @@ void oneapi_get_devices(gpu_devs_t **devs, uint *devs_count);
 char *oneapi_strerror(ze_result_t z);
 
 int oneapi_is_privileged();
+/* clang-format on */
 
 #endif // METRICS_COMMON_ONEAPI_H

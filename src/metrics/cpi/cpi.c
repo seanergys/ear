@@ -8,8 +8,8 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
+// clang-format off
 //#define SHOW_DEBUGS 1
-
 #include <string.h>
 #include <pthread.h>
 #include <common/output/debug.h>
@@ -20,8 +20,8 @@
 #include <metrics/cpi/archs/dummy.h>
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-static cpi_ops_t       ops;
-static apinfo_t        info;
+static cpi_ops_t ops;
+static apinfo_t info;
 
 void cpi_load(topology_t *tp, int options)
 {
@@ -44,13 +44,19 @@ leave:
 
 void cpi_unload()
 {
-    while (pthread_mutex_trylock(&lock));
+    while (pthread_mutex_trylock(&lock))
+        ;
     if (info.api != API_NONE) {
         ops.unload();
         memset(&ops, 0, sizeof(cpi_ops_t));
         memset(&info, 0, sizeof(apinfo_t));
     }
     pthread_mutex_unlock(&lock);
+}
+
+state_t cpi_update(uint option, void *value)
+{
+    return ops.update(option, value);
 }
 
 void cpi_get_info(apinfo_t *info)
@@ -94,9 +100,9 @@ void cpi_data_diff(cpi_t *ci2, cpi_t *ci1, cpi_t *ciD, double *cpis_avg)
     double aux = 0.0;
     int i;
 
-    // clang-format off
     memset(ciD, 0, sizeof(cpi_t)*info.devs_count);
     for (i = 0; i < info.devs_count; ++i) {
+        ciD[i].pid                 = ci1[i].pid;
         ciD[i].instructions        = overflow_zeros_u64(ci2[i].instructions       , ci1[i].instructions       );
         ciD[i].cycles              = overflow_zeros_u64(ci2[i].cycles             , ci1[i].cycles             );
         ciD[i].stalls.fetch_decode = overflow_zeros_u64(ci2[i].stalls.fetch_decode, ci1[i].stalls.fetch_decode);
@@ -114,7 +120,6 @@ void cpi_data_diff(cpi_t *ci2, cpi_t *ci1, cpi_t *ciD, double *cpis_avg)
     #if SHOW_DEBUGS
     cpi_data_print(ciD, aux, fderr);
     #endif
-    // clang-format on
 }
 
 void cpi_data_alloc(cpi_t **ci)
@@ -139,7 +144,7 @@ void cpi_data_copy(cpi_t *dst, cpi_t *src)
 
 void cpi_data_print(cpi_t *ci, double cpis_avg, int fd)
 {
-    char buffer[SZ_BUFFER];
+    char buffer[SZ_BUFFER]={0};
     cpi_data_tostr(ci, cpis_avg, buffer, SZ_BUFFER);
     dprintf(fd, "%s", buffer);
 }
@@ -148,8 +153,14 @@ void cpi_data_tostr(cpi_t *ci, double cpis_avg, char *buffer, size_t length)
 {
     int i, b;
     for (i = b = 0; i < info.devs_count; ++i) {
-        b += sprintf(&buffer[b], "DEV%d %014llu ins, %014llu cycles, %0.2lf cpi, %llu-%llu-%llu stalls\n",
-            i, ci[i].instructions, ci[i].cycles, ci[i].cpi,
+        if (ci[i].pid == 0) {
+            continue;
+        }
+        b += snprintf(&buffer[b], length-b,
+            "dev%d "
+            "%014llu ins, %014llu cycles, %0.2lf cpi, "
+            "%llu-%llu-%llu stalls\n", i,
+            ci[i].instructions, ci[i].cycles, ci[i].cpi,
             ci[i].stalls.fetch_decode,
             ci[i].stalls.resources,
             ci[i].stalls.memory);

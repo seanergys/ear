@@ -17,23 +17,23 @@
 
 // #define SHOW_DEBUGS 1
 
+#include <common/output/debug.h>
 #include <fcntl.h>
-#include <unistd.h>
+#include <metrics/bandwidth/archs/intel143.h>
+#include <metrics/common/pci.h>
 #include <stdlib.h>
 #include <sys/stat.h>
-#include <common/output/debug.h>
-#include <metrics/common/pci.h>
-#include <metrics/bandwidth/archs/intel143.h>
+#include <unistd.h>
 
 // Document: SPR Uncore Perfmon Programming Guide
 static pci_t *pcis;
-static uint   pcis_count;
-static uint   imc_maps_count;
-static uint   imc_ctrs_count;
+static uint pcis_count;
+static uint imc_maps_count;
+static uint imc_ctrs_count;
 static char **imc_maps;
 // Table 1-12. Uncore Performance Monitoring Registers
 static ushort sap_ids[2] = {0x3251, 0x00};
-static char  *sap_dfs[2]  = {"00.1", NULL};
+static char *sap_dfs[2]  = {"00.1", NULL};
 
 static void close_all()
 {
@@ -119,9 +119,9 @@ BWIDTH_F_LOAD(intel143)
         return;
     }
     // In the future it can be initialized in read only mode
-    apis_put(ops->unload  , bwidth_intel143_unload);
+    apis_put(ops->unload, bwidth_intel143_unload);
     apis_put(ops->get_info, bwidth_intel143_get_info);
-    apis_put(ops->read    , bwidth_intel143_read);
+    apis_put(ops->read, bwidth_intel143_read);
 }
 
 BWIDTH_F_UNLOAD(intel143)

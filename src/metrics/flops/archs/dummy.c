@@ -8,8 +8,8 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
+// clang-format off
 // #define SHOW_DEBUGS 1
-
 #include <string.h>
 #include <common/output/debug.h>
 #include <metrics/flops/archs/dummy.h>
@@ -17,20 +17,26 @@
 FLOPS_F_LOAD(dummy)
 {
     apis_put(ops->unload   , flops_dummy_unload);
+    apis_put(ops->update   , flops_dummy_update);
     apis_put(ops->get_info , flops_dummy_get_info);
     apis_put(ops->read     , flops_dummy_read);
     apis_put(ops->data_diff, flops_dummy_data_diff);
     apis_put(ops->internals_tostr, flops_dummy_internals_tostr);
 }
+
 FLOPS_F_UNLOAD(dummy)
 {
+}
 
+FLOPS_F_UPDATE(dummy)
+{
+    return EAR_SUCCESS;
 }
 
 FLOPS_F_GET_INFO(dummy)
 {
     info->api         = API_DUMMY;
-    info->scope       = SCOPE_PROCESS;
+    info->scope       = SCOPE_DUMMY;
     info->granularity = GRANULARITY_PROCESS;
     info->devs_count  = 1;
     info->bits        = 0;

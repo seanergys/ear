@@ -8,16 +8,16 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
-#include <stdlib.h>
+#include <common/config/config_install.h>
 #include <common/output/debug.h>
 #include <common/utils/serial_buffer.h>
-#include <common/config/config_install.h>
 #include <daemon/local_api/eard_api_rpc.h>
 #include <metrics/gpu/archs/eard.h>
+#include <stdlib.h>
 
-static uint           eard_api;
+static uint eard_api;
 static gpu_topology_t tp_root;
 static gpu_topology_t tp_user;
 static gpu_topology_t tp_root_rd; // readable devices only
@@ -76,11 +76,11 @@ GPU_F_LOAD(eard)
     debug("TP user (ALL) has %d devs", tp_user.devs_count);
     debug("TP user (RD ) has %d devs", tp_user_rd.devs_count);
     // If something already loaded
-    apis_put(ops->unload      , gpu_eard_unload      );
-    apis_put(ops->get_info    , gpu_eard_get_info    );
+    apis_put(ops->unload, gpu_eard_unload);
+    apis_put(ops->get_info, gpu_eard_get_info);
     apis_put(ops->topology_get, gpu_eard_topology_get);
-    apis_set(ops->read        , gpu_eard_read        );
-    apis_set(ops->read_raw    , gpu_eard_read_raw    );
+    apis_set(ops->read, gpu_eard_read);
+    apis_set(ops->read_raw, gpu_eard_read_raw);
     debug("Loaded EARD");
 }
 
@@ -136,9 +136,9 @@ static state_t static_read(uint call, gpu_t *data)
 GPU_F_READ(eard)
 {
     state_t s = static_read(RPC_MET_GPU_GET_METRICS, d);
-    #if SHOW_DEBUGS
+#if SHOW_DEBUGS
     gpu_data_print(d, debug_channel);
-    #endif
+#endif
     return s;
 }
 
@@ -154,9 +154,9 @@ int gpu_eard_is_supported()
     // This is an independent function. It works always, with independence of the load
     // of the EARD GPU API, although is using RPCs to the EAR Daemon.
     if (!eard_api || !eards_connected()) {
-        #if FAKE_EAR_NOT_INSTALLED
+#if FAKE_EAR_NOT_INSTALLED
         verbose(0, " FAKE_EAR_NOT_INSTALLED supported %u", supported);
-        #endif
+#endif
         return supported;
     }
     if (!called) {

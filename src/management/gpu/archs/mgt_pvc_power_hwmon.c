@@ -59,7 +59,7 @@ static void init_pv_freqs()
         exit(0);
     }
     for (uint dv = 0; dv < pvc_gpus_num_devices; dv++) {
-        gpu_clock_list[dv] = calloc(1, sizeof(uint));
+        gpu_clock_list[dv] = calloc(1, sizeof(ulong));
         if (gpu_clock_list[dv] == NULL) {
             verbose(0, "Error not enough memory");
             exit(0);
@@ -145,7 +145,8 @@ static state_t mgt_pvc_hwmon_static_init(ctx_t *c)
 
     debug("mgt_pvc_hwmon_init asking for init");
 
-    while (pthread_mutex_trylock(&lock));
+    while (pthread_mutex_trylock(&lock))
+        ;
     if (pvc_hwmon_meter_initialized) {
         pthread_mutex_unlock(&lock);
         return EAR_SUCCESS;

@@ -11,8 +11,8 @@
 #ifndef METRICS_COMMON_RSMI_H
 #define METRICS_COMMON_RSMI_H
 
-#include <common/types.h>
 #include <common/states.h>
+#include <common/types.h>
 #include <metrics/gpu/gpu.h>
 #ifdef RSMI_BASE
 #include <rocm_smi/rocm_smi.h>

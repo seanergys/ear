@@ -254,13 +254,13 @@ state_t mgt_imcfreq_intel63_load(topology_t *tp, mgt_imcfreq_ops_t *ops, int ear
     if (state_fail(s = mgt_imcfreq_intel63_build_list(tp, eard, conf))) {
         return s;
     }
-    replace_ops(ops->init                   , mgt_imcfreq_intel63_init);
-    replace_ops(ops->dispose                , mgt_imcfreq_intel63_dispose);
-    replace_ops(ops->get_available_list     , mgt_imcfreq_intel63_get_available_list);
-    replace_ops(ops->get_current_list       , mgt_imcfreq_intel63_get_current_list);
-    replace_ops(ops->set_current_list       , mgt_imcfreq_intel63_set_current_list);
-    replace_ops(ops->set_current            , mgt_imcfreq_intel63_set_current);
-    replace_ops(ops->set_auto               , mgt_imcfreq_intel63_set_auto);
+    replace_ops(ops->init, mgt_imcfreq_intel63_init);
+    replace_ops(ops->dispose, mgt_imcfreq_intel63_dispose);
+    replace_ops(ops->get_available_list, mgt_imcfreq_intel63_get_available_list);
+    replace_ops(ops->get_current_list, mgt_imcfreq_intel63_get_current_list);
+    replace_ops(ops->set_current_list, mgt_imcfreq_intel63_set_current_list);
+    replace_ops(ops->set_current, mgt_imcfreq_intel63_set_current);
+    replace_ops(ops->set_auto, mgt_imcfreq_intel63_set_auto);
     replace_ops(ops->get_current_ranged_list, mgt_imcfreq_intel63_get_current_ranged_list);
     replace_ops(ops->set_current_ranged_list, mgt_imcfreq_intel63_set_current_ranged_list);
     return s;
@@ -356,8 +356,8 @@ static state_t set_current_list(uint *max_list, uint *min_list)
     pstate_t buffer_min[128];
     ullong aux_max;
     ullong aux_min;
-    int max_valid;
-    int min_valid;
+    int max_valid = 0;
+    int min_valid = 0;
     state_t r;
     int i;
 
@@ -369,20 +369,30 @@ static state_t set_current_list(uint *max_list, uint *min_list)
     }
     for (i = 0; i < tp_static.cpu_count; ++i) {
         // Valid ranks
-        if (max_list != NULL) max_valid = (max_list[i] < available_count);
-        if (min_list != NULL) min_valid = (min_list[i] < available_count);
+        if (max_list != NULL)
+            max_valid = (max_list[i] < available_count);
+        if (min_list != NULL)
+            min_valid = (min_list[i] < available_count);
         // By default, if ps_auto or not valid
         aux_max = max_khz;
         aux_min = min_khz;
         // Else
-             if (max_list    == NULL      ) { aux_max = buffer_max[i].khz; }
-        else if (max_list[i] == ps_nothing) { aux_max = buffer_max[i].khz; }
-        else if (max_valid                ) { aux_max = available_list[max_list[i]].khz; }
-        else {}
-             if (min_list    == NULL      ) { aux_min = buffer_min[i].khz; }
-        else if (min_list[i] == ps_nothing) { aux_min = buffer_min[i].khz; }
-        else if (min_valid                ) { aux_min = available_list[min_list[i]].khz; }
-        else {}
+        if (max_list == NULL) {
+            aux_max = buffer_max[i].khz;
+        } else if (max_list[i] == ps_nothing) {
+            aux_max = buffer_max[i].khz;
+        } else if (max_valid) {
+            aux_max = available_list[max_list[i]].khz;
+        } else {
+        }
+        if (min_list == NULL) {
+            aux_min = buffer_min[i].khz;
+        } else if (min_list[i] == ps_nothing) {
+            aux_min = buffer_min[i].khz;
+        } else if (min_valid) {
+            aux_min = available_list[min_list[i]].khz;
+        } else {
+        }
         debug("IMC%d, setting frequency to (%llu, %llu)", i, aux_max, aux_min);
         if ((r = intel63_write(tp_static.cpus[i].id, aux_max, aux_min))) {
             return r;
@@ -422,11 +432,11 @@ state_t mgt_imcfreq_intel63_get_current_ranged_list(ctx_t *c, pstate_t *ps_min_l
 
 state_t mgt_imcfreq_intel63_set_current_ranged_list(ctx_t *c, uint *id_min_list, uint *id_max_list)
 {
-    #if SHOW_DEBUGS
+#if SHOW_DEBUGS
     int i;
     for (i = 0; i < tp_static.cpu_count; ++i) {
         debug("IMC%d: setting frequency from %u to %u", i, id_min_list[i], id_max_list[i]);
     }
-    #endif
+#endif
     return set_current_list(id_min_list, id_max_list);
 }

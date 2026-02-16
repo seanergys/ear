@@ -10,9 +10,6 @@
 
 // #define SHOW_DEBUGS 1
 
-#include <stdlib.h>
-#include <signal.h>
-#include <pthread.h>
 #include <common/output/debug.h>
 #include <common/output/verbose.h>
 #include <metrics/common/apis.h>
@@ -21,14 +18,18 @@
 #include <metrics/imcfreq/archs/eard.h>
 #include <metrics/imcfreq/archs/intel63.h>
 #include <metrics/imcfreq/imcfreq.h>
+#include <pthread.h>
+#include <signal.h>
+#include <stdlib.h>
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-static apinfo_t        info;
-static imcfreq_ops_t   ops;
+static apinfo_t info;
+static imcfreq_ops_t ops;
 
 void imcfreq_load(topology_t *tp, int options)
 {
-    while (pthread_mutex_trylock(&lock));
+    while (pthread_mutex_trylock(&lock))
+        ;
     if (info.api != API_NONE) {
         goto done;
     }
@@ -47,7 +48,8 @@ done:
 
 void imcfreq_unload()
 {
-    while (pthread_mutex_trylock(&lock));
+    while (pthread_mutex_trylock(&lock))
+        ;
     if (ops.unload != NULL) {
         ops.unload();
         memset(&ops, 0, sizeof(imcfreq_ops_t));

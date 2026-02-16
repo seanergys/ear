@@ -37,15 +37,15 @@
 #include <daemon/remote_api/dynamic_configuration.h>
 #include <daemon/shared_configuration.h>
 #include <management/management.h>
-#include <metrics/metrics.h>
-#include <metrics/gpu/gpu.h>
-#include <metrics/common/msr.h>
-#include <metrics/energy/cpu.h>
-#include <metrics/cpufreq/cpufreq.h>
-#include <metrics/imcfreq/imcfreq.h>
-#include <metrics/energy/energy_node.h>
 #include <metrics/bandwidth/bandwidth.h>
+#include <metrics/common/msr.h>
+#include <metrics/cpufreq/cpufreq.h>
+#include <metrics/energy/cpu.h>
+#include <metrics/energy/energy_node.h>
 #include <metrics/energy_cpu/energy_cpu.h>
+#include <metrics/gpu/gpu.h>
+#include <metrics/imcfreq/imcfreq.h>
+#include <metrics/metrics.h>
 #include <metrics/temperature/temperature.h>
 #include <report/report.h>
 #if USE_GPUS
@@ -82,6 +82,7 @@ extern char nodename[MAX_PATH_SIZE];
 extern int eard_must_exit;
 extern ulong eard_max_freq;
 extern pthread_barrier_t setup_barrier;
+extern cluster_conf_t my_cluster_conf;
 extern int num_uncore_counters; // Me extraña que esto funcione.
 static ulong node_energy_datasize;
 static edata_t node_energy_data;
@@ -107,13 +108,14 @@ extern char **environ;
 
 void services_init(topology_t *tp)
 {
-    management_load(&man, tp, API_FREE);
+
+    management_load(&man, tp, NULL);
 
     cpufreq_load(tp, NO_EARD);
     imcfreq_load(tp, NO_EARD);
-     bwidth_load(tp, NO_EARD);
-       temp_load(tp, NO_EARD);
-        gpu_load(NO_EARD);
+    bwidth_load(tp, NO_EARD);
+    temp_load(tp, NO_EARD);
+    gpu_load(NO_EARD);
 
     // This has to be before allocating space. Because here we are using the
     // miscellaneous void pointers in apinfo_t to save some data, and some APIs
@@ -123,9 +125,9 @@ void services_init(topology_t *tp)
 
     cpufreq_data_alloc((cpufreq_t **) &met_read.cpu, empty);
     imcfreq_data_alloc((imcfreq_t **) &met_read.imc, empty);
-     bwidth_data_alloc((bwidth_t  **) &met_read.ram);
-       temp_data_alloc(&met_read.tmp);
-        gpu_data_alloc(&met_read.gpu);
+    bwidth_data_alloc((bwidth_t **) &met_read.ram);
+    temp_data_alloc(&met_read.tmp);
+    gpu_data_alloc(&met_read.gpu);
 
     gpu_get_devices((gpu_devs_t **) &met.gpu.list1, &met.gpu.list1_count);
 
@@ -173,18 +175,18 @@ void services_print(topology_t *tp, cluster_conf_t *cluster_conf)
     sprintf(&buffer[strlen(buffer)], "MAX_SOCKETS  : %u\n", MAX_SOCKETS_SUPPORTED);
     sprintf(&buffer[strlen(buffer)], "MAX_GPUS     : %u\n", MAX_GPUS_SUPPORTED);
 
-    scprintf_init  (&ss, 44, 140, -1, '#'); // 0 to 49, 0 to 179
-    scprintf_divide(&ss, (int[]) { 1,  1}, (int[]) {20,  74}, &id_topology, "topology");
-    scprintf_divide(&ss, (int[]) { 1, 76}, (int[]) {12, 137}, &id_logo    , "ear-logo");
-    scprintf_divide(&ss, (int[]) {14, 76}, (int[]) {33, 137}, &id_conf    , "configuration");
-    scprintf_divide(&ss, (int[]) {22,  1}, (int[]) {33,  74}, &id_metrics , "metrics");
-    scprintf_divide(&ss, (int[]) {35,  1}, (int[]) {42,  74}, &id_manages , "management");
+    scprintf_init(&ss, 44, 140, -1, '#'); // 0 to 49, 0 to 179
+    scprintf_divide(&ss, (int[]) {1, 1}, (int[]) {20, 74}, &id_topology, "topology");
+    scprintf_divide(&ss, (int[]) {1, 76}, (int[]) {12, 137}, &id_logo, "ear-logo");
+    scprintf_divide(&ss, (int[]) {14, 76}, (int[]) {33, 137}, &id_conf, "configuration");
+    scprintf_divide(&ss, (int[]) {22, 1}, (int[]) {33, 74}, &id_metrics, "metrics");
+    scprintf_divide(&ss, (int[]) {35, 1}, (int[]) {42, 74}, &id_manages, "management");
 
-    scsprintf(&ss, id_logo    , 0, 0, logo);
-    scsprintf(&ss, id_conf    , 0, 1, buffer);
+    scsprintf(&ss, id_logo, 0, 0, logo);
+    scsprintf(&ss, id_conf, 0, 1, buffer);
     scsprintf(&ss, id_topology, 0, 1, topology_tostr(tp, buffer, 1024));
-    scsprintf(&ss, id_metrics , 0, 1, metrics_info_tostr(&met, buffer));
-    scsprintf(&ss, id_manages , 0, 1, management_info_tostr(&man, buffer));
+    scsprintf(&ss, id_metrics, 0, 1, metrics_info_tostr(&met, buffer));
+    scsprintf(&ss, id_manages, 0, 1, management_info_tostr(&man, buffer));
 
     dprintf(verb_channel, "%s", scprintf(&ss));
     dprintf(verb_channel, "# Log:                                                                                      "
@@ -492,15 +494,15 @@ int services_mgt_imcfreq(eard_head_t *head, int req_fd, int ack_fd)
 
 int services_mgt_gpu(eard_head_t *head, int fd_req, int fd_ack)
 {
-    static gpu_topology_t tp       = {0};
-    uint                  rpc_id   = head->req_service;
-    state_t               ret_s    = EAR_SUCCESS;
-    char                 *ret_data = NULL;
-    size_t                ret_size = 0;
-    size_t                rpc_size = head->size;
-    uint                  u1       = 0U;
-    ulong               **p1       = NULL;
-    uint                 *p2       = NULL;
+    static gpu_topology_t tp = {0};
+    uint rpc_id              = head->req_service;
+    state_t ret_s            = EAR_SUCCESS;
+    char *ret_data           = NULL;
+    size_t ret_size          = 0;
+    size_t rpc_size          = head->size;
+    uint u1                  = 0U;
+    ulong **p1               = NULL;
+    uint *p2                 = NULL;
 
     switch (rpc_id) {
         case RPC_MGT_GPU_GET_API:
@@ -509,10 +511,10 @@ int services_mgt_gpu(eard_head_t *head, int fd_req, int fd_ack)
             break;
 #if USE_GPUS
         case RPC_MGT_GPU_GET_DEVICES:
-            u1 = 0U; // Returning 0 makes EARD API to fail but not crash
+            u1        = 0U; // Returning 0 makes EARD API to fail but not crash
             state_msg = "RPC_MGT_GPU_GET_DEVICES is disabled";
-            ret_data = (char *) &u1;
-            ret_size = sizeof(uint);
+            ret_data  = (char *) &u1;
+            ret_size  = sizeof(uint);
             break;
         case RPC_MGT_GPU_TOPOLOGY_GET:
             if (tp.devs_count == 0) {
@@ -911,13 +913,25 @@ void create_global_connector(char *ear_tmp, char *nodename)
     sprintf(ear_commreq_global, "%s/.ear_comm.globalreq", ear_tmp);
     verbose(VEARD_LAPI, "Global connector placed at %s", ear_commreq_global);
     // ear_comreq files will be used to send requests from the library to the eard
+    /* Try to create anyway */
     if (mknod(ear_commreq_global, S_IFIFO | S_IRUSR | S_IRGRP | S_IWUSR | S_IWGRP | S_IROTH | S_IWOTH, 0) < 0) {
         if (errno != EEXIST) {
             error("Error creating ear global communicator for requests %s\n", strerror(errno));
+        } else {
+            /* Testing file */
+            struct stat commreq_stat;
+            fstatat(-1, ear_commreq_global, &commreq_stat, AT_SYMLINK_NOFOLLOW);
+            if (!S_ISFIFO(commreq_stat.st_mode)) {
+                error("Error creating ear global communicator for requests at %s, File exists and it is not a pipe",
+                      ear_commreq_global);
+            }
         }
     }
     if (chmod(ear_commreq_global, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH) < 0) {
         error("Error setting privileges for eard-earl connection");
+    }
+    if (state_fail(ear_chown_path(ear_commreq_global, my_cluster_conf.ear_owner))) {
+        error("Error setting owner for eard-earl connection");
     }
     global_req_fd = open(ear_commreq_global, O_RDWR);
     if (global_req_fd < 0) {
@@ -1043,12 +1057,14 @@ void eard_close_comm(int req_fd, int ack_fd)
         verbose(VEARD_LAPI, "Cleaning files for job %lu/%lu/%lu", jid, sid, lid);
         verbose(VEARD_LAPI, "Deleting %s", ear_commack);
         ret = unlink(ear_commack);
-        if (ret != ENOENT)
+        if (ret < 0 && errno != ENOENT) {
             verbose(VEARD_LAPI, "Error deleting file %s", strerror(errno));
+        }
         verbose(VEARD_LAPI, "Deleting %s", ear_commreq);
         ret = unlink(ear_commreq);
-        if (ret != ENOENT)
+        if (ret < 0 && errno != ENOENT) {
             verbose(VEARD_LAPI, "Error deleting file %s", strerror(errno));
+        }
         was_anonymous = eard_local_conn[id].anonymous;
         if (req_fd != -1) {
             close(req_fd);
@@ -1070,10 +1086,10 @@ void eard_close_comm(int req_fd, int ack_fd)
 int service_gpu(eard_head_t *head, int req_fd, int ack_fd)
 {
     static gpu_topology_t tp = {0};
-    uint call   = head->req_service;
-    state_t s   = EAR_SUCCESS;
-    char *data  = NULL;
-    size_t size = 0;
+    uint call                = head->req_service;
+    state_t s                = EAR_SUCCESS;
+    char *data               = NULL;
+    size_t size              = 0;
     uint u1;
 
     switch (call) {
@@ -1082,10 +1098,10 @@ int service_gpu(eard_head_t *head, int req_fd, int ack_fd)
             size = sizeof(uint);
             break;
         case RPC_MET_GPU_GET_DEVICES: // Deprecated
-            u1 = 0U; // Returning 0 makes EARD API to fail but not crash
+            u1        = 0U;           // Returning 0 makes EARD API to fail but not crash
             state_msg = "RPC_MET_GPU_GET_DEVICES is disabled";
-            data = (char *) &u1;
-            size = sizeof(uint);
+            data      = (char *) &u1;
+            size      = sizeof(uint);
             break;
         case RPC_MET_GPU_TOPOLOGY_GET:
             if (tp.devs_count == 0) {
@@ -1136,13 +1152,13 @@ int eard_gpu(eard_head_t *head, int req_fd, int ack_fd)
 
     switch (head->req_service) {
         case GPU_SUPPORTED:
-            #if USE_GPUS
+#if USE_GPUS
             verbose(0, "GPU_SUPPORTED check");
             ack = 1;
-            #else
+#else
             verbose(0, "GPU_NOT_SUPPORTED check");
             ack = 0;
-            #endif
+#endif
             if (write(ack_fd, &ack, sizeof(ack)) != sizeof(ack)) {
                 // Do something with the error
             }
@@ -1464,7 +1480,7 @@ void service_select(int req_fd, int ack_fd)
     service_close(req_fd, ack_fd);
 }
 
-state_t eard_local_api()
+state_t eard_local_api(char *ear_owner)
 {
     ear_njob_t *eard_jobs_list;
     uint rapl_count;
@@ -1475,7 +1491,7 @@ state_t eard_local_api()
     num_packs = node_desc.socket_count;
 
     verbose(VEARD_LAPI, "Creating node_mgr data");
-    if (nodemgr_server_init(ear_tmp, &eard_jobs_list) != EAR_SUCCESS) {
+    if (nodemgr_server_init(ear_tmp, &eard_jobs_list, ear_owner) != EAR_SUCCESS) {
         verbose(VEARD_LAPI, "Error creating shared memory region for node_mgr");
         exit(1);
     }
