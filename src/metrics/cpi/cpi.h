@@ -10,6 +10,7 @@
 
 #ifndef METRICS_CPI_H
 #define METRICS_CPI_H
+// clang-format off
 
 #include <common/states.h>
 #include <common/plugins.h>
@@ -23,27 +24,31 @@ typedef struct stalls_s {
 } stalls_t;
 
 typedef struct cpi_s {
+    pid_t    pid;
     ullong   instructions;
     ullong   cycles;
     stalls_t stalls;
-    double   cpi; // (cycles / instructions) or average cycle consumed per instruction
+    double cpi; // (cycles / instructions) or average cycle consumed per instruction
 } cpi_t;
 
 typedef struct cpi_ops_s {
-    void    (*unload)   ();
-    void    (*get_info) (apinfo_t *info);
-    state_t (*read)     (cpi_t *ci);
+    void    (*unload)     ();
+    state_t (*update)     (uint option, void *value);
+    void    (*get_info)   (apinfo_t *info);
+    state_t (*read)       (cpi_t *cpi);
 } cpi_ops_t;
 
 // API building scheme
-#define CPI_F_LOAD(name)     void    cpi_##name##_load(topology_t *tp, cpi_ops_t *ops, int options)
-#define CPI_F_UNLOAD(name)   void    cpi_##name##_unload()
-#define CPI_F_GET_INFO(name) void    cpi_##name##_get_info(apinfo_t *info)
-#define CPI_F_READ(name)     state_t cpi_##name##_read(cpi_t *cpi)
+#define CPI_F_LOAD(name)       void    cpi_##name##_load(topology_t *tp, cpi_ops_t *ops, int options)
+#define CPI_F_UNLOAD(name)     void    cpi_##name##_unload()
+#define CPI_F_UPDATE(name)     state_t cpi_##name##_update(uint option, void *value)
+#define CPI_F_GET_INFO(name)   void    cpi_##name##_get_info(apinfo_t *info)
+#define CPI_F_READ(name)       state_t cpi_##name##_read(cpi_t *cpi)
 
 #define CPI_DEFINES(name)    \
     CPI_F_LOAD(name);        \
     CPI_F_UNLOAD(name);      \
+    CPI_F_UPDATE(name);      \
     CPI_F_GET_INFO(name);    \
     CPI_F_READ(name);
 
@@ -51,6 +56,8 @@ typedef struct cpi_ops_s {
 void cpi_load(topology_t *tp, int options);
 
 void cpi_unload();
+
+state_t cpi_update(uint option, void *value);
 
 void cpi_get_info(apinfo_t *info);
 
@@ -72,4 +79,5 @@ void cpi_data_print(cpi_t *ciD, double cpis_avg, int fd);
 
 void cpi_data_tostr(cpi_t *ciD, double cpis_avg, char *buffer, size_t length);
 
+// clang-format on
 #endif // METRICS_CPI_H

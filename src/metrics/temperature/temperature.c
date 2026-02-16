@@ -20,21 +20,22 @@
 #include <stdlib.h>
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-static apinfo_t        info;
-static temp_ops_t      ops;
+static apinfo_t info;
+static temp_ops_t ops;
 
 void temp_load(topology_t *tp, int options)
 {
-    while (pthread_mutex_trylock(&lock));
+    while (pthread_mutex_trylock(&lock))
+        ;
     if (info.api != API_NONE) {
         goto leave;
     }
     if (API_IS(options, API_DUMMY)) {
         goto dummy;
     }
-    #if WF_SUPPORT
+#if WF_SUPPORT
     temp_eard_load(tp, &ops, options);
-    #endif
+#endif
     temp_hwmon_load(tp, &ops, options);
     temp_intel63_load(tp, &ops, options);
 dummy:
@@ -46,7 +47,8 @@ leave:
 
 void temp_unload()
 {
-    while (pthread_mutex_trylock(&lock));
+    while (pthread_mutex_trylock(&lock))
+        ;
     if (info.api != API_NONE) {
         ops.unload();
         memset(&ops, 0, sizeof(temp_ops_t));
@@ -95,7 +97,7 @@ void temp_data_diff(llong *temp2, llong *temp1, llong *tempD, llong *average)
     temp_data_copy(tempD, temp2);
     if (average != NULL) {
         *average = 0;
-           for (i = 0; i < info.devs_count; ++i) {
+        for (i = 0; i < info.devs_count; ++i) {
             *average += temp2[i];
         }
         *average /= (llong) info.devs_count;

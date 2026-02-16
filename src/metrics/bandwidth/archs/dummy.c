@@ -13,14 +13,13 @@
 
 BWIDTH_F_LOAD(dummy)
 {
-    apis_put(ops->unload  , bwidth_dummy_unload);
+    apis_put(ops->unload, bwidth_dummy_unload);
     apis_put(ops->get_info, bwidth_dummy_get_info);
-    apis_put(ops->read    , bwidth_dummy_read);
+    apis_put(ops->read, bwidth_dummy_read);
 }
 
 BWIDTH_F_UNLOAD(dummy)
 {
-
 }
 
 BWIDTH_F_GET_INFO(dummy)

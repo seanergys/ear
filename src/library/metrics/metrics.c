@@ -58,7 +58,7 @@
 #include <metrics/energy_cpu/energy_cpu.h>
 #include <metrics/flops/flops.h>
 #include <metrics/imcfreq/imcfreq.h>
-#include <metrics/io/io.h>
+#include <metrics/io/io_old.h>
 #include <metrics/proc/stat.h>
 #include <metrics/temperature/temperature.h>
 #include <report/report.h>
@@ -927,7 +927,7 @@ static void metrics_global_start()
             verbose_warning_master("Node total I/O could not be read (%s).", state_msg);
         }
         /* To be used in partial_start */
-        io_copy(&metrics_io_end[LOO_NODE], &metrics_io_init[APP_NODE]);
+        io_old_copy(&metrics_io_end[LOO_NODE], &metrics_io_init[APP_NODE]);
 
         /* To be used in partial_start */
         temp_data_copy(temp_read2[LOO], temp_read1[APP]);
@@ -950,10 +950,10 @@ static void metrics_global_start()
 #endif
 
     /* Per process IO data */
-    if (io_read(&ctx_io, &metrics_io_init[APP]) != EAR_SUCCESS) {
+    if (io_old_read(&ctx_io, &metrics_io_init[APP]) != EAR_SUCCESS) {
         verbose_warning_master("I/O data not available.");
     }
-    io_copy(&metrics_io_end[LOO], &metrics_io_init[APP]);
+    io_old_copy(&metrics_io_end[LOO], &metrics_io_init[APP]);
 
     // New metrics
     /* Energy */
@@ -1090,20 +1090,20 @@ static void metrics_global_stop()
                             " the acumulated data read until now.",
                             state_msg);
         } else {
-            io_diff(&metrics_io_diff[APP_NODE], &metrics_io_init[APP_NODE], &metrics_io_end[APP_NODE]);
+            io_old_diff(&metrics_io_diff[APP_NODE], &metrics_io_init[APP_NODE], &metrics_io_end[APP_NODE]);
         }
     } // master
 
     /* Per-process IO */
-    if (state_fail(io_read(&ctx_io, &metrics_io_end[APP]))) {
+    if (state_fail(io_old_read(&ctx_io, &metrics_io_end[APP]))) {
         verbose_warning_master("I/O data not available.");
     } else {
-        io_diff(&metrics_io_diff[APP], &metrics_io_init[APP], &metrics_io_end[APP]);
+        io_old_diff(&metrics_io_diff[APP], &metrics_io_init[APP], &metrics_io_end[APP]);
     }
 
     if (VERB_ON(IO_VERB)) {
         int fd;
-        io_tostr(&metrics_io_diff[APP], io_info, sizeof(io_info));
+        io_old_tostr(&metrics_io_diff[APP], io_info, sizeof(io_info));
         if (verb_path != NULL) {
 
             char file_name[256];
@@ -1170,7 +1170,7 @@ static void metrics_partial_start()
 
     /* Per-process IO data */
     debug("starting IO for process");
-    io_copy(&metrics_io_init[LOO], &metrics_io_end[LOO]);
+    io_old_copy(&metrics_io_init[LOO], &metrics_io_end[LOO]);
     debug("IO read done");
 
     // Proc stat
@@ -1190,7 +1190,7 @@ static void metrics_partial_start()
         }
 
         /* Per NODE IO data */
-        io_copy(&metrics_io_init[LOO_NODE], &metrics_io_end[LOO_NODE]);
+        io_old_copy(&metrics_io_init[LOO_NODE], &metrics_io_end[LOO_NODE]);
 
 #if USE_GPUS
         /* GPUS */
@@ -1381,10 +1381,10 @@ static int metrics_partial_stop(uint where)
     }
 
     /* Per process IO data */
-    if (io_read(&ctx_io, &metrics_io_end[LOO]) != EAR_SUCCESS) {
+    if (io_old_read(&ctx_io, &metrics_io_end[LOO]) != EAR_SUCCESS) {
         verbose_warning_master("I/O data not available");
     }
-    io_diff(&metrics_io_diff[LOO], &metrics_io_init[LOO], &metrics_io_end[LOO]);
+    io_old_diff(&metrics_io_diff[LOO], &metrics_io_init[LOO], &metrics_io_end[LOO]);
 
     /* Process statistics */
     metric_cond(
@@ -1707,8 +1707,8 @@ static void metrics_compute_signature_data(uint sign_app_loop_idx, signature_t *
 #endif
 
     /* Per process IO data */
-    io_copy(&(sig_ext->iod), &metrics_io_diff[sign_app_loop_idx]);
-    io_copy(&sig_shared_region[my_node_id].sig.iod, &metrics_io_diff[sign_app_loop_idx]);
+    io_old_copy(&(sig_ext->iod), &metrics_io_diff[sign_app_loop_idx]);
+    io_old_copy(&sig_shared_region[my_node_id].sig.iod, &metrics_io_diff[sign_app_loop_idx]);
 
     /* Per Node IO data */
     int io_app_loop_idx = sign_app_loop_idx;
@@ -2105,7 +2105,7 @@ int metrics_load(topology_t *topo)
         return_msg(EAR_ERROR, "Loading energy plugin");
     }
 
-    if (state_ok(io_init(&ctx_io, getpid()))) {
+    if (state_ok(io_old_init(&ctx_io, getpid()))) {
         verbose_info2_master("I/O data initialized.");
     } else {
         verbose_warning_master("I/O data not available.");
@@ -2697,6 +2697,7 @@ state_t metrics_new_iteration(signature_t *sig)
 {
 
     if (!(master)) {
+        debug("Not master");
         return EAR_ERROR;
     }
 
@@ -2709,6 +2710,7 @@ state_t metrics_new_iteration(signature_t *sig)
         elap_sec     = f_time / 1000000;
 
         if (elap_sec <= last_elap_sec) {
+            debug("Not enough time");
             return EAR_ERROR;
         }
     }
@@ -2721,7 +2723,7 @@ state_t metrics_new_iteration(signature_t *sig)
         if (last_phase_io_bnd) {
             double iogb;
             metrics_compute_total_io(&metrics_io_end[LOO_NODE]);
-            io_diff(&metrics_io_diff[LOO_NODE], &metrics_io_init[LOO_NODE], &metrics_io_end[LOO_NODE]);
+            io_old_diff(&metrics_io_diff[LOO_NODE], &metrics_io_init[LOO_NODE], &metrics_io_end[LOO_NODE]);
             iogb = (double) metrics_io_diff[LOO_NODE].rchar / (double) (1024 * 1024) +
                    (double) metrics_io_diff[LOO_NODE].wchar / (double) (1024 * 1024);
 
@@ -2911,10 +2913,10 @@ static state_t metrics_compute_total_io(io_data_t *total)
 
             ctx_t local_io_ctx;
 
-            if (state_ok(io_init(&local_io_ctx, sig_shared_region[i].pid))) {
+            if (state_ok(io_old_init(&local_io_ctx, sig_shared_region[i].pid))) {
 
                 io_data_t io;
-                io_read(&local_io_ctx, &io);
+                io_old_read(&local_io_ctx, &io);
 
                 total->rchar += io.rchar;
                 total->wchar += io.wchar;
@@ -2924,7 +2926,7 @@ static state_t metrics_compute_total_io(io_data_t *total)
                 total->write_bytes += io.write_bytes;
                 total->cancelled += io.cancelled;
 
-                io_dispose(&local_io_ctx);
+                io_old_dispose(&local_io_ctx);
             } else {
                 debug("IO data process %d (%d) can not be read", i, sig_shared_region[i].pid);
                 return_msg(EAR_ERROR, "I/O could not be read for some process.");
@@ -2979,10 +2981,12 @@ static state_t energy_lib_init(settings_conf_t *conf)
     }
 
     if (state_fail(ret)) {
-        ret = utils_build_valid_plugin_path(my_plug_path, sizeof(my_plug_path), "energy", conf->installation.obj_ener,
-                                            conf);
+        char clean_ener_obj[SZ_PATH];
+        strcpy(clean_ener_obj, conf->installation.obj_ener);
+        strtok(clean_ener_obj, ":");
+        ret = utils_build_valid_plugin_path(my_plug_path, sizeof(my_plug_path), "energy", clean_ener_obj, conf);
         if (state_fail(ret)) {
-            verbose_error_master("Energy plug-in %s not found.", conf->installation.obj_ener);
+            verbose_error_master("Energy plug-in %s not found.", clean_ener_obj);
             return EAR_NOT_FOUND;
         }
     }

@@ -8,24 +8,24 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
-#include <dlfcn.h>
-#include <stdlib.h>
-#include <pthread.h>
 #include <common/output/debug.h>
 #include <common/system/monitor.h>
 #include <common/system/symplug.h>
+#include <dlfcn.h>
 #include <metrics/common/nvml.h>
 #include <metrics/gpu/archs/nvml.h>
+#include <pthread.h>
+#include <stdlib.h>
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-static nvml_t          nvml;
-static nvmlDevice_t   *handlers;
-static uint            handlers_count;
-static suscription_t  *sus;
-static gpu_t          *pool;
-static uint            is_pooling;
+static nvml_t nvml;
+static nvmlDevice_t *handlers;
+static uint handlers_count;
+static suscription_t *sus;
+static gpu_t *pool;
+static uint is_pooling;
 
 static void load_atfork()
 {
@@ -90,11 +90,11 @@ GPU_F_LOAD(nvml)
         sus->suscribe(sus);
     }
     //
-    apis_pif(ops->unload      , gpu_nvml_unload      , 1);
-    apis_pif(ops->get_info    , gpu_nvml_get_info    , 1);
+    apis_pif(ops->unload, gpu_nvml_unload, 1);
+    apis_pif(ops->get_info, gpu_nvml_get_info, 1);
     apis_pif(ops->topology_get, gpu_nvml_topology_get, 1);
-    apis_pif(ops->read        , gpu_nvml_read        , is_pooling);
-    apis_pif(ops->read_raw    , gpu_nvml_read_raw    , 1);
+    apis_pif(ops->read, gpu_nvml_read, is_pooling);
+    apis_pif(ops->read_raw, gpu_nvml_read_raw, 1);
     debug("Loaded NVML");
 }
 
@@ -183,7 +183,8 @@ state_t gpu_nvml_pool(void *p)
     uint working = 0;
 #endif
     // Lock
-    while (pthread_mutex_trylock(&lock));
+    while (pthread_mutex_trylock(&lock))
+        ;
     // Time operations
     timestamp_getfast(&time);
     time_diff = (double) timestamp_diff(&time, &pool[0].time, TIME_USECS);
@@ -194,18 +195,18 @@ state_t gpu_nvml_pool(void *p)
             continue;
         }
         // Pooling the data
-        pool[i].time      = time;
-        pool[i].samples  += metric.samples;
+        pool[i].time = time;
+        pool[i].samples += metric.samples;
         pool[i].freq_mem += metric.freq_mem;
         pool[i].freq_gpu += metric.freq_gpu;
         pool[i].util_mem += metric.util_mem;
         pool[i].util_gpu += metric.util_gpu;
         pool[i].temp_gpu += metric.temp_gpu;
         pool[i].temp_mem += metric.temp_mem;
-        pool[i].power_w  += metric.power_w;
+        pool[i].power_w += metric.power_w;
         pool[i].energy_j += metric.power_w * time_diff;
-        pool[i].working   = metric.working;
-        pool[i].correct   = metric.correct;
+        pool[i].working = metric.working;
+        pool[i].correct = metric.correct;
         // Burst or not
 #if SHOW_DEBUGS
         working += pool[i].working;
@@ -232,7 +233,8 @@ GPU_F_READ(nvml)
 {
     // Updating pool
     gpu_nvml_pool(NULL);
-    while (pthread_mutex_trylock(&lock));
+    while (pthread_mutex_trylock(&lock))
+        ;
     memcpy(d, pool, handlers_count * sizeof(gpu_t));
     pthread_mutex_unlock(&lock);
     return EAR_SUCCESS;

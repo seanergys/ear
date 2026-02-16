@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
 #include <common/output/debug.h>
 #include <daemon/local_api/eard_api_rpc.h>
@@ -39,9 +39,9 @@ CPUFREQ_F_LOAD(eard)
         return_msg(, "EARD (daemon) has loaded DUMMY/NONE API");
     }
     cpus_count = tp->cpu_count;
-    apis_put(ops->unload  , cpufreq_eard_unload);
+    apis_put(ops->unload, cpufreq_eard_unload);
     apis_put(ops->get_info, cpufreq_eard_get_info);
-    apis_put(ops->read    , cpufreq_eard_read);
+    apis_put(ops->read, cpufreq_eard_read);
 }
 
 CPUFREQ_F_UNLOAD(eard)

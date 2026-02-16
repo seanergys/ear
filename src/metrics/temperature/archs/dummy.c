@@ -19,9 +19,9 @@ static uint socket_count;
 TEMP_F_LOAD(dummy)
 {
     socket_count = (tp->socket_count > 0) ? tp->socket_count : 1;
-    apis_put(ops->unload  , temp_dummy_unload);
+    apis_put(ops->unload, temp_dummy_unload);
     apis_put(ops->get_info, temp_dummy_get_info);
-    apis_put(ops->read    , temp_dummy_read);
+    apis_put(ops->read, temp_dummy_read);
 }
 
 TEMP_F_UNLOAD(dummy)

@@ -17,52 +17,51 @@
 #include <metrics/common/likwid.h>
 #include <stdlib.h>
 
-static char *ice_evs = "CAS_COUNT_ALL:MBOX0C0,"
-                       "CAS_COUNT_ALL:MBOX1C0,"
-                       "CAS_COUNT_ALL:MBOX2C0,"
-                       "CAS_COUNT_ALL:MBOX3C0,"
-                       "CAS_COUNT_ALL:MBOX4C0,"
-                       "CAS_COUNT_ALL:MBOX5C0,"
-                       "CAS_COUNT_ALL:MBOX6C0,"
-                       "CAS_COUNT_ALL:MBOX7C0";
-static char *ice_evs_names[8]  = {
-                       "CAS_COUNT_ALL:MBOX0C0", "CAS_COUNT_ALL:MBOX1C0", "CAS_COUNT_ALL:MBOX2C0",
-                       "CAS_COUNT_ALL:MBOX3C0", "CAS_COUNT_ALL:MBOX4C0", "CAS_COUNT_ALL:MBOX5C0",
-                       "CAS_COUNT_ALL:MBOX6C0", "CAS_COUNT_ALL:MBOX7C0"};
-static char *sky_evs = "CAS_COUNT_RD:MBOX0C1,"
-                       "CAS_COUNT_WR:MBOX0C2,"
-                       "CAS_COUNT_RD:MBOX1C1,"
-                       "CAS_COUNT_WR:MBOX1C2,"
-                       "CAS_COUNT_RD:MBOX2C1,"
-                       "CAS_COUNT_WR:MBOX2C2,"
-                       "CAS_COUNT_RD:MBOX3C1,"
-                       "CAS_COUNT_WR:MBOX3C2,"
-                       "CAS_COUNT_RD:MBOX4C1,"
-                       "CAS_COUNT_WR:MBOX4C2,"
-                       "CAS_COUNT_RD:MBOX5C1,"
-                       "CAS_COUNT_WR:MBOX5C2,"
-                       "CAS_COUNT_RD:MBOX6C1,"
-                       "CAS_COUNT_WR:MBOX6C2,"
-                       "CAS_COUNT_RD:MBOX7C1,"
-                       "CAS_COUNT_WR:MBOX7C2,";
+static char *ice_evs           = "CAS_COUNT_ALL:MBOX0C0,"
+                                 "CAS_COUNT_ALL:MBOX1C0,"
+                                 "CAS_COUNT_ALL:MBOX2C0,"
+                                 "CAS_COUNT_ALL:MBOX3C0,"
+                                 "CAS_COUNT_ALL:MBOX4C0,"
+                                 "CAS_COUNT_ALL:MBOX5C0,"
+                                 "CAS_COUNT_ALL:MBOX6C0,"
+                                 "CAS_COUNT_ALL:MBOX7C0";
+static char *ice_evs_names[8]  = {"CAS_COUNT_ALL:MBOX0C0", "CAS_COUNT_ALL:MBOX1C0", "CAS_COUNT_ALL:MBOX2C0",
+                                  "CAS_COUNT_ALL:MBOX3C0", "CAS_COUNT_ALL:MBOX4C0", "CAS_COUNT_ALL:MBOX5C0",
+                                  "CAS_COUNT_ALL:MBOX6C0", "CAS_COUNT_ALL:MBOX7C0"};
+static char *sky_evs           = "CAS_COUNT_RD:MBOX0C1,"
+                                 "CAS_COUNT_WR:MBOX0C2,"
+                                 "CAS_COUNT_RD:MBOX1C1,"
+                                 "CAS_COUNT_WR:MBOX1C2,"
+                                 "CAS_COUNT_RD:MBOX2C1,"
+                                 "CAS_COUNT_WR:MBOX2C2,"
+                                 "CAS_COUNT_RD:MBOX3C1,"
+                                 "CAS_COUNT_WR:MBOX3C2,"
+                                 "CAS_COUNT_RD:MBOX4C1,"
+                                 "CAS_COUNT_WR:MBOX4C2,"
+                                 "CAS_COUNT_RD:MBOX5C1,"
+                                 "CAS_COUNT_WR:MBOX5C2,"
+                                 "CAS_COUNT_RD:MBOX6C1,"
+                                 "CAS_COUNT_WR:MBOX6C2,"
+                                 "CAS_COUNT_RD:MBOX7C1,"
+                                 "CAS_COUNT_WR:MBOX7C2,";
 static char *sky_evs_names[16] = {
-                       "CAS_COUNT_RD:MBOX0C1", "CAS_COUNT_WR:MBOX0C2", "CAS_COUNT_RD:MBOX1C1", "CAS_COUNT_WR:MBOX1C2",
-                       "CAS_COUNT_RD:MBOX2C1", "CAS_COUNT_WR:MBOX2C2", "CAS_COUNT_RD:MBOX3C1", "CAS_COUNT_WR:MBOX3C2",
-                       "CAS_COUNT_RD:MBOX4C1", "CAS_COUNT_WR:MBOX4C2", "CAS_COUNT_RD:MBOX5C1", "CAS_COUNT_WR:MBOX5C2",
-                       "CAS_COUNT_RD:MBOX6C1", "CAS_COUNT_WR:MBOX6C2", "CAS_COUNT_RD:MBOX7C1", "CAS_COUNT_WR:MBOX7C2"};
+    "CAS_COUNT_RD:MBOX0C1", "CAS_COUNT_WR:MBOX0C2", "CAS_COUNT_RD:MBOX1C1", "CAS_COUNT_WR:MBOX1C2",
+    "CAS_COUNT_RD:MBOX2C1", "CAS_COUNT_WR:MBOX2C2", "CAS_COUNT_RD:MBOX3C1", "CAS_COUNT_WR:MBOX3C2",
+    "CAS_COUNT_RD:MBOX4C1", "CAS_COUNT_WR:MBOX4C2", "CAS_COUNT_RD:MBOX5C1", "CAS_COUNT_WR:MBOX5C2",
+    "CAS_COUNT_RD:MBOX6C1", "CAS_COUNT_WR:MBOX6C2", "CAS_COUNT_RD:MBOX7C1", "CAS_COUNT_WR:MBOX7C2"};
 static uint ice_evs_count = 8;
 static uint sky_evs_count = 16;
 //
 static topology_t tp_own;
-static uint       evs_count;
-static char      *evs;
-static char     **evs_names;
-static likevs_t   events;
-static double    *ctrs;
-static uint       ctrs_count;
-static uint       devs_count;
-static uint       cpus_count;
-static ullong    *ctrs_accum;
+static uint evs_count;
+static char *evs;
+static char **evs_names;
+static likevs_t events;
+static double *ctrs;
+static uint ctrs_count;
+static uint devs_count;
+static uint cpus_count;
+static ullong *ctrs_accum;
 
 BWIDTH_F_LOAD(likwid)
 {
@@ -116,9 +115,9 @@ BWIDTH_F_LOAD(likwid)
     debug("total cpus: %u", cpus_count);
     debug("counters  : %u", devs_count);
     //
-    apis_put(ops->unload  , bwidth_likwid_unload);
+    apis_put(ops->unload, bwidth_likwid_unload);
     apis_put(ops->get_info, bwidth_likwid_get_info);
-    apis_put(ops->read    , bwidth_likwid_read);
+    apis_put(ops->read, bwidth_likwid_read);
 }
 
 BWIDTH_F_UNLOAD(likwid)

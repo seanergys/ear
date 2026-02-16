@@ -17,7 +17,7 @@
 #include <metrics/cpi/cpi.h>
 #include <metrics/flops/flops.h>
 #include <metrics/gpu/gpu.h>
-#include <metrics/io/io.h>
+#include <metrics/io/io_old.h>
 
 // 0: float
 // 1: 128 float
@@ -212,12 +212,6 @@ void compute_ssig_vpi(double *vpi, const ssig_t *sig);
 
 /** \todo */
 void compute_ssig_vpi2(double *vpi, ssig_t *sig);
-
-/** \todo */
-void print_signature_fd_binary(int fd, signature_t *sig);
-
-/** \todo */
-void read_signature_fd_binary(int fd, signature_t *sig);
 
 /** \todo */
 state_t signature_to_str(signature_t *sig, char *msg, size_t limit);

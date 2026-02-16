@@ -93,20 +93,26 @@ mets_OBJS = \
     $(SRCDIR)/metrics/temperature/archs/hwmon.o \
     $(SRCDIR)/metrics/temperature/archs/intel63.o \
     $(SRCDIR)/metrics/temperature/archs/dummy.o \
-    $(SRCDIR)/metrics/io/io.o
+    $(SRCDIR)/metrics/io/io.o \
+    $(SRCDIR)/metrics/io/io_old.o \
+    $(SRCDIR)/metrics/io/archs/dummy.o \
+    $(SRCDIR)/metrics/io/archs/proc_file.o
 
 ######## RULES
 
 all: all.components metrics.o libmetrics.a
-
-post: test
-	@ $(MAKE) -C 'gpu' post || exit
 
 metrics.o: metrics.c
 	$(CC) $(CC_FLAGS) -I$(SRCDIR) -fPIC -c $<
 
 libmetrics.a: metrics.o $(mets_OBJS)
 	$(AR) rvs $@ $^
+
+post: test libmetrics.so
+	@ $(MAKE) -C 'gpu' post || exit
+
+libmetrics.so: libmetrics.a
+	$(CC) $(CC_FLAGS) -I$(SRCDIR) -fPIC -shared -o $@ $(call whole,libmetrics.a) -L ../common -lcommon
 
 test: metrics.c
 	$(CC) -I $(SRCDIR) -DTEST=1 -fPIC -o $@ $^ libmetrics.a ../daemon/local_api/libeard.a ../common/libcommon.a -lm -lpthread -ldl
@@ -120,7 +126,7 @@ devel.install: devel.install.components;
 %.install: %.install.components;
 
 clean: clean.components rclean
-	rm -f test
+	rm -f test libcommon.so
 
 ######## SUBFOLDERS
 
@@ -139,7 +145,6 @@ clean: clean.components rclean
 	@ $(MAKE) -C 'temperature'  $* || exit
 	@ $(MAKE) -C 'energy_cpu'   $* || exit
 	@ $(MAKE) -C 'energy'       $* || exit
-
 
 ######## DEPENDENCIES
 

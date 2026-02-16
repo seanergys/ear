@@ -18,20 +18,20 @@ static apinfo_t info;
 
 BWIDTH_F_LOAD(bypass)
 {
-    // Disabled by now (reason?)
-    #if 1
+// Disabled by now (reason?)
+#if 1
     return;
-    #endif
+#endif
     // If an API is already loaded we must avoid loading cache API.
     if (ops->read != NULL) {
         return;
     }
-	// Pending: test if is something loaded
-	cache_load(tp, options);
+    // Pending: test if is something loaded
+    cache_load(tp, options);
     cache_get_info(&info);
-    apis_put(ops->unload  , bwidth_bypass_unload);
+    apis_put(ops->unload, bwidth_bypass_unload);
     apis_put(ops->get_info, bwidth_bypass_get_info);
-    apis_put(ops->read    , bwidth_bypass_read);
+    apis_put(ops->read, bwidth_bypass_read);
 }
 
 BWIDTH_F_UNLOAD(bypass)
@@ -55,7 +55,7 @@ BWIDTH_F_READ(bypass)
     uint d;
     // By now cache only reads per process maybe in the future this could change
     // and calling cache_data_alloc() and iterate per device could be required.
-    s          = cache_read(&data);
+    s         = cache_read(&data);
     b[0].cas  = (data.lbw->lines_in + data.lbw->lines_out);
     b[1].time = data.time;
     return s;

@@ -50,9 +50,9 @@ BWIDTH_F_LOAD(eard)
         return;
     }
     debug("Remote #devices: %u", devs_count);
-    apis_put(ops->unload  , bwidth_eard_unload);
+    apis_put(ops->unload, bwidth_eard_unload);
     apis_put(ops->get_info, bwidth_eard_get_info);
-    apis_put(ops->read    , bwidth_eard_read);
+    apis_put(ops->read, bwidth_eard_read);
     debug("Loaded EARD");
 }
 

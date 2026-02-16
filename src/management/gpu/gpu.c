@@ -8,19 +8,19 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 
+#include <common/output/debug.h>
+#include <management/gpu/archs/dummy.h>
+#include <management/gpu/archs/eard.h>
+#include <management/gpu/archs/mgt_pvc_power_hwmon.h>
+#include <management/gpu/archs/nvml.h>
+#include <management/gpu/archs/oneapi.h>
+#include <management/gpu/archs/rsmi.h>
+#include <management/gpu/gpu.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <pthread.h>
-#include <common/output/debug.h>
-#include <management/gpu/gpu.h>
-#include <management/gpu/archs/nvml.h>
-#include <management/gpu/archs/rsmi.h>
-#include <management/gpu/archs/eard.h>
-#include <management/gpu/archs/dummy.h>
-#include <management/gpu/archs/oneapi.h>
-#include <management/gpu/archs/mgt_pvc_power_hwmon.h>
 
 #ifndef USE_PVC_HWMON
 #warning "USE_PVC_HWMON not defined! Defining it to 0..."
@@ -35,7 +35,8 @@ static uint devs_count;
 
 __attribute__((used)) void mgt_gpu_load(int force_api)
 {
-    while (pthread_mutex_trylock(&lock));
+    while (pthread_mutex_trylock(&lock))
+        ;
     if (loaded) {
         goto unlock_load;
     }
@@ -83,12 +84,12 @@ state_t mgt_gpu_get_devices(ctx_t *c, gpu_devs_t **devs, uint *devs_count)
     state_t s = EAR_SUCCESS;
     if (ops.get_devices != NULL) {
         s = ops.get_devices(c, devs, devs_count);
-        #if SHOW_DEBUGS
+#if SHOW_DEBUGS
         if (devs != NULL) {
-            gpu_topology_t tp = { .devs = *devs, .devs_count = *devs_count };
+            gpu_topology_t tp = {.devs = *devs, .devs_count = *devs_count};
             gpu_topology_print(&tp, debug_channel);
         }
-        #endif
+#endif
     }
     return s;
 }

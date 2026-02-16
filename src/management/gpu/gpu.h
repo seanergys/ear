@@ -41,6 +41,7 @@ typedef struct mgt_gpu_ops_s {
     state_t (*power_cap_reset)        (ctx_t *c);
     state_t (*power_cap_set)          (ctx_t *c, ulong *watt_list);
 } mgt_gpu_ops_t;
+
 // clang-format on
 
 // Discovers the low level API. Returns function pointers, but is not required.
