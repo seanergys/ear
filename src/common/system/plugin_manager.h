@@ -23,12 +23,12 @@
 #define declr_up_poll_attend(suffix)     char *up_poll_attend##suffix(cchar *tag_fd, int fd)
 
 // Helpers
-#define is_tag(t)                        (strcmp(t, tag) == 0)
-#define ARG0(var)                        (var != NULL)
-#define ARG1(var)                        ARG0(var) && (var[1] != NULL)
-#define ARG2(var)                        ARG1(var) && (var[2] != NULL)
-#define ARGE(...)                        __VA_ARGS__
-#define ARG(v, n)                        ARGE(ARG##n)(v)
+#define is_tag(t) (strcmp(t, tag) == 0)
+#define ARG0(var) (var != NULL)
+#define ARG1(var) ARG0(var) && (var[1] != NULL)
+#define ARG2(var) ARG1(var) && (var[2] != NULL)
+#define ARGE(...) __VA_ARGS__
+#define ARG(v, n) ARGE(ARG##n)(v)
 
 // Init as main binary function.
 int plugin_manager_main(int argc, char *argv[]);

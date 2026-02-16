@@ -10,9 +10,9 @@
 
 // #define SHOW_DEBUGS 1
 
-#include <stdio.h>
 #include <common/output/debug.h>
 #include <common/system/plugin_manager.h>
+#include <stdio.h>
 
 declr_up_get_tag()
 {
