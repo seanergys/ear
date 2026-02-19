@@ -1170,7 +1170,7 @@ void read_applications_from_database(char *user, query_adds_t *q_a, char *format
     }
 
     sprintf(query, "SELECT Applications.* FROM Applications join Jobs on Applications.job_id=Jobs.job_id and "
-                   "Applications.step_id = Jobs.step_id and Jobs.local_id = Applications.local_id where Jobs.job_id in "
+                   "Applications.step_id = Jobs.step_id and Jobs.app_id = Applications.app_id where Jobs.job_id in "
                    "(select job_id from (select distinct(job_id) from Jobs");
     application_t *apps;
     if (q_a->job_id >= 0)
