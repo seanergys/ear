@@ -8,17 +8,18 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
+/* clang-format off */
 // #define SHOW_DEBUGS 1
-
+#include <string.h>
 #include <common/output/debug.h>
 #include <metrics/cache/archs/dummy.h>
-#include <string.h>
 
 CACHE_F_LOAD(dummy)
 {
-    apis_put(ops->unload, cache_dummy_unload);
+    apis_put(ops->unload  , cache_dummy_unload  );
+    apis_put(ops->update  , cache_dummy_update  );
     apis_put(ops->get_info, cache_dummy_get_info);
-    apis_put(ops->read, cache_dummy_read);
+    apis_put(ops->read    , cache_dummy_read    );
     apis_put(ops->internals_tostr, cache_dummy_internals_tostr);
     debug("Loaded DUMMY");
 }
@@ -27,13 +28,17 @@ CACHE_F_UNLOAD(dummy)
 {
 }
 
+CACHE_F_UPDATE(dummy)
+{
+    return EAR_SUCCESS;
+}
+
 CACHE_F_GET_INFO(dummy)
 {
     info->api         = API_DUMMY;
-    info->scope       = SCOPE_PROCESS;
+    info->scope       = SCOPE_DUMMY;
     info->granularity = GRANULARITY_PROCESS;
     info->devs_count  = 1;
-    info->bits        = 0;
 }
 
 CACHE_F_READ(dummy)

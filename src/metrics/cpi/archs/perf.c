@@ -22,7 +22,7 @@
 typedef struct perfs_s {
     perf_t perfs[4];
     uint perfs_count;
-    offset_ops_t ofs;
+    ofops_t ofs;
 } perfs_t;
 
 // Generic
@@ -98,6 +98,7 @@ static int add_events(perfs_t *p, uint pid, uint cpu)
         ps += perf_add(p, pid, cpu, PERF_COUNT_HW_STALLED_CYCLES_BACKEND , PERF_TYPE_HARDWARE, O2(stalls, memory)      , "PERF_COUNT_HW_STALLS_BACKEND ");
     }
     if (ps == 0) {
+        // Destroy the offsets
         return_print(EAR_ERROR, "Failed all perf events: %s", state_msg);
     }
     return EAR_SUCCESS;
@@ -219,7 +220,7 @@ CPI_F_READ(perf)
             dprintf(debug_channel, "%14lld ", value);
             #endif
         }
-        offsets_calc_all(&perfs[i].ofs, (void *) &cpi[i]);
+        offsets_calc(&perfs[i].ofs, (void *) &cpi[i]);
         #if SHOW_DEBUGS
         dprintf(debug_channel, "\n");
         #endif
