@@ -7,10 +7,9 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
+
 /* clang-format off */
-
 //#define SHOW_DEBUGS 1
-
 #include <common/system/time.h>
 #include <common/output/debug.h>
 #include <common/math_operations.h>
@@ -22,148 +21,258 @@
 #define L1_LDM       PERF_COUNT_HW_CACHE_L1D | (PERF_COUNT_HW_CACHE_OP_READ << 8) | (PERF_COUNT_HW_CACHE_RESULT_MISS << 16)
 #define L1_LDA       PERF_COUNT_HW_CACHE_L1D | (PERF_COUNT_HW_CACHE_OP_READ << 8) | (PERF_COUNT_HW_CACHE_RESULT_ACCESS << 16)
 
-static perf_t       perfs[6];
-static uint         perfs_count;
-static offset_ops_t ofs;
+typedef struct perfs_s {
+    perf_t perfs[6];
+    uint perfs_count;
+    ofops_t ofs;
+} perfs_t;
 
-static void perfs_add(ullong event, uint type, ulong offset_result, const char *event_desc)
+// Generic
+static uint     vendor;
+static uint     model;
+static uint     family;
+static perfs_t *perfs;
+static uint     perfs_count;
+static uint     scope;
+static uint     granularity;
+
+static int perf_add(perfs_t *p, pid_t pid, uint cpu, ullong event, uint type, ulong offset_result, const char *event_desc)
 {
-    debug("%s", event_desc);
-    offsets_add(&ofs, offset_result, NO_OFFSET, NO_OFFSET, '=');
-    if (state_ok(perf_open(&perfs[perfs_count], NULL, 0, type, event))) {
-        if (state_fail(perf_start(&perfs[perfs_count]))) {
+    offsets_add(&p->ofs, offset_result, NO_OFFSET, NO_OFFSET, '=');
+    if (state_ok(perf_open_cpu(&p->perfs[p->perfs_count], NULL, pid, type, event, 0, cpu))) {
+        if (state_fail(perf_start(&p->perfs[p->perfs_count]))) {
             debug("perf_start() failed: %s", state_msg);
-            perf_close(&perfs[perfs_count]);
+            perf_close(&p->perfs[p->perfs_count]);
+            return 0;
         }
     } else {
         debug("perf_open() failed: %s", state_msg);
+        return 0;
     }
-    strcpy(perfs[perfs_count].event_name, event_desc);
-    ++perfs_count;
+    // Translation of PIDs from PERF to this API
+    // pid -1 (no pid)       => pid 1 (system process that means 'node')
+    // pid  0 (own pid)      => getpid()
+    // pid >0 (specific pid) => pid >0
+    // pid  0 (from calloc)  => pid  0 (not valid pid)
+    p->perfs[0].pid = (pid == 0)? getpid(): (pid == -1)? 1: pid;
+    strcpy(p->perfs[p->perfs_count].event_name, event_desc);
+    ++p->perfs_count;
+    return 1;
 }
 
 static int perfs_count_opened_fds()
 {
-    int i, counter;
-    for (i = counter = 0; i < perfs_count; ++i) {
-        counter += (perfs[i].fd >= 0);
+    int i, j, k;
+    for (i = k = 0; i < perfs_count; ++i) {
+        for (j = 0; j < perfs[i].perfs_count; ++j) {
+            // We assume 0 means unopened file descriptor
+            k += (perfs[i].perfs[j].fd > 0);
+        }
     }
-    return counter;
+    return k;
 }
 
 #define O2(l, v) (((int) offsetof(cache_t, l)) + ((int) offsetof(cache_level_t, v)))
 #define O1(l)    (((int) offsetof(cache_t, l)))
 
+static int add_events(perfs_t *p, uint pid, uint cpu)
+{
+    int ps = 0;
+
+    if (vendor == VENDOR_INTEL && model >= MODEL_SKYLAKE_X) {
+        ps += perf_add(p, pid, cpu, 0x01d1, PERF_TYPE_RAW, O2(l1d, hits    ), "MEM_LOAD_RETIRED.L1_HIT       ");
+        ps += perf_add(p, pid, cpu, 0x08d1, PERF_TYPE_RAW, O2(l1d, misses  ), "MEM_LOAD_RETIRED.L1_MISS      ");
+        ps += perf_add(p, pid, cpu, 0xe724, PERF_TYPE_RAW, O2(l2 , accesses), "L2_RQSTS.ALL_DEMAND_REFERENCES");
+        ps += perf_add(p, pid, cpu, 0x2724, PERF_TYPE_RAW, O2(l2 , misses  ), "L2_RQSTS.ALL_DEMAND_MISS      ");
+        ps += perf_add(p, pid, cpu, 0x04d1, PERF_TYPE_RAW, O2(l3 , hits    ), "MEM_LOAD_RETIRED.L3_HIT       ");
+        ps += perf_add(p, pid, cpu, 0x20d1, PERF_TYPE_RAW, O2(l3 , misses  ), "MEM_LOAD_RETIRED.L3_MISS      ");
+        offsets_add(&p->ofs, O2(l1d, accesses), O2(l1d, hits    ), O2(l1d, misses), '+');
+        offsets_add(&p->ofs, O2(l2 , hits    ), O2(l2 , accesses), O2(l2 , misses), '-');
+        offsets_add(&p->ofs, O2(l3 , accesses), O2(l3 , hits    ), O2(l2 , misses), '+');
+        offsets_add(&p->ofs, O1(ll ), O1(l3), 0, '&');
+        offsets_add(&p->ofs, O1(lbw), O1(l2), 0, '&');
+    } else if (vendor == VENDOR_INTEL && model >= MODEL_BROADWELL_X) {
+        ps += perf_add(p, pid, cpu, L1_LDA, PERF_TYPE_HW , O2(l1d, accesses), "PERF_L1D_LOAD_ACCESS          ");
+        ps += perf_add(p, pid, cpu, L1_LDM, PERF_TYPE_HW , O2(l1d, misses  ), "PERF_L1D_LOAD_MISS            ");
+        ps += perf_add(p, pid, cpu, 0xe724, PERF_TYPE_RAW, O2(l2 , accesses), "L2_RQSTS.ALL_DEMAND_REFERENCES");
+        ps += perf_add(p, pid, cpu, 0x2724, PERF_TYPE_RAW, O2(l2 , misses  ), "L2_RQSTS.ALL_DEMAND_MISS      ");
+        offsets_add(&p->ofs, O2(l1d, hits), O2(l1d, accesses), O2(l1d, misses), '-');
+        offsets_add(&p->ofs, O2(l2 , hits), O2(l2 , accesses), O2(l2 , misses), '-');
+        offsets_add(&p->ofs, O1(ll ), O1(l2), 0, '&');
+        offsets_add(&p->ofs, O1(lbw), O1(l2), 0, '&');
+    } else if (vendor == VENDOR_AMD && family >= FAMILY_ZEN) {
+        ps += perf_add(p, pid, cpu, 0xf064, PERF_TYPE_RAW, O2(l2 , hits    ), "PMCx064.1111.0000");
+        ps += perf_add(p, pid, cpu, 0x0864, PERF_TYPE_RAW, O2(l2 , misses  ), "PMCx064.0000.1000");
+        ps += perf_add(p, pid, cpu, 0x0729, PERF_TYPE_RAW, O2(l1d, accesses), "PMCx029.0000.0111");
+        offsets_add(&p->ofs, O2(l2 , accesses), O2(l2 , misses  ), O2(l2, hits)   , '+');
+        offsets_add(&p->ofs, O2(l1d, misses  ), O2(l2 , accesses),               0, '=');
+        offsets_add(&p->ofs, O2(l1d, hits    ), O2(l1d, accesses), O2(l1d, misses), '-');
+        offsets_add(&p->ofs, O1(ll ), O1(l2), 0, '&');
+        offsets_add(&p->ofs, O1(lbw), O1(l2), 0, '&');
+    } else if (vendor == VENDOR_ARM) {
+        // Arm Architecture Reference Manual for A-profile architecture
+        ps += perf_add(p, pid, cpu, L1_LDA, PERF_TYPE_HW , O2(l1d, accesses ), "PERF_L1D_LOAD_ACCESS");
+        ps += perf_add(p, pid, cpu, L1_LDM, PERF_TYPE_HW , O2(l1d, misses   ), "PERF_L1D_LOAD_MISS  ");
+        ps += perf_add(p, pid, cpu, 0x0016, PERF_TYPE_RAW, O2(l2 , accesses ), "L2D_CACHE           ");
+        ps += perf_add(p, pid, cpu, 0x0017, PERF_TYPE_RAW, O2(l2 , misses   ), "L2D_CACHE_REFILL    ");
+        ps += perf_add(p, pid, cpu, 0x0018, PERF_TYPE_RAW, O2(l2 , lines_out), "L2D_CACHE_WB        ");
+        offsets_add(&p->ofs, O2(l1d, hits), O2(l1d, accesses ), O2(l1d, misses), '-');
+        offsets_add(&p->ofs, O2(l2 , hits), O2(l2 , accesses ), O2(l2 , misses), '-');
+        offsets_add(&p->ofs, O1(ll ), O1(l2), 0, '&');
+        offsets_add(&p->ofs, O1(lbw), O1(l2), 0, '&');
+    } else {
+        ps += perf_add(p, pid, cpu, L1_LDA, PERF_TYPE_HW, O2(l1d, accesses), "PERF_L1D_LOAD_ACCESS");
+        ps += perf_add(p, pid, cpu, L1_LDM, PERF_TYPE_HW, O2(l1d, misses  ), "PERF_L1D_LOAD_MISS"  );
+        offsets_add(&p->ofs, O2(l1d, hits    ), O2(l1d, accesses), O2(l1d, misses), '-');
+        offsets_add(&p->ofs, O2(l2 , accesses), O2(l1d, misses  ),               0, '=');
+        offsets_add(&p->ofs, O1(ll ), O1(l1d), 0, '&');
+        offsets_add(&p->ofs, O1(lbw), O1(l3 ), 0, '&'); // L3 will be 0, so it is ok
+    }
+    if (ps == 0) {
+        // Destroy de offsets
+        return_print(EAR_ERROR, "Failed all perf events: %s", state_msg);
+    }
+    return EAR_SUCCESS;
+}
+
 CACHE_F_LOAD(perf)
 {
-    if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_SKYLAKE_X) {
-        perfs_add(0x01d1, PERF_TYPE_RAW, O2(l1d, hits    ), "MEM_LOAD_RETIRED.L1_HIT       ");
-        perfs_add(0x08d1, PERF_TYPE_RAW, O2(l1d, misses  ), "MEM_LOAD_RETIRED.L1_MISS      ");
-        perfs_add(0xe724, PERF_TYPE_RAW, O2(l2 , accesses), "L2_RQSTS.ALL_DEMAND_REFERENCES");
-        perfs_add(0x2724, PERF_TYPE_RAW, O2(l2 , misses  ), "L2_RQSTS.ALL_DEMAND_MISS      ");
-        perfs_add(0x04d1, PERF_TYPE_RAW, O2(l3 , hits    ), "MEM_LOAD_RETIRED.L3_HIT       ");
-        perfs_add(0x20d1, PERF_TYPE_RAW, O2(l3 , misses  ), "MEM_LOAD_RETIRED.L3_MISS      ");
-        offsets_add(&ofs, O2(l1d, accesses), O2(l1d, hits    ), O2(l1d, misses), '+');
-        offsets_add(&ofs, O2(l2 , hits    ), O2(l2 , accesses), O2(l2 , misses), '-');
-        offsets_add(&ofs, O1(ll ), O1(l3), 0, '&');
-        offsets_add(&ofs, O1(lbw), O1(l2), 0, '&');
-    } else if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_BROADWELL_X) {
-        perfs_add(L1_LDA, PERF_TYPE_HW , O2(l1d, accesses), "PERF_L1D_LOAD_ACCESS          ");
-        perfs_add(L1_LDM, PERF_TYPE_HW , O2(l1d, misses  ), "PERF_L1D_LOAD_MISS            ");
-        perfs_add(0xe724, PERF_TYPE_RAW, O2(l2 , accesses), "L2_RQSTS.ALL_DEMAND_REFERENCES");
-        perfs_add(0x2724, PERF_TYPE_RAW, O2(l2 , misses  ), "L2_RQSTS.ALL_DEMAND_MISS      ");
-        offsets_add(&ofs, O2(l1d, hits), O2(l1d, accesses), O2(l1d, misses), '-');
-        offsets_add(&ofs, O2(l2 , hits), O2(l2 , accesses), O2(l2 , misses), '-');
-        offsets_add(&ofs, O1(ll ), O1(l2), 0, '&');
-        offsets_add(&ofs, O1(lbw), O1(l2), 0, '&');
-    } else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN) {
-        perfs_add(0xf064, PERF_TYPE_RAW, O2(l2 , hits    ), "PMCx064.1111.0000");
-        perfs_add(0x0864, PERF_TYPE_RAW, O2(l2 , misses  ), "PMCx064.0000.1000");
-        perfs_add(0x0729, PERF_TYPE_RAW, O2(l1d, accesses), "PMCx029.0000.0111");
-        offsets_add(&ofs, O2(l2 , accesses), O2(l2 , misses  ), O2(l2, hits)   , '+');
-        offsets_add(&ofs, O2(l1d, misses  ), O2(l2 , accesses),               0, '=');
-        offsets_add(&ofs, O2(l1d, hits    ), O2(l1d, accesses), O2(l1d, misses), '-');
-        offsets_add(&ofs, O1(ll ), O1(l2), 0, '&');
-        offsets_add(&ofs, O1(lbw), O1(l2), 0, '&');
-    } else if (tp->vendor == VENDOR_ARM) {
-        // Arm Architecture Reference Manual for A-profile architecture
-        perfs_add(L1_LDA, PERF_TYPE_HW , O2(l1d, accesses ), "PERF_L1D_LOAD_ACCESS");
-        perfs_add(L1_LDM, PERF_TYPE_HW , O2(l1d, misses   ), "PERF_L1D_LOAD_MISS  ");
-        perfs_add(0x0016, PERF_TYPE_RAW, O2(l2 , accesses ), "L2D_CACHE           ");
-        perfs_add(0x0017, PERF_TYPE_RAW, O2(l2 , misses   ), "L2D_CACHE_REFILL    ");
-        perfs_add(0x0018, PERF_TYPE_RAW, O2(l2 , lines_out), "L2D_CACHE_WB        ");
-        offsets_add(&ofs, O2(l1d, hits), O2(l1d, accesses ), O2(l1d, misses), '-');
-        offsets_add(&ofs, O2(l2 , hits), O2(l2 , accesses ), O2(l2 , misses), '-');
-        offsets_add(&ofs, O1(ll ), O1(l2), 0, '&');
-        offsets_add(&ofs, O1(lbw), O1(l2), 0, '&');
+    int i;
+
+    vendor = tp->vendor;
+    model  = tp->model;
+    family = tp->family;
+    if (SCOPE_IS(options, SCOPE_NODE)) {
+        perfs_count = tp->cpu_count;
+        perfs       = calloc(tp->cpu_count, sizeof(perfs_t));
+        scope       = SCOPE_NODE;
+        granularity = GRANULARITY_CPU;
+        // Event per CPU
+        for (i = 0; i < perfs_count; ++i) {
+            add_events(&perfs[i], -1, i);
+        }
+    } else if (SCOPE_IS(options, SCOPE_JOB)) {
+        perfs_count = tp->cpu_count * 3;
+        perfs       = calloc(perfs_count, sizeof(perfs_t));
+        scope       = SCOPE_JOB;
+        granularity = GRANULARITY_PROCESS;
     } else {
-        perfs_add(L1_LDA, PERF_TYPE_HW, O2(l1d, accesses), "PERF_L1D_LOAD_ACCESS");
-        perfs_add(L1_LDM, PERF_TYPE_HW, O2(l1d, misses  ), "PERF_L1D_LOAD_MISS"  );
-        offsets_add(&ofs, O2(l1d, hits    ), O2(l1d, accesses), O2(l1d, misses), '-');
-        offsets_add(&ofs, O2(l2 , accesses), O2(l1d, misses  ),               0, '=');
-        offsets_add(&ofs, O1(ll ), O1(l1d), 0, '&');
-        offsets_add(&ofs, O1(lbw), O1(l3 ), 0, '&'); // L3 will be 0, so it is ok
+        perfs_count = 1;
+        perfs       = calloc(1, sizeof(perfs_t));
+        scope       = SCOPE_PROCESS;
+        granularity = GRANULARITY_PROCESS;
+        add_events(&perfs[0], 0, -1);
     }
-    if (!perfs_count_opened_fds()) {
-        debug("All PERFs failed to open");
+    if (scope != SCOPE_JOB && !perfs_count_opened_fds()) {
         return;
     }
     apis_put(ops->unload  , cache_perf_unload);
+    apis_put(ops->update  , cache_perf_update);
     apis_put(ops->get_info, cache_perf_get_info);
     apis_put(ops->read    , cache_perf_read);
     apis_put(ops->internals_tostr, cache_perf_internals_tostr);
-    debug("Loaded PERF")
 }
 
-void cache_perf_unload()
+static state_t perfs_clean()
+{
+    int i, j;
+    for (i = 0; i < perfs_count; ++i) {
+        for (j = 0; j < perfs[i].perfs_count; ++j) {
+            // We assume 0 means unopened file descriptor
+            if (perfs[i].perfs[j].fd <= 0) {
+                continue;
+            }
+            perf_close(&perfs[i].perfs[j]);
+        }
+        perfs[i].perfs_count = 0;
+    }
+    return EAR_SUCCESS;
+}
+
+CACHE_F_UNLOAD(perf)
+{
+    if (perfs == NULL) {
+        return;
+    }
+    perfs_clean();
+    free(perfs);
+    perfs = NULL;
+    perfs_count = 0;
+}
+
+CACHE_F_UPDATE(perf)
 {
     int i;
-    for (i = 0; i < perfs_count; ++i) {
-        if (perfs[i].fd >= 0) {
-            perf_close(&perfs[i]);
+    if (scope == SCOPE_JOB && option == UPD_PID_ADD) {
+        pid_t pid = (uint) ((ullong) value);
+        for (i = 0; perfs[i].perfs_count > 0 && i < perfs_count; ++i) {
+            debug("%u %u", i, pid);
+            if (perfs[i].perfs[0].pid == pid) {
+                return_msg(EAR_ERROR, "PID already added");
+            }
         }
+        return add_events(&perfs[i], pid, -1);
+    } else if (scope == SCOPE_JOB && option == UPD_PIDS_CLEAN) {
+        return perfs_clean();
     }
-    perfs_count = 0;
+    return_msg(EAR_ERROR, "option not available");
 }
 
 void cache_perf_get_info(apinfo_t *info)
 {
     info->api         = API_PERF;
-    info->scope       = SCOPE_PROCESS;
-    info->granularity = GRANULARITY_PROCESS;
-    info->devs_count  = 1;
+    info->devs_count  = perfs_count;
+    info->scope       = scope;
+    info->granularity = granularity;
 }
 
-state_t cache_perf_read(cache_t *ca)
+CACHE_F_READ(perf)
 {
-    void *p = (void *) ca;
     llong value;
     state_t s;
-    int i;
-    // Cleaning
-    memset(ca, 0, sizeof(cache_t));
-    // Reading
-    timestamp_get(&ca->time);
+    int i, j;
+
     for (i = 0; i < perfs_count; ++i) {
-        if (perfs[i].fd >= 0) {
-            value = 0;
-            if (state_fail(s = perf_read(&perfs[i], &value))) {
+        if (perfs[i].perfs[0].pid == 0) {
+            continue;
+        }
+        #if SHOW_DEBUGS
+        dprintf(debug_channel, "DEV%d ", i);
+        #endif
+        ca[i].pid = perfs[i].perfs[0].pid;
+        timestamp_get(&ca[i].time);
+        for (j = 0; j < perfs[i].perfs_count; ++j) {
+            // We assume 0 means unopened file descriptor
+            if (perfs[i].perfs[j].fd <= 0) {
+                continue;
+            }
+            value = 0LL;
+            if (state_fail(s = perf_read(&perfs[i].perfs[j], &value))) {
+                debug("perf_read failed: %s", state_msg);
                 return s;
             }
-            offsets_calc_one(&ofs, p, i, value, 0LLU);
+            offsets_calc_one(&perfs[i].ofs, (void *) &ca[i], j, value, 0LLU);
+            #if SHOW_DEBUGS
+            dprintf(debug_channel, "%14lld ", value);
+            #endif
         }
+        offsets_calc(&perfs[i].ofs, (void *) &ca[i]);
+        #if SHOW_DEBUGS
+        dprintf(debug_channel, "\n");
+        #endif
     }
-    offsets_calc_all(&ofs, p);
-#if SHOW_DEBUGS
-    cache_data_print(ca, 0.0, fderr);
-#endif
     return EAR_SUCCESS;
 }
 
 void cache_perf_internals_tostr(char *buffer, int length)
 {
-    int i, c;
-    for (i = c = 0; i < perfs_count; ++i) {
-        c += sprintf(&buffer[c], "%s: %s\n", perfs[i].event_name, (perfs[i].fd > 0) ? "working" : "not-working");
+    int i, j, b, w;
+    // Forced to print 1 instead the whole devs_count
+    for (i = b = 0; i < 1 && length > 0; ++i) {
+        for (j = 0; j < perfs[i].perfs_count && length > 0; ++j) {
+            w = snprintf(&buffer[b], length, "%s: %s\n",
+                  perfs[i].perfs[j].event_name, (perfs[i].perfs[j].fd > 0) ? "working" : "not-working");
+            b += w, length -= w;
+        }
     }
 }

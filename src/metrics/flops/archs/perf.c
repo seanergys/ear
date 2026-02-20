@@ -118,6 +118,7 @@ static int add_events(perfs_t *p, uint pid, uint cpu)
         ps += add_perf(p, pid, cpu, 0x0074, PERF_TYPE_RAW, 2, 4.0, "ASE_SPEC");
     }
     if (ps == 0) {
+        // Destroy the offsets
         return_print(EAR_ERROR, "Failed all perf events: %s", state_msg);
     }
     return EAR_SUCCESS;
