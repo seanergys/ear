@@ -104,7 +104,6 @@ AC_DEFUN([AX_BEFORE_FEATURES],
     FEAT_MPI_LOADER=1
 
 	if test -z "$CC_FLAGS"; then
-		echo "Hello"
 		CC_FLAGS="-Wall -Werror -O2 -g"
 	fi
 
