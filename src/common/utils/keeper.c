@@ -83,6 +83,7 @@ static void keeper_open()
     // If we are root, we change the user and group of the keeper file.
     if (getuid() == 0) {
         if (chown(path, getuid(), getgid()) < 0) {
+            debug("Error changing owner of %s: (%d) %s", path, errno, strerror(errno));
         }
     }
     debug("Opening %s", path);
@@ -130,6 +131,7 @@ static void keeper_save()
     }
     // Position 0 of the file
     if (ftruncate(fd, 0) < 0) {
+        debug("Error truncating fd %d: (%d) %s", fd, errno, strerror(errno));
     }
     lseek(fd, 0, SEEK_SET);
 

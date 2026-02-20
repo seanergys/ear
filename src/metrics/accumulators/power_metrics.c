@@ -458,6 +458,7 @@ void report_periodic_power(int fd, power_data_t *my_power)
     sprintf(my_buffer, "%s: avg. power (W) for node %.2lf%s%s\n", s, my_power->avg_dc, spdram, spcpu);
 #endif
     if (write(fd, my_buffer, strlen(my_buffer)) < 0) {
+        debug("Error writing to fd %d: (%d) %s", fd, errno, strerror(errno));
     }
 }
 
