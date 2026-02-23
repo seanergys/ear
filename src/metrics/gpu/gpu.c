@@ -8,8 +8,11 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
+/* clang-format off */
 // #define SHOW_DEBUGS 1
-
+#include <stddef.h>
+#include <stdlib.h>
+#include <pthread.h>
 #include <common/output/debug.h>
 #include <metrics/gpu/archs/dummy.h>
 #include <metrics/gpu/archs/eard.h>
@@ -17,9 +20,6 @@
 #include <metrics/gpu/archs/nvml.h>
 #include <metrics/gpu/archs/oneapi.h>
 #include <metrics/gpu/archs/rsmi.h>
-#include <pthread.h>
-#include <stddef.h>
-#include <stdlib.h>
 
 // #ifndef USE_PVC_HWMON
 // #warning "USE_PVC_HWMON not defined! Defining it to 0..."
@@ -32,8 +32,7 @@ static apinfo_t info;
 
 void gpu_load(int options)
 {
-    while (pthread_mutex_trylock(&lock))
-        ;
+    while (pthread_mutex_trylock(&lock));
     if (info.api != API_NONE) {
         goto leave;
     }
@@ -54,8 +53,7 @@ leave:
 
 void gpu_unload()
 {
-    while (pthread_mutex_trylock(&lock))
-        ;
+    while (pthread_mutex_trylock(&lock));
     if (ops.unload != NULL) {
         ops.unload();
         memset(&ops, 0, sizeof(gpu_ops_t));
@@ -81,9 +79,9 @@ void gpu_topology_get(gpu_topology_t *tp)
     if (ops.topology_get != NULL) {
         ops.topology_get(tp);
     }
-#if SHOW_DEBUGS
+    #if SHOW_DEBUGS
     gpu_topology_print(tp, debug_channel);
-#endif
+    #endif
 }
 
 void gpu_topology_free(gpu_topology_t *tp)
@@ -118,20 +116,16 @@ void gpu_topology_print(gpu_topology_t *tp, int fd)
 void gpu_topology_select(gpu_topology_t *tp, gpu_topology_t *tp_new, uint type)
 {
     int i, j;
-    tp_new->devs_count = 0LLU;
+    tp_new->devs_count = 0U;
     // Counting readable revices
     for (i = 0; i < tp->devs_count; ++i) {
-        if (type == GPU_TP_SEL_MAIN)
-            tp_new->devs_count += !tp->devs[i].is_subdevice;
-        if (type == GPU_TP_SEL_READABLE)
-            tp_new->devs_count += tp->devs[i].is_readable;
+        if (type == GPU_TP_SEL_MAIN    ) tp_new->devs_count += !tp->devs[i].is_subdevice;
+        if (type == GPU_TP_SEL_READABLE) tp_new->devs_count +=  tp->devs[i].is_readable;
     }
     tp_new->devs = calloc(tp_new->devs_count, sizeof(gpu_devs_t));
     for (i = j = 0; i < tp->devs_count; ++i) {
-        if (type == GPU_TP_SEL_MAIN && tp->devs[i].is_subdevice)
-            continue;
-        if (type == GPU_TP_SEL_READABLE && !tp->devs[i].is_readable)
-            continue;
+        if (type == GPU_TP_SEL_MAIN     &&  tp->devs[i].is_subdevice) continue;
+        if (type == GPU_TP_SEL_READABLE && !tp->devs[i].is_readable ) continue;
         memcpy(&tp_new->devs[j++], &tp->devs[i], sizeof(gpu_devs_t));
     }
 }
@@ -143,15 +137,12 @@ void gpu_get_devices(gpu_devs_t **devs, uint *devs_count)
 
     gpu_topology_get(&tp);
     gpu_topology_select(&tp, &tp_new, GPU_TP_SEL_READABLE);
-#if SHOW_DEBUGS
+    #if SHOW_DEBUGS
     gpu_topology_print(&tp_new, debug_channel);
-#endif
-    if (devs != NULL)
-        *devs = tp_new.devs;
-    if (devs_count != NULL)
-        *devs_count = tp_new.devs_count;
-    if (devs == NULL)
-        gpu_topology_free(&tp_new);
+    #endif
+    if (devs       != NULL) *devs       = tp_new.devs;
+    if (devs_count != NULL) *devs_count = tp_new.devs_count;
+    if (devs       == NULL) gpu_topology_free(&tp_new);
     gpu_topology_free(&tp);
 }
 
@@ -262,7 +253,7 @@ void gpu_data_merge(gpu_t *data_diff, gpu_t *data_merge)
         data_merge->temp_gpu += data_diff[i].temp_gpu;
         data_merge->temp_mem += data_diff[i].temp_mem;
         data_merge->energy_j += data_diff[i].energy_j;
-        data_merge->power_w += data_diff[i].power_w;
+        data_merge->power_w  += data_diff[i].power_w;
     }
     // Static
     data_merge->time    = data_diff[0].time;
@@ -302,8 +293,8 @@ void gpu_data_print(gpu_t *data, int fd)
     int i;
     for (i = 0; i < info.devs_count; ++i) {
         dprintf(fd, "gpu%u: %3.0lf J, %3.0lf W, %4lu MHz, %4lu MHz, %2lu-%2lu usg, %2lu-%lu t, %lu\n", i,
-                data[i].energy_j, data[i].power_w, data[i].freq_gpu / 1000LU, data[i].freq_mem / 1000LU,
-                data[i].util_gpu, data[i].util_mem, data[i].temp_gpu, data[i].temp_mem, data[i].samples);
+            data[i].energy_j, data[i].power_w, data[i].freq_gpu / 1000LU, data[i].freq_mem / 1000LU,
+            data[i].util_gpu, data[i].util_mem, data[i].temp_gpu, data[i].temp_mem, data[i].samples);
     }
 }
 
@@ -315,10 +306,10 @@ char *gpu_data_tostr(gpu_t *data, char *buffer, int length)
     int i;
 
     for (i = accuml = 0; i < info.devs_count && length > 0; ++i) {
-        s      = snprintf(&buffer[accuml], length,
-                          "gpu%u: %3.0lf J, %3.0lf W, %7lu KHz, %7lu KHz, %2lu-%2lu usg, %2lu-%lu t, %lu (%s)\n", i,
-                          data[i].energy_j, data[i].power_w, data[i].freq_gpu, data[i].freq_mem, data[i].util_gpu,
-                          data[i].util_mem, data[i].temp_gpu, data[i].temp_mem, data[i].samples, state[data[i].correct]);
+        s = snprintf(&buffer[accuml], length,
+            "gpu%u: %3.0lf J, %3.0lf W, %7lu KHz, %7lu KHz, %2lu-%2lu usg, %2lu-%lu t, %lu (%s)\n", i,
+            data[i].energy_j, data[i].power_w, data[i].freq_gpu, data[i].freq_mem, data[i].util_gpu,
+            data[i].util_mem, data[i].temp_gpu, data[i].temp_mem, data[i].samples, state[data[i].correct]);
         length = length - s;
         accuml = accuml + s;
     }
