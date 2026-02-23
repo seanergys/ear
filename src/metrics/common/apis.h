@@ -74,13 +74,13 @@
 #define MONITORING_MODE_STOP   -1
 #define MONITORING_MODE_IDLE   0
 #define MONITORING_MODE_RUN    1
-#define UPD_PID_ADD            1 //For update() functions
-#define UPD_PIDS_CLEAN         2
-#define UPD_DEMO1_SET          10+0 // Idle
-#define UPD_DEMO2_SET          10+1 // Cpu-intensive
-#define UPD_DEMO3_SET          10+2 // Mem-intensive
-#define UPD_DEMO4_SET          10+3 // Gpu-intensive
-
+// For update() functions
+#define UPD_PID_ADD            1    // <value = PID>, adds the PID to account its metrics
+#define UPD_PIDS_CLEAN         2    // <value = NULL>, cleans all the accounted PIDs
+#define UPD_DEMO1_SET          10+0 // <value = NULL>, when API_DEMO, set the Idle demo
+#define UPD_DEMO2_SET          10+1 // <value = NULL>, set the Cpu-intensive demo
+#define UPD_DEMO3_SET          10+2 // <value = NULL>, set the Mem-intensive demo
+#define UPD_DEMO4_SET          10+3 // <value = NULL>, set the Gpu-intensive demo
 //  8 bits for API        (256 possibilities)
 //  4 bits for SCOPE      (8 possibilities)
 // 20 bits for OTHER OPTS (20 slots)

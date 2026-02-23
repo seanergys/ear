@@ -91,6 +91,8 @@ typedef struct metrics_diff_s {
 // This function contains load() and init() functions of the different metrics.
 void metrics_load(metrics_info_t *m, topology_t *tp, char *nodepow_path, uint *options);
 
+// You can see the list of update options in apis.h (UPD_ prefix). The value can
+// be of whatever type, a pointer (including NULL), an integer, etc.
 void metrics_update(uint option, void *value);
 
 // This function is composed by get_info() functions of the different metrics.
