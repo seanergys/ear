@@ -1347,7 +1347,6 @@ long long mysql_batch_insert_signatures(MYSQL *connection, signature_container_t
 
     MYSQL_BIND *bind = xcalloc(num_sigs * num_params, sizeof(MYSQL_BIND));
 
-    int32_t tmp = 0;
     for (i = 0; i < num_sigs; i++) {
         int offset = i * num_params;
         // double storage
@@ -1385,7 +1384,6 @@ long long mysql_batch_insert_signatures(MYSQL *connection, signature_container_t
         bind[7 + offset].buffer = (char *) &signature->Gflops;
         bind[8 + offset].buffer = (char *) &signature->time;
         bind[9 + offset].buffer = (char *) &signature->perc_MPI;
-        bind[9 + offset].buffer = (char *) &tmp;
         if (full_signature) {
             bind[10 + offset].buffer = (char *) &signature->L1_misses;
             bind[11 + offset].buffer = (char *) &signature->L2_misses;
