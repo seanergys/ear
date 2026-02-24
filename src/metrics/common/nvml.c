@@ -8,15 +8,15 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
+/* clang-format off */
 // #define SHOW_DEBUGS 1
-
-#include <common/config/config_env.h>
-#include <common/output/debug.h>
-#include <common/system/symplug.h>
-#include <metrics/common/nvml.h>
-#include <pthread.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <pthread.h>
+#include <common/output/debug.h>
+#include <common/system/symplug.h>
+#include <common/config/config_env.h>
+#include <metrics/common/nvml.h>
 
 // Provisional
 #define HACK_NVML_FILE "HACK_NVML_FILE"
@@ -75,21 +75,21 @@ static const char *nvml_names[] = {
 };
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-static void *handler;
+static void         *handler;
 static nvmlDevice_t *handlers;
-static uint handlers_count;
-static ullong *serials;
-static nvml_t nvml;
-static uint counter;
+static uint          handlers_count;
+static ullong       *serials;
+static nvml_t        nvml;
+static uint          counter; // Counts the times this class has been opened
 
 static state_t static_open()
 {
-#define open_test(path)                                                                                                \
+    #define open_test(path)                                                                                                \
     debug("Opening %s", path);                                                                                         \
     if ((handler = plug_open2(path, (void **) &nvml, nvml_names, NVML_N, RTLD_NOW | RTLD_LOCAL)) != NULL) {            \
         return EAR_SUCCESS;                                                                                            \
     }
-#define build_path_and_test(base_path)                                                                                 \
+    #define build_path_and_test(base_path)                                                                                 \
     if (base_path) {                                                                                                   \
         char path[MAX_PATH_SIZE];                                                                                      \
         strncpy(path, base_path, sizeof(path) - 1);                                                                    \
@@ -193,12 +193,11 @@ static state_t static_init()
 state_t nvml_open(nvml_t *nvml_in)
 {
     state_t s = EAR_SUCCESS;
-#ifndef CUDA_BASE
+    #ifndef CUDA_BASE
     debug("No CUDA_BASE path provided");
     return EAR_ERROR;
-#endif
-    while (pthread_mutex_trylock(&lock))
-        ;
+    #endif
+    while (pthread_mutex_trylock(&lock));
     if (counter) {
         ++counter;
         goto fini;
@@ -250,31 +249,39 @@ static void get_device_info(gpu_devs_t *dev, uint is_subdevice)
 
 void nvml_get_devices(gpu_devs_t **devs, uint *devs_count_in, int add_subdevices)
 {
-    uint aux;
     nvmlReturn_t r;
+    uint aux;
     int m; // main
-    int n = 0;
     int s; // sub
+    int n = 0;
 
     for (m = 0; m < handlers_count; ++m) {
         aux = 0U;
-        nvml.GetMaxMigDeviceCount(handlers[m], &aux);
+        // Getting the maximum number of MIG devices per MAIN device
+        if ((r = nvml.GetMaxMigDeviceCount(handlers[m], &aux)) != NVML_SUCCESS) {
+            debug("nvml.GetMaxMigDeviceCount returned %d (%s)", r, nvml.ErrorString(r));
+        }
+        debug("NVML device %d has a max of %u subdevices", m, aux);
         *devs_count_in += aux;
     }
+    *devs_count_in += handlers_count;
+    debug("Detected a maximum of %u NVML devices including MIGs", *devs_count_in);
     *devs = calloc(*devs_count_in, sizeof(gpu_devs_t));
-    debug("Detected %u NVML devices including MIGs", *devs_count_in);
-    //
+    // Filling the data per device including MIGs
     for (m = 0; m < handlers_count; ++m) {
         (*devs)[n].handler = &handlers[m];
         get_device_info(&(*devs)[n], 0);
+        // The number of sub-devices is provided by get_device_info() function
         for (s = 0; add_subdevices && s < (*devs)[n].subdevices_count; ++s) {
             (*devs)[n + 1 + s].handler = calloc(1, sizeof(nvmlDevice_t));
-            r                          = nvml.GetMigDeviceHandleByIndex(handlers[m], s, (*devs)[n + 1 + s].handler);
+            // Getting sub-device handler
+            r = nvml.GetMigDeviceHandleByIndex(handlers[m], s, (*devs)[n + 1 + s].handler);
             if (r == NVML_ERROR_NOT_FOUND) {
                 break;
             }
             get_device_info(&(*devs)[n + 1 + s], 1);
         }
+        // Continuing from last sub-device
         n = n + 1 + s;
     }
     *devs_count_in = n;

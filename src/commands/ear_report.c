@@ -30,6 +30,8 @@
 
 #if DB_MYSQL
 #include <mysql/mysql.h>
+#elif DB_PSQL
+#include <libpq-fe.h>
 #endif
 
 #define PUE              1.2
@@ -183,6 +185,50 @@ unsigned long long avg_pow = 0;
 time_t global_start_time   = 0;
 time_t global_end_time     = 0;
 cluster_conf_t my_conf;
+
+#if DB_PSQL
+
+/***************************************
+ *    Auxiliary PostgreSQL functions    *
+ ***************************************/
+static PGconn *postgresql_create_connection()
+{
+    char temp[32];
+    char **keys, **values;
+    PGconn *connection;
+
+    db_conf_t *db_config = &my_conf.database;
+
+    sprintf(temp, "%d", db_config->port);
+    strtolow(db_config->database);
+
+    keys   = calloc(4, sizeof(char *));
+    values = calloc(4, sizeof(char *));
+
+    keys[0] = "dbname";
+    keys[1] = "user";
+    keys[2] = "password";
+    keys[3] = "host";
+
+    values[0] = db_config->database;
+    values[1] = db_config->user;
+    values[2] = db_config->pass;
+    values[3] = db_config->ip;
+
+    connection = PQconnectdbParams((const char *const *) keys, (const char *const *) values, 0);
+
+    free(keys);
+    free(values);
+
+    if (PQstatus(connection) != CONNECTION_OK) {
+        verbose(VDBH, "psql.c: ERROR connecting to the database: %s", PQerrorMessage(connection));
+        PQfinish(connection);
+        return NULL;
+    }
+
+    return connection;
+}
+#endif
 
 void usage(char *app)
 {

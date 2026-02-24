@@ -7,10 +7,10 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
-/* clang-format off */
 
 #ifndef METRICS_GPU_H
 #define METRICS_GPU_H
+/* clang-format off */
 
 #include <common/types.h>
 #include <common/states.h>
@@ -152,4 +152,5 @@ char *gpu_data_tostr(gpu_t *data, char *buffer, int length);
 
 int gpu_is_supported();
 
+/* clang-format on */
 #endif

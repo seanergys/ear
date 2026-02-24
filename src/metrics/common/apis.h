@@ -49,6 +49,7 @@
 #define API_GRACE_CPU          23
 #define API_HWMON              24
 #define API_FILE               25
+#define API_DEMO               26
 #define API_PVC_HWMON          30
 #define GRANULARITY_NONE       0
 #define GRANULARITY_DUMMY      1
@@ -73,9 +74,13 @@
 #define MONITORING_MODE_STOP   -1
 #define MONITORING_MODE_IDLE   0
 #define MONITORING_MODE_RUN    1
-#define UPD_PID_ADD            1 //For update() functions
-#define UPD_PIDS_CLEAN         2
-
+// For update() functions
+#define UPD_PID_ADD            1    // <value = PID>, adds the PID to account its metrics
+#define UPD_PIDS_CLEAN         2    // <value = NULL>, cleans all the accounted PIDs
+#define UPD_DEMO1_SET          10+0 // <value = NULL>, when API_DEMO, set the Idle demo
+#define UPD_DEMO2_SET          10+1 // <value = NULL>, set the Cpu-intensive demo
+#define UPD_DEMO3_SET          10+2 // <value = NULL>, set the Mem-intensive demo
+#define UPD_DEMO4_SET          10+3 // <value = NULL>, set the Gpu-intensive demo
 //  8 bits for API        (256 possibilities)
 //  4 bits for SCOPE      (8 possibilities)
 // 20 bits for OTHER OPTS (20 slots)
@@ -89,41 +94,36 @@ typedef struct ctx_s {
 
 typedef struct apinfo_s {
     char *layer;
-    uint api;
-    uint api_under; // API used by EAR DAEMON
-    uint ok;        // Obsolete value, future union?
+    uint  api;
+    uint  api_under; //API used by EAR DAEMON
+    uint  ok;        //Obsolete value, future union?
     char *api_str;
-    uint devs_count;
-    uint granularity;
+    uint  devs_count;
+    uint  granularity;
     char *granularity_str;
-    uint scope;
+    uint  scope;
     char *scope_str;
-    uint bits; // Unused
-    uint dev_model;
-
+    uint  bits; // Unused
+    uint  dev_model;
     // This is a miscellaneous extra-space
     union {
         void *list1;
         void *avail_list;
+        void *devs_list;
     };
-
     union {
         void *list2;
         void *current_list;
     };
-
     void *list3;
-
     union {
         uint list1_count;
         uint avail_count;
     };
-
     union {
         uint list2_count;
         uint current_count;
     };
-
     uint list3_count;
 } apinfo_t;
 

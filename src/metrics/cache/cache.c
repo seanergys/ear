@@ -7,13 +7,15 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
+
 /* clang-format off */
-
 // #define SHOW_DEBUGS 1
-
+#include <stdlib.h>
 #include <pthread.h>
 #include <common/output/debug.h>
+#include <common/math_operations.h>
 #include <metrics/cache/cache.h>
+#include <metrics/cache/archs/demo.h>
 #include <metrics/cache/archs/dummy.h>
 #include <metrics/cache/archs/perf.h>
 
@@ -31,7 +33,8 @@ void cache_load(topology_t *tp, int options)
     if (API_IS(options, API_DUMMY)) {
         goto dummy;
     }
-    cache_perf_load(tp, &ops, options);
+    //cache_perf_load(tp, &ops, options);
+    cache_demo_load(tp, &ops, options);
 dummy:
     cache_dummy_load(tp, &ops, options);
     cache_get_info(&info);
@@ -51,6 +54,11 @@ void cache_unload()
         memset(&info, 0, sizeof(apinfo_t));
     }
     pthread_mutex_unlock(&lock);
+}
+
+state_t cache_update(uint option, void *value)
+{
+    return ops.update(option, value);
 }
 
 void cache_get_info(apinfo_t *info)
@@ -90,14 +98,16 @@ state_t cache_read_copy(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs)
 
 static void level_diff(cache_level_t *l2, cache_level_t *l1, cache_level_t *lD)
 {
-    lD->hits      = l2->hits      - l1->hits;
-    lD->misses    = l2->misses    - l1->misses;
-    lD->accesses  = l2->accesses  - l1->accesses;
-    lD->lines_in  = l2->lines_in  - l1->lines_in;
-    lD->lines_out = l2->lines_out - l1->lines_out;
-    lD->lines_in  = (lD->lines_in) ? lD->lines_in : lD->misses;
-    lD->hit_rate  = (lD->accesses) ? ((double) lD->hits) / ((double) lD->accesses) : 0.0;
-    lD->miss_rate = (lD->accesses) ? ((double) lD->misses) / ((double) lD->accesses) : 0.0;
+    lD->hits      = overflow_zeros_u64(l2->hits     , l1->hits     );
+    lD->misses    = overflow_zeros_u64(l2->misses   , l1->misses   );
+    lD->accesses  = overflow_zeros_u64(l2->accesses , l1->accesses );
+    lD->lines_in  = overflow_zeros_u64(l2->lines_in , l1->lines_in );
+    lD->lines_out = overflow_zeros_u64(l2->lines_out, l1->lines_out);
+    lD->lines_in  = (lD->lines_in)? lD->lines_in: lD->misses;
+    lD->hit_rate  = (lD->accesses && lD->accesses > lD->hits  )?
+                    ((double) lD->hits  ) / ((double) lD->accesses): 0.0;
+    lD->miss_rate = (lD->accesses && lD->accesses > lD->misses)?
+                    ((double) lD->misses) / ((double) lD->accesses): 0.0;
 }
 
 static cache_level_t *get_offset(void *dst_addr, void *src_addr, void *src_lv_addr)
@@ -108,26 +118,47 @@ static cache_level_t *get_offset(void *dst_addr, void *src_addr, void *src_lv_ad
 void cache_data_diff(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs)
 {
     double secs = 0.0;
+    int i;
 
+    memset(caD, 0, sizeof(cache_t)*info.devs_count);
     if (ops.data_diff != NULL) {
         return ops.data_diff(ca2, ca1, caD, gbs);
     }
-    memset(caD, 0, sizeof(cache_t));
-    secs     = timestamp_fdiff(&ca2->time, &ca1->time, TIME_SECS, TIME_MSECS);
-    caD->ll  = get_offset(caD, ca2, ca2->ll);
-    caD->lbw = get_offset(caD, ca2, ca2->lbw);
-    level_diff(&ca2->l1d, &ca1->l1d, &caD->l1d);
-    level_diff(&ca2->l2, &ca1->l2, &caD->l2);
-    level_diff(&ca2->l3, &ca1->l3, &caD->l3);
-    if (gbs != NULL) {
-        *gbs = (double) (caD->lbw->lines_in + caD->lbw->lines_out);
-        *gbs = *gbs / secs;
-        *gbs = *gbs * ((double) line_size);
-        *gbs = *gbs / ((double) 1E9);
+    for (i = 0; i < info.devs_count; ++i) {
+        if ((caD[i].pid = ca1[i].pid) == 0) {
+            continue;
+        }
+        caD[i].ll  = get_offset(&caD[i], &ca2[i], ca2[i].ll);
+        caD[i].lbw = get_offset(&caD[i], &ca2[i], ca2[i].lbw);
+        level_diff(&ca2[i].l1d, &ca1[i].l1d, &caD[i].l1d);
+        level_diff(&ca2[i].l2 , &ca1[i].l2 , &caD[i].l2 );
+        level_diff(&ca2[i].l3 , &ca1[i].l3 , &caD[i].l3 );
+        secs = timestamp_fdiff(&ca2[i].time, &ca1[i].time, TIME_SECS, TIME_MSECS);
+        if (gbs != NULL) {
+            *gbs = (double) (caD[i].lbw->lines_in + caD[i].lbw->lines_out);
+            *gbs = *gbs / secs;
+            *gbs = *gbs * ((double) line_size);
+            *gbs = *gbs / ((double) 1E9);
+        }
     }
-#if SHOW_DEBUGS
+    #if SHOW_DEBUGS
     cache_data_print(caD, *gbs, fderr);
-#endif
+    #endif
+}
+
+void cache_data_alloc(cache_t **ca)
+{
+    if (ca != NULL) {
+        *ca = calloc(info.devs_count, sizeof(cache_t));
+    }
+}
+
+void cache_data_free(cache_t **ca)
+{
+    if (ca != NULL) {
+        free(*ca);
+        *ca = NULL;
+    }
 }
 
 void cache_data_copy(cache_t *dst, cache_t *src)
@@ -139,34 +170,41 @@ void cache_data_copy(cache_t *dst, cache_t *src)
 
 void cache_data_print(cache_t *ca, double gbs, int fd)
 {
-    char buffer[SZ_BUFFER];
-    cache_data_tostr(ca, gbs, buffer, SZ_BUFFER);
+    char buffer[8192];
+    cache_data_tostr(ca, gbs, buffer, sizeof(buffer));
     dprintf(fd, "%s", buffer);
 }
 
 void cache_data_tostr(cache_t *ca, double gbs, char *buffer, size_t length)
 {
-    // clang-format off
-    snprintf(buffer, length,
-    "L1D: %10llu hits, %10llu misses, %10llu accesses, %10llu lines_in, %10llu lines_out, %0.2lf hit rate, %0.2lf miss rate\n"
-    "L2 : %10llu hits, %10llu misses, %10llu accesses, %10llu lines_in, %10llu lines_out, %0.2lf hit rate, %0.2lf miss rate\n"
-    "L3 : %10llu hits, %10llu misses, %10llu accesses, %10llu lines_in, %10llu lines_out, %0.2lf hit rate, %0.2lf miss rate\n"
-    "LL : %10llu hits, %10llu misses, %10llu accesses, %10llu lines_in, %10llu lines_out, %0.2lf hit rate, %0.2lf miss rate\n"
-    "LBW: %10llu hits, %10llu misses, %10llu accesses, %10llu lines_in, %10llu lines_out, %0.2lf hit rate, %0.2lf miss rate\n"
-    "CAS: %0.2lf GB/s\n",
-    ca->l1d.hits , ca->l1d.misses , ca->l1d.accesses , ca->l1d.lines_in , ca->l1d.lines_out , ca->l1d.hit_rate , ca->l1d.miss_rate ,
-    ca->l2.hits  , ca->l2.misses  , ca->l2.accesses  , ca->l2.lines_in  , ca->l2.lines_out  , ca->l2.hit_rate  , ca->l2.miss_rate  ,
-    ca->l3.hits  , ca->l3.misses  , ca->l3.accesses  , ca->l3.lines_in  , ca->l3.lines_out  , ca->l3.hit_rate  , ca->l3.miss_rate  ,
-    ca->ll->hits , ca->ll->misses , ca->ll->accesses , ca->ll->lines_in , ca->ll->lines_out , ca->ll->hit_rate , ca->ll->miss_rate ,
-    ca->lbw->hits, ca->lbw->misses, ca->lbw->accesses, ca->lbw->lines_in, ca->lbw->lines_out, ca->lbw->hit_rate, ca->lbw->miss_rate,
-    gbs);
-    // clang-format on
+    int i, b, w;
+
+    for (i = b = 0; i < info.devs_count && length > 0; ++i) {
+        if (ca[i].pid == 0) {
+            continue;
+        }
+        w = snprintf(&buffer[b], length,
+        "d%d l1d: %10llu hits, %10llu misses, %10llu accesses, %0.2lf miss rate\n"
+        "d%d l2 : %10llu hits, %10llu misses, %10llu accesses, %0.2lf miss rate\n"
+        "d%d l3 : %10llu hits, %10llu misses, %10llu accesses, %0.2lf miss rate\n",
+        i, ca[i].l1d.hits , ca[i].l1d.misses , ca[i].l1d.accesses , ca[i].l1d.miss_rate,
+        i, ca[i].l2.hits  , ca[i].l2.misses  , ca[i].l2.accesses  , ca[i].l2.miss_rate,
+        i, ca[i].l3.hits  , ca[i].l3.misses  , ca[i].l3.accesses  , ca[i].l3.miss_rate);
+        b += w, length -= w;
+    }
+    if (length  > 0) {
+        w = snprintf(&buffer[b-1], length, ", cas: %0.2lf GB/s\n", gbs);
+        b += w, length -= w;
+    }
+    if (length == 0) {
+        buffer[b-1] = '\n';
+    }
 }
 
 void cache_internals_print(int fd)
 {
-    char buffer[1024];
-    cache_internals_tostr(buffer, 1024);
+    char buffer[4096];
+    cache_internals_tostr(buffer, sizeof (buffer));
     dprintf(fd, "%s", buffer);
 }
 
