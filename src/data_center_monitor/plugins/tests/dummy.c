@@ -41,9 +41,9 @@ declr_up_action_periodic(_dummy)
     return rsprintf("dummy action periodic(_dummy): received tag %s", tag);
 }
 
-declr_up_post_data()
+declr_up_message_receive()
 {
-    return rsprintf("dummy post data: received msg %s", msg);
+    return rsprintf("dummy message receive: received msg %s", tag_msg);
 }
 
 declr_up_action_close()

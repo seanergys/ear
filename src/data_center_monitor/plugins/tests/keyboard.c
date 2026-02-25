@@ -16,7 +16,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <common/output/debug.h>
-#include <data_center_monitor/plugins/keyboard.h>
+#include <data_center_monitor/plugins/tests/keyboard.h>
 
 typedef struct keyboard_s {
     cchar *command;
@@ -65,7 +65,8 @@ void command_register(cchar *command, cchar *format, callback_t callback)
     keys[keys_count].format       = format;
     keys[keys_count].callback     = callback;
     keys[keys_count].params_count = format_count(format);
-    debug("Registered command %s with %u parameters", keys[keys_count].command, keys[keys_count].params_count);
+    debug("Registered command %s with %u parameters",
+        keys[keys_count].command, keys[keys_count].params_count);
     ++keys_count;
 }
 
