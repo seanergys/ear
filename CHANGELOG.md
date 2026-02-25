@@ -115,6 +115,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed setuid security issues in ereport, eacct, ear-info and econtrol.
 - Resolve "Policies default PState is overwritten in EARD's main function".
 
+# 5.2.4 - 2026-02-03
+
+### Changed
+
+- Switch JOB_ID to 1 in ERUN.
+
+### Fixed
+
+- Prevent calling mgt\_cpufreq\_governor\_available when the symbol is NULL.
+- EAR owner/permission files fixes.
+- Check whether opened fd is >= 0.
+- Fixed setuid security issues in ereport, eacct, ear-info and econtrol.
+- Resolve "Policies default PState is overwritten in EARD's main function".
+
 ## 5.2.3 - 2025-12-18
 
 ### Fixed

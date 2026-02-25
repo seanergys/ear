@@ -6,12 +6,14 @@ workflow:
     - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
       when: never
     - if: $CI_COMMIT_BRANCH
+    - if: $CI_COMMIT_TAG
 
 stages:          # List of stages for jobs, and their order of execution
   - quality
   - build
   - test
   - deploy
+  - release
 
 image: registry.gitlab.bsc.es/ear_team/ear-ci:v6
 
@@ -127,33 +129,14 @@ test-earl-omp-lite:
     paths:
       - earl.out
 
-        # test-earl-mkl-lite:
-        #   stage: test
-        #   needs: [compile-no-mpi-loader]
-        #   timeout: 30 minutes
-        #   script:
-        #     # Install oneMKL and Intel compilers
-        #     - |
-        #       tee > /tmp/oneAPI.repo << EOF
-        #       [oneAPI]
-        #       name=Intel® oneAPI repository
-        #       baseurl=https://yum.repos.intel.com/oneapi
-        #       enabled=1
-        #       gpgcheck=1
-        #       repo_gpgcheck=1
-        #       gpgkey=https://yum.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB
-        #       EOF
-        #     - mv /tmp/oneAPI.repo /etc/yum.repos.d
-        #     - dnf install -y intel-oneapi-compiler-dpcpp-cpp
-        #     - dnf install -y intel-oneapi-mkl-devel
-        #     - source /opt/intel/oneapi/setvars.sh
-        #     - $TESTDIR/scripts/compile_matrix_mul_mkl.sh $TESTDIR/apps/matrix_mul_mkl
-        #     - export EAR_ETC=ear-no-mpi-loader/etc
-        #     - export EAR_INSTALL_PATH=ear-no-mpi-loader
-        #     - export EAR_TMP=/tmp
-        #     - ear-no-mpi-loader/bin/erun --ear=on --ear-verbose=1 --program="$TESTDIR/apps/matrix_mul_mkl/matrix_mul_mkl double" 2> >(tee earl.out)
-        #   artifacts:
-        #     when: always
-        #     name: earl-mkl_out
-        #     paths:
-        #       - earl.out
+release_job:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  rules:
+    - if: $CI_COMMIT_TAG                 # Run this job when a tag is created
+  script:
+    - apk add --no-cache python3
+    - python3 etc/release/get_latest_tag_changelog.py CHANGELOG.md > changelog.txt
+  release:
+    tag_name: '$CI_COMMIT_TAG'
+    description: ./changelog.txt
