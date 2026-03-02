@@ -148,26 +148,31 @@ void metrics_info_print(metrics_info_t *m, int fd)
 }
 
 // Auxiliars
-void cpupow_tellmemore(ullong *diffs, ullong *pack, ullong *dram, double secs)
+void cpupow_tellmemore(ullong *diffs, ullong *pack, ullong *dram, double secs, ullong *tot_pack, ullong *tot_dram)
 {
-    double dpack = 0.0;
-    double ddram = 0.0;
-    int i;
-
-    *pack = 0;
-    *dram = 0;
-    for (i = 0; i < self_tp->socket_count; ++i) {
-        ddram += (double) diffs[i];
-        dpack += (double) diffs[self_tp->socket_count + i];
+    if (!diffs || !pack || !dram || !tot_pack || !tot_dram) {
+        return;
     }
-    dpack = cpupow(compute_power, dpack, secs);
-    ddram = cpupow(compute_power, ddram, secs);
-    dpack = dpack * secs;
-    ddram = ddram * secs;
-    debug("*pack = %0.3lf J (%0.3lf secs)", dpack, secs);
-    debug("*dram = %0.3lf J (%0.3lf secs)", ddram, secs);
-    *pack = (ullong) dpack;
-    *dram = (ullong) ddram;
+    *tot_pack = 0.0;
+    *tot_dram = 0.0;
+
+    for (int i = 0; i < self_tp->socket_count; ++i) {
+        double dram_pow = cpupow(compute_power, (double) diffs[i], secs);
+        double pack_pow = cpupow(compute_power, (double) diffs[self_tp->socket_count + i], secs);
+
+        *tot_dram += (ullong) dram_pow;
+        *tot_pack += (ullong) pack_pow;
+
+        debug("dram[%d] = %0.3lf W (%0.3lf J / %0.3lf secs)",
+              i, dram_pow, (double) diffs[i], secs);
+        debug("pack[%d] = %0.3lf W (%0.3lf J / %0.3lf secs)",
+              i, pack_pow, (double) diffs[self_tp->socket_count + i], secs);
+
+        pack[i] = (ullong) pack_pow;
+        dram[i] = (ullong) dram_pow;
+    }
+    debug("tot_pack = %llu W", *tot_pack);
+    debug("tot_dram = %llu W", *tot_dram);
 }
 
 static char *cpupow_data_tostr(ullong *diffs, double secs, char *buffer, size_t length)
@@ -269,6 +274,8 @@ void metrics_data_alloc(metrics_read_t *mr1, metrics_read_t *mr2, metrics_diff_t
         cpufreq_data_alloc(empty, &mrD->cpu_diff);
         imcfreq_data_alloc(empty, &mrD->imc_diff);
          cpupow(data_alloc, no_ctx, &mrD->pow_diff, NULL);
+         cpupow(data_alloc, no_ctx, &mrD->pow_dram, NULL);
+         cpupow(data_alloc, no_ctx, &mrD->pow_pack, NULL);
           cache_data_alloc(&mrD->cch_diff);
           flops_data_alloc(&mrD->flp_diff);
            temp_data_alloc(&mrD->tmp_diff);
@@ -295,7 +302,7 @@ void metrics_data_diff(metrics_read_t *mr2, metrics_read_t *mr1, metrics_diff_t 
         cpi_data_diff(mr2->cpi, mr1->cpi, mrD->cpi_diff, &mrD->cpi_avrg);
         gpu_data_diff(mr2->gpu, mr1->gpu, mrD->gpu_diff);
 
-    cpupow_tellmemore(mrD->pow_diff, &mrD->pow_pack, &mrD->pow_dram, mrD->time);
+    cpupow_tellmemore(mrD->pow_diff, mrD->pow_pack, mrD->pow_dram, mrD->time, &mrD->pow_tot_dram, &mrD->pow_tot_pack);
 }
 
 void metrics_data_copy(metrics_read_t *mrD, metrics_read_t *mrS)
