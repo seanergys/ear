@@ -55,26 +55,28 @@ typedef struct metrics_read_s {
 
 typedef struct metrics_diff_s {
     ullong   samples;
-    double   time;     //Seconds
-    ulong   *cpu_diff; //KHz (per device)
-    ulong    cpu_avrg; //KHz
-    ulong   *imc_diff; //KHz (per device)
-    ulong    imc_avrg; //KHz
-    ullong   ram_diff; //CAS
-    double   ram_avrg; //GB/s
-    cache_t *cch_diff; //Misses
-    double   cch_avrg; //GB/s
-    flops_t *flp_diff; // Float instructions
-    double   flp_avrg; // Giga float operations per second
+    double   time;     		 // Seconds
+    ulong   *cpu_diff; 		 // KHz (per device)
+    ulong    cpu_avrg; 		 // KHz
+    ulong   *imc_diff; 		 // KHz (per device)
+    ulong    imc_avrg; 		 // KHz
+    ullong   ram_diff; 		 // CAS
+    double   ram_avrg; 		 // GB/s
+    cache_t *cch_diff; 		 // Misses
+    double   cch_avrg; 		 // GB/s
+    flops_t *flp_diff; 		 // Float instructions
+    double   flp_avrg; 		 // Giga float operations per second
     llong   *tmp_diff;
     llong    tmp_avrg;
     ullong  *pow_diff;
-    ullong   pow_dram; //Average per DRAM
-    ullong   pow_pack; //Average per PACKAGE
+    ullong  *pow_dram; 		 // DRAM power per device
+    ullong  *pow_pack; 		 // PACKAGE power per device
+    ullong	 pow_tot_dram;
+    ullong	 pow_tot_pack;
     cpi_t   *cpi_diff;
-    double   cpi_avrg; //CPI
+    double   cpi_avrg; 		 // CPI
     gpu_t   *gpu_diff;
-    ulong    nod_avrg; //Total node energy
+    ulong    nod_avrg;     // Total node energy
 } metrics_diff_t;
 
 #define MET_OPT_CPUFREQ 0
