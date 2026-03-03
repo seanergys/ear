@@ -75,6 +75,9 @@ mets_OBJS = \
     $(SRCDIR)/metrics/imcfreq/archs/dummy.o \
     $(SRCDIR)/metrics/imcfreq/archs/intel63.o \
     $(SRCDIR)/metrics/proc/stat.o \
+    $(SRCDIR)/metrics/proc/proc.o \
+    $(SRCDIR)/metrics/proc/archs/dummy.o \
+    $(SRCDIR)/metrics/proc/archs/stat_file.o \
     $(SRCDIR)/metrics/gpu/gpu.o \
     $(SRCDIR)/metrics/gpu/gpuproc.o \
     $(SRCDIR)/metrics/gpu/gpuprof.o \
@@ -116,7 +119,7 @@ libmetrics.so: libmetrics.a
 	$(CC) $(CC_FLAGS) -I$(SRCDIR) -fPIC -shared -o $@ $(call whole,libmetrics.a) -L ../common -lcommon
 
 test: metrics.c
-	$(CC) -I $(SRCDIR) -DTEST=1 -fPIC -o $@ $^ libmetrics.a ../daemon/local_api/libeard.a ../common/libcommon.a -lm -lpthread -ldl
+	$(CC) $(CC_FLAGS) -I$(SRCDIR) -DTEST=1 -fPIC -o $@ $^ libmetrics.a ../daemon/local_api/libeard.a ../common/libcommon.a -lm -lpthread -ldl
 
 ######## OPTIONS
 

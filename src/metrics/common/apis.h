@@ -71,12 +71,14 @@
 #define SCOPE_JOB              0x400
 #define SCOPE_NODE             0x300
 #define O_NO_LOOP              0x1000
+#define O_POOL                 0x2000
 #define MONITORING_MODE_STOP   -1
 #define MONITORING_MODE_IDLE   0
 #define MONITORING_MODE_RUN    1
 // For update() functions
 #define UPD_PID_ADD            1    // <value = PID>, adds the PID to account its metrics
-#define UPD_PIDS_CLEAN         2    // <value = NULL>, cleans all the accounted PIDs
+#define UPD_PID_REMOVE         2    // <value = PID>, removes the PID from the accounting list
+#define UPD_PIDS_CLEAN         3    // <value = NULL>, cleans all the accounted PIDs
 #define UPD_DEMO1_SET          10+0 // <value = NULL>, when API_DEMO, set the Idle demo
 #define UPD_DEMO2_SET          10+1 // <value = NULL>, set the Cpu-intensive demo
 #define UPD_DEMO3_SET          10+2 // <value = NULL>, set the Mem-intensive demo
@@ -95,15 +97,15 @@ typedef struct ctx_s {
 typedef struct apinfo_s {
     char *layer;
     uint  api;
-    uint  api_under; //API used by EAR DAEMON
-    uint  ok;        //Obsolete value, future union?
+    uint  api_under; // API used under a remote API
+    uint  ok;        // Obsolete value, future union?
     char *api_str;
     uint  devs_count;
     uint  granularity;
     char *granularity_str;
     uint  scope;
     char *scope_str;
-    uint  bits; // Unused
+    uint  empty; // Future purpose
     uint  dev_model;
     // This is a miscellaneous extra-space
     union {

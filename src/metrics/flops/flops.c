@@ -73,6 +73,7 @@ void flops_get_info(apinfo_t *info)
 
 state_t flops_read(flops_t *fl)
 {
+    memset(fl, 0, sizeof(flops_t)*info.devs_count);
     return ops.read(fl);
 }
 
@@ -127,11 +128,11 @@ void flops_data_print(flops_t *flD, double gflops_tot, int fd)
     dprintf(fd, "%s", buffer);
 }
 
-void flops_data_tostr(flops_t *flD, double gflops_tot, char *buffer, size_t length)
+char *flops_data_tostr(flops_t *flD, double gflops_tot, char *buffer, size_t length)
 {
     int added = 0;
     int i;
-
+    buffer[0] = '\0';
     for (i = 0; i < info.devs_count; ++i) {
         if (flD[i].pid == 0) {
             continue;
@@ -143,6 +144,7 @@ void flops_data_tostr(flops_t *flD, double gflops_tot, char *buffer, size_t leng
         added += sprintf(&buffer[added], "[%14llu %14llu] ", flD[i].f512, flD[i].d512);
         added += sprintf(&buffer[added], "(%0.2lf GF/s in %0.2lf s)\n", flD[i].gflops, flD[i].secs);
     }
+    return buffer;
 }
 
 void flops_data_accum(flops_t *flA, flops_t *flD, double *gflops_tot)
@@ -275,11 +277,11 @@ reread:
     flops_data_copy(t1, t2);
     dprintf(STDOUT_FILENO, "%d: Printing...\n", getpid());
     #if 1
-    if (k++ < 1) {
-        flops_update(UPD_PID_ADD, (void *) 7337);
-        flops_update(UPD_PID_ADD, (void *) 7327);
-    } else {
-        flops_update(UPD_PIDS_CLEAN, NULL);
+    if (k++ == 2 || k == 10) {
+        flops_update(UPD_PID_ADD, (void *) 1383557);
+    } else if (k == 6 || k == 14){
+        flops_update(UPD_PID_REMOVE, (void *) 1383557);
+        //cache_update(UPD_PIDS_CLEAN, NULL);
     }
     #endif
     goto reread;

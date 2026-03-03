@@ -44,8 +44,7 @@ leave:
 
 void cpi_unload()
 {
-    while (pthread_mutex_trylock(&lock))
-        ;
+    while (pthread_mutex_trylock(&lock));
     if (info.api != API_NONE) {
         ops.unload();
         memset(&ops, 0, sizeof(cpi_ops_t));
@@ -71,6 +70,7 @@ void cpi_get_info(apinfo_t *info)
 
 state_t cpi_read(cpi_t *ci)
 {
+    memset(ci, 0, sizeof(cpi_t)*info.devs_count);
     return ops.read(ci);
 }
 
@@ -102,6 +102,9 @@ void cpi_data_diff(cpi_t *ci2, cpi_t *ci1, cpi_t *ciD, double *cpis_avg)
 
     memset(ciD, 0, sizeof(cpi_t)*info.devs_count);
     for (i = 0; i < info.devs_count; ++i) {
+        if (ci2[i].pid == 0 || ci1[i].pid == 0) {
+            continue;
+        }
         ciD[i].pid                 = ci1[i].pid;
         ciD[i].instructions        = overflow_zeros_u64(ci2[i].instructions       , ci1[i].instructions       );
         ciD[i].cycles              = overflow_zeros_u64(ci2[i].cycles             , ci1[i].cycles             );
@@ -149,9 +152,10 @@ void cpi_data_print(cpi_t *ci, double cpis_avg, int fd)
     dprintf(fd, "%s", buffer);
 }
 
-void cpi_data_tostr(cpi_t *ci, double cpis_avg, char *buffer, size_t length)
+char *cpi_data_tostr(cpi_t *ci, double cpis_avg, char *buffer, size_t length)
 {
     int i, b;
+    buffer[0] = '\0';
     for (i = b = 0; i < info.devs_count; ++i) {
         if (ci[i].pid == 0) {
             continue;
@@ -165,4 +169,70 @@ void cpi_data_tostr(cpi_t *ci, double cpis_avg, char *buffer, size_t length)
             ci[i].stalls.resources,
             ci[i].stalls.memory);
     }
+    return buffer;
 }
+
+#if TEST
+#include <time.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
+
+static topology_t tp;
+static apinfo_t   info;
+static cpi_t     *t1;
+static cpi_t     *t2;
+static cpi_t     *tD;
+static double     tA;
+static pid_t      pid;
+static int        forked;
+
+static int count_fds()
+{
+    int dummy_fd = open("/dev/null", O_RDONLY);
+    close(dummy_fd);
+    return dummy_fd;
+}
+
+int main(int argc, char *argv[])
+{
+    int i, j, k = 0;
+
+    topology_init(&tp);
+reload:
+    dprintf(STDOUT_FILENO, "%d: Loading... (%d fds)\n", getpid(), count_fds());
+    cpi_load(&tp, SCOPE_JOB | API_FREE);
+    cpi_get_info(&info);
+    apinfo_tostr(&info);
+    dprintf(STDOUT_FILENO, "%d: Loaded %s (%s:%s), with %u devices and %d fds\n",
+        getpid(), info.api_str, info.scope_str, info.granularity_str, info.devs_count, count_fds());
+    cpi_data_alloc(&t1);
+    cpi_data_alloc(&t2);
+    cpi_data_alloc(&tD);
+reread:
+    cpi_read(t1);
+    sleep(2);
+    for (i = j = 0; i < 1000000; ++i) {
+        j += 1;
+    }
+    dprintf(STDOUT_FILENO, "%d: Printing...\n", getpid());
+    cpi_read_diff(t2, t1, tD, &tA);
+    cpi_read(t2);
+    cpi_data_print(t1, 0.0, STDOUT_FILENO);
+    cpi_data_print(t2, 0.0, STDOUT_FILENO);
+    cpi_data_print(tD, 0.0, STDOUT_FILENO);
+    dprintf(STDOUT_FILENO, "--------------------------\n");
+    cpi_data_copy(t1, t2);
+    #if 1
+    if (k++ == 2 || k == 10) {
+        cpi_update(UPD_PID_ADD, (void *) 1703051);
+    } else if (k == 6 || k == 14){
+        cpi_update(UPD_PID_REMOVE, (void *) 1703051);
+        //cache_update(UPD_PIDS_CLEAN, NULL);
+    }
+    #endif
+    goto reread;
+    return 0;
+}
+#endif

@@ -164,18 +164,24 @@ FLOPS_F_LOAD(perf)
     apis_put(ops->internals_tostr, flops_perf_internals_tostr);
 }
 
+static void perf_remove(perfs_t *perf)
+{
+    int j;
+    for (j = 0; j < perf->perfs_count; ++j) {
+        // We assume 0 means unopened file descriptor
+        if (perf->perfs[j].fd <= 0) {
+            continue;
+        }
+        perf_close(&perf->perfs[j]);
+    }
+    memset(perf, 0, sizeof(perfs_t));
+}
+
 static state_t perfs_clean()
 {
-    int i, j;
+    int i;
     for (i = 0; i < perfs_count; ++i) {
-        for (j = 0; j < perfs[i].perfs_count; ++j) {
-            // We assume 0 means unopened file descriptor
-            if (perfs[i].perfs[j].fd <= 0) {
-                continue;
-            }
-            perf_close(&perfs[i].perfs[j]);
-        }
-        perfs[i].perfs_count = 0;
+        perf_remove(&perfs[i]);
     }
     return EAR_SUCCESS;
 }
@@ -193,15 +199,28 @@ FLOPS_F_UNLOAD(perf)
 
 FLOPS_F_UPDATE(perf)
 {
-    int i;
+    pid_t pid = (uint) ((ullong) value);
+    int i, j = perfs_count;
+
     if (scope == SCOPE_JOB && option == UPD_PID_ADD) {
-        pid_t pid = (uint) ((ullong) value);
-        for (i = 0; perfs[i].perfs_count > 0 && i < perfs_count; ++i) {
+        for (i = 0; i < perfs_count; ++i) {
             if (perfs[i].perfs[0].pid == pid) {
                 return_msg(EAR_ERROR, "PID already added");
             }
+            j = (perfs[i].perfs[0].pid == 0 && i < j)? i: j;
         }
-        return add_events(&perfs[i], pid, -1);
+        if (j >= perfs_count) {
+            return_msg(EAR_ERROR, "max number of PIDs reached")
+        }
+        return add_events(&perfs[j], pid, -1);
+    } else if (scope == SCOPE_JOB && option == UPD_PID_REMOVE) {
+        for (i = 0; i < perfs_count; ++i) {
+            if (perfs[i].perfs[0].pid == pid) {
+                perf_remove(&perfs[i]);
+                return EAR_SUCCESS;
+            }
+        }
+        return_msg(EAR_ERROR, "PID not found");
     } else if (scope == SCOPE_JOB && option == UPD_PIDS_CLEAN) {
         return perfs_clean();
     }
@@ -284,6 +303,9 @@ FLOPS_F_DATA_DIFF(perf)
     }
     // Instruction differences (PERF registers are 64 bits long)
     for (i = 0; i < perfs_count; ++i) {
+        if (fl2[i].pid == 0 || fl1[i].pid == 0) {
+            continue;
+        }
         p1 = (ullong *) &fl1[i].f64;
         p2 = (ullong *) &fl2[i].f64;
         pD = (flD != NULL)? (ullong *) &flD[i].f64: (ullong *) &flA[i].f64;
