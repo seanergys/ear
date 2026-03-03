@@ -87,6 +87,7 @@ static char *scope_tostr(uint scope)
     if      (scope == SCOPE_NONE   ) return "none";
     else if (scope == SCOPE_DUMMY  ) return "dummy";
     else if (scope == SCOPE_PROCESS) return "process";
+    else if (scope == SCOPE_JOB    ) return "job";
     else if (scope == SCOPE_NODE   ) return "node";
     return "none";
 }

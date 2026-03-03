@@ -9,7 +9,7 @@
  **************************************************************************/
 
 // clang-format off
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,7 +21,6 @@
 static uint      devs_count;
 static pid_t    *pids_job;
 static FILE    **fds_job;
-static int       fds_job_count; // up to devs_count * 3
 static FILE     *fd_node;
 static uint      scope;
 static uint      granularity;
@@ -31,22 +30,28 @@ static state_t pid_add(pid_t pid)
     char buffer[32];
     FILE *fd;
     int i;
-    if (fds_job_count >= devs_count) {
-        return_msg(EAR_ERROR, "max number of PIDs reached")
-    }
-    // PID control
-    for (i = 0; i < fds_job_count; ++i) {
+
+    // PID control, if already inserted
+    for (i = 0; i < devs_count; ++i) {
         if (pids_job[i] == pid) {
             return_msg(EAR_ERROR, "PID already added");
         }
+    }
+    // PID control, looking for a place
+    for (i = 0; i < devs_count; ++i) {
+        if (pids_job[i] == 0) {
+            break;
+        }
+    }
+    if (i >= devs_count) {
+        return_msg(EAR_ERROR, "max number of PIDs reached")
     }
     sprintf(buffer, "/proc/%d/io", pid);
     if ((fd = fopen(buffer, "r")) == NULL) {
         return_msg(EAR_ERROR, strerror(errno));
     }
-    fds_job[fds_job_count]  = fd;
-    pids_job[fds_job_count] = pid;
-    fds_job_count += (fd != NULL);
+    fds_job[i]  = fd;
+    pids_job[i] = pid;
     return EAR_SUCCESS;
 }
 
@@ -80,15 +85,22 @@ IO_F_LOAD(proc_file)
     apis_put(ops->read      , io_proc_file_read);
 }
 
-static state_t pids_clean()
+static state_t pid_remove(int i)
 {
-    int i;
-    for(i = 0; i < fds_job_count; ++i) {
+    if (pids_job[i] > 0) {
         fclose(fds_job[i]);
         fds_job[i] = NULL;
         pids_job[i] = 0;
     }
-    fds_job_count = 0;
+    return EAR_SUCCESS;
+}
+
+static state_t pids_clean()
+{
+    int i;
+    for(i = 0; i < devs_count; ++i) {
+        pid_remove(i);
+    }
     return EAR_SUCCESS;
 }
 
@@ -111,9 +123,18 @@ IO_F_UNLOAD(proc_file)
 
 IO_F_UPDATE(proc_file)
 {
+    pid_t pid = (uint) ((ullong) value);
+    int i;
+
     if (scope == SCOPE_JOB && option == UPD_PID_ADD) {
-        pid_t pid = (uint) ((ullong) value);
         return pid_add(pid);
+    } else if (scope == SCOPE_JOB && option == UPD_PID_REMOVE) {
+        for (i = 0; i < devs_count; ++i) {
+            if (pids_job[i] == pid) {
+                return pid_remove(i);
+            }
+        }
+        return_msg(EAR_ERROR, "PID not found");
     } else if(scope == SCOPE_JOB && option == UPD_PIDS_CLEAN) {
         return pids_clean();
     }
@@ -162,14 +183,17 @@ static void read_diskstats(char *line, io_t *io)
 
 IO_F_READ(proc_file)
 {
+    timestamp_t time = {0};
     char line[256];
     char *str;
     int i;
 
+    timestamp_get(&time);
     memset(io, 0, devs_count * sizeof(io_t));
     // SCOPE is NODE
     if (scope == SCOPE_NODE) {
-        io[0].pid = 1; // PID of the system
+        io[0].pid  = 1; // PID of the system
+        io[0].time = time;
         fseek(fd_node, 0L, SEEK_SET);
         while (fgets(line, sizeof(line), fd_node) != NULL) {
             read_diskstats(line, io);
@@ -177,8 +201,12 @@ IO_F_READ(proc_file)
         return EAR_SUCCESS;
     }
     // SCOPE is PROCESS or JOB
-    for (i = 0; i < fds_job_count; i++) {
-        io[i].pid = pids_job[i];
+    for (i = 0; i < devs_count; i++) {
+        if (pids_job[i] == 0) {
+            continue;
+        }
+        io[i].pid  = pids_job[i];
+        io[i].time = time;
         fseek(fds_job[i], 0L, SEEK_SET);
         while (fgets(line, sizeof(line), fds_job[i]) != NULL) {
             if ((str = strstr(line, ": ")) != NULL) {

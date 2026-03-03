@@ -105,7 +105,7 @@ void flops_data_copy(flops_t *dst, flops_t *src);
 
 void flops_data_print(flops_t *flD, double gfs, int fd);
 
-void flops_data_tostr(flops_t *flD, double gfs, char *buffer, size_t length);
+char *flops_data_tostr(flops_t *flD, double gfs, char *buffer, size_t length);
 
 /* Accumulates flops differences and return its data in GFLOPs (accepts NULL). */
 void flops_data_accum(flops_t *fA, flops_t *fD, double *gflops_tot);

@@ -88,7 +88,7 @@ void cache_data_copy(cache_t *dst, cache_t *src);
 
 void cache_data_print(cache_t *caD, double gbs, int fd);
 
-void cache_data_tostr(cache_t *caD, double gbs, char *buffer, size_t length);
+char *cache_data_tostr(cache_t *caD, double gbs, char *buffer, size_t length);
 
 void cache_internals_print(int fd);
 

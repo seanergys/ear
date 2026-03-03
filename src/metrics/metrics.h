@@ -12,8 +12,10 @@
 #define METRICS_H
 /* clang-format off */
 
+#include <metrics/io/io.h>
 #include <metrics/cpi/cpi.h>
 #include <metrics/gpu/gpu.h>
+#include <metrics/proc/proc.h>
 #include <metrics/cache/cache.h>
 #include <metrics/flops/flops.h>
 #include <metrics/cpufreq/cpufreq.h>
@@ -36,6 +38,8 @@ typedef struct metrics_info_s {
     gpu_devs_t *gpu_devs;
     apinfo_t nod; // energy_node
     apinfo_t net;
+    apinfo_t io ;
+    apinfo_t proc;
 } metrics_info_t;
 
 typedef struct metrics_read_s {
@@ -51,6 +55,8 @@ typedef struct metrics_read_s {
     cpi_t      *cpi;
     gpu_t      *gpu;
     char       *nod;
+    io_t       *io;
+    proc_t     *proc;
 } metrics_read_t;
 
 typedef struct metrics_diff_s {
@@ -76,7 +82,10 @@ typedef struct metrics_diff_s {
     cpi_t   *cpi_diff;
     double   cpi_avrg; 		 // CPI
     gpu_t   *gpu_diff;
-    ulong    nod_avrg;     // Total node energy
+    ulong    nod_avrg;       // Total node energy
+    io_t    *io_diff;
+    double   io_avrg;        // MB/s
+    proc_t  *proc_diff;
 } metrics_diff_t;
 
 #define MET_OPT_CPUFREQ 0
@@ -89,6 +98,8 @@ typedef struct metrics_diff_s {
 #define MET_OPT_GPU     7
 #define MET_OPT_CPUPOW  8
 #define MET_OPT_NODEPOW 9
+#define MET_OPT_IO      10
+#define MET_OPT_PROC    11
 
 // This function contains load() and init() functions of the different metrics.
 void metrics_load(metrics_info_t *m, topology_t *tp, char *nodepow_path, uint *options);
