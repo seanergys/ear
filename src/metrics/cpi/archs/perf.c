@@ -121,6 +121,10 @@ CPI_F_LOAD(perf)
             add_events(&perfs[i], -1, i);
         }
     } else if (SCOPE_IS(options, SCOPE_JOB)) {
+        // If 'perf_paranoid' is 1 or greater, other processes can not be read.
+        if (perf_get_paranoid() >= 1) {
+            return;
+        }
         perfs_count = tp->cpu_count * 3;
         perfs       = calloc(perfs_count, sizeof(perfs_t));
         scope       = SCOPE_JOB;

@@ -26,65 +26,64 @@
 #include <metrics/temperature/temperature.h>
 
 typedef struct metrics_info_s {
-    apinfo_t cpu; // cpufreq
-    apinfo_t imc; // imcfreq
-    apinfo_t ram; // bwidth
-    apinfo_t cch; // cache
-    apinfo_t flp; // flops
-    apinfo_t tmp; // temp
-    apinfo_t pow; // energy_cpu
-    apinfo_t cpi; // cpi
-    apinfo_t gpu; // gpu
-    gpu_devs_t *gpu_devs;
-    apinfo_t nod; // energy_node
-    apinfo_t net;
-    apinfo_t io ;
-    apinfo_t proc;
+    apinfo_t cpufreq; // cpu frequency
+    apinfo_t imcfreq; // imc/uncore frequency
+    apinfo_t bwidth;  // ram bandwidth
+    apinfo_t cache;   // cache hits, misses and accesses
+    apinfo_t flops;   // floating point operations
+    apinfo_t temp;    // temperature
+    apinfo_t cpupow;  // cpu energy/power consumption
+    apinfo_t cpi;     // cycles per instructions
+    apinfo_t gpu;     // gpu
+    apinfo_t nodepow; // node energ/power consumption
+    apinfo_t net;     // network traffic
+    apinfo_t io ;     // disk I/O
+    apinfo_t proc;    // process stats
 } metrics_info_t;
 
 typedef struct metrics_read_s {
     ullong      samples;
     timestamp_t time;
-    cpufreq_t  *cpu;
-    imcfreq_t  *imc;
-    bwidth_t   *ram;
-    cache_t    *cch;
-    flops_t    *flp;
-    llong      *tmp;
-    ullong     *pow;
+    cpufreq_t  *cpufreq;
+    imcfreq_t  *imcfreq;
+    bwidth_t   *bwidth;
+    cache_t    *cache;
+    flops_t    *flops;
+    llong      *temp;
+    ullong     *cpupow;
     cpi_t      *cpi;
     gpu_t      *gpu;
-    char       *nod;
+    char       *nodepow;
     io_t       *io;
     proc_t     *proc;
 } metrics_read_t;
 
 typedef struct metrics_diff_s {
     ullong   samples;
-    double   time;     		 // Seconds
-    ulong   *cpu_diff; 		 // KHz (per device)
-    ulong    cpu_avrg; 		 // KHz
-    ulong   *imc_diff; 		 // KHz (per device)
-    ulong    imc_avrg; 		 // KHz
-    ullong   ram_diff; 		 // CAS
-    double   ram_avrg; 		 // GB/s
-    cache_t *cch_diff; 		 // Misses
-    double   cch_avrg; 		 // GB/s
-    flops_t *flp_diff; 		 // Float instructions
-    double   flp_avrg; 		 // Giga float operations per second
-    llong   *tmp_diff;
-    llong    tmp_avrg;
-    ullong  *pow_diff;
-    ullong  *pow_dram; 		 // DRAM power per device
-    ullong  *pow_pack; 		 // PACKAGE power per device
-    ullong	 pow_tot_dram;
-    ullong	 pow_tot_pack;
+    double   time;          // Seconds
+    ulong   *cpufreq_diff;  // KHz (per device)
+    ulong    cpufreq_avrg;  // KHz
+    ulong   *imcfreq_diff;  // KHz (per device)
+    ulong    imcfreq_avrg;  // KHz
+    ullong   bwidth_diff;   // CAS
+    double   bwidth_avrg;   // GB/s
+    cache_t *cache_diff;    // Misses
+    double   cache_avrg;    // GB/s
+    flops_t *flops_diff;    // Float instructions
+    double   flops_avrg;    // Giga float operations per second
+    llong   *temp_diff;     // Celsius
+    llong    temp_avrg;     // Celsius
+    ullong  *cpupow_diff;   // DRAM and PACKAGE power per device
+    ullong  *cpupow_dram;   // DRAM power per device
+    ullong  *cpupow_pack;   // PACKAGE power per device
+    ullong  cpupow_tot_dram;
+    ullong  cpupow_tot_pack;
     cpi_t   *cpi_diff;
-    double   cpi_avrg; 		 // CPI
-    gpu_t   *gpu_diff;
-    ulong    nod_avrg;       // Total node energy
-    io_t    *io_diff;
-    double   io_avrg;        // MB/s
+    double   cpi_avrg;      // CPI
+    gpu_t   *gpu_diff;      // GPU
+    ulong    nodepow_avrg;  // Total node energy
+    io_t    *io_diff;       // MB/s
+    double   io_avrg;       // MB/s
     proc_t  *proc_diff;
 } metrics_diff_t;
 
