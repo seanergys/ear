@@ -547,3 +547,16 @@ void perf_set_scale(perf_t *perfs, uint perfs_count, char *ev_name, double scale
         }
     }
 }
+
+int perf_get_paranoid()
+{
+    int level_read = 3;
+    char buffer[32];
+
+    if (filemagic_once_read("/proc/sys/kernel/perf_event_paranoid", buffer, sizeof(buffer))) {
+        // The root test is inside because we understand that if paranoid file
+        // does not exist, it means perf is not working.
+        level_read = (getuid() == 0)? -1: atoi(buffer);
+    }
+    return level_read;
+}
