@@ -12,6 +12,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - development Updated AMD with changes for ZEN3, ZEN4 and ZEN5.
 
+## [6.3.0] - 2026-03-16
+
+### Added
+
+- Automatic release done through Gitlab CI.
+
+### Changed
+
+- The rpm spec file installs the doc directory and module file.
+
+### Fixed
+
+- Resolve "Policies default PState is overwritten in EARD's main function".
+- Resolve "Hardcoded ear user in ear\_create\_tmp\_folder".
+- Fix the HWMON ARCH in ENERGY\_CPU when the NODE energy is PKG energy is mistaken for NODE energy.
+- Resolve "erun  blocked when no having permission to access job directory".
+
 ## [6.2.0] - 2026-02-24
 
 ### Added
