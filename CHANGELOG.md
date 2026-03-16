@@ -101,19 +101,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - v6.0 Improving earl-eard connect to avoid blocking.
 - v6.0 Fixed socket count in acpi\_power.
 
-# 5.2.4 - 2026-02-03
+## [5.2.5] - 2026-03-16
+
+### Added
+
+- Automatic release done through Gitlab CI.
 
 ### Changed
 
-- Switch JOB_ID to 1 in ERUN.
+- The rpm spec file installs the doc directory and module file.
 
 ### Fixed
 
-- Prevent calling mgt\_cpufreq\_governor\_available when the symbol is NULL.
-- EAR owner/permission files fixes.
-- Check whether opened fd is >= 0.
-- Fixed setuid security issues in ereport, eacct, ear-info and econtrol.
-- Resolve "Policies default PState is overwritten in EARD's main function".
+- Resolve "Hardcoded ear user in ear_create_tmp_folder".
 
 # 5.2.4 - 2026-02-03
 
