@@ -7,7 +7,6 @@ workflow:
       when: never
     - if: $CI_COMMIT_BRANCH
     - if: $CI_COMMIT_TAG
-    - if: $CI_PIPELINE_SOURCE == "pipeline"
 
 stages:          # List of stages for jobs, and their order of execution
   - quality
@@ -21,11 +20,19 @@ image: registry.gitlab.bsc.es/ear_team/ear-ci:v6
 debugs_disabled:
   image: alpine:3.23
   stage: quality
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - when: always
   script:
     - if grep -rIE -e "^[[:blank:]]*#define[[:blank:]]+SHOW_DEBUGS" -e "^[[:blank:]]*#define[[:blank:]]+DEBUG_ENABLED[[:blank:]]+1" src; then false; else true; fi
 
 clang-format:
   stage: quality
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - when: always
   image: rockylinux:8-minimal
   script:
     - microdnf install -y clang-tools-extra-19.1.7-2.module+el8.10.0+1965+112b558b findutils
@@ -34,7 +41,7 @@ clang-format:
 compile-no-mpi-loader:
   stage: build
   rules:
-    - if: $CI_PIPELINE_SOURCE == "pipeline" || $CI_COMMIT_TAG
+    - if: $CI_COMMIT_TAG
       when: never
     - when: always
   script:
@@ -50,7 +57,7 @@ compile-no-mpi-loader:
 compile-no-mpi:
   stage: build
   rules:
-    - if: $CI_PIPELINE_SOURCE == "pipeline" || $CI_COMMIT_TAG
+    - if: $CI_COMMIT_TAG
       when: never
     - when: always
   script:
@@ -59,7 +66,7 @@ compile-no-mpi:
 compile-mpi-mysql:
   stage: build
   rules:
-    - if: $CI_PIPELINE_SOURCE == "pipeline" || $CI_COMMIT_TAG
+    - if: $CI_COMMIT_TAG
       when: never
     - when: always
   script:
@@ -78,6 +85,10 @@ compile-mpi-mysql:
 deploy-eardbd:
   stage: deploy
   needs: [compile-mpi-mysql]
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - when: always
   variables:
     MARIADB_ROOT_PASSWORD: my-secret-pw
   services:
@@ -96,6 +107,10 @@ deploy-eardbd:
 deploy-eard:
   stage: deploy
   needs: [compile-mpi-mysql]
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - when: always
   script:
     - cp ear-db/etc/ear/ear.conf.full.template ear-db/etc/ear/ear.conf
     - $TESTDIR/scripts/deploy_eard.sh ear-db ear-db/etc
@@ -116,6 +131,10 @@ deploy-eard:
 test-earl-mpi-lite:
   stage: test
   needs: [compile-mpi-mysql]
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - when: always
   timeout: 10 minutes
   script:
     - export PATH=$(pkgconf --variable=exec_prefix ompi-f90)/bin:$PATH
@@ -131,7 +150,7 @@ test-earl-mpi-lite:
 test-earl-omp-lite:
   stage: test
   rules:
-    - if: $CI_PIPELINE_SOURCE == "pipeline" || $CI_COMMIT_TAG
+    - if: $CI_COMMIT_TAG
       when: never
     - when: always
   needs: [compile-no-mpi-loader]
