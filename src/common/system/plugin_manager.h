@@ -15,6 +15,24 @@
 #include <common/types.h>
 #include <common/system/poll.h>
 
+// The Plugin Manager is a framework that loads dynamic libraries whose function
+// names are known (declr_ macros), and calls them periodically. Also, it
+// provides a simple API to interact with them.
+//
+// Example of running this simple binary:
+//     int main(int argc, char *argv[]) {
+//         plugin_manager_main(argc, argv);
+//         plugin_manager_wait();
+//         return 0;
+//     }
+//
+// And can be launched with:
+//     ./binary --paths=./path/to/plugins --plugins=metrics.so:4000+metrics_ui.so:4000
+//
+// Take a look to the EAR Wiki for more information about the defined functions
+// of the plugins.
+
+
 // Universal Plugin function declarations
 #define declr_up_get_tag()               void up_get_tag(cchar **tag, cchar **tags_deps)
 #define declr_up_action_init(suffix)     char *up_action_init##suffix(cchar *tag, void **data_alloc, void *data)
