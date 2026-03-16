@@ -79,6 +79,7 @@ static char *granularity_tostr(uint granularity)
     else if (granularity == GRANULARITY_CCD       ) return "ccd";
     else if (granularity == GRANULARITY_IMC       ) return "imc";
     else if (granularity == GRANULARITY_SOCKET    ) return "socket";
+    else if (granularity == GRANULARITY_NODE      ) return "node";
     return "none";
 }
 

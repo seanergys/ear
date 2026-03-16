@@ -113,10 +113,15 @@ PROC_F_LOAD(stat_file)
         return_msg(, "Incompatble kernel version");
     }
     scope = options & SCOPE_MASK;
-    // if (scope == SCOPE_NODE) If SCOPE_NODE, we have to parse /proc/stat
-    if (scope == SCOPE_JOB) {
+    if (scope == SCOPE_NODE) {
+        devs_count   = tp->cpu_count;
+        granularity  = GRANULARITY_CPU;
+        if ((fd_node = fopen("/proc/stat", "r")) == NULL) {
+            return;
+        }
+        setvbuf(fd_node, NULL, _IONBF, 0);
+    } else if (scope == SCOPE_JOB) {
         devs_count  = tp->cpu_count * 3;
-        scope       = SCOPE_JOB;
         granularity = GRANULARITY_PROCESS;
         fds_job     = (FILE **) calloc(devs_count, sizeof(FILE *));
         pids_job    = (pid_t *) calloc(devs_count, sizeof(pid_t));
@@ -194,13 +199,54 @@ PROC_F_GET_INFO(stat_file)
 {
     info->api         = API_FILE;
     info->scope       = scope;
-    info->granularity = (scope == SCOPE_NODE) ? GRANULARITY_NODE: GRANULARITY_PROCESS;
+    info->granularity = granularity;
     info->devs_count  = devs_count;
+}
+
+static state_t read_procstat(proc_t *pr, timestamp_t *time)
+{
+    struct {
+        char name[16];
+        int64_t user;
+        int64_t nice;
+        int64_t system;
+        int64_t idle;
+        int64_t iowait;
+        int64_t irq;
+        int64_t softirq;
+        int64_t steal;
+        int64_t guest;
+        int64_t guest_nice;
+    } stat;
+    char line[256];
+    int i = 0;
+
+    fseek(fd_node, 0L, SEEK_SET);
+    while (fgets(line, sizeof(line), fd_node) != NULL) {
+        // The CPU lines are always the first
+        if (strncmp(line, "cpu ", 4) == 0) { continue; }
+        if (strncmp(line, "cpu" , 3) != 0) { break; }
+        int parsed = sscanf(line,
+            "%15s %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld",
+            stat.name, &stat.user   , &stat.nice , &stat.system, &stat.idle, &stat.iowait,
+            &stat.irq, &stat.softirq, &stat.steal, &stat.guest , &stat.guest_nice);
+        pr[i].pid    = 1;
+        pr[i].time   = *time;
+        pr[i].utime  = (double) (stat.user + stat.nice + stat.guest + stat.guest_nice);
+        pr[i].stime  = (double) (stat.system + stat.irq + stat.softirq + stat.steal);
+        pr[i].utime /= (double) clk_sec;
+        pr[i].stime /= (double) clk_sec;
+        debug("%s %0.2lf %0.2lf", stat.name, pr[i].utime, pr[i].stime);
+        ++i;
+        if (parsed < 5) {
+            break;
+        }
+    }
+    return EAR_SUCCESS;
 }
 
 PROC_F_READ(stat_file)
 {
-    char buffer[4096] = {0};
     char comm[256] = {0};
     ulong utime;
     ulong stime;
@@ -209,10 +255,14 @@ PROC_F_READ(stat_file)
     int ret;
     int i;
 
-    // Cleaning buffer
+    // Cleaning
     memset(pr, 0, sizeof(proc_t)*devs_count);
     // To compute CPU usage
     timestamp_getfast(&pr[0].time);
+    //
+    if (scope == SCOPE_NODE) {
+        return read_procstat(pr, &pr[0].time);
+    }
     // Reading
     for (i = 0; i < devs_count; i++) {
         if (pids_job[i] == 0) {
