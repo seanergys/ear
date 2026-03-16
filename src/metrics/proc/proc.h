@@ -63,6 +63,8 @@ state_t proc_read_diff(proc_t *pr2, proc_t *pr1, proc_t *prD);
 state_t proc_read_copy(proc_t *pr2, proc_t *pr1, proc_t *prD);
 
 void proc_data_diff(proc_t *pr2, proc_t *pr1, proc_t *prD);
+// Reduces the diff of the data to a single system average.
+void proc_data_reduce(proc_t *prD, proc_t *prA);
 
 void proc_data_alloc(proc_t **pr);
 

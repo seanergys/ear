@@ -9,7 +9,7 @@
  **************************************************************************/
 
 // clang-format off
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 #include <string.h>
 #include <pthread.h>
 #include <common/output/debug.h>
@@ -107,11 +107,30 @@ void proc_data_diff(proc_t *pr2, proc_t *pr1, proc_t *prD)
         prD[i].utime = pr2[i].utime - pr1[i].utime;
         prD[i].stime = pr2[i].stime - pr1[i].stime;
         prD[i].cpu_util = (uint) (100.0 * ((prD[i].utime + prD[i].stime) / prD[i].secs));
-
+        prD[i].cpu_util = (prD[i].cpu_util > 100) ? 100 : prD[i].cpu_util;
     }
     #if SHOW_DEBUGS
-    proc_data_print(prD, aux, fderr);
+    proc_data_print(prD, fderr);
     #endif
+}
+
+void proc_data_reduce(proc_t *prD, proc_t *prA)
+{
+    int i;
+
+    memset(prA, 0, sizeof(proc_t));
+    for (i = 0; i < info.devs_count; ++i) {
+        if (prD[i].pid == 0) {
+            continue;
+        }
+        prA->pid    = 1;
+        prA->secs  += prD[i].secs;
+        prA->utime += prD[i].utime;
+        prA->stime += prD[i].stime;
+    }
+    prA->cpu_util = (uint) (100.0 * ((prA->utime + prA->stime) / prA->secs));
+    prA->cpu_util = (prA->cpu_util > 100) ? 100: prA->cpu_util;
+    printf("UTIL %u\n", prA->cpu_util);
 }
 
 void proc_data_alloc(proc_t **pr)
@@ -143,13 +162,14 @@ void proc_data_print(proc_t *pr, int fd)
 
 char *proc_data_tostr(proc_t *pr, char *buffer, size_t length)
 {
-    int i, b;
+    int i, n;
     buffer[0] = '\0';
-    for (i = b = 0; i < info.devs_count; ++i) {
+    for (i = n = 0; i < info.devs_count; ++i) {
         if (pr[i].pid == 0) {
             continue;
         }
-        sprintf(buffer, "util %u (%lf %lf) %lf\n", pr[i].cpu_util, pr[i].utime, pr[i].stime, pr[i].secs);
+        n += snprintf(&buffer[n], length-n, "util %u (%lf %lf) %lf\n",
+                 pr[i].cpu_util, pr[i].utime, pr[i].stime, pr[i].secs);
     }
     return buffer;
 }
