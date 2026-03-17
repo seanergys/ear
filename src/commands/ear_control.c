@@ -210,7 +210,7 @@ void print_ips(ip_table_t *ips, int num_ips, char mode)
         if (ips[i].counter) {
             if (mode != ERR_ONLY) {
                 printf("%10s\t", ips[i].name);
-                if ((uint32_t) ips[i].step_id == BATCH_STEP)
+                if ((uint32_t) ips[i].step_id == (uint32_t) BATCH_STEP)
                     sprintf(step_id, "%-8s", "sbatch");
                 else if (ips[i].step_id == INTERACT_STEP)
                     sprintf(step_id, "%-8s", "interact");
