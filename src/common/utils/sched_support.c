@@ -407,8 +407,12 @@ int32_t parse_range_list(const char *source, range_def_t **range_list)
             goto next;
         }
 
-        current_range->prefix[offset] = *source;
-        offset++;
+        if (offset >= NODE_PREFIX - 1) {
+            warning("Node prefix has been shortened to %s and will not be copied further", current_range->prefix);
+        } else {
+            current_range->prefix[offset] = *source;
+            offset++;
+        }
 
     next:
         source++;
