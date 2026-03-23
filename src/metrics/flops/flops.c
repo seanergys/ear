@@ -201,6 +201,7 @@ void flops_internals_tostr(char *buffer, int length)
     ops.internals_tostr(buffer, length);
 }
 
+/* If SCOPE_JOB be careful!!! it iterates out of range!!! */
 ullong *flops_help_toold(flops_t *flD, ullong *flops)
 {
     int i;
