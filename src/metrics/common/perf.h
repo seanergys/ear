@@ -53,7 +53,8 @@ state_t perf_close(perf_t *perf);
 
 state_t perf_read(perf_t *perf, llong *value);
 
-int perf_get_paranoid();
+// Opens basic perf events to test if perf open is working.
+int perf_is_working();
 
 // clang-format on
 #endif // METRICS_COMMON_PERF_H
