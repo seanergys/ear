@@ -126,6 +126,7 @@ static cache_level_t *get_offset(void *dst_addr, void *src_addr, void *src_lv_ad
 
 void cache_data_diff(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs)
 {
+    double gbs_tot = 0.0;
     double secs = 0.0;
     int i;
 
@@ -147,12 +148,16 @@ void cache_data_diff(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs)
         level_diff(&ca2[i].l2 , &ca1[i].l2 , &caD[i].l2 );
         level_diff(&ca2[i].l3 , &ca1[i].l3 , &caD[i].l3 );
         secs = timestamp_fdiff(&ca2[i].time, &ca1[i].time, TIME_SECS, TIME_MSECS);
-        if (gbs != NULL) {
-            *gbs = (double) (caD[i].lbw->lines_in + caD[i].lbw->lines_out);
-            *gbs = *gbs / secs;
-            *gbs = *gbs * ((double) line_size);
-            *gbs = *gbs / ((double) 1E9);
-        }
+        caD[i].bw_gbs = (double) (caD[i].lbw->lines_in + caD[i].lbw->lines_out);
+        caD[i].bw_gbs = (caD[i].bw_gbs / secs) * line_size;
+        caD[i].bw_gbs = (caD[i].bw_gbs / ((double) 1E9));
+        gbs_tot += caD[i].bw_gbs;
+    }
+    for (i = 0; i < info.devs_count; ++i) {
+        caD[i].bw_ratio = caD[i].bw_gbs / gbs_tot;
+    }
+    if (gbs != NULL) {
+        *gbs = gbs_tot;
     }
     #if SHOW_DEBUGS
     cache_data_print(caD, *gbs, fderr);
@@ -200,14 +205,16 @@ char *cache_data_tostr(cache_t *ca, double gbs, char *buffer, size_t length)
         w = snprintf(&buffer[b], length,
         "d%d l1d: %10llu hits, %10llu misses, %10llu accesses, %0.2lf miss rate\n"
         "d%d l2 : %10llu hits, %10llu misses, %10llu accesses, %0.2lf miss rate\n"
-        "d%d l3 : %10llu hits, %10llu misses, %10llu accesses, %0.2lf miss rate\n",
+        "d%d l3 : %10llu hits, %10llu misses, %10llu accesses, %0.2lf miss rate\n"
+        "d%d lbw: %10.2lf GB/s, %10.2lf ratio\n",
         i, ca[i].l1d.hits , ca[i].l1d.misses , ca[i].l1d.accesses , ca[i].l1d.miss_rate,
         i, ca[i].l2.hits  , ca[i].l2.misses  , ca[i].l2.accesses  , ca[i].l2.miss_rate,
-        i, ca[i].l3.hits  , ca[i].l3.misses  , ca[i].l3.accesses  , ca[i].l3.miss_rate);
+        i, ca[i].l3.hits  , ca[i].l3.misses  , ca[i].l3.accesses  , ca[i].l3.miss_rate,
+        i, ca[i].bw_gbs   , ca[i].bw_ratio);
         b += w, length -= w;
     }
     if (length  > 0 && b > 0) {
-        w = snprintf(&buffer[b-1], length, ", cas: %0.2lf GB/s\n", gbs);
+        w = snprintf(&buffer[b], length, "dtotal: %10.2lf GB/s\n", gbs);
         b += w, length -= w;
     }
     if (length == 0 && b > 0) {

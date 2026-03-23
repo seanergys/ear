@@ -33,7 +33,9 @@ typedef struct cache_s {
     cache_level_t  l2;
     cache_level_t  l3;
     cache_level_t *ll;
-    cache_level_t *lbw; // Level used to calc bandwidth
+    cache_level_t *lbw; // Level used to calc RAM bandwidth
+    double         bw_gbs; // RAM bandwidth in GB/s
+    double         bw_ratio; // Fraction of bandwidth occupied by this dev from the total
     timestamp_t    time;
 } cache_t;
 
