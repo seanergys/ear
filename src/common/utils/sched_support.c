@@ -126,10 +126,10 @@ int get_my_sched_node_rank()
         return atoi(ear_getenv("SLURM_LOCALID"));
 #endif
 #if SCHED_PBS
-    // WARNING: PBS_TASKNUM is the total number of tasks, it is not parallel to SLURM_LOCALID
-    // There is currently no way to get something like SLURM_LOCALID.
-    // Falling into the default case for now.
-    // if (ear_getenv("PBS_TASKNUM") != NULL) return atoi(ear_getenv("PBS_TASKNUM"));
+        // WARNING: PBS_TASKNUM is the total number of tasks, it is not parallel to SLURM_LOCALID
+        // There is currently no way to get something like SLURM_LOCALID.
+        // Falling into the default case for now.
+        // if (ear_getenv("PBS_TASKNUM") != NULL) return atoi(ear_getenv("PBS_TASKNUM"));
 #endif
 #endif
     return 0;
@@ -407,12 +407,12 @@ int32_t parse_range_list(const char *source, range_def_t **range_list)
             goto next;
         }
 
-        if (offset >= sizeof(current_range->prefix) - 1) {
-            error("Node prefix does not fit.");
-            return 0;
+        if (offset >= NODE_PREFIX - 1) {
+            warning("Node prefix has been shortened to %s and will not be copied further", current_range->prefix);
+        } else {
+            current_range->prefix[offset] = *source;
+            offset++;
         }
-        current_range->prefix[offset] = *source;
-        offset++;
 
     next:
         source++;
