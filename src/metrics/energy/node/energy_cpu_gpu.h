@@ -12,8 +12,5 @@
 #define ENERGY_NODE_CPU_GPU_H
 #include <metrics/energy_cpu/energy_cpu.h>
 #include <metrics/gpu/gpu.h>
-#include <metrics/energy/energy_node.h>
-
-ENERGY_NODE_DEFINES(cpu_gpu)
 
 #endif

@@ -50,9 +50,6 @@ mets_OBJS = \
     $(SRCDIR)/metrics/cpi/archs/perf.o \
     $(SRCDIR)/metrics/energy/cpu.o \
     $(SRCDIR)/metrics/energy/energy_node.o \
-    $(SRCDIR)/metrics/energy/node/energy_dummy.o \
-    $(SRCDIR)/metrics/energy/node/energy_dcmi.o \
-    $(SRCDIR)/metrics/energy/node/energy_cpu_gpu.o \
     $(SRCDIR)/metrics/energy/cpu/intel63.o \
     $(SRCDIR)/metrics/energy_cpu/energy_cpu.o \
     $(SRCDIR)/metrics/energy_cpu/archs/acpi_power.o \
@@ -109,6 +106,12 @@ mets_OBJS = \
 ######## RULES
 
 all: all.components metrics.o libmetrics.a
+
+post: test
+	@ $(MAKE) -C 'gpu' post || exit
+
+$(SRCDIR)/metrics/energy/node/%.o: $(SRCDIR)/metrics/energy/node/%.c
+	$(CC) $(CC_FLAGS) -I$(SRCDIR) -fPIC -D_GNU_SOURCE -c $< -o $@
 
 metrics.o: metrics.c
 	$(CC) $(CC_FLAGS) -I$(SRCDIR) -fPIC -c $<
