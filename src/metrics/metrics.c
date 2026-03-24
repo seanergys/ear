@@ -76,8 +76,9 @@ void metrics_load(metrics_info_t *m, topology_t *tp, char *nodepow_path, uint *o
 void metrics_update(uint option, void *value)
 {
     cache_update(option, value);
-    flops_update(option, value);
       cpi_update(option, value);
+    flops_update(option, value);
+      gpu_update(option, value);
        io_update(option, value);
      proc_update(option, value);
 }
@@ -442,6 +443,10 @@ int main(int argc, char *argv[])
     sus->time_burst    = 1000;
     sus->suscribe(sus);
 
+    sleep(3);
+    metrics_update(UPD_DEMO4_SET, NULL);
+    sleep(4);
+    metrics_update(UPD_DEMO2_SET, NULL);
     sleep(100);
     return 0;
 }

@@ -5,6 +5,7 @@ CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC
 gpu_OBJS = \
     cupti.o \
     dcgmi.o \
+    demo.o \
     dummy.o \
     eard.o \
     nvml.o \
