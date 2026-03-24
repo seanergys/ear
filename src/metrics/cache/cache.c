@@ -33,7 +33,7 @@ void cache_load(topology_t *tp, int options)
     if (API_IS(options, API_DUMMY)) {
         goto dummy;
     }
-    //cache_perf_load(tp, &ops, options);
+    cache_perf_load(tp, &ops, options);
     cache_demo_load(tp, &ops, options);
 dummy:
     cache_dummy_load(tp, &ops, options);
@@ -58,7 +58,11 @@ void cache_unload()
 
 state_t cache_update(uint option, void *value)
 {
-    return ops.update(option, value);
+    state_t s;
+    while (pthread_mutex_trylock(&lock));
+    s = ops.update(option, value);
+    pthread_mutex_unlock(&lock);
+    return s;
 }
 
 void cache_get_info(apinfo_t *info)
@@ -73,7 +77,12 @@ void cache_get_info(apinfo_t *info)
 
 state_t cache_read(cache_t *ca)
 {
-    return ops.read(ca);
+    state_t s;
+    memset(ca, 0, sizeof(cache_t)*info.devs_count);
+    while (pthread_mutex_trylock(&lock));
+    s = ops.read(ca);
+    pthread_mutex_unlock(&lock);
+    return s;
 }
 
 state_t cache_read_diff(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs)
@@ -112,11 +121,12 @@ static void level_diff(cache_level_t *l2, cache_level_t *l1, cache_level_t *lD)
 
 static cache_level_t *get_offset(void *dst_addr, void *src_addr, void *src_lv_addr)
 {
-    return (cache_level_t *) (dst_addr + (src_lv_addr - src_addr));
+    return (src_lv_addr != NULL)? (cache_level_t *) (dst_addr + (src_lv_addr - src_addr)): NULL;
 }
 
 void cache_data_diff(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs)
 {
+    double gbs_tot = 0.0;
     double secs = 0.0;
     int i;
 
@@ -125,21 +135,29 @@ void cache_data_diff(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs)
         return ops.data_diff(ca2, ca1, caD, gbs);
     }
     for (i = 0; i < info.devs_count; ++i) {
-        if ((caD[i].pid = ca1[i].pid) == 0) {
+        // L2 by default
+        caD[i].ll  = (cache_level_t *) &caD[i].l2;
+        caD[i].lbw = (cache_level_t *) &caD[i].l2;
+        if (ca2[i].pid == 0 || ca1[i].pid == 0) {
             continue;
         }
+        caD[i].pid = ca1[i].pid;
         caD[i].ll  = get_offset(&caD[i], &ca2[i], ca2[i].ll);
         caD[i].lbw = get_offset(&caD[i], &ca2[i], ca2[i].lbw);
         level_diff(&ca2[i].l1d, &ca1[i].l1d, &caD[i].l1d);
         level_diff(&ca2[i].l2 , &ca1[i].l2 , &caD[i].l2 );
         level_diff(&ca2[i].l3 , &ca1[i].l3 , &caD[i].l3 );
         secs = timestamp_fdiff(&ca2[i].time, &ca1[i].time, TIME_SECS, TIME_MSECS);
-        if (gbs != NULL) {
-            *gbs = (double) (caD[i].lbw->lines_in + caD[i].lbw->lines_out);
-            *gbs = *gbs / secs;
-            *gbs = *gbs * ((double) line_size);
-            *gbs = *gbs / ((double) 1E9);
-        }
+        caD[i].bw_gbs = (double) (caD[i].lbw->lines_in + caD[i].lbw->lines_out);
+        caD[i].bw_gbs = (caD[i].bw_gbs / secs) * line_size;
+        caD[i].bw_gbs = (caD[i].bw_gbs / ((double) 1E9));
+        gbs_tot += caD[i].bw_gbs;
+    }
+    for (i = 0; i < info.devs_count; ++i) {
+        caD[i].bw_ratio = caD[i].bw_gbs / gbs_tot;
+    }
+    if (gbs != NULL) {
+        *gbs = gbs_tot;
     }
     #if SHOW_DEBUGS
     cache_data_print(caD, *gbs, fderr);
@@ -175,10 +193,11 @@ void cache_data_print(cache_t *ca, double gbs, int fd)
     dprintf(fd, "%s", buffer);
 }
 
-void cache_data_tostr(cache_t *ca, double gbs, char *buffer, size_t length)
+char *cache_data_tostr(cache_t *ca, double gbs, char *buffer, size_t length)
 {
     int i, b, w;
 
+    buffer[0] = '\0';
     for (i = b = 0; i < info.devs_count && length > 0; ++i) {
         if (ca[i].pid == 0) {
             continue;
@@ -186,19 +205,22 @@ void cache_data_tostr(cache_t *ca, double gbs, char *buffer, size_t length)
         w = snprintf(&buffer[b], length,
         "d%d l1d: %10llu hits, %10llu misses, %10llu accesses, %0.2lf miss rate\n"
         "d%d l2 : %10llu hits, %10llu misses, %10llu accesses, %0.2lf miss rate\n"
-        "d%d l3 : %10llu hits, %10llu misses, %10llu accesses, %0.2lf miss rate\n",
+        "d%d l3 : %10llu hits, %10llu misses, %10llu accesses, %0.2lf miss rate\n"
+        "d%d lbw: %10.2lf GB/s, %10.2lf ratio\n",
         i, ca[i].l1d.hits , ca[i].l1d.misses , ca[i].l1d.accesses , ca[i].l1d.miss_rate,
         i, ca[i].l2.hits  , ca[i].l2.misses  , ca[i].l2.accesses  , ca[i].l2.miss_rate,
-        i, ca[i].l3.hits  , ca[i].l3.misses  , ca[i].l3.accesses  , ca[i].l3.miss_rate);
+        i, ca[i].l3.hits  , ca[i].l3.misses  , ca[i].l3.accesses  , ca[i].l3.miss_rate,
+        i, ca[i].bw_gbs   , ca[i].bw_ratio);
         b += w, length -= w;
     }
-    if (length  > 0) {
-        w = snprintf(&buffer[b-1], length, ", cas: %0.2lf GB/s\n", gbs);
+    if (length  > 0 && b > 0) {
+        w = snprintf(&buffer[b], length, "dtotal: %10.2lf GB/s\n", gbs);
         b += w, length -= w;
     }
-    if (length == 0) {
+    if (length == 0 && b > 0) {
         buffer[b-1] = '\n';
     }
+    return buffer;
 }
 
 void cache_internals_print(int fd)

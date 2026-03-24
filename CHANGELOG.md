@@ -12,16 +12,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - development CPI, cache, temperature, flops, cpufreq, bandwidth, gpu and imcefreq APIs.
 
+## [6.3.0] - 2026-03-16
+
+### Added
+
+- Automatic release done through Gitlab CI.
+
+### Changed
+
+- The rpm spec file installs the doc directory and module file.
+
+### Fixed
+
+- Resolve "Policies default PState is overwritten in EARD's main function".
+- Resolve "Hardcoded ear user in ear\_create\_tmp\_folder".
+- Fix the HWMON ARCH in ENERGY\_CPU when the NODE energy is PKG energy is mistaken for NODE energy.
+- Resolve "erun  blocked when no having permission to access job directory".
+
+## [6.2.0] - 2026-02-24
+
+### Added
+- Add m4 files for curl, jansson and microhhtpd.
+- EAROwner added.
+
+### Changed
+- EARD security fixes.
+- Improve file permission and ownership.
+- `erun` command sets JobID to 1 by default.
+- Default CFLAGS changed to add `-Wall -Werror -O2 -g` to improve code quality.
+- Lighter CI pipeline.
+
+### Fixed
+- Prevent calling `mgt\_cpufreq\_governor\_available` when the symbol is NULL.
+- Fix multiple opened fd checks that might be zero.
+- Fixed setuid security issues in ereport, eacct, ear-info and econtrol.
+- EARD rAPI: Generic message is not propagating properly.
+- IPMI sensors.
+- Fixed "Policies default PState is overwritten in EARD's main function."
+
 ## [6.1.0] - 2025-12-18
 
-## Added
+### Added
 - Add the `EAR_ENERGY_ARG` envvar into `energy_node/node/ipmi_sensors.c`.
 
-## Changed
+### Changed
 - CI pipelines.
 - pread limits.
 
-## Fixed
+### Fixed
 - Serialize/Deserialize at dummy cluster\_conf.
 - Resolve "Error found in HWMON class in ENERGY CPU".
 - EARD local API timeouts.
@@ -79,6 +117,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Initialize all arrays before using them.
 - v6.0 Improving earl-eard connect to avoid blocking.
 - v6.0 Fixed socket count in acpi\_power.
+
+## [5.2.5] - 2026-03-16
+
+### Added
+
+- Automatic release done through Gitlab CI.
+
+### Changed
+
+- The rpm spec file installs the doc directory and module file.
+
+### Fixed
+
+- Resolve "Hardcoded ear user in ear_create_tmp_folder".
 
 # 5.2.4 - 2026-02-03
 

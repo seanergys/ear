@@ -39,7 +39,6 @@ FLOPS_F_GET_INFO(dummy)
     info->scope       = SCOPE_DUMMY;
     info->granularity = GRANULARITY_PROCESS;
     info->devs_count  = 1;
-    info->bits        = 0;
 }
 
 FLOPS_F_READ(dummy)

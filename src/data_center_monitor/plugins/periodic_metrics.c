@@ -75,11 +75,11 @@ declr_up_action_periodic(_periodic_metrics)
     // Fill the current sample
     cs.start_time  = mr1.time.tv_sec;
     cs.end_time    = mr2.time.tv_sec;
-    cs.avg_f       = mrD.cpu_avrg;
-    cs.temp        = mrD.tmp_avrg;
-    cs.DRAM_energy = mrD.pow_dram;
-    cs.PCK_energy  = mrD.pow_pack;
-    cs.DC_energy   = mrD.nod_avrg;
+    cs.avg_f       = mrD.cpufreq_avrg;
+    cs.temp        = mrD.temp_avrg;
+    cs.DRAM_energy = mrD.cpupow_tot_dram;
+    cs.PCK_energy  = mrD.cpupow_tot_pack;
+    cs.DC_energy   = mrD.nodepow_avrg;
     debug("%s.%lu.%lu.%llu: %lu J (%lu %lu), %lu KHz", cs.node_id, cs.job_id, cs.step_id, mrD.samples, cs.DC_energy,
           cs.PCK_energy, cs.DRAM_energy, cs.avg_f);
     // Corrections SNMP+PDU (power monitor thing)

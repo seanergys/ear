@@ -33,15 +33,15 @@ if test -n "$CURL_DIR"; then
   MYCURL_LIBS="-L$CURL_SO_DIR -lcurl"
 
   if test -f "$CURL_INC"; then
-    AC_MSG_NOTICE([Encontrado $CURL_INC])
+    AC_MSG_NOTICE([$CURL_INC found])
   else
-    AC_MSG_ERROR([No se encontró $CURL_INC])
+    AC_MSG_ERROR([$CURL_INC not found])
   fi
 
   if ls "$CURL_SO_DIR/libcurl."* >/dev/null 2>&1; then
-    AC_MSG_NOTICE([Encontrada libcurl en $CURL_SO_DIR])
+    AC_MSG_NOTICE([libcurl found at $CURL_SO_DIR])
   else
-    AC_MSG_ERROR([No se encontró libcurl en $CURL_SO_DIR])
+    AC_MSG_ERROR([libcurl not found at $CURL_SO_DIR])
   fi
 
   HAVE_CURL=1
@@ -50,15 +50,15 @@ if test -n "$CURL_DIR"; then
 # Caso 2: No se indica ruta → intentar autodetección en el sistema
 # ----------------------------------------------------------------------
 else
-  AC_MSG_NOTICE([No se especificó --with-curl; intentando autodetección con pkg-config])
+  AC_MSG_NOTICE([--with-curl not specified; trying pkgconf...])
 
   PKG_CHECK_MODULES([CURL], [libcurl], [
       HAVE_CURL=1
       MYCURL_CFLAGS="$CURL_CFLAGS"
       MYCURL_LIBS="$CURL_LIBS"
-      AC_MSG_NOTICE([libcurl detectado mediante pkg-config])
+      AC_MSG_NOTICE([libcurl found])
     ], [
-      AC_MSG_WARN([No se encontró libcurl en el sistema])
+      AC_MSG_WARN([libcurl not found])
       HAVE_CURL=0
     ]
   )

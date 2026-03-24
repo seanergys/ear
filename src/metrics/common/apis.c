@@ -79,6 +79,7 @@ static char *granularity_tostr(uint granularity)
     else if (granularity == GRANULARITY_CCD       ) return "ccd";
     else if (granularity == GRANULARITY_IMC       ) return "imc";
     else if (granularity == GRANULARITY_SOCKET    ) return "socket";
+    else if (granularity == GRANULARITY_NODE      ) return "node";
     return "none";
 }
 
@@ -87,6 +88,7 @@ static char *scope_tostr(uint scope)
     if      (scope == SCOPE_NONE   ) return "none";
     else if (scope == SCOPE_DUMMY  ) return "dummy";
     else if (scope == SCOPE_PROCESS) return "process";
+    else if (scope == SCOPE_JOB    ) return "job";
     else if (scope == SCOPE_NODE   ) return "node";
     return "none";
 }

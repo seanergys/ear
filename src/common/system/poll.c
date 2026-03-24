@@ -8,11 +8,11 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
+/* clang-format off */
 // #define SHOW_DEBUGS 1
-
 #define _GNU_SOURCE
-#include <common/output/debug.h>
 #include <common/system/poll.h>
+#include <common/output/debug.h>
 
 static int ids_count;
 
@@ -160,10 +160,10 @@ int aselect(afd_set_t *set, ullong timeout, ullong *time_left)
     // value of 0 indicates that the call timed out and no file descriptors were ready. On error, -1
     // is returned, and errno is set appropriately.
     timestamp_get(&ts);
-    r           = poll(&set->fds[set->fd_min], set->fds_rank, (int) timeout);
+    r = poll(&set->fds[set->fd_min], set->fds_rank, (int) timeout);
     time_passed = timestamp_diffnow(&ts, TIME_MSECS);
-    afdebug("%d = poll(set%d, fds_count: %u, fds_rank: %lu, timeout: %d, time_passed: %llu)", r, set->id,
-            set->fds_count, set->fds_rank, (int) timeout, time_passed);
+    afdebug("%d = poll(set%d, fds_count: %u, fds_rank: %lu, timeout: %d, time_passed: %llu)",
+        r, set->id, set->fds_count, set->fds_rank, (int) timeout, time_passed);
     // Calculating the lefting time
     if (time_left != NULL) {
         *time_left = 0;

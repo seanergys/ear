@@ -210,7 +210,7 @@ void print_ips(ip_table_t *ips, int num_ips, char mode)
         if (ips[i].counter) {
             if (mode != ERR_ONLY) {
                 printf("%10s\t", ips[i].name);
-                if ((uint32_t) ips[i].step_id == BATCH_STEP)
+                if ((uint32_t) ips[i].step_id == (uint32_t) BATCH_STEP)
                     sprintf(step_id, "%-8s", "sbatch");
                 else if (ips[i].step_id == INTERACT_STEP)
                     sprintf(step_id, "%-8s", "interact");
@@ -1380,8 +1380,14 @@ int main(int argc, char *argv[])
         }
     }
     if (mail != NULL) {
-        snprintf(mail_command, strlen(mail_command) - 1, "mailx -s \"EAR health check report\" %s < %s", mail,
-                 mail_filename);
+        /* clang-format off */
+        int ret = snprintf(mail_command, sizeof(mail_command),
+													 "mailx -s \"EAR health check report\" %s < %s",
+													 mail, mail_filename);
+				if ((ret > (int) sizeof(mail_command) - 1) || ret < 0) {
+					printf("Warning! Mail command truncated.\n");
+				}
+        /* clang-format on */
         execute(mail_command);
     }
 

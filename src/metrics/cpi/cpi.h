@@ -77,7 +77,7 @@ void cpi_data_copy(cpi_t *src, cpi_t *dst);
 
 void cpi_data_print(cpi_t *ciD, double cpis_avg, int fd);
 
-void cpi_data_tostr(cpi_t *ciD, double cpis_avg, char *buffer, size_t length);
+char *cpi_data_tostr(cpi_t *ciD, double cpis_avg, char *buffer, size_t length);
 
 // clang-format on
 #endif // METRICS_CPI_H
