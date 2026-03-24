@@ -61,6 +61,9 @@ static void load_everlasting()
 
 CACHE_F_LOAD(demo)
 {
+    if (!API_IS(options, API_DEMO)) {
+        return;
+    }
     // If other API is loaded before, DEMO won't be
     if (api_already_loaded(ops)) {
         return;

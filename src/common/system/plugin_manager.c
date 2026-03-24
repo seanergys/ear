@@ -7,10 +7,9 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
+
 /* clang-format off */
-
 //#define SHOW_DEBUGS 1
-
 #define _GNU_SOURCE
 #include <stdlib.h>
 #include <common/utils/args.h>
@@ -726,11 +725,14 @@ void plugin_manager_wait()
     monitor_wait();
 }
 
-void *plugin_manager_action(cchar *tag)
+void *plugin_manager_action_trigger(cchar *tag)
 {
     int i;
     for (i = 0; i < p.count; ++i) {
         if (is_tag(p.plugins_sorted[i]->tag)) {
+            if (!p.plugins_sorted[i]->is_enabled) {
+                return NULL;
+            }
             if (plugins_action_periodic_call(i, i, p.plugins_sorted[i]->data)) {
                 return p.plugins_sorted[i]->data;
             }
@@ -747,6 +749,9 @@ void plugin_manager_message_send(cchar *tag_msg, void *data)
     int i;
 
     for (i = 0; i < p.count; ++i) {
+        if (!p.plugins_sorted[i]->is_enabled) {
+            continue;
+        }
         sprintf(buffer, "up_message_receive_%s", tag_msg);
         call = dlsym(p.plugins_sorted[i]->handler, buffer);
         if (call == NULL) {

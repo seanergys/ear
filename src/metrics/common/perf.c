@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <pthread.h>
 #include <sys/ioctl.h>
 #include <sys/syscall.h>
 #include <asm/unistd.h>
@@ -24,10 +25,7 @@
 #include <metrics/common/file.h>
 #include <metrics/common/perf.h>
 
-// Future TO-DO:
-// - Add a control and static manager for already open events (duplicates are
-//   bad because there are limited counters in each CPU).
-// - Convert to thead safe class (what happens when reading the same FD?).
+static int working = -1;
 
 static int test_paranoid()
 {
@@ -78,12 +76,12 @@ state_t perf_open_cpu(perf_t *perf, perf_t *group, pid_t pid, uint type, ulong e
     if (cpu < 0) {
         perf->attr.exclusive = options;
         perf->attr.disabled  = 1;
-#if ESTIMATE_PERF == 0
+        #if ESTIMATE_PERF == 0
         perf->attr.inherit = 1;
-#if PERF_ATTR_SIZE_VER6
+        #if PERF_ATTR_SIZE_VER6
         perf->attr.inherit_thread = 1;
-#endif
-#endif
+        #endif
+        #endif
         perf->attr.exclude_kernel = 1;
         perf->attr.exclude_hv     = 1;
     }
@@ -93,14 +91,15 @@ state_t perf_open_cpu(perf_t *perf, perf_t *group, pid_t pid, uint type, ulong e
     perf->cpu   = cpu;
     perf->scale = 1.0; // Used in some cases
     #ifdef SHOW_DEBUGS
-    debug("input: event 0x%lx, group %p and fd %d type %u size %u cpu %d group fd %d", event, group, perf->fd,
-          perf->attr.type, perf->attr.size, cpu, gp_fd);
+    debug("input: event 0x%lx, group %p and fd %d type %u size %u cpu %d group fd %d",
+          event, group, perf->fd, perf->attr.type, perf->attr.size, cpu, gp_fd);
     if (perf->fd == -1) {
-        debug("error (no: %d, str: %s)", errno, strerror(errno));
+        debug("error %s", strerror(errno));
     } else {
+        working = 1;
         debug("ok");
     }
-#endif
+    #endif
     if (perf->fd == -1) {
         return_msg(EAR_ERROR, strerror(errno));
     }
@@ -546,4 +545,28 @@ void perf_set_scale(perf_t *perfs, uint perfs_count, char *ev_name, double scale
             perfs[i].scale = scale;
         }
     }
+}
+
+int perf_is_working()
+{
+    static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+    perf_t perf = {0};
+
+    while (pthread_mutex_trylock(&lock));
+    #define ptest(type, event) \
+    if (state_ok(perf_open(&perf, NULL, 0, type, event))) { \
+        perf_close(&perf); \
+        goto okey; \
+    }
+    if (working == -1) {
+        working = 1;
+        ptest(PERF_TYPE_SOFTWARE, PERF_COUNT_SW_DUMMY);
+        ptest(PERF_TYPE_SOFTWARE, PERF_COUNT_SW_CPU_CLOCK);
+        ptest(PERF_TYPE_HARDWARE, PERF_COUNT_HW_INSTRUCTIONS);
+        ptest(PERF_TYPE_HARDWARE, PERF_COUNT_HW_CPU_CYCLES);
+        working = 0;
+    }
+okey:
+    pthread_mutex_unlock(&lock);
+    return working;
 }

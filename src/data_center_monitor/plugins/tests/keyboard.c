@@ -16,7 +16,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <common/output/debug.h>
-#include <data_center_monitor/plugins/keyboard.h>
+#include <data_center_monitor/plugins/tests/keyboard.h>
 
 typedef struct keyboard_s {
     cchar *command;

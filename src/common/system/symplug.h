@@ -10,29 +10,21 @@
 
 #ifndef COMMON_SYSTEM_SYMPLUG_H
 #define COMMON_SYSTEM_SYMPLUG_H
+/* clang-format off */
 
-/** \file symplug.h
- * A module which provides methods for loading symbols from shared object files.
- * It is basically used for loading EAR plug-ins.
- */
-
-#include <common/plugins.h> // Not used
-#include <common/states.h>
-#include <common/types.h>
 #include <dlfcn.h>
+#include <common/types.h>
+#include <common/states.h>
+#include <common/plugins.h>
 
-/** Reads a set of symbol names from a dynamic loaded shared object.
- * NULL pointers are not checked.
- *
- * \param[in] handle A handle of a dynamic loaded shared object returned by dlopen.
- * \param[out] calls An address to a pointer to an allocated space of memory to
- *	store symbol addresses.
- * \param[in] names A pointer to a NULL-terminated strings (i.e., symbol names) array.
- * \param[in] n The number of symbols you are expected to read.
- *
- * \return EAR_ERROR If any symbol was found. */
+// This module provides methods for loading symbols from shared object files.
+
+// This function calls dlsym() internally. Given 'n' function 'names' from the
+// shared object, the function symbols are loaded and stored in 'calls' in order.
 state_t plug_join(void *handle, void *calls[], const char *names[], uint n);
 
+// This function calls dlopen() and dlsym() internally. The flags parameter is
+// the same as the one used by dlopen().
 state_t plug_open(char *path, void *calls[], const char *names[], uint n, int flags);
 
 // This version returns the dlopen() handler instead a state.
@@ -41,4 +33,5 @@ void *plug_open2(char *path, void *calls[], const char *names[], uint n, int fla
 // Old name (depcrecated)
 state_t symplug_open(char *path, void *calls[], const char *names[], uint n);
 
+/* clang-format on */
 #endif // COMMON_SYSTEM_SYMPLUG_H

@@ -121,6 +121,9 @@ CPI_F_LOAD(perf)
             add_events(&perfs[i], -1, i);
         }
     } else if (SCOPE_IS(options, SCOPE_JOB)) {
+        if (!perf_is_working()) {
+            return;
+        }
         perfs_count = tp->cpu_count * 3;
         perfs       = calloc(perfs_count, sizeof(perfs_t));
         scope       = SCOPE_JOB;
@@ -141,18 +144,24 @@ CPI_F_LOAD(perf)
     apis_put(ops->read      , cpi_perf_read      );
 }
 
+static void perf_remove(perfs_t *perf)
+{
+    int j;
+    for (j = 0; j < perf->perfs_count; ++j) {
+        // We assume 0 means unopened file descriptor
+        if (perf->perfs[j].fd <= 0) {
+            continue;
+        }
+        perf_close(&perf->perfs[j]);
+    }
+    memset(perf, 0, sizeof(perfs_t));
+}
+
 static state_t perfs_clean()
 {
-    int i, j;
+    int i;
     for (i = 0; i < perfs_count; ++i) {
-        for (j = 0; j < perfs[i].perfs_count; ++j) {
-            // We assume 0 means unopened file descriptor
-            if (perfs[i].perfs[j].fd <= 0) {
-                continue;
-            }
-            perf_close(&perfs[i].perfs[j]);
-        }
-        perfs[i].perfs_count = 0;
+        perf_remove(&perfs[i]);
     }
     return EAR_SUCCESS;
 }
@@ -170,16 +179,28 @@ CPI_F_UNLOAD(perf)
 
 CPI_F_UPDATE(perf)
 {
-    int i;
+    pid_t pid = (uint) ((ullong) value);
+    int i, j = perfs_count;
+
     if (scope == SCOPE_JOB && option == UPD_PID_ADD) {
-        pid_t pid = (uint) ((ullong) value);
-        for (i = 0; perfs[i].perfs_count > 0 && i < perfs_count; ++i) {
-            debug("%u %u", i, pid);
+        for (i = 0; i < perfs_count; ++i) {
             if (perfs[i].perfs[0].pid == pid) {
                 return_msg(EAR_ERROR, "PID already added");
             }
+            j = (perfs[i].perfs[0].pid == 0 && i < j)? i: j;
         }
-        return add_events(&perfs[i], pid, -1);
+        if (j >= perfs_count) {
+            return_msg(EAR_ERROR, "max number of PIDs reached")
+        }
+        return add_events(&perfs[j], pid, -1);
+    } else if (scope == SCOPE_JOB && option == UPD_PID_REMOVE) {
+        for (i = 0; i < perfs_count; ++i) {
+            if (perfs[i].perfs[0].pid == pid) {
+                perf_remove(&perfs[i]);
+                return EAR_SUCCESS;
+            }
+        }
+        return_msg(EAR_ERROR, "PID not found");
     } else if (scope == SCOPE_JOB && option == UPD_PIDS_CLEAN) {
         return perfs_clean();
     }

@@ -8,12 +8,12 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
+/* clang-format off */
 // #define SHOW_DEBUGS 1
-
-#include <common/output/debug.h>
-#include <common/system/plugin_manager.h>
-#include <common/system/sockets.h>
 #include <stdio.h>
+#include <common/output/debug.h>
+#include <common/system/sockets.h>
+#include <common/system/plugin_manager.h>
 
 static socket_t sock;
 
@@ -23,9 +23,9 @@ declr_up_get_tag()
     *tags_deps = "!sockets_receiver";
 }
 
-#define macro_assert(f)                                                                                                \
-    if (state_fail(f)) {                                                                                               \
-        return "[X] Failed";                                                                                           \
+#define macro_assert(f)      \
+    if (state_fail(f)) {     \
+        return "[X] Failed"; \
     }
 
 declr_up_action_init(_sockets_sender)
@@ -39,8 +39,8 @@ declr_up_action_init(_sockets_sender)
 declr_up_action_periodic(_sockets_sender)
 {
     static char message[128] = {0};
-    static int num           = 0;
+    static int num = 0;
     sprintf(message, "message %d", num++);
-    macro_assert(sockets_send(sock.fd, 0, message, strlen(message) + 1, 0LLU));
+    macro_assert(sockets_send(sock.fd, 0, message, strlen(message)+1, 0LLU));
     return rsprintf("Sent message from socket %d '%s'", sock.fd, message);
 }

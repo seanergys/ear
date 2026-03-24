@@ -219,7 +219,7 @@ declr_up_action_periodic(_metrics)
                  freq_list_set[dev] / 1000LU, set_mhz, pcap_list_set[dev], set_wat, mrD.gpu_diff[dev].working,
                  mrD.gpu_diff[dev].freq_gpu / 1000LU, mrD.gpu_diff[dev].freq_mem / 1000LU, mrD.gpu_diff[dev].util_gpu,
                  mrD.gpu_diff[dev].util_mem, mrD.gpu_diff[dev].temp_gpu, mrD.gpu_diff[dev].temp_mem,
-                 (ulong) mrD.gpu_diff[dev].power_w, mrD.nod_avrg);
+                 (ulong) mrD.gpu_diff[dev].power_w, mrD.nodepow_avrg);
     }
     return NULL;
 }
