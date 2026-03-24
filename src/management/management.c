@@ -126,8 +126,8 @@ void management_info_get(manages_info_t *m)
     mgt_cpufreq_data_alloc((pstate_t **)  &m->cpufreq.list2, (uint **) &m->cpufreq.list3); // Current PSs and set indexes
     mgt_imcfreq_data_alloc((pstate_t **)  &m->imcfreq.list2, (uint **) &m->imcfreq.list3); // Current PSs and set indexes
     mgt_cpuprio_data_alloc((cpuprio_t **) &m->cpuprio.list1, (uint **) &m->cpuprio.list2); // Avail CLOSes and set assocs
-    mgt_gpu_data_alloc((ulong **) &m->gpu.list2); // Current KHz/Watts
-    mgt_gpu_data_alloc((ulong **) &m->gpu.list3); // CUrrent KHz/Watts
+    mgt_gpu_freq_data_alloc((ulong **) &m->gpu.list2); // Current KHz/Watts
+    mgt_gpu_freq_data_alloc((ulong **) &m->gpu.list3); // CUrrent KHz/Watts
 
     // Get available frequencies (constants)
     mgt_cpufreq_get_available_list(no_ctx, (const pstate_t **) &m->cpufreq.list1, &m->cpufreq.list1_count);
@@ -139,7 +139,7 @@ void management_info_get(manages_info_t *m)
     mgt_cpuprio_get_current_list((uint *) m->cpuprio.list2);
 
     // Get current socket TDPs
-    mgt_cpupow_data_alloc(CPUPOW_SOCKET, (uint **) &m->cpupow.list1);
+    mgt_cpupow_data_alloc(CPUPOW_SOCKET, (uint32_t **) &m->cpupow.list1);
     mgt_cpupow_tdp_get(CPUPOW_SOCKET, m->cpupow.list1);
 
     // Get GPUs information

@@ -59,9 +59,8 @@ ulong pmgt_idle_def_freq;
 typedef struct powercap_symbols {
     state_t (*enable)(suscription_t *sus);
     state_t (*disable)();
-    state_t (*set_powercap_value)(uint pid, uint domain, uint *limits, ulong *util);
-    state_t (*get_powercap_value)(uint pid, uint *powercap);
-    state_t (*get_powercap_value_per_device)(ulong *powercaps);
+    state_t (*set_powercap_value)(uint pid, uint domain, uint32_t *limits, ulong *util);
+    state_t (*get_powercap_value)(uint pid, uint32_t *powercap);
     uint (*is_powercap_policy_enabled)(uint pid);
     void (*set_status)(uint status);
     void (*set_pc_mode)(uint mode);
@@ -189,12 +188,12 @@ static uint gpu_pc_num_gpus = 1;
 static topology_t pc_topology_info;
 /* These functions identies and monitors load changes */
 
-static uint pck_tdps[MAX_PACKAGES];
-static uint dram_tdps[MAX_PACKAGES];
-static ulong gpu_tdps[MAX_GPUS_SUPPORTED];
-static ulong gpu_tdps_min[MAX_GPUS_SUPPORTED];
+static uint32_t pck_tdps[MAX_PACKAGES];
+static uint32_t dram_tdps[MAX_PACKAGES];
+static uint32_t gpu_tdps[MAX_GPUS_SUPPORTED];
+static uint32_t gpu_tdps_min[MAX_GPUS_SUPPORTED];
 
-static ulong manual_domain_power[NUM_DOMAINS] = {0};
+static uint32_t manual_domain_power[NUM_DOMAINS] = {0};
 #define TDP_GPU 250
 
 void pmgt_process_message(char *level, int32_t num_values, int32_t values[num_values])
@@ -393,8 +392,8 @@ static state_t util_detect_main(void *p)
         float ratio;
         for (i = 0; i < NUM_DOMAINS; i++) {
             ratio = (float) dom_util[i] / (float) dom_util_limit[i];
-            // debug("%sDomain %d perc_use %.2f
-            // (%.2f/%.1f)%s",COL_RED,i,ratio,(float)dom_util[i],(float)dom_util_limit[i],COL_CLR);
+            debug("%sDomain %d perc_use %.2f (%.2f/%.1f)%s", COL_RED, i, ratio, (float) dom_util[i],
+                  (float) dom_util_limit[i], COL_CLR);
         }
 #endif
         pmgt_powercap_status_per_domain(CHECK_POWER_RED);
@@ -692,7 +691,7 @@ state_t pmgt_handler_alloc(pwr_mgt_t **phandler)
     return EAR_ERROR;
 }
 
-state_t pmgt_set_powercap_value(pwr_mgt_t *phandler, uint pid, uint domain, ulong limit)
+state_t pmgt_set_powercap_value(pwr_mgt_t *phandler, uint pid, uint domain, uint32_t limit)
 {
     if (current_mode == PC_MODE_MANUAL)
         return EAR_SUCCESS;
@@ -700,7 +699,7 @@ state_t pmgt_set_powercap_value(pwr_mgt_t *phandler, uint pid, uint domain, ulon
     uint value;
     int cc;
     int i;
-    debug("entering set_powercap_value with domaind %u and limit %lu", domain, limit);
+    debug("entering set_powercap_value with domain %u and limit %lu", domain, limit);
     for (i = 0; i < NUM_DOMAINS; i++) {
         // We redistribute the power among all domains
         value = ear_max(limit * pdomains[i], 1);
@@ -758,10 +757,10 @@ state_t pmgt_reset_pdomain()
 }
 
 /* Gets powercap per domain */
-state_t pmgt_get_powercap_value(pwr_mgt_t *phandler, uint pid, ulong *powercap)
+state_t pmgt_get_powercap_value(pwr_mgt_t *phandler, uint pid, uint32_t *powercap)
 {
-    state_t ret, gret = EAR_ERROR;
-    uint parc;
+    state_t ret, gret = EAR_SUCCESS;
+    uint32_t parc;
     int i;
     if (powercap == NULL)
         return EAR_ERROR;
@@ -769,7 +768,7 @@ state_t pmgt_get_powercap_value(pwr_mgt_t *phandler, uint pid, ulong *powercap)
         powercap[i] = 0;
         ret         = freturn(pcsyms_fun[i].get_powercap_value, pid, &parc);
         if (domains_loaded[i])
-            powercap[i] = (ulong) parc;
+            powercap[i] = parc;
         if ((ret != EAR_SUCCESS) && (domains_loaded[i]))
             gret = ret;
     }
@@ -777,12 +776,35 @@ state_t pmgt_get_powercap_value(pwr_mgt_t *phandler, uint pid, ulong *powercap)
 }
 
 /* Gets powercap per device in a specified domain */
-state_t pmgt_get_powercap_value_per_device(uint domain, uint *powercaps)
+state_t pmgt_get_powercap_value_per_device(uint domain, uint32_t *powercaps)
 {
     if (domain >= NUM_DOMAINS || !domains_loaded[domain] || powercaps == NULL) {
         return EAR_ERROR;
     }
-    return freturn(pcsyms_fun[domain].get_powercap_value, 0, powercaps);
+    state_t ret = freturn(pcsyms_fun[domain].get_powercap_value, 0, powercaps);
+    if (ret != EAR_SUCCESS) {
+        return ret;
+    }
+    if (domain == DOMAIN_CPU) {
+        for (int i = 0; i < pc_topology_info.socket_count; i++) {
+            if (powercaps[i] >= pck_tdps[i]) {
+                powercaps[i] = POWER_CAP_UNLIMITED;
+            }
+        }
+    } else if (domain == DOMAIN_DRAM) {
+        for (int i = 0; i < pc_topology_info.socket_count; i++) {
+            if (powercaps[i] >= dram_tdps[i]) {
+                powercaps[i] = POWER_CAP_UNLIMITED;
+            }
+        }
+    } else if (domain == DOMAIN_GPU) {
+        for (int i = 0; i < gpu_pc_num_gpus; i++) {
+            if (powercaps[i] >= gpu_tdps[i]) {
+                powercaps[i] = POWER_CAP_UNLIMITED;
+            }
+        }
+    }
+    return EAR_SUCCESS;
 }
 
 uint pmgt_is_powercap_enabled(pwr_mgt_t *phandler, uint pid)
@@ -916,8 +938,8 @@ void pmgt_set_power_per_domain(pwr_mgt_t *phandler, dom_power_t *pdomain, uint s
               pdomains[DOMAIN_GPU]);
         pmgt_reset_pdomain();
     } else if (pdomain->platform <
-               (pmgt_limit * security_range)) { // check if we can comfortably give power back to the domains without
-                                                // risking an excess of power use
+               (pmgt_limit * security_range)) { // check if we can comfortably give power back to the domains
+                                                // without risking an excess of power use
         for (i = 0; i < NUM_DOMAINS; i++) {
             pdomains[i] = ear_min(pdomains[i] + 0.02, pdomains_def[i]);
         }
@@ -1126,8 +1148,8 @@ void pmgt_get_status(pmgt_status_t *status)
             debug("pmgt_get_status: GREEDY + OK/GREEDY Node requested power %u", status->requested);
         }
     } else if (cdomain_status[DOMAIN_CPU].ok == PC_STATUS_RELEASE ||
-               cdomain_status[DOMAIN_GPU].ok == PC_STATUS_RELEASE) { // no need to check for greedy since we did that
-                                                                     // before, this includes OK+RELEASE
+               cdomain_status[DOMAIN_GPU].ok == PC_STATUS_RELEASE) { // no need to check for greedy since we did
+                                                                     // that before, this includes OK+RELEASE
         status->status = PC_STATUS_RELEASE;
         for (i = 0; i < NUM_DOMAINS; i++)
             status->tbr += cdomain_status[i].exceed;
@@ -1239,7 +1261,8 @@ static uint pmgt_powercap_status_per_domain(uint action)
             /* Use the same approach as case 2 - explicit set_powercap_value calls */
             new_power_send = cdomain_status[from].current_pc - cdomain_status[from].exceed;
             new_power_recv = cdomain_status[to].current_pc + cdomain_status[from].exceed;
-            debug("%u Watts have been moved from domain %u to domain %u. Previous values from %u to %u. New values: %u "
+            debug("%u Watts have been moved from domain %u to domain %u. Previous values from %u to %u. New "
+                  "values: %u "
                   "to %u",
                   cdomain_status[from].exceed, from, to, cdomain_status[from].current_pc, cdomain_status[to].current_pc,
                   new_power_send, new_power_recv);
@@ -1257,7 +1280,8 @@ static uint pmgt_powercap_status_per_domain(uint action)
         case 2:
             new_power_send = cdomain_status[from].current_pc - cdomain_status[from].exceed;
             new_power_recv = cdomain_status[to].current_pc + cdomain_status[from].exceed;
-            debug("%u Watts have been moved from domain %u to domain %u. Previous values from %u to %u. New values "
+            debug("%u Watts have been moved from domain %u to domain %u. Previous values from %u to %u. New "
+                  "values "
                   "from: %u to %u",
                   cdomain_status[from].exceed, from, to, cdomain_status[from].current_pc, cdomain_status[to].current_pc,
                   new_power_send, new_power_recv);

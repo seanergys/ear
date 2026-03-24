@@ -37,7 +37,7 @@
 #include <daemon/powercap/powercap_status_conf.h>
 
 static topology_t node_desc;
-static uint current_limit     = POWER_CAP_UNLIMITED;
+static uint32_t current_limit = POWER_CAP_UNLIMITED;
 static uint pc_on             = 0;
 static uint num_pstates       = 0;
 static uint current_status    = 0;

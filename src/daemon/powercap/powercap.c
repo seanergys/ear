@@ -17,7 +17,7 @@
 #include <common/colors.h>
 #include <common/config.h>
 #include <pthread.h>
-// #define SHOW_DEBUGS 1
+#define SHOW_DEBUGS 1
 #include <common/messaging/msg_conf.h>
 #include <common/output/verbose.h>
 #include <common/states.h>
@@ -63,10 +63,10 @@ extern int num_contexts;
 static timestamp_t last_powercap_reallocation_time;
 
 // Per-device powercap storage
-static uint *stored_cpu_powercaps  = NULL;
-static uint *stored_dram_powercaps = NULL;
+static uint32_t *stored_cpu_powercaps  = NULL;
+static uint32_t *stored_dram_powercaps = NULL;
 #if USE_GPUS
-static ulong *stored_gpu_powercaps = NULL;
+static uint32_t *stored_gpu_powercaps = NULL;
 #endif
 static uint stored_cpu_count  = 0;
 static uint stored_dram_count = 0;
@@ -95,7 +95,7 @@ static void powercap_init_device_storage()
     // Initialize CPU device storage
     stored_cpu_count = pmgt_get_cpu_devices();
     if (stored_cpu_count > 0) {
-        stored_cpu_powercaps = calloc(stored_cpu_count, sizeof(uint));
+        stored_cpu_powercaps = calloc(stored_cpu_count, sizeof(uint32_t));
         if (stored_cpu_powercaps == NULL) {
             error("Failed to allocate memory for CPU powercap storage");
             stored_cpu_count = 0;
@@ -110,7 +110,7 @@ static void powercap_init_device_storage()
     // Initialize DRAM device storage
     stored_dram_count = pmgt_get_dram_devices();
     if (stored_dram_count > 0) {
-        stored_dram_powercaps = calloc(stored_dram_count, sizeof(uint));
+        stored_dram_powercaps = calloc(stored_dram_count, sizeof(uint32_t));
         if (stored_dram_powercaps == NULL) {
             error("Failed to allocate memory for DRAM powercap storage");
             stored_dram_count = 0;
@@ -126,7 +126,7 @@ static void powercap_init_device_storage()
     // Initialize GPU device storage
     stored_gpu_count = pmgt_get_gpu_devices();
     if (stored_gpu_count > 0) {
-        stored_gpu_powercaps = calloc(stored_gpu_count, sizeof(ulong));
+        stored_gpu_powercaps = calloc(stored_gpu_count, sizeof(uint32_t));
         if (stored_gpu_powercaps == NULL) {
             error("Failed to allocate memory for GPU powercap storage");
             stored_gpu_count = 0;
@@ -163,7 +163,7 @@ static void powercap_cleanup_device_storage()
 #endif
 }
 
-state_t powercap_set_stored_device_value(uint domain, uint device_id, uint powercap_value)
+state_t powercap_set_stored_device_value(uint domain, uint device_id, uint32_t powercap_value)
 {
     if (domain >= NUM_DOMAINS) {
         debug("powercap_set_stored_device_value: invalid domain %u", domain);
@@ -212,7 +212,7 @@ state_t powercap_set_stored_device_value(uint domain, uint device_id, uint power
     return EAR_SUCCESS;
 }
 
-void powercap_update_all_device_storage(uint domain, uint powercap_value)
+void powercap_update_all_device_storage(uint domain, uint32_t powercap_value)
 {
     uint device_count = 0;
 
@@ -295,11 +295,11 @@ ulong powercap_elapsed_last_powercap()
 }
 
 // this function changes the default powercap, last t1 and current powercap
-static int set_powercap_value(uint domain, uint limit)
+static int set_powercap_value(uint domain, uint32_t limit)
 {
     char c_date[128];
     int i;
-    uint max_powercap;
+    uint32_t max_powercap;
     verbose(VCONF, "%spowercap_set_powercap_value domain %u limit %u (current pc %u)%s", COL_BLU, domain, limit,
             my_pc_opt.current_pc, COL_CLR);
     max_powercap = powermon_get_max_powercap_def();
@@ -820,7 +820,7 @@ void powercap_increase_def_power(uint power)
     pthread_mutex_unlock(&my_pc_opt.lock);
 }
 
-void powercap_set_powercap(uint power)
+void powercap_set_powercap(uint32_t power)
 {
     while (pthread_mutex_trylock(&my_pc_opt.lock))
         ;
@@ -838,7 +838,7 @@ void powercap_end_job()
     pmgt_end_job(pcmgr);
 }
 
-ulong powercap_get_stored_device_value(uint domain, uint device_id)
+uint32_t powercap_get_stored_device_value(uint domain, uint device_id)
 {
     if (domain >= NUM_DOMAINS) {
         debug("powercap_get_stored_device_value: invalid domain %u", domain);
@@ -883,11 +883,11 @@ ulong powercap_get_stored_device_value(uint domain, uint device_id)
 
 state_t powercap_verify_device_values(uint domain)
 {
-    uint    device_count = 0;
-    ulong   stored_value;
-    state_t overall_result = EAR_SUCCESS;
-    int     mismatches     = 0;
-    uint   *actual_values  = NULL;
+    uint device_count = 0;
+    uint32_t stored_value;
+    state_t overall_result  = EAR_SUCCESS;
+    int mismatches          = 0;
+    uint32_t *actual_values = NULL;
     state_t ret;
 
     if (!is_powercap_on(&my_pc_opt)) {
@@ -927,7 +927,7 @@ state_t powercap_verify_device_values(uint domain)
         return EAR_SUCCESS;
     }
 
-    actual_values = calloc(device_count, sizeof(uint));
+    actual_values = calloc(device_count, sizeof(uint32_t));
     if (actual_values == NULL) {
         error("powercap_verify_device: failed to allocate memory for actual_values");
         return EAR_ERROR;
@@ -942,7 +942,7 @@ state_t powercap_verify_device_values(uint domain)
 
     for (uint i = 0; i < device_count; i++) {
         stored_value       = powercap_get_stored_device_value(domain, i);
-        ulong actual_value = (ulong) actual_values[i];
+        ulong actual_value = actual_values[i];
 
         if (actual_value == 0) {
             error("powercap_verify_device: failed to get actual value for domain %u device %u", domain, i);

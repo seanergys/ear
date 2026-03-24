@@ -25,9 +25,9 @@ static ulong        *clock_max;         // KHz
 static ulong        *clock_max_mem;     // MHz
 static ulong       **clock_list;       // KHz
 static uint         *clock_lens;
-static ulong        *power_max_default; // W
-static ulong        *power_max;         // W
-static ulong        *power_min;         // W
+static uint32_t     *power_max_default; // W
+static uint32_t     *power_max;         // W
+static uint32_t     *power_min;         // W
 // clang-format on
 
 #define myErrorString(r) ((char *) nvml.ErrorString(r))
@@ -72,9 +72,9 @@ static state_t static_init()
     static_alloc(clock_max_default, handlers_count, sizeof(ulong));
     static_alloc(clock_max        , handlers_count, sizeof(ulong));
     static_alloc(clock_max_mem    , handlers_count, sizeof(ulong));
-    static_alloc(power_max_default, handlers_count, sizeof(ulong));
-    static_alloc(power_max        , handlers_count, sizeof(ulong));
-    static_alloc(power_min        , handlers_count, sizeof(ulong));
+    static_alloc(power_max_default, handlers_count, sizeof(uint32_t));
+    static_alloc(power_max        , handlers_count, sizeof(uint32_t));
+    static_alloc(power_min        , handlers_count, sizeof(uint32_t));
     static_alloc(clock_list       , handlers_count, sizeof(ulong *));
     static_alloc(clock_lens       , handlers_count, sizeof(uint));
     // clang-format on
@@ -89,12 +89,12 @@ static state_t static_init()
             debug("nvmlDeviceGetPowerManagementLimitConstraints returned %d (%s)", r, nvml.ErrorString(r));
             return static_dispose(EAR_ERROR, myErrorString(r));
         }
-        power_max_default[d] = ((ulong) aux) / 1000LU;
-        power_max[d]         = ((ulong) c2) / 1000LU;
-        power_min[d]         = ((ulong) c1) / 1000LU;
-        debug("D%d default: %lu W", d, power_max_default[d]);
-        debug("D%d new max: %lu W", d, power_max[d]);
-        debug("D%d new min: %lu W", d, power_min[d]);
+        power_max_default[d] = ((uint32_t) aux) / 1000U;
+        power_max[d]         = ((uint32_t) c2) / 1000U;
+        power_min[d]         = ((uint32_t) c1) / 1000U;
+        debug("D%d default: %u W", d, power_max_default[d]);
+        debug("D%d new max: %u W", d, power_max[d]);
+        debug("D%d new min: %u W", d, power_min[d]);
     }
     // Clocks fill
     debug("clock list:");
@@ -369,7 +369,7 @@ state_t mgt_gpu_nvml_freq_list(ctx_t *c, const ulong ***list_khz, const uint **l
     return EAR_SUCCESS;
 }
 
-state_t mgt_gpu_nvml_power_cap_get_current(ctx_t *c, ulong *watts)
+state_t mgt_gpu_nvml_power_cap_get_current(ctx_t *c, uint32_t *watts)
 {
     nvmlReturn_t r;
     state_t e;
@@ -389,7 +389,7 @@ state_t mgt_gpu_nvml_power_cap_get_current(ctx_t *c, ulong *watts)
     return e;
 }
 
-state_t mgt_gpu_nvml_power_cap_get_default(ctx_t *c, ulong *watts)
+state_t mgt_gpu_nvml_power_cap_get_default(ctx_t *c, uint32_t *watts)
 {
     int i;
     for (i = 0; i < handlers_count; ++i) {
@@ -398,7 +398,7 @@ state_t mgt_gpu_nvml_power_cap_get_default(ctx_t *c, ulong *watts)
     return EAR_SUCCESS;
 }
 
-state_t mgt_gpu_nvml_power_cap_get_rank(ctx_t *c, ulong *watts_min, ulong *watts_max)
+state_t mgt_gpu_nvml_power_cap_get_rank(ctx_t *c, uint32_t *watts_min, uint32_t *watts_max)
 {
     int i;
     for (i = 0; i < handlers_count && watts_max != NULL; ++i) {
@@ -430,13 +430,13 @@ state_t mgt_gpu_nvml_power_cap_reset(ctx_t *c)
     return mgt_gpu_nvml_power_cap_set(c, power_max_default);
 }
 
-state_t mgt_gpu_nvml_power_cap_set(ctx_t *c, ulong *watts)
+state_t mgt_gpu_nvml_power_cap_set(ctx_t *c, uint32_t *watts)
 {
     state_t s, e;
     int i;
 
     for (i = 0, e = EAR_SUCCESS; i < handlers_count; ++i) {
-        if (state_fail(s = powers_set(i, (uint) (watts[i] * 1000LU)))) {
+        if (state_fail(s = powers_set(i, (uint) (watts[i] * 1000U)))) {
             e = s;
         }
     }
