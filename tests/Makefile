@@ -1,5 +1,5 @@
 SRCDIR = ../src
-CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC $(CONSTANTS) -Wall
+CFLAGS = $(CC_FLAGS) -I$(SRCDIR) -fPIC $(CONSTANTS) -g -O0 -Wall
 LDFLAGS = -lm
 CCC     = $(CC) $(CFLAGS) 
 

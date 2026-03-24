@@ -17,7 +17,7 @@
 #include <common/colors.h>
 #include <common/config.h>
 #include <pthread.h>
-#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 #include <common/messaging/msg_conf.h>
 #include <common/output/verbose.h>
 #include <common/states.h>
@@ -33,7 +33,7 @@
 #include <daemon/shared_configuration.h>
 
 #ifndef POWERCAP_MON
-#define POWERCAP_MON   0    // Powercap monitor disabled by default
+#define POWERCAP_MON 0 // Powercap monitor disabled by default
 #endif
 #define MAX_PERC_POWER 90
 
@@ -75,8 +75,6 @@ static uint stored_dram_count = 0;
 #if USE_GPUS
 static uint stored_gpu_count = 0;
 #endif
-// Per-domain powercap storage
-static uint32_t stored_domain_powercaps[NUM_DOMAINS];
 
 #if POWERCAP_MON
 static suscription_t *sus_powercap_monitor;
@@ -169,15 +167,14 @@ static void powercap_cleanup_device_storage()
 state_t powercap_set_stored_device_value(uint domain, uint device_id, uint32_t powercap_value)
 {
     if (domain >= NUM_DOMAINS) {
-        debug("powercap_set_stored_device_value: invalid domain %u", domain);
+        debug("invalid domain %u", domain);
         return EAR_ERROR;
     }
 
     switch (domain) {
         case DOMAIN_CPU:
             if (device_id >= stored_cpu_count || stored_cpu_powercaps == NULL) {
-                debug("powercap_set_stored_device_value: invalid CPU device %u (count: %u)", device_id,
-                      stored_cpu_count);
+                debug("invalid CPU device %u (count: %u)", device_id, stored_cpu_count);
                 return EAR_ERROR;
             }
             stored_cpu_powercaps[device_id] = powercap_value;
@@ -185,8 +182,7 @@ state_t powercap_set_stored_device_value(uint domain, uint device_id, uint32_t p
 
         case DOMAIN_DRAM:
             if (device_id >= stored_dram_count || stored_dram_powercaps == NULL) {
-                debug("powercap_set_stored_device_value: invalid DRAM device %u (count: %u)", device_id,
-                      stored_dram_count);
+                debug("invalid DRAM device %u (count: %u)", device_id, stored_dram_count);
                 return EAR_ERROR;
             }
             stored_dram_powercaps[device_id] = powercap_value;
@@ -195,23 +191,22 @@ state_t powercap_set_stored_device_value(uint domain, uint device_id, uint32_t p
         case DOMAIN_GPU:
 #if USE_GPUS
             if (device_id >= stored_gpu_count || stored_gpu_powercaps == NULL) {
-                debug("powercap_set_stored_device_value: invalid GPU device %u (count: %u)", device_id,
-                      stored_gpu_count);
+                debug("invalid GPU device %u (count: %u)", device_id, stored_gpu_count);
                 return EAR_ERROR;
             }
             stored_gpu_powercaps[device_id] = powercap_value;
 #else
-            debug("powercap_set_stored_device_value: GPU domain not supported");
+            debug("GPU domain not supported");
             return EAR_ERROR;
 #endif
             break;
 
         default:
-            debug("powercap_set_stored_device_value: unsupported domain %u", domain);
+            debug("unsupported domain %u", domain);
             return EAR_ERROR;
     }
 
-    debug("powercap_set_stored_device_value: domain=%u device=%u value=%u", domain, device_id, powercap_value);
+    debug("domain=%u device=%u value=%u", domain, device_id, powercap_value);
     return EAR_SUCCESS;
 }
 
@@ -693,7 +688,7 @@ void powercap_get_status(powercap_status_t *my_status, pmgt_status_t *status, in
                 my_status->requested += my_pc_opt.def_powercap - my_pc_opt.last_t1_allocated;
                 break;
             case PC_STATUS_OK:
-                debug("powercap_get_status: PC_STATUS OK");
+                debug("PC_STATUS OK");
                 status->requested = 0;
                 if (my_pc_opt.last_t1_allocated > my_pc_opt.def_powercap) {
                     status->extra = my_pc_opt.last_t1_allocated - my_pc_opt.def_powercap;
@@ -770,7 +765,7 @@ void powercap_set_opt(powercap_opt_t *opt, int id)
                 }
                 break;
             case PC_STATUS_RELEASE:
-                debug("powercap_set_opt: My powercap status is RELEASE, doing nothing ");
+                debug("My powercap status is RELEASE, doing nothing ");
                 break;
             case PC_STATUS_GREEDY:
                 debug("%spowercap_set_opt  new_pc_opt: greedy node %d ip=%d with ip=%d extra %d%s", COL_GRE, id,
@@ -792,8 +787,7 @@ void powercap_set_opt(powercap_opt_t *opt, int id)
     } else {
         if (my_pc_opt.powercap_status == PC_STATUS_ASK_DEF) {
             /* In that case, we assume we cat use the default power cap */
-            debug("powercap_set_opt: My status is ASK_DEF and new settings received with new_pc: %u",
-                  my_pc_opt.def_powercap);
+            debug("My status is ASK_DEF and new settings received with new_pc: %u", my_pc_opt.def_powercap);
             my_pc_opt.powercap_status = PC_STATUS_OK;
             /* We assume we will receive the requested power */
             my_pc_opt.last_t1_allocated = my_pc_opt.def_powercap;
@@ -901,23 +895,21 @@ void powercap_end_job()
 uint32_t powercap_get_stored_device_value(uint domain, uint device_id)
 {
     if (domain >= NUM_DOMAINS) {
-        debug("powercap_get_stored_device_value: invalid domain %u", domain);
+        debug("invalid domain %u", domain);
         return 0;
     }
 
     switch (domain) {
         case DOMAIN_CPU:
             if (device_id >= stored_cpu_count || stored_cpu_powercaps == NULL) {
-                debug("powercap_get_stored_device_value: invalid CPU device %u (count: %u)", device_id,
-                      stored_cpu_count);
+                debug("invalid CPU device %u (count: %u)", device_id, stored_cpu_count);
                 return 0;
             }
             return stored_cpu_powercaps[device_id];
 
         case DOMAIN_DRAM:
             if (device_id >= stored_dram_count || stored_dram_powercaps == NULL) {
-                debug("powercap_get_stored_device_value: invalid DRAM device %u (count: %u)", device_id,
-                      stored_dram_count);
+                debug("invalid DRAM device %u (count: %u)", device_id, stored_dram_count);
                 return 0;
             }
             return stored_dram_powercaps[device_id];
@@ -925,18 +917,17 @@ uint32_t powercap_get_stored_device_value(uint domain, uint device_id)
         case DOMAIN_GPU:
 #if USE_GPUS
             if (device_id >= stored_gpu_count || stored_gpu_powercaps == NULL) {
-                debug("powercap_get_stored_device_value: invalid GPU device %u (count: %u)", device_id,
-                      stored_gpu_count);
+                debug("invalid GPU device %u (count: %u)", device_id, stored_gpu_count);
                 return 0;
             }
             return stored_gpu_powercaps[device_id];
 #else
-            debug("powercap_get_stored_device_value: GPU domain not supported");
+            debug("GPU domain not supported");
             return 0;
 #endif
 
         default:
-            debug("powercap_get_stored_device_value: unsupported domain %u", domain);
+            debug("unsupported domain %u", domain);
             return 0;
     }
 }
@@ -951,12 +942,12 @@ state_t powercap_verify_device_values(uint domain)
     state_t ret;
 
     if (!is_powercap_on(&my_pc_opt)) {
-        debug("powercap_verify_device: powercap is disabled");
+        debug("powercap is disabled");
         return EAR_SUCCESS;
     }
 
     if (domain >= NUM_DOMAINS) {
-        debug("powercap_verify_device: invalid domain %u", domain);
+        debug("invalid domain %u", domain);
         return EAR_ERROR;
     }
 
@@ -976,14 +967,14 @@ state_t powercap_verify_device_values(uint domain)
 #endif
             break;
         default:
-            debug("powercap_verify_device: unsupported domain %u", domain);
+            debug("unsupported domain %u", domain);
             return EAR_ERROR;
     }
 
-    debug("powercap_verify_device: checking domain %u with %u devices", domain, device_count);
+    debug("checking domain %u with %u devices", domain, device_count);
 
     if (device_count == 0) {
-        debug("powercap_verify_device: no devices found for domain %u", domain);
+        debug("no devices found for domain %u", domain);
         return EAR_SUCCESS;
     }
 
@@ -1009,7 +1000,7 @@ state_t powercap_verify_device_values(uint domain)
             continue;
         }
 
-        debug("powercap_verify_device: domain=%u device=%u stored=%u actual=%u", domain, i, stored_value, actual_value);
+        debug("domain=%u device=%u stored=%u actual=%u", domain, i, stored_value, actual_value);
 
         if (stored_value != actual_value) {
             verbose(VEARD_PC, "%sWARNING: device powercap mismatch - domain %u device %u: stored=%u, actual=%u%s",
@@ -1023,7 +1014,7 @@ state_t powercap_verify_device_values(uint domain)
     free(actual_values);
 
     if (mismatches == 0) {
-        debug("powercap_verify_device: all device values match for domain %u", domain);
+        debug("all device values match for domain %u", domain);
     }
 
     return overall_result;
@@ -1035,7 +1026,7 @@ state_t powercap_verify_all_devices()
     state_t overall_result = EAR_SUCCESS;
 
     if (!is_powercap_on(&my_pc_opt)) {
-        debug("powercap_verify_all_devices: powercap is disabled");
+        debug("powercap is disabled");
         return EAR_SUCCESS;
     }
 
@@ -1045,7 +1036,7 @@ state_t powercap_verify_all_devices()
     //     return EAR_SUCCESS;
     // }
 
-    debug("powercap_verify_all_devices: starting verification of all device domains");
+    debug("starting verification of all device domains");
 
     // Verify CPU devices
     cpu_result = powercap_verify_device_values(DOMAIN_CPU);
