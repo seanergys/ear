@@ -46,7 +46,7 @@ static int id_log;
 static int id_api;
 static int id_tpo;
 
-void metrics_load(metrics_info_t *m, topology_t *tp, char *nodepow_path, uint *options)
+void metrics_load(metrics_info_t *m, topology_t *tp, cluster_conf_t *clus, my_node_conf_t *node, uint *options)
 {
     uint default_options[10] = {0};
     self_tp = tp;
@@ -54,7 +54,7 @@ void metrics_load(metrics_info_t *m, topology_t *tp, char *nodepow_path, uint *o
     if (options == NULL) {
         options = default_options;
     }
-    nodepow(load, nodepow_path);
+    nodepow(load, NULL);
     cpufreq_load(tp, options[MET_OPT_CPUFREQ]);
     imcfreq_load(tp, options[MET_OPT_IMCFREQ]);
      cpupow(load,tp, options[MET_OPT_CPUPOW] );
