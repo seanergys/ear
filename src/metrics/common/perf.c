@@ -96,13 +96,13 @@ state_t perf_open_cpu(perf_t *perf, perf_t *group, pid_t pid, uint type, ulong e
     if (perf->fd == -1) {
         debug("error %s", strerror(errno));
     } else {
-        working = 1;
         debug("ok");
     }
     #endif
     if (perf->fd == -1) {
         return_msg(EAR_ERROR, strerror(errno));
     }
+    working = 1;
     return EAR_SUCCESS;
 }
 

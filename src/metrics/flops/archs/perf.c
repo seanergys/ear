@@ -119,7 +119,7 @@ static int add_events(perfs_t *p, uint pid, uint cpu)
     }
     if (ps == 0) {
         // Destroy the offsets
-        return_print(EAR_ERROR, "Failed all perf events: %s", state_msg);
+        return_reprint(EAR_ERROR, "Failed all perf events: %s", state_msg);
     }
     return EAR_SUCCESS;
 }
@@ -134,7 +134,7 @@ FLOPS_F_LOAD(perf)
     sve_bits = tp->sve_bits;
     if (SCOPE_IS(options, SCOPE_NODE)) {
         perfs_count = tp->cpu_count;
-        perfs       = calloc(tp->cpu_count, sizeof(perfs_t));
+        perfs       = calloc(perfs_count, sizeof(perfs_t));
         scope       = SCOPE_NODE;
         granularity = GRANULARITY_CPU;
         // Event per CPU
@@ -145,13 +145,13 @@ FLOPS_F_LOAD(perf)
         if (!perf_is_working()) {
             return;
         }
-        perfs_count = tp->cpu_count;
-        perfs       = calloc(tp->cpu_count, sizeof(perfs_t));
+        perfs_count = tp->cpu_count * 3;
+        perfs       = calloc(perfs_count, sizeof(perfs_t));
         scope       = SCOPE_JOB;
         granularity = GRANULARITY_PROCESS;
     } else {
         perfs_count = 1;
-        perfs       = calloc(1, sizeof(perfs_t));
+        perfs       = calloc(perfs_count, sizeof(perfs_t));
         scope       = SCOPE_PROCESS;
         granularity = GRANULARITY_PROCESS;
         add_events(&perfs[0], 0, -1);
@@ -257,7 +257,7 @@ FLOPS_F_READ(perf)
         p = (ullong *) &fl[i].f64;
         fl[i].pid = perfs[i].perfs[0].pid;
         #if SHOW_DEBUGS
-        dprintf(debug_channel, "DEV%d", i);
+        dprintf(debug_channel, "%s:%s:%d: d%d ", __FILE__, __FUNCTION__, __LINE__, i);
         #endif
         for (j = 0; j < perfs[i].perfs_count; ++j) {
             // We assume 0 means unopened file descriptor
@@ -266,7 +266,7 @@ FLOPS_F_READ(perf)
             }
             value = 0LL;
             if (state_fail(s = perf_read(&perfs[i].perfs[j], (long long *) &value))) {
-                debug("FAILED");
+                debug("perf_read failed: %s", state_msg);
                 return s;
             }
             p[j] = value;
