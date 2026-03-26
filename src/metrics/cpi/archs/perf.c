@@ -113,7 +113,7 @@ CPI_F_LOAD(perf)
     family = tp->family;
     if (SCOPE_IS(options, SCOPE_NODE)) {
         perfs_count = tp->cpu_count;
-        perfs       = calloc(tp->cpu_count, sizeof(perfs_t));
+        perfs       = calloc(perfs_count, sizeof(perfs_t));
         scope       = SCOPE_NODE;
         granularity = GRANULARITY_CPU;
         // Event per CPU
@@ -130,7 +130,7 @@ CPI_F_LOAD(perf)
         granularity = GRANULARITY_PROCESS;
     } else {
         perfs_count = 1;
-        perfs       = calloc(1, sizeof(perfs_t));
+        perfs       = calloc(perfs_count, sizeof(perfs_t));
         scope       = SCOPE_PROCESS;
         granularity = GRANULARITY_PROCESS;
         add_events(&perfs[0], 0, -1);

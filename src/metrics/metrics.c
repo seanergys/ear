@@ -439,8 +439,8 @@ int main(int argc, char *argv[])
     suscription_t *sus = suscription();
     sus->call_init     = metrics_apis_init;
     sus->call_main     = metrics_apis_update;
-    sus->time_relax    = 1000;
-    sus->time_burst    = 1000;
+    sus->time_relax    = 2000;
+    sus->time_burst    = 2000;
     sus->suscribe(sus);
 
     sleep(3);

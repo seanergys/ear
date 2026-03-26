@@ -148,13 +148,14 @@ void cache_data_diff(cache_t *ca2, cache_t *ca1, cache_t *caD, double *gbs)
         level_diff(&ca2[i].l2 , &ca1[i].l2 , &caD[i].l2 );
         level_diff(&ca2[i].l3 , &ca1[i].l3 , &caD[i].l3 );
         secs = timestamp_fdiff(&ca2[i].time, &ca1[i].time, TIME_SECS, TIME_MSECS);
+        secs = (secs > 0.0)? secs: 1.0;
         caD[i].bw_gbs = (double) (caD[i].lbw->lines_in + caD[i].lbw->lines_out);
         caD[i].bw_gbs = (caD[i].bw_gbs / secs) * line_size;
         caD[i].bw_gbs = (caD[i].bw_gbs / ((double) 1E9));
         gbs_tot += caD[i].bw_gbs;
     }
     for (i = 0; i < info.devs_count; ++i) {
-        caD[i].bw_ratio = caD[i].bw_gbs / gbs_tot;
+        caD[i].bw_ratio = (gbs_tot > 0.0)? caD[i].bw_gbs / gbs_tot: 0.0;
     }
     if (gbs != NULL) {
         *gbs = gbs_tot;
@@ -181,7 +182,7 @@ void cache_data_free(cache_t **ca)
 
 void cache_data_copy(cache_t *dst, cache_t *src)
 {
-    memcpy(dst, src, sizeof(cache_t));
+    memcpy(dst, src, sizeof(cache_t) * info.devs_count);
     dst->ll  = get_offset(dst, src, src->ll);
     dst->lbw = get_offset(dst, src, src->lbw);
 }
