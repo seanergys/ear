@@ -522,7 +522,7 @@ void *eard_non_earl_api_service(void *noinfo)
         pthread_exit(0);
     }
 
-    if (state_fail(energy_load(API_FREE))) {
+    if (state_fail(energy_load(API_FREE, &my_cluster_conf, my_node_conf))) {
         verbose(VAPP_API + 1, "Energy plug-in load method failed: %s", state_msg);
         pthread_exit(0);
     }

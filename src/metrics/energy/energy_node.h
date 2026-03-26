@@ -16,9 +16,24 @@
 #include <common/types/configuration/cluster_conf.h>
 #include <metrics/accumulators/types.h>
 
+struct energy_op {
+    state_t (*load)(void **c);
+    state_t (*unload)(void **c);
+    state_t (*datasize)(size_t *size);
+    state_t (*frequency)(ulong *freq);
+    state_t (*dc_read)(void *c, edata_t emj);
+    state_t (*dc_time_read)(void *c, edata_t emj, ulong *tms);
+    state_t (*ac_read)(void *c, edata_t em);
+    state_t (*units)(uint *uints);
+    state_t (*accumulated)(ulong *e, edata_t init, edata_t end);
+    state_t (*energy_to_str)(char *str, edata_t end);
+    state_t (*power_limit)(void *c, ulong limit, ulong target);
+    uint (*is_null)(edata_t end);
+};
+
 /* These two functions breaks load from initialization and simplifies the path
  * to the energy plugin, it's pending to add in EARD */
-state_t energy_load(int options);
+state_t energy_load(int options, cluster_conf_t *my_cluster_conf, my_node_conf_t *my_node_conf);
 
 state_t energy_unload();
 

@@ -2402,7 +2402,7 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
             error("when resetting IPMI interface 'energy_unload'");
         }
 
-        if (energy_load(API_FREE) != EAR_SUCCESS) {
+        if (energy_load(API_FREE, &my_cluster_conf, my_node_conf) != EAR_SUCCESS) {
             error("when resetting IPMI interface in 'energy_load'");
         }
     }

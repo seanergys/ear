@@ -21,11 +21,6 @@
 #include <common/utils/string.h>
 #include <metrics/energy/energy_node.h>
 #include <pthread.h>
-/* Static plugins headers */
-#include <metrics/energy/node/energy_cpu_gpu.h>
-#include <metrics/energy/node/energy_dcmi.h>
-#include <metrics/energy/node/energy_dummy.h>
-
 struct energy_op energy_ops;
 
 const char *energy_names[] = {"energy_load",        "energy_unload",       "energy_datasize",    "energy_frequency",
@@ -79,22 +74,16 @@ static state_t load_dynamic_plugin(const char *dir_plug, const char *plugin_name
     return energy_ops.load(&energy_context);
 }
 
-state_t energy_load(int options)
+state_t energy_load(int options, cluster_conf_t *my_cluster_conf, my_node_conf_t *my_node_conf)
 {
-    cluster_conf_t cluster_conf;
-    my_node_conf_t *node_conf = NULL;
-    char ear_conf_path[MAX_PATH_SIZE];
     state_t ret     = EAR_ERROR;
     char *hack_path = NULL;
     char *dir_plug  = NULL;
-    int conf_loaded = 0;
-    char install_path_buf[MAX_PATH_SIZE];
 
     pthread_mutex_lock(&lock);
-    debug("energy_load: entry");
 
     if (energy_loaded) {
-        debug("energy_load: already loaded");
+        debug("already loaded");
         pthread_mutex_unlock(&lock);
         return_msg(EAR_ERROR, Generr.api_initialized);
     }
@@ -103,7 +92,6 @@ state_t energy_load(int options)
     hack_path = getenv("HACK_ENERGY_PLUGIN");
     if (hack_path != NULL) {
         char hack_path_no_args[MAX_PATH_SIZE];
-        char *args;
 
         debug("Loading HACK energy plugin: %s", hack_path);
 
@@ -117,9 +105,24 @@ state_t energy_load(int options)
         }
     }
 
+    if (my_cluster_conf != NULL && my_cluster_conf->install.dir_plug != NULL &&
+        my_cluster_conf->install.dir_plug[0] != '\0') {
+        dir_plug = my_cluster_conf->install.dir_plug;
+    } else {
+        char *ear_install_path = get_ear_install_path();
+        if (ear_install_path != NULL) {
+            char install_path_buf[MAX_PATH_SIZE];
+            snprintf(install_path_buf, sizeof(install_path_buf), "%s/lib/plugins", ear_install_path);
+            dir_plug = install_path_buf;
+        } else {
+            error("No cluster configuration or installation path available for energy plugin loading");
+            goto end;
+        }
+    }
+
     // If DUMMY is requested, we go straight for it.
     if (API_IS(options, API_DUMMY)) {
-        debug("energy_load: DUMMY requested");
+        debug("DUMMY requested");
         goto dummy;
     }
 
@@ -127,85 +130,47 @@ state_t energy_load(int options)
         verbose(VCONF, "EARD API not yet available");
     }
 
-    memset(&cluster_conf, 0, sizeof(cluster_conf));
-
-    if (get_ear_conf_path(ear_conf_path) != EAR_SUCCESS ||
-        read_cluster_conf(ear_conf_path, &cluster_conf) != EAR_SUCCESS) {
-
-        debug("energy_load: could not load EAR configuration");
-        char *ear_install_path = get_ear_install_path();
-        if (ear_install_path != NULL) {
-            snprintf(install_path_buf, sizeof(install_path_buf), "%s/lib/plugins", ear_install_path);
-            dir_plug = install_path_buf;
-            debug("Could not load EAR configuration. Using fallback plugins directory: %s", dir_plug);
-        } else {
-            debug("Could not load EAR configuration to find plugins directory. Trying static plugins.");
-            dir_plug = NULL;
-        }
-    } else {
-        debug("energy_load: EAR configuration loaded");
-        conf_loaded = 1;
-        dir_plug    = cluster_conf.install.dir_plug;
-    }
-
-    // Only attempt to get node configuration if cluster config was loaded
-    if (conf_loaded) {
-        char nodename[MAX_PATH_SIZE];
-        if (gethostname(nodename, sizeof(nodename)) < 0) {
-            error("Error getting node name (%s)", strerror(errno));
-            goto end;
-        }
-
-        node_conf = get_my_node_conf(&cluster_conf, nodename);
-
-        // Try loading plugins in order of priority.
-        if (node_conf != NULL) {
-            debug("energy_load: node_conf found, trying %s", node_conf->energy_plugin);
-            if (state_ok(load_dynamic_plugin(dir_plug, node_conf->energy_plugin))) {
-                ret = EAR_SUCCESS;
-                goto end;
-            }
-        }
-        // By default cluster_conf.install.obj_ener gets DEFAULT_ENERGY_PLUGIN
-        debug("energy_load: trying cluster conf plugin %s", cluster_conf.install.obj_ener);
-        if (state_ok(load_dynamic_plugin(dir_plug, cluster_conf.install.obj_ener))) {
+    // Try loading node-specific plugin if available (preferred)
+    if (my_node_conf != NULL) {
+        debug("node_conf found, trying %s", node_conf->energy_plugin);
+        if (state_ok(load_dynamic_plugin(dir_plug, my_node_conf->energy_plugin))) {
             ret = EAR_SUCCESS;
             goto end;
         }
-    } else {
-        // Fallback: try default plugin directly
-        debug("energy_load: trying default plugin directly");
-        if (state_ok(load_dynamic_plugin(dir_plug, DEFAULT_ENERGY_PLUGIN))) {
+    } else if (my_cluster_conf != NULL) {
+        debug("trying cluster conf plugin %s", cluster_conf->install.obj_ener);
+        if (state_ok(load_dynamic_plugin(dir_plug, my_cluster_conf->install.obj_ener))) {
             ret = EAR_SUCCESS;
             goto end;
         }
     }
 
-    debug("energy_load: trying static plugins");
-    if (state_ok(energy_cpu_gpu_load_plugin(&energy_ops, &energy_context))) {
-        if (state_ok(energy_ops.load(&energy_context))) {
-            ret = EAR_SUCCESS;
-            debug("Loaded static plugin: energy_cpu_gpu");
-            goto end;
-        }
+    // Fallback: try default plugin directly, it depends on SYSTEM_TYPE at compilation time.
+    debug("trying default plugin directly");
+    if (state_ok(load_dynamic_plugin(dir_plug, DEFAULT_ENERGY_PLUGIN))) {
+        ret = EAR_SUCCESS;
+        goto end;
+    }
+    // try some known plugins by name (without args)
+    debug("trying dynamic plugins");
+    if (state_ok(load_dynamic_plugin(dir_plug, "energy_cpu_gpu"))) {
+        ret = EAR_SUCCESS;
+        debug("Loaded dynamic plugin: energy_cpu_gpu");
+        goto end;
     }
 
-    if (state_ok(energy_dcmi_load_plugin(&energy_ops, &energy_context))) {
-        if (state_ok(energy_ops.load(&energy_context))) {
-            ret = EAR_SUCCESS;
-            debug("Loaded static plugin: energy_dcmi");
-            goto end;
-        }
+    if (state_ok(load_dynamic_plugin(dir_plug, "energy_dcmi"))) {
+        ret = EAR_SUCCESS;
+        debug("Loaded dynamic plugin: energy_dcmi");
+        goto end;
     }
 
 dummy:
-    debug("energy_load: trying dummy plugin");
-    if (state_ok(energy_dummy_load_plugin(&energy_ops, &energy_context))) {
-        if (state_ok(energy_ops.load(&energy_context))) {
-            ret = EAR_SUCCESS;
-            debug("Loaded static plugin: energy_dummy");
-            goto end;
-        }
+    debug("trying dummy plugin");
+    if (state_ok(load_dynamic_plugin(dir_plug, "energy_dummy"))) {
+        ret = EAR_SUCCESS;
+        debug("Loaded dynamic plugin: energy_dummy");
+        goto end;
     }
 
 end:
@@ -215,12 +180,6 @@ end:
         error("No energy plugin found");
     }
 
-    if (node_conf != NULL) {
-        free(node_conf);
-    }
-    if (conf_loaded) {
-        free_cluster_conf(&cluster_conf);
-    }
     pthread_mutex_unlock(&lock);
     return ret;
 }
@@ -345,3 +304,50 @@ uint energy_data_is_null(edata_t e)
         return 1;
     }
 }
+
+#if TEST
+
+void *energy_alloc(void **data)
+{
+    size_t size = 0;
+    energy_datasize(&size);
+    *data = calloc(1, size);
+}
+
+void energy_copy(void *dataD, void *dataS)
+{
+    size_t size = 0;
+    energy_datasize(&size);
+    memcpy(dataD, dataS, size);
+}
+
+int main(int argc, char *argv[])
+{
+    void *energy1 = NULL;
+    void *energy2 = NULL;
+    ulong energyD = 0LU;
+    ulong units   = 0LU;
+
+    if (argc == 1) {
+        return 0;
+    }
+    if (state_fail(energy_load(argv[1]))) {
+        printf("energy_load() failed: %s\n", state_msg);
+        return 0;
+    }
+
+    energy_units((uint *) &units);
+    energy_alloc(&energy1);
+    energy_alloc(&energy2);
+    sleep(1);
+    energy_dc_read(energy1);
+    while (1) {
+        sleep(4);
+        energy_dc_read(energy2);
+        energy_accumulated(&energyD, energy1, energy2);
+        printf("######################################################### wattage: %lu W\n", energyD / (4LU * units));
+        energy_copy(energy1, energy2);
+    }
+    return 0;
+}
+#endif

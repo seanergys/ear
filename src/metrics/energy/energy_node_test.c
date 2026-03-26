@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
 
     monitor_init();
 
-    if (state_fail(energy_load(API_FREE))) {
+    if (state_fail(energy_load(API_FREE, &conf, NULL))) {
         printf("energy_load failed: %s", state_msg);
         return EXIT_FAILURE;
     }
