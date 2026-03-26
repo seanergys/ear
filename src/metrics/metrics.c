@@ -48,7 +48,7 @@ static int id_tpo;
 
 void metrics_load(metrics_info_t *m, topology_t *tp, char *nodepow_path, uint *options)
 {
-    uint default_options[10] = {0};
+    uint default_options[MET_OPT_MAX] = {0};
     self_tp = tp;
 
     if (options == NULL) {
@@ -442,11 +442,7 @@ int main(int argc, char *argv[])
     sus->time_relax    = 2000;
     sus->time_burst    = 2000;
     sus->suscribe(sus);
-
-    sleep(3);
-    metrics_update(UPD_DEMO4_SET, NULL);
-    sleep(4);
-    metrics_update(UPD_DEMO2_SET, NULL);
+    
     sleep(100);
     return 0;
 }

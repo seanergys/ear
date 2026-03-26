@@ -55,7 +55,11 @@ void cpi_unload()
 
 state_t cpi_update(uint option, void *value)
 {
-    return ops.update(option, value);
+    state_t s;
+    while (pthread_mutex_trylock(&lock));
+    s = ops.update(option, value);
+    pthread_mutex_unlock(&lock);
+    return s;
 }
 
 void cpi_get_info(apinfo_t *info)
@@ -70,8 +74,12 @@ void cpi_get_info(apinfo_t *info)
 
 state_t cpi_read(cpi_t *ci)
 {
+    state_t s;
     memset(ci, 0, sizeof(cpi_t)*info.devs_count);
-    return ops.read(ci);
+    while (pthread_mutex_trylock(&lock));
+    s = ops.read(ci);
+    pthread_mutex_unlock(&lock);
+    return s;
 }
 
 // Helpers
@@ -154,13 +162,13 @@ void cpi_data_print(cpi_t *ci, double cpis_avg, int fd)
 
 char *cpi_data_tostr(cpi_t *ci, double cpis_avg, char *buffer, size_t length)
 {
-    int i, b;
+    int i, b, w;
     buffer[0] = '\0';
-    for (i = b = 0; i < info.devs_count; ++i) {
+    for (i = b = w = 0; i < info.devs_count && length > 0; ++i) {
         if (ci[i].pid == 0) {
             continue;
         }
-        b += snprintf(&buffer[b], length-b,
+        w = snprintf(&buffer[b], length-1,
             "dev%d "
             "%014llu ins, %014llu cycles, %0.2lf cpi, "
             "%llu-%llu-%llu stalls\n", i,
@@ -168,6 +176,8 @@ char *cpi_data_tostr(cpi_t *ci, double cpis_avg, char *buffer, size_t length)
             ci[i].stalls.fetch_decode,
             ci[i].stalls.resources,
             ci[i].stalls.memory);
+        w = (w < (length-1))? w: length;
+        b += w, length -= w;
     }
     return buffer;
 }

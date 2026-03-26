@@ -99,6 +99,7 @@ typedef struct metrics_diff_s {
 #define MET_OPT_NODEPOW 9
 #define MET_OPT_IO      10
 #define MET_OPT_PROC    11
+#define MET_OPT_MAX     12
 
 // This function contains load() and init() functions of the different metrics.
 void metrics_load(metrics_info_t *m, topology_t *tp, char *nodepow_path, uint *options);

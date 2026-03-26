@@ -203,7 +203,7 @@ char *cache_data_tostr(cache_t *ca, double gbs, char *buffer, size_t length)
         if (ca[i].pid == 0) {
             continue;
         }
-        w = snprintf(&buffer[b], length,
+        w = snprintf(&buffer[b], length-1,
         "d%d l1d: %10llu hits, %10llu misses, %10llu accesses, %0.2lf miss rate\n"
         "d%d l2 : %10llu hits, %10llu misses, %10llu accesses, %0.2lf miss rate\n"
         "d%d l3 : %10llu hits, %10llu misses, %10llu accesses, %0.2lf miss rate\n"
@@ -212,10 +212,12 @@ char *cache_data_tostr(cache_t *ca, double gbs, char *buffer, size_t length)
         i, ca[i].l2.hits  , ca[i].l2.misses  , ca[i].l2.accesses  , ca[i].l2.miss_rate,
         i, ca[i].l3.hits  , ca[i].l3.misses  , ca[i].l3.accesses  , ca[i].l3.miss_rate,
         i, ca[i].bw_gbs   , ca[i].bw_ratio);
+        w = (w < (length-1))? w: length;
         b += w, length -= w;
     }
     if (length  > 0 && b > 0) {
-        w = snprintf(&buffer[b], length, "dtotal: %10.2lf GB/s\n", gbs);
+        w = snprintf(&buffer[b], length-1, "dtotal: %10.2lf GB/s\n", gbs);
+        w = (w < (length-1))? w: length;
         b += w, length -= w;
     }
     if (length == 0 && b > 0) {
