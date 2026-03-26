@@ -83,6 +83,7 @@ mets_OBJS = \
     $(SRCDIR)/metrics/gpu/gpuprof.o \
     $(SRCDIR)/metrics/gpu/archs/cupti.o \
     $(SRCDIR)/metrics/gpu/archs/dcgmi.o \
+    $(SRCDIR)/metrics/gpu/archs/demo.o \
     $(SRCDIR)/metrics/gpu/archs/dummy.o \
     $(SRCDIR)/metrics/gpu/archs/eard.o \
     $(SRCDIR)/metrics/gpu/archs/nvml.o \

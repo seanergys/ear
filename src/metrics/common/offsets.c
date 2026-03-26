@@ -60,6 +60,11 @@ void ofops_calc_array(ofops_t *ops, void *array, uint array_count)
             *((type_sym *) pR) = *((type_sym *) p1); \
             goto next; \
         }
+    #define oplitrl(op_id, type_id, type_sym) \
+        if (ops->ops[o].operation == op_id && ops->ops[o].type == type_id) { \
+            *((type_sym *) pR) = (type_sym) val_inc; \
+            goto next; \
+        }
     #define opaccum(op_id, type_id, type_sym) \
         if (ops->ops[o].operation == op_id && ops->ops[o].type == type_id) { \
             *((type_sym *) pRf) += *((type_sym *) p1); \
@@ -90,6 +95,7 @@ void ofops_calc_array(ofops_t *ops, void *array, uint array_count)
         operate('*',  *, type_id, type); \
         operate('/',  /, type_id, type); \
         opequal('=',     type_id, type); \
+        oplitrl('l',     type_id, type); \
         opaccum('a',     type_id, type); \
         opincrm('i',     type_id, type); \
         oprandm('r',     type_id, type);

@@ -48,7 +48,7 @@ static int id_tpo;
 
 void metrics_load(metrics_info_t *m, topology_t *tp, char *nodepow_path, uint *options)
 {
-    uint default_options[10] = {0};
+    uint default_options[MET_OPT_MAX] = {0};
     self_tp = tp;
 
     if (options == NULL) {
@@ -76,8 +76,9 @@ void metrics_load(metrics_info_t *m, topology_t *tp, char *nodepow_path, uint *o
 void metrics_update(uint option, void *value)
 {
     cache_update(option, value);
-    flops_update(option, value);
       cpi_update(option, value);
+    flops_update(option, value);
+      gpu_update(option, value);
        io_update(option, value);
      proc_update(option, value);
 }
@@ -438,10 +439,10 @@ int main(int argc, char *argv[])
     suscription_t *sus = suscription();
     sus->call_init     = metrics_apis_init;
     sus->call_main     = metrics_apis_update;
-    sus->time_relax    = 1000;
-    sus->time_burst    = 1000;
+    sus->time_relax    = 2000;
+    sus->time_burst    = 2000;
     sus->suscribe(sus);
-
+    
     sleep(100);
     return 0;
 }

@@ -27,6 +27,7 @@
 //   '=' | *result (o) = *oprnd1 (o)
 //   '&' | &result (o) = &oprnd1 (o)
 //   'r' | *result (o) = random(operand1 (v,max), operand2 (v,min))
+//   'l' | *result (o) = oprnd1 (v)
 //   'i' | *result (o) = oprnd1++ (v)
 //   'a' | *result (of) += *oprnd1 (o)
 //   (o) offset, (of) offset fixed, (v) value

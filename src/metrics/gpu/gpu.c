@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <common/output/debug.h>
+#include <metrics/gpu/archs/demo.h>
 #include <metrics/gpu/archs/dummy.h>
 #include <metrics/gpu/archs/eard.h>
 #include <metrics/gpu/archs/hwmon_pvc.h>
@@ -44,6 +45,7 @@ void gpu_load(int options)
     // gpu_hwmon_pvc_load(&ops, options);
     gpu_oneapi_load(&ops, options);
     gpu_eard_load(&ops, options);
+    gpu_demo_load(&ops, options);
 dummy:
     gpu_dummy_load(&ops, options);
     gpu_get_info(&info);
@@ -60,6 +62,17 @@ void gpu_unload()
         memset(&info, 0, sizeof(apinfo_t));
     }
     pthread_mutex_unlock(&lock);
+}
+
+state_t gpu_update(uint option, void *value)
+{
+    state_t s = EAR_SUCCESS;
+    while (pthread_mutex_trylock(&lock));
+    if (ops.update != NULL) {
+        s = ops.update(option, value);
+    }
+    pthread_mutex_unlock(&lock);
+    return s;
 }
 
 void gpu_get_info(apinfo_t *info)

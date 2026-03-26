@@ -62,6 +62,7 @@ typedef struct gpu_s {
 
 typedef struct gpu_ops_s {
     void    (*unload)       ();
+    state_t (*update)       (uint option, void *value);
     void    (*get_info)     (apinfo_t *info);
     void    (*topology_get) (gpu_topology_t *tp);
     void    (*set_monitoring_mode) (int mode);
@@ -73,6 +74,7 @@ typedef struct gpu_ops_s {
 // API building scheme
 #define GPU_F_LOAD(name)         void gpu_##name##_load(gpu_ops_t *ops, int options)
 #define GPU_F_UNLOAD(name)       void gpu_##name##_unload()
+#define GPU_F_UPDATE(name)       state_t gpu_##name##_update(uint option, void *value)
 #define GPU_F_GET_INFO(name)     void gpu_##name##_get_info(apinfo_t *info)
 #define GPU_F_TOPOLOGY_GET(name) void gpu_##name##_topology_get(gpu_topology_t *tp)
 #define GPU_F_SET_MONITORING_MODE(name) void gpu_##name##_set_monitoring_mode(int mode)
@@ -83,6 +85,7 @@ typedef struct gpu_ops_s {
 #define GPU_DEFINES(name)  \
     GPU_F_LOAD(name);      \
     GPU_F_UNLOAD(name);    \
+    GPU_F_UPDATE(name);    \
     GPU_F_GET_INFO(name);  \
     GPU_F_TOPOLOGY_GET(name); \
     GPU_F_SET_MONITORING_MODE(name); \
@@ -94,6 +97,8 @@ typedef struct gpu_ops_s {
 void gpu_load(int options);
 
 void gpu_unload();
+
+state_t gpu_update(uint option, void *value);
 
 // Returns all available static information
 void gpu_get_info(apinfo_t *info);
