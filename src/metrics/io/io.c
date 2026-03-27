@@ -70,10 +70,8 @@ void io_get_info(apinfo_t *info)
 state_t io_read(io_t *io)
 {
     state_t s;
+    while (pthread_mutex_trylock(&lock));
     memset(io, 0, sizeof(io_t)*info.devs_count);
-    if (io == NULL) {
-        return_msg(EAR_ERROR, Generr.input_null);
-    }
     s = ops.read(io);
     pthread_mutex_unlock(&lock);
     return s;
@@ -160,13 +158,13 @@ void io_data_print(io_t *io_diff, double mbs, int fd)
 
 char *io_data_tostr(io_t *io_diff, double mbs, char *buffer, size_t length)
 {
-    int i, n;
+    int i, b, w;
     buffer[0] = '\0';
-    for (i = n = 0; i < info.devs_count; ++i) {
+    for (i = b = 0; i < info.devs_count && length > 0; ++i) {
         if (io_diff[i].pid == 0) {
             continue;
         }
-        n += snprintf(&buffer[n], length-n,
+        w = snprintf(&buffer[b], length-1,
             "d%d "
             #if PRINT_ALOT
             "rchar %011llu wchar %011llu, "
@@ -178,6 +176,8 @@ char *io_data_tostr(io_t *io_diff, double mbs, char *buffer, size_t length)
             io_diff[i].syscr, io_diff[i].syscw,
             #endif
             io_diff[i].rstor + io_diff[i].wstor);
+        w = (w < (length-1))? w: length;
+        b += w, length -= w;
     }
     return buffer;
 }
