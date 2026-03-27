@@ -48,7 +48,7 @@ typedef struct power_data {
 } power_data_t;
 
 /**  Starts power monitoring. */
-int init_power_monitoring(topology_t *tp);
+int init_power_monitoring(topology_t *tp, cluster_conf_t *my_cluster_conf, my_node_conf_t *my_node_conf);
 
 /** Ends power monitoring. */
 void end_power_monitoring();

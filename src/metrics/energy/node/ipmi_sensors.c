@@ -47,7 +47,7 @@ state_t energy_load(void **x)
     uint list_count = 0;
     char **list = NULL;
 
-	debug("energy_init");
+	debug("energy_load");
     while (pthread_mutex_trylock(&lock));
     if (sensors_count) {
         goto leave;

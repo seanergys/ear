@@ -75,7 +75,6 @@ void eard_exit(uint restart);
 extern report_id_t rid;
 extern state_t report_connection_status;
 extern topology_t node_desc;
-extern ehandler_t handler_energy;
 extern int fd_rapl[MAX_PACKAGES];
 extern char ear_tmp[MAX_PATH_SIZE];
 extern char nodename[MAX_PATH_SIZE];
@@ -1009,7 +1008,7 @@ void connect_service(struct daemon_req *new_req)
     }
     /* This function notifies the local connection */
     if (!eard_local_conn[newc].anonymous)
-        powermon_mpi_init(&handler_energy, new_app);
+        powermon_mpi_init(new_app);
     debug("Application %d connected with local API (anonymous %lu)", pid, eard_local_conn[newc].anonymous);
 }
 
@@ -1079,7 +1078,7 @@ void eard_close_comm(int req_fd, int ack_fd)
         // This debug was set outside, but it requires a valid id to prevent segmentation faults.
     }
     if (!was_anonymous) {
-        powermon_mpi_finalize(&handler_energy, jid, sid);
+        powermon_mpi_finalize(jid, sid);
     }
 }
 
@@ -1321,7 +1320,7 @@ state_t service_close(int req_fd, int ack_fd)
     close(ack_fd);
     // End job
     if (!was_anonymous) {
-        powermon_mpi_finalize(&handler_energy, job_id, step_id);
+        powermon_mpi_finalize(job_id, step_id);
     }
 
     return EAR_SUCCESS;

@@ -80,12 +80,12 @@ state_t energy_load(int options, cluster_conf_t *my_cluster_conf, my_node_conf_t
     char *hack_path = NULL;
     char *dir_plug  = NULL;
 
-    pthread_mutex_lock(&lock);
+    ear_lock(&lock);
 
     if (energy_loaded) {
         debug("already loaded");
-        pthread_mutex_unlock(&lock);
-        return_msg(EAR_ERROR, Generr.api_initialized);
+        ear_unlock(&lock);
+        return EAR_SUCCESS;
     }
 
     // HACK: Allow loading specific plugin via environment variable
@@ -180,13 +180,8 @@ end:
         error("No energy plugin found");
     }
 
-    pthread_mutex_unlock(&lock);
+    ear_unlock(&lock);
     return ret;
-}
-
-state_t energy_is_loaded()
-{
-    return energy_loaded ? EAR_SUCCESS : EAR_ERROR;
 }
 
 state_t energy_unload()
@@ -200,12 +195,6 @@ state_t energy_unload()
 
     return s;
 }
-
-// state_t energy_handler_clean(ehandler_t *eh)
-// {
-//     // memset(eh, 0, sizeof(eh->context));
-//     return EAR_SUCCESS;
-// }
 
 state_t energy_datasize(size_t *size)
 {

@@ -98,7 +98,6 @@ const char *polsyms_nam[] = {"policy_set_risk"};
 /* End new section */
 
 static char *TH_NAME = "RemoteAPI";
-static ehandler_t my_eh_rapi;
 
 void print_f_list(uint p_states, ulong *freql)
 {
@@ -1018,11 +1017,11 @@ state_t process_remote_requests(int clientfd)
             num_contexts = mark_contexts_to_finish_by_pid();
             // do the end_jobs for the marked jobs
             if (num_contexts)
-                finish_pending_contexts(&my_eh_rapi);
+                finish_pending_contexts();
 
             // begin the new_job
             adap_new_job_req_to_app(&req_app, &command.my_req.new_job);
-            powermon_new_job(NULL, &my_eh_rapi, &req_app, 0, req == EAR_RC_NEW_JOB_LIST);
+            powermon_new_job(NULL, &req_app, 0, req == EAR_RC_NEW_JOB_LIST);
             send_answer(clientfd, &ack);
             break;
         case EAR_RC_END_JOB:
@@ -1030,13 +1029,12 @@ state_t process_remote_requests(int clientfd)
             break;
 #endif
         case EAR_RC_END_JOB_LIST:
-            powermon_end_job(&my_eh_rapi, command.my_req.end_job.jid, command.my_req.end_job.sid,
-                             req == EAR_RC_END_JOB_LIST);
+            powermon_end_job(command.my_req.end_job.jid, command.my_req.end_job.sid, req == EAR_RC_END_JOB_LIST);
             // mark any pending context for that job if it's an SBATCH
             num_contexts = mark_contexts_to_finish_by_jobid(command.my_req.end_job.jid, command.my_req.end_job.sid);
             // do the end_jobs for the marked jobs
             if (num_contexts)
-                finish_pending_contexts(&my_eh_rapi);
+                finish_pending_contexts();
 #if 0
             //print_contexts_status();
 #endif
@@ -1182,7 +1180,7 @@ void *eard_dynamic_configuration(void *tmp)
         error("Setting name for %s thread %s", TH_NAME, strerror(errno));
     }
     debug("Initializing energy in main dyn_conf thread");
-    if (init_power_monitoring(&my_eh_rapi, &node_desc) != EAR_SUCCESS) {
+    if (init_power_monitoring(&node_desc, &my_cluster_conf, my_node_conf) != EAR_SUCCESS) {
         error("Error initializing energy in %s thread", TH_NAME);
     }
 

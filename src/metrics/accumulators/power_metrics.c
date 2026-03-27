@@ -88,13 +88,13 @@ static int pm_node_dc_energy(node_data_t *dc)
     }
 }
 
-static int pm_connect(topology_t *tp)
+static int pm_connect(topology_t *tp, cluster_conf_t *my_cluster_conf, my_node_conf_t *my_node_conf)
 {
     int status_enode;
     state_t s;
 
     if ((pm_already_connected) && (pm_connected_status == EAR_SUCCESS)) {
-        if (state_fail(status_enode = energy_load())) {
+        if (state_fail(status_enode = energy_load(API_FREE, my_cluster_conf, my_node_conf))) {
             pm_connected_status = status_enode;
             return status_enode;
         }
@@ -113,7 +113,7 @@ static int pm_connect(topology_t *tp)
     }
     // Initializing node energy
     debug("Initializing energy in main power_monitor thread");
-    pm_connected_status  = energy_load();
+    pm_connected_status  = energy_load(API_FREE, my_cluster_conf, my_node_conf);
     pm_already_connected = 1;
 
     if (pm_connected_status != EAR_SUCCESS) {
@@ -172,11 +172,11 @@ static int pm_connect(topology_t *tp)
  *
  */
 
-int init_power_monitoring(topology_t *tp)
+int init_power_monitoring(topology_t *tp, cluster_conf_t *my_cluster_conf, my_node_conf_t *my_node_conf)
 {
     state_t s;
     debug("init_power_ponitoring");
-    if (state_fail(s = pm_connect(tp))) {
+    if (state_fail(s = pm_connect(tp, my_cluster_conf, my_node_conf))) {
         return s;
     }
     power_mon_connected = 1;

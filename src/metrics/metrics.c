@@ -53,7 +53,7 @@ void metrics_load(metrics_info_t *m, topology_t *tp, cluster_conf_t *clus, my_no
     if (options == NULL) {
         options = default_options;
     }
-    nodepow(load, options[MET_OPT_NODEPOW]);
+    nodepow(load, options[MET_OPT_NODEPOW], clus, node);
     cpufreq_load(tp, options[MET_OPT_CPUFREQ]);
     imcfreq_load(tp, options[MET_OPT_IMCFREQ]);
      cpupow(load,tp, options[MET_OPT_CPUPOW] );
@@ -66,8 +66,7 @@ void metrics_load(metrics_info_t *m, topology_t *tp, cluster_conf_t *clus, my_no
          io_load(tp, options[MET_OPT_IO]     );
        proc_load(tp, options[MET_OPT_PROC]   );
 
-    nodepow(init, &e_ctx);
-     cpupow(init, no_ctx);
+    cpupow(init, no_ctx);
 
     metrics_info_get(m);
 }

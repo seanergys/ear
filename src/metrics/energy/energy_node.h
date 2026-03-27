@@ -37,8 +37,6 @@ state_t energy_load(int options, cluster_conf_t *my_cluster_conf, my_node_conf_t
 
 state_t energy_unload();
 
-state_t energy_is_loaded();
-
 // state_t energy_handler_clean();
 
 state_t energy_datasize(size_t *size);
