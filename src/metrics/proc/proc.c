@@ -53,7 +53,11 @@ void proc_unload()
 
 state_t proc_update(uint option, void *value)
 {
-    return ops.update(option, value);
+    state_t s;
+    while (pthread_mutex_trylock(&lock));
+    s = ops.update(option, value);
+    pthread_mutex_unlock(&lock);
+    return s;
 }
 
 void proc_get_info(apinfo_t *info)
@@ -68,8 +72,12 @@ void proc_get_info(apinfo_t *info)
 
 state_t proc_read(proc_t *pr)
 {
+    state_t s;
+    while (pthread_mutex_trylock(&lock));
     memset(pr, 0, sizeof(proc_t)*info.devs_count);
-    return ops.read(pr);
+    s = ops.read(pr);
+    pthread_mutex_unlock(&lock);
+    return s;
 }
 
 // Helpers
@@ -150,7 +158,7 @@ void proc_data_free(proc_t **pr)
 
 void proc_data_copy(proc_t *dst, proc_t *src)
 {
-    memcpy(dst, src, sizeof(proc_t));
+    memcpy(dst, src, sizeof(proc_t)*info.devs_count);
 }
 
 void proc_data_print(proc_t *pr, int fd)
@@ -162,14 +170,16 @@ void proc_data_print(proc_t *pr, int fd)
 
 char *proc_data_tostr(proc_t *pr, char *buffer, size_t length)
 {
-    int i, n;
+    int i, b, w;
     buffer[0] = '\0';
-    for (i = n = 0; i < info.devs_count; ++i) {
+    for (i = b = 0; i < info.devs_count && length > 0; ++i) {
         if (pr[i].pid == 0) {
             continue;
         }
-        n += snprintf(&buffer[n], length-n, "util %u (%lf %lf) %lf\n",
-                 pr[i].cpu_util, pr[i].utime, pr[i].stime, pr[i].secs);
+        w = snprintf(&buffer[b], length-1, "util %u (%lf %lf) %lf\n",
+                pr[i].cpu_util, pr[i].utime, pr[i].stime, pr[i].secs);
+        w = (w < (length-1))? w: length;
+        b += w, length -= w;
     }
     return buffer;
 }
