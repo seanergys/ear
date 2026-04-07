@@ -16,11 +16,13 @@
 #include <common/hardware/hardware_info.h>
 #include <common/includes.h>
 #include <common/output/debug.h>
+#include <common/system/lock.h>
 #include <common/system/symplug.h>
 #include <common/types/configuration/cluster_conf.h>
 #include <common/utils/string.h>
 #include <metrics/energy/energy_node.h>
 #include <pthread.h>
+
 struct energy_op energy_ops;
 
 const char *energy_names[] = {"energy_load",        "energy_unload",       "energy_datasize",    "energy_frequency",
