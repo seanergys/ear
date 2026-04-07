@@ -921,8 +921,10 @@ energy_tag_t *energy_tag_exists(cluster_conf_t *my_conf, char *etag)
 uint get_user_type(cluster_conf_t *my_conf, char *energy_tag, char *user, char *group, char *acc, energy_tag_t **my_tag)
 {
     energy_tag_t *is_tag;
-    *my_tag = NULL;
-    verbose(VPRIV, "Checking user (%s), group (%s), account (%s) and energy tag (%s)...", user, group, acc, energy_tag);
+    if (my_tag) {
+        *my_tag = NULL;
+    }
+    debug("Checking user (%s), group (%s), account (%s) and energy tag (%s)...", user, group, acc, energy_tag);
 
     /* We first check if it is authorized user */
     int flag = is_authorized_usr_grp_acc(my_conf, user, group, acc);
@@ -940,7 +942,9 @@ uint get_user_type(cluster_conf_t *my_conf, char *energy_tag, char *user, char *
         if (energy_tag != NULL) {
             is_tag = energy_tag_exists(my_conf, energy_tag);
             if (is_tag != NULL) {
-                *my_tag = is_tag;
+                if (my_tag) {
+                    *my_tag = is_tag;
+                }
                 return ENERGY_TAG;
             } else
                 return AUTHORIZED;
@@ -951,7 +955,9 @@ uint get_user_type(cluster_conf_t *my_conf, char *energy_tag, char *user, char *
     /* It is an energy tag user ? */
     is_tag = is_energy_tag_privileged(my_conf, user, group, acc, energy_tag);
     if (is_tag != NULL) {
-        *my_tag = is_tag;
+        if (my_tag) {
+            *my_tag = is_tag;
+        }
         return ENERGY_TAG;
     } else
         return NORMAL;
