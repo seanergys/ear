@@ -269,13 +269,13 @@ CACHE_F_READ(perf)
             }
             value = 0LL;
             if (state_fail(s = perf_read(&perfs[i].perfs[j], &value))) {
-                debug("perf_read failed: %s", state_msg);
-                return s;
+                // debug("perf_read failed: %s", state_msg);
+                //return s;
             }
-            offsets_calc_one(&perfs[i].ofs, (void *) &ca[i], j, value, 0LLU);
             #if SHOW_DEBUGS
             dprintf(debug_channel, "%14lld ", value);
             #endif
+            offsets_calc_one(&perfs[i].ofs, (void *) &ca[i], j, value, 0LLU);
         }
         offsets_calc(&perfs[i].ofs, (void *) &ca[i]);
         #if SHOW_DEBUGS

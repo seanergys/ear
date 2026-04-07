@@ -625,7 +625,10 @@ static int plugin_manager_configure(int argc, char *argv[])
     char params[128];
     char verb_lvl[2] = "\0";
 
-    if (argc == 1 || args_get(argc, argv, "help", buffer)) {
+    if (argc == 1) {
+        verbose(0, "[ERROR] No plugins to load.");
+    }
+    if (args_get(argc, argv, "help", buffer)) {
         verbose(0, "Usage: %s [OPTIONS]\n", argv[0]);
         verbose(0, "Options:");
         verbose(0, "    --plugins    List of plus sign separated plugins to load.");
@@ -639,7 +642,6 @@ static int plugin_manager_configure(int argc, char *argv[])
         verbose(0, "    --help       If you see it you already typed --help.");
         return 0;
     }
-
     // Processing list of priority paths
     if (args_get(argc, argv, "paths", buffer)) {
         // NUll terminated list, count is not required
@@ -647,6 +649,7 @@ static int plugin_manager_configure(int argc, char *argv[])
     }
     // Processing list of plugins (by now is hardcoded)
     if (!args_get(argc, argv, "plugins", buffer)) {
+        verbose(0, "[ERROR] No plugins to load.");
         return 0;
     }
     if (args_get(argc, argv, "verbose", verb_lvl)) {
@@ -681,7 +684,7 @@ int plugin_manager_main(int argc, char *argv[])
 {
     // Read configuration
     if (!plugin_manager_configure(argc, argv)) {
-        verbose(0, "[ERROR] No plugins to load.") return 0;
+        return 0;
     }
     // Suscriptions
     suscription_t *sus = suscription();

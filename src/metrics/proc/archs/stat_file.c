@@ -104,7 +104,7 @@ PROC_F_LOAD(stat_file)
     if ((clk_sec = sysconf(_SC_CLK_TCK)) < 0) {
         clk_sec = 100; // Using default value
     }
-    debug("Detected kernelo %u.%u.%u at @%ld", kernel_no, major, minor, clk_sec);
+    debug("Detected kernel %u.%u.%u at @%ld", kernel_no, major, minor, clk_sec);
     if ((kernel_no  < 3) || (kernel_no == 3 && major < 3)) kernel = 1; // 2.6.24
     if ((kernel_no == 3  && major > 2)) kernel = 2; // 3.3
     if ((kernel_no  > 3  && major > 3)) kernel = 3; // > 3.5
@@ -278,7 +278,7 @@ PROC_F_READ(stat_file)
         (void) ret;
         pr[i].utime = (double) utime / (double) clk_sec;
         pr[i].stime = (double) stime / (double) clk_sec;
-        debug("pid: %d, utime: %lf %lf (clk %lu)\n",
+        debug("pid: %d, utime: %lf %lf (clk %lu)",
             pid, pr[i].utime, pr[i].stime, clk_sec);
     }
     return EAR_SUCCESS;

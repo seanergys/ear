@@ -234,7 +234,7 @@ CPI_F_READ(perf)
             value = 0LL;
             if (state_fail(s = perf_read(&perfs[i].perfs[j], &value))) {
                 debug("FAILED");
-                return s;
+                // return s;
             }
             offsets_calc_one(&perfs[i].ofs, (void *) &cpi[i], j, value, 0LLU);
             #if SHOW_DEBUGS
