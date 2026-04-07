@@ -573,19 +573,20 @@ int services_mgt_gpu(eard_head_t *head, int fd_req, int fd_ack)
             }
             break;
         case RPC_MGT_GPU_GET_POWER_CAP_DEFAULT:
-            if (state_fail(ret_s = mgt_gpu_power_cap_get_default(no_ctx, man.gpu.list2))) {
+            if (state_fail(ret_s = mgt_gpu_power_cap_get_default(no_ctx, (uint32_t *) man.gpu.list2))) {
                 serror("Could not get the default GPU power limit");
             }
             ret_data = (char *) man.gpu.list2;
-            ret_size = sizeof(ulong) * man.gpu.devs_count;
+            ret_size = sizeof(uint32_t) * man.gpu.devs_count;
             break;
         case RPC_MGT_GPU_GET_POWER_CAP_MAX:
-            if (state_fail(ret_s = mgt_gpu_power_cap_get_rank(no_ctx, man.gpu.list2, man.gpu.list3))) {
+            if (state_fail(ret_s = mgt_gpu_power_cap_get_rank(no_ctx, (uint32_t *) man.gpu.list2,
+                                                              (uint32_t *) man.gpu.list3))) {
                 serror("Could not get the default GPU power limit");
             }
             serial_clean(&wb);
-            serial_add_elem(&wb, (char *) man.gpu.list2, sizeof(ulong) * man.gpu.devs_count);
-            serial_add_elem(&wb, (char *) man.gpu.list3, sizeof(ulong) * man.gpu.devs_count);
+            serial_add_elem(&wb, (char *) man.gpu.list2, sizeof(uint32_t) * man.gpu.devs_count);
+            serial_add_elem(&wb, (char *) man.gpu.list3, sizeof(uint32_t) * man.gpu.devs_count);
             ret_size = serial_size(&wb);
             ret_data = serial_data(&wb);
             break;
@@ -594,17 +595,18 @@ int services_mgt_gpu(eard_head_t *head, int fd_req, int fd_ack)
                 serror("Could not get current GPU power limit");
             }
             ret_data = (char *) man.gpu.list2;
-            ret_size = sizeof(ulong) * man.gpu.devs_count;
+            ret_size = sizeof(uint32_t) * man.gpu.devs_count;
             break;
         case RPC_MGT_GPU_RESET_POWER_CAP:
             ret_s = mgt_gpu_power_cap_reset(no_ctx);
             break;
         case RPC_MGT_GPU_SET_POWER_CAP:
-            if (state_fail(ret_s = eard_rpc_read_pending(fd_req, (char *) man.gpu.list2, rpc_size, 0))) {
+            if (state_fail(ret_s = eard_rpc_read_pending(fd_req, (char *) man.gpu.list2, rpc_size,
+                                                         sizeof(uint32_t) * man.gpu.devs_count))) {
                 serror(Rpcerr.pending);
             }
             if (state_ok(ret_s)) {
-                if (state_fail(ret_s = mgt_gpu_power_cap_set(no_ctx, (ulong *) man.gpu.list2))) {
+                if (state_fail(ret_s = mgt_gpu_power_cap_set(no_ctx, (uint32_t *) man.gpu.list2))) {
                     serror("Error when setting a GPU power cap");
                 }
             }

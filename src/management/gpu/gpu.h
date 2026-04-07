@@ -35,11 +35,11 @@ typedef struct mgt_gpu_ops_s {
     state_t (*freq_limit_reset)       (ctx_t *c);
     state_t (*freq_limit_set)         (ctx_t *c, ulong *freq_list);
     state_t (*freq_list)              (ctx_t *c, const ulong ***freq_list, const uint **len_list);
-    state_t (*power_cap_get_current)  (ctx_t *c, ulong *watt_list);
-    state_t (*power_cap_get_default)  (ctx_t *c, ulong *watt_list);
-    state_t (*power_cap_get_rank)     (ctx_t *c, ulong *watt_list_min, ulong *watt_list_max);
+    state_t (*power_cap_get_current)  (ctx_t *c, uint32_t *watt_list);
+    state_t (*power_cap_get_default)  (ctx_t *c, uint32_t *watt_list);
+    state_t (*power_cap_get_rank)     (ctx_t *c, uint32_t *watt_list_min, uint32_t *watt_list_max);
     state_t (*power_cap_reset)        (ctx_t *c);
-    state_t (*power_cap_set)          (ctx_t *c, ulong *watt_list);
+    state_t (*power_cap_set)          (ctx_t *c, uint32_t *watt_list);
 } mgt_gpu_ops_t;
 
 // clang-format on
@@ -89,13 +89,13 @@ state_t mgt_gpu_freq_get_next(ctx_t *c, uint dev, ulong freq_ref, uint *freq_idx
 state_t mgt_gpu_freq_get_available(ctx_t *c, const ulong ***freq_list, const uint **len_list);
 
 // Gets the current power cap for each GPU in the node.
-state_t mgt_gpu_power_cap_get_current(ctx_t *c, ulong *watt_list);
+state_t mgt_gpu_power_cap_get_current(ctx_t *c, uint32_t *watt_list);
 
 // Gets the default power cap for each GPU in the node.
-state_t mgt_gpu_power_cap_get_default(ctx_t *c, ulong *watt_list);
+state_t mgt_gpu_power_cap_get_default(ctx_t *c, uint32_t *watt_list);
 
 // Gets the minimum/maximum possible power cap for each GPU in the node.
-state_t mgt_gpu_power_cap_get_rank(ctx_t *c, ulong *watt_list_min, ulong *watt_list_max);
+state_t mgt_gpu_power_cap_get_rank(ctx_t *c, uint32_t *watt_list_min, uint32_t *watt_list_max);
 
 // Resets the current power cap on each GPU to its default value.
 state_t mgt_gpu_power_cap_reset(ctx_t *c);
@@ -103,16 +103,18 @@ state_t mgt_gpu_power_cap_reset(ctx_t *c);
 state_t mgt_gpu_power_cap_reset_dev(ctx_t *c, int gpu);
 
 // Sets the current power cap on each GPU (one value per GPU in the watts array).
-state_t mgt_gpu_power_cap_set(ctx_t *c, ulong *watt_list);
+state_t mgt_gpu_power_cap_set(ctx_t *c, uint32_t *watt_list);
 
-state_t mgt_gpu_power_cap_set_dev(ctx_t *c, ulong watts, int gpu);
+state_t mgt_gpu_power_cap_set_dev(ctx_t *c, uint32_t watts, int gpu);
 
 // Allocates an array of watts or clocks (one per device).
-state_t mgt_gpu_data_alloc(ulong **list);
+state_t mgt_gpu_freq_data_alloc(ulong **data);
 
-state_t mgt_gpu_data_free(ulong **list);
+state_t mgt_gpu_power_data_alloc(uint32_t **data);
 
-state_t mgt_gpu_data_null(ulong *list);
+state_t mgt_gpu_freq_data_null(ulong *data);
+
+state_t mgt_gpu_power_data_null(uint32_t *data);
 
 int mgt_gpu_is_supported();
 
