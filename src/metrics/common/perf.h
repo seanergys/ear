@@ -20,6 +20,13 @@
 #define pf_exc 0x0001
 #define pf_pin 0x0002
 
+typedef struct perf_value_s {
+    uint64_t nrval;
+    uint64_t time_enabled;
+    uint64_t time_running;
+    uint64_t values[8];
+} perf_value_t;
+
 typedef struct perf_s {
     struct perf_event_attr attr;
     void  *group;
@@ -30,7 +37,8 @@ typedef struct perf_s {
     char   pmu_name[64];   // Used in files
     pid_t  pid;
     int    cpu;
-    llong  aux;
+    perf_value_t value; // Used to avoid the 47-bit glitch
+    perf_value_t value_last; // Used to avoid the 47-bit glitch
 } perf_t;
 
 /* For per-process events */

@@ -267,7 +267,7 @@ FLOPS_F_READ(perf)
             value = 0LL;
             if (state_fail(s = perf_read(&perfs[i].perfs[j], (long long *) &value))) {
                 debug("perf_read failed: %s", state_msg);
-                return s;
+                // return s;
             }
             p[j] = value;
             #if SHOW_DEBUGS
