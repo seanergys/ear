@@ -630,7 +630,7 @@ my_node_conf_t *get_my_node_conf(cluster_conf_t *my_conf, char *nodename)
 
                 debug("num nodes %d, eargm power %ld", num_nodes, my_conf->eargm.eargms[eargm_idx].power);
                 n->powercap = my_conf->eargm.eargms[eargm_idx].power / num_nodes;
-                verbose(VCCONF, "\tnode powercap set to %ld (there are %d nodes and %ld power under this eargm id)",
+                verbose(VCCONF, "\tnode powercap set to %u (there are %d nodes and %ld power under this eargm id)",
                         n->powercap, num_nodes, my_conf->eargm.eargms[eargm_idx].power);
 
             } else {
@@ -639,19 +639,19 @@ my_node_conf_t *get_my_node_conf(cluster_conf_t *my_conf, char *nodename)
             }
         } break;
         default:
-            verbose(VCCONF, "my_node_conf powercap is set to a specific value: %ld", n->powercap);
+            verbose(VCCONF, "my_node_conf powercap is set to a specific value: %u", n->powercap);
             break;
     }
 
     if (n->max_powercap <= 1 && my_conf->eargm.powercap_mode == SOFT_POWERCAP) {
         verbose(VCCONF,
-                "WARNING: max powercap is set to a non-valid value (%ld) while the EARGM mode is set to soft powercap. "
+                "WARNING: max powercap is set to a non-valid value (%u) while the EARGM mode is set to soft powercap. "
                 "This configuration is not supported and the cluster powercap will not work.",
                 n->max_powercap);
     }
 
     verbose(VCCONF + 2, "--------------------------------------");
-    verbose(VCCONF + 2, "Finished checking powercap, final powercap value: %ld", n->powercap);
+    verbose(VCCONF + 2, "Finished checking powercap, final powercap value: %u", n->powercap);
     verbose(VCCONF + 2, "--------------------------------------");
 
     return n;

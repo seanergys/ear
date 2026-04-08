@@ -992,8 +992,8 @@ state_t powercap_verify_device_values(uint domain)
     }
 
     for (uint i = 0; i < device_count; i++) {
-        stored_value       = powercap_get_stored_device_value(domain, i);
-        ulong actual_value = actual_values[i];
+        stored_value          = powercap_get_stored_device_value(domain, i);
+        uint32_t actual_value = actual_values[i];
 
         if (actual_value == 0) {
             error("powercap_verify_device: failed to get actual value for domain %u device %u", domain, i);
