@@ -190,7 +190,6 @@ state_t perf_stop(perf_t *perf)
 state_t perf_read(perf_t *perf, llong *value)
 {
     #define _47BITS 0x400000000000ULL // We found sometimes 48b-1, so we choose 47 bits
-    state_t  s = EAR_SUCCESS;
     uint64_t delta_value;
     uint64_t delta_time;
     double   dtime_multiplier = 0.0;
