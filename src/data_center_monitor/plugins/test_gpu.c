@@ -215,7 +215,7 @@ declr_up_action_periodic(_metrics)
         if (pcap_list_set[dev] != pcap_list_max[dev])
             set_wat = "*";
 
-        tprintf2(&table, "%llu||%d|||%4lu%s||%lu%s|||%u||%lu||%lu||%lu||%lu||%lu||%lu||%lu|||%lu", mr2.samples, dev,
+        tprintf2(&table, "%llu||%d|||%4lu%s||%u%s|||%u||%lu||%lu||%lu||%lu||%lu||%lu||%lu|||%lu", mr2.samples, dev,
                  freq_list_set[dev] / 1000LU, set_mhz, pcap_list_set[dev], set_wat, mrD.gpu_diff[dev].working,
                  mrD.gpu_diff[dev].freq_gpu / 1000LU, mrD.gpu_diff[dev].freq_mem / 1000LU, mrD.gpu_diff[dev].util_gpu,
                  mrD.gpu_diff[dev].util_mem, mrD.gpu_diff[dev].temp_gpu, mrD.gpu_diff[dev].temp_mem,

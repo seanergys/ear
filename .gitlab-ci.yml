@@ -15,7 +15,7 @@ stages:          # List of stages for jobs, and their order of execution
   - deploy
   - release
 
-image: registry.gitlab.bsc.es/ear_team/ear-ci:v6
+image: registry.gitlab.bsc.es/ear_team/ear-ci:v7
 
 debugs_disabled:
   image: alpine:3.23
