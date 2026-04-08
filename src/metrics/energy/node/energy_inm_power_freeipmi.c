@@ -118,7 +118,7 @@ static int sdr_get_home_directory(char *buf, unsigned int buflen)
     long int tbuf_len;
     char *tbuf = NULL;
 
-    tbuf_len = 4096; /* XXX */
+    tbuf_len = 2 * 4096; /* XXX */
 
     if (!(tbuf = malloc(tbuf_len))) {
         debug("malloc error\n");

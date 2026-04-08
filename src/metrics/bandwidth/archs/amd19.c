@@ -22,7 +22,7 @@
 
 static pthread_mutex_t  lock = PTHREAD_MUTEX_INITIALIZER;
 static topology_t       tp_own;
-static suscription_t   *sus;
+static suscription_t   *sus = NULL;
 static bwidth_t        *pool;
 static double           line_size;
 
@@ -67,7 +67,7 @@ static void close_all()
 {
     hsmp_close();
     topology_close(&tp_own);
-    if (sus->suscribe != NULL) {
+    if (sus && sus->suscribe != NULL) {
         // It's protected inside
         monitor_unregister(sus);
     }
