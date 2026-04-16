@@ -56,7 +56,7 @@ static void split_plugin_args(const char *plugin_name, char *name_no_args)
 
 static state_t load_dynamic_plugin(const char *dir_plug, const char *plugin_name)
 {
-    char energy_obj[MAX_PATH_SIZE];
+    char energy_obj[SZ_PATH];
     char name_no_args[MAX_PATH_SIZE];
 
     if (plugin_name == NULL || dir_plug == NULL) {
@@ -107,8 +107,7 @@ state_t energy_load(int options, cluster_conf_t *my_cluster_conf, my_node_conf_t
         }
     }
 
-    if (my_cluster_conf != NULL && my_cluster_conf->install.dir_plug != NULL &&
-        my_cluster_conf->install.dir_plug[0] != '\0') {
+    if (my_cluster_conf != NULL && my_cluster_conf->install.dir_plug[0] != '\0') {
         dir_plug = my_cluster_conf->install.dir_plug;
     } else {
         char *ear_install_path = get_ear_install_path();
@@ -140,7 +139,7 @@ state_t energy_load(int options, cluster_conf_t *my_cluster_conf, my_node_conf_t
             goto end;
         }
     } else if (my_cluster_conf != NULL) {
-        debug("trying cluster conf plugin %s", cluster_conf->install.obj_ener);
+        debug("trying cluster conf plugin %s", my_cluster_conf->install.obj_ener);
         if (state_ok(load_dynamic_plugin(dir_plug, my_cluster_conf->install.obj_ener))) {
             ret = EAR_SUCCESS;
             goto end;

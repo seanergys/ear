@@ -1,0 +1,39 @@
+CC = @CC@
+CFLAGS = @CFLAGS@
+SRCDIR ?= ../src
+INCLUDE = -I$(SRCDIR)
+
+# Define test binaries, seprated by spaces
+TESTS = energy_node_test
+
+# Source files for each test, one per line, use same name of the binary + _SRC
+energy_node_test_SRC = energy_node_test.c
+
+# Libraries for each testone per line, use same name of the binary + _LIBS
+energy_node_test_LIBS = $(SRCDIR)/common/libcommon.a -ldl -lpthread -lm
+all: $(TESTS)
+
+# Generic rule to compile each test with dynamic source and library lookup
+$(TESTS): %: 
+	@echo "Compiling $@..."
+	$(CC) $(CFLAGS) $(INCLUDE) $(eval src=$$($@_SRC)) $(eval libs=$$($@_LIBS)) $(src) -o $@ $(libs)
+
+run_tests: $(TESTS)
+	@echo "Running tests..."
+	@passed=0; failed=0; \
+	for test in $(TESTS); do \
+		echo "Running $$test..."; \
+		./$$test; \
+		if [ $$? -eq 0 ]; then \
+			echo "$$test passed."; \
+			passed=$$((passed + 1)); \
+		else \
+			echo "$$test failed."; \
+			failed=$$((failed + 1)); \
+		fi; \
+	done; \
+	echo "Tests completed. Total passed: $$passed, Total failed: $$failed."
+
+clean:
+	@echo "Cleaning up test binaries..."
+	@rm -f $(TESTS)  # Remove all test binaries
