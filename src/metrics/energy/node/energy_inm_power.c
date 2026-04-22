@@ -345,7 +345,7 @@ state_t inm_power_thread_init(void *p)
  * MAIN FUNCTIONS
  */
 
-state_t energy_init(void **c)
+state_t energy_load(void **c)
 {
     struct ipmi_data out;
     state_t st;
@@ -390,7 +390,7 @@ state_t energy_init(void **c)
     return EAR_SUCCESS;
 }
 
-state_t energy_dispose(void **c)
+state_t energy_unload(void **c)
 {
     if ((c == NULL) || (*c == NULL))
         return EAR_ERROR;

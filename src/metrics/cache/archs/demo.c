@@ -56,6 +56,7 @@ static void load_everlasting()
     ofops_add(&ops[2], ID_DOUBLE, 'a', sz, O2(l2 , lines_out), O2(l2 , misses  ),                 0, 0);
     ofops_add(&ops[2], ID_UINT32, 'i', sz, O1(pid),   2187, 0, 0);
     ofops_add(&ops[2], ID_NULL  , '&', sz, O1(ll ), O1(l3), 0, 0);
+    ofops_add(&ops[2], ID_NULL  , '&', sz, O1(lbw), O1(l3), 0, 0);
     already_loaded = 1;
 }
 

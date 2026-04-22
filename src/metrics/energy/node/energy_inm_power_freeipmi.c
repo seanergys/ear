@@ -69,7 +69,7 @@ static unsigned int workaround_flags = 0;
 static int sdr_done                  = 0;
 static int monitor_done              = 0;
 
-state_t energy_dispose(void **c);
+state_t energy_unload(void **c);
 static state_t inm_power_reading(ipmi_ctx_t ipmi_ctx, uint *maxp, uint *minp, uint *avgp, uint *currentp,
                                  uint *periodp);
 static state_t inm_thread_main(void *p);
@@ -247,7 +247,7 @@ static int sdr_get_cache_filename(const char *hostname, char *buf, unsigned int 
     return (0);
 }
 
-state_t energy_init(void **c)
+state_t energy_load(void **c)
 {
     uid_t uid;
     int ret = 0;
@@ -277,7 +277,7 @@ state_t energy_init(void **c)
     uid = getuid();
     if (uid != 0) {
         pthread_mutex_unlock(&node_energy_lock_nm);
-        energy_dispose(no_ctx);
+        energy_unload(no_ctx);
         error("No root permissions");
         return EAR_ERROR;
     }
@@ -292,14 +292,14 @@ state_t energy_init(void **c)
                                     workaround_flags, IPMI_FLAGS_DEFAULT)) < 0) {
         error("%s", ipmi_ctx_errormsg(ipmi_ctx));
         pthread_mutex_unlock(&node_energy_lock_nm);
-        energy_dispose(no_ctx);
+        energy_unload(no_ctx);
 
         return EAR_ERROR;
     }
     if (ret == 0) {
         error("Not inband device found %s", ipmi_ctx_errormsg(ipmi_ctx));
         pthread_mutex_unlock(&node_energy_lock_nm);
-        energy_dispose(no_ctx);
+        energy_unload(no_ctx);
         return EAR_ERROR;
     }
 
@@ -310,7 +310,7 @@ state_t energy_init(void **c)
         if (!(sdr_ctx = ipmi_sdr_ctx_create())) {
             error("INM SDR ctx create");
             pthread_mutex_unlock(&node_energy_lock_nm);
-            energy_dispose(no_ctx);
+            energy_unload(no_ctx);
             return EAR_ERROR;
         }
         debug("Callback and sdr process\n");
@@ -328,7 +328,7 @@ state_t energy_init(void **c)
             if (execute(buff) != EAR_SUCCESS) {
                 verbose(0, "SDR cache not initialized");
                 pthread_mutex_unlock(&node_energy_lock_nm);
-                energy_dispose(no_ctx);
+                energy_unload(no_ctx);
                 return EAR_ERROR;
             }
         }
@@ -343,7 +343,7 @@ state_t energy_init(void **c)
             if (!found) {
                 debug("Error ipmi_sdr_cache_iterate %s\n", ipmi_sdr_ctx_errormsg(sdr_ctx));
                 pthread_mutex_unlock(&node_energy_lock_nm);
-                energy_dispose(no_ctx);
+                energy_unload(no_ctx);
                 return EAR_ERROR;
             }
         }
@@ -374,7 +374,7 @@ state_t energy_init(void **c)
     pthread_mutex_unlock(&node_energy_lock_nm);
     if (st != EAR_SUCCESS) {
         debug("_power_reading fails");
-        energy_dispose(no_ctx);
+        energy_unload(no_ctx);
         return EAR_ERROR;
     } else {
         // Read the first read time
@@ -562,14 +562,14 @@ static state_t inm_thread_main(void *p)
                                             workaround_flags, IPMI_FLAGS_DEFAULT)) < 0) {
                 error("%s", ipmi_ctx_errormsg(ipmi_ctx));
                 pthread_mutex_unlock(&node_energy_lock_nm);
-                energy_dispose(no_ctx);
+                energy_unload(no_ctx);
 
                 return EAR_ERROR;
             }
             if (ret == 0) {
                 error("Not inband device found %s", ipmi_ctx_errormsg(ipmi_ctx));
                 pthread_mutex_unlock(&node_energy_lock_nm);
-                energy_dispose(no_ctx);
+                energy_unload(no_ctx);
                 return EAR_ERROR;
             }
 
@@ -597,7 +597,7 @@ static state_t inm_thread_init(void *p)
 }
 
 /* Release access to ipmi device */
-state_t energy_dispose(void **c)
+state_t energy_unload(void **c)
 {
     int etries = 0, lret;
     if (!inm_initialized)
@@ -767,14 +767,14 @@ void main(int argc , char *argv[])
 {
 				uint iters = 0;
 				uint maxp, minp, avgp, periodp, currentp;
-				node_energy_init();
+				node_energy_load();
 				do{
 								node_power_reading(&maxp, &minp, &avgp, &currentp, &periodp);
 								debug("POWER READING: Max power %u Min power %u Avg power %u Current power %u Period %u\n", maxp, minp, avgp, currentp, periodp);
 								sleep(10);
 								iters++;
 				}while(iters < 10);
-				node_energy_dispose();
+				node_energy_unload();
 
 }
 #endif

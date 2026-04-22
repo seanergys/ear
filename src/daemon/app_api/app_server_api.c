@@ -59,7 +59,6 @@ static afd_set_t rfds_basic;
 extern cluster_conf_t my_cluster_conf;
 extern my_node_conf_t *my_node_conf;
 extern int eard_must_exit;
-static ehandler_t my_eh_app_api;
 
 /*********************************************************/
 /***************** PRIVATE FUNCTIONS in this module ******/
@@ -320,7 +319,7 @@ static void ear_energy(int fd_out)
     energy_mj = 0;
     time_ms   = 0;
 
-    if (energy_dc_time_read(&my_eh_app_api, &energy_mj, &time_ms) != EAR_SUCCESS) {
+    if (energy_dc_time_read(&energy_mj, &time_ms) != EAR_SUCCESS) {
         error("Error reading energy in %s thread", TH_NAME);
     }
 
@@ -357,7 +356,7 @@ static void ear_energy_debug(int fd_out)
     energy_mj = 0;
     time_ms   = 0;
 
-    if (energy_dc_time_read(&my_eh_app_api, &energy_mj, &time_ms) != EAR_SUCCESS) {
+    if (energy_dc_time_read(&energy_mj, &time_ms) != EAR_SUCCESS) {
         error("Error reading energy in %s thread", TH_NAME);
     }
 
@@ -523,21 +522,15 @@ void *eard_non_earl_api_service(void *noinfo)
         pthread_exit(0);
     }
 
-    char energy_plugin_obj[MAX_PATH_SIZE];
-    build_energy_plugin_path(energy_plugin_obj, sizeof(energy_plugin_obj), &my_cluster_conf, my_node_conf);
-
-    if (state_fail(energy_load(energy_plugin_obj))) {
+    if (state_fail(energy_load(API_FREE, &my_cluster_conf, my_node_conf))) {
         verbose(VAPP_API + 1, "Energy plug-in load method failed: %s", state_msg);
-    }
-    if (state_fail(energy_init(&my_eh_app_api))) {
-        error("Error initializing energy_init in No-EARL_API thread: %s", state_msg);
         pthread_exit(0);
     }
 
-    energy_datasize(&my_eh_app_api, &node_energy_datasize);
+    energy_datasize(&node_energy_datasize);
     if (node_energy_datasize != sizeof(unsigned long)) {
         error("Application api for energy readings not yet supported,exiting thread for app api");
-        energy_dispose(&my_eh_app_api);
+        energy_unload();
         pthread_exit(0);
     }
 
@@ -561,7 +554,7 @@ void *eard_non_earl_api_service(void *noinfo)
         }
     }
     /* Close and remove files , never reached if thread is killed */
-    energy_dispose(&my_eh_app_api);
+    energy_unload();
     dispose_app_connection();
     pthread_exit(0);
 }

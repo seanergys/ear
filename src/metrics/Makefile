@@ -83,6 +83,7 @@ mets_OBJS = \
     $(SRCDIR)/metrics/gpu/gpuprof.o \
     $(SRCDIR)/metrics/gpu/archs/cupti.o \
     $(SRCDIR)/metrics/gpu/archs/dcgmi.o \
+    $(SRCDIR)/metrics/gpu/archs/demo.o \
     $(SRCDIR)/metrics/gpu/archs/dummy.o \
     $(SRCDIR)/metrics/gpu/archs/eard.o \
     $(SRCDIR)/metrics/gpu/archs/nvml.o \
@@ -105,6 +106,12 @@ mets_OBJS = \
 ######## RULES
 
 all: all.components metrics.o libmetrics.a
+
+post: test
+	@ $(MAKE) -C 'gpu' post || exit
+
+$(SRCDIR)/metrics/energy/node/%.o: $(SRCDIR)/metrics/energy/node/%.c
+	$(CC) $(CC_FLAGS) -I$(SRCDIR) -fPIC -D_GNU_SOURCE -c $< -o $@
 
 metrics.o: metrics.c
 	$(CC) $(CC_FLAGS) -I$(SRCDIR) -fPIC -c $<

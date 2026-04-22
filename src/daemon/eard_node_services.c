@@ -75,7 +75,6 @@ void eard_exit(uint restart);
 extern report_id_t rid;
 extern state_t report_connection_status;
 extern topology_t node_desc;
-extern ehandler_t handler_energy;
 extern int fd_rapl[MAX_PACKAGES];
 extern char ear_tmp[MAX_PATH_SIZE];
 extern char nodename[MAX_PATH_SIZE];
@@ -1009,7 +1008,7 @@ void connect_service(struct daemon_req *new_req)
     }
     /* This function notifies the local connection */
     if (!eard_local_conn[newc].anonymous)
-        powermon_mpi_init(&handler_energy, new_app);
+        powermon_mpi_init(new_app);
     debug("Application %d connected with local API (anonymous %lu)", pid, eard_local_conn[newc].anonymous);
 }
 
@@ -1079,7 +1078,7 @@ void eard_close_comm(int req_fd, int ack_fd)
         // This debug was set outside, but it requires a valid id to prevent segmentation faults.
     }
     if (!was_anonymous) {
-        powermon_mpi_finalize(&handler_energy, jid, sid);
+        powermon_mpi_finalize(jid, sid);
     }
 }
 
@@ -1175,7 +1174,7 @@ int eard_node_energy(eard_head_t *head, int req_fd, int ack_fd)
     verbose(VEARD_LAPI_DEBUG, "EARD old node_energy");
     switch (head->req_service) {
         case READ_DC_ENERGY:
-            energy_dc_read(&handler_energy, node_energy_data);
+            energy_dc_read(node_energy_data);
             if (write(ack_fd, node_energy_data, node_energy_datasize) != node_energy_datasize) {
                 // Do something with the error
             }
@@ -1321,7 +1320,7 @@ state_t service_close(int req_fd, int ack_fd)
     close(ack_fd);
     // End job
     if (!was_anonymous) {
-        powermon_mpi_finalize(&handler_energy, job_id, step_id);
+        powermon_mpi_finalize(job_id, step_id);
     }
 
     return EAR_SUCCESS;
@@ -1497,10 +1496,10 @@ state_t eard_local_api(char *ear_owner)
     }
 
     // Energy node metrics
-    energy_datasize(&handler_energy, &node_energy_datasize);
+    energy_datasize(&node_energy_datasize);
     verbose(VEARD_LAPI, "EARD main thread: node_energy_datasize %lu", node_energy_datasize);
     node_energy_data = (edata_t) malloc(node_energy_datasize);
-    energy_frequency(&handler_energy, &energy_freq);
+    energy_frequency(&energy_freq);
     verbose(VCONF, "energy: power performance accuracy %lu usec", energy_freq);
 
     // RAPL metrics

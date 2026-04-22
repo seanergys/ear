@@ -144,7 +144,7 @@ CACHE_F_LOAD(perf)
     family = tp->family;
     if (SCOPE_IS(options, SCOPE_NODE)) {
         perfs_count = tp->cpu_count;
-        perfs       = calloc(tp->cpu_count, sizeof(perfs_t));
+        perfs       = calloc(perfs_count, sizeof(perfs_t));
         scope       = SCOPE_NODE;
         granularity = GRANULARITY_CPU;
         // Event per CPU
@@ -161,7 +161,7 @@ CACHE_F_LOAD(perf)
         granularity = GRANULARITY_PROCESS;
     } else {
         perfs_count = 1;
-        perfs       = calloc(1, sizeof(perfs_t));
+        perfs       = calloc(perfs_count, sizeof(perfs_t));
         scope       = SCOPE_PROCESS;
         granularity = GRANULARITY_PROCESS;
         add_events(&perfs[0], 0, -1);
@@ -228,7 +228,6 @@ CACHE_F_UPDATE(perf)
     } else if (scope == SCOPE_JOB && option == UPD_PID_REMOVE) {
         for (i = 0; i < perfs_count; ++i) {
             if (perfs[i].perfs[0].pid == pid) {
-                printf("QUIERO QUITAR EL %u ENCONTRADO %u\n", pid, perfs[i].perfs[0].pid);
                 perf_remove(&perfs[i]);
                 return EAR_SUCCESS;
             }
@@ -258,11 +257,11 @@ CACHE_F_READ(perf)
         if (perfs[i].perfs[0].pid == 0) {
             continue;
         }
-        #if SHOW_DEBUGS
-        dprintf(debug_channel, "DEV%d ", i);
-        #endif
         ca[i].pid = perfs[i].perfs[0].pid;
         timestamp_get(&ca[i].time);
+        #if SHOW_DEBUGS
+        dprintf(debug_channel, "%s:%s:%d: d%d ", __FILE__, __FUNCTION__, __LINE__, i);
+        #endif
         for (j = 0; j < perfs[i].perfs_count; ++j) {
             // We assume 0 means unopened file descriptor
             if (perfs[i].perfs[j].fd <= 0) {

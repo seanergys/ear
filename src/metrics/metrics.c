@@ -25,7 +25,6 @@
 #define nodepow(f, ...) energy_##f(__VA_ARGS__)
 #define cpupow(f, ...)  energy_cpu_##f(__VA_ARGS__)
 
-static ehandler_t e_ctx;
 static topology_t *self_tp;
 // Screen
 static strtable_t st __attribute__((unused));
@@ -46,7 +45,7 @@ static int id_log;
 static int id_api;
 static int id_tpo;
 
-void metrics_load(metrics_info_t *m, topology_t *tp, char *nodepow_path, uint *options)
+void metrics_load(metrics_info_t *m, topology_t *tp, cluster_conf_t *clus, my_node_conf_t *node, uint *options)
 {
     uint default_options[10] = {0};
     self_tp = tp;
@@ -54,7 +53,7 @@ void metrics_load(metrics_info_t *m, topology_t *tp, char *nodepow_path, uint *o
     if (options == NULL) {
         options = default_options;
     }
-    nodepow(load, nodepow_path);
+    nodepow(load, options[MET_OPT_NODEPOW], clus, node);
     cpufreq_load(tp, options[MET_OPT_CPUFREQ]);
     imcfreq_load(tp, options[MET_OPT_IMCFREQ]);
      cpupow(load,tp, options[MET_OPT_CPUPOW] );
@@ -67,8 +66,7 @@ void metrics_load(metrics_info_t *m, topology_t *tp, char *nodepow_path, uint *o
          io_load(tp, options[MET_OPT_IO]     );
        proc_load(tp, options[MET_OPT_PROC]   );
 
-    nodepow(init, &e_ctx);
-     cpupow(init, no_ctx);
+    cpupow(init, no_ctx);
 
     metrics_info_get(m);
 }
@@ -76,8 +74,9 @@ void metrics_load(metrics_info_t *m, topology_t *tp, char *nodepow_path, uint *o
 void metrics_update(uint option, void *value)
 {
     cache_update(option, value);
-    flops_update(option, value);
       cpi_update(option, value);
+    flops_update(option, value);
+      gpu_update(option, value);
        io_update(option, value);
      proc_update(option, value);
 }
@@ -208,12 +207,12 @@ static char *cpupow_data_tostr(ullong *diffs, double secs, char *buffer, size_t 
 
 void nodepow_read(void *nod)
 {
-    nodepow(dc_read, &e_ctx, nod);
+    nodepow(dc_read, nod);
 }
 
 void nodepow_data_diff(void *nod2, void *nod1, ulong *nodD)
 {
-    nodepow(accumulated, &e_ctx, nodD, nod1, nod2);
+    nodepow(accumulated, nodD, nod1, nod2);
 }
 
 void nodepow_data_copy(void *nodD, void *nodS)
@@ -409,7 +408,7 @@ static state_t metrics_apis_init(void *whatever)
 {
     unused(whatever);
     topology_init(&tp);
-    metrics_load(&m, &tp, NULL, metrics_envtoops("OPTS", 10));
+    metrics_load(&m, &tp, NULL, NULL, metrics_envtoops("OPTS", 10);
     metrics_init_screen(&m, &tp);
     metrics_data_alloc(&mr1, &mr2, &mrD);
     metrics_read(&mr1);
@@ -438,10 +437,14 @@ int main(int argc, char *argv[])
     suscription_t *sus = suscription();
     sus->call_init     = metrics_apis_init;
     sus->call_main     = metrics_apis_update;
-    sus->time_relax    = 1000;
-    sus->time_burst    = 1000;
+    sus->time_relax    = 2000;
+    sus->time_burst    = 2000;
     sus->suscribe(sus);
 
+    sleep(3);
+    metrics_update(UPD_DEMO4_SET, NULL);
+    sleep(4);
+    metrics_update(UPD_DEMO2_SET, NULL);
     sleep(100);
     return 0;
 }

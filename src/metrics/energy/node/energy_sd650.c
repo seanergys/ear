@@ -199,7 +199,7 @@ state_t sd650_ene(struct ipmi_intf *intf, struct ipmi_data *out)
  * MAIN FUNCTIONS
  */
 
-state_t energy_init(void **c)
+state_t energy_load(void **c)
 {
     int ret;
     if (c == NULL)
@@ -215,7 +215,7 @@ state_t energy_init(void **c)
     return EAR_SUCCESS;
 }
 
-state_t energy_dispose(void **c)
+state_t energy_unload(void **c)
 {
     if ((c == NULL) || (*c == NULL))
         return EAR_ERROR;

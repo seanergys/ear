@@ -79,7 +79,7 @@ static ear_field_t *field_create(ear_field_t *parent, char *key, char *value, in
     field->sibling        = &null;
     field->parent         = parent;
     field->deep           = deep;
-    field->key_concat     = parent ? calloc(strlen(parent->key_concat)+strlen(key)+1, 1) : strdup(field->key);
+    field->key_concat     = parent ? calloc(strlen(parent->key_concat)+strlen(key)+2, 1) : strdup(field->key);
     if (parent) {
         sprintf(field->key_concat, "%s.%s", parent->key_concat, field->key);
     }

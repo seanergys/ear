@@ -145,7 +145,6 @@ int eard_lockf;
 char eard_lock_file[MAX_PATH_SIZE * 2];
 int application_id = -1;
 
-ehandler_t eard_handler_energy, handler_energy;
 ulong current_node_freq;
 int eard_must_exit = 0;
 topology_t node_desc;
@@ -324,8 +323,8 @@ void eard_exit(uint restart)
     verbose(VCONF, "Releasing node resources...");
 
     // More disposes
-    if (state_fail(energy_dispose(&eard_handler_energy))) {
-        error("Disposing energy API.");
+    if (state_fail(energy_unload())) {
+        error("Error unloading energy API.");
     }
 
     report_dispose(&rid);
@@ -913,18 +912,12 @@ int main(int argc, char *argv[])
     // We initilize energy_node
     verbose(VEARD_INIT, "Loading the energy plug-in from the main thread...");
 
-    char energy_plugin_obj[MAX_PATH_SIZE];
-    build_energy_plugin_path(energy_plugin_obj, sizeof(energy_plugin_obj), &my_cluster_conf, my_node_conf);
-
-    if (state_fail(energy_load(energy_plugin_obj))) {
-        verbose(VEARD_INIT + 1, "Energy plug-in load method failed: %s", state_msg);
-    }
-    if (state_fail(energy_init(&eard_handler_energy))) {
-        error("While initiating the energy plug-in: %s", state_msg);
+    if (state_fail(energy_load(API_FREE, &my_cluster_conf, my_node_conf))) {
+        error("Energy plug-in load method failed: %s", state_msg);
         error_energy = 1;
     }
 
-    if (state_fail(s = init_power_monitoring(&handler_energy, &node_desc))) {
+    if (state_fail(s = init_power_monitoring(&node_desc, &my_cluster_conf, my_node_conf))) {
         error("While initializing power monitor: %s\n", state_msg);
         _exit(0);
     }

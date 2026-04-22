@@ -50,7 +50,7 @@ state_t energy_not_privileged_init()
     return ret;
 }
 
-void energy_dispose_not_priv()
+void energy_unload_not_priv()
 {
     debug("EARD NM: Disconnecting");
     pthread_mutex_lock(&eard_nm_lock);

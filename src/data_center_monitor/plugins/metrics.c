@@ -18,8 +18,6 @@
 
 static mets_t m;
 static conf_t *conf;
-static char *np_path; // Node power
-static char buffer[4096];
 
 declr_up_get_tag()
 {
@@ -30,17 +28,15 @@ declr_up_get_tag()
 declr_up_action_init(_conf)
 {
     conf = (conf_t *) data;
-    sprintf(buffer, "%s/energy/%s", conf->cluster.install.dir_plug, conf->cluster.install.obj_ener);
-    np_path = buffer;
     return NULL;
 }
 
 declr_up_action_init(_metrics)
 {
     *data_alloc = &m;
-    metrics_load(&m.mi, &conf->tp, np_path, NULL);
+    metrics_load(&m.mi, &conf->tp, &conf->cluster, conf->node, NULL);
     metrics_data_alloc(&m.mr, NULL, NULL);
-    return rsprintf("Metrics plugin initialized correctly %s", (!np_path) ? "(missing np library)" : "");
+    return rsprintf("Metrics plugin initialized correctly.");
 }
 
 declr_up_action_periodic(_metrics)

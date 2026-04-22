@@ -9,7 +9,7 @@
  **************************************************************************/
 
 // clang-format off
-//#define SHOW_DEBUGS 1
+// #define SHOW_DEBUGS 1
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,8 +28,7 @@ static apinfo_t info;
 
 void flops_load(topology_t *tp, int options)
 {
-    while (pthread_mutex_trylock(&lock))
-        ;
+    while (pthread_mutex_trylock(&lock));
     if (info.api != API_NONE) {
         goto leave;
     }
@@ -46,8 +45,7 @@ leave:
 
 void flops_unload()
 {
-    while (pthread_mutex_trylock(&lock))
-        ;
+    while (pthread_mutex_trylock(&lock));
     if (info.api != API_NONE) {
         ops.unload();
         memset(&ops, 0, sizeof(flops_ops_t));
@@ -58,7 +56,11 @@ void flops_unload()
 
 state_t flops_update(uint option, void *value)
 {
-    return ops.update(option, value);
+    state_t s;
+    while (pthread_mutex_trylock(&lock));
+    s = ops.update(option, value);
+    pthread_mutex_unlock(&lock);
+    return s;
 }
 
 void flops_get_info(apinfo_t *info)
@@ -137,11 +139,11 @@ char *flops_data_tostr(flops_t *flD, double gflops_tot, char *buffer, size_t len
         if (flD[i].pid == 0) {
             continue;
         }
-        added += sprintf(&buffer[added], "dev%d pid%4d insts ", i, flD[i].pid);
-        added += sprintf(&buffer[added], "[%14llu %14llu] ", flD[i].f64 , flD[i].d64 );
-        added += sprintf(&buffer[added], "[%14llu %14llu] ", flD[i].f128, flD[i].d128);
-        added += sprintf(&buffer[added], "[%14llu %14llu] ", flD[i].f256, flD[i].d256);
-        added += sprintf(&buffer[added], "[%14llu %14llu] ", flD[i].f512, flD[i].d512);
+        added += sprintf(&buffer[added], "d%d ", i);
+        added += sprintf(&buffer[added], "[%8llu %8llu] ", flD[i].f64 , flD[i].d64 );
+        added += sprintf(&buffer[added], "[%8llu %8llu] ", flD[i].f128, flD[i].d128);
+        added += sprintf(&buffer[added], "[%8llu %8llu] ", flD[i].f256, flD[i].d256);
+        added += sprintf(&buffer[added], "[%8llu %8llu] ", flD[i].f512, flD[i].d512);
         added += sprintf(&buffer[added], "(%0.2lf GF/s in %0.2lf s)\n", flD[i].gflops, flD[i].secs);
     }
     return buffer;

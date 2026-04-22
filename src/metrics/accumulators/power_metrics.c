@@ -56,10 +56,10 @@ static uint gpu_num;
 /** Computes the difference betwen two RAPL energy measurements. */
 static rapl_data_t diff_RAPL_energy(rapl_data_t end, rapl_data_t init);
 
-static void pm_disconnect(ehandler_t *my_eh)
+static void pm_disconnect()
 {
     if (rootp) {
-        energy_dispose(my_eh);
+        energy_unload();
         energy_cpu_dispose(NULL);
 #if USE_GPUS
         gpu_unload();
@@ -78,23 +78,23 @@ static int pm_read_rapl(rapl_data_t *rm)
     }
 }
 
-static int pm_node_dc_energy(ehandler_t *my_eh, node_data_t *dc)
+static int pm_node_dc_energy(node_data_t *dc)
 {
     if (rootp) {
-        return energy_dc_read(my_eh, dc);
+        return energy_dc_read(dc);
     } else {
         *dc = 0;
         return EAR_ERROR;
     }
 }
 
-static int pm_connect(ehandler_t *my_eh, topology_t *tp)
+static int pm_connect(topology_t *tp, cluster_conf_t *my_cluster_conf, my_node_conf_t *my_node_conf)
 {
     int status_enode;
     state_t s;
 
     if ((pm_already_connected) && (pm_connected_status == EAR_SUCCESS)) {
-        if (state_fail(status_enode = energy_init(my_eh))) {
+        if (state_fail(status_enode = energy_load(API_FREE, my_cluster_conf, my_node_conf))) {
             pm_connected_status = status_enode;
             return status_enode;
         }
@@ -113,7 +113,7 @@ static int pm_connect(ehandler_t *my_eh, topology_t *tp)
     }
     // Initializing node energy
     debug("Initializing energy in main power_monitor thread");
-    pm_connected_status  = energy_init(my_eh);
+    pm_connected_status  = energy_load(API_FREE, my_cluster_conf, my_node_conf);
     pm_already_connected = 1;
 
     if (pm_connected_status != EAR_SUCCESS) {
@@ -122,12 +122,14 @@ static int pm_connect(ehandler_t *my_eh, topology_t *tp)
     }
 
     // Getting data size (this could be delegated to the node energy API)
-    energy_units(my_eh, &node_units);
-    energy_datasize(my_eh, &node_size);
+    energy_units(&node_units);
+    energy_datasize(&node_size);
 
-    if (pm_connected_status != EAR_SUCCESS) {
-        error("Error initializing RAPl in pm_connect");
-    }
+    // Old check? RAPL is not initialized here
+    // Also, pm_connected_status weas already checked
+    // if (pm_connected_status != EAR_SUCCESS) {
+    //     error("Error initializing RAPl in pm_connect");
+    // }
 
     // Initializing CPU/DRAM energy
     if (xtate_fail(s, energy_cpu_load(tp, 0))) {
@@ -170,21 +172,21 @@ static int pm_connect(ehandler_t *my_eh, topology_t *tp)
  *
  */
 
-int init_power_monitoring(ehandler_t *my_eh, topology_t *tp)
+int init_power_monitoring(topology_t *tp, cluster_conf_t *my_cluster_conf, my_node_conf_t *my_node_conf)
 {
     state_t s;
     debug("init_power_ponitoring");
-    if (state_fail(s = pm_connect(my_eh, tp))) {
+    if (state_fail(s = pm_connect(tp, my_cluster_conf, my_node_conf))) {
         return s;
     }
     power_mon_connected = 1;
     return EAR_SUCCESS;
 }
 
-void end_power_monitoring(ehandler_t *my_eh)
+void end_power_monitoring()
 {
     if (power_mon_connected) {
-        pm_disconnect(my_eh);
+        pm_disconnect();
     }
     power_mon_connected = 0;
 }
@@ -193,7 +195,7 @@ void end_power_monitoring(ehandler_t *my_eh)
  *
  */
 
-int read_enegy_data(ehandler_t *my_eh, energy_data_t *acc_energy)
+int read_enegy_data(energy_data_t *acc_energy)
 {
     debug("read_enegy_data");
     time(&acc_energy->sample_time);
@@ -206,7 +208,7 @@ int read_enegy_data(ehandler_t *my_eh, energy_data_t *acc_energy)
     }
 
     // Node
-    pm_node_dc_energy(my_eh, acc_energy->DC_node_energy);
+    pm_node_dc_energy(acc_energy->DC_node_energy);
 
     // CPU/DRAM
     pm_read_rapl(RAPL_metrics);
@@ -218,7 +220,7 @@ int read_enegy_data(ehandler_t *my_eh, energy_data_t *acc_energy)
 #ifdef SHOW_DEBUGS
     int p;
     char buffer[256];
-    energy_to_str(my_eh, buffer, acc_energy->DC_node_energy);
+    energy_to_str(buffer, acc_energy->DC_node_energy);
     debug("Node %s", buffer);
     energy_cpu_to_str(NULL, buffer, (ullong *) RAPL_metrics);
     debug("%s ", buffer);
@@ -260,7 +262,7 @@ void compute_power(energy_data_t *e_begin, energy_data_t *e_end, power_data_t *m
 #endif
 
     // eh is not needed here
-    energy_accumulated(NULL, &curr_node_energy, e_begin->DC_node_energy, e_end->DC_node_energy);
+    energy_accumulated(&curr_node_energy, e_begin->DC_node_energy, e_end->DC_node_energy);
     debug("curr dc energy %lu dc energy begin %lu end %lu", curr_node_energy,
           (ulong) * ((ulong *) e_begin->DC_node_energy), (ulong) * ((ulong *) e_end->DC_node_energy));
 
@@ -323,7 +325,7 @@ void print_energy_data(energy_data_t *e)
     strftime(s, sizeof(s), "%c", current_t);
 
     // Node
-    energy_to_str(NULL, nodee, e->DC_node_energy);
+    energy_to_str(nodee, e->DC_node_energy);
     printf("%s: energy (J) for node (%s)", s, nodee);
 
     //

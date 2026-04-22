@@ -46,7 +46,7 @@ static uint energy_cpu_count   = 0;
 static gpu_t *gpu_data         = NULL;
 static uint cpu_energy_loaded = 0, gpu_energy_loaded = 0;
 
-state_t energy_init(void **c)
+state_t energy_load(void **c)
 {
     topology_t tp;
     state_t s;
@@ -81,7 +81,7 @@ state_t energy_init(void **c)
     return EAR_SUCCESS;
 }
 
-state_t energy_dispose(void **c)
+state_t energy_unload(void **c)
 {
     if ((c == NULL) || (*c == NULL))
         return EAR_ERROR;

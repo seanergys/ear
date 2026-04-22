@@ -33,20 +33,20 @@
 #include <common/system/time.h>
 #include <metrics/energy/node/energy_node.h>
 
-static uint cray_pm_energy_init = 0;
+static uint cray_pm_energy_load = 0;
 static pthread_mutex_t elock    = PTHREAD_MUTEX_INITIALIZER;
 
 /*
  * MAIN FUNCTIONS
  */
 
-static state_t static_energy_init()
+static state_t static_energy_load()
 {
     state_t st = EAR_SUCCESS;
 
     while (pthread_mutex_trylock(&elock)) {
     };
-    if (cray_pm_energy_init) {
+    if (cray_pm_energy_load) {
         pthread_mutex_unlock(&elock);
         return st;
     }
@@ -55,20 +55,20 @@ static state_t static_energy_init()
         pthread_mutex_unlock(&elock);
         return EAR_ERROR;
     }
-    cray_pm_energy_init = 1;
+    cray_pm_energy_load = 1;
     pthread_mutex_unlock(&elock);
     return st;
 }
 
-state_t energy_init(void **c)
+state_t energy_load(void **c)
 {
-    return static_energy_init();
+    return static_energy_load();
 }
 
-state_t energy_dispose(void **c)
+state_t energy_unload(void **c)
 {
     verbose(VCRAY_PM_VL, "CRAY PM: dispose");
-    if (cray_pm_energy_init)
+    if (cray_pm_energy_load)
         cray_pm_dispose();
     return EAR_SUCCESS;
 }
@@ -129,7 +129,7 @@ state_t energy_dc_read(void *c, edata_t energy_mj)
 {
     verbose(VCRAY_PM_VL, "CRAY PM: energy read");
     state_t st = EAR_ERROR;
-    if (!cray_pm_energy_init)
+    if (!cray_pm_energy_load)
         return st;
 
     ulong energy;
@@ -153,7 +153,7 @@ state_t energy_dc_time_read(void *c, edata_t energy_mj, ulong *time_ms)
 {
     verbose(VCRAY_PM_VL, "CRAY PM: energy & time read");
     state_t st = EAR_ERROR;
-    if (!cray_pm_energy_init)
+    if (!cray_pm_energy_load)
         return st;
 
     ulong *penergy_mj = (ulong *) energy_mj;
@@ -185,7 +185,7 @@ uint energy_data_is_null(edata_t e)
 
 state_t energy_not_privileged_init()
 {
-    return static_energy_init();
+    return static_energy_load();
 }
 
 uint energy_is_privileged()

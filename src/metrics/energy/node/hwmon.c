@@ -48,9 +48,9 @@ static state_t static_monitor_init()
     return EAR_SUCCESS;
 }
 
-state_t energy_init(void **c)
+state_t energy_load(void **c)
 {
-    debug("energy_init");
+    debug("energy_load");
     topology_init(&tp);
     if (tp.vendor == VENDOR_ARM && tp.model == MODEL_NEOVERSE_V2) {
 	debug("VENDOR_ARM && MODEL_NEOVERSE_V2");
@@ -128,7 +128,7 @@ static state_t static_pool(void *data)
     return EAR_SUCCESS;
 }
 
-state_t energy_dispose(void **c)
+state_t energy_unload(void **c)
 {
     if (sus != NULL) {
         monitor_unregister(sus);
@@ -185,7 +185,7 @@ uint energy_data_is_null(void *data)
 
 state_t energy_not_privileged_init()
 {
-    return energy_init(NULL);
+    return energy_load(NULL);
 }
 
 uint energy_is_privileged()

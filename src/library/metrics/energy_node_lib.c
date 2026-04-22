@@ -50,7 +50,7 @@ static const char *energy_names[] = {"energy_datasize",      "energy_frequency",
                                      "energy_to_str",        "energy_dc_read",
                                      "energy_data_alloc",    "energy_data_is_null",
                                      "energy_data_copy",     "energy_not_privileged_init",
-                                     "energy_is_privileged", "energy_dispose_not_priv"};
+                                     "energy_is_privileged", "energy_unload_not_priv"};
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 

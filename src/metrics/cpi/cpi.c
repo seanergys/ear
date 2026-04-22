@@ -142,7 +142,7 @@ void cpi_data_free(cpi_t **ci)
 
 void cpi_data_copy(cpi_t *dst, cpi_t *src)
 {
-    memcpy(dst, src, sizeof(cpi_t));
+    memcpy(dst, src, sizeof(cpi_t) * info.devs_count);
 }
 
 void cpi_data_print(cpi_t *ci, double cpis_avg, int fd)

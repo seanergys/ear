@@ -15,9 +15,9 @@
 #include <common/types/generic.h>
 #include <metrics/accumulators/types.h>
 
-state_t energy_init(void **c);
+state_t energy_load(void **c);
 
-state_t energy_dispose(void **c);
+state_t energy_unload(void **c);
 
 state_t energy_datasize(size_t *size);
 
