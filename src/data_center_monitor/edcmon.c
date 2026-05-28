@@ -22,7 +22,7 @@ static void handle_signal(int sig, siginfo_t *si, void *unused)
     (void) unused; // Suppress unused parameter warning
 
     verbose(0, "Received signal %d", sig);
-    plugin_manager_close();
+    plugin_manager_exit();
 }
 
 int main(int argc, char *argv[])

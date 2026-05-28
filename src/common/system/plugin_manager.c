@@ -14,12 +14,13 @@
 #include <stdlib.h>
 #include <common/utils/args.h>
 #include <common/output/debug.h>
+#include <common/utils/overhead.h>
+#include <common/utils/strscreen.h>
+#include <common/system/poll.h>
 #include <common/system/monitor.h>
 #include <common/system/symplug.h>
-#include <common/utils/strscreen.h>
-#include <common/config/config_env.h>
 #include <common/system/plugin_manager.h>
-#include <common/system/poll.h>
+#include <common/config/config_env.h>
 
 #define MAX_SYMBOLS      4
 #define MAX_PLUGINS      128
@@ -61,6 +62,8 @@ typedef struct plugin_s {
     uint               is_enabled;
     uint               is_paused;
     uint               is_silenced;
+    uint               id_overhead_periodic;
+    uint               id_overhead_message;
 } plugin_t;
 
 typedef struct plugins_s {
@@ -76,16 +79,18 @@ typedef struct pmfd_set_s {
     cchar             *tag;
 } pmfd_set_t;
 
-typedef struct msg_cache_s {
-    char tag_msg[128];
-    void *handler;
-} msg_cache_t;
-
-static ulong       monitor_period = 100;
-static ulong       relax_period   = 100;
+// Future use:
+// typedef struct msg_cache_s {
+//     char tag_msg[128];
+//     void *handler;
+// } msg_cache_t;
 static plugins_t   p; // Struct that holds all plugins context
 static char      **priority_paths;
 static char        date[128];
+static ulong       monitor_period = 100;
+static ulong       relax_period   = 100;
+static uint        overhead_measurement_en;
+static uint        overhead_measurement_time; // in ms
 static uint        exit_called;
 static afd_set_t   fds_active; // FDs of our internal poll
 static pmfd_set_t  f[AFD_MAX]; // Struct that holds all file-descriptors context
@@ -306,6 +311,7 @@ static state_t plugins_open_file(int i)
 static int plugins_open()
 {
     plugin_t *plug;
+    //char buffer[256];
     get_tag_f *get_tag;
     int enabled_count = 0;
     int i, j;
@@ -329,6 +335,8 @@ static int plugins_open()
             // Reading (2) all the plugins specified in the dependency tags.
             plugins_dependencies_read(plug->tags_deps, plug->time_lapse, plug->priority, plug->deps_table);
         }
+        // Overhead measurment suscriptions
+        overhead_subsprint(&plug->id_overhead_periodic, "periodic %s", plug->tag);
     }
     // Testing if dependencies are at least opened.
     for (i = 0; i < p.count; ++i) {
@@ -339,7 +347,7 @@ static int plugins_open()
                 break;
             }
         }
-        // Enabling if all the dependenciesare opened.
+        // Enabling if all the dependencies are opened.
         plug->is_enabled = plug->is_opened && (j == p.count);
         verbose(4, "[Summary] %s %s: called every %06llu ms with priority %u%s",
                 (plug->is_opened) ? "Opened" : "Not opened",
@@ -415,7 +423,9 @@ static int plugins_action_periodic_call(int i, int d, void *data)
             return 0;
         }
     }
+    overhead_start(p.plugins_sorted[i]->id_overhead_periodic);
     sout = p.plugins_sorted[i]->action_periodic[d](p.plugins_sorted[d]->tag, data);
+    overhead_stop(p.plugins_sorted[i]->id_overhead_periodic);
     return output_print(i, d, "", sout);
 }
 
@@ -513,11 +523,23 @@ static void plugins_poll_attend()
     }
 }
 
+static void plugins_overhead_measurement(ullong *time_accum_overhead)
+{
+    if (overhead_measurement_en && *time_accum_overhead >= 10000) {
+        *time_accum_overhead = 0LLU;
+        printf("[ ################################################################################################################################ Overhead report ## ]\n");
+        overhead_report(1);
+        printf("[ ################################################################################################################################################### ]\n");
+    }
+}
+
 static state_t plugins_main(void *whatever)
 {
-    static timestamp_t time_now;
-    static timestamp_t time_last;
-    static ullong time_passed = ULLONG_MAX;
+    static timestamp_t time_now       = {0};
+    static timestamp_t time_last      = {0};
+    static ullong time_passed         = ULLONG_MAX; // In msecs
+    static ullong time_accum_overhead = 0LLU;
+
     // First time, just to start counting time
     if (time_passed == ULLONG_MAX) {
         timestamp_get(&time_last);
@@ -528,9 +550,11 @@ static state_t plugins_main(void *whatever)
     output_print_format();
     timestamp_get(&time_now);
     time_passed = timestamp_diff(&time_now, &time_last, TIME_MSECS);
+    time_accum_overhead += time_passed;
     // Periodic plugin functions call
     plugins_action_periodic(0, &time_now, time_passed);
     plugins_poll_attend();
+    plugins_overhead_measurement(&time_accum_overhead);
     // Exit control
     if (exit_called) {
         monitor_dispose();
@@ -628,15 +652,17 @@ static int plugin_manager_configure(int argc, char *argv[])
     if (argc == 1 || args_get(argc, argv, "help", buffer)) {
         verbose(0, "Usage: %s [OPTIONS]\n", argv[0]);
         verbose(0, "Options:");
-        verbose(0, "    --plugins    List of plus sign separated plugins to load.");
-        verbose(0, "    --paths      List of colon separated priority paths to search plugins.");
-        verbose(0, "    --verbose    Set the verbose level (1 to 4).");
-        verbose(0, "    --silence    Hide messages returned by plugins.");
-        verbose(0, "    --monitor    Period at which the system wake ups to check if there is any\n");
-        verbose(0, "                 plugin ready. Default 100 ms");
-        verbose(0, "    --relax      Period at which the system wakes up to check if there is any\n. Def=100 ms  ");
-        verbose(0, "                 plugin ready in relaxed mode. Default 100 ms");
-        verbose(0, "    --help       If you see it you already typed --help.");
+        verbose(0, "    --plugins=<list> List of plus sign separated plugins to load.");
+        verbose(0, "    --paths=<list>   List of colon separated priority paths to search plugins.");
+        verbose(0, "    --verbose=<lv>   Set the verbose level (1 to 4).");
+        verbose(0, "    --silence        Hide messages returned by plugins.");
+        verbose(0, "    --overhead       Enables the overhead measurement system.");
+        verbose(0, "    --monitor=<ms>   Period at which the system wake ups to check if there is any\n");
+        verbose(0, "                     plugin ready. Default 100 ms");
+        verbose(0, "    --relax=<ms>     Period at which the system wakes up to check if there is any\n. Def=100 ms  ");
+        verbose(0, "                     plugin ready in relaxed mode. Default 100 ms");
+        verbose(0, "    --help           If you see it you already typed --help.");
+        // --debug is not shown
         return 0;
     }
 
@@ -656,13 +682,19 @@ static int plugin_manager_configure(int argc, char *argv[])
     if (args_get(argc, argv, "silence", NULL)) {
         VERB_SET_EN(0);
     }
-    // Buffer cannot be used becasue it has to be parsed later
+    // Buffer cannot be used because it has to be parsed later
     if (args_get(argc, argv, "monitor", params)) {
         monitor_period = strtoul(params, NULL, 10);
     }
-    // Buffer cannot be used becasue it has to be parsed later
+    // Buffer cannot be used because it has to be parsed later
     if (args_get(argc, argv, "relax", params)) {
         relax_period = strtoul(params, NULL, 10);
+    }
+    // Overhead measurment
+    if (args_get(argc, argv, "overhead", params)) {
+        setenv("EAR_OVERHEAD_ENABLE", "all", 1);
+        overhead_measurement_time = (ullong) atoi(params);
+        overhead_measurement_en = 1;
     }
     verbose(0, "UPM configuration: plugins \'%s\' verbose %u monitor periods[burst %lu, relax %lu]",
         buffer, VERB_GET_LV(), monitor_period, relax_period);
@@ -710,12 +742,11 @@ int plugin_manager_init(char *plugins, char *paths)
     sprintf(p0, "./bin");
     sprintf(p1, "--plugins=%s", plugins);
     sprintf(p2, "--paths=%s", paths);
-
     verbose(0, "UPM main: plugin list \'%s\' paths \'%s\'", plugins, paths);
     return plugin_manager_main((paths != NULL) ? 3 : 2, argv);
 }
 
-void plugin_manager_close()
+void plugin_manager_exit()
 {
     exit_called = 1;
 }
@@ -741,7 +772,7 @@ void *plugin_manager_action_trigger(cchar *tag)
     return NULL;
 }
 
-void plugin_manager_message_send(cchar *tag_msg, void *data)
+static void static_plugin_manager_message_send(cchar *tag_msg, void *data_array[], int increase)
 {
     message_receive_f *call = NULL;
     char buffer[256];
@@ -753,15 +784,28 @@ void plugin_manager_message_send(cchar *tag_msg, void *data)
             continue;
         }
         sprintf(buffer, "up_message_receive_%s", tag_msg);
+        // This call could be saved into plugins_sorted structure after the
+        // first dlsym() to reduce the overhead.
         call = dlsym(p.plugins_sorted[i]->handler, buffer);
         if (call == NULL) {
             call = dlsym(p.plugins_sorted[i]->handler, "up_message_receive");
         }
         if (call != NULL) {
-            sout = call(tag_msg, data);
+            sout = call(tag_msg, *data_array);
             output_print(i, 0, "", sout);
+            ++data_array;
         }
     }
+}
+
+void plugin_manager_message_send(cchar *tag_msg, void *data)
+{
+    static_plugin_manager_message_send(tag_msg, &data, 0);
+}
+
+void plugin_manager_message_send_each(cchar *tag_msg, void *data_array[])
+{
+    static_plugin_manager_message_send(tag_msg, data_array, 1);
 }
 
 int plugin_manager_poll_add(cchar *tag_own, cchar *tag, int fd)
