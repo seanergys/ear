@@ -10,6 +10,7 @@
 
 #ifndef COMMON_UTILS_OVERHEAD_H
 #define COMMON_UTILS_OVERHEAD_H
+/* clang-format off */
 
 #include <common/types.h>
 
@@ -37,6 +38,8 @@
 // The name or description string will appear in the report.
 void overhead_subscribe(const char *name_desc, uint *id);
 
+void overhead_subsprint(uint *id, const char *fmt, ...);
+
 void overhead_start(uint id);
 
 void overhead_stop(uint id);
@@ -45,4 +48,5 @@ void overhead_report(int print_header);
 
 void overhead_print_header();
 
+/* clang-format on */
 #endif // COMMON_UTILS_OVERHEAD_H
