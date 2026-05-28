@@ -73,7 +73,7 @@ void command_register(cchar *command, cchar *format, callback_t callback)
 static void command_exit(char **params)
 {
     is_closing = 1;
-    plugin_manager_close();
+    plugin_manager_exit();
 }
 
 static int is(char *s1, const char *s2)
