@@ -49,12 +49,12 @@
 #define ARGE(...)                        __VA_ARGS__
 #define ARG(v, n)                        ARGE(ARG##n)(v)
 
-// Init as main binary function.
+// The main function of the Plugin Manager. It inits a thread.
 int plugin_manager_main(int argc, char *argv[]);
-// Init as a component of a multiple purposes binary.
-int plugin_manager_init(char *files, char *paths);
+// The main function but passing the array of files and paths.
+int plugin_manager_main2(char *files, char *paths);
 // Closes Plugin Manager main thread.
-void plugin_manager_close();
+void plugin_manager_exit();
 // Wait until Plugin Manager main thread exits.
 void plugin_manager_wait();
 // Asking for an action. Intended to be called from plugins.

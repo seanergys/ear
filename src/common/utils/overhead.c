@@ -8,23 +8,23 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
+/* clang-format off */
 // #define SHOW_DEBUGS 1
-
 #define _GNU_SOURCE
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdarg.h>
 #include <common/output/debug.h>
 #include <common/output/verbose.h>
 #include <common/system/time.h>
 #include <common/utils/overhead.h>
 #include <common/utils/strtable.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
 
 #define N_QUEUE 256
 
-// clang-format off
 typedef struct ohdata_s {
-    const char  *description;
+    char         description[128];
     timestamp_t  wall_start;
     timestamp_t  wall_stop;
     double       wall_accum; // us
@@ -45,7 +45,6 @@ static ohdata_t    queue[N_QUEUE];
 static uint        queue_last;
 static uint        init;
 static strtable_t  st;
-// clang-format on
 
 void overhead_getwall(timestamp *ts)
 {
@@ -54,13 +53,18 @@ void overhead_getwall(timestamp *ts)
 
 void overhead_subscribe(const char *description, uint *id)
 {
-    char *environment_control = NULL;
-    int enable                = 0;
+    return overhead_subsprint(id, "%s", description);
+}
 
-#if !ENABLE_OVERHEAD
+void overhead_subsprint(uint *id, const char *fmt, ...)
+{
+    char   *env_control = NULL;
+    int     enable      = 0;
+    va_list args;
+
+    #if !ENABLE_OVERHEAD
     return;
-#endif
-
+    #endif
     if (!init) {
         // Formatting report table
         tprintf_init2(&st, verb_channel, STR_MODE_DEF, "10 14 14 14 14 14 14 14 14 14 32");
@@ -69,13 +73,15 @@ void overhead_subscribe(const char *description, uint *id)
         global_cpu_start = clock();
         init             = 1;
     }
-    if ((environment_control = getenv("EAR_OVERHEAD_ENABLE")) != NULL) {
-        if (strcasestr(environment_control, "all") || strcasestr(environment_control, description)) {
+    // Printing description
+    va_start(args, fmt), vsprintf(queue[queue_last].description, fmt, args), va_end(args);
+    // Checking if the description is present in the environment list
+    if ((env_control = getenv("EAR_OVERHEAD_ENABLE")) != NULL) {
+        if (strcasestr(env_control, "all") || strcasestr(env_control, queue[*id].description)) {
             enable = 1;
         }
     }
     *id                    = queue_last;
-    queue[*id].description = description;
     queue[*id].call_count  = 0;
     queue[*id].enabled     = enable;
     queue_last++;
@@ -185,46 +191,15 @@ void overhead_report(int print_header)
         // if (percent_clock > 100.0) {
         //     percent_clock = 0.0;
         // }
-        // clang-format off
-        tprintf2(&st,"%llu||%0.3lf s||%0.3lf ms||%0.3lf ms||%0.3lf ms||%0.3lf ms||%0.2lf %%|||%0.3lf s||%0.3lf ms||%0.2lf %%|||%s",
-            queue[id].call_count, wall_secs, wall_call_msecs, wall_last_msecs, wall_max_msecs, wall_min_msecs, wall_percent,
-            cpu_secs, cpu_call_msecs, cpu_percent, queue[id].description);
-        // clang-format on
+        tprintf2(&st, "%llu||%0.3lf s||%0.3lf ms||%0.3lf ms||%0.3lf ms||%0.3lf ms||%0.2lf %%|||%0.3lf s||%0.3lf ms||%0.2lf %%|||%.127s",
+            queue[id].call_count, wall_secs, wall_call_msecs, wall_last_msecs,
+            wall_max_msecs, wall_min_msecs, wall_percent, cpu_secs,
+            cpu_call_msecs, cpu_percent, queue[id].description);
     }
 }
 
 void overhead_print_header()
 {
-    // clang-format off
     tprintf2(&st, "#calls||wall accum||wall/#calls||wall last||wall max||wall min||%%wall time|||cpu accum||cpu/#calls||%%cpu time|||description");
     tprintf2(&st, "------||----------||-----------||---------||--------||--------||----------|||---------||----------||---------|||-----------");
-    // clang-format on
 }
-
-#if TEST
-int main(int argc, char *argv[])
-{
-    uint id1;
-    uint id2;
-    uint id3;
-    int i;
-
-    overhead_subscribe("CPUFreq read", &id1);
-    overhead_subscribe("PIPE communication", &id2);
-    overhead_subscribe("GPU read", &id3);
-
-    for (i = 0; i < 2; ++i) {
-        overhead_start(id1);
-        sleep(1);
-        overhead_stop(id1);
-        overhead_start(id2);
-        sleep(2);
-        overhead_stop(id2);
-        overhead_start(id3);
-        sleep(1);
-        overhead_stop(id3);
-    }
-    overhead_report(1);
-    return 0;
-}
-#endif
