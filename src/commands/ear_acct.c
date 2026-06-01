@@ -659,6 +659,7 @@ void print_header_format(char *fmt, uint32_t type)
         fmt++;
     }
     printf("\n");
+    fflush(stdout);
 }
 
 void print_full_apps(application_t *apps, int num_apps, bool is_csv, char *format)
@@ -735,6 +736,7 @@ void print_loop_format(loop_t *loop, char *fmt)
                 print_format_custom("%sunknown format char %c%s\n", COL_RED, fmt[i], COL_CLR);
                 break;
         }
+        fflush(stdout);
     }
     print_format_custom("\n");
 
@@ -1131,6 +1133,8 @@ void read_loops(char *user, query_adds_t *q_a, char *format)
     if (strlen(csv_path) > 0) {
         int i;
         if (!strcmp(csv_path, "no_file")) {
+            // ts = 1, num_gpus= MAX_GPUS_SUPPORTED, single_column =
+            create_loop_header(NULL, "stdout", 1, MAX_GPUS_SUPPORTED, 0);
             for (i = 0; i < num_loops; i++)
                 print_loop_fd(STDOUT_FILENO, &loops[i]);
         } else {
@@ -1140,6 +1144,7 @@ void read_loops(char *user, query_adds_t *q_a, char *format)
         }
     } else {
         print_header_format(format, LOOP_TYPE);
+        fflush(stdout);
         for (int32_t i = 0; i < num_loops; i++)
             print_loop_format(&loops[i], format);
         // print_loops(loops, num_loops, format);
@@ -1303,7 +1308,7 @@ int main(int argc, char *argv[])
     }
 
     char *user = user_info.ruid_name;
-    if (getuid() == 0 || is_privileged_command(&my_conf)) {
+    if (getuid() == 0 || is_authorized_command(&my_conf)) {
         user                = NULL; // by default, privilegd users or root will query all user jobs
         display_user_column = true;
     }

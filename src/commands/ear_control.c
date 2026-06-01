@@ -224,7 +224,7 @@ void print_ips(ip_table_t *ips, int num_ips, char mode)
     for (i = 0; i < num_ips; i++) {
         if (ips[i].counter) {
             if (mode != ERR_ONLY) {
-                printf("|%4s|%15s", COL_GRE " OK " COL_CLR, ips[i].name);
+                printf("|%15s|%4s", ips[i].name, COL_GRE " OK " COL_CLR);
                 if ((uint32_t) ips[i].step_id == (uint32_t) BATCH_STEP)
                     sprintf(step_id, "|%-8s|", "sbatch");
                 else if (ips[i].step_id == INTERACT_STEP)
@@ -233,7 +233,7 @@ void print_ips(ip_table_t *ips, int num_ips, char mode)
                     sprintf(step_id, "|%-8d|", ips[i].step_id);
 
                 if (mode == NODE_ONLY || mode == FULL_STATUS) {
-                    printf("|%5d|%3dC|%.2lf|%.2lf|%6d|%8s|", ips[i].power, ips[i].temp,
+                    printf("|%5dW|%3dC|%.2lf|%.2lf|%6d|%8s|", ips[i].power, ips[i].temp,
                            (double) ips[i].max_freq / 1000000.0, (double) ips[i].current_freq / 1000000.0,
                            ips[i].job_id, step_id);
                 }
@@ -1134,9 +1134,10 @@ int main(int argc, char *argv[])
             case 'e':
                 if (state_fail(ear_get_status(&my_cluster_conf, &status, &num_status, NULL, 0))) {
                     printf("Error retrieving status\n");
-                } else {
-                    process_status(num_status, status, 1, NULL, 0);
+                    num_status = 1;
+                    status     = calloc(1, sizeof(status_t));
                 }
+                process_status(num_status, status, 1, NULL, 0);
                 break;
             case 'k':
                 status_type = EAR_TYPE_HEALTH_CHECK;
@@ -1406,9 +1407,10 @@ int main(int argc, char *argv[])
                 printf("---------------------\nINACTIVE NODES\n---------------------\n");
                 if (state_fail(ear_get_status(&my_cluster_conf, &status, &num_status, nodes, num_nodes))) {
                     printf("Error retrieving status\n");
-                } else {
-                    process_status(num_status, status, NODE_ONLY, nodes, num_nodes);
+                    num_status = 1;
+                    status     = calloc(1, sizeof(status_t));
                 }
+                process_status(num_status, status, NODE_ONLY, nodes, num_nodes);
                 printf("---------------------\nINACTIVE EARDBDS\n---------------------\n");
                 num_status = eardbd_status_all(&my_cluster_conf, &edbstatus);
                 process_eardbd_status(num_status, edbstatus, 1);
