@@ -18,10 +18,10 @@
 
 #if FAKE_GPUS
 #define FAKE_N 4
-static ulong  *clock_list[FAKE_N]; // MHz
-static uint    clock_lens[FAKE_N];
-static ulong   power_list_max[FAKE_N];
-static ulong   power_list_min[FAKE_N];
+static ulong *clock_list[FAKE_N]; // MHz
+static uint clock_lens[FAKE_N];
+static uint32_t power_list_max[FAKE_N];
+static uint32_t power_list_min[FAKE_N];
 #else
 static ulong   clock_khz;
 static ulong  *clock_list[1];
@@ -236,7 +236,7 @@ state_t mgt_gpu_dummy_freq_get_available(ctx_t *c, const ulong ***list_khz, cons
     return EAR_SUCCESS;
 }
 
-state_t mgt_gpu_dummy_power_cap_get_current(ctx_t *c, ulong *watts)
+state_t mgt_gpu_dummy_power_cap_get_current(ctx_t *c, uint32_t *watts)
 {
     if (watts != NULL) {
         #if FAKE_GPUS
@@ -249,7 +249,7 @@ state_t mgt_gpu_dummy_power_cap_get_current(ctx_t *c, ulong *watts)
     return EAR_SUCCESS;
 }
 
-state_t mgt_gpu_dummy_power_cap_get_default(ctx_t *c, ulong *watts)
+state_t mgt_gpu_dummy_power_cap_get_default(ctx_t *c, uint32_t *watts)
 {
     if (watts != NULL) {
         #if FAKE_GPUS
@@ -264,7 +264,7 @@ state_t mgt_gpu_dummy_power_cap_get_default(ctx_t *c, ulong *watts)
     return EAR_SUCCESS;
 }
 
-state_t mgt_gpu_dummy_power_cap_get_rank(ctx_t *c, ulong *watts_min, ulong *watts_max)
+state_t mgt_gpu_dummy_power_cap_get_rank(ctx_t *c, uint32_t *watts_min, uint32_t *watts_max)
 {
     if (watts_max != NULL) {
         #if FAKE_GPUS
@@ -294,7 +294,7 @@ state_t mgt_gpu_dummy_power_cap_reset(ctx_t *c)
     return EAR_SUCCESS;
 }
 
-state_t mgt_gpu_dummy_power_cap_set(ctx_t *c, ulong *watts)
+state_t mgt_gpu_dummy_power_cap_set(ctx_t *c, uint32_t *watts)
 {
     debug("mgt_gpu_dummy_power_cap_set");
     if (watts != NULL) {

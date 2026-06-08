@@ -39,6 +39,9 @@ devel.install: devel.install.components incl.ginstall;
 
 clean: clean.components comm.gclean rclean;
 
+post:
+	@ $(MAKE) -C 'types'    	$@ || exit
+
 ######## SUBFOLDERS
 
 %.components:

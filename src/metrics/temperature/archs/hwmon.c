@@ -7,10 +7,9 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
+
 /* clang-format off */
-
 // #define SHOW_DEBUGS 1
-
 #include <common/output/debug.h>
 #include <metrics/common/hwmon.h>
 #include <metrics/temperature/archs/hwmon.h>
@@ -27,6 +26,7 @@ static char *driver_name;
 
 TEMP_F_LOAD(hwmon)
 {
+    char inverted_label[32];
     // Another API is opened and this API is not mixtable
     if (ops->read != NULL) {
         return;
@@ -57,8 +57,8 @@ TEMP_F_LOAD(hwmon)
         hwmon_close(&chips);
         return;
     }
-    hwmon_close_labels(chips, label);
-    debug("Detected HWMON '%s' items: %u", label, items_count);
+    sprintf(inverted_label, "!%s", label);
+    hwmon_close_labels(chips, inverted_label);
     sockets_count = tp->socket_count;
     debug("Detected %u HWMON '%s' chips with %u items in a system with %d sockets",
           chips_count, label, items_count, sockets_count);

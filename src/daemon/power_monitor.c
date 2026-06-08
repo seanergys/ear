@@ -2844,19 +2844,19 @@ uint powermon_is_idle()
     return (!max_context_created || contexts_created_finished == contexts_created);
 }
 
-uint powermon_current_power()
+uint32_t powermon_current_power()
 {
-    return (uint) last_calculated_power;
+    return (uint32_t) last_calculated_power;
 }
 
-uint powermon_get_powercap_def()
+uint32_t powermon_get_powercap_def()
 {
-    return (uint) my_node_conf->powercap;
+    return my_node_conf->powercap;
 }
 
-uint powermon_get_max_powercap_def()
+uint32_t powermon_get_max_powercap_def()
 {
-    return (uint) my_node_conf->max_powercap;
+    return my_node_conf->max_powercap;
 }
 
 static void set_default_powermon_init(powermon_app_t *app)

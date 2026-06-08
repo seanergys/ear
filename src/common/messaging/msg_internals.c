@@ -818,6 +818,7 @@ int remote_connect(char *nodename, uint port)
     char port_number[50]; // that size needs to be validated
     int sfd, s;
     afd_set_t rw_set = {0};
+    state_t ret      = EAR_ERROR;
 
     /*if (remote_connected){
         debug("Connection already done!");
@@ -832,8 +833,8 @@ int remote_connect(char *nodename, uint port)
     sprintf(port_number, "%d", port);
     s = getaddrinfo(nodename, port_number, &hints, &result);
     if (s != 0) {
-        debug("getaddrinfo fail for %s and %s", nodename, port_number);
-        return EAR_ERROR;
+        debug("getaddrinfo fail for %s and %s ret EAR_ERROR", nodename, port_number);
+        return ret;
     }
 
     struct timeval timeout;
@@ -883,6 +884,8 @@ int remote_connect(char *nodename, uint port)
             } else {
                 debug("Timeout connecting to %s node", nodename);
                 close(sfd);
+                ret = EAR_TIMEOUT;
+                sfd = -1;
                 continue;
             }
             set_socket_block(sfd, 1);
@@ -893,8 +896,8 @@ int remote_connect(char *nodename, uint port)
     freeaddrinfo(result); /* No longer needed */
 
     if (rp == NULL) { /* No address succeeded */
-        debug("Failing in connecting to remote eards");
-        return EAR_ERROR;
+        debug("Failing in connecting to remote eards ret %d", ret);
+        return ret;
     }
 
     char conection_ok = 0;
@@ -910,17 +913,21 @@ int remote_connect(char *nodename, uint port)
     if (read(sfd, &conection_ok, sizeof(char)) > 0) {
         debug("Handshake with server completed.");
     } else {
-        debug("Couldn't complete handshake with server, closing conection.");
+        debug("Couldn't complete handshake with server, closing conection. ret %d", ret);
         close(sfd);
-        return EAR_ERROR;
+        return ret;
     }
 
     memset(&timeout, 0, sizeof(struct timeval));
     setsockopt(sfd, SOL_SOCKET, SO_RCVTIMEO, (void *) (&timeout), sizeof(timeout));
 
-    remote_connected = 1;
-    eards_sfd        = sfd;
-    return sfd;
+    if (sfd >= 0)
+        remote_connected = 1;
+    eards_sfd = sfd;
+    debug("remote connect %s ret %d", (remote_connected ? "connected" : "not connected"), ret);
+    if (sfd >= 0)
+        return sfd;
+    return ret;
 }
 
 int remote_disconnect()
@@ -1058,17 +1065,17 @@ void correct_error(int target_idx, uint32_t total_ips, int *ips, request_t *comm
     }
 }
 
-void correct_error_nodes(request_t *command, int self_ip, uint port)
+state_t correct_error_nodes(request_t *command, int self_ip, uint port)
 {
 
     request_t tmp_command;
     int i;
 
     if (command->num_nodes < 1)
-        return;
+        return EAR_ERROR;
     else { // if there is only one node and it is the current one nothing needs to be done
         if (command->num_nodes == 1 && command->nodes[0] == self_ip)
-            return;
+            return EAR_ERROR;
         // if not, we remove the current node from the list
         for (i = 0; i < command->num_nodes; i++) {
             if (command->nodes[i] == self_ip) {
@@ -1082,10 +1089,11 @@ void correct_error_nodes(request_t *command, int self_ip, uint port)
     memcpy(&tmp_command, command, sizeof(request_t));
     int base_distance = command->num_nodes / NUM_PROPS + 1;
 
-    internal_send_command_nodes(command, port, base_distance, NUM_PROPS);
+    state_t ret = internal_send_command_nodes(command, port, base_distance, NUM_PROPS);
 
     // we set num_nodes to 0 to prevent unknown errors, but memory is freed in request_propagation
     command->num_nodes = 0;
+    return ret;
 }
 
 request_header_t correct_data_prop_nodes(request_t *command, int self_ip, uint port, void **data)
@@ -1220,12 +1228,13 @@ int get_max_prop_group(int num_props, int max_depth, int num_nodes)
     return num_props;
 }
 
-void internal_send_command_nodes(request_t *command, int port, int base_distance, int num_sends)
+state_t internal_send_command_nodes(request_t *command, int port, int base_distance, int num_sends)
 {
     int i, rc;
     struct sockaddr_in temp;
     char next_ip[256];
     request_t tmp_command;
+    state_t ret = EAR_SUCCESS;
 
     memcpy(&tmp_command, command, sizeof(request_t));
 #if SHOW_DEBUGS
@@ -1257,22 +1266,25 @@ void internal_send_command_nodes(request_t *command, int port, int base_distance
         rc = remote_connect(next_ip, port);
         if (rc < 0) {
             debug("internal_send_command_nodes: Error connecting with node %s, trying to correct it", next_ip);
-            correct_error_nodes(&tmp_command, command->nodes[base_distance * i], port);
+            ret = correct_error_nodes(&tmp_command, command->nodes[base_distance * i], port);
+            if ((ret != EAR_SUCCESS) && (rc == EAR_TIMEOUT))
+                ret = rc;
         } else {
             debug("internal_send_command_nodes: Node %s with %d num_nodes contacted!", next_ip, tmp_command.num_nodes);
             if (!send_command(&tmp_command)) {
                 debug("internal_send_command_nodes: Error sending command to node %s, trying to correct it", next_ip);
                 remote_disconnect();
-                correct_error_nodes(&tmp_command, command->nodes[i * base_distance], port);
+                ret = correct_error_nodes(&tmp_command, command->nodes[i * base_distance], port);
             } else
-                remote_disconnect();
+                ret = remote_disconnect();
         }
         free(tmp_command.nodes);
         tmp_command.num_nodes = 0;
     }
+    return ret;
 }
 
-void send_command_nodelist(request_t *command, cluster_conf_t *my_cluster_conf)
+state_t send_command_nodelist(request_t *command, cluster_conf_t *my_cluster_conf)
 {
     int base_distance, num_sends;
 
@@ -1292,7 +1304,7 @@ void send_command_nodelist(request_t *command, cluster_conf_t *my_cluster_conf)
           num_sends);
 
     /* Inner functionality for initial communication has been moved to its own function to avoid code replication */
-    internal_send_command_nodes(command, my_cluster_conf->eard.port, base_distance, num_sends);
+    return internal_send_command_nodes(command, my_cluster_conf->eard.port, base_distance, num_sends);
 }
 
 request_header_t internal_data_nodes(request_t *command, int port, int base_distance, int num_sends, void **data)
