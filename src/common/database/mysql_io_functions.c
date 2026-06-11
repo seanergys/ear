@@ -586,7 +586,9 @@ int mysql_batch_insert_jobs(MYSQL *connection, application_t *app, int num_apps)
         bind[16 + offset].buffer_length = strlen(app[i].job.energy_tag);
 
         // double types
-        bind[10 + offset].buffer_type = MYSQL_TYPE_DOUBLE;
+        // bind[12 + offset].buffer_type = MYSQL_TYPE_FLOAT;
+        // th is a double and float in the DB. We specify as double and let SQL to fix
+        bind[12 + offset].buffer_type = MYSQL_TYPE_DOUBLE;
 
         // storage variable assignation
         bind[0 + offset].buffer  = (char *) &app[i].job.id;
@@ -747,8 +749,8 @@ int mysql_retrieve_applications(MYSQL *connection, char *query, application_t **
     debug("Query:%s", query);
 
     // integer types
-    bind[0].buffer_type = bind[1].buffer_type = bind[2].buffer_type = bind[4].buffer_type = bind[5].buffer_type =
-        MYSQL_TYPE_LONGLONG;
+    bind[0].buffer_type = bind[1].buffer_type = bind[2].buffer_type = bind[4].buffer_type = MYSQL_TYPE_LONGLONG;
+    bind[5].buffer_type                                                                   = MYSQL_TYPE_LONG;
     bind[0].is_unsigned = bind[1].is_unsigned = bind[2].is_unsigned = bind[4].is_unsigned = bind[5].is_unsigned = 1;
 
     // string types
@@ -1087,7 +1089,7 @@ int mysql_retrieve_jobs(MYSQL *connection, char *query, job_t **jobs)
     bind[3].buffer_length = bind[4].buffer_length = bind[5].buffer_length = bind[6].buffer_length =
         bind[11].buffer_length = bind[16].buffer_length = 256;
     // double types
-    bind[12].buffer_type = MYSQL_TYPE_DOUBLE;
+    bind[12].buffer_type = MYSQL_TYPE_FLOAT;
 
     // varchar types
 
@@ -1508,7 +1510,7 @@ int mysql_retrieve_signatures(MYSQL *connection, char *query, signature_t **sigs
         return EAR_MYSQL_ERROR;
     }
 
-    int id = 0;
+    uint64_t id = 0;
     if (mysql_stmt_prepare(statement, query, strlen(query))) {
         free(sig_aux);
         return mysql_statement_error(statement);
