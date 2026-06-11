@@ -480,7 +480,10 @@ int send_mail(uint level, double energy)
             error("Warning mail file cannot be created at %s (%s)", mail_filename, strerror(errno));
             return 0;
         }
-        write(fd, buff, strlen(buff));
+        int ret = write(fd, buff, strlen(buff));
+        if (ret == -1) {
+            error("Writing the mail: (%d) %s", errno, strerror(errno));
+        }
         close(fd);
         sprintf(command, "mailx -s \"Energy limit warning\" %s < %s", my_cluster_conf.eargm.mail, mail_filename);
         execute_with_fork(command);

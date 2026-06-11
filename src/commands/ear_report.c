@@ -311,36 +311,29 @@ static PGconn *postgresql_create_connection()
 
 void usage(char *app)
 {
-    printf("%s is a tool that reports energy consumption data\n", app);
     printf("Usage: %s [options]\n", app);
-    printf(
-        "Options are as follows:\n"
-        "\t-s start_time     \t indicates the start of the period from which the energy consumed will be computed. "
-        "Format: YYYY-MM-DD. Default: end_time minus insertion time*2.\n"
-        "\t-e end_time       \t indicates the end of the period from which the energy consumed will be computed. "
-        "Format: YYYY-MM-DD. Default: current time.\n"
-        "\t-n node_name |all \t indicates from which node the energy will be computed. Default: none (all nodes "
-        "computed) \n\t\t\t\t\t 'all' option shows all nodes individually, not aggregated.\n"
-        "\t-u user_name |all \t requests the energy consumed by a user in the selected period of time. Default: none "
-        "(all users computed). \n\t\t\t\t\t 'all' option shows all users individually, not aggregated.\n"
-        "\t-G user_group|all \t requests the energy consumed by a user group in the selected period of time. Default: "
-        "none (all groups computed). \n\t\t\t\t\t 'all' option shows all groups individually, not aggregated.\n"
-        "\t-t energy_tag|all \t requests the energy consumed by energy tag in the selected period of time. Default: "
-        "none (all tags computed). \n\t\t\t\t\t 'all' option shows all tags individually, not aggregated.\n"
-        "\t-i eardbd_name|all\t indicates from which eardbd (island) the energy will be computed. Default: none (all "
-        "islands computed) \n\t\t\t\t\t 'all' option shows all eardbds individually, not aggregated.\n"
-        "\t\t-d                 expands the results of -i to individual records. If an island is not specified, it "
-        "prints all of them.\n"
-        "\t-g                \t shows the contents of EAR's database Global_energy table. The default option will show "
-        "the records for the two previous T2 periods of EARGM.\n\t\t\t\t\t This option can only be modified with -s, "
-        "not -e\n"
-        "\t-x                \t shows the daemon events from -s to -e. If no time frame is specified, it uses the "
-        "default start and end times. \n"
-        "\t-z                \t shows the detailed periodic metrics reported during that period. If no time frame is "
-        "specified, it uses the default start and end times. \n"
-        "\t-w --total-savings \t Shows the total Energy Savings in HKW \n"
-        "\t-v                \t shows current EAR version. \n"
-        "\t-h                \t shows this message.\n");
+    printf("\nOptions:\n");
+    printf("  %-32s %s\n", "-h, --help", "Displays this message.");
+    printf("  %-32s %s\n", "-v, --version", "Displays the current EAR version.");
+    printf("  %-32s %s\n", "-b, --verbose", "Enables verbose mode for debugging purposes.");
+    printf("\nFilters:\n");
+    printf("  %-32s %s\n", "-s, --start-time <YYYY-MM-DD>", "Sets the start of the period.");
+    printf("  %-32s %s\n", "", "Default: end time minus twice the insertion time.");
+    printf("  %-32s %s\n", "-e, --end-time <YYYY-MM-DD>", "Sets the end of the period. Default: current time.");
+    printf("  %-32s %s\n", "-n, --nodes <node|all>", "Filters by node name. Default: none.");
+    printf("  %-32s %s\n", "-u, --users <user|all>", "Filters by username. Default: none.");
+    printf("  %-32s %s\n", "-G, --group <group|all>", "Filters by group name. Default: none.");
+    printf("  %-32s %s\n", "-t, --etags <tag|all>", "Filters by energy tag. Default: none.");
+    printf("  %-32s %s\n", "-i, --islands <eardbd|all>", "Filters by EARDBD island. Default: none.");
+    printf("\nOutput:\n");
+    printf("  %-32s %s\n", "-d, --expanded", "Expands island results to individual records.");
+    printf("  %-32s %s\n", "", "If no island is specified, prints all of them.");
+    printf("  %-32s %s\n", "-g, --global-energy", "Shows EAR database global energy records.");
+    printf("  %-32s %s\n", "", "Defaults to the two previous EARGM T2 periods.");
+    printf("  %-32s %s\n", "", "This option can be modified with --start-time, but not --end-time.");
+    printf("  %-32s %s\n", "-x, --events", "Shows daemon events for the selected period.");
+    printf("  %-32s %s\n", "-z, --detailed", "Shows detailed periodic metrics for the selected period.");
+    printf("  %-32s %s\n", "-w, --total-savings", "Shows the total energy savings in kWh.");
     exit(0);
 }
 
