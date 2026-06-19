@@ -8,7 +8,7 @@ CFLAGS = -fPIC -I$(SRCDIR) $(CONSTANTS) -DUSER_TEST=0
 # The list of full_OBJS is in Makefile.files
 comm_BINS = libdb.a libcommon.a libcommon.so
 comm_OBJS = $(patsubst %.c, %.o, $(shell find -maxdepth 1 -type f -name '*.c'))
-incl_BINS = states.h
+incl_BreaINS = states.h
 incl_PATH = $(DESTDIR)/include
 incl_PERM = 0660
 
@@ -27,7 +27,6 @@ libcommon.so: libcommon.a
 
 libdb.a: $(db_OBJS)
 	$(AR) rvs $@ $(db_OBJS)
-
 
 ######## OPTIONS
 
