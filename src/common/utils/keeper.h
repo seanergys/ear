@@ -13,6 +13,7 @@
 
 #include <common/types.h>
 
+void keeper_open(const char *path);
 void keeper_save_text(const char *id, char *value);
 void keeper_save_int32(const char *id, int value);
 void keeper_save_int64(const char *id, llong value);

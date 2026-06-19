@@ -7,10 +7,9 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
+
 /* clang-format off */
-
 // #define SHOW_DEBUGS 1
-
 #include <common/config.h>
 #include <common/environment_common.h>
 #include <common/hardware/hardware_info.h>
@@ -68,11 +67,13 @@ static state_t load_dynamic_plugin(const char *dir_plug, const char *plugin_name
 
     snprintf(energy_obj, sizeof(energy_obj), "%s/energy/%s", dir_plug, name_no_args);
     debug("loading shared object '%s'", energy_obj);
-
     if (state_fail(symplug_open(energy_obj, (void **) &energy_ops, energy_names, energy_nops))) {
         return EAR_ERROR;
     }
-
+    if (energy_ops.load == NULL) {
+        // dlclose() would be interesting, but symplug does not return the handler.
+        return EAR_ERROR;
+    }
     return energy_ops.load(&energy_context);
 }
 
@@ -133,7 +134,7 @@ state_t energy_load(int options, cluster_conf_t *my_cluster_conf, my_node_conf_t
 
     // Try loading node-specific plugin if available (preferred)
     if (my_node_conf != NULL) {
-        debug("node_conf found, trying %s", node_conf->energy_plugin);
+        debug("node_conf found, trying %s", my_node_conf->energy_plugin);
         if (state_ok(load_dynamic_plugin(dir_plug, my_node_conf->energy_plugin))) {
             ret = EAR_SUCCESS;
             goto end;
