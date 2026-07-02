@@ -102,8 +102,8 @@ static int plugins_action_periodic_call(int i, int d, void *data)
     if (p.plugins_sorted[i]->action_periodic[d] == NULL) {
         sprintf(buffer, "up_action_periodic_%s", p.plugins_sorted[d]->tag);
         p.plugins_sorted[i]->action_periodic[d] = dlsym(p.plugins_sorted[i]->handler, buffer);
-        // If NULL persist
-        if (p.plugins_sorted[i]->action_periodic[d] == NULL) {
+        // If NULL persist, and it is the periodic function of the plugin 'i' itself
+        if (i == d && p.plugins_sorted[i]->action_periodic[d] == NULL) {
             p.plugins_sorted[i]->action_periodic[d] = dlsym(p.plugins_sorted[i]->handler, "up_action_periodic");
         }
         // If is still NULL, this address is unreachable
@@ -267,8 +267,8 @@ static int plugins_action_init_call(int i, int d, void **data_alloc, void *data)
     if (p.plugins_sorted[i]->action_init[d] == NULL) {
         sprintf(buffer, "up_action_init_%s", p.plugins_sorted[d]->tag);
         p.plugins_sorted[i]->action_init[d] = dlsym(p.plugins_sorted[i]->handler, buffer);
-        // If NULL persist
-        if (p.plugins_sorted[i]->action_init[d] == NULL) {
+        // If NULL persist, and it is the init function of the plugin 'i' itself
+        if (i == d && p.plugins_sorted[i]->action_init[d] == NULL) {
             debug("[DEBUG] %s: function '%s'... NOT DETECTED", p.plugins_sorted[i]->file_name, buffer);
             sprintf(buffer, "up_action_init");
             p.plugins_sorted[i]->action_init[d] = dlsym(p.plugins_sorted[i]->handler, buffer);
@@ -289,7 +289,6 @@ static int plugins_action_init_call(int i, int d, void **data_alloc, void *data)
 static int plugins_action_init_one(int i)
 {
     plugin_t *plug = p.plugins_sorted[i];
-
     if (!plug->is_enabled || plug->is_initialized) {
         return 0;
     }
@@ -310,6 +309,7 @@ static void plugins_action_init(int i)
     if (i == 0) {
         output_print_format();
     }
+    // Calling own plugin initialization function
     if (!plugins_action_init_one(i)) {
         goto next_ai;
     }
@@ -358,6 +358,7 @@ static state_t plugins_init(void *whatever)
     if ((enabled = plugin_manager_internal_open(&p, priority_paths))) {
         plugin_manager_internal_sort(&p);
         afd_init(&fds_active);
+        // Calling the init of the first sorted plugin
         plugins_action_init(0);
         initialized = 1;
     }
@@ -374,10 +375,10 @@ static int plugin_manager_configure(int argc, char *argv[])
     char params[128];
     char verb_lvl[2] = "\0";
 
-    if (argc == 1) {
-        verbose(0, "[ERROR] No plugins to load.");
-    }
-    if (args_get(argc, argv, "help", buffer)) {
+    if (argc == 1 || args_get(argc, argv, "help", buffer)) {
+        if (argc == 1) {
+            verbose(0, "[ERROR] No plugins to load.\n");
+        }
         verbose(0, "Usage: %s [OPTIONS]\n", argv[0]);
         verbose(0, "Options:");
         verbose(0, "    --plugins=<list> List of '%c' separated plugins to load.", SEPARATOR);
