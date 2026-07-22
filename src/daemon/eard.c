@@ -75,6 +75,7 @@
 pthread_t app_eard_api_th;
 #endif
 
+pid_t eard_main_process_pid;
 #if POWERMON_THREAD
 pthread_t power_mon_th; // It is pending to see whether it works with threads
 #endif
@@ -703,6 +704,8 @@ int main(int argc, char *argv[])
             Usage(argv[0]);
         }
     }
+
+    eard_main_process_pid = getpid();
 
     set_ear_verbose(verb_level);
     VERB_SET_LV(verb_level);
