@@ -87,6 +87,19 @@ state_t energy_dc_read(void *c, edata_t energy_mj)
 
     ullong elapsed = timestamp_diffnow(&start_time, TIME_MSECS);
 
+#if BLOCKING_RANDOM
+
+#endif
+#if DELAYED_RANDOM
+    static uint petitions = 0;
+    petitions++;
+    if ((petitions % 10) == 0) {
+        verbose(0, "fake delay start.....");
+        sleep(30);
+        verbose(0, "fake delay end.....");
+    }
+#endif
+
     *penergy_mj = (ulong) elapsed * 150; // Dummy power: 150 W
     debug("energy_dc_read: %lu elapsed: %llu\n", *penergy_mj, elapsed);
 
