@@ -75,6 +75,7 @@
 pthread_t app_eard_api_th;
 #endif
 
+pid_t eard_main_process_pid;
 #if POWERMON_THREAD
 pthread_t power_mon_th; // It is pending to see whether it works with threads
 #endif
