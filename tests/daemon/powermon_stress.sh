@@ -35,6 +35,7 @@ sleep 2
 export EAR_TMP=$3
 export EAR_INSTALL_PATH=$1
 
+export SLURM_JOB_ID=1
 for (( i=1 ; i<=${4} ; i++ )); do
 	$EAR_INSTALL_PATH/bin/erun --program="$5"
 done
