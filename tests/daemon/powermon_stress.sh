@@ -18,7 +18,7 @@ set -x
 sed -i -e "s/\(NodeUseDB=\)\([01]\)/\11/" \
 	-e "s/\(NodeUseEARDBD=\)\([01]\)/\11/" \
 	-e "s/\(NodeDaemonPowermonFreq=\)\([[:digit:]]\+\)/\110/"	\
-	-e "s/\(EARDReportPlugins=\)\([[:alnum:]_]\+\.so\)/\1csv_ts.so/" \
+	-e "s/\(EARDReportPlugins=\)\([[:alnum:]_]\+\.so\)/\1log.so/" \
 	-e "s/\(NodeDaemonMinPstate=\)\([[:digit:]]\+\)/\10/" \
 	-e "s/\(energy_plugin=\)\([[:alnum:]_]\+\.so\)/\1energy_dummy.so/" 	$ear_conf
 
@@ -46,4 +46,13 @@ if [[ ! $(ps | grep $eard_pid) ]]; then
 	exit 1
 fi
 
-echo "eard [$eard_pid] is running... Bye!"
+echo "eard [$eard_pid] is running!"
+
+echo "Checking whether the number of apps reported matches ${4}..."
+if [[ $(cat $EAR_TMP/eard.*.apps.txt | wc -l) -eq ${4} ]]; then
+	echo "Match!"
+	exit 0
+else
+	echo "$(cat $EAR_TMP/eard.*.apps.txt | wc -l) does not match with ${4}"
+	exit 1
+fi
