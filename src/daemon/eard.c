@@ -637,8 +637,12 @@ void report_eard_init_error()
 
 void update_global_configuration_with_local_ssettings(cluster_conf_t *my_cluster_conf, my_node_conf_t *my_node_conf)
 {
-    strcpy(my_cluster_conf->install.obj_ener, my_node_conf->energy_plugin);
-    strcpy(my_cluster_conf->install.obj_power_model, my_node_conf->energy_model);
+    if (my_cluster_conf->install.obj_ener != my_node_conf->energy_plugin)
+        strncpy(my_cluster_conf->install.obj_ener, my_node_conf->energy_plugin,
+                sizeof(my_cluster_conf->install.obj_ener) - 1);
+    if (my_cluster_conf->install.obj_power_model != my_node_conf->energy_model)
+        strncpy(my_cluster_conf->install.obj_power_model, my_node_conf->energy_model,
+                sizeof(my_cluster_conf->install.obj_power_model) - 1);
 }
 
 int get_exec_name(char *name, int name_size)

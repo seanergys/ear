@@ -695,7 +695,7 @@ static int new_context(job_id id, job_id sid, char *user, char *group, int *cc)
     // This option forces eard to use the shared pmapp region, otherwise it is not updated dynamically
     // it could be used to see the list of jobs but not to update job state etc
     // moved at the end: current_ear_app[ccontext] = aux2;
-    free_energy_data(&aux1->energy_init);
+    // free_energy_data(&aux1->energy_init);
     free(aux1);
 #endif
     verbose(VJOBPMON, "(%lu/%lu) 'Self' context in '%s' (fd %d)", id, sid, jobpmon_path, aux2->fd_shared_areas[SELF]);
@@ -1729,13 +1729,6 @@ void powermon_new_task(new_task_req_t *newtask)
         return;
     }
 
-    state_t lock_st;
-    if ((lock_st = ear_trylock(&powermon_app_mutex[curr_job_ctx_idx])) != EAR_SUCCESS) {
-        error("Locking context %lu/%lu at receiving new task request: %s", pmapp->app.job.id, pmapp->app.job.step_id,
-              state_msg);
-        return;
-    }
-
     if (pmapp->master_pid == 0)
         pmapp->master_pid = newtask->pid;
 
@@ -2098,11 +2091,6 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job, uint 
 
     end_context(curr_ctx, pmapp);
 
-    verbose(VJOBPMON + 1, "Cleaning job from node_mgr");
-
-    nodemgr_clean_job(jid, sid);
-
-    clean_job_area(ID);
     if (!from_mpi)
         ear_unlock(&powermon_app_mutex[curr_ctx]);
 
@@ -2123,6 +2111,12 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job, uint 
             set_default_powermon_end(&summary, 0);
         }
     }
+
+    verbose(VJOBPMON + 1, "Cleaning job from node_mgr");
+
+    nodemgr_clean_job(jid, sid);
+
+    clean_job_area(ID);
 
     verbose(VJOBPMON, "***************************************");
 
