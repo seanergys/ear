@@ -836,7 +836,7 @@ static int add_new_local_connection(local_connection_t *my_con, ulong jid, ulong
 static int get_local_connection_ack(local_connection_t *my_con, int reqfd)
 {
     int i = 0;
-    while ((my_con[i].fds[REQ_LOCAL_FD] != reqfd) && (i < num_local_con)) {
+    while ((i < num_local_con) && (my_con[i].fds[REQ_LOCAL_FD] != reqfd)) {
         // debug("Check local conn req=%d in pos %d req=%d
         // ack=%d",reqfd,i,my_con[i].fds[REQ_LOCAL_FD],my_con[i].fds[ACK_LOCAL_FD]);
         i++;
@@ -851,7 +851,7 @@ static int get_local_connection_ack(local_connection_t *my_con, int reqfd)
 static int get_local_connection_by_fd(local_connection_t *my_con, int reqfd, int ackfd)
 {
     int i = 0;
-    while (!((my_con[i].fds[REQ_LOCAL_FD] == reqfd) && (my_con[i].fds[ACK_LOCAL_FD] == ackfd)) && (i < num_local_con))
+    while ((i < num_local_con) && !((my_con[i].fds[REQ_LOCAL_FD] == reqfd) && (my_con[i].fds[ACK_LOCAL_FD] == ackfd)))
         i++;
     if (i == num_local_con) {
         return_msg(EAR_ERROR, "Local connection not found");
@@ -862,7 +862,7 @@ static int get_local_connection_by_fd(local_connection_t *my_con, int reqfd, int
 static int get_local_connection_by_id(local_connection_t *my_con, ulong jid, ulong sid)
 {
     int i = 0;
-    while (!((my_con[i].jid == jid) && (my_con[i].sid == sid) && !my_con[i].cancelled) && (i < num_local_con))
+    while ((i < num_local_con) && !((my_con[i].jid == jid) && (my_con[i].sid == sid) && !my_con[i].cancelled))
         i++;
     if (i == num_local_con)
         return -1;
@@ -872,7 +872,7 @@ static int get_local_connection_by_id(local_connection_t *my_con, ulong jid, ulo
 static int get_local_connection_by_req(local_connection_t *my_con, int reqfd)
 {
     int i = 0;
-    while ((my_con[i].fds[REQ_LOCAL_FD] != reqfd) && (i < num_local_con))
+    while ((i < num_local_con) && (my_con[i].fds[REQ_LOCAL_FD] != reqfd))
         i++;
     if (i == num_local_con) {
         return_msg(EAR_ERROR, "Local connection not found");
