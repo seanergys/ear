@@ -7,9 +7,9 @@ compile-delayed-energy-reading:
     - if: $CI_COMMIT_REF_PROTECTED == "true"
       when: always
   script:
-    - export CONFIG_SITE="$TESTDIR/config-sites/config.no-mpi-loader.site"
     - export CC_FLAGS="-Wall -O2 -g -DDELAYED_RANDOM=1"
-    - CONFIGURE_FLAGS="--prefix=$PWD/ear-delayed-random" $TESTDIR/compile.sh
+    - export MPICC_FLAGS="\$(CC_FLAGS)"
+    - CONFIGURE_FLAGS="--prefix=$PWD/ear-delayed-random --disable-mpi --disable-mpi-loader --without-slurm" $TESTDIR/compile.sh
     - make install
     - make etc.install
   artifacts:
