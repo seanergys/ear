@@ -415,9 +415,6 @@ int mark_contexts_to_finish_by_jobid(job_id id, job_id step_id)
     ear_unlock(&app_lock);
     debug("%s", COL_CLR);
 
-    ear_unlock(&app_lock);
-    debug("%s", COL_CLR);
-
     return found_contexts;
 }
 
@@ -1560,13 +1557,6 @@ void powermon_mpi_init(ehandler_t *eh, application_t *appID)
 
     verbose(VTASKMON, "powermon_mpi_init job_id %lu step_id %lu (is_mpi %u)", appID->job.id, appID->job.step_id,
             appID->is_mpi);
-    if (state_fail(ear_trylock(&app_lock))) {
-        error("Locking  pmon_app global vector for app init %lu/%lu cannot be acquired", appID->job.id,
-              appID->job.step_id);
-        return;
-    }
-    debug("%sApp lock", COL_RED);
-
     if (state_fail(ear_trylock(&app_lock))) {
         error("Locking  pmon_app global vector for app init %lu/%lu cannot be acquired", appID->job.id,
               appID->job.step_id);
@@ -3359,6 +3349,9 @@ static state_t store_current_task_governor(powermon_app_t *powermon_app, cpu_set
 
         uint *governor_list = (uint *) malloc(man.cpufreq.devs_count * sizeof(uint));
         if (governor_list) {
+            for (uint i = 0; i < man.cpufreq.devs_count; i++)
+                governor_list[i] = Governor.unknown;
+
             if (state_ok(mgt_cpufreq_governor_get_list(no_ctx, governor_list))) {
 
                 int i = 0;
