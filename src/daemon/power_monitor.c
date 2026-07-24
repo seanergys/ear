@@ -1729,13 +1729,6 @@ void powermon_new_task(new_task_req_t *newtask)
         return;
     }
 
-    state_t lock_st;
-    if ((lock_st = ear_trylock(&powermon_app_mutex[curr_job_ctx_idx])) != EAR_SUCCESS) {
-        error("Locking context %lu/%lu at receiving new task request: %s", pmapp->app.job.id, pmapp->app.job.step_id,
-              state_msg);
-        return;
-    }
-
     if (pmapp->master_pid == 0)
         pmapp->master_pid = newtask->pid;
 
