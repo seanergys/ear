@@ -608,6 +608,7 @@ void powermon_purge_old_jobs()
 }
 
 // Lock is already acquired
+
 /* TODO: Thread-save here?: It's not possible because mutex is inside the context that will be created. */
 static int new_context(job_id id, job_id sid, char *user, char *group, int *cc)
 {
@@ -694,7 +695,7 @@ static int new_context(job_id id, job_id sid, char *user, char *group, int *cc)
     // This option forces eard to use the shared pmapp region, otherwise it is not updated dynamically
     // it could be used to see the list of jobs but not to update job state etc
     // moved at the end: current_ear_app[ccontext] = aux2;
-    free_energy_data(&aux1->energy_init);
+    // free_energy_data(&aux1->energy_init);
     free(aux1);
 #endif
     verbose(VJOBPMON, "(%lu/%lu) 'Self' context in '%s' (fd %d)", id, sid, jobpmon_path, aux2->fd_shared_areas[SELF]);
@@ -711,7 +712,6 @@ static int new_context(job_id id, job_id sid, char *user, char *group, int *cc)
         jobmon_shared_area_dispose(jobpmon_path, NULL, aux2->fd_shared_areas[SELF]);
         return EAR_ERROR;
     }
-
     debug("(%lu/%lu) Settings for new context '%s' (fd %d)", id, sid, shmem_path, aux2->fd_shared_areas[SETTINGS_AREA]);
 
     /* Context 0 is the default one */
@@ -1527,6 +1527,7 @@ void powermon_loop_signature(job_id jid, job_id sid, loop_t *loops)
         debug("%s", COL_CLR);
         return;
     }
+
     pmapp = current_ear_app[cc];
 
     debug("New loop signature for %lu/%lu, iterations %lu", pmapp->app.job.id, pmapp->app.job.step_id,
@@ -1556,7 +1557,6 @@ void powermon_mpi_init(ehandler_t *eh, application_t *appID)
 
     verbose(VTASKMON, "powermon_mpi_init job_id %lu step_id %lu (is_mpi %u)", appID->job.id, appID->job.step_id,
             appID->is_mpi);
-
     if (state_fail(ear_trylock(&app_lock))) {
         error("Locking  pmon_app global vector for app init %lu/%lu cannot be acquired", appID->job.id,
               appID->job.step_id);
@@ -2009,7 +2009,6 @@ void powermon_new_job(powermon_app_t *pmapp, ehandler_t *eh, application_t *appI
 /* This function is called by dynamic_configuration thread when a end_job command arrives. */
 void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job, uint from_mpi)
 {
-
     // Application disconnected
     powermon_app_t summary, *pmapp;
 
@@ -2053,6 +2052,7 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job, uint 
         }
     }
     pmapp = current_ear_app[curr_ctx];
+
     if (!pmapp) { // Double check
         if (!from_mpi) {
             ear_unlock(&app_lock);
@@ -2109,15 +2109,11 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job, uint 
 
     end_context(curr_ctx, pmapp);
 
-    verbose(VJOBPMON + 1, "Cleaning job from node_mgr");
-
-    nodemgr_clean_job(jid, sid);
-
-    clean_job_area(ID);
     if (!from_mpi)
         ear_unlock(&powermon_app_mutex[curr_ctx]);
 
     // Move at the end to execute without the lock
+
     if (summary.state != APP_FINISHED) {
         // Executed without lock . get_lock
         if (powermon_is_idle(1)) {
@@ -2133,6 +2129,12 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job, uint 
             set_default_powermon_end(&summary, 0);
         }
     }
+
+    verbose(VJOBPMON + 1, "Cleaning job from node_mgr");
+
+    nodemgr_clean_job(jid, sid);
+
+    clean_job_area(ID);
 
     verbose(VJOBPMON, "***************************************");
 
@@ -2253,6 +2255,7 @@ void powermon_new_def_freq(uint p_id, ulong def)
  * chages the node freq if needed */
 void powermon_set_freq(ulong freq)
 {
+
     int nump;
     uint ps, cc;
     powermon_app_t *pmapp;
@@ -2320,6 +2323,7 @@ void update_pmapps(power_data_t *last_pmon, nm_data_t *nm)
                 continue;
             }
             pmapp = current_ear_app[cc];
+
             ear_unlock(&app_lock);
             debug("%s", COL_CLR);
             if (!pmapp) { // Double check
@@ -2585,6 +2589,7 @@ void update_historic_info(power_data_t *last_pmon, nm_data_t *nm, power_data_t *
                 pmapp->app.power_sig.min_DC_power = last_pmon->avg_dc;
             }
         }
+
     unlock_app:
         ear_unlock(&powermon_app_mutex[cc]);
     }
@@ -2672,8 +2677,8 @@ powermon_actions:
 void create_powermon_out()
 {
     char output_name[MAX_PATH_SIZE * 4];
-    char *header =
-        "job_id;begin_time;end_time;mpi_init_time;mpi_finalize_time;avg_dc_power;max_dc_power;min_dc_power\n";
+    char *header = "job_id;begin_time;end_time;mpi_init_time;mpi_finalize_time;avg_dc_power;max_dc_power;"
+                   "min_dc_power\n";
     mode_t my_mask;
     // We are using EAR_TMP but this info will go to the DB
     my_mask = umask(0);
@@ -3124,6 +3129,7 @@ uint powermon_is_idle(uint get_lock)
         }
         ear_unlock(&powermon_app_mutex[i]);
     }
+
     if (get_lock) {
         ear_unlock(&app_lock);
         debug("%s", COL_CLR);
@@ -3343,6 +3349,9 @@ static state_t store_current_task_governor(powermon_app_t *powermon_app, cpu_set
 
         uint *governor_list = (uint *) malloc(man.cpufreq.devs_count * sizeof(uint));
         if (governor_list) {
+            for (uint i = 0; i < man.cpufreq.devs_count; i++)
+                governor_list[i] = Governor.unknown;
+
             if (state_ok(mgt_cpufreq_governor_get_list(no_ctx, governor_list))) {
 
                 int i = 0;

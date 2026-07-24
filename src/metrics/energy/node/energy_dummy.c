@@ -86,10 +86,6 @@ state_t energy_dc_read(void *c, edata_t energy_mj)
     ulong *penergy_mj = (ulong *) energy_mj;
 
     ullong elapsed = timestamp_diffnow(&start_time, TIME_MSECS);
-
-#if BLOCKING_RANDOM
-
-#endif
 #if DELAYED_RANDOM
     static uint petitions = 0;
     petitions++;
