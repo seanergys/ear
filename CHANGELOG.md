@@ -8,9 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - development Added flops to ZEN5.
+- v6 Added CHANGELOG update by a CI job
 
 ### Changed
 - development Updated AMD with changes for ZEN3, ZEN4 and ZEN5.
+- v6 Set SLURM_JOB_ID to non-zero.
+
+### Fixed
+- v6 Power monitor locks fixes.
 
 ## [6.3.1] - 2026-06-04
 
