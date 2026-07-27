@@ -48,8 +48,8 @@ def changed_files(commit):
     return git("diff-tree", "--no-commit-id", "--name-only", "-r", commit).splitlines()
 
 
-def commits_since(tag):
-    raw = git("log", "--no-merges", "--reverse", "--format=%H%x1f%s%x1f%B%x1e", f"{tag}..HEAD")
+def commits_since(target):
+    raw = git("log", "--no-merges", "--reverse", "--format=%H%x1f%s%x1f%B%x1e", f"{target}..HEAD")
     commits = []
     for record in raw.split("\x1e"):
         if not record.strip():
@@ -112,9 +112,9 @@ def main():
     if len(sys.argv) != 3:
         sys.exit(f"Usage: {sys.argv[0]} <target-branch> <changelog>")
     target, filename = sys.argv[1:]
-    tag = release_tag(target)
-    update_changelog(Path(filename), target, commits_since(tag))
-    print(f"Updated Unreleased entries from {tag} for {target}")
+    # tag = release_tag(target)
+    update_changelog(Path(filename), target, commits_since(target))
+    print(f"Updated Unreleased entries for {target}")
 
 
 if __name__ == "__main__":
