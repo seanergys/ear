@@ -7,11 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- development Added flops to ZEN5.
+- v6 Added CHANGELOG update by a CI job
 
 ### Changed
+- development Updated AMD with changes for ZEN3, ZEN4 and ZEN5.
+- v6 Set SLURM_JOB_ID to non-zero.
 - New energy node API.
+- v7 Update version in readme
+- v7 Use an image which has clang-format-19 already installed
 
 ### Fixed
+- v6 Power monitor locks fixes.
+- v7 Power monitor locks fixes.
+- v7 Prevent updating github mirror on EAR public project
+- v7 Resolve "v7 DB insertion error" and fixes EARD race conditions between remote api and periodic monitor
 
 ## [7.0.0] - 2026-06-19
 
