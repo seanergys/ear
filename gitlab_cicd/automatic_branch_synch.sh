@@ -30,8 +30,9 @@ gitlab_api() {
 }
 
 branches="$(gitlab_api --get \
-    --data-urlencode 'per_page=100' \
-    "$CI_API_V4_URL/projects/$CI_PROJECT_ID/repository/branches")"
+					--data-urlencode search=${next_release_branch} \
+					"$CI_API_V4_URL/projects/$CI_PROJECT_ID/repository/branches")"
+
 if jq -e --arg branch "$next_release_branch" \
     '.[] | select(.name == $branch)' >/dev/null <<<"$branches"; then
     target_branch="$next_release_branch"
