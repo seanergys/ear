@@ -13,14 +13,11 @@
 /* clang-format off */
 
 #include <common/types.h>
-#include <common/system/time.h>
 
 // Internal contract between plugin_manager.c and plugin_manager_internal.c.
 // This exposes implementation state, so keep it out of plugin_manager.h.
 
 #define MAX_PLUGINS      128
-#define MAX_SYMBOLS      4
-#define MAX_MSGS_CACHE   32
 #define PM_DEFAULT_VERB  2
 #ifndef SEPARATOR
 #define SEPARATOR '+'
@@ -29,7 +26,7 @@
 typedef void  (get_tag_f)         (cchar **tag, cchar **tags_deps);
 typedef char *(action_init_f)     (cchar *tag, void **data_alloc, void *data);
 typedef char *(action_periodic_f) (cchar *tag, void *data);
-typedef void  (action_close_f)    ();
+typedef char *(action_close_f)    (void);
 typedef char *(message_receive_f) (cchar *tag_msg, void *data);
 typedef char *(poll_attend_f)     (cchar *tag_fd, int fd);
 
@@ -45,15 +42,16 @@ typedef struct plugin_s {
     void              *handler;
     cchar             *tag;
     cchar             *tags_deps;
-    char               conf[512];
+    char             **config_tokens; // Owns the allocation backing data_conf
     uint               deps_table[MAX_PLUGINS]; // Not sorted, table of dependecy modes
     action_init_f     *action_init[MAX_PLUGINS];
+    uint               action_init_resolved[MAX_PLUGINS];
     action_periodic_f *action_periodic[MAX_PLUGINS];
+    uint               action_periodic_resolved[MAX_PLUGINS];
     void              *data; // Allocated space from init function
     void              *data_conf; // From plugin format: conf1, conf2, etc.
     ullong             time_accum;
     ullong             time_lapse; // In ms
-    timestamp_t        time_origin;
     uint               time_lapse_is_set;
     uint               priority;
     uint               is_opened;
@@ -62,19 +60,17 @@ typedef struct plugin_s {
     uint               is_paused; // If paused is not called periodically
     uint               is_silenced;
     uint               id_overhead_periodic;
-    uint               id_overhead_message;
 } plugin_t;
 
 typedef struct plugins_s {
     plugin_t         **plugins_sorted; // Plugins sorted by priority
     plugin_t          *plugins;
-    uint               max_priority;
     uint               count;
 } plugins_t;
 
 // Internal poll system
 typedef struct pmfd_set_s {
-    uint               plugin_index;
+    plugin_t          *plugin;
     poll_attend_f     *poll_attend;
     cchar             *tag;
 } pmfd_set_t;
@@ -84,6 +80,8 @@ int  plugin_manager_internal_read(plugins_t *ctx, cchar *string, ullong dependen
 int  plugin_manager_internal_open(plugins_t *ctx, char **priority_paths);
 
 void plugin_manager_internal_sort(plugins_t *ctx);
+
+void plugin_manager_internal_dispose(plugins_t *ctx);
 
 /* clang-format on */
 #endif // PLUGIN_MANAGER_INTERNAL_H

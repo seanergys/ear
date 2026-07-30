@@ -12,6 +12,7 @@
 #define PLUGIN_MANAGER_H
 /* clang-format off */
 
+#include <string.h>
 #include <common/types.h>
 #include <common/system/poll.h>
 
@@ -37,7 +38,7 @@
 #define declr_up_get_tag()               void up_get_tag(cchar **tag, cchar **tags_deps)
 #define declr_up_action_init(suffix)     char *up_action_init##suffix(cchar *tag, void **data_alloc, void *data)
 #define declr_up_action_periodic(suffix) char *up_action_periodic##suffix(cchar *tag, void *data)
-#define declr_up_action_close()          char *up_action_close()
+#define declr_up_action_close()          char *up_action_close(void)
 #define declr_up_message_receive(suffix) char *up_message_receive##suffix(cchar *tag_msg, void *data)
 #define declr_up_poll_attend(suffix)     char *up_poll_attend##suffix(cchar *tag_fd, int fd)
 
@@ -52,13 +53,13 @@
 // The main function of the Plugin Manager. It initializes a thread.
 int plugin_manager_main(int argc, char *argv[]);
 // The main function but passing the array of files and paths.
-int plugin_manager_main2(char *files, char *paths);
+int plugin_manager_main2(char *plugins, char *paths);
 // To load additional plugins.
 int plugin_manager_load_more_plugins(char *plugins);
 // Closes Plugin Manager main thread.
-void plugin_manager_exit();
+void plugin_manager_exit(void);
 // Wait until Plugin Manager main thread exits.
-void plugin_manager_wait();
+void plugin_manager_wait(void);
 // Asking for an action. Intended to be called from plugins.
 void *plugin_manager_action_trigger(cchar *tag);
 // Passing 1 data to the N plugins that are reading the tag.
