@@ -88,7 +88,7 @@ void powermon_mpi_finalize(ulong jid, ulong sid);
 void powermon_new_job(powermon_app_t *pmapp, application_t *j, uint from_mpi, uint is_job);
 
 /** It must be called at when job ends. */
-void powermon_end_job(job_id jid, job_id sid, uint is_job);
+void powermon_end_job(job_id jid, job_id sid, uint is_job, uint from_mpi);
 
 /** Called by dynamic_configuration thread when a new task is created. */
 void powermon_new_task(new_task_req_t *newtask);

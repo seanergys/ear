@@ -7,10 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- development Secret key between EARDBD and EARDBD API.
+- development Added flops to ZEN5.
+- v6 Added CHANGELOG update by a CI job
 
 ### Changed
-- development CPI, cache, temperature, flops, cpufreq, bandwidth, gpu and imcefreq APIs.
+- development Updated AMD with changes for ZEN3, ZEN4 and ZEN5.
+- v6 Set SLURM_JOB_ID to non-zero.
+- New energy node API.
+- v7 Update version in readme
+- v7 Use an image which has clang-format-19 already installed
+
+### Fixed
+- v6 Power monitor locks fixes.
+- v7 Power monitor locks fixes.
+- v7 Prevent updating github mirror on EAR public project
+- v7 Resolve "v7 DB insertion error" and fixes EARD race conditions between remote api and periodic monitor
+
+## [7.0.0] - 2026-06-19
+
+### Added
+- Secret key between EARDBD and EARDBD API.
+- Added a HWMON function to close unused file descriptors.
+- Added debug callback proposal.
+- Added count system to HSMP.
+- Improve overhead class to add a runtime selection system.
+- Added SCOPE_NODE and SCOPE_JOB to different APIs.
+- MIG slices study and adding a GPU topology function.
+- Read the cluster conf in eardbd.
+- Add an ENERGY (NODE) plugin to read the E4 energy (and potentially, other energy counters based on scripts).
+- Add API DEMO to GPU.
+- Power cap verification functions.
+- Add citation file.
+
+### Changed
+- CPI, cache, temperature, flops, cpufreq, bandwidth, gpu and imcefreq APIs.
+- Improved timestamp_diff() code robustness.
+- Improve the locking and retry systems in sockets.
+- Plugin manager 2.0.
+- Database naming scheme revision.
+- Update commands --help and man pages.
+
+### Fixed
+
+- Fixed plugin_manager_close() function.
+- Fix SIGSEGV when the hostname prefix is too large.
+- EARL-EARD timeouts.
+- Wall Werror CFLAGS fixes.
+- Prevent SIGSEGV when passing a NULL energy tag.
+- CSV files mode and ownership.
 
 ## [6.3.1] - 2026-06-04
 
