@@ -216,7 +216,7 @@ int32_t create_indexes(void *connection)
     }
 
     if (get_num_indexes(connection, "Jobs") < 3) {
-        sprintf(query, "CREATE INDEX idx_user_id ON Jobs (user_id)");
+        sprintf(query, "CREATE INDEX idx_user_id ON Jobs (user_name)");
         ret += run_query(connection, query);
     } else {
         fprintf(stdout, "Jobs indexes already created, skipping...\n");
@@ -288,6 +288,7 @@ int32_t create_tables(void *connection)
                        "L1_misses BIGINT unsigned, "
                        "L2_misses BIGINT unsigned, "
                        "L3_misses BIGINT unsigned, "
+                       "sp64_ops BIGINT unsigned, "
                        "sp128_ops BIGINT unsigned, "
                        "sp256_ops BIGINT unsigned, "
                        "sp512_ops BIGINT unsigned, "
@@ -866,7 +867,9 @@ int main(int argc, char *argv[])
 
                 verbosen(0, "Introduce root's password:");
                 fflush(stdout);
-                fgets(passw, sizeof(passw), stdin);
+                if (fgets(passw, sizeof(passw), stdin) == NULL) {
+                    passw[0] = '\0';
+                }
                 t.c_lflag |= ECHO;
                 tcsetattr(STDIN_FILENO, TCSANOW, &t);
                 strclean(passw, '\n');
@@ -885,7 +888,9 @@ int main(int argc, char *argv[])
             case 'u':
                 verbosen(0, "Introduce root's user: ");
                 fflush(stdout);
-                fgets(root_user, sizeof(root_user), stdin);
+                if (fgets(root_user, sizeof(root_user), stdin) == NULL) {
+                    root_user[0] = '\0';
+                }
                 strclean(root_user, '\n');
                 fprintf(stdout, " ");
                 break;
