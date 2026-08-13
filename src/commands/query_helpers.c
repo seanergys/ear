@@ -61,37 +61,46 @@ void _add_string_filter(char *query, char *addition, char *value, bool quotes)
 
 void add_int_filter(char *query, char *addition, int value)
 {
-    char query_tmp[512];
-    strcpy(query_tmp, query);
     if (query_filters < 1)
-        strcat(query_tmp, " WHERE ");
+        strcat(query, " WHERE ");
     else
-        strcat(query_tmp, " AND ");
+        strcat(query, " AND ");
 
+<<<<<<< HEAD
     strcat(query_tmp, addition);
     strcat(query_tmp, "=");
     strcat(query_tmp, "%llu");
     sprintf(query, query_tmp, value);
     query_filters++;
+=======
+    strcat(query, addition);
+    strcat(query, "=");
+    sprintf(query + strlen(query), "%d", value);
+    query_filters ++;
+>>>>>>> f23c6295333d29d0e0a1f75f94c87b867844069b
 }
 
 void add_int_comp_filter(char *query, char *addition, int value, char greater_than)
 {
-    char query_tmp[512];
-    strcpy(query_tmp, query);
     if (query_filters < 1)
-        strcat(query_tmp, " WHERE ");
+        strcat(query, " WHERE ");
     else
-        strcat(query_tmp, " AND ");
+        strcat(query, " AND ");
 
-    strcat(query_tmp, addition);
+    strcat(query, addition);
     if (greater_than)
-        strcat(query_tmp, ">");
+        strcat(query, ">");
     else
+<<<<<<< HEAD
         strcat(query_tmp, "<");
     strcat(query_tmp, "%llu");
     sprintf(query, query_tmp, value);
     query_filters++;
+=======
+        strcat(query, "<");
+    sprintf(query + strlen(query), "%d", value);
+    query_filters ++;
+>>>>>>> f23c6295333d29d0e0a1f75f94c87b867844069b
 }
 
 void add_int_list_filter(char *query, char *addition, char *value)
