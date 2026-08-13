@@ -1096,11 +1096,9 @@ void read_jobs_from_loops(query_adds_t *q_a)
         char *aux = strrchr(csv_path, '/');
         if (aux != NULL) {
             aux++; // move the pointer from the '/' to the next part
-            strncpy(tmp_path, csv_path, strlen(csv_path) - strlen(aux));
-            strcat(tmp_path, "out_jobs.");
-            strcat(tmp_path, aux);
+            snprintf(tmp_path, sizeof(tmp_path), "%.*sout_jobs.%s", (int) (aux - csv_path - 1), csv_path, aux);
         } else {
-            sprintf(tmp_path, "out_jobs.%s", csv_path);
+            snprintf(tmp_path, sizeof(tmp_path), "out_jobs.%s", csv_path);
         }
         fd = open(tmp_path, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP);
     }
