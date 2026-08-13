@@ -20,7 +20,6 @@
 #include <stdbool.h>
 #include <unistd.h>
 
-<<<<<<< HEAD
 typedef struct query_addons {
     int limit;
     int job_id;
@@ -29,21 +28,8 @@ typedef struct query_addons {
     int end_time;
     char e_tag[64];
     char app_id[64];
-    char job_ids[64];
+    char *job_ids;
     char step_ids[64];
-=======
-typedef struct query_addons 
-{
-	int limit;
-	int job_id;
-	int step_id;
-	int start_time;
-	int end_time;
-	char e_tag[64];
-	char app_id[64];
-	char *job_ids;
-	char step_ids[64];
->>>>>>> f23c6295333d29d0e0a1f75f94c87b867844069b
 } query_adds_t;
 
 #define add_string_filter(query, addition, value)           _add_string_filter(query, addition, value, 1);
