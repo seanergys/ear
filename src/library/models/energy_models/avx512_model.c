@@ -52,6 +52,7 @@ static uint projection_available(ulong from_ps, ulong to_ps);
 state_t energy_model_init(char *ear_coeffs_path, char *ear_tmp_path, architecture_t *arch_desc)
 {
     int i, ref;
+    uint nominal_pstate;
     state_t state;
     char *hack_file = ear_getenv(HACK_EARL_COEFF_FILE);
 
@@ -61,17 +62,35 @@ state_t energy_model_init(char *ear_coeffs_path, char *ear_tmp_path, architectur
     if (state_fail(state)) {
         return state;
     }
+    if (num_pstates == 0) {
+        return_msg(EAR_ERROR, "No CPU P-states available");
+    }
+
+    state = mgt_cpufreq_get_nominal(no_ctx, &nominal_pstate);
+    if (state_fail(state)) {
+        return state;
+    }
 
     copy_arch_desc(&arch, arch_desc);
     print_arch_desc(&arch);
 
     VERB_SET_EN(0);
 
-    if (state_fail(mgt_cpufreq_get_index(no_ctx, arch.max_freq_avx512, &avx512_pstate, 1))) {
-        mgt_cpufreq_get_nominal(no_ctx, &avx512_pstate);
+    /* An omitted or below-minimum AVX limit means nominal frequency. */
+    avx512_pstate = nominal_pstate;
+    if (arch.max_freq_avx512 >= available_pstates[num_pstates - 1].khz) {
+        uint pstate;
+        if (state_ok(mgt_cpufreq_get_index(no_ctx, arch.max_freq_avx512, &pstate, 1))) {
+            avx512_pstate = pstate;
+        }
     }
-    if (state_fail(mgt_cpufreq_get_index(no_ctx, arch.max_freq_avx2, &avx2_pstate, 1))) {
-        mgt_cpufreq_get_nominal(no_ctx, &avx2_pstate);
+
+    avx2_pstate = nominal_pstate;
+    if (arch.max_freq_avx2 >= available_pstates[num_pstates - 1].khz) {
+        uint pstate;
+        if (state_ok(mgt_cpufreq_get_index(no_ctx, arch.max_freq_avx2, &pstate, 1))) {
+            avx2_pstate = pstate;
+        }
     }
 
     VERB_SET_EN(1);
