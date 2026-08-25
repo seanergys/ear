@@ -189,11 +189,13 @@ sync_github_mirror:
     - if test -z "$GITHUB_MIRROR_TOKEN"; then echo "Missing required CI variable GITHUB_MIRROR_TOKEN"; exit 1; fi
     - git push "https://x-access-token:${GITHUB_MIRROR_TOKEN}@github.com/${GITHUB_MIRROR_REPOSITORY}.git" "HEAD:refs/heads/gitlab/${CI_COMMIT_BRANCH}"
     - echo "${GITHUB_MIRROR_TOKEN}" | gh auth login --with-token
+    - head_branch="gitlab/${CI_COMMIT_BRANCH}"
     - base_branch="${CI_COMMIT_BRANCH}priv"
     - |
       if [ "$CI_COMMIT_BRANCH" == "development" ]; then
         base_branch=dev
       fi
+    - git remote add -f --no-tags -t "$head_branch" -t "$base_branch" github https://x-access-token:${GITHUB_MIRROR_TOKEN}@github.com/${GITHUB_MIRROR_REPOSITORY}.git
     - exit_code=0
     - gh pr create --repo "$GITHUB_MIRROR_REPOSITORY" -B "$base_branch" --fill -H "gitlab/${CI_COMMIT_BRANCH}" || exit_code=$?
     - if [ $exit_code -ne 0 ]; then echo "Error creating the PR (${exit_code})"; fi
