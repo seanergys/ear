@@ -803,13 +803,11 @@ void create_shared_regions()
         verbose_master(2, "Error creating node_mgr region");
     }
     ear_njob_t me;
-    me.jid           = application.job.id;
-    me.sid           = application.job.step_id;
-    me.creation_time = time(NULL);
-#if WF_SUPPORT
+    me.jid               = application.job.id;
+    me.sid               = application.job.step_id;
+    me.creation_time     = time(NULL);
     me.num_earl_apps     = 1;
     me.modification_time = me.creation_time;
-#endif
     CPU_ZERO(&me.node_mask);
     verbose_master(2, "Master (PID: %d)  Attaching to node_mgr region", getpid());
     if (nodemgr_attach_job(&me, &node_mgr_index) != EAR_SUCCESS) {
@@ -1803,11 +1801,9 @@ void ear_init()
     debug("User %s", application.job.user_id);
     strcpy(application.node_id, node_name);
     strcpy(application.job.user_acc, my_account);
-    application.job.id      = my_job_id;
-    application.job.step_id = my_step_id;
-#if WF_SUPPORT
+    application.job.id       = my_job_id;
+    application.job.step_id  = my_step_id;
     application.job.local_id = AID;
-#endif
 
     debug("Starting job");
     // sets the job start_time
@@ -3063,8 +3059,6 @@ static void release_shared_memory_areas()
     verbose(WF_SUPPORT_VERB, "EARL[%d] releasing shared memory regions", getpid());
     return;
 
-#if WF_SUPPORT
-
     /* WARNING */
 
     verbose(WF_SUPPORT_VERB, "EARL[%d] sig_shared_region", getpid());
@@ -3074,7 +3068,6 @@ static void release_shared_memory_areas()
     verbose(WF_SUPPORT_VERB, "EARL[%d] external_mgt", getpid());
     munmap(external_mgt, sizeof(ear_mgt_t));
     verbose(WF_SUPPORT_VERB, "EARL[%d] end releasing shared memory regions", getpid());
-#endif
 }
 
 static void reset_earl_environment()

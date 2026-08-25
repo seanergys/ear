@@ -220,10 +220,8 @@ void average_signatures(signature_t *dst, signature_t *src, int nums)
         dst->gpu_sig.gpu_data[i].GPU_mem_freq = src->gpu_sig.gpu_data[i].GPU_mem_freq / nums;
         dst->gpu_sig.gpu_data[i].GPU_util     = src->gpu_sig.gpu_data[i].GPU_util / nums;
         dst->gpu_sig.gpu_data[i].GPU_mem_util = src->gpu_sig.gpu_data[i].GPU_mem_util / nums;
-#if WF_SUPPORT
         dst->gpu_sig.gpu_data[i].GPU_temp     = src->gpu_sig.gpu_data[i].GPU_temp / nums;
         dst->gpu_sig.gpu_data[i].GPU_temp_mem = src->gpu_sig.gpu_data[i].GPU_temp_mem / nums;
-#endif
     }
 #endif
 }
