@@ -86,7 +86,7 @@ compile-mpi-mysql:
       - GCC_TOOLSET: [11, 12, 13, 14]
 
 deploy-eardbd:
-  stage: deploy
+  stage: test
   needs: [compile-mpi-mysql]
   rules:
     - if: $CI_COMMIT_TAG
@@ -108,7 +108,7 @@ deploy-eardbd:
       - eardbd.out
 
 deploy-eard:
-  stage: deploy
+  stage: test
   needs: [compile-mpi-mysql]
   rules:
     - if: $CI_COMMIT_TAG
