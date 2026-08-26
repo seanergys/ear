@@ -23,7 +23,7 @@ next-major-sync:
     # The runner checkout contains the pushed ref, but not necessarily the
     # target branch that glab uses to populate --fill.
     - git fetch --no-tags origin "$target_branch:refs/remotes/origin/$target_branch"
-    - GITLAB_HOST="$CI_SERVER_FQDN" glab mr create --auto-merge --source-branch "$CI_COMMIT_BRANCH" --target-branch "$target_branch" --yes --fill
+    - GITLAB_HOST="$CI_SERVER_FQDN" glab mr create --auto-merge --source-branch "$CI_COMMIT_BRANCH" --target-branch "$target_branch" --yes --title "$CI_COMMIT_BRANCH synchronization."
 
 sync-github-mirror:
   stage: .post
@@ -53,5 +53,4 @@ sync-github-mirror:
         base_branch=dev
       fi
     - git remote add -f --no-tags -t "$head_branch" -t "$base_branch" github https://x-access-token:${GITHUB_MIRROR_TOKEN}@github.com/${GITHUB_MIRROR_REPOSITORY}.git
-    - exit_code=0
-    - gh pr create --repo "$GITHUB_MIRROR_REPOSITORY" -B "$base_branch" -H "gitlab/${CI_COMMIT_BRANCH}" --body "Review commit list." --title "Gitlab synchronization."
+    - gh pr create --repo "$GITHUB_MIRROR_REPOSITORY" -B "$base_branch" -H "gitlab/${CI_COMMIT_BRANCH}" --body "Review commit list." --title "Gitlab's $CI_COMMIT_BRANCH synchronization."
