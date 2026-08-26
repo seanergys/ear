@@ -24,7 +24,9 @@ next-major-sync:
     # The runner checkout contains the pushed ref, but not necessarily the
     # target branch that glab uses to populate --fill.
     - git fetch --no-tags origin "$target_branch:refs/remotes/origin/$target_branch"
-    - GITLAB_HOST="$CI_SERVER_FQDN" glab mr create --auto-merge --source-branch "$CI_COMMIT_BRANCH" --target-branch "$target_branch" --yes --title "$CI_COMMIT_BRANCH synchronization."
+    - GITLAB_HOST="$CI_SERVER_FQDN" glab mr create --source-branch "$CI_COMMIT_BRANCH" --target-branch "$target_branch" --yes --title "$CI_COMMIT_BRANCH synchronization."
+    - sleep 2
+    - GITLAB_HOST="$CI_SERVER_FQDN" glab mr merge "$CI_COMMIT_BRANCH" --auto-merge --yes
 
 sync-github-mirror:
   stage: .post
