@@ -25,8 +25,16 @@ next-major-sync:
     # target branch that glab uses to populate --fill.
     - git fetch --no-tags origin "$target_branch:refs/remotes/origin/$target_branch"
     - GITLAB_HOST="$CI_SERVER_FQDN" glab mr create --source-branch "$CI_COMMIT_BRANCH" --target-branch "$target_branch" --yes --title "$CI_COMMIT_BRANCH synchronization."
-    - sleep 2
-    - GITLAB_HOST="$CI_SERVER_FQDN" glab mr merge "$CI_COMMIT_BRANCH" --auto-merge --yes
+    - |
+      for attempt in 1 2 3 4 5 6; do
+        if GITLAB_HOST="$CI_SERVER_FQDN" glab mr merge "$CI_COMMIT_BRANCH" --auto-merge --yes; then
+          exit 0
+        fi
+        echo "Auto-merge is not ready; retrying in 10 seconds (attempt $attempt/6)"
+        sleep 10
+      done
+      echo "Merge request was created, but auto-merge could not be enabled" >&2
+      exit 1
 
 sync-github-mirror:
   stage: .post
