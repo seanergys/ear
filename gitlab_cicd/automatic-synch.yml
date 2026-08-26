@@ -30,6 +30,7 @@ sync-github-mirror:
     - if: $CI_PROJECT_NAME == "ear"
       when: never
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF_PROTECTED == "true"
+      allow_failure: true
   variables:
     GIT_DEPTH: "0"
     GIT_STRATEGY: clone
@@ -49,5 +50,4 @@ sync-github-mirror:
       fi
     - git remote add -f --no-tags -t "$head_branch" -t "$base_branch" github https://x-access-token:${GITHUB_MIRROR_TOKEN}@github.com/${GITHUB_MIRROR_REPOSITORY}.git
     - exit_code=0
-    - gh pr create --repo "$GITHUB_MIRROR_REPOSITORY" -B "$base_branch" -H "gitlab/${CI_COMMIT_BRANCH}" --body "Review commit list." --title "Gitlab synchronization." || exit_code=$?
-    - if [ $exit_code -ne 0 ]; then echo "Error creating the PR (${exit_code})"; fi
+    - gh pr create --repo "$GITHUB_MIRROR_REPOSITORY" -B "$base_branch" -H "gitlab/${CI_COMMIT_BRANCH}" --body "Review commit list." --title "Gitlab synchronization."
