@@ -2,7 +2,7 @@ next-major-sync:
   stage: .post
   image: alpine:latest
   rules:
-    - if: $CI_COMMIT_BRANCH =~ /^v[0-9]+$/ && $CI_COMMIT_REF_PROTECTED == "true"'
+    - if: $CI_COMMIT_BRANCH =~ /^v[0-9]+$/ && $CI_COMMIT_REF_PROTECTED == "true"
       allow_failure: true
   variables:
     # CI_JOB_TOKEN can read MRs, but cannot create or merge them.
