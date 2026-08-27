@@ -1,8 +1,8 @@
 next-major-sync:
-  stage: quality
+  stage: .post
   image: alpine:latest
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^v[0-9]+$/ && $CI_COMMIT_REF_PROTECTED == "true"'
+    - if: $CI_COMMIT_BRANCH =~ /^v[0-9]+$/ && $CI_COMMIT_REF_PROTECTED == "true"'
       allow_failure: true
   variables:
     # CI_JOB_TOKEN can read MRs, but cannot create or merge them.
@@ -44,7 +44,7 @@ sync-github-mirror:
       when: never
     - if: $CI_PROJECT_NAME == "ear"
       when: never
-    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF_PROTECTED == "true"
+    - if: $CI_COMMIT_REF_PROTECTED == "true"
       allow_failure: true
   variables:
     GIT_DEPTH: "0"
