@@ -522,14 +522,14 @@ state_t create_eid_folder(char *tmp, int jid, int sid, uint AID)
     strcat(EID_application_path, ".app");
 
     verbose(WF_SUPPORT_VERB + 1, "EARL: Creating app folder %s", EID_application_path);
-    ret = mkdir(EID_application_path, S_IRWXU);
+    ret = mkdir(EID_application_path, S_IRWXU | S_IROTH | S_IXOTH);
     if ((ret < 0) && (errno != EEXIST)) {
         verbose(WF_SUPPORT_VERB + 1, "EAR error EID folder cannot be created (%s) (%s)", EID_application_path,
                 strerror(errno));
         node_mgr_info_unlock();
         return EAR_ERROR;
     }
-    chmod(EID_application_path, S_IRUSR | S_IWUSR | S_IXUSR);
+    chmod(EID_application_path, S_IRUSR | S_IWUSR | S_IXUSR | S_IROTH | S_IXOTH);
     verbose(WF_SUPPORT_VERB + 1, "EID folder (%s) created", EID_application_path);
 
     /* Application folder */
@@ -2133,7 +2133,9 @@ void ear_init()
         }
     }
     verbosen_info_master("Node sharing strategy: ");
-    verbose_master(VEARL_INFO, "%s", (node_sharing_strategy == node) ? "node" : "job");
+    verbose_master(VEARL_INFO, "%s",
+                   (node_sharing_strategy == node) ? "node(all the CPUs in the node will be considered)"
+                                                   : "job(only CPUs used by jobs will be considered)");
 
     verbose_info2_master("Init CPU power models for node sharing.");
     if (cpu_power_model_load(system_conf, &arch_desc, API_NONE) == EAR_SUCCESS) {
