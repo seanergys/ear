@@ -473,8 +473,6 @@ int send_mail(uint level, double energy)
     char command[4400];
     char mail_filename[SZ_PATH];
     int fd;
-    size_t buff_size;
-    ssize_t written;
     if (strcmp(my_cluster_conf.eargm.mail, "nomail")) {
         sprintf(buff, "Detected WARNING level %u, %lfi %% of energy from the total energy limit\n", level, energy);
         sprintf(mail_filename, "%s/warning_mail.txt", my_cluster_conf.install.dir_temp);

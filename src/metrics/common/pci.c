@@ -37,7 +37,6 @@ state_t pci_scan(ushort vendor, ushort *ids, char **dfs, mode_t mode, pci_t **pc
     folder_t folder;
     int b, d, i, fd;
     ushort rid, vid;
-    ssize_t read_size;
     uint ids_count;
     uint dfs_count;
     char aux[16];
