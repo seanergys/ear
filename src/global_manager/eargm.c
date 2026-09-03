@@ -37,6 +37,7 @@
 #include <common/output/verbose.h>
 #include <common/states.h>
 #include <common/system/execute.h>
+#include <common/system/file.h>
 #include <common/system/folder.h>
 #include <common/utils/sched_support.h>
 
@@ -482,11 +483,8 @@ int send_mail(uint level, double energy)
             error("Warning mail file cannot be created at %s (%s)", mail_filename, strerror(errno));
             return 0;
         }
-        buff_size = strlen(buff);
-        written   = write(fd, buff, buff_size);
-        if (written != (ssize_t) buff_size) {
-            error("Warning mail file cannot be written at %s (%s)", mail_filename,
-                  written < 0 ? strerror(errno) : "short write");
+        if (state_fail(ear_fd_write(fd, buff, strlen(buff)))) {
+            error("Warning mail file write failed: %s", strerror(errno));
             close(fd);
             return 0;
         }

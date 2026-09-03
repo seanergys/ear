@@ -105,9 +105,14 @@ int main(int argc, char *argv[])
                 tcsetattr(STDIN_FILENO, TCSANOW, &t);
                 printf("Introduce root's password:");
                 fflush(stdout);
+<<<<<<< HEAD
                 if (fgets(passw, sizeof(passw), stdin) == NULL) {
                     passw[0] = '\0';
                 }
+=======
+                if (fgets(passw, sizeof(passw), stdin) == NULL)
+                    passw[0] = '\0';
+>>>>>>> 5187a34616f122d96239424ac1a02ca3ee61da94
                 t.c_lflag |= ECHO;
                 tcsetattr(STDIN_FILENO, TCSANOW, &t);
                 printf("\n");

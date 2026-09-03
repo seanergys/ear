@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - v6 Power monitor locks fixes.
+- Fixed compiler warnings promoted to errors by `-Wall -Werror` across PCI I/O, MPI Library loading, global-manager and `erun` cleanup, command input, database-accounting formatting, and keyboard input handling.
 
 ## [7.3.0] - 2026-08-05
 
@@ -194,6 +195,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Initialize all arrays before using them.
 - v6.0 Improving earl-eard connect to avoid blocking.
 - v6.0 Fixed socket count in acpi\_power.
+
+## [5.2.8] - 2026-09-03
+
+### Fixed
+
+- Improve timeout management of energy readings.
+- EARD: Fixed race condition in the computation of the power of node sharing jobs.
+- Fix file permissions of EAR Library node sharing regions.
 
 ## [5.2.7] - 2026-08-13
 
