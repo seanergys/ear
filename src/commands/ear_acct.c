@@ -1096,10 +1096,10 @@ void read_jobs_from_loops(query_adds_t *q_a)
     if (strlen(csv_path) > 0 && strcmp(csv_path, "no_file")) {
         char *aux = strrchr(csv_path, '/');
         if (aux != NULL) {
+            size_t prefix_len = (size_t) (aux - csv_path + 1);
             aux++; // move the pointer from the '/' to the next part
-            strncpy(tmp_path, csv_path, strlen(csv_path) - strlen(aux));
-            strcat(tmp_path, "out_jobs.");
-            strcat(tmp_path, aux);
+            memcpy(tmp_path, csv_path, prefix_len);
+            snprintf(tmp_path + prefix_len, sizeof(tmp_path) - prefix_len, "out_jobs.%s", aux);
         } else {
             sprintf(tmp_path, "out_jobs.%s", csv_path);
         }
