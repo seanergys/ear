@@ -212,7 +212,7 @@ state_t nodemgr_attach_job(ear_njob_t *my_job, uint *my_index)
         ear_file_unlock(fd_node_mgr_lck);
     } else {
         s = EAR_SUCCESS;
-        // verbose(WF_SUPPORT_VERB,"Adding new app in NODE MGR region in pos %u", pos);
+        verbose(WF_SUPPORT_VERB, "Adding new app in NODE MGR region in pos %u", pos);
         if (!ear_file_lock_timeout(fd_node_mgr_lck, MAX_LOCK_TRIES))
             return EAR_ERROR;
         node_jobs_list[pos].modification_time = my_job->modification_time;
