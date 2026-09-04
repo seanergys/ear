@@ -13,10 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - erun: Set SLURM_JOB_ID to non-zero by default.
+- Update EAR logo
 
 ### Fixed
-- eard: Power monitor locks fixes.
+- EARD: Power monitor locks fixes.
+- eacct SIGSEGV when requesting a large number of jobs fixed.
+- Fix GCC 15 compilation warnings.
+- EARD: Fixed race condition in the computation of the power of node sharing jobs.
 - Fixed compiler warnings promoted to errors by `-Wall -Werror` across PCI I/O, MPI Library loading, global-manager and `erun` cleanup, command input, database-accounting formatting, and keyboard input handling.
+- fix `ear_control.c` clang-format.
 - Fix the computation of max and min power at job end.
 
 ## [6.3.1] - 2026-06-04
