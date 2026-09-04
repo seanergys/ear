@@ -6,18 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.4.0] - 2026-09-04
+
 ### Added
-- development Added flops to ZEN5.
-- v6 Added CHANGELOG update by a CI job
+- Added CHANGELOG update by a CI job.
 
 ### Changed
-- development Updated AMD with changes for ZEN3, ZEN4 and ZEN5.
-- v6 Set SLURM_JOB_ID to non-zero.
+- erun: Set SLURM_JOB_ID to non-zero by default.
 
 ### Fixed
-- v6 Power monitor locks fixes.
+- eard: Power monitor locks fixes.
 - Fixed compiler warnings promoted to errors by `-Wall -Werror` across PCI I/O, MPI Library loading, global-manager and `erun` cleanup, command input, database-accounting formatting, and keyboard input handling.
-- v5.2.9 Fix the computation of max and min power at job end.
+- Fix the computation of max and min power at job end.
 
 ## [6.3.1] - 2026-06-04
 
