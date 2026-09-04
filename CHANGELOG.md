@@ -6,19 +6,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.4.0] - 2026-09-04
+
 ### Added
-- development Added flops to ZEN5.
-- v6 Added CHANGELOG update by a CI job
+- Added CHANGELOG update by a CI job.
 
 ### Changed
-- development Updated AMD with changes for ZEN3, ZEN4 and ZEN5.
-- v6 Set SLURM_JOB_ID to non-zero.
-- New energy node API.
+- erun: Set SLURM_JOB_ID to non-zero by default.
+- Update EAR logo
 
 ### Fixed
-- v6 Power monitor locks fixes.
+- EARD: Power monitor locks fixes.
+- eacct SIGSEGV when requesting a large number of jobs fixed.
+- Fix GCC 15 compilation warnings.
+- EARD: Fixed race condition in the computation of the power of node sharing jobs.
 - Fixed compiler warnings promoted to errors by `-Wall -Werror` across PCI I/O, MPI Library loading, global-manager and `erun` cleanup, command input, database-accounting formatting, and keyboard input handling.
-- v5.2.9 Fix the computation of max and min power at job end.
+- fix `ear_control.c` clang-format.
+- Fix the computation of max and min power at job end.
 
 ## [7.3.0] - 2026-08-05
 
