@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - v6 Power monitor locks fixes.
 - Fixed compiler warnings promoted to errors by `-Wall -Werror` across PCI I/O, MPI Library loading, global-manager and `erun` cleanup, command input, database-accounting formatting, and keyboard input handling.
+- v5.2.9 Fix the computation of max and min power at job end.
 
 ## [7.3.0] - 2026-08-05
 
