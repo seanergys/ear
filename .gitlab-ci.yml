@@ -197,7 +197,7 @@ publish_patch:
     GIT_STRATEGY: clone
   script:
     - git diff $(git describe --abbrev=0 --tags --exclude="$(git describe --abbrev=0 --tags)") > release.patch
-    - git clone --branch=release-v6 https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.bsc.es/ear_team/ear
+    - git clone --branch=release-v7 https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.bsc.es/ear_team/ear
     - cd ear
     - git apply --whitespace=fix --reject ../release.patch
     - git add .
