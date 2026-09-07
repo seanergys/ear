@@ -6,6 +6,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- v7.4 CI: Automatically create a PR after synchronizing `gitlab/*` mirror branch.
+- v7.4 Timeouts management in energy reading plugins.
+- v7.4 erun: sbatch simulation added.
+
+### Changed
+- v7.4 Update EAR logo.
+- v7.4 Stop using old frequency wrapper API in energy models.
+- v7.4 Removed the compile-time option to disable workflows support.
+- v7.4 CI: Use GLab CLI to automatically create MR when pushing on protected branches.
+
+### Fixed
+- v7.4 EARD: Power monitor locks fixes.
+- v7.4 eacct SIGSEGV when requesting a large number of jobs fixed.
+- v7.4 Fix GCC 15 compilation warnings.
+- v7.4 EARD: Fixed race condition in the computation of the power of node sharing jobs.
+- v7.4 Fixed compiler warnings promoted to errors by `-Wall -Werror` across PCI I/O, MPI Library loading, global-manager and `erun` cleanup, command input, database-accounting formatting, and keyboard input handling.
+- v7.4 Fix `ear_control.c` clang-format.
+- v7.4 Fix the computation of max and min power at job end.
+- v7.4 Avoid caping CPU utilization at 100% to support multi-threaded processes.
+
 ## [6.4.0] - 2026-09-04
 
 ### Added
