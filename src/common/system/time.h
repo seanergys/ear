@@ -73,6 +73,9 @@ void timestamp_print(timestamp *ts, int fd);
 
 void timestamp_tostr(timestamp *ts, char *buffer, size_t size);
 
+// This class contains a code that has to be moved to EAR
+#define timestamp_is_zero(ts) (ts.tv_sec == 0 && ts.tv_nsec == 0)
+
 // Helpers
 /* Converts a timeval to a 64 bits time value in `time_unit` units. */
 ullong timeval_convert(struct timeval *ts, ullong time_unit);
