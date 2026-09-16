@@ -296,6 +296,19 @@ static void plugins_initialize(plugins_init_mode_t mode)
             }
         }
     }
+    // All own and dependency init callbacks must finish before this phase.
+    for (i = 0; i < p.count && !exit_called; ++i) {
+        plugin_t *plug = p.plugins_sorted[i];
+        action_periodic_f *call;
+
+        if (!plug->is_enabled || !plug->is_initialized) {
+            continue;
+        }
+        call = plugin_action_resolve(plug, plug, "init_post");
+        if (call != NULL) {
+            plugin_output(plug, call(plug->tag, plug->data));
+        }
+    }
 }
 
 static int plugins_open_and_initialize(plugins_init_mode_t mode, int initialize_poll)
