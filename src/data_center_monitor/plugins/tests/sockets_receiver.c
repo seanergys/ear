@@ -41,9 +41,9 @@ declr_up_action_init(_sockets_receiver)
 declr_up_poll_attend(_accept)
 {
     int fd_data;
-    macro_assert(sockets_accept(fd, &fd_data, NULL));
+    macro_assert(sockets_accept(pfd->fd, &fd_data, NULL));
     plugin_manager_poll_add("sockets_receiver", "data", fd_data);
-    return rsprintf("Accepted socket %d from socket %d", fd_data, fd);
+    return rsprintf("Accepted socket %d from socket %d", fd_data, pfd->fd);
 }
 
 declr_up_poll_attend(_data)
@@ -52,7 +52,7 @@ declr_up_poll_attend(_data)
     size_t data_size;
     uint data_type;
 
-    macro_assert(sockets_recv_header(fd, &data_type, &data_size, NULL, 1));
-    macro_assert(sockets_recv(fd, message, data_size, 1));
-    return rsprintf("Received message from socket %d '%s'", fd, message);
+    macro_assert(sockets_recv_header(pfd->fd, &data_type, &data_size, NULL, 1));
+    macro_assert(sockets_recv(pfd->fd, message, data_size, 1));
+    return rsprintf("Received message from socket %d '%s'", pfd->fd, message);
 }

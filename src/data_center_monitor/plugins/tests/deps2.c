@@ -25,6 +25,11 @@ declr_up_action_init(_deps2)
     return "deps2 init";
 }
 
+declr_up_action_init_post(_deps2)
+{
+    return "deps2 init_post";
+}
+
 declr_up_action_periodic(_deps1)
 {
     return "deps2 periodic (coming from deps1)";
