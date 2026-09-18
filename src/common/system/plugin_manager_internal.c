@@ -197,33 +197,33 @@ static state_t plugins_open_file(plugins_t *ctx, char **priority_paths, int i)
     while (priority_paths != NULL && priority_paths[j] != NULL) {
         if (snprintf(new_path, sizeof(new_path), "%s/%s", priority_paths[j], ctx->plugins[i].path)
             >= (int) sizeof(new_path)) {
-            verbose(4, "[Configuration] Plugin path is too long: %s/%s", priority_paths[j], ctx->plugins[i].path);
+            verbose(4, "[Loading] Plugin path is too long: %s/%s", priority_paths[j], ctx->plugins[i].path);
             ++j;
             continue;
         }
         if (state_ok(plugins_open_so(new_path, (void **) &ctx->plugins[i].handler))) {
-            verbose(4, "[Configuration] Trying to open: %s... OK", new_path);
+            verbose(4, "[Loading] %s... OK", new_path);
             return EAR_SUCCESS;
         }
-        verbose(4, "[Configuration] Trying to open: %s... FAILED (%s)", new_path, state_msg);
+        verbose(4, "[Loading] %s... FAILED (%s)", new_path, state_msg);
         ++j;
     }
     if (state_ok(plugins_open_so(ctx->plugins[i].path, (void **) &ctx->plugins[i].handler))) {
-        verbose(4, "[Configuration] Trying to open: %s... OK", ctx->plugins[i].path);
+        verbose(4, "[Loading] %s... OK", ctx->plugins[i].path);
         return EAR_SUCCESS;
     }
-    verbose(4, "[Configuration] Trying to open: %s... FAILED", ctx->plugins[i].path);
+    verbose(4, "[Loading] %s... FAILED", ctx->plugins[i].path);
     if ((e = ear_getenv(ENV_PATH_EAR)) != NULL) {
         if (snprintf(new_path, sizeof(new_path), "%s/lib/plugins/monitoring/%s", e, ctx->plugins[i].path)
             >= (int) sizeof(new_path)) {
-            verbose(4, "[Configuration] Environment plugin path is too long: %s", ctx->plugins[i].path);
+            verbose(4, "[Loading] Environment plugin path is too long: %s", ctx->plugins[i].path);
             return EAR_ERROR;
         }
         if (state_ok(plugins_open_so(new_path, (void **) &ctx->plugins[i].handler))) {
-            verbose(4, "[Configuration] Trying to open: %s... OK", new_path);
+            verbose(4, "[Loading] %s... OK", new_path);
             return EAR_SUCCESS;
         }
-        verbose(4, "[Configuration] Trying to open: %s... FAILED", new_path);
+        verbose(4, "[Loading] %s... FAILED", new_path);
     }
     return EAR_ERROR;
 }
@@ -272,10 +272,9 @@ int plugin_manager_internal_open(plugins_t *ctx, char **priority_paths)
             }
         }
         plug->is_enabled = plug->is_opened && (j == ctx->count);
-        verbose(4, "[Summary] %s %s: called every %06llu ms with priority %u%s",
-                (plug->is_opened) ? "Opened" : "Not opened",
-                plug->file_name, plug->time_lapse, plug->priority,
-                (plug->is_enabled) ? "" : ", but disabled");
+        verbose(2, "[Result] %s | priority %02u | at %06llu ms: %s",
+            (plug->is_opened) ? "Opened" : "Failed", plug->priority,
+            plug->time_lapse, plug->file_name);
         enabled_count += plug->is_enabled;
     }
     return enabled_count;

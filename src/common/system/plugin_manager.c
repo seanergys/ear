@@ -22,19 +22,6 @@
 #include <common/system/plugin_manager.h>
 #include <common/system/plugin_manager_internal.h>
 
-static plugins_t   p; // Struct that holds all plugins context
-static char      **priority_paths;
-static char        date[128];
-static ulong       monitor_period = 100;
-static ulong       relax_period   = 100;
-static uint        overhead_measurement_en;
-static uint        exit_called;
-static uint        initialized;
-// Serializes hot-loading with the monitor loop, which walks p.plugins_sorted.
-static pthread_mutex_t lock_pm = PTHREAD_MUTEX_INITIALIZER;
-static afd_set_t   fds_active; // FDs of our internal poll
-static pmfd_set_t  f[AFD_MAX]; // Struct that holds all file-descriptors context
-
 typedef enum plugins_init_mode_e {
     PLUGINS_INIT_COLD,
     PLUGINS_INIT_PENDING
@@ -46,50 +33,69 @@ typedef enum plugin_init_result_e {
     PLUGIN_INIT_NOT_IMPLEMENTED
 } plugin_init_result_t;
 
-static uint plugin_id(plugin_t *plug)
+// Global context
+static plugins_t   p;
+static char      **priority_paths;
+static char        date[128];
+static uint        overhead_measurement_en;
+static uint        exit_called;
+static uint        initialized;
+static ulong       timing_burst = 100;
+static ulong       timing_relax = 100;
+// Serializes hot-loading with the monitor loop, which walks p.plugins_sorted.
+static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+// Polling mechanism
+static pmfd_set_t  f[AFD_MAX]; // Struct that holds all file-descriptors context
+static afd_set_t   fds_active; // FDs of our internal poll
+static pthread_t   thread_poll;
+
+
+static uint plugin_id(plugin_t *plugin)
 {
-    return (uint) (plug - p.plugins);
+    return (uint) (plugin - p.plugins);
 }
 
 static void output_print_format(void)
 {
     time_t ti    = time(NULL);
     struct tm tm = *localtime(&ti);
-    snprintf(date, sizeof(date), "%d/%d %d:%02d:%02d", tm.tm_mday, tm.tm_mon + 1,
-             tm.tm_hour, tm.tm_min, tm.tm_sec);
+    snprintf(date, sizeof(date), "%d/%d %d:%02d:%02d",
+        tm.tm_mday, tm.tm_mon + 1, tm.tm_hour, tm.tm_min, tm.tm_sec);
 }
 
 static int plugin_output(plugin_t *plug, char *output)
 {
-    int stop_communcations = 0;
+    char *output_copy = output;
+    int stop_comms = 0;
 
     if (output == NULL || plug->is_silenced) {
         return 1;
     }
-    // Returning instructions:
-    //  [=] Pause
-    //  [D] Disable
-    //  [X] Exit
-    //  [S] Stop communcations
-    if (strstr(output, "[=]") != NULL) {
+    //  [S] Stops calling recursive functions in the periodic or msg pipeline.
+    if (strstr(output, "[S]") != NULL) {
+        stop_comms = 1;
+        output_copy += 3;
+    //  [=] Pause periodic calls. Resume instruction is pending.
+    } else if (strstr(output, "[=]") != NULL) {
         plug->is_paused = 1;
-        output += 3;
+        output_copy += 3;
+    //  [D] Disable completely all plugin interactions.
     } else if (strstr(output, "[D]") != NULL) {
         plug->is_enabled = 0;
-        output += 3;
+        output_copy += 3;
+    //  [X] Closes the process.
     } else if (strstr(output, "[X]") != NULL) {
         exit_called = 1;
-    } else if (strstr(output, "[S]") != NULL) {
-        stop_communcations = 1;
     }
     // Cleaning spaces
-    while (*output == ' ') {
-        ++output;
+    while (*output_copy == ' ') {
+        ++output_copy;
     }
-    if (strlen(output) > 0) {
+    // If there is a comment in the output, then print it
+    if (strlen(output_copy) > 0) {
         verbose(0, "[ %s, %21s ] %s", date, plug->file_name, output);
     }
-    return !(exit_called || stop_communcations);
+    return !(exit_called || stop_comms);
 }
 
 static void *plugin_action_resolve(plugin_t *consumer, plugin_t *source, cchar *action)
@@ -176,26 +182,6 @@ static void plugin_manager_after_close(void)
     plugin_manager_internal_dispose(&p);
 }
 
-static void plugins_poll_attend_fds(void)
-{
-    char *sout;
-    int fd;
-
-    for (fd = fds_active.fd_min; fd <= fds_active.fd_max; fd++) {
-        if (AFD_ISSET(fd, &fds_active) && f[fd].poll_attend != NULL) {
-            sout = f[fd].poll_attend(f[fd].tag, fd);
-            plugin_output(f[fd].plugin, sout);
-        }
-    }
-}
-
-static void plugins_poll_attend(void)
-{
-    if (aselect(&fds_active, 1LLU, NULL) > 0) {
-        plugins_poll_attend_fds();
-    }
-}
-
 static void plugins_overhead_measurement(ullong *time_accum_overhead)
 {
     if (overhead_measurement_en && *time_accum_overhead >= 10000) {
@@ -206,6 +192,35 @@ static void plugins_overhead_measurement(ullong *time_accum_overhead)
     }
 }
 
+
+static void plugins_poll_attend_fds(void)
+{
+    char *sout;
+    int fd;
+
+    for (fd = fds_active.fd_min; fd <= fds_active.fd_max; fd++) {
+        // If the fd has ben set and the plugin has a function registered
+        if (AFD_ISSET(fd, &fds_active) && f[fd].poll_attend != NULL) {
+            sout = f[fd].poll_attend(f[fd].tag, &fds_active.fds[fd]);
+            plugin_output(f[fd].plugin, sout);
+        }
+    }
+}
+
+static void *poll_attender(void *unused)
+{
+    while (1) {
+        if (exit_called) {
+            break;
+        }
+        // Doing perpetuous polling until the end of times
+        if (aselect(&fds_active, 10000LLU, NULL) > 0) {
+            plugins_poll_attend_fds();
+        }
+    }
+    return NULL;
+}
+
 static state_t plugins_main(void *whatever)
 {
     static timestamp_t time_now       = {0};
@@ -214,11 +229,11 @@ static state_t plugins_main(void *whatever)
     static ullong time_accum_overhead = 0LLU;
 
     (void) whatever;
-    pthread_mutex_lock(&lock_pm);
+    pthread_mutex_lock(&lock);
     if (time_passed == ULLONG_MAX) {
         timestamp_get(&time_last);
         time_passed = 0;
-        pthread_mutex_unlock(&lock_pm);
+        pthread_mutex_unlock(&lock);
         return EAR_SUCCESS;
     }
     output_print_format();
@@ -226,14 +241,13 @@ static state_t plugins_main(void *whatever)
     time_passed = timestamp_diff(&time_now, &time_last, TIME_MSECS);
     time_accum_overhead += time_passed;
     plugins_action_periodic(time_passed);
-    plugins_poll_attend();
     plugins_overhead_measurement(&time_accum_overhead);
     if (exit_called) {
         monitor_dispose();
         plugin_manager_after_close();
     }
     time_last = time_now;
-    pthread_mutex_unlock(&lock_pm);
+    pthread_mutex_unlock(&lock);
     return EAR_SUCCESS;
 }
 
@@ -328,16 +342,21 @@ static int plugins_open_and_initialize(plugins_init_mode_t mode, int initialize_
 static state_t plugins_init(void *whatever)
 {
     int enabled;
+    int rc;
 
     (void) whatever;
-    pthread_mutex_lock(&lock_pm);
+    pthread_mutex_lock(&lock);
     enabled = plugins_open_and_initialize(PLUGINS_INIT_COLD, 1);
     if (enabled) {
         initialized = 1;
     } else {
         monitor_dispose();
     }
-    pthread_mutex_unlock(&lock_pm);
+    if ((rc = pthread_create(&thread_poll, NULL, poll_attender, NULL)) != 0) {
+        printf("poll() attender thread failed: %s\n", strerror(rc));
+        exit(1);
+    }
+    pthread_mutex_unlock(&lock);
     return EAR_SUCCESS;
 }
 
@@ -345,7 +364,6 @@ static int plugin_manager_configure(int argc, char *argv[])
 {
     char buffer[8192];
     char params[128];
-    char verb_lvl[128] = "\0";
 
     if (argc == 1 || args_get(argc, argv, "help", buffer)) {
         if (argc == 1) {
@@ -373,47 +391,37 @@ static int plugin_manager_configure(int argc, char *argv[])
         verbose(0, "[ERROR] No plugins to load.");
         return 0;
     }
-    if (args_get(argc, argv, "verbose", verb_lvl)) {
-        if (verb_lvl[0] == '\0') { VERB_SET_LV(PM_DEFAULT_VERB); }
-        else                     { VERB_SET_LV(atoi(verb_lvl)); }
+    if (args_get(argc, argv, "verbose", params)) {
+        VERB_SET_LV(atoi(params));
     }
     if (args_get(argc, argv, "silence", NULL)) {
         VERB_SET_EN(0);
     }
     if (args_get(argc, argv, "monitor", params)) {
-        monitor_period = strtoul(params, NULL, 10);
+        timing_burst = strtoul(params, NULL, 10);
     }
     if (args_get(argc, argv, "relax", params)) {
-        relax_period = strtoul(params, NULL, 10);
+        timing_relax = strtoul(params, NULL, 10);
     }
     if (args_get(argc, argv, "overhead", params)) {
         setenv("EAR_OVERHEAD_ENABLE", "all", 1);
         overhead_measurement_en = 1;
     }
-    verbose(0, "UPM configuration: plugins \'%s\' verbose %u monitor periods[burst %lu, relax %lu]",
-        buffer, VERB_GET_LV(), monitor_period, relax_period);
     if (args_get(argc, argv, "debug", NULL)) {
         ADEBUG_SET_EN(1);
     }
     p.plugins        = calloc(MAX_PLUGINS, sizeof(plugin_t));
     p.plugins_sorted = calloc(MAX_PLUGINS, sizeof(plugin_t *));
-    if (p.plugins == NULL || p.plugins_sorted == NULL) {
-        verbose(0, "[ERROR] Unable to allocate the Plugin Manager context.");
-        free(p.plugins);
-        free(p.plugins_sorted);
-        p.plugins = NULL;
-        p.plugins_sorted = NULL;
-        return 0;
-    }
-    if (!plugin_manager_internal_read(&p, buffer, 0LLU, 0, NULL)) {
+    // Loading the first set of plugins coming from --plugins flag.
+    if (p.plugins != NULL && p.plugins_sorted != NULL) {
+        if (plugin_manager_internal_read(&p, buffer, 0LLU, 0, NULL)) {
+            return 1;
+        }
         plugin_manager_internal_dispose(&p);
-        free(p.plugins);
-        free(p.plugins_sorted);
-        p.plugins = NULL;
-        p.plugins_sorted = NULL;
-        return 0;
     }
-    return 1;
+    free(p.plugins), free(p.plugins_sorted);
+    p.plugins_sorted = NULL, p.plugins = NULL;
+    return 0;
 }
 
 int plugin_manager_main(int argc, char *argv[])
@@ -424,8 +432,8 @@ int plugin_manager_main(int argc, char *argv[])
     suscription_t *sus = suscription();
     sus->call_init     = plugins_init;
     sus->call_main     = plugins_main;
-    sus->time_relax    = relax_period;
-    sus->time_burst    = monitor_period;
+    sus->time_relax    = timing_relax;
+    sus->time_burst    = timing_burst;
     sus->suscribe(sus);
     debug("Initializing monitor");
     if (state_fail(monitor_init())) {
@@ -466,13 +474,13 @@ int plugin_manager_load_more_plugins(char *plugins)
     if (plugins == NULL || p.plugins == NULL || p.plugins_sorted == NULL) {
         return 0;
     }
-    pthread_mutex_lock(&lock_pm);
+    pthread_mutex_lock(&lock);
     ok = plugin_manager_internal_read(&p, plugins, 0LLU, 0, NULL);
     if (ok && initialized) {
         enabled = plugins_open_and_initialize(PLUGINS_INIT_PENDING, 0);
         ok = enabled > 0;
     }
-    pthread_mutex_unlock(&lock_pm);
+    pthread_mutex_unlock(&lock);
     return ok;
 }
 

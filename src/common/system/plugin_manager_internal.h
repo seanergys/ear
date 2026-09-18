@@ -12,6 +12,7 @@
 #define PLUGIN_MANAGER_INTERNAL_H
 /* clang-format off */
 
+#include <poll.h>
 #include <common/types.h>
 
 // Internal contract between plugin_manager.c and plugin_manager_internal.c.
@@ -28,7 +29,7 @@ typedef char *(action_init_f)     (cchar *tag, void **data_alloc, void *data);
 typedef char *(action_periodic_f) (cchar *tag, void *data);
 typedef char *(action_close_f)    (void);
 typedef char *(message_receive_f) (cchar *tag_msg, void *data);
-typedef char *(poll_attend_f)     (cchar *tag_fd, int fd);
+typedef char *(poll_attend_f)     (cchar *tag_fd, struct pollfd *pfd);
 
 // Plugin format:
 //   file.so:time:conf1:conf2...

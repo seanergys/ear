@@ -17,7 +17,7 @@
 declr_up_get_tag()
 {
     *tag       = "deps3";
-    *tags_deps = "<!deps1";
+    *tags_deps = "deps1";
 }
 
 declr_up_action_init(_deps3)

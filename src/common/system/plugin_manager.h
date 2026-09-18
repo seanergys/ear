@@ -12,6 +12,7 @@
 #define PLUGIN_MANAGER_H
 /* clang-format off */
 
+#include <poll.h>
 #include <string.h>
 #include <common/types.h>
 #include <common/system/poll.h>
@@ -33,14 +34,14 @@
 // Take a look to the EAR Wiki for more information about the defined functions
 // of the plugins.
 
-// Universal Plugin function declarations
+// Universal Plugin (manager) function declarations
 #define declr_up_get_tag()                void up_get_tag(cchar **tag, cchar **tags_deps)
 #define declr_up_action_init(suffix)      char *up_action_init##suffix(cchar *tag, void **data_alloc, void *data)
 #define declr_up_action_init_post(suffix) char *up_action_init_post##suffix(cchar *tag, void *data)
 #define declr_up_action_periodic(suffix)  char *up_action_periodic##suffix(cchar *tag, void *data)
 #define declr_up_action_close()           char *up_action_close(void)
 #define declr_up_message_receive(suffix)  char *up_message_receive##suffix(cchar *tag_msg, void *data)
-#define declr_up_poll_attend(suffix)      char *up_poll_attend##suffix(cchar *tag_fd, int fd)
+#define declr_up_poll_attend(suffix)      char *up_poll_attend##suffix(cchar *tag_fd, struct pollfd *pfd)
 
 // Helpers
 #define is_tag(t)                        (strcmp(t, tag) == 0)
