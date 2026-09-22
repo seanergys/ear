@@ -1,0 +1,29 @@
+name: powermon-locks-tests
+on:
+  pull_request:
+    paths:
+      - 'src/daemon/power_monitor*.[ch]'
+      - 'src/daemon/powercap/*'
+      - 'src/daemon/remote_api/dynamic_configuration.c'
+      - '.github/workflows/daemon-tests.yml'
+jobs:
+  build_and_test:
+    name: Build and test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Install cmocka-2.0.2
+        uses: $/.github/actions/install-cmocka-action
+      - name: Configure, compile and run tests
+        run: autoreconf -i && ./configure --with-cmocka --without-slurm
+      - name: Compile
+        run: make full |& tee build.log
+      - name: Run tests
+        run: make daemon.test |& tee tests.log
+      - uses: actions/upload-artifact@v7
+        if: ${{ failure() }}
+        with:
+          path: |
+            build.log
+            tests.log
