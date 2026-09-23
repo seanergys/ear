@@ -25,7 +25,7 @@ m4_include([m4/ac_microhttpd.m4])
 
 # INIT
 AC_PREREQ([2.69])
-AC_INIT([EAR], [7.4.1], [ear-support@bsc.es], [ear-7.4.1], [https://gitlab.bsc.es/ear_team/ear])
+AC_INIT([EAR], [7.4], [ear-support@bsc.es], [ear-7.4.2], [https://gitlab.bsc.es/ear_team/ear])
 
 # Notices in configure
 AC_COPYRIGHT([Copyright © 2017-present BSC])
@@ -47,6 +47,7 @@ AC_PROG_GREP
 AC_PROG_MAKE_SET
 AC_PROG_RANLIB
 AM_PROG_AR
+LT_INIT
 
 #################
 # FIRST SCRIPTS #
@@ -148,7 +149,8 @@ AC_CONFIG_FILES([Makefile
 				 etc/rpms/specs/ear_cn.spec
 				 etc/rpms/specs/ear_sn.spec
                  src/daemon/app_api/Makefile
-				 tests/daemon/Makefile])
+				 tests/daemon/Makefile
+				 src/database_cache/tests/Makefile])
 AC_CONFIG_FILES([etc/rpms/rpmbuild.sh], [chmod +x etc/rpms/rpmbuild.sh])
 AC_OUTPUT
 AX_AFTER_OUTPUT
