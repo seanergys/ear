@@ -1,4 +1,4 @@
-.eard-binary-rules:
+.powermon-stress-rules:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
       changes:
@@ -12,31 +12,14 @@
         - src/metrics/**/*
         - src/common/Makefile
         - src/common/**/*
-        - src/Makefile.depend
-        - src/Makefile.extra
-    - when: never
-
-.erun-binary-rules:
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-      changes:
         - src/slurm_plugin/Makefile
         - src/slurm_plugin/**/*
-        - src/daemon/Makefile
         - src/daemon/remote_api/**/*
         - src/daemon/shared_configuration.*
         - src/global_manager/Makefile
         - src/global_manager/**/*
-        - src/common/Makefile
-        - src/common/**/*
         - src/Makefile.depend
         - src/Makefile.extra
-    - when: never
-
-.powermon-stress-rules:
-  rules:
-    - !reference [.eard-binary-rules, rules, 0]
-    - !reference [.erun-binary-rules, rules, 0]
     - when: never
 
 compile-delayed-energy-reading:
