@@ -185,6 +185,72 @@ static bool copy_argument(char *dest, size_t size, const char *value, const char
     return true;
 }
 
+static bool parse_job_filter(const char *value, query_adds_t *query_adds)
+{
+    char *end;
+    unsigned long job_id, step_id;
+    char step_ids[sizeof(query_adds->step_ids)] = {0};
+
+    if (strchr(value, ',')) {
+        char *job_ids = parse_job_ids(value);
+        if (job_ids == NULL) {
+            return false;
+        }
+        free(query_adds->job_ids);
+        query_adds->job_ids     = job_ids;
+        query_adds->job_id      = -1;
+        query_adds->step_ids[0] = '\0';
+        return true;
+    }
+    if (*value < '0' || *value > '9') {
+        goto invalid;
+    }
+    errno  = 0;
+    job_id = strtoul(value, &end, 10);
+    if (errno == ERANGE || job_id > INT_MAX) {
+        goto invalid;
+    }
+    if (*end == '.') {
+        const char *step = end + 1;
+        if (!strcmp(step, "sbatch") || !strcmp(step, "sb")) {
+            snprintf(step_ids, sizeof(step_ids), "%u", BATCH_STEP);
+        } else {
+            if (*step < '0' || *step > '9') {
+                goto invalid;
+            }
+            errno   = 0;
+            step_id = strtoul(step, &end, 10);
+            if (errno == ERANGE || step_id > UINT_MAX || *end != '\0') {
+                goto invalid;
+            }
+            snprintf(step_ids, sizeof(step_ids), "%lu", step_id);
+        }
+    } else if (*end != '\0') {
+        goto invalid;
+    }
+
+    free(query_adds->job_ids);
+    query_adds->job_ids = NULL;
+    query_adds->job_id  = (int) job_id;
+    strcpy(query_adds->step_ids, step_ids);
+    return true;
+
+invalid:
+    fprintf(stderr, "Invalid job ID. Expected jobid[.stepid], with a numeric step ID or sb/sbatch.\n");
+    return false;
+}
+
+static bool copy_argument(char *dest, size_t size, const char *value, const char *option)
+{
+    size_t length = strlen(value);
+    if (length >= size) {
+        fprintf(stderr, "%s argument is too long (maximum %zu characters).\n", option, size - 1);
+        return false;
+    }
+    memcpy(dest, value, length + 1);
+    return true;
+}
+
 #if COLORS
 static void print_colors_legend()
 {
