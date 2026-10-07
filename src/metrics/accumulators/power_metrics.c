@@ -24,6 +24,7 @@
 #include <common/math_operations.h>
 #include <common/output/debug.h>
 #include <common/output/verbose.h>
+#include <common/system/lock.h>
 #include <common/system/monitor.h>
 #include <metrics/accumulators/power_metrics.h>
 #include <metrics/energy_cpu/energy_cpu.h>
@@ -36,6 +37,7 @@ static size_t node_size;
 static uint8_t rootp                = 0;
 static uint8_t pm_already_connected = 0;
 static uint8_t pm_connected_status  = 0;
+static pthread_mutex_t pm_init_lock = PTHREAD_MUTEX_INITIALIZER;
 static char my_buffer[1024];
 static uint num_packs    = 0;
 static uint num_counters = 0;
@@ -81,6 +83,7 @@ static int pm_read_rapl(rapl_data_t *rm)
 static int pm_node_dc_energy(node_data_t *dc)
 {
     if (rootp) {
+        debug("pm_node_dc_energy eh=%p context=%p", my_eh, my_eh ? my_eh->context : NULL);
         return energy_dc_read(dc);
     } else {
         *dc = 0;
@@ -175,11 +178,24 @@ static int pm_connect(topology_t *tp, cluster_conf_t *my_cluster_conf, my_node_c
 int init_power_monitoring(topology_t *tp, cluster_conf_t *my_cluster_conf, my_node_conf_t *my_node_conf)
 {
     state_t s;
+
     debug("init_power_ponitoring");
+
+    /*
+     * pm_connect() initializes shared power-monitoring state. Serialize the
+     * initialization while still allowing each caller to initialize its own
+     * energy handler context once the shared state is ready.
+     */
+    ear_lock(&pm_init_lock);
+
     if (state_fail(s = pm_connect(tp, my_cluster_conf, my_node_conf))) {
+        ear_unlock(&pm_init_lock);
         return s;
     }
+
     power_mon_connected = 1;
+    ear_unlock(&pm_init_lock);
+
     return EAR_SUCCESS;
 }
 
@@ -210,6 +226,11 @@ int read_enegy_data(energy_data_t *acc_energy)
     // Node
     pm_node_dc_energy(acc_energy->DC_node_energy);
 
+#if SHOW_DEBUGS
+    ulong *ener_mj = (ulong *) acc_energy->DC_node_energy;
+    debug("Energy after read %lu", *ener_mj);
+#endif
+
     // CPU/DRAM
     pm_read_rapl(RAPL_metrics);
 
@@ -218,7 +239,6 @@ int read_enegy_data(energy_data_t *acc_energy)
 
 // Debugging data
 #ifdef SHOW_DEBUGS
-    int p;
     char buffer[256];
     energy_to_str(buffer, acc_energy->DC_node_energy);
     debug("Node %s", buffer);
@@ -272,6 +292,8 @@ void compute_power(energy_data_t *e_begin, energy_data_t *e_end, power_data_t *m
 
     my_power->avg_ac = 0;
     my_power->avg_dc = (double) (curr_node_energy) / ear_max(t_diff * node_units, 1);
+
+    debug("Power %lf = Energy %lu / time %lf", my_power->avg_dc, curr_node_energy, t_diff * node_units);
 
     // for (p = 0; p < num_packs; p++) my_power->avg_dram[p] = (double) (dram[p]) / (t_diff * 1000000000);
     for (p = 0; p < num_packs; p++)

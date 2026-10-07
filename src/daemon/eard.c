@@ -925,7 +925,8 @@ int main(int argc, char *argv[])
     }
 
     if (state_fail(s = init_power_monitoring(&node_desc, &my_cluster_conf, my_node_conf))) {
-        error("While initializing power monitor: %s\n", state_msg);
+        error("Error while initializing power monitor: %s\n. Exiting. Review ear.conf and the selected energy plugin",
+              state_msg);
         _exit(0);
     }
 
