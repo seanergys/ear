@@ -6,8 +6,6 @@
 !/Makefile.in
 !/Makefile.exports
 
-/*.sh
-
 *.o
 *.a
 *.so
@@ -17,26 +15,21 @@
 */lib/
 *.so.*
 *.site
+/*.sh
 
 # etc generated files
 etc/rpms/rpmbuild.sh*
 !etc/rpms/rpmbuild.sh.in
-
 etc/rpms/specs/ear.spec*
 !etc/rpms/specs/ear.spec.in
-
 etc/rpms/specs/ear_ln.spec*
 !etc/rpms/specs/ear_ln.spec.in
-
 etc/rpms/specs/ear_cn.spec*
 !etc/rpms/specs/ear_cn.spec.in
-
 etc/rpms/specs/ear_sn.spec*
 !etc/rpms/specs/ear_sn.spec.in
-
 src/tests
 src/erules/*
-
 
 # Autotools
 *aclocal.m4
@@ -62,12 +55,12 @@ m4/lt~obsolete.m4
 # IDE
 cmake*
 CMake*
-*_trash
 *.idea
+.cache/
+.cache/*
 build/
 tags
-compile_commands.json
-.cache/
+AGENTS.md
 
 # Julita's
 DB/
@@ -100,9 +93,7 @@ etc/systemd/eargmd.service
 etc/systemd/edcmon.service
 src/common/config/config_install.h
 src/common/config/config.h.in
-
 libtool
-
 *eard
 
 # Build programs
@@ -216,19 +207,14 @@ src/commands/ear-info
 src/tools/node_manager_info
 deployment.sh
 
-
-#Other
-gmon.out
+# Other
 tags
 gmon.out
 compile_commands.json
-.cache
-.cache/*
 tmp.txt
 *.plist
 etc/examples/prolog_epilog/ejob
 etc/examples/prolog_epilog/list
-
 build-aux
 .deps
 .dirstamp

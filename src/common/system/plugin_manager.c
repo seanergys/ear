@@ -47,6 +47,7 @@ static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 // Polling mechanism
 static pmfd_set_t  f[AFD_MAX]; // Struct that holds all file-descriptors context
 static afd_set_t   fds_active; // FDs of our internal poll
+static uint        thread_poll_started;
 static pthread_t   thread_poll;
 
 
@@ -170,16 +171,35 @@ static void plugins_action_periodic(ullong time_passed)
 static void plugin_manager_after_close(void)
 {
     action_close_f *action_close;
+    int rc;
     uint i;
 
+    exit_called = 1;
+    if (thread_poll_started) {
+        if ((rc = pthread_join(thread_poll, NULL)) != 0) {
+            verbose(0, "Failed to join polling thread: %s", strerror(rc));
+            return;
+        }
+        thread_poll_started = 0;
+    }
     for (i = 0; i < p.count; ++i) {
         plugin_t *plug = p.plugins_sorted[i];
-        if (plug->is_opened && plug->handler != NULL
+        if (plug != NULL && plug->is_opened && plug->handler != NULL
             && (action_close = dlsym(plug->handler, "up_action_close")) != NULL) {
             (void) action_close();
         }
     }
     plugin_manager_internal_dispose(&p);
+    if (priority_paths != NULL) {
+        strtoa_free(priority_paths);
+        priority_paths = NULL;
+    }
+    free(p.plugins_sorted);
+    free(p.plugins);
+    p.plugins_sorted = NULL;
+    p.plugins = NULL;
+    p.count = 0;
+    initialized = 0;
 }
 
 static void plugins_overhead_measurement(ullong *time_accum_overhead)
@@ -214,7 +234,8 @@ static void *poll_attender(void *unused)
             break;
         }
         // Doing perpetuous polling until the end of times
-        if (aselect(&fds_active, 10000LLU, NULL) > 0) {
+        // Bound shutdown latency while allowing the poll thread to finish callbacks.
+        if (aselect(&fds_active, 100LLU, NULL) > 0 && !exit_called) {
             plugins_poll_attend_fds();
         }
     }
@@ -244,7 +265,10 @@ static state_t plugins_main(void *whatever)
     plugins_overhead_measurement(&time_accum_overhead);
     if (exit_called) {
         monitor_dispose();
+        // Finish request threads before monitor TLS destructors release metric values.
+        pthread_mutex_unlock(&lock);
         plugin_manager_after_close();
+        return EAR_SUCCESS;
     }
     time_last = time_now;
     pthread_mutex_unlock(&lock);
@@ -356,6 +380,7 @@ static state_t plugins_init(void *whatever)
         printf("poll() attender thread failed: %s\n", strerror(rc));
         exit(1);
     }
+    thread_poll_started = 1;
     pthread_mutex_unlock(&lock);
     return EAR_SUCCESS;
 }
@@ -389,6 +414,10 @@ static int plugin_manager_configure(int argc, char *argv[])
     }
     if (!args_get(argc, argv, "plugins", buffer)) {
         verbose(0, "[ERROR] No plugins to load.");
+        if (priority_paths != NULL) {
+            strtoa_free(priority_paths);
+            priority_paths = NULL;
+        }
         return 0;
     }
     if (args_get(argc, argv, "verbose", params)) {
@@ -419,8 +448,13 @@ static int plugin_manager_configure(int argc, char *argv[])
         }
         plugin_manager_internal_dispose(&p);
     }
+    if (priority_paths != NULL) {
+        strtoa_free(priority_paths);
+        priority_paths = NULL;
+    }
     free(p.plugins), free(p.plugins_sorted);
     p.plugins_sorted = NULL, p.plugins = NULL;
+    p.count = 0;
     return 0;
 }
 
@@ -492,6 +526,7 @@ void plugin_manager_exit(void)
 void plugin_manager_wait(void)
 {
     monitor_wait();
+    plugin_manager_after_close();
 }
 
 void *plugin_manager_action_trigger(cchar *tag)
@@ -503,10 +538,10 @@ void *plugin_manager_action_trigger(cchar *tag)
     }
     for (i = 0; i < p.count; ++i) {
         plugin_t *plug = p.plugins_sorted[i];
+        if (!plug->is_enabled) {
+            continue;
+        }
         if (strcmp(plug->tag, tag) == 0) {
-            if (!plug->is_enabled) {
-                return NULL;
-            }
             if (plugins_action_periodic_call(plug, plug, plug->data)) {
                 return plug->data;
             }
@@ -569,6 +604,9 @@ int plugin_manager_poll_add(cchar *tag_own, cchar *tag, int fd)
     }
     for (i = 0; i < p.count; ++i) {
         plugin_t *plug = p.plugins_sorted[i];
+        if (!plug->is_enabled) {
+            continue;
+        }
         if (strcmp(plug->tag, tag_own) == 0) {
             f[fd].plugin = plug;
             f[fd].tag = tag;
