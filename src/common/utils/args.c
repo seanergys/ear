@@ -54,8 +54,13 @@ static char *_args_get(int argc, char *argv[], const char *flag_in, char *buffer
         }
         // If don't has equal symbol
         if (strncmp(&argv[0][2], flag_in, flag_length) == 0) {
-            // If value is mandatory, but the following argument is not a value
-            return (is_mandatory && p != PTR_FOUND_VALUE)? NULL: argv[1];
+            // If found value in the next argument, it is perfect
+            if (p == PTR_FOUND_VALUE) {
+                return argv[1];
+            // But if no value neither is mandatory, we return the argument itself
+            } else if (!is_mandatory) {
+                return argv[0];
+            }
         }
         // Is not the flag, cleaning
         if (buffer != NULL) buffer[0] = '\0';
@@ -81,10 +86,6 @@ static char *_args_get(int argc, char *argv[], const char *flag_in, char *buffer
             // If is mandatory but there is nothing to interpret as a value
             return (is_mandatory && !strlen(no_space))? NULL: no_space;
         }
-        // If is the flag
-        if (strncmp(&argv[0][1], flag_in, flag_length) == 0) {
-            return argv[0];
-        }
         // Is not the flag, cleaning
         if (buffer != NULL) buffer[0] = '\0';
     // Is is value
@@ -93,9 +94,9 @@ static char *_args_get(int argc, char *argv[], const char *flag_in, char *buffer
         if (buffer != NULL) {
             if (strlen(buffer) > 0 && is_multiple) {
                 // If is multiple, we add the new value to the list
-                memmove(buffer + strlen(argv[0]) + 1, buffer, strlen(buffer) + 1);
-                memcpy(buffer, argv[0], strlen(argv[0]));
-                buffer[strlen(argv[0])] = ' ';
+                memmove(buffer + argv_length + 1, buffer, strlen(buffer) + 1);
+                memcpy(buffer, argv[0], argv_length);
+                buffer[argv_length] = ' ';
             } else {
                 sprintf(buffer, "%s", argv[0]);
             }
