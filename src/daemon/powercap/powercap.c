@@ -344,7 +344,6 @@ static int set_powercap_value(uint domain, uint32_t limit)
         limit = ear_min(limit, max_powercap);
 
     // set the default and last t1 to the limit
-    my_pc_opt.def_powercap      = limit;
     my_pc_opt.last_t1_allocated = limit;
     // if the filtered is already the current, no need to apply any change
     if (limit == my_pc_opt.current_pc)
