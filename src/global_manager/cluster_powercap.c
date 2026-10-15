@@ -315,7 +315,9 @@ uint powercap_reallocation(cluster_powercap_status_t *cluster_status, powercap_o
 
 void send_powercap_options_to_cluster(powercap_opt_t *cluster_options)
 {
-    ear_cluster_set_powercap_opt(&my_cluster_conf, cluster_options);
+    /* only this EARGM's nodes: a node that is not in the greedy list takes the options as
+     * "your default power is granted", which would serve another EARGM's ASK_DEF nodes */
+    ear_set_powercap_opt(&my_cluster_conf, cluster_options, nodes, num_eargm_nodes);
 }
 
 void print_cluster_power_status(powercap_status_t *my_cluster_power_status)
@@ -533,6 +535,35 @@ uint cluster_get_min_power(cluster_conf_t *conf, char type)
     return total;
 }
 
+/* Each node can always reclaim its default powercap (ASK_DEF), and never goes under its
+ * MIN_WORKING_POWER: both sums must fit in this EARGM's budget, or the guarantee breaks */
+static void check_node_defaults(cluster_conf_t *cc, uint budget)
+{
+    uint64_t sum_def = 0, sum_min = 0;
+    int counted = 0;
+    if (num_eargm_nodes <= 0 || nodes == NULL) {
+        verbose(VGM_PC, "no explicit node list: node defaults are not checked against the budget");
+        return;
+    }
+    for (int i = 0; i < num_eargm_nodes; i++) {
+        my_node_conf_t *n = get_my_node_conf(cc, nodes[i]);
+        if (n == NULL)
+            continue;
+        if (n->powercap > POWER_CAP_UNLIMITED)
+            sum_def += n->powercap;
+        sum_min += n->min_working_power;
+        counted++;
+    }
+    if (sum_def > budget)
+        warning("the default powercaps of %d nodes add up to %lu W, above the %u W budget: nodes asking for "
+                "their default may not get it",
+                counted, sum_def, budget);
+    if (sum_min > budget)
+        warning("MIN_WORKING_POWER of %d nodes adds up to %lu W, above the %u W budget: the budget can't be met "
+                "with every node working",
+                counted, sum_min, budget);
+}
+
 void cluster_powercap_init(cluster_conf_t *cc)
 {
     int ret;
@@ -550,6 +581,8 @@ void cluster_powercap_init(cluster_conf_t *cc)
 
     if (cpc_ctx.current_cluster_powercap == 0)
         return;
+    if (cpc_ctx.current_cluster_powercap > POWER_CAP_UNLIMITED)
+        check_node_defaults(cc, cpc_ctx.current_cluster_powercap);
 
     if (!state_ok(eargm_plugin_load(cc->install.dir_plug, e_def->plugins))) {
         error("Could not load EARGM plugins");
@@ -704,19 +737,24 @@ void cluster_hard_powercap()
     // EAR_WARNING indicates that it needs more power, and that wants power freed
     if (eargm_plugin_hard_powercap_decision(my_cluster_power_status, &cluster_options, &must_send_pc_options,
                                             &cpc_ctx) == EAR_WARNING) {
-        pc_release_data_t rel_power;
-        if (state_fail(ear_cluster_release_idle_power(&my_cluster_conf, &rel_power))) {
+        /* only this EARGM's nodes: with several EARGMs a cluster-wide call takes other EARGMs' power */
+        pc_release_data_t rel_power = {0};
+        if (state_fail(ear_release_idle_power(&my_cluster_conf, &rel_power, nodes, num_eargm_nodes))) {
             error("Error in cluster_release_idle_power");
+            rel_power.released = 0;
         } else {
             verbose(VGM_PC, "%s%u Watts from idle nodes released%s", COL_GRE, rel_power.released, COL_CLR);
         }
-        my_cluster_power_status->released       = 0;
-        my_cluster_power_status->total_powercap = my_cluster_power_status->total_powercap - rel_power.released;
+        my_cluster_power_status->released = 0;
+        my_cluster_power_status->total_powercap -= ear_min(rel_power.released, my_cluster_power_status->total_powercap);
         eargm_plugin_hard_powercap_decision(my_cluster_power_status, &cluster_options, &must_send_pc_options, &cpc_ctx);
     }
 
-    uint power_to_free    = ear_min(cpc_ctx.current_cluster_powercap - min_cluster_powercap,
-                                    cpc_ctx.total_free + my_cluster_power_status->released * CLUSTER_PC_TO_SHARE);
+    uint cap_margin = (cpc_ctx.current_cluster_powercap > min_cluster_powercap)
+                          ? cpc_ctx.current_cluster_powercap - min_cluster_powercap
+                          : 0;
+    uint power_to_free =
+        ear_min(cap_margin, cpc_ctx.total_free + my_cluster_power_status->released * CLUSTER_PC_TO_SHARE);
     uint power_to_request = 0;
     if (cpc_ctx.total_req_greedy > cpc_ctx.greedy_allocated) // to prevent overflow
         power_to_request = cpc_ctx.total_req_greedy - cpc_ctx.greedy_allocated;
@@ -757,17 +795,22 @@ void old_cluster_hard_powercap()
     print_cluster_power_status(my_cluster_power_status);
     aggregate_data(my_cluster_power_status);
     if (powercap_reallocation(my_cluster_power_status, &cluster_options) == 0) {
-        pc_release_data_t rel_power;
-        if (state_fail(ear_cluster_release_idle_power(&my_cluster_conf, &rel_power))) {
+        /* only this EARGM's nodes: with several EARGMs a cluster-wide call takes other EARGMs' power */
+        pc_release_data_t rel_power = {0};
+        if (state_fail(ear_release_idle_power(&my_cluster_conf, &rel_power, nodes, num_eargm_nodes))) {
             error("Error in cluster_release_idle_power");
+            rel_power.released = 0;
         } else {
             verbose(VGM_PC, "%s%u Watts from idle nodes released%s", COL_GRE, rel_power.released, COL_CLR);
         }
-        my_cluster_power_status->released       = 0;
-        my_cluster_power_status->total_powercap = my_cluster_power_status->total_powercap - rel_power.released;
+        my_cluster_power_status->released = 0;
+        my_cluster_power_status->total_powercap -=
+            ear_min(rel_power.released, my_cluster_power_status->total_powercap);
         powercap_reallocation(my_cluster_power_status, &cluster_options);
     }
-    uint power_to_free    = ear_min(cpc_ctx.current_cluster_powercap - min_cluster_powercap,
+    uint cap_margin =
+        (cpc_ctx.current_cluster_powercap > min_cluster_powercap) ? cpc_ctx.current_cluster_powercap - min_cluster_powercap : 0;
+    uint power_to_free    = ear_min(cap_margin,
                                     total_free + my_cluster_power_status->released * CLUSTER_PC_TO_SHARE);
     uint power_to_request = 0;
     if (total_req_greedy > greedy_allocated) // to prevent overflow
@@ -799,17 +842,22 @@ void old_cluster_hard_powercap()
     print_cluster_power_status(my_cluster_power_status);
     aggregate_data(my_cluster_power_status);
     if (powercap_reallocation(my_cluster_power_status, &cluster_options) == 0) {
-        pc_release_data_t rel_power;
-        if (state_fail(ear_cluster_release_idle_power(&my_cluster_conf, &rel_power))) {
+        /* only this EARGM's nodes: with several EARGMs a cluster-wide call takes other EARGMs' power */
+        pc_release_data_t rel_power = {0};
+        if (state_fail(ear_release_idle_power(&my_cluster_conf, &rel_power, nodes, num_eargm_nodes))) {
             error("Error in cluster_release_idle_power");
+            rel_power.released = 0;
         } else {
             verbose(VGM_PC, "%s%u Watts from idle nodes released%s", COL_GRE, rel_power.released, COL_CLR);
         }
-        my_cluster_power_status->released       = 0;
-        my_cluster_power_status->total_powercap = my_cluster_power_status->total_powercap - rel_power.released;
+        my_cluster_power_status->released = 0;
+        my_cluster_power_status->total_powercap -=
+            ear_min(rel_power.released, my_cluster_power_status->total_powercap);
         powercap_reallocation(my_cluster_power_status, &cluster_options);
     }
-    uint power_to_free    = ear_min(cpc_ctx.current_cluster_powercap - min_cluster_powercap,
+    uint cap_margin =
+        (cpc_ctx.current_cluster_powercap > min_cluster_powercap) ? cpc_ctx.current_cluster_powercap - min_cluster_powercap : 0;
+    uint power_to_free    = ear_min(cap_margin,
                                     total_free + my_cluster_power_status->released * CLUSTER_PC_TO_SHARE);
     uint power_to_request = 0;
     if (total_req_greedy > greedy_allocated) // to prevent overflow
