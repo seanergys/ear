@@ -169,6 +169,7 @@ src/database_cache/tmpi
 src/library/policies/p_plugin_test
 src/library/metrics/dcgmi_lib_test
 src/management/test
+/src/management/cpufreq/archs/test
 src/metrics/test
 src/metrics/common/nvml_test
 src/metrics/gpu/test/gpuprof_test
