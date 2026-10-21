@@ -332,7 +332,7 @@ void print_eargm_def(eargm_def_t *conf, char tabulate)
     if (tabulate) {
         verbosen(VCCONF, "\t\t->");
     }
-    verbosen(VCCONF, "EARGM %d node %s (port %u) ", conf->id, conf->node, conf->port);
+    verbosen(VCCONF, "EARGM %d node %s (port %u) PC plugins %s", conf->id, conf->node, conf->port, conf->plugins);
     verbosen(VCCONF, "energy limit %ld power limit %ld %s", conf->energy, conf->power, buff);
     if (conf->num_subs > 0) {
         verbosen(VCCONF, "meta-eargm: yes, controlled eargms: ");
