@@ -13,6 +13,8 @@
 #include <daemon/remote_api/eard_rapi.h>
 #include <stdint.h>
 
+#include <global_manager/synthetic_powercap.h>
+
 #define POWER_TYPE    0
 #define ENERGY_TYPE   1
 
