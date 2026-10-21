@@ -644,7 +644,7 @@ my_node_conf_t *get_my_node_conf(cluster_conf_t *my_conf, char *nodename)
             break;
     }
 
-    if (n->max_powercap <= 1 && my_conf->eargm.powercap_mode == SOFT_POWERCAP) {
+    if (n->max_powercap <= 1 && my_conf->eargm.powercap_mode == EARGM_SOFT_POWERCAP) {
         verbose(VCCONF,
                 "WARNING: max powercap is set to a non-valid value (%u) while the EARGM mode is set to soft powercap. "
                 "This configuration is not supported and the cluster powercap will not work.",
