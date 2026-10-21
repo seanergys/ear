@@ -727,11 +727,11 @@ bool parse_args(int32_t argc, char *argv[], eargm_preconf_t *preconf)
                 break;
             case 'P':
                 if (!strcasecmp(optarg, "MONITORING")) {
-                    preconf->powercap_policy = MONITOR;
+                    preconf->powercap_policy = EARGM_MONITOR;
                 } else if (!strcasecmp(optarg, "HARD")) {
-                    preconf->powercap_policy = HARD_POWERCAP;
+                    preconf->powercap_policy = EARGM_HARD_POWERCAP;
                 } else if (!strcasecmp(optarg, "SOFT")) {
-                    preconf->powercap_policy = SOFT_POWERCAP;
+                    preconf->powercap_policy = EARGM_SOFT_POWERCAP;
                 }
                 read = true;
                 break;

@@ -447,13 +447,16 @@ void cluster_soft_powercap()
          * ear.conf For homogeneous clusters we can simply divide the current power between the number of active nodes.
          */
         if (num_soft_pc_nodes > 0) {
-#if EARGM_POWERCAP_SOFTPC_HOMOGENEOUS
-            new_limit = cpc_ctx.current_cluster_powercap / num_soft_pc_nodes;
-#else
-            new_limit = UINT_MAX;
-#endif
+            if (my_cluster_conf.eargm.soft_pc_strategy == HOMOGENEOUS) {
+                // Available power is homegeneously distributed
+                new_limit = cpc_ctx.current_cluster_powercap / num_soft_pc_nodes;
+            } else {
+                // UINT_MAX means each node will select the max powercap set in ear.conf
+                new_limit = UINT_MAX;
+            }
             if (!synthetic_mode)
                 ear_set_powerlimit(&my_cluster_conf, new_limit, nodes, num_eargm_nodes);
+
             verbose(VGM_PC, "cluster_only_powercap: sending new limit %lu", (ulong) new_limit);
             eargm_report_event(NODE_POWERCAP, (ulong) new_limit);
         } else {
@@ -495,7 +498,7 @@ void *eargm_powercap_th(void *noarg)
     if (pthread_setname_np(pthread_self(), "cluster_powercap") != 0)
         error("Setting name forcluster_powercap thread %s", strerror(errno));
 
-    if (!cluster_powercap_is_synthetic_mode() && my_cluster_conf.eargm.powercap_mode == SOFT_POWERCAP)
+    if (!cluster_powercap_is_synthetic_mode() && my_cluster_conf.eargm.powercap_mode == EARGM_SOFT_POWERCAP)
         ear_set_powerlimit(&my_cluster_conf, 1, nodes, num_eargm_nodes); // set powercap to unlimited at the start
     while (1) {
         sleep(cluster_powercap_period);
@@ -506,13 +509,13 @@ void *eargm_powercap_th(void *noarg)
         }
         if (cluster_power_limited()) {
             switch (my_cluster_conf.eargm.powercap_mode) {
-                case SOFT_POWERCAP:
+                case EARGM_SOFT_POWERCAP:
                     cluster_soft_powercap();
                     break;
-                case HARD_POWERCAP:
+                case EARGM_HARD_POWERCAP:
                     cluster_hard_powercap();
                     break;
-                case MONITOR:
+                case EARGM_MONITOR:
                 default:
                     cluster_power_monitor();
                     break;

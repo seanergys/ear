@@ -160,6 +160,9 @@ EARGMEnergyAction=no_action
 EARGMPowerPeriod=120
 # Powercap mode: 0 is monitoring, 1 is hard powercap, 2 is soft powercap.
 EARGMPowerCapMode=1
+# Soft powercap strategy: HOMOGENEOUS divides the powercap between the EARGM nodes, MAX_POWER sets each node to the
+# max powercap of its tag.
+#EARGMSoft_PC_Strategy=MAX_POWER
 # Admins can specify to automatically execute a command in EARGMPowerCapSuspendAction when total_power >= EARGMPowerLimit*EARGMPowerCapResumeLimit/100
 EARGMPowerCapSuspendLimit=90
 # Format for action is: command_name current_power current_limit total_idle_nodes total_idle_power 
