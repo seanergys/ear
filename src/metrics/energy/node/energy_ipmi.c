@@ -84,7 +84,7 @@ static state_t thread_main(void *p)
     return EAR_SUCCESS;
 }
 
-state_t energy_init(void **c)
+state_t energy_load(void **c)
 {
     power_data_t pd[IPMI_MAX_DEVS];
     state_t s = EAR_SUCCESS;
@@ -115,7 +115,7 @@ leave:
     return s;
 }
 
-state_t energy_dispose(void **c)
+state_t energy_unload(void **c)
 {
     while (pthread_mutex_trylock(&lock))
         ;

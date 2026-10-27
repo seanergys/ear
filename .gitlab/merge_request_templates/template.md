@@ -20,6 +20,17 @@ A clear and concise description of what the merge request does, why it's being m
   2. Run `npm install` (or any other setup steps)
   3. Test the feature using [specific tests]
 
+### Proposed CHANGELOG
+
+```md
+### Added
+-
+### Changed
+-
+### Fixed
+-
+```
+
 ---
 
 ### Additional Notes

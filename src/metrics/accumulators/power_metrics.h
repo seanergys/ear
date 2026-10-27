@@ -48,17 +48,17 @@ typedef struct power_data {
 } power_data_t;
 
 /**  Starts power monitoring. */
-int init_power_monitoring(ehandler_t *eh, topology_t *tp);
+int init_power_monitoring(topology_t *tp, cluster_conf_t *my_cluster_conf, my_node_conf_t *my_node_conf);
 
 /** Ends power monitoring. */
-void end_power_monitoring(ehandler_t *eh);
+void end_power_monitoring();
 
 /*
  *
  */
 
 /** Energy is returned in mili Joules */
-int read_enegy_data(ehandler_t *eh, energy_data_t *acc_energy);
+int read_enegy_data(energy_data_t *acc_energy);
 
 /** Computes the power between two energy measurements. */
 void compute_power(energy_data_t *e_begin, energy_data_t *e_end, power_data_t *my_power);

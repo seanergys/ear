@@ -19,14 +19,15 @@
 // Reading a simple 'DBIp' field:
 //     ear_field_search(c->fields, "dbip");
 //
-// Searching a tag from a island node where our node is in the value. Note that
-// the subkey selection 'tag' comes at the end in the search string:
+// Searching a tag from an island node, where the node is in the value:
 //    ear_field_search(c->fields, "island.nodes=%s,tag", hostname)->value
+// *Note, the subkey selection 'tag' comes at the end in the search string.
 //
 // Searching with multiple conditions and selecting the subkey 'max':
 //     ear_field_search(c->fields, "anomaly=imcfreq,anomaly.nodes=%s,max", hostname)->value
 //
-// You can also iterate over fields:
+// You can also iterate over fields. In this case, it will print all the islands
+// tags:
 //    f = c->fields;
 //    do {
 //        f = ear_field_search(f->next, "island,tag");

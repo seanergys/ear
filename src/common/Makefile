@@ -28,7 +28,6 @@ libcommon.so: libcommon.a
 libdb.a: $(db_OBJS)
 	$(AR) rvs $@ $(db_OBJS)
 
-
 ######## OPTIONS
 
 install: install.components;

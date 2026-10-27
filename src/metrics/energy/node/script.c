@@ -36,7 +36,7 @@ static popen_t         script;
 
 static state_t energy_pool(void *data);
 
-state_t energy_init(void **x)
+state_t energy_load(void **x)
 {
     state_t s = EAR_SUCCESS;
     static char host[128];

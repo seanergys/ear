@@ -85,7 +85,7 @@ static state_t redfish_thread_main(void *p);
  * \return EAR_SUCCESS if the Redfish API connection succeed, EAR_ERROR otherwise. */
 static state_t redfish_thread_init(void *p);
 
-state_t energy_init(void **c)
+state_t energy_load(void **c)
 {
     if (!c) {
         return_msg(EAR_ERROR, Generr.input_null);
@@ -153,7 +153,7 @@ state_t energy_dc_time_read(void *c, edata_t energy_mj, ulong *time_ms)
     return st;
 }
 
-state_t energy_dispose(void **c)
+state_t energy_unload(void **c)
 {
     return EAR_SUCCESS;
 }

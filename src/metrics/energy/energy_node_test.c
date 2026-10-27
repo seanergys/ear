@@ -21,7 +21,6 @@ int main(int argc, char *argv[])
     cluster_conf_t conf;
     edata_t energy_mj_init, energy_mj_end;
     ulong energy_mj_diff;
-    ehandler_t eh;
     state_t s;
     size_t node_size;
     uint node_units;
@@ -39,22 +38,13 @@ int main(int argc, char *argv[])
 
     monitor_init();
 
-    char energy_plugin[1024];
-    sprintf(energy_plugin, "%s/%s", conf.install.dir_plug, conf.install.obj_ener);
-
-    printf("Loading plugin %s \n", energy_plugin);
-    if (state_fail(energy_load(energy_plugin))) {
-        printf("energy load for plugin '%s' failure\n", energy_plugin);
+    if (state_fail(energy_load(API_FREE, &conf, NULL))) {
+        printf("energy_load failed: %s", state_msg);
         return EXIT_FAILURE;
     }
 
-    if (state_fail(energy_init(&eh))) {
-        printf("energy_init failed: %s", state_msg);
-        return EXIT_FAILURE;
-    }
-
-    energy_units(&eh, &node_units);
-    energy_datasize(&eh, &node_size);
+    energy_units(&node_units);
+    energy_datasize(&node_size);
 
     printf("Energy units %u Energy size %u\n", node_units, node_size);
 
@@ -62,11 +52,11 @@ int main(int argc, char *argv[])
     energy_mj_end  = malloc(node_size);
     // energy_mj_diff = (edata_t *)malloc(node_size);
 
-    if (state_fail(energy_dc_read(&eh, energy_mj_init))) {
+    if (state_fail(energy_dc_read(energy_mj_init))) {
         warning("First energy reading failed.");
     }
     char energy_str[32];
-    energy_to_str(&eh, energy_str, energy_mj_init);
+    energy_to_str(energy_str, energy_mj_init);
     printf("Energy init: %s\n", energy_str);
 
     uint i = 0;
@@ -74,26 +64,26 @@ int main(int argc, char *argv[])
         i++;
         sleep(wait_period);
 
-        if (state_fail(energy_dc_read(&eh, energy_mj_end))) {
+        if (state_fail(energy_dc_read(energy_mj_end))) {
             warning("Energy reading failed.");
         }
 
-        energy_to_str(&eh, energy_str, energy_mj_end);
+        energy_to_str(energy_str, energy_mj_end);
         printf("Energy end: %s\n", energy_str);
 
-        energy_accumulated(NULL, &energy_mj_diff, energy_mj_init, energy_mj_end);
+        energy_accumulated(&energy_mj_diff, energy_mj_init, energy_mj_end);
         printf("Total energy %lu mj. Avg Power %.2lf W\n", energy_mj_diff,
                ((double) energy_mj_diff / (double) (node_units * wait_period)));
 
-        s = energy_dc_read(&eh, energy_mj_end);
-        energy_accumulated(NULL, &energy_mj_diff, energy_mj_init, energy_mj_end);
+        s = energy_dc_read(energy_mj_end);
+        energy_accumulated(&energy_mj_diff, energy_mj_init, energy_mj_end);
         printf("Total energy %lu mj. Avg Power %.2lf W\n", energy_mj_diff,
                ((double) energy_mj_diff / (double) (node_units * wait_period)));
 
         memcpy((char *) energy_mj_init, (char *) energy_mj_end, node_size);
     }
 
-    if (state_fail(energy_dispose(&eh))) {
+    if (state_fail(energy_unload())) {
         warning("Energy dispose failed.");
     }
 

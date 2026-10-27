@@ -332,7 +332,7 @@ state_t nm_power_limit(struct ipmi_intf *intf, unsigned long limit, uint8_t targ
  */
 #define CMD_ARG_BYTE 6
 
-state_t energy_init(void **c)
+state_t energy_load(void **c)
 {
     struct ipmi_data out;
     state_t st;
@@ -368,7 +368,7 @@ state_t energy_init(void **c)
     return EAR_SUCCESS;
 }
 
-state_t energy_dispose(void **c)
+state_t energy_unload(void **c)
 {
     if ((c == NULL) || (*c == NULL))
         return EAR_ERROR;

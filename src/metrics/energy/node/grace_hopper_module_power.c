@@ -325,19 +325,19 @@ static state_t gh_module_static_read(ctx_t *c, llong *power, llong *acum, state_
 
 static topology_t tp;
 static ctx_t gh_ctx;
-static uint grace_module_energy_init = 0;
+static uint grace_module_energy_load = 0;
 
 /*
  * MAIN FUNCTIONS
  */
 
-static state_t static_energy_init()
+static state_t static_energy_load()
 {
     state_t st = EAR_SUCCESS;
 
     while (pthread_mutex_trylock(&elock)) {
     };
-    if (grace_module_energy_init) {
+    if (grace_module_energy_load) {
         pthread_mutex_unlock(&elock);
         return st;
     }
@@ -348,20 +348,20 @@ static state_t static_energy_init()
         return EAR_ERROR;
     }
     if (state_ok(st = gh_module_power_init(&gh_ctx)))
-        grace_module_energy_init = 1;
+        grace_module_energy_load = 1;
     pthread_mutex_unlock(&elock);
     return st;
 }
 
-state_t energy_init(void **c)
+state_t energy_load(void **c)
 {
-    return static_energy_init();
+    return static_energy_load();
 }
 
-state_t energy_dispose(void **c)
+state_t energy_unload(void **c)
 {
     verbose(VGRACE_VL, "GH Module: dispose");
-    if (grace_module_energy_init)
+    if (grace_module_energy_load)
         gh_module_power_dispose(&gh_ctx);
     return EAR_SUCCESS;
 }
@@ -421,7 +421,7 @@ state_t energy_accumulated(unsigned long *e, edata_t init, edata_t end)
 state_t energy_dc_read(void *c, edata_t energy_mj)
 {
     verbose(VGRACE_VL, "GH Module: energy read");
-    if (!grace_module_energy_init)
+    if (!grace_module_energy_load)
         return EAR_ERROR;
     ulong *penergy_mj = (ulong *) energy_mj;
 
@@ -433,7 +433,7 @@ state_t energy_dc_read(void *c, edata_t energy_mj)
 state_t energy_dc_time_read(void *c, edata_t energy_mj, ulong *time_ms)
 {
     verbose(VGRACE_VL, "GH Module: energy & time read");
-    if (!grace_module_energy_init)
+    if (!grace_module_energy_load)
         return EAR_ERROR;
     ulong *penergy_mj = (ulong *) energy_mj;
 
@@ -456,7 +456,7 @@ uint energy_data_is_null(edata_t e)
 
 state_t energy_not_privileged_init()
 {
-    return static_energy_init();
+    return static_energy_load();
 }
 
 uint energy_is_privileged()

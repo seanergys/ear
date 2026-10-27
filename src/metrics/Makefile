@@ -108,6 +108,12 @@ mets_OBJS = \
 
 all: all.components metrics.o libmetrics.a
 
+post: test
+	@ $(MAKE) -C 'gpu' post || exit
+
+$(SRCDIR)/metrics/energy/node/%.o: $(SRCDIR)/metrics/energy/node/%.c
+	$(CC) $(CC_FLAGS) -I$(SRCDIR) -fPIC -D_GNU_SOURCE -c $< -o $@
+
 metrics.o: metrics.c
 	$(CC) $(CC_FLAGS) -I$(SRCDIR) -fPIC -c $<
 

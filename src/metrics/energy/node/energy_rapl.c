@@ -50,7 +50,7 @@ void check_num_packs()
     }
 }
 
-state_t energy_init(void **c)
+state_t energy_load(void **c)
 {
     int *pfd, nfd;
     plug_debug("energy_rapl");
@@ -58,7 +58,7 @@ state_t energy_init(void **c)
         return EAR_ERROR;
     num_pack = detect_packages(NULL);
     if (num_pack == 0) {
-        plug_debug("No packages detected in energy_init");
+        plug_debug("No packages detected in energy_load");
         return EAR_ERROR;
     }
     plug_debug("%d packages detected ", num_pack);
@@ -70,14 +70,14 @@ state_t energy_init(void **c)
     nfd = init_rapl_msr(pfd);
     pthread_mutex_unlock(&rapl_lock);
     if (nfd < 0) {
-        plug_debug("init_rapl_msr returns error in energy_init");
+        plug_debug("init_rapl_msr returns error in energy_load");
         return EAR_ERROR;
     }
-    plug_debug("init_rapl_msr in energy_init successfully initialized in enery_rapl");
+    plug_debug("init_rapl_msr in energy_load successfully initialized in enery_rapl");
     return EAR_SUCCESS;
 }
 
-state_t energy_dispose(void **c)
+state_t energy_unload(void **c)
 {
     int *pfd;
     if ((c == NULL) || (*c == NULL))

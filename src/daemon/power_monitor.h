@@ -77,20 +77,20 @@ typedef struct job_context {
 void *eard_power_monitoring(void *noinfo);
 
 /** It must be called when EARLib contacts with EARD. */
-void powermon_mpi_init(ehandler_t *eh, application_t *j);
+void powermon_mpi_init(application_t *j);
 
 /** It must be called when EARLib disconnects from EARD. */
-void powermon_mpi_finalize(ehandler_t *eh, ulong jid, ulong sid);
+void powermon_mpi_finalize(ulong jid, ulong sid);
 
 /** \brief Called when a new job starts.
  * This function is called by the dynamic_configuration thread when a new_job command arrives.
  * It also is called by EARD when application passes through MPI_Init.
  * \param pmapp The power monitor application handler that will be filled with the information regarding to
  * the context it will belong to. */
-void powermon_new_job(powermon_app_t *pmapp, ehandler_t *eh, application_t *j, uint from_mpi, uint is_job);
+void powermon_new_job(powermon_app_t *pmapp, application_t *j, uint from_mpi, uint is_job);
 
 /** It must be called at when job ends. */
-void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job, uint from_mpi);
+void powermon_end_job(job_id jid, job_id sid, uint is_job, uint from_mpi);
 
 /** Called by dynamic_configuration thread when a new task is created. */
 void powermon_new_task(new_task_req_t *newtask);
@@ -164,7 +164,7 @@ int mark_contexts_to_finish_by_jobid(job_id id, job_id step_id);
 int mark_contexts_to_finish_by_pid();
 
 /** \todo Add a description. */
-void finish_pending_contexts(ehandler_t *eh);
+void finish_pending_contexts();
 
 /** \todo Add a description. */
 uint node_energy_lock(uint *tries);

@@ -18,13 +18,6 @@
 
 typedef void *edata_t;
 
-typedef struct ehandler {
-    char manufacturer[SZ_NAME_MEDIUM];
-    char product[SZ_NAME_MEDIUM];
-    void *context;
-    int fds_rapl[MAX_PACKAGES];
-} ehandler_t;
-
 typedef long long rapl_data_t;
 typedef edata_t node_data_t;
 

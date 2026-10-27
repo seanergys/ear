@@ -414,7 +414,7 @@ static state_t sd650_power_thread_init(void *p)
     }
 
     if (st != EAR_SUCCESS) {
-        debug("SD650_power: energy_init fails");
+        debug("SD650_power: energy_load fails");
         ear_unlock(&sd650_power_lock);
         return EAR_ERROR;
     }
@@ -432,7 +432,7 @@ static state_t sd650_power_thread_init(void *p)
  * MAIN FUNCTIONS
  */
 
-state_t energy_init(void **c)
+state_t energy_load(void **c)
 {
     int ret;
 
@@ -483,7 +483,7 @@ state_t energy_init(void **c)
     return EAR_SUCCESS;
 }
 
-state_t energy_dispose(void **c)
+state_t energy_unload(void **c)
 {
     if ((c == NULL) || (*c == NULL))
         return EAR_ERROR;

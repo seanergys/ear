@@ -27,8 +27,7 @@ static void handle_signal(int sig, siginfo_t *si, void *unused)
 
 int main(int argc, char *argv[])
 {
-    verbose(0, "%s: Started....", argv[0]);
-
+    verbose(1, "%s: Started....", argv[0]);
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
     sa.sa_sigaction = handle_signal;

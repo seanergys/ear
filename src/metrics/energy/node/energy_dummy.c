@@ -25,7 +25,7 @@ static uint init;
  * MAIN FUNCTIONS
  */
 
-state_t energy_init(void **c)
+state_t energy_load(void **c)
 {
     if (!init) {
         timestamp_get(&start_time);
@@ -36,7 +36,7 @@ state_t energy_init(void **c)
     return EAR_SUCCESS;
 }
 
-state_t energy_dispose(void **c)
+state_t energy_unload(void **c)
 {
     return EAR_SUCCESS;
 }

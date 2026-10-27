@@ -105,8 +105,7 @@ cpu_set_t in_jobs_mask;
 
 // This lock protects the current_ear_app
 static pthread_mutex_t app_lock = PTHREAD_MUTEX_INITIALIZER;
-static ehandler_t my_eh_pm;
-static char *TH_NAME = "PowerMon";
+static char *TH_NAME            = "PowerMon";
 
 /* Used to compute avg freq for jobs. Must be moved to powermon_app */
 static cpufreq_t *freq_job2;
@@ -489,7 +488,7 @@ int mark_contexts_to_finish_by_jobid(job_id id, job_id step_id)
     return found_contexts;
 }
 
-void finish_pending_contexts(ehandler_t *eh)
+void finish_pending_contexts()
 {
     for (int i = 0; i < MAX_NESTED_LEVELS; i++) {
         if (state_fail(ear_trylock(&app_lock)))
@@ -504,7 +503,7 @@ void finish_pending_contexts(ehandler_t *eh)
         powermon_app_t *pmapp = current_ear_app[cc];
         if (pmapp && (pmapp->state == APP_FINISHED)) {
             verbose(VJOBPMON, "Finishing the %lu/%lu context...", pmapp->app.job.id, pmapp->app.job.step_id);
-            powermon_end_job(eh, pmapp->app.job.id, pmapp->app.job.step_id, 0, 1);
+            powermon_end_job(pmapp->app.job.id, pmapp->app.job.step_id, 0, 1);
         }
         ear_unlock(&app_lock);
         ear_unlock(&powermon_app_mutex[cc]);
@@ -1257,7 +1256,7 @@ void form_database_paths()
  *
  */
 // TODO: Thread-save here.
-void job_init_powermon_app(powermon_app_t *pmapp, ehandler_t *ceh, application_t *new_app, uint from_mpi)
+void job_init_powermon_app(powermon_app_t *pmapp, application_t *new_app, uint from_mpi)
 {
     state_t s;
 
@@ -1294,7 +1293,7 @@ void job_init_powermon_app(powermon_app_t *pmapp, ehandler_t *ceh, application_t
     pmapp->app.power_sig.def_f        = pmapp->settings->def_freq;
 
     // Initialize energy
-    read_enegy_data(ceh, &c_energy);
+    read_enegy_data(&c_energy);
     copy_energy_data(&pmapp->energy_init, &c_energy);
 
     // CPU Frequency
@@ -1305,7 +1304,7 @@ void job_init_powermon_app(powermon_app_t *pmapp, ehandler_t *ceh, application_t
 }
 
 // TODO: Thread-save here.
-void job_end_powermon_app(powermon_app_t *pmapp, ehandler_t *ceh)
+void job_end_powermon_app(powermon_app_t *pmapp)
 {
     power_data_t app_power;
     state_t s;
@@ -1328,7 +1327,7 @@ void job_end_powermon_app(powermon_app_t *pmapp, ehandler_t *ceh)
 
     elapsed = difftime(pmapp->app.job.end_time, pmapp->app.job.start_time);
 
-    read_enegy_data(ceh, &c_energy);
+    read_enegy_data(&c_energy);
     compute_power(&pmapp->energy_init, &c_energy, &app_power);
     double curr_DC_power   = accum_node_power(&app_power);
     double curr_dram_power = accum_dram_power(&app_power);
@@ -1629,7 +1628,7 @@ void powermon_loop_signature(job_id jid, job_id sid, loop_t *loops)
 // That functions controls the mpi init/end of jobs. These functions are called by eard when application executes
 // mpi_init/mpi_finalized and contacts eard
 // TODO: Thread-save here.
-void powermon_mpi_init(ehandler_t *eh, application_t *appID)
+void powermon_mpi_init(application_t *appID)
 {
 
     ulong jid, sid;
@@ -1657,7 +1656,7 @@ void powermon_mpi_init(ehandler_t *eh, application_t *appID)
         verbose(VJOBPMON, "powermon_mpi_init and context not found job_id %lu/%lu, creating automatically",
                 appID->job.id, appID->job.step_id);
 
-        powermon_new_job(NULL, eh, appID, 1, 0);
+        powermon_new_job(NULL, appID, 1, 0);
 
         cc = find_context_for_job(jid, sid);
 
@@ -1712,7 +1711,7 @@ void powermon_mpi_init(ehandler_t *eh, application_t *appID)
 }
 
 // TODO: Thread-save here.
-void powermon_mpi_finalize(ehandler_t *eh, ulong jid, ulong sid)
+void powermon_mpi_finalize(ulong jid, ulong sid)
 {
     int cc;
     powermon_app_t *pmapp;
@@ -1766,7 +1765,7 @@ void powermon_mpi_finalize(ehandler_t *eh, ulong jid, ulong sid)
     set_powercapstatus_mode(AUTO_CONFIG);
 
     if (!pmapp->job_created) { // If the job is not submitted through slurm, end_job would not be submitted
-        powermon_end_job(eh, pmapp->app.job.id, pmapp->app.job.step_id, 0, 1);
+        powermon_end_job(pmapp->app.job.id, pmapp->app.job.step_id, 0, 1);
     }
     ear_unlock(&app_lock);
     debug("%s", COL_CLR);
@@ -1888,7 +1887,7 @@ void powermon_new_task(new_task_req_t *newtask)
 /* This function is called by dynamic_configuration thread when a new_job command arrives.
  * More info in the header file.
  * TODO: Thread-save here. */
-void powermon_new_job(powermon_app_t *pmapp, ehandler_t *eh, application_t *appID, uint from_mpi, uint is_job)
+void powermon_new_job(powermon_app_t *pmapp, application_t *appID, uint from_mpi, uint is_job)
 {
 
     int ccontext         = 0;
@@ -2075,7 +2074,7 @@ void powermon_new_job(powermon_app_t *pmapp, ehandler_t *eh, application_t *appI
 
     powercap_set_app_req_freq();
 
-    job_init_powermon_app(pmapp, eh, appID, from_mpi);
+    job_init_powermon_app(pmapp, appID, from_mpi);
 
     /* TODO: We must report the energy beforesetting the job_id: PENDING */
     new_job_for_period(&current_sample, appID->job.id, appID->job.step_id);
@@ -2094,7 +2093,7 @@ void powermon_new_job(powermon_app_t *pmapp, ehandler_t *eh, application_t *appI
 }
 
 /* This function is called by dynamic_configuration thread when a end_job command arrives. */
-void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job, uint from_mpi)
+void powermon_end_job(job_id jid, job_id sid, uint is_job, uint from_mpi)
 {
     // Application disconnected
     powermon_app_t summary, *pmapp;
@@ -2189,7 +2188,7 @@ void powermon_end_job(ehandler_t *eh, job_id jid, job_id sid, uint is_job, uint 
 
     uint ID = create_ID(jid, sid);
 
-    job_end_powermon_app(pmapp, eh);
+    job_end_powermon_app(pmapp);
 
     // After that function, the avg power is computed
     memcpy(&summary, pmapp, sizeof(powermon_app_t));
@@ -2728,12 +2727,12 @@ powermon_actions:
         warning("Resetting IPMI interface since power is %.2lf  (limit %lf)", last_pmon->avg_dc,
                 my_node_conf->max_error_power);
 
-        if (energy_dispose(&my_eh_pm) != EAR_SUCCESS) {
-            error("when resetting IPMI interface 'energy_dispose'");
+        if (energy_unload() != EAR_SUCCESS) {
+            error("when resetting IPMI interface 'energy_unload'");
         }
 
-        if (energy_init(&my_eh_pm) != EAR_SUCCESS) {
-            error("when resetting IPMI interface in 'energy_init'");
+        if (energy_load(API_FREE, &my_cluster_conf, my_node_conf) != EAR_SUCCESS) {
+            error("when resetting IPMI interface in 'energy_load'");
         }
     }
 
@@ -2925,7 +2924,7 @@ void *eard_power_monitoring(void *noinfo)
     if (pthread_setname_np(pthread_self(), TH_NAME))
         error("Setting name for %s thread %s", TH_NAME, strerror(errno));
 
-    if (init_power_monitoring(&my_eh_pm, &node_desc) != EAR_SUCCESS) {
+    if (init_power_monitoring(&node_desc, &my_cluster_conf, my_node_conf) != EAR_SUCCESS) {
         error("Error in init_power_ponitoring");
     }
 
@@ -2959,7 +2958,7 @@ void *eard_power_monitoring(void *noinfo)
 
     // Get time and Energy
     debug("read_enegy_data");
-    read_enegy_data(&my_eh_pm, &e_begin);
+    read_enegy_data(&e_begin);
 
     /* Powercap */
     copy_energy_data(&e_pmon_begin, &e_begin);
@@ -2996,7 +2995,7 @@ void *eard_power_monitoring(void *noinfo)
 
     while (!eard_must_exit) {
         // TEST
-        // finish_pending_contexts(&my_eh_pm);
+        // finish_pending_contexts();
 #if HEALTH_CHECK
         process_health_t curr_eard_resources;
         if (state_ok(process_health_get(eard_main_process_pid, &curr_eard_resources))) {
@@ -3009,7 +3008,7 @@ void *eard_power_monitoring(void *noinfo)
         sleep(f_monitoring);
 
         // Get time and Energy
-        read_enegy_data(&my_eh_pm, &e_end);
+        read_enegy_data(&e_end);
 
         if (e_end.DC_node_energy == 0) {
             warning("Power monitor period invalid energy reading, continue");

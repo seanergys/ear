@@ -102,7 +102,7 @@ typedef struct metrics_diff_s {
 #define MET_OPT_MAX     12
 
 // This function contains load() and init() functions of the different metrics.
-void metrics_load(metrics_info_t *m, topology_t *tp, char *nodepow_path, uint *options);
+void metrics_load(metrics_info_t *m, topology_t *tp, cluster_conf_t *clus, my_node_conf_t *node, uint *options);
 
 // You can see the list of update options in apis.h (UPD_ prefix). The value can
 // be of whatever type, a pointer (including NULL), an integer, etc.
