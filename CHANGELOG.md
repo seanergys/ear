@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - v7.5.1 CI: Wait for the delayed last job report in powermon\_stress.
+- v7.5.1 Fix missmatch size between RPC `RPC_MGT_GPU_GET_POWER_CAP_DEFAULT`'s client and eard.
 
 ## [7.5.0] - 2026-10-07
 
