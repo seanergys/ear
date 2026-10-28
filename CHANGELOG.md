@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- v7.5.1 EARGMD tests.
+- v7.5.1 Added SCRIPT API in management/gpu.
+
+### Changed
+
+- v7.5.1 Port EARGM soft powercap strategy.
+
+### Fixed
+
+- v7.5.1 Fixed an error in econtrol where `--status` would show nodes both as OK and in ERROR.
+- v7.5.1 Bound RPC answers against the caller's buffer before copying.
+- v7.5.1 EARD powercap fixes for (baseline\_powercap, watts requests, hardware limits, estimator).
+- v7.5.1 Fix using uninitialized chips\_pkg.chips\_count. Thanks to [@zalbanob](https://github.com/zalbanob) for pointing it out.
+- v7.5.1 CI: Wait for the delayed last job report in powermon\_stress.
+- v7.5.1 Fix missmatch size between RPC `RPC_MGT_GPU_GET_POWER_CAP_DEFAULT`'s client and eard.
+
 ## [7.5.0] - 2026-10-07
 
 ### Changed
