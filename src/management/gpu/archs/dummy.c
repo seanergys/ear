@@ -214,11 +214,12 @@ state_t mgt_gpu_dummy_freq_limit_set(ctx_t *c, ulong *khz)
     int i, j;
 
     //debug("Received frequencies: ");
-    for (i = 0; i < FAKE_N; ++i)
+    for (i = 0; i < FAKE_N; ++i) {
         debug("D%d: %lu MHz", i, khz[i]);
         for (j = 0; j < clock_lens[i]; ++j) {
             //debug("D%d: %lu MHz", i, clock_list[i][j]);
         }
+		}
     #endif
     if (khz != NULL) {
         khz[0] = 0;
