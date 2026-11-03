@@ -724,7 +724,7 @@ int is_authorized_usr_grp_acc(cluster_conf_t *my_conf, char *user, char *group, 
         s = getpwnam_r(user, &pwd, buf, bufsize, &result);
         if (result == NULL) {
             if (s == 0) {
-                verbose(0, "User not found\n");
+                verbose(0, "User %s not found\n", user);
             } else {
                 verbose(0, "getpwdnam_r failed with exit code %d\n", s);
                 free(buf);

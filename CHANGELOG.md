@@ -14,9 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - v7.5.1 Port EARGM soft powercap strategy.
+- v7.5.1 Increase the polling file descriptor limit from 4096 to 8192.
+- v7.5.1 Include the username in failed user lookup messages and report deprecated POWERCAP settings at configuration verbosity.
 
 ### Fixed
 
+- v7.5.1 Serialize ACPI CPU frequency and governor sysfs accesses to prevent races on shared file descriptors.
+- v7.5.1 Prevent a null pointer dereference in `strtoa_free()`.
 - v7.5.1 Fixed an error in econtrol where `--status` would show nodes both as OK and in ERROR.
 - v7.5.1 Bound RPC answers against the caller's buffer before copying.
 - v7.5.1 EARD powercap fixes for (baseline\_powercap, watts requests, hardware limits, estimator).
