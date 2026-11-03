@@ -108,7 +108,7 @@ state_t TAG_parse_token(tag_t **tags_i, unsigned int *num_tags_i, char *line)
             tags[idx].powercap = atol(value);
             baseline_set       = 1;
         } else if (!strcmp(key, "POWERCAP")) {
-            warning("tag %s: POWERCAP= is deprecated, use BASELINE_POWERCAP=", tags[idx].id);
+            verbose(VCCONF, "tag %s: POWERCAP= is deprecated, use BASELINE_POWERCAP=", tags[idx].id);
             if (!baseline_set)
                 tags[idx].powercap = atol(value);
         } else if (!strcmp(key, "MAX_POWERCAP")) {
