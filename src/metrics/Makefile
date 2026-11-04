@@ -5,6 +5,7 @@
 mets_OBJS = \
     $(SRCDIR)/metrics/common/apis.o \
     $(SRCDIR)/metrics/common/cupti.o \
+    $(SRCDIR)/metrics/common/easybus.o \
     $(SRCDIR)/metrics/common/file.o \
     $(SRCDIR)/metrics/common/hsmp.o \
     $(SRCDIR)/metrics/common/hsmp_driver.o \
@@ -67,6 +68,7 @@ mets_OBJS = \
     $(SRCDIR)/metrics/cpufreq/cpufreq.o \
     $(SRCDIR)/metrics/cpufreq/cpufreq_base.o \
     $(SRCDIR)/metrics/cpufreq/archs/eard.o \
+    $(SRCDIR)/metrics/cpufreq/archs/easybus.o \
     $(SRCDIR)/metrics/cpufreq/archs/dummy.o \
     $(SRCDIR)/metrics/cpufreq/archs/intel63.o \
     $(SRCDIR)/metrics/imcfreq/imcfreq.o \

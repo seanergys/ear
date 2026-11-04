@@ -45,6 +45,7 @@ static char *_apis_tostr(uint api)
     else if (api == API_LIKWID    ) return "LIKWID";
     else if (api == API_CUPTI     ) return "CUPTI";
     else if (api == API_ONEAPI    ) return "ONEAPI";
+    else if (api == API_EASYBUS   ) return "EASYBUS";
     else if (api == API_ISST      ) return "INTELSST";
     else if (api == API_FAKE      ) return "FAKE";
     else if (api == API_CPUMODEL  ) return "CPUMODEL";

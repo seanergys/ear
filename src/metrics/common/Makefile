@@ -7,6 +7,7 @@ comm_BINS = libmetrics-common.a
 comm_OBJS = \
     apis.o \
     cupti.o \
+    easybus.o \
     file.o \
     hsmp.o \
     hsmp_driver.o \
@@ -35,6 +36,9 @@ comm_OBJS = \
 ######## RULES
 
 all: $(comm_BINS)
+
+easybus.o: easybus.c easybus.h
+	$(CC) $(CFLAGS) $(EASYBUS_CPPFLAGS) -c $<
 
 hsmp_esmi.o: hsmp_esmi.c hsmp_esmi.h
 	$(CC) $(CFLAGS) $(ESMI_CFLAGS) -c $<

@@ -8,16 +8,18 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
+/* clang-format off */
 // #define SHOW_DEBUGS 1
 
-#include <common/math_operations.h>
+#include <stdlib.h>
+#include <pthread.h>
 #include <common/output/debug.h>
+#include <common/math_operations.h>
 #include <metrics/cpufreq/archs/dummy.h>
 #include <metrics/cpufreq/archs/eard.h>
+#include <metrics/cpufreq/archs/easybus.h>
 #include <metrics/cpufreq/archs/intel63.h>
 #include <metrics/cpufreq/cpufreq.h>
-#include <pthread.h>
-#include <stdlib.h>
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static cpufreq_ops_t ops;
@@ -35,6 +37,7 @@ void cpufreq_load(topology_t *tp, int options)
         goto dummy;
     }
     cpufreq_intel63_load(tp, &ops, options);
+    cpufreq_easybus_load(tp, &ops, options);
     cpufreq_eard_load(tp, &ops, options);
 dummy:
     cpufreq_dummy_load(tp, &ops, options);
@@ -102,6 +105,10 @@ void cpufreq_data_diff(cpufreq_t *f2, cpufreq_t *f1, ulong *fD, ulong *fA)
     int d;
 
     if (f2 == NULL || f1 == NULL) {
+        return;
+    }
+    if (ops.data_diff != NULL) {
+        ops.data_diff(f2, f1, fD, fA);
         return;
     }
     if (fA != NULL) {

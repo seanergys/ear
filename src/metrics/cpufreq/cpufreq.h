@@ -8,25 +8,34 @@
  * SPDX-License-Identifier: EPL-2.0
  **************************************************************************/
 
+/* clang-format off */
 #ifndef METRICS_CPUFREQ_H
 #define METRICS_CPUFREQ_H
 
-#include <common/hardware/topology.h>
-#include <common/plugins.h>
-#include <common/states.h>
 #include <common/types.h>
+#include <common/states.h>
+#include <common/plugins.h>
+#include <common/hardware/topology.h>
 #include <metrics/cpufreq/cpufreq_base.h>
 
 typedef struct cpufreq_s {
-    ulong freq_aperf;
-    ulong freq_mperf;
+    union {
+        ulong freq_aperf;
+        uint64_t freq_acc;
+        uint64_t freq_imm;
+    };
+    union{
+        ulong freq_mperf;
+        uint64_t time_ms;
+    };
     uint state;
 } cpufreq_t;
 
 typedef struct cpufreq_ops_s {
-    void (*unload)();
-    void (*get_info)(apinfo_t *info);
-    state_t (*read)(cpufreq_t *f);
+    void    (*unload)    ();
+    void    (*get_info)  (apinfo_t *info);
+    state_t (*read)      (cpufreq_t *f);
+    void    (*data_diff) (cpufreq_t *f2, cpufreq_t *f1, ulong *freqs, ulong *freq_avg);
 } cpufreq_ops_t;
 
 // API building scheme
@@ -34,12 +43,15 @@ typedef struct cpufreq_ops_s {
 #define CPUFREQ_F_UNLOAD(name)   void cpufreq_##name##_unload()
 #define CPUFREQ_F_GET_INFO(name) void cpufreq_##name##_get_info(apinfo_t *info)
 #define CPUFREQ_F_READ(name)     state_t cpufreq_##name##_read(cpufreq_t *f)
+#define CPUFREQ_F_DATA_DIFF(name) \
+    void cpufreq_##name##_data_diff(cpufreq_t *f2, cpufreq_t *f1, ulong *freqs, ulong *freq_avg)
 
 #define CPUFREQ_DEFINES(name)                                                                                          \
     CPUFREQ_F_LOAD(name);                                                                                              \
     CPUFREQ_F_UNLOAD(name);                                                                                            \
     CPUFREQ_F_GET_INFO(name);                                                                                          \
-    CPUFREQ_F_READ(name);
+    CPUFREQ_F_READ(name);                                                                                              \
+    CPUFREQ_F_DATA_DIFF(name);
 
 void cpufreq_load(topology_t *tp, int options);
 
