@@ -324,6 +324,10 @@ void usage(char *app)
     printf("  %-36s %s\n", "--set-max-freq <freq>", "Sets the maximum frequency.");
     printf("  %-36s %s\n", "--set-powercap <cap>", "Sets the powercap for all selected nodes.");
     printf("  %-36s %s\n", "--restore-conf[=<node>]", "Restores configuration for all nodes or one node.");
+    printf("  %-36s %s\n", "--new-job <jobid=num&stepid=num&userid=name>",
+           "Sends a new job notification directly to a node. Usable only with --hosts.");
+    printf("  %-36s %s\n", "--end-job <jobid=num&stepid=num>",
+           "Sends an end job notification directly to a node. Usable only with --hosts.");
     printf("  %-36s %s\n", "--release", "Releases idle power.");
 #if EXT_OPT
     printf("  %-36s %s\n", "--reset-powercap <node>", "Resets a node powercap value to its default.");
@@ -745,6 +749,45 @@ void process_single_status(int num_status, status_t *status, char *node_name, ch
 
 #define MAX_DOMAIN_LEN 128
 
+static void _parse_job_event(new_job_req_t *job_req, char *optarg)
+{
+    char **elems = NULL;
+    int32_t size = 0;
+    str_cut_list(optarg, &elems, &size, "&");
+
+    for (int32_t i = 0; i < size; i++) {
+        char *key   = NULL;
+        char *value = NULL;
+
+        key   = strtok(elems[i], "=");
+        value = strtok(NULL, "=");
+        if (key == NULL || value == NULL) {
+            printf("Warning, cannot parse %s from job event string, skipping...\n", elems[i]);
+        } else {
+            if (!strncasecmp(key, "JOB-ID", strlen("JOB-ID")) || !strncasecmp(key, "JOB-ID", strlen("JOB-ID")) ||
+                !strncasecmp(key, "JOBID", strlen("JOBID"))) {
+                job_req->job.id = atol(value);
+            } else if (!strncasecmp(key, "STEP-ID", strlen("STEP-ID")) ||
+                       !strncasecmp(key, "STEP-ID", strlen("STEP-ID")) ||
+                       !strncasecmp(key, "STEPID", strlen("STEPID"))) {
+                job_req->job.step_id = atol(value);
+            } else if (!strncasecmp(key, "USER-ID", strlen("USER-ID")) ||
+                       !strncasecmp(key, "USER-ID", strlen("USER-ID")) ||
+                       !strncasecmp(key, "USERID", strlen("USERID"))) {
+                strncpy(job_req->job.user_id, value, GENERIC_NAME - 1);
+            } else if (!strncasecmp(key, "USER-GROUP", strlen("USER-ID")) ||
+                       !strncasecmp(key, "USER-GROUP", strlen("USER-ID")) ||
+                       !strncasecmp(key, "USERGROUP", strlen("USERID"))) {
+                strncpy(job_req->job.group_id, value, GENERIC_NAME - 1);
+            } else if (!strncasecmp(key, "APP-NAME", strlen("APP-NAME")) ||
+                       !strncasecmp(key, "APP-NAME", strlen("APP-NAME")) ||
+                       !strncasecmp(key, "APPNAME", strlen("APPNAME"))) {
+                strncpy(job_req->job.app_id, value, GENERIC_NAME - 1);
+            }
+        }
+    }
+}
+
 void _parse_domain(const char *optarg, char ***hosts, int32_t *num_hosts, cluster_conf_t *conf)
 {
     char domain_type[MAX_DOMAIN_LEN] = {0};
@@ -814,6 +857,7 @@ int main(int argc, char *argv[])
     bool send_message = false;
 
     char get_power = 0;
+    char job_event = 0;
     char mail_command[1024];
     char path_name[128];
     char node_name[256];
@@ -830,6 +874,7 @@ int main(int argc, char *argv[])
 
     status_t *status;
     power_check_t power;
+    new_job_req_t job_req = {0};
 
     verb_level   = 0;
     verb_enabled = 0;
@@ -871,6 +916,8 @@ int main(int argc, char *argv[])
                                            {"release", optional_argument, 0, 'l'},
                                            {"set-risk", required_argument, 0, 'r'},
                                            {"setopt", required_argument, 0, 'o'},
+                                           {"new-job", required_argument, 0, 'N'},
+                                           {"end-job", required_argument, 0, 'E'},
                                            {"type", required_argument, 0, 't'},
                                            {"set-powercap", required_argument, 0, 'c'},
                                            {"reset-powercap", required_argument, 0, 'x'},
@@ -1186,6 +1233,14 @@ int main(int argc, char *argv[])
                     }
                 }
                 break;
+            case 'N': // new job
+                _parse_job_event(&job_req, optarg);
+                job_event = 'N';
+                break;
+            case 'E': // end job
+                _parse_job_event(&job_req, optarg);
+                job_event = 'E';
+                break;
             case 'D': // domain
                 _parse_domain(optarg, &nodes, &num_nodes, &my_cluster_conf);
                 break;
@@ -1226,6 +1281,27 @@ int main(int argc, char *argv[])
 #if SHOW_DEBUGS
         print_list_of_nodes(nodes, num_nodes);
 #endif
+    }
+
+    if (job_event != 0) {
+        if (num_nodes < 1 || nodes == NULL) {
+            printf("Warning, job command was used without --hosts; no message will be sent.\n");
+        } else if (job_event == 'N') {
+            if (state_fail(ear_nodelist_new_job(&job_req, my_cluster_conf.eard.port, my_cluster_conf.net_ext, nodes,
+                                                num_nodes))) {
+                printf("Failed to send new-job message.\n");
+            } else {
+                printf("Sent new job request: {job_id %lu step_id %lu user %s} \n", job_req.job.id, job_req.job.step_id,
+                       job_req.job.user_id);
+            }
+        } else if (job_event == 'E') {
+            if (state_fail(ear_nodelist_end_job(job_req.job.id, job_req.job.step_id, my_cluster_conf.eard.port,
+                                                my_cluster_conf.net_ext, nodes, num_nodes))) {
+                printf("Failed to send end-job message.\n");
+            } else {
+                printf("Sent end job request: {job_id %lu step_id %lu} \n", job_req.job.id, job_req.job.step_id);
+            }
+        }
     }
 
     if (send_message) {
