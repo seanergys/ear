@@ -35,6 +35,8 @@ Commands:
   --set-powercap <cap>                 Sets the powercap for all selected nodes.
   --restore-conf[=<node>]              Restores configuration for all nodes or one node.
   --release                            Releases idle power.
+  --new-job <"jobid=num&stepid=num&userid=name"> Sends a new job notification directly to a node. Usable only with --hosts.
+  --end-job <"jobid=num&stepid=num">   Sends an end job notification directly to a node. Usable only with --hosts.
 
 Modifiers:
   --hosts <hostlist>                   Sends the command to a comma-separated list of hosts.
@@ -45,6 +47,15 @@ Modifiers:
 .ft R
 .fi
 
+.SH NOTES ON JOB MANAGEMENT
+
+The --new-job and --end-job provide a way to notify the EAR Daemon that a job has changed started/ended when an 
+alternative method is not feasible. They both accept a list of parameters (jobid, stepid, userid) separated by "&" which
+is then used to set that information on the Daemon's job configuration that is later reported. Alternative spellings
+(job-id, job_id, step-id, etc.) and capitalisation (JOBID, JOB-ID, etc.) are also available.
+
+If no --hosts flag is provided, the command will not send the data and a message will be printed. Other job fields
+(like user account, group, etc.) are currently not available.
 
 .SH EXAMPLES
 

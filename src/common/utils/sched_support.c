@@ -562,7 +562,7 @@ int32_t expand_list_alloc(const char *source, char **target)
         if (!target)
             return 0;
         // In that case we just copy from source
-        printf("Source: \'%s\' is not a range\n", source);
+        debug("Source: \'%s\' is not a range\n", source);
         *target = calloc(1, strlen(source) + 1);
         strcpy(*target, source);
         return 0;
