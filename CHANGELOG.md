@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - v5.2.9 Fix the computation of max and min power at job end.
 - v5.2.9 Fix eacct crashes caused by invalid arguments.
+- v5.2.9 Fixed buffer in verbose\_frequency, proportional to MAX\_CPUS\_SUPPORTED.
 
 ## [5.2.8] - 2026-09-03
 
