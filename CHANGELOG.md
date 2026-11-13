@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - v7.5.3 Honor --without-flag for jansson, curl and microhttpd libraries.
+- v7.5.3 Added support for having CMOCKA_LIBDIR to add it to the rpath.
 
 ### Fixed
 
