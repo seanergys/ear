@@ -263,3 +263,6 @@ void free_deserialized_cluster_conf(cluster_conf_t *conf);
 int tag_id_exists(cluster_conf_t *conf, char *tag);
 
 void generate_node_ranges(node_island_t *island, char *nodelist);
+
+/* Cleans users and pass */
+void clean_db_users(db_conf_t *db);
