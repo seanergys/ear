@@ -230,6 +230,7 @@ int services_misc(eard_head_t *head, int req_fd, int ack_fd)
             eard_close_comm(req_fd, ack_fd);
             break;
         case RPC_GET_STATE:
+            // TODO: We can return the uid
             s.pid                  = getpid();
             s.gpus_supported_count = MAX_GPUS_SUPPORTED;
             s.cpus_supported_count = MAX_CPUS_SUPPORTED;
