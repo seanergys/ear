@@ -6,16 +6,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- v8 `econtrol --new-job` and `--end-job` notifications for hosts selected with `--hosts`.
+- v8 Plugin Manager runtime plugin loading, post-initialization hooks, and per-plugin message data.
+- v8 Configurable Keeper persistence file path.
+- v8 Node energy plugin loading and reading tests.
+
 ### Changed
 
 - v7.5.3 Honor --without-flag for jansson, curl and microhttpd libraries.
 - v7.5.3 Added support for having CMOCKA_LIBDIR to add it to the rpath.
+- v8 Refactor node energy plugins to use `load`/`unload`, shared internal context, and configuration-based selection with dynamic fallbacks and `HACK_ENERGY_PLUGIN` override.
+- v8 Plugin Manager reserves unsuffixed callbacks for their own plugin and passes `struct pollfd` to polling callbacks.
+- v8 Add a proposed changelog section to the merge request template.
 
 ### Fixed
 
 - v5.2.9 Fix the computation of max and min power at job end.
 - v5.2.9 Fix eacct crashes caused by invalid arguments.
 - v5.2.9 Fixed buffer in verbose\_frequency, proportional to MAX\_CPUS\_SUPPORTED.
+- v8 Manage Intel PP0 power limits per socket instead of per core.
 
 ## [7.5.2] - 2026-11-05
 
