@@ -256,6 +256,9 @@ state_t serialize_cluster_conf(cluster_conf_t *conf, char **ear_conf_buf, size_t
 state_t deserialize_cluster_conf(cluster_conf_t *conf, char *ear_conf_buf, size_t conf_size,
                                  const version_t *src_version);
 
+/** Frees deserializer-owned allocations without following copied source-process pointers. */
+void free_deserialized_cluster_conf(cluster_conf_t *conf);
+
 /** Checks if a tag with a given name is defined in ear.conf and returns its id if it exists */
 int tag_id_exists(cluster_conf_t *conf, char *tag);
 
