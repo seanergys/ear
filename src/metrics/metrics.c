@@ -48,46 +48,6 @@ static int id_log;
 static int id_api;
 static int id_tpo;
 
-void metrics_load(metrics_info_t *m, topology_t *tp, char *nodepow_path, uint *options)
-{
-    uint default_options[MET_OPT_MAX] = {0};
-    self_tp = tp;
-
-    if (options == NULL) {
-        options = default_options;
-    }
-    nodepow(load, nodepow_path);
-    cpufreq_load(tp, options[MET_OPT_CPUFREQ]);
-    imcfreq_load(tp, options[MET_OPT_IMCFREQ]);
-     cpupow(load,tp, options[MET_OPT_CPUPOW] );
-     bwidth_load(tp, options[MET_OPT_BWIDTH] );
-      cache_load(tp, options[MET_OPT_CACHE]  );
-      flops_load(tp, options[MET_OPT_FLOPS]  );
-       temp_load(tp, options[MET_OPT_TEMP]   );
-        cpi_load(tp, options[MET_OPT_CPI]    );
-        gpu_load(    options[MET_OPT_GPU]    );
-         io_load(tp, options[MET_OPT_IO]     );
-       proc_load(tp, options[MET_OPT_PROC]   );
-
-    if (state_fail(nodepow(init, &e_ctx))) {
-      warning("Error at nodepow init: %s", state_msg);
-    }
-
-     cpupow(init, no_ctx);
-
-    metrics_info_get(m);
-}
-
-void metrics_update(uint option, void *value)
-{
-    cache_update(option, value);
-      cpi_update(option, value);
-    flops_update(option, value);
-      gpu_update(option, value);
-       io_update(option, value);
-     proc_update(option, value);
-}
-
 __attribute__((unused)) static void metrics_init_screen(metrics_info_t *m, topology_t *tp)
 {
     static char buffer[16384];
@@ -251,7 +211,7 @@ static char *cpupow_data_tostr(ullong *diffs, double secs, char *buffer, size_t 
 
 state_t metrics_nodepow_units(uint *units)
 {
-    return nodepow(units, &e_ctx, units);
+    return nodepow(units, units);
 }
 
 void nodepow_read(void *nod)
