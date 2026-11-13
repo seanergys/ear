@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- v7.5.3 Honor --without-flag for jansson, curl and microhttpd libraries.
+
 ### Fixed
 
 - v5.2.9 Fix the computation of max and min power at job end.
