@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - v5.2.9 Fix the computation of max and min power at job end.
 - v5.2.9 Fix eacct crashes caused by invalid arguments.
 - v5.2.9 Fixed buffer in verbose\_frequency, proportional to MAX\_CPUS\_SUPPORTED.
+- v7.5.3 Remove db credentials from serialized shared memory files.
 - v8 Manage Intel PP0 power limits per socket instead of per core.
 
 ## [7.5.2] - 2026-11-05
