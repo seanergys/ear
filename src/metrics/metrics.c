@@ -10,6 +10,9 @@
 
 /* clang-format off */
 // #define SHOW_DEBUGS 1
+
+#define SHOW_WARNINGS 1
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -204,6 +207,11 @@ static char *cpupow_data_tostr(ullong *diffs, double secs, char *buffer, size_t 
     }
     sprintf(&buffer[j], "!%0.1lf\n", mean);
     return buffer;
+}
+
+state_t metrics_nodepow_units(uint *units)
+{
+    return nodepow(units, units);
 }
 
 void nodepow_read(void *nod)

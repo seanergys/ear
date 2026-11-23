@@ -4,6 +4,86 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- v8 `econtrol --new-job` and `--end-job` notifications for hosts selected with `--hosts`.
+- v8 Plugin Manager runtime plugin loading, post-initialization hooks, and per-plugin message data.
+- v8 Configurable Keeper persistence file path.
+- v8 Node energy plugin loading and reading tests.
+
+### Changed
+
+- v7.5.3 Honor --without-flag for jansson, curl and microhttpd libraries.
+- v7.5.3 Added support for having CMOCKA_LIBDIR to add it to the rpath.
+- v8 Refactor node energy plugins to use `load`/`unload`, shared internal context, and configuration-based selection with dynamic fallbacks and `HACK_ENERGY_PLUGIN` override.
+- v8 Plugin Manager reserves unsuffixed callbacks for their own plugin and passes `struct pollfd` to polling callbacks.
+- v8 Add a proposed changelog section to the merge request template.
+
+### Fixed
+
+- v5.2.9 Fix the computation of max and min power at job end.
+- v5.2.9 Fix eacct crashes caused by invalid arguments.
+- v5.2.9 Fixed buffer in verbose\_frequency, proportional to MAX\_CPUS\_SUPPORTED.
+- v7.5.3 Remove db credentials from serialized shared memory files.
+- v8 Manage Intel PP0 power limits per socket instead of per core.
+
+## [7.5.2] - 2026-11-05
+
+### Changed
+
+- CI: Prevent running EARL-related jobs if no changes were added to `src/library`.
+- EARD powercap: Changed BASELINE\_POWERCAP to BASE\_POWERCAP given its multiple uses.
+
+## [7.5.1] - 2026-11-03
+
+### Added
+
+- EARGMD tests.
+- Added SCRIPT API in management/gpu.
+
+### Changed
+
+- Port EARGM soft powercap strategy.
+- Increase the polling file descriptor limit from 4096 to 8192.
+- Include the username in failed user lookup messages and report deprecated POWERCAP settings at configuration verbosity.
+
+### Fixed
+
+- Serialize ACPI CPU frequency and governor sysfs accesses to prevent races on shared file descriptors.
+- Prevent a null pointer dereference in `strtoa_free()`.
+- Fixed an error in econtrol where `--status` would show nodes both as OK and in ERROR.
+- Bound RPC answers against the caller's buffer before copying.
+- EARD powercap fixes for (baseline\_powercap, watts requests, hardware limits, estimator).
+- Fix using uninitialized chips\_pkg.chips\_count. Thanks to [@zalbanob](https://github.com/zalbanob) for pointing it out.
+- CI: Wait for the delayed last job report in powermon\_stress.
+- Fix missmatch size between RPC `RPC_MGT_GPU_GET_POWER_CAP_DEFAULT`'s client and eard.
+
+## [7.5.0] - 2026-10-07
+
+### Changed
+
+- CI: Prevent .post stage job to fetch any artifact.
+- EARD: Serialize power monitor initialization. and share DCMI context.
+- Recover shared DCMI IPMI descriptor after read failures.
+
+### Fixed
+
+- `eacct`: Prevent SIGSEGV when executed with bad arguments.
+
+## [6.4.1] - 2026-10-07
+
+### Changed
+
+- CI: Prevent .post stage job to fetch any artifact.
+
+### Fixed
+
+- `eacct`: Prevent SIGSEGV when executed with bad arguments.
+- EARD: Serialize power monitor initialization. and share DCMI context.
+- Recover shared DCMI IPMI descriptor after read failures.
+
 ## [7.4.3] - 2026-09-28
 
 ### Added
@@ -55,16 +135,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix `ear_control.c` clang-format.
 - Fix the computation of max and min power at job end.
 - Avoid caping CPU utilization at 100% to support multi-threaded processes.
-
-### Changed
-
-- v6.4.1 CI: Prevent .post stage job to fetch any artifact.
-
-### Fixed
-
-- v6.4.1 `eacct`: Prevent SIGSEGV when executed with bad arguments.
-- v6.4.1 EARD: Serialize power monitor initialization. and share DCMI context.
-- v6.4.1 Recover shared DCMI IPMI descriptor after read failures.
 
 ## [6.4.0] - 2026-09-04
 

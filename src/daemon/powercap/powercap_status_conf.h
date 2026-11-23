@@ -12,6 +12,7 @@
 #define _PC_STATUS_CONF_H_
 
 #include <common/types/powercap.h>
+#include <pthread.h>
 #include <stdint.h>
 
 #define DOMAIN_NODE 0
@@ -50,7 +51,7 @@ typedef enum {
 
 typedef struct node_powercap_opt {
     pthread_mutex_t lock;
-    uint32_t def_powercap;             /* powercap default value defined in ear.conf */
+    uint32_t base_powercap;            /* ear.conf BASE_POWERCAP: start cap; hard mode: min grant */
     uint32_t powercap_idle;            /* powercap to be applied at idle periods */
     uint32_t current_pc;               /* Current limit */
     uint32_t last_t1_allocated;        /* Power allocated at last T1,guaranteed */
@@ -61,17 +62,20 @@ typedef struct node_powercap_opt {
     uint32_t th_release;               /* Percentage of power to be released */
     uint32_t powercap_status;          /* Current status */
     uint32_t cluster_perc_power;       /* Max extra power for new jobs */
-    uint32_t requested;                /* Extra power requested, used when node is greedy or powercap < def_powercap */
+    uint32_t requested;                /* Extra power requested, used when node is greedy or powercap < base_powercap */
     uint32_t pper_domain[NUM_DOMAINS]; /* Power allocated to each domain */
 
 } node_powercap_opt_t;
 
 #define POWERCAP_STATUS_ACUM_ELEMS 8
 
+/* Sent over the network. The 16-bit fields go first so there is no padding between
+ * fields; the compiler still adds one trailing padding byte after stress (sizeof is 6),
+ * which is sent as is. */
 typedef struct greedy_bytes {
-    uint8_t requested;    /* power requested */
-    uint8_t stress;       /* node stress */
+    uint16_t requested;   /* power requested (W) */
     uint16_t extra_power; /* extra power already allocated */
+    uint8_t stress;       /* node stress */
 } greedy_bytes_t;
 
 typedef struct powercap_status {
@@ -122,14 +126,14 @@ typedef struct domain_status {
     uint32_t exceed;
     uint32_t current_pc;
     uint8_t stress;
-    uint8_t requested;
+    uint32_t requested; /* watts; narrowed to 16 bits only in pmgt_status_t */
 } domain_status_t;
 
 typedef struct pmgt_status {
     uint32_t status;
     uint32_t tbr;
     uint16_t extra;
-    uint8_t requested;
+    uint16_t requested; /* watts */
     uint8_t stress;
 } pmgt_status_t;
 

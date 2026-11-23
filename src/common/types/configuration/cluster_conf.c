@@ -487,14 +487,15 @@ my_node_conf_t *get_my_node_conf(cluster_conf_t *my_conf, char *nodename)
     if (tag_id >= 0) {
         debug("Found my_node_conf with tag: %s\n", my_conf->tags[tag_id].id);
 
-        n->max_sig_power   = (double) my_conf->tags[tag_id].max_power;
-        n->min_sig_power   = (double) my_conf->tags[tag_id].min_power;
-        n->max_error_power = (double) my_conf->tags[tag_id].error_power;
-        n->max_temp        = my_conf->tags[tag_id].max_temp;
-        n->powercap        = my_conf->tags[tag_id].powercap;
-        n->max_powercap    = my_conf->tags[tag_id].max_powercap;
-        n->max_avx512_freq = my_conf->tags[tag_id].max_avx512_freq;
-        n->max_avx2_freq   = my_conf->tags[tag_id].max_avx2_freq;
+        n->max_sig_power     = (double) my_conf->tags[tag_id].max_power;
+        n->min_sig_power     = (double) my_conf->tags[tag_id].min_power;
+        n->max_error_power   = (double) my_conf->tags[tag_id].error_power;
+        n->max_temp          = my_conf->tags[tag_id].max_temp;
+        n->powercap          = my_conf->tags[tag_id].powercap;
+        n->max_powercap      = my_conf->tags[tag_id].max_powercap;
+        n->min_working_power = my_conf->tags[tag_id].min_working_power;
+        n->max_avx512_freq   = my_conf->tags[tag_id].max_avx512_freq;
+        n->max_avx2_freq     = my_conf->tags[tag_id].max_avx2_freq;
 
         n->powercap_type  = my_conf->tags[tag_id].powercap_type;
         n->gpu_def_freq   = my_conf->tags[tag_id].gpu_def_freq;
@@ -585,24 +586,23 @@ my_node_conf_t *get_my_node_conf(cluster_conf_t *my_conf, char *nodename)
         case POWER_CAP_DISABLED:
             verbose(VCCONF + 2, "my_node_conf powercap is DISABLED");
             break;
-        case POWER_CAP_UNLIMITED:
+        case POWER_CAP_UNLIMITED: {
             verbose(VCCONF + 2, "my_node_conf powercap is UNLIMITED");
-            if (my_conf->eargm.num_eargms > my_conf->islands[island_idx].ranges[range_id].eargm_id) {
-                if (my_conf->eargm.eargms[my_conf->islands[island_idx].ranges[range_id].eargm_id].power ==
-                    POWER_CAP_AUTO_CONFIG) {
-                    verbose(
-                        VCCONF + 2,
+            // EARGMId is the id from ear.conf, not a position in eargms[]
+            int eargm_idx = get_eargm_idx(my_conf, my_conf->islands[island_idx].ranges[range_id].eargm_id);
+            if ((eargm_idx >= 0) && (my_conf->eargm.eargms[eargm_idx].power == POWER_CAP_AUTO_CONFIG)) {
+                verbose(VCCONF + 2,
                         "warning: EARGM is set to autoconfigure and node powercap is unlimited, this is unsupported");
-                }
             }
             break;
+        }
         case POWER_CAP_AUTO_CONFIG: {
             // When autoconfiguring, if the configuration is not valid we are currently setting the powercap to
             // UNLIMITED. Another option would be setting it to the DEFAULT value (but it could be -1 which would cause
             // issues) or set it to DISABLED.
             verbose(VCCONF, "my_node_conf powercap is being AUTOCONFIGURED");
             int eargm_idx = get_eargm_idx(my_conf, my_conf->islands[island_idx].ranges[range_id].eargm_id);
-            if (eargm_idx > 0) {
+            if (eargm_idx >= 0) { // position in eargms[] (0 for the first EARGM), -1 if EARGMId is not defined
                 int num_nodes = get_num_nodes_in_eargm(my_conf, my_conf->islands[island_idx].ranges[range_id].eargm_id);
                 if (num_nodes < 1) {
                     verbose(VCCONF, "\nno nodes found when configuring powercap, setting it to unlimited");
@@ -643,7 +643,7 @@ my_node_conf_t *get_my_node_conf(cluster_conf_t *my_conf, char *nodename)
             break;
     }
 
-    if (n->max_powercap <= 1 && my_conf->eargm.powercap_mode == SOFT_POWERCAP) {
+    if (n->max_powercap <= 1 && my_conf->eargm.powercap_mode == EARGM_SOFT_POWERCAP) {
         verbose(VCCONF,
                 "WARNING: max powercap is set to a non-valid value (%u) while the EARGM mode is set to soft powercap. "
                 "This configuration is not supported and the cluster powercap will not work.",
@@ -723,7 +723,7 @@ int is_authorized_usr_grp_acc(cluster_conf_t *my_conf, char *user, char *group, 
         s = getpwnam_r(user, &pwd, buf, bufsize, &result);
         if (result == NULL) {
             if (s == 0) {
-                verbose(0, "User not found\n");
+                verbose(0, "User %s not found\n", user);
             } else {
                 verbose(0, "getpwdnam_r failed with exit code %d\n", s);
                 free(buf);
@@ -1464,6 +1464,15 @@ void remove_islands_by_island_id(cluster_conf_t conf[static 1], int32_t id)
     }
 }
 
+void clean_db_users(db_conf_t *db)
+{
+    // Clean
+    memset(db->user, 0, sizeof(db->user));
+    memset(db->pass, 0, sizeof(db->pass));
+    memset(db->user_commands, 0, sizeof(db->user_commands));
+    memset(db->pass_commands, 0, sizeof(db->pass_commands));
+}
+
 /* It serializes conf and stores in ear_conf_buf. Memory is internally allocated */
 state_t serialize_cluster_conf(cluster_conf_t *conf, char **ear_conf_buf, size_t *conf_size)
 {
@@ -1541,7 +1550,12 @@ state_t serialize_cluster_conf(cluster_conf_t *conf, char **ear_conf_buf, size_t
     /* For each type of node is pending, not needed for now */
 
     /* Database */
+    db_conf_t db_save;
+    memcpy((char *) &db_save, (char *) &conf->database, sizeof(db_conf_t));
+    clean_db_users(&conf->database);
     serial_add_elem(&ear_conf_serial, (char *) &conf->database, sizeof(db_conf_t));
+    memcpy((char *) &conf->database, (char *) &db_save, sizeof(db_conf_t));
+
     serial_add_elem(&ear_conf_serial, (char *) &conf->db_manager, sizeof(eardb_conf_t));
 
     debug("serial + DB");
@@ -1716,4 +1730,32 @@ state_t deserialize_cluster_conf(cluster_conf_t *conf, char *ear_conf_buf, size_
 
     serial_free(&ear_conf_serial);
     return s;
+}
+
+/* deserialize_cluster_conf() allocates the top-level arrays and authorization
+ * strings locally, but copies nested pointers in node, island, energy-tag, and
+ * EARGM records verbatim from the serialized data. Those pointers belong to the
+ * source process. Unlike free_cluster_conf(), this function must not traverse
+ * or free them: release only allocations owned by the deserializer. Keep this
+ * cleanup beside deserialize_cluster_conf() as its allocation contract evolves.
+ */
+void free_deserialized_cluster_conf(cluster_conf_t *conf)
+{
+    char **lists[] = {conf->auth_users, conf->auth_groups, conf->auth_accounts, conf->admin_users};
+    uint counts[]  = {conf->auth_users_count, conf->auth_groups_count, conf->auth_acc_count, conf->admin_users_count};
+
+    for (uint list = 0; list < sizeof(lists) / sizeof(lists[0]); ++list) {
+        for (uint item = 0; item < counts[list]; ++item) {
+            free(lists[list][item]);
+        }
+        free(lists[list]);
+    }
+    free(conf->power_policies);
+    free(conf->nodes);
+    free(conf->tags);
+    free(conf->e_tags);
+    free(conf->islands);
+    if (conf->eargm.num_eargms > 0) {
+        free(conf->eargm.eargms);
+    }
 }
